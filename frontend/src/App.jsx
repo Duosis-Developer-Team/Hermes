@@ -24,6 +24,7 @@ import ActivityTypesPage from './pages/ActivityTypesPage'
 import PlatformsPage from './pages/PlatformsPage'
 import WorkLinesPage from './pages/WorkLinesPage'
 import BillableHoursPage from './pages/BillableHoursPage'
+import ReportsPage from './pages/ReportsPage'
 
 /**
  * Protected Route Component
@@ -88,6 +89,14 @@ function App() {
                     element={
                         <ProtectedRoute adminOnly>
                             <BillableHoursPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/management/reports"
+                    element={
+                        <ProtectedRoute adminOnly>
+                            <ReportsPage />
                         </ProtectedRoute>
                     }
                 />

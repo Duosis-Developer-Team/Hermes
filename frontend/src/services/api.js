@@ -422,6 +422,75 @@ export const reportsService = {
             throw error
         }
     },
+    /**
+     * Rapor 2: Aylık Detaylı Global Rapor
+     */
+    exportGlobalDetailed: async (month) => {
+        try {
+            const response = await coreApi.get('/api/v1/core/reports/export/global/detailed_v2', {
+                params: { month }, // YYYY-MM
+                responseType: 'blob',
+            })
+            await handleFileDownload(response, `hermes_global_rapor_${month}.csv`)
+        } catch (error) {
+            console.error('Export failed:', error)
+            throw error
+        }
+    },
+
+    /**
+     * Rapor 3: Customer x User Matrix
+     */
+    exportGlobalMatrix: async (startDate, endDate) => {
+        try {
+            const response = await coreApi.get('/api/v1/core/reports/export/global/matrix', {
+                params: { start_date: startDate, end_date: endDate },
+                responseType: 'blob',
+            })
+            await handleFileDownload(response, `hermes_matrix_rapor_${startDate}_${endDate}.csv`)
+        } catch (error) {
+            console.error('Export failed:', error)
+            throw error
+        }
+    },
+}
+
+// Helper for file download
+const handleFileDownload = async (response, defaultFilename) => {
+    // Check if response is actually JSON error
+    if (response.data.type === 'application/json') {
+        const text = await response.data.text()
+        const errorData = JSON.parse(text)
+        throw new Error(errorData.detail || errorData.error?.message || 'Download failed')
+    }
+
+    // Create blob
+    const blob = new Blob([response.data], {
+        type: 'text/csv;charset=utf-8;'
+    })
+    const url = window.URL.createObjectURL(blob)
+
+    // Filename from header or default
+    let filename = defaultFilename
+    const disposition = response.headers['content-disposition']
+    if (disposition && disposition.indexOf('filename=') !== -1) {
+        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition)
+        if (matches != null && matches[1]) {
+            filename = matches[1].replace(/['"]/g, '')
+        }
+    }
+
+    // Download link
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', filename)
+    document.body.appendChild(link)
+    link.click()
+
+    setTimeout(() => {
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+    }, 2000)
 }
 
 export default {
