@@ -71,6 +71,11 @@ function MainLayout() {
                         icon: <DashboardOutlined />,
                         label: 'Dashboard',
                     },
+                    {
+                        key: '/management/billable-hours',
+                        icon: <ClockCircleOutlined />,
+                        label: 'Billable Hours',
+                    },
                 ],
             },
             {

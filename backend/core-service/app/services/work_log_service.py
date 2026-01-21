@@ -79,6 +79,8 @@ class WorkLogService:
             
             date_worked=data.date_worked,
             duration_hours=data.duration_hours,
+            # Varsayılan olarak billable = duration
+            billable_duration_hours=data.billable_duration_hours if data.billable_duration_hours is not None else data.duration_hours,
             description=data.description
         )
         
@@ -338,6 +340,7 @@ class WorkLogService:
             "work_type_id": work_log.work_type_id,
             "date_worked": work_log.date_worked,
             "duration_hours": work_log.duration_hours,
+            "billable_duration_hours": work_log.billable_duration_hours,
             "description": work_log.description,
             "created_at": work_log.created_at,
             "updated_at": work_log.updated_at,

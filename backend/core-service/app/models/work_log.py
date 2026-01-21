@@ -176,6 +176,12 @@ class WorkLog(Base):
         nullable=False,
         comment="Harcanan süre (saat, örn: 2.50)"
     )
+
+    billable_duration_hours = Column(
+        Numeric(5, 2),
+        nullable=True,
+        comment="Faturalandırılacak süre (saat)"
+    )
     
     description = Column(
         Text,

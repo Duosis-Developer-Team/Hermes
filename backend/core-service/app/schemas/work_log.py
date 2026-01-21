@@ -33,9 +33,14 @@ class WorkLogBase(BaseModel):
         ...,
         ge=0.25,
         le=24,
-        decimal_places=2,
         description="Harcanan süre (saat, min: 0.25, max: 24)",
         examples=[2.5, 4.0, 1.25]
+    )
+    billable_duration_hours: Optional[Decimal] = Field(
+        None,
+        ge=0,
+        le=24,
+        description="Faturalandırılacak süre (opsiyonel)",
     )
     description: Optional[str] = Field(
         None,
@@ -50,7 +55,7 @@ class WorkLogBase(BaseModel):
     issue_id: Optional[UUID] = Field(None, description="Jira issue ID'si")
     issue_key_manual: Optional[str] = Field(None, description="Jira issue key (manuel)")
     
-    @field_validator('duration_hours', mode='before')
+    @field_validator('duration_hours', 'billable_duration_hours', mode='before')
     @classmethod
     def round_duration(cls, v):
         """Süreyi 2 ondalık basamağa yuvarla."""
@@ -80,6 +85,7 @@ class WorkLogUpdate(BaseModel):
     work_type_id: Optional[UUID] = None
     date_worked: Optional[date] = None
     duration_hours: Optional[Decimal] = Field(None, ge=0.25, le=24)
+    billable_duration_hours: Optional[Decimal] = Field(None, ge=0, le=24)
     description: Optional[str] = Field(None, max_length=5000)
     activity_type_id: Optional[UUID] = None
     platform_id: Optional[UUID] = None

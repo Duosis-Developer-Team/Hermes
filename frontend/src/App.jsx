@@ -23,6 +23,7 @@ import UsersPage from './pages/admin/UsersPage'
 import ActivityTypesPage from './pages/ActivityTypesPage'
 import PlatformsPage from './pages/PlatformsPage'
 import WorkLinesPage from './pages/WorkLinesPage'
+import BillableHoursPage from './pages/BillableHoursPage'
 
 /**
  * Protected Route Component
@@ -79,6 +80,14 @@ function App() {
                     element={
                         <ProtectedRoute adminOnly>
                             <DashboardPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/management/billable-hours"
+                    element={
+                        <ProtectedRoute adminOnly>
+                            <BillableHoursPage />
                         </ProtectedRoute>
                     }
                 />
