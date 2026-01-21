@@ -1,0 +1,122 @@
+/**
+ * Plan Time Modal Styles - Jira Tempo tarzı (Redesigned)
+ */
+
+.plan-time-modal .ant-modal-content {
+    background: #1e1e1e;
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    padding: 0;
+}
+
+.plan-time-modal .ant-modal-header {
+    display: none;
+}
+
+.plan-time-modal .ant-modal-body {
+    padding: 20px;
+}
+
+.plan-time-modal .ant-modal-close {
+    color: var(--text-muted);
+}
+
+/* ==========================================================================
+   FORM STYLING
+   ========================================================================== */
+
+.plan-time-form .ant-form-item-label>label {
+    color: var(--text-primary) !important;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.plan-time-form .ant-input,
+.plan-time-form .ant-select-selector,
+.plan-time-form .ant-picker,
+.plan-time-form .ant-input-number {
+    background: #2d2d2d !important;
+    border-color: #4a4a4a !important;
+    color: var(--text-primary) !important;
+}
+
+/* ==========================================================================
+   ISSUE SEARCH
+   ========================================================================== */
+
+.plan-time-modal .issue-search-wrapper {
+    margin-bottom: 16px;
+}
+
+.plan-time-modal .issue-search-input {
+    background: #2d2d2d !important;
+    border-color: #4a4a4a !important;
+}
+
+.plan-time-modal .issue-search-input .ant-input {
+    background: transparent !important;
+}
+
+/* ==========================================================================
+   FORM ROWS
+   ========================================================================== */
+
+.plan-time-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.plan-time-form .form-row.four-cols {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+/* Non-working checkbox */
+.non-working-checkbox {
+    margin-bottom: 16px;
+}
+
+.non-working-checkbox .ant-checkbox+span {
+    color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   TOGGLE EXTRA FIELDS
+   ========================================================================== */
+
+.toggle-extra-fields {
+    font-size: 13px;
+    color: #579dff;
+    cursor: pointer;
+    margin: 16px 0;
+    display: inline-block;
+}
+
+.toggle-extra-fields:hover {
+    text-decoration: underline;
+}
+
+/* Extra Fields Section */
+.extra-fields {
+    padding: 16px;
+    background: rgba(45, 45, 45, 0.5);
+    border-radius: 6px;
+    margin-bottom: 16px;
+}
+
+/* ==========================================================================
+   ACTIONS
+   ========================================================================== */
+
+.plan-time-form .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-default);
+}
+
+.plan-time-form .ant-btn-primary {
+    background: #4a7cff;
+}

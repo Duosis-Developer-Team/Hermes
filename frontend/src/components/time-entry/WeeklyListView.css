@@ -1,0 +1,46 @@
+/**
+ * Weekly List View Styles - Jira Tempo tarzı
+ */
+
+.weekly-list-view {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 180px);
+    min-height: 500px;
+}
+
+/* Hafta Özeti */
+.weekly-list-summary {
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-default);
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.weekly-list-summary strong {
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.weekly-target {
+    color: var(--text-muted);
+}
+
+/* Kolonlar Container */
+.weekly-list-columns {
+    display: flex;
+    flex: 1;
+    overflow-x: auto;
+    background: var(--bg-primary);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .weekly-list-columns {
+        min-width: 1120px;
+    }
+}

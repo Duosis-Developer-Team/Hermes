@@ -1,0 +1,113 @@
+/**
+ * Day Column Styles - Jira Tempo tarzı
+ */
+
+.day-column {
+    flex: 1;
+    min-width: 160px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-default);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.day-column:last-child {
+    border-right: none;
+}
+
+.day-column-today {
+    background: var(--bg-tertiary);
+}
+
+/* Header */
+.day-column-header {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-default);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.day-column-name {
+    display: flex;
+    flex-direction: column;
+}
+
+.day-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: capitalize;
+}
+
+.day-number {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.day-column-today .day-number {
+    color: var(--color-primary);
+}
+
+.day-column-hours {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+/* Progress */
+.day-column-progress {
+    padding: 0 12px 8px;
+}
+
+.day-column-progress .ant-progress-inner {
+    background: var(--bg-tertiary) !important;
+}
+
+/* Add Button */
+.day-column-add-btn {
+    margin: 0 12px 8px;
+    height: 36px;
+    border: 1px dashed var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all var(--transition-fast);
+}
+
+.day-column-add-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: rgba(87, 157, 255, 0.1);
+}
+
+/* Section Title */
+.day-column-section-title {
+    padding: 8px 12px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* Logs Container */
+.day-column-logs {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 12px 12px;
+}
+
+.day-column-empty {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-muted);
+    font-size: 12px;
+}

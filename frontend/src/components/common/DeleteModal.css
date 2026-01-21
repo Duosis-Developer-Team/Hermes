@@ -1,0 +1,108 @@
+/* Delete Modal Styles */
+.delete-modal .ant-modal-content {
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-default);
+    border-radius: 12px !important;
+    padding: 0 !important;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3) !important;
+}
+
+.delete-modal-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 24px;
+    text-align: center;
+    color: #ffffff !important;
+}
+
+.delete-modal-content * {
+    color: #ffffff !important;
+}
+
+.delete-icon-wrapper {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(248, 113, 104, 0.1);
+    /* Red400 with opacity */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+}
+
+.delete-icon {
+    font-size: 32px;
+    color: var(--Red400);
+}
+
+.delete-title.ant-typography {
+    margin: 0 0 12px 0 !important;
+    color: #ffffff !important;
+    font-weight: 600;
+}
+
+.delete-description * {
+    color: #d9d9d9 !important;
+}
+
+.delete-description {
+    margin-bottom: 32px;
+    color: #d9d9d9 !important;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.delete-item-name {
+    margin-top: 8px;
+    padding: 8px 16px;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    display: inline-block;
+    border: 1px solid var(--border-default);
+    color: #ffffff;
+}
+
+.delete-actions {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+}
+
+.delete-actions .ant-btn {
+    flex: 1;
+    height: 44px;
+    font-weight: 500;
+    font-size: 15px;
+    border-radius: 8px !important;
+}
+
+.delete-actions .cancel-btn {
+    background: transparent;
+    border: 1px solid var(--border-default);
+    color: var(--text-primary);
+}
+
+.delete-actions .cancel-btn:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--text-secondary);
+    color: var(--text-primary);
+}
+
+.delete-actions .delete-btn {
+    background: var(--Red500) !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(227, 73, 53, 0.3);
+}
+
+.delete-actions .delete-btn:hover {
+    background: var(--Red400) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(227, 73, 53, 0.4);
+}
+
+.delete-actions .delete-btn:active {
+    transform: translateY(0);
+}

@@ -1,0 +1,186 @@
+/**
+ * Submit Period Dropdown Styles
+ */
+
+/* Button */
+/* Button Group */
+.submit-period-group {
+    display: flex;
+    align-items: center;
+    background: #0055cc;
+    border-radius: 4px;
+    height: 32px;
+}
+
+.submit-period-group:hover {
+    background: #0747a6;
+}
+
+/* Main Button */
+.submit-period-main-btn {
+    background: transparent !important;
+    border: none !important;
+    color: white !important;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 0 12px !important;
+    height: 100% !important;
+    border-radius: 4px 0 0 4px !important;
+    box-shadow: none !important;
+}
+
+/* Arrow Button */
+.submit-period-arrow-btn {
+    background: transparent !important;
+    border: none !important;
+    color: white !important;
+    padding: 0 8px !important;
+    height: 100% !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 0 4px 4px 0 !important;
+    box-shadow: none !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.submit-period-main-btn:hover,
+.submit-period-arrow-btn:hover {
+    background: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Legacy button style (removed/deprecated) */
+.submit-period-btn {
+    display: none;
+}
+
+
+
+/* Panel */
+.submit-period-panel {
+    background: #2d2d2d;
+    border: 1px solid #4a4a4a;
+    border-radius: 8px;
+    min-width: 400px;
+    padding: 16px 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.panel-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    text-align: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #4a4a4a;
+}
+
+/* Toggle buttons */
+.periods-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: none;
+    color: #579dff;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.periods-toggle:hover {
+    background: rgba(87, 157, 255, 0.1);
+}
+
+/* Period cards */
+.periods-list {
+    padding: 0 16px;
+}
+
+.period-card {
+    padding: 16px 0;
+    border-bottom: 1px solid #3d3d3d;
+}
+
+.period-card:last-child {
+    border-bottom: none;
+}
+
+.period-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.period-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: white;
+}
+
+.period-status {
+    font-size: 10px !important;
+    padding: 2px 8px !important;
+    border-radius: 3px !important;
+}
+
+.period-behind {
+    font-size: 13px;
+    color: #facc15;
+}
+
+.period-submit-btn {
+    margin-left: auto;
+    color: white !important;
+    font-size: 13px;
+}
+
+.period-submit-btn:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Progress bar */
+.period-progress-bar {
+    height: 6px;
+    background: #4a4a4a;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.period-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+/* Footer */
+.period-card-footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #8b8b8b;
+}
+
+.panel-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    margin-top: 8px;
+}
+
+.approval-log-link {
+    background: transparent;
+    border: none;
+    color: #579dff;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.approval-log-link:hover {
+    text-decoration: underline;
+}

@@ -1,0 +1,61 @@
+/**
+ * Admin Pages Common Styles
+ */
+
+.admin-page .ant-card {
+    background: var(--bg-secondary);
+    border-color: var(--border-default);
+}
+
+.admin-page .ant-card-head {
+    background: var(--bg-tertiary);
+    border-color: var(--border-default);
+    color: var(--text-primary);
+}
+
+.admin-page .ant-card-head-title {
+    color: var(--text-primary);
+}
+
+.admin-page .ant-table {
+    background: transparent !important;
+}
+
+.admin-page .ant-table-thead>tr>th {
+    background: var(--bg-tertiary) !important;
+    border-color: var(--border-default) !important;
+    color: var(--text-primary) !important;
+}
+
+.admin-page .ant-table-tbody>tr>td {
+    border-color: var(--border-default) !important;
+    color: var(--text-primary);
+}
+
+.admin-page .ant-table-tbody>tr:hover>td {
+    background: var(--bg-tertiary) !important;
+}
+
+.admin-page .ant-modal-content {
+    background: var(--bg-secondary);
+}
+
+.admin-page .ant-modal-header {
+    background: var(--bg-secondary);
+    border-color: var(--border-default);
+}
+
+.admin-page .ant-modal-title {
+    color: var(--text-primary);
+}
+
+.admin-page .ant-form-item-label>label {
+    color: var(--text-primary);
+}
+
+.admin-page .ant-input,
+.admin-page .ant-input-textarea textarea {
+    background: var(--bg-tertiary) !important;
+    border-color: var(--border-default) !important;
+    color: var(--text-primary) !important;
+}

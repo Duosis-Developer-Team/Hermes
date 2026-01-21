@@ -1,0 +1,89 @@
+# =============================================================================
+# HERMES PLATFORM - Core Service Configuration
+# =============================================================================
+# Bu dosya, core-service için gerekli tüm yapılandırma ayarlarını yönetir.
+# Environment variable'lar Pydantic Settings ile okunur ve doğrulanır.
+# =============================================================================
+
+import os
+from functools import lru_cache
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    """
+    Core Service yapılandırma ayarları.
+    
+    Tüm ayarlar environment variable'lardan okunur. Geliştirme ortamı için
+    varsayılan değerler tanımlanmıştır.
+    
+    Environment Variables:
+        - CORE_DB_HOST: PostgreSQL host adresi
+        - CORE_DB_PORT: PostgreSQL port numarası
+        - CORE_DB_USER: Veritabanı kullanıcı adı
+        - CORE_DB_PASSWORD: Veritabanı şifresi
+        - CORE_DB_NAME: Veritabanı adı
+        - JWT_SECRET_KEY: JWT token doğrulama anahtarı
+        - AUTH_SERVICE_URL: auth-service'in iç URL'i
+    """
+    
+    # ==========================================================================
+    # Service Configuration
+    # ==========================================================================
+    
+    SERVICE_NAME: str = "core-service"
+    SERVICE_VERSION: str = "1.0.0"
+    DEBUG: bool = True
+    
+    # ==========================================================================
+    # Database Configuration (PostgreSQL - core_db)
+    # ==========================================================================
+    
+    CORE_DB_HOST: str = "localhost"
+    CORE_DB_PORT: int = 5433  # auth_db'den farklı port
+    CORE_DB_USER: str = "hermes"
+    CORE_DB_PASSWORD: str = "hermes_dev_password"
+    CORE_DB_NAME: str = "core_db"
+    
+    @property
+    def database_url(self) -> str:
+        """SQLAlchemy için PostgreSQL bağlantı URL'i."""
+        return (
+            f"postgresql://{self.CORE_DB_USER}:{self.CORE_DB_PASSWORD}"
+            f"@{self.CORE_DB_HOST}:{self.CORE_DB_PORT}/{self.CORE_DB_NAME}"
+        )
+    
+    # ==========================================================================
+    # JWT Configuration (Doğrulama için - auth-service ile aynı secret!)
+    # ==========================================================================
+    
+    JWT_SECRET_KEY: str = "hermes-dev-secret-key-change-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    
+    # ==========================================================================
+    # Service URLs (Mikroservisler arası iletişim)
+    # ==========================================================================
+    
+    # Kubernetes içinde: http://auth-service
+    AUTH_SERVICE_URL: str = "http://localhost:8000"
+    
+    # ==========================================================================
+    # CORS Configuration
+    # ==========================================================================
+    
+    CORS_ORIGINS: list = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+    
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        case_sensitive = True
+
+
+@lru_cache()
+def get_settings() -> Settings:
+    """Singleton Settings instance döner."""
+    return Settings()

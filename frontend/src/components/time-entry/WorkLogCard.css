@@ -1,0 +1,107 @@
+/**
+ * WorkLog Card Styles - Jira Tempo Style (Redesigned)
+ */
+
+.worklog-card {
+    background: #3d3d3d;
+    border-radius: 6px;
+    padding: 12px;
+    position: relative;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin-bottom: 8px;
+}
+
+.worklog-card:hover {
+    background: #4a4a4a;
+}
+
+.worklog-card:hover .worklog-card-actions {
+    opacity: 1;
+}
+
+/* Title - Proje adı */
+.worklog-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+/* Description - Açıklama */
+.worklog-card-description {
+    font-size: 12px;
+    color: #a0a0a0;
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+/* Footer - Issue Key + Süre */
+.worklog-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Issue Key with checkmark icon */
+.worklog-issue-key {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #10b981;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.issue-key-icon {
+    color: white;
+    font-size: 12px;
+}
+
+.issue-key-text {
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+}
+
+/* Duration */
+.worklog-card-duration {
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+}
+
+/* Hover Actions */
+.worklog-card-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.worklog-action-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.worklog-action-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.worklog-action-btn.delete:hover {
+    background: rgba(255, 77, 79, 0.3);
+    color: #ff4d4f;
+}

@@ -1,0 +1,173 @@
+/**
+ * Submit Period Modal Styles
+ */
+
+.submit-period-modal .ant-modal-content {
+    background: #2d2d2d;
+    border: 1px solid #4a4a4a;
+    border-radius: 8px;
+    padding: 0;
+}
+
+.submit-period-modal .ant-modal-header {
+    display: none;
+}
+
+.submit-period-modal .ant-modal-body {
+    padding: 0;
+}
+
+.submit-period-modal .ant-modal-close {
+    color: var(--text-muted);
+}
+
+/* Content */
+.submit-modal-content {
+    padding: 24px;
+}
+
+.submit-modal-title {
+    font-size: 18px;
+    font-weight: 400;
+    color: white;
+    margin: 0 0 16px 0;
+}
+
+.submit-modal-divider {
+    height: 1px;
+    background: #4a4a4a;
+    margin-bottom: 24px;
+}
+
+/* Period Info */
+.period-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.period-info-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.period-label {
+    font-size: 15px;
+    font-weight: 500;
+    color: white;
+}
+
+.period-date-range {
+    font-size: 13px;
+    color: #8b8b8b;
+}
+
+.period-status-tag {
+    font-size: 10px !important;
+    padding: 2px 8px !important;
+    border-radius: 3px !important;
+    background: #cc5500 !important;
+    border: none !important;
+}
+
+/* Hours Info */
+.hours-info {
+    margin-bottom: 24px;
+}
+
+.hours-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 0;
+}
+
+.hours-label {
+    font-size: 13px;
+    color: #8b8b8b;
+    width: 120px;
+}
+
+.hours-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: white;
+}
+
+.hours-missing {
+    margin-left: auto;
+    font-size: 13px;
+    color: #ff7875;
+}
+
+/* Reviewer Section */
+.reviewer-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.reviewer-label {
+    font-size: 14px;
+    color: white;
+    width: 80px;
+}
+
+.reviewer-select {
+    flex: 1;
+}
+
+.reviewer-select .ant-select-selector {
+    background: #3d3d3d !important;
+    border-color: #4a4a4a !important;
+    color: white !important;
+}
+
+.reviewer-select .ant-select-selection-placeholder {
+    color: #8b8b8b !important;
+}
+
+/* Note */
+.reviewer-note {
+    background: #1e1e1e !important;
+    border: 1px solid #4a4a4a !important;
+    color: white !important;
+    margin-bottom: 24px;
+}
+
+.reviewer-note::placeholder {
+    color: #8b8b8b !important;
+}
+
+/* Actions */
+.submit-modal-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.view-timesheet-link {
+    color: #579dff !important;
+    padding: 0 !important;
+}
+
+.view-timesheet-link:hover {
+    text-decoration: underline;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.action-buttons .ant-btn-primary {
+    background: #505050 !important;
+    border: none !important;
+}
+
+.action-buttons .ant-btn-primary:hover {
+    background: #606060 !important;
+}

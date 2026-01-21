@@ -1,0 +1,492 @@
+/**
+ * =============================================================================
+ * HERMES PLATFORM - Global Styles
+ * =============================================================================
+ * Jira Kanban tarzında profesyonel, minimalist tasarım.
+ * Atlassian Design System'den ilham alan neutral renk paleti.
+ * =============================================================================
+ */
+
+/* Google Fonts - Inter (Atlassian Sans benzeri) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ==========================================================================
+   ROOT VARIABLES - ATLASSIAN NEUTRAL PALETTE
+   ========================================================================== */
+
+:root {
+  /* Neutral Colors (Dark to Light) */
+  --N900: #1D2125;
+  /* Ana arka plan */
+  --N800: #22272B;
+  /* Sidebar, kartlar */
+  --N700: #2C333A;
+  /* Hover durumları */
+  --N600: #38414A;
+  /* Aktif durumlar */
+  --N500: #44546F;
+  /* İkincil metin */
+  --N400: #626F86;
+  /* Placeholder */
+  --N300: #8993A5;
+  /* Muted text */
+  --N200: #9FADBC;
+  /* Disabled */
+  --N100: #B8C4D5;
+  /* Borders */
+  --N50: #DEE4EA;
+  /* Light borders */
+  --N0: #FFFFFF;
+  /* Başlık metinleri */
+
+  /* Brand / Primary */
+  --Blue500: #388BFF;
+  --Blue400: #579DFF;
+  /* Primary */
+  --Blue300: #85B8FF;
+
+  /* Semantic Colors */
+  --Green400: #4BCE97;
+  --Green500: #22A06B;
+  --Yellow400: #E2B203;
+  --Yellow300: #F5CD47;
+  --Red400: #F87168;
+  --Red500: #E34935;
+
+  /* Aliases - Kolay kullanım için */
+  --bg-primary: var(--N900);
+  --bg-secondary: var(--N800);
+  --bg-tertiary: var(--N700);
+  --bg-hover: var(--N600);
+
+  --text-primary: var(--N0);
+  --text-secondary: var(--N300);
+  --text-muted: var(--N400);
+
+  --border-default: var(--N700);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+
+  --color-primary: var(--Blue400);
+  --color-success: var(--Green400);
+  --color-warning: var(--Yellow400);
+  --color-error: var(--Red400);
+
+  /* Shadows - Minimal */
+  --shadow-sm: 0 1px 1px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.25);
+  --shadow-overlay: 0 0 0 1px var(--border-default), var(--shadow-lg);
+
+  /* Border Radius - Jira Style */
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+
+  /* Transitions */
+  --transition-fast: 0.1s ease;
+  --transition-normal: 0.2s ease;
+}
+
+/* ==========================================================================
+   RESET & BASE
+   ========================================================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  height: 100%;
+}
+
+/* ==========================================================================
+   SCROLLBAR - Jira Style (Minimal)
+   ========================================================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--N600);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--N500);
+}
+
+/* ==========================================================================
+   ANT DESIGN OVERRIDES - Jira Theme
+   ========================================================================== */
+
+/* Table */
+.ant-table {
+  background: var(--bg-secondary) !important;
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--border-default) !important;
+}
+
+.ant-table-thead>tr>th {
+  background: var(--bg-tertiary) !important;
+  color: var(--text-secondary) !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  border-bottom: 1px solid var(--border-default) !important;
+  padding: 12px 16px !important;
+}
+
+.ant-table-tbody>tr>td {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  padding: 12px 16px !important;
+}
+
+.ant-table-tbody>tr:hover>td {
+  background: var(--bg-tertiary) !important;
+}
+
+.ant-table-tbody>tr:last-child>td {
+  border-bottom: none !important;
+}
+
+/* Empty State */
+.ant-empty-description {
+  color: var(--text-muted) !important;
+}
+
+/* Cards */
+.ant-card {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-lg) !important;
+}
+
+.ant-card-head {
+  background: transparent !important;
+  border-bottom: 1px solid var(--border-default) !important;
+  padding: 12px 16px !important;
+  min-height: auto !important;
+}
+
+.ant-card-head-title {
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  padding: 0 !important;
+}
+
+.ant-card-body {
+  padding: 16px !important;
+}
+
+/* Form Inputs */
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-select-selector,
+.ant-picker,
+.ant-input-number {
+  background: var(--bg-tertiary) !important;
+  border: 2px solid transparent !important;
+  border-radius: var(--radius-md) !important;
+  color: var(--text-primary) !important;
+  transition: border-color var(--transition-fast), background var(--transition-fast) !important;
+}
+
+.ant-input:hover,
+.ant-input-affix-wrapper:hover,
+.ant-select:hover .ant-select-selector,
+.ant-picker:hover,
+.ant-input-number:hover {
+  background: var(--bg-hover) !important;
+}
+
+.ant-input:focus,
+.ant-input-affix-wrapper-focused,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused,
+.ant-input-number-focused {
+  background: var(--bg-tertiary) !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: none !important;
+}
+
+.ant-input::placeholder,
+.ant-select-selection-placeholder,
+.ant-picker-input>input::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Form Labels */
+.ant-form-item-label>label {
+  color: var(--text-secondary) !important;
+  font-weight: 500 !important;
+}
+
+/* Select Dropdown */
+.ant-select-dropdown {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-overlay) !important;
+}
+
+.ant-select-item {
+  color: var(--text-primary) !important;
+}
+
+.ant-select-item-option-active,
+.ant-select-item-option-selected {
+  background: var(--bg-tertiary) !important;
+}
+
+/* Buttons */
+.ant-btn {
+  border-radius: var(--radius-md) !important;
+  font-weight: 500 !important;
+  transition: all var(--transition-fast) !important;
+}
+
+.ant-btn-primary {
+  background: var(--color-primary) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.ant-btn-primary:hover {
+  background: var(--Blue500) !important;
+}
+
+.ant-btn-default {
+  background: transparent !important;
+  border: 1px solid var(--border-default) !important;
+  color: var(--text-primary) !important;
+}
+
+.ant-btn-default:hover {
+  background: var(--bg-tertiary) !important;
+  border-color: var(--N500) !important;
+}
+
+/* Modals */
+.ant-modal-content {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-overlay) !important;
+}
+
+.ant-modal-header {
+  background: transparent !important;
+  border-bottom: 1px solid var(--border-default) !important;
+  padding: 16px 20px !important;
+}
+
+.ant-modal-title {
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+}
+
+.ant-modal-body {
+  padding: 20px !important;
+}
+
+.ant-modal-footer {
+  border-top: 1px solid var(--border-default) !important;
+  padding: 12px 20px !important;
+}
+
+.ant-modal-close-x {
+  color: var(--text-secondary) !important;
+}
+
+/* Dropdown Menu */
+.ant-dropdown-menu {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-overlay) !important;
+  padding: 4px !important;
+}
+
+.ant-dropdown-menu-item {
+  color: var(--text-primary) !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 8px 12px !important;
+}
+
+.ant-dropdown-menu-item:hover {
+  background: var(--bg-tertiary) !important;
+}
+
+/* Date Picker */
+.ant-picker-panel-container {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-default) !important;
+  box-shadow: var(--shadow-overlay) !important;
+}
+
+.ant-picker-header,
+.ant-picker-content th {
+  color: var(--text-secondary) !important;
+}
+
+.ant-picker-cell-inner {
+  color: var(--text-primary) !important;
+}
+
+.ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner {
+  background: var(--color-primary) !important;
+}
+
+/* Tags */
+.ant-tag {
+  border-radius: var(--radius-sm) !important;
+  border: none !important;
+  font-weight: 500 !important;
+}
+
+/* Message */
+.ant-message-notice-content {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-default) !important;
+  box-shadow: var(--shadow-lg) !important;
+  color: #ffffff !important;
+}
+
+.ant-message-custom-content {
+  color: #ffffff !important;
+}
+
+.ant-message-custom-content>.anticon {
+  margin-right: 8px;
+}
+
+/* Spin */
+.ant-spin-dot-item {
+  background: var(--color-primary) !important;
+}
+
+/* ==========================================================================
+   CUSTOM COMPONENTS - Jira Style
+   ========================================================================== */
+
+/* Page Header */
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.page-header p {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Stat Card - Dashboard */
+.stat-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  transition: border-color var(--transition-normal);
+}
+
+.stat-card:hover {
+  border-color: var(--N500);
+}
+
+.stat-card .stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.stat-card .stat-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+
+/* Content Card */
+.content-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.content-card-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-default);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.content-card-body {
+  padding: 16px;
+}
+
+/* ==========================================================================
+   ANIMATIONS - Minimal
+   ========================================================================== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.2s ease;
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .page-header h1 {
+    font-size: 20px;
+  }
+
+  .stat-card .stat-value {
+    font-size: 24px;
+  }
+}

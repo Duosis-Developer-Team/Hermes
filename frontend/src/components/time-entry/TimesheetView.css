@@ -1,0 +1,248 @@
+/**
+ * Timesheet View Styles - Jira Tempo tarzı (Redesigned)
+ */
+
+.timesheet-view {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    position: relative;
+}
+
+/* ==========================================================================
+   TABLE BASE
+   ========================================================================== */
+
+.timesheet-table .ant-table {
+    background: transparent !important;
+}
+
+.timesheet-table .ant-table-thead>tr>th {
+    background: var(--bg-tertiary) !important;
+    border-bottom: 1px solid var(--border-default) !important;
+    border-right: 1px solid var(--border-default) !important;
+    color: var(--text-secondary) !important;
+    font-weight: 600;
+    font-size: 11px;
+    padding: 8px 10px !important;
+    text-align: center;
+}
+
+.timesheet-table .ant-table-thead>tr>th:last-child {
+    border-right: none !important;
+}
+
+.timesheet-table .ant-table-tbody>tr>td {
+    border-bottom: 1px solid var(--border-default) !important;
+    border-right: 1px solid var(--border-default) !important;
+    padding: 6px 10px !important;
+    background: var(--bg-secondary) !important;
+}
+
+.timesheet-table .ant-table-tbody>tr>td:last-child {
+    border-right: none !important;
+}
+
+.timesheet-table .ant-table-tbody>tr:hover>td {
+    background: var(--bg-tertiary) !important;
+}
+
+.timesheet-row {
+    border-bottom: 1px solid var(--border-default);
+}
+
+/* ==========================================================================
+   CHECKBOX COLUMN
+   ========================================================================== */
+
+.timesheet-checkbox .ant-checkbox-inner {
+    background: transparent;
+    border-color: var(--border-subtle);
+}
+
+/* ==========================================================================
+   ISSUE COLUMN
+   ========================================================================== */
+
+.timesheet-issue-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.timesheet-issue-icon {
+    color: #3b82f6;
+    font-size: 14px;
+}
+
+.timesheet-issue-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   KEY COLUMN
+   ========================================================================== */
+
+.timesheet-key-link {
+    font-size: 12px;
+    color: #579dff;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.timesheet-key-link:hover {
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   LOGGED COLUMN
+   ========================================================================== */
+
+.timesheet-logged-hours {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+/* ==========================================================================
+   DAY HEADER
+   ========================================================================== */
+
+.timesheet-day-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+}
+
+.timesheet-day-header .day-num {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.timesheet-day-header .day-name {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.timesheet-day-header.today .day-num {
+    color: var(--color-primary);
+}
+
+.timesheet-day-header.weekend .day-num,
+.timesheet-day-header.weekend .day-name {
+    color: var(--text-muted);
+}
+
+/* ==========================================================================
+   DAY CELLS
+   ========================================================================== */
+
+.timesheet-day-cell {
+    text-align: center;
+}
+
+.timesheet-day-cell.weekend {
+    background: rgba(0, 0, 0, 0.1) !important;
+}
+
+.timesheet-day-cell.today {
+    background: rgba(87, 157, 255, 0.08) !important;
+}
+
+/* Hours Cell (clickable) */
+.timesheet-hours-cell {
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.timesheet-hours-cell:hover {
+    background: rgba(87, 157, 255, 0.15);
+}
+
+.timesheet-hours-cell.has-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   FOOTER (TOTAL ROW)
+   ========================================================================== */
+
+/* ==========================================================================
+   TABLE SUMMARY (TOTAL ROW)
+   ========================================================================== */
+
+.timesheet-total-row {
+    background: var(--bg-tertiary) !important;
+    font-weight: 600;
+    border-top: 2px solid var(--border-default);
+}
+
+.timesheet-total-row td {
+    background: var(--bg-tertiary) !important;
+    border-bottom: none !important;
+    padding: 10px 10px !important;
+}
+
+.timesheet-total-label {
+    text-align: right !important;
+    padding-right: 20px !important;
+    color: var(--text-primary);
+}
+
+.timesheet-total-value {
+    text-align: center !important;
+    color: var(--text-primary);
+    font-size: 13px;
+    border-left: 1px solid var(--border-default);
+}
+
+.timesheet-total-day {
+    text-align: center !important;
+    color: var(--text-secondary);
+    font-size: 13px;
+    border-left: 1px solid var(--border-default);
+}
+
+.timesheet-total-day.weekend {
+    background: rgba(0, 0, 0, 0.05) !important;
+    color: var(--text-muted);
+}
+
+/* ==========================================================================
+   PROGRESS BAR
+   ========================================================================== */
+
+.timesheet-progress-bar {
+    height: 4px;
+    background: var(--bg-tertiary);
+    position: relative;
+}
+
+.timesheet-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #10b981);
+    transition: width 0.3s ease;
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+    .timesheet-table {
+        overflow-x: auto;
+    }
+}

@@ -1,0 +1,169 @@
+# =============================================================================
+# HERMES PLATFORM - Docker Compose (Local Development)
+# =============================================================================
+# Bu dosya, Hermes platformunun tüm servislerini local ortamda
+# ayağa kaldırmak için kullanılır.
+#
+# Kullanım:
+#   docker-compose up --build
+#
+# Servisler:
+#   - auth-db (PostgreSQL): localhost:5432
+#   - core-db (PostgreSQL): localhost:5433
+#   - auth-service: localhost:8000
+#   - core-service: localhost:8001
+#   - reporting-service: localhost:8002
+#   - frontend: localhost:5173
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # Veritabanları
+  # ===========================================================================
+  
+  auth-db:
+    image: postgres:15-alpine
+    container_name: hermes-auth-db
+    environment:
+      POSTGRES_USER: hermes
+      POSTGRES_PASSWORD: hermes_dev_password
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hermes -d auth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hermes-network
+  
+  core-db:
+    image: postgres:15-alpine
+    container_name: hermes-core-db
+    environment:
+      POSTGRES_USER: hermes
+      POSTGRES_PASSWORD: hermes_dev_password
+      POSTGRES_DB: core_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - core_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hermes -d core_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hermes-network
+  
+  # ===========================================================================
+  # Backend Servisleri
+  # ===========================================================================
+  
+  auth-service:
+    build:
+      context: ./backend
+      dockerfile: auth-service/Dockerfile
+    container_name: hermes-auth-service
+    environment:
+      - AUTH_DB_HOST=auth-db
+      - AUTH_DB_PORT=5432
+      - AUTH_DB_USER=hermes
+      - AUTH_DB_PASSWORD=hermes_dev_password
+      - AUTH_DB_NAME=auth_db
+      - JWT_SECRET_KEY=hermes-dev-secret-key-change-in-production
+      - DEBUG=true
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/auth-service:/app
+      - ./backend/shared:/app/shared
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    networks:
+      - hermes-network
+    restart: unless-stopped
+  
+  core-service:
+    build:
+      context: ./backend
+      dockerfile: core-service/Dockerfile
+    container_name: hermes-core-service
+    environment:
+      - CORE_DB_HOST=core-db
+      - CORE_DB_PORT=5432
+      - CORE_DB_USER=hermes
+      - CORE_DB_PASSWORD=hermes_dev_password
+      - CORE_DB_NAME=core_db
+      - JWT_SECRET_KEY=hermes-dev-secret-key-change-in-production
+      - AUTH_SERVICE_URL=http://auth-service:8000
+      - DEBUG=true
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./backend/core-service:/app
+      - ./backend/shared:/app/shared
+    depends_on:
+      core-db:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - hermes-network
+    restart: unless-stopped
+  
+  reporting-service:
+    build:
+      context: ./backend
+      dockerfile: reporting-service/Dockerfile
+    container_name: hermes-reporting-service
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:8000
+      - CORE_SERVICE_URL=http://core-service:8001
+      - JWT_SECRET_KEY=hermes-dev-secret-key-change-in-production
+      - DEBUG=true
+    ports:
+      - "8002:8002"
+    depends_on:
+      - auth-service
+      - core-service
+    networks:
+      - hermes-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Frontend (Development)
+  # ===========================================================================
+  
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile.dev
+  #   container_name: hermes-frontend
+  #   ports:
+  #     - "5173:5173"
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #   environment:
+  #     - VITE_API_URL=http://localhost:8000
+  #   networks:
+  #     - hermes-network
+
+# =============================================================================
+# Ağ ve Volume Tanımları
+# =============================================================================
+
+networks:
+  hermes-network:
+    driver: bridge
+
+volumes:
+  auth_db_data:
+  core_db_data:

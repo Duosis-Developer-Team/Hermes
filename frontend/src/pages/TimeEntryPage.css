@@ -1,0 +1,250 @@
+/**
+ * =============================================================================
+ * HERMES - Time Entry Page Styles (Jira Tempo Style)
+ * =============================================================================
+ */
+
+.time-entry-page {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 64px);
+    background: var(--bg-primary);
+}
+
+/* ==========================================================================
+   USER HEADER (Jira Tempo Style)
+   ========================================================================== */
+
+.user-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    background: transparent;
+    /* Or specific color if needed */
+    border-bottom: 1px solid var(--border-default);
+}
+
+.user-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.user-avatar-large {
+    background-color: var(--color-primary);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.user-header-name {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.user-header-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.view-switchers {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.view-link {
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    padding: 8px 0;
+    position: relative;
+    transition: color 0.2s;
+}
+
+.view-link:hover {
+    color: var(--text-primary);
+}
+
+.view-link.active {
+    color: var(--color-primary);
+}
+
+.view-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    /* Align with border-bottom of header? Or just below text */
+    /* Actually header has padding, so maybe just visual indicator */
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--color-primary);
+}
+
+/* ==========================================================================
+   WEEK HEADER
+   ========================================================================== */
+
+.time-entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-default);
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* Week Navigation */
+.week-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.week-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    padding: 0 8px;
+    min-width: 180px;
+    text-align: center;
+}
+
+.nav-btn {
+    color: var(--text-secondary) !important;
+}
+
+.nav-btn:hover {
+    color: var(--text-primary) !important;
+    background: var(--bg-tertiary) !important;
+}
+
+.today-btn {
+    border-color: var(--border-subtle) !important;
+}
+
+/* Week Summary */
+.week-summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+}
+
+.summary-label {
+    color: var(--text-secondary);
+}
+
+.summary-hours {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.summary-target {
+    color: var(--text-muted);
+}
+
+/* View Toggle */
+.view-toggle {
+    background: var(--bg-tertiary) !important;
+}
+
+.view-toggle .ant-segmented-item {
+    color: var(--text-secondary) !important;
+}
+
+.view-toggle .ant-segmented-item-selected {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ==========================================================================
+   CONTENT
+   ========================================================================== */
+
+.time-entry-content {
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .time-entry-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .header-left,
+    .header-right {
+        justify-content: center;
+    }
+
+    .week-label {
+        min-width: auto;
+    }
+}
+
+/* Excel Export Button - Force Green */
+.excel-export-btn {
+    background: #16a34a !important;
+    border-color: #16a34a !important;
+    color: white !important;
+    margin-right: 8px !important;
+    min-width: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.excel-export-btn:hover {
+    background: #15803d !important;
+    border-color: #15803d !important;
+}
+
+.excel-export-btn {
+    background: #16a34a !important;
+    border-color: #16a34a !important;
+    color: white !important;
+    margin-right: 8px !important;
+    min-width: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.excel-export-btn:hover {
+    background: #15803d !important;
+    /* darker green hover */
+    border-color: #15803d !important;
+}

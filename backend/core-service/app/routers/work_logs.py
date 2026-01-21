@@ -1,0 +1,204 @@
+# =============================================================================
+# HERMES PLATFORM - Work Logs Router
+# =============================================================================
+# Zaman girişi endpoint'leri (FR 2.x).
+# Tüm kullanıcılar kendi girişlerini oluşturabilir/görebilir.
+# Admin'ler tüm girişleri görebilir/düzenleyebilir.
+# =============================================================================
+
+from typing import List, Optional
+from uuid import UUID
+from datetime import date
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.orm import Session
+
+from ..database import get_db
+from ..schemas.work_log import WorkLogCreate, WorkLogUpdate, WorkLogResponse, WorkLogListResponse
+from ..services.work_log_service import WorkLogService
+from shared.auth import get_current_user, require_admin, CurrentUser
+from shared.exceptions import NotFoundError, ForbiddenError
+
+router = APIRouter(prefix="/work-logs", tags=["Work Logs"])
+
+
+# =============================================================================
+# CREATE - Tüm kullanıcılar
+# =============================================================================
+
+@router.post("", response_model=WorkLogResponse, status_code=status.HTTP_201_CREATED)
+async def create_work_log(
+    data: WorkLogCreate,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Yeni zaman girişi oluşturur.
+    
+    Tüm kullanıcılar bu endpoint'i kullanabilir. user_id otomatik olarak
+    giriş yapan kullanıcının ID'si olarak atanır.
+    """
+    service = WorkLogService(db)
+    try:
+        work_log = service.create(data, UUID(current_user.id))
+        return service.to_response(work_log)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+
+
+# =============================================================================
+# READ - Kullanıcı kendi girişlerini, Admin hepsini görür
+# =============================================================================
+
+@router.get("", response_model=WorkLogListResponse)
+async def list_work_logs(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    start_date: Optional[date] = Query(None, description="Başlangıç tarihi"),
+    end_date: Optional[date] = Query(None, description="Bitiş tarihi"),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Kullanıcının kendi zaman girişlerini listeler.
+    
+    Standart kullanıcı sadece kendi girişlerini görür.
+    Admin tüm girişleri görmek için /all endpoint'ini kullanmalıdır.
+    """
+    service = WorkLogService(db)
+    
+    work_logs = service.get_user_logs(
+        UUID(current_user.id),
+        skip=skip,
+        limit=limit,
+        start_date=start_date,
+        end_date=end_date
+    )
+    total = service.count_user_logs(UUID(current_user.id))
+    
+    return WorkLogListResponse(
+        success=True,
+        data=[service.to_response(wl) for wl in work_logs],
+        total=total
+    )
+
+
+@router.get("/all", response_model=WorkLogListResponse)
+async def list_all_work_logs(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    customer_id: Optional[UUID] = Query(None),
+    project_id: Optional[UUID] = Query(None),
+    user_id: Optional[UUID] = Query(None),
+    admin: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Tüm zaman girişlerini listeler (Admin).
+    
+    Raporlama ve dashboard için kullanılır.
+    """
+    service = WorkLogService(db)
+    
+    work_logs = service.get_all_logs(
+        skip=skip,
+        limit=limit,
+        start_date=start_date,
+        end_date=end_date,
+        customer_id=customer_id,
+        project_id=project_id,
+        user_id=user_id
+    )
+    total = service.count_all_logs()
+    
+    return WorkLogListResponse(
+        success=True,
+        data=[service.to_response(wl) for wl in work_logs],
+        total=total
+    )
+
+
+@router.get("/{work_log_id}", response_model=WorkLogResponse)
+async def get_work_log(
+    work_log_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Zaman girişi detaylarını getirir.
+    
+    Kullanıcı sadece kendi girişlerini, Admin hepsini görebilir.
+    """
+    service = WorkLogService(db)
+    
+    try:
+        work_log = service.get_by_id_or_404(work_log_id)
+        
+        # Yetki kontrolü
+        if str(work_log.user_id) != current_user.id and not current_user.is_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bu zaman girişini görme yetkiniz yok"
+            )
+        
+        return service.to_response(work_log)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+
+
+# =============================================================================
+# UPDATE - Sahibi veya Admin
+# =============================================================================
+
+@router.put("/{work_log_id}", response_model=WorkLogResponse)
+async def update_work_log(
+    work_log_id: int,
+    data: WorkLogUpdate,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Zaman girişini günceller.
+    
+    Sadece girişin sahibi veya Admin güncelleyebilir.
+    """
+    service = WorkLogService(db)
+    
+    try:
+        work_log = service.update(
+            work_log_id,
+            data,
+            UUID(current_user.id),
+            current_user.is_admin
+        )
+        return service.to_response(work_log)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except ForbiddenError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=e.message)
+
+
+# =============================================================================
+# DELETE - Sahibi veya Admin
+# =============================================================================
+
+@router.delete("/{work_log_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_work_log(
+    work_log_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Zaman girişini siler.
+    
+    Sadece girişin sahibi veya Admin silebilir.
+    """
+    service = WorkLogService(db)
+    
+    try:
+        service.delete(work_log_id, UUID(current_user.id), current_user.is_admin)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except ForbiddenError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=e.message)
