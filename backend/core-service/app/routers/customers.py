@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..schemas.customer import CustomerCreate, CustomerUpdate, CustomerResponse
 from ..services.customer_service import CustomerService
-from shared.auth import require_admin, CurrentUser
+from shared.auth import require_admin, CurrentUser, get_current_user
 from shared.exceptions import NotFoundError
 
 router = APIRouter(prefix="/customers", tags=["Customers"])
@@ -34,21 +34,22 @@ async def list_customers(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     include_inactive: bool = Query(False),
-    admin: CurrentUser = Depends(require_admin),
+    current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Müşterileri listeler (Admin)."""
+    """Müşterileri listeler (Authenticated Users)."""
     service = CustomerService(db)
+    # Regular users should only see active customers unless specified otherwise (logic can be refined)
     return service.get_all(skip=skip, limit=limit, include_inactive=include_inactive)
 
 
 @router.get("/{customer_id}", response_model=CustomerResponse)
 async def get_customer(
     customer_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Müşteri detaylarını getirir (Admin)."""
+    """Müşteri detaylarını getirir (Authenticated Users)."""
     service = CustomerService(db)
     try:
         return service.get_by_id_or_404(customer_id)

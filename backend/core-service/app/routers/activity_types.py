@@ -10,7 +10,7 @@ from uuid import UUID
 from ..database import get_db
 from ..models.activity_type import ActivityType
 from ..schemas.activity_type import ActivityTypeCreate, ActivityTypeUpdate, ActivityTypeResponse
-from shared.auth import require_admin
+from shared.auth import require_admin, get_current_user
 
 router = APIRouter(prefix="/activity-types", tags=["Activity Types"])
 
@@ -19,7 +19,8 @@ router = APIRouter(prefix="/activity-types", tags=["Activity Types"])
 async def get_all_activity_types(
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: object = Depends(get_current_user) # Allow any authenticated user
 ):
     """Get all activity types"""
     items = db.query(ActivityType).filter(

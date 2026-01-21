@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
 from ..services.project_service import ProjectService
-from shared.auth import require_admin, CurrentUser
+from shared.auth import require_admin, CurrentUser, get_current_user
 from shared.exceptions import NotFoundError
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
@@ -39,10 +39,10 @@ async def list_projects(
     limit: int = Query(100, ge=1, le=500),
     include_inactive: bool = Query(False),
     customer_id: UUID = Query(None, description="Müşteriye göre filtrele"),
-    admin: CurrentUser = Depends(require_admin),
+    current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Projeleri listeler (Admin)."""
+    """Projeleri listeler (Authenticated Users)."""
     service = ProjectService(db)
     
     if customer_id:
@@ -56,10 +56,10 @@ async def list_projects(
 @router.get("/{project_id}", response_model=ProjectResponse)
 async def get_project(
     project_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Proje detaylarını getirir (Admin)."""
+    """Proje detaylarını getirir (Authenticated Users)."""
     service = ProjectService(db)
     try:
         project = service.get_by_id_or_404(project_id)

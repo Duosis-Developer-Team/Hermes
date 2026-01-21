@@ -55,6 +55,7 @@ async def list_work_logs(
     limit: int = Query(100, ge=1, le=500),
     start_date: Optional[date] = Query(None, description="Başlangıç tarihi"),
     end_date: Optional[date] = Query(None, description="Bitiş tarihi"),
+    user_id: Optional[UUID] = Query(None, description="Kullanıcı ID (Sadece Admin)"),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -62,18 +63,31 @@ async def list_work_logs(
     Kullanıcının kendi zaman girişlerini listeler.
     
     Standart kullanıcı sadece kendi girişlerini görür.
-    Admin tüm girişleri görmek için /all endpoint'ini kullanmalıdır.
+    Admin, user_id parametresi göndererek başkasının girişlerini görebilir.
     """
     service = WorkLogService(db)
     
+    target_user_id = UUID(current_user.id)
+    
+    # Admin yetkisi kontrolü - Başkasının verisini istiyorsa
+    if user_id:
+        # Kendi ID'si ise sorun yok, başkası ise admin olmalı
+        if str(user_id) != current_user.id:
+            if not current_user.is_admin:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Başkasına ait zaman girişlerini görme yetkiniz yok"
+                )
+        target_user_id = user_id
+    
     work_logs = service.get_user_logs(
-        UUID(current_user.id),
+        target_user_id,
         skip=skip,
         limit=limit,
         start_date=start_date,
         end_date=end_date
     )
-    total = service.count_user_logs(UUID(current_user.id))
+    total = service.count_user_logs(target_user_id)
     
     return WorkLogListResponse(
         success=True,

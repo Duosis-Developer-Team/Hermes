@@ -8,7 +8,7 @@
  */
 
 import { useState, useMemo } from 'react'
-import { Button, Segmented, Space, Popconfirm, message, Avatar, Tooltip } from 'antd'
+import { Button, Segmented, Space, Popconfirm, message, Avatar, Tooltip, Select } from 'antd'
 import {
     UnorderedListOutlined,
     TableOutlined,
@@ -33,7 +33,7 @@ import SubmitPeriodDropdown from '../components/time-entry/SubmitPeriodDropdown'
 import LogTimeModal from '../components/modals/LogTimeModal'
 import PlanTimeModal from '../components/modals/PlanTimeModal'
 import SubmitPeriodModal from '../components/modals/SubmitPeriodModal'
-import { workLogService, timesheetService, reportsService } from '../services/api'
+import { workLogService, timesheetService, reportsService, authService } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import './TimeEntryPage.css'
 
@@ -57,6 +57,7 @@ function TimeEntryPage() {
     const [editingLog, setEditingLog] = useState(null)
     const [submitModalOpen, setSubmitModalOpen] = useState(false)
     const [selectedPeriod, setSelectedPeriod] = useState(null)
+    const [selectedUserId, setSelectedUserId] = useState(null) // Admin override
 
     // ==========================================================================
     // Week Navigation
@@ -71,14 +72,26 @@ function TimeEntryPage() {
     // ==========================================================================
     // Data Fetching
     // ==========================================================================
+    // Admin: Fetch all users
+    const { data: usersResponse } = useQuery({
+        queryKey: ['users-list'],
+        queryFn: () => authService.getUsers(),
+        enabled: !!user?.is_admin,
+    })
+
+    const usersList = usersResponse?.data || []
+    const targetUserId = selectedUserId || user?.id
+
+    // Fetch Work Logs
     const { data: workLogsResponse, isLoading } = useQuery({
-        queryKey: ['workLogs', weekStart.format('YYYY-MM-DD'), user?.id],
+        queryKey: ['workLogs', weekStart.format('YYYY-MM-DD'), targetUserId],
         queryFn: () => workLogService.getMyLogs({
             start_date: weekStart.format('YYYY-MM-DD'),
             end_date: weekEnd.format('YYYY-MM-DD'),
             limit: 500,
+            user_id: selectedUserId // Backend handles this (admin check)
         }),
-        enabled: !!user?.id, // Only fetch if user is logged in
+        enabled: !!user?.id,
     })
 
     // Fetch Period Status
@@ -210,11 +223,34 @@ function TimeEntryPage() {
     const handleExportExcel = async () => {
         try {
             setExportLoading(true)
+
+            // Determine user name for filename
+            const targetId = selectedUserId || user?.id
+            // Try to find in loaded list (Admin) or fallback to current user
+            const targetUser = usersList.find(u => u.id === targetId) || (targetId === user?.id ? user : null)
+
+            let userNameSlug = 'User'
+            if (targetUser && targetUser.full_name) {
+                // Remove spaces and special chars, camelCase-ish
+                userNameSlug = targetUser.full_name
+                    .replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ ]/g, '') // Keep Turkish chars/spaces
+                    .split(' ')
+                    .map(s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase())
+                    .join('')
+            }
+
+            // Format dates: 19Oca_25Oca (Turkish locale is active)
+            const dateRangeSlug = `${weekStart.format('DDMMM')}_${weekEnd.format('DDMMM')}`
+
+            const customFilename = `HermesRapor_${userNameSlug}_${dateRangeSlug}.csv`
+
             await reportsService.exportExcel({
                 start_date: weekStart.format('YYYY-MM-DD'),
                 end_date: weekEnd.format('YYYY-MM-DD'),
-            })
-            message.success('Haftalık rapor indirildi')
+                user_id: selectedUserId // Pass the selected user (or null)
+            }, customFilename)
+
+            message.success('Haftalık rapor (CSV) indirildi')
         } catch (error) {
             console.error('Export error:', error)
             message.error('Rapor indirilirken bir hata oluştu')
@@ -241,7 +277,31 @@ function TimeEntryPage() {
                         icon={<UserOutlined />}
                         className="user-avatar-large"
                     />
-                    <h1 className="user-header-name">{user?.full_name || 'User'}</h1>
+                    {/* Admin User Selector */}
+                    {user?.is_admin ? (
+                        <div className="admin-user-selector">
+                            <Select
+                                className="user-select-dropdown"
+                                value={targetUserId}
+                                onChange={setSelectedUserId}
+                                style={{ width: 200, fontSize: '1.2rem', fontWeight: 600 }}
+                                bordered={false}
+                                loading={!usersList.length}
+                                options={[
+                                    { value: user.id, label: user.full_name || 'Me' }, // Always show self first
+                                    ...usersList
+                                        .filter(u => u.id !== user.id)
+                                        .map(u => ({ value: u.id, label: u.full_name }))
+                                ]}
+                                showSearch
+                                filterOption={(input, option) =>
+                                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                }
+                            />
+                        </div>
+                    ) : (
+                        <h1 className="user-header-name">{user?.full_name || 'User'}</h1>
+                    )}
                 </div>
 
                 <div className="user-header-right">

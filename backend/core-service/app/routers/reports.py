@@ -24,17 +24,27 @@ router = APIRouter(
 async def export_excel(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
+    user_id: Optional[str] = Query(None),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Zaman girişlerini Excel olarak dışa aktarır (Admin).
+    Zaman girişlerini CSV olarak dışa aktarır (Admin/User).
+    User: Sadece kendi verisini alır.
+    Admin: user_id belirtirse o kişinin, belirtmezse kendisinin (veya tümü? İsteğe göre)
+           User request says: "admin hangi time entrydeyse ... o user'a ait"
     """
     
     import traceback
-    import sys
-
+    
     try:
+        # Determine target user
+        target_user_id = current_user.id
+        
+        # If user is Admin and requested a specific user
+        if current_user.is_admin and user_id:
+            target_user_id = user_id
+            
         # Query building
         query = db.query(
             WorkLog.date_worked,
@@ -55,6 +65,9 @@ async def export_excel(
             ActivityType, WorkLog.activity_type_id == ActivityType.id
         )
 
+        # Filter by Target User
+        query = query.filter(WorkLog.user_id == target_user_id)
+
         if start_date:
             query = query.filter(WorkLog.date_worked >= start_date)
         if end_date:
@@ -72,37 +85,24 @@ async def export_excel(
                 "İş Tipi": r.work_type_name,
                 "Aktivite Tipi": r.activity_type_name if r.activity_type_name else "-",
                 "Süre (Saat)": float(r.duration_hours) if r.duration_hours is not None else 0.0,
-                "Kişi ID": str(r.user_id),
                 "Açıklama": r.description or ""
             })
             
         df = pd.DataFrame(data)
         
-        # Create Excel file in memory
+        # Create CSV file in memory
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Work Logs')
-            
-            # Auto-adjust column width
-            worksheet = writer.sheets['Work Logs']
-            for idx, col in enumerate(df.columns):
-                # Calculate max length safely
-                max_len = 10
-                try:
-                    series_max = df[col].astype(str).map(len).max()
-                    if not pd.isna(series_max):
-                        max_len = max(series_max, len(str(col))) + 2
-                except:
-                    pass
-                worksheet.column_dimensions[chr(65 + idx)].width = min(max_len, 50)
-                
+        # BOM for Excel compatibility with UTF-8
+        output.write(b'\xef\xbb\xbf')
+        df.to_csv(output, index=False, sep=';', encoding='utf-8')
+        
         output.seek(0)
         
-        filename = f"hermes_report_{date.today()}.xlsx"
+        filename = f"hermes_rapor_{date.today()}.csv"
         
         return Response(
             content=output.getvalue(),
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            media_type="text/csv",
             headers={
                 "Content-Disposition": f'attachment; filename="{filename}"',
                 "Access-Control-Expose-Headers": "Content-Disposition"

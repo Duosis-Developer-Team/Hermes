@@ -10,7 +10,7 @@ from uuid import UUID
 from ..database import get_db
 from ..models.work_line import WorkLine
 from ..schemas.work_line import WorkLineCreate, WorkLineUpdate, WorkLineResponse
-from shared.auth import require_admin
+from shared.auth import require_admin, get_current_user
 
 router = APIRouter(prefix="/work-lines", tags=["Work Lines"])
 
@@ -19,7 +19,8 @@ router = APIRouter(prefix="/work-lines", tags=["Work Lines"])
 async def get_all_work_lines(
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: object = Depends(get_current_user)
 ):
     """Get all work lines"""
     items = db.query(WorkLine).filter(

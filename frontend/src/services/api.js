@@ -366,9 +366,9 @@ export const reportsService = {
     },
 
     /**
-     * Excel export (dosya indirme)
+     * CSV export (dosya indirme)
      */
-    exportExcel: async (params = {}) => {
+    exportExcel: async (params = {}, customFilename = null) => {
         try {
             const response = await coreApi.get('/api/v1/core/reports/export/excel/v1', {
                 params,
@@ -382,54 +382,44 @@ export const reportsService = {
                 throw new Error(errorData.detail || errorData.error?.message || 'Download failed')
             }
 
-            // Create blob with explicit Excel type
+            // Create blob with explicit CSV type
             const blob = new Blob([response.data], {
-                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                type: 'text/csv;charset=utf-8;'
             })
             const url = window.URL.createObjectURL(blob)
 
-            // Filename extraction
-            const contentDisposition = response.headers['content-disposition']
-            console.log('DEBUG: All Headers:', response.headers)
-            console.log('DEBUG: Content-Disposition:', contentDisposition)
+            // Filename generation
+            let filename = customFilename
 
-            let filename = 'hermes_rapor.xlsx' // Varsayılan
-
-            if (contentDisposition && contentDisposition.indexOf('attachment') !== -1) {
-                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
-                const matches = filenameRegex.exec(contentDisposition)
-                if (matches != null && matches[1]) {
-                    filename = matches[1].replace(/['"]/g, '')
-                }
+            if (!filename) {
+                // Fallback to date based
+                const dateStr = new Date().toISOString().split('T')[0]
+                filename = `hermes_rapor_${dateStr}.csv`
             }
 
             // Ensure extension
-            if (!filename.endsWith('.xlsx')) {
-                filename += '.xlsx'
+            if (!filename.endsWith('.csv')) {
+                filename = filename.replace(/\.[^/.]+$/, "") + ".csv"
             }
 
             console.log(`DEBUG: Final filename: ${filename}`)
 
-            // Manual DOM manipulation - Most robust cross-browser method
+            // Manual DOM manipulation
             const link = document.createElement('a')
             link.href = url
             link.setAttribute('download', filename)
-
-            // Visibility: hidden is better than display: none for click simulation
             link.style.visibility = 'hidden'
             link.style.position = 'absolute'
-
             document.body.appendChild(link)
             link.click()
 
-            // Extended delay to ensure browser captures the filename
             setTimeout(() => {
                 document.body.removeChild(link)
                 window.URL.revokeObjectURL(url)
             }, 2000)
         } catch (error) {
             console.error('Export failed:', error)
-            throw error // Re-throw to be caught by UI
+            throw error
         }
     },
 }

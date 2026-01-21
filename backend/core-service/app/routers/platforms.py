@@ -10,7 +10,7 @@ from uuid import UUID
 from ..database import get_db
 from ..models.platform import Platform
 from ..schemas.platform import PlatformCreate, PlatformUpdate, PlatformResponse
-from shared.auth import require_admin
+from shared.auth import require_admin, get_current_user
 
 router = APIRouter(prefix="/platforms", tags=["Platforms"])
 
@@ -19,7 +19,8 @@ router = APIRouter(prefix="/platforms", tags=["Platforms"])
 async def get_all_platforms(
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: object = Depends(get_current_user)
 ):
     """Get all platforms"""
     items = db.query(Platform).filter(

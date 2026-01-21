@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..schemas.work_type import WorkTypeCreate, WorkTypeUpdate, WorkTypeResponse
 from ..services.work_type_service import WorkTypeService
-from shared.auth import require_admin, CurrentUser
+from shared.auth import require_admin, CurrentUser, get_current_user
 from shared.exceptions import NotFoundError
 
 router = APIRouter(prefix="/work-types", tags=["Work Types"])
@@ -34,10 +34,10 @@ async def list_work_types(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     include_inactive: bool = Query(False),
-    admin: CurrentUser = Depends(require_admin),
+    current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """İş tiplerini listeler (Admin)."""
+    """İş tiplerini listeler (Authenticated Users)."""
     service = WorkTypeService(db)
     return service.get_all(skip=skip, limit=limit, include_inactive=include_inactive)
 
@@ -45,10 +45,10 @@ async def list_work_types(
 @router.get("/{work_type_id}", response_model=WorkTypeResponse)
 async def get_work_type(
     work_type_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """İş tipi detaylarını getirir (Admin)."""
+    """İş tipi detaylarını getirir (Authenticated Users)."""
     service = WorkTypeService(db)
     try:
         return service.get_by_id_or_404(work_type_id)
