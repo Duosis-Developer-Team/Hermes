@@ -366,3 +366,189 @@ async def export_global_matrix(
         "Content-Disposition": f'attachment; filename="{filename}"',
         "Access-Control-Expose-Headers": "Content-Disposition"
     })
+# ... existing code ...
+
+@router.get("/json/user-logs")
+async def get_user_logs_json(
+    request: Request,
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    user_id: Optional[str] = Query(None),
+    customer_id: Optional[str] = Query(None),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns User Work Logs as JSON for Dashboard.
+    """
+    # 1. Fetch User Map
+    auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
+    token = auth_header.replace("Bearer ", "") if auth_header else ""
+    
+    users_map = {}
+    if current_user.is_admin:
+        users_map = await get_all_users_map(token)
+    else:
+        users_map = {str(current_user.id): current_user.full_name}
+
+    # Query building (Same as export)
+    query = db.query(
+        WorkLog.date_worked,
+        Customer.name.label('customer_name'),
+        Project.name.label('project_name'),
+        WorkType.name.label('work_type_name'),
+        ActivityType.name.label('activity_type_name'),
+        WorkLog.duration_hours,
+        WorkLog.user_id,
+        WorkLog.description
+    ).join(
+        Customer, WorkLog.customer_id == Customer.id
+    ).join(
+        Project, WorkLog.project_id == Project.id
+    ).join(
+        WorkType, WorkLog.work_type_id == WorkType.id
+    ).outerjoin(
+        ActivityType, WorkLog.activity_type_id == ActivityType.id
+    )
+
+    if not current_user.is_admin:
+         query = query.filter(WorkLog.user_id == current_user.id)
+    else:
+        if user_id:
+            query = query.filter(WorkLog.user_id == user_id)
+    
+    if customer_id:
+        query = query.filter(WorkLog.customer_id == customer_id)
+    if start_date:
+        query = query.filter(WorkLog.date_worked >= start_date)
+    if end_date:
+        query = query.filter(WorkLog.date_worked <= end_date)
+        
+    results = query.order_by(WorkLog.date_worked.asc()).limit(2000).all() # Limit for JSON perf
+    
+    data = []
+    for r in results:
+        uid_str = str(r.user_id)
+        user_name = users_map.get(uid_str, users_map.get(str(r.user_id), f"Unknown ({uid_str[:8]})"))
+        if user_name.startswith("Unknown") and uid_str == str(current_user.id):
+            user_name = current_user.full_name
+
+        data.append({
+            "date": r.date_worked,
+            "user_name": user_name,
+            "customer_name": r.customer_name,
+            "project_name": r.project_name,
+            "work_type": r.work_type_name,
+            "activity_type": r.activity_type_name if r.activity_type_name else "-",
+            "duration": float(r.duration_hours) if r.duration_hours is not None else 0.0,
+            "description": r.description or ""
+        })
+        
+    return {"data": data}
+
+@router.get("/json/global-detailed")
+async def get_global_detailed_json(
+    request: Request,
+    month: str = Query(..., description="YYYY-MM"),
+    current_user: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns Global Detailed Logs as JSON.
+    """
+    auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
+    token = auth_header.replace("Bearer ", "") if auth_header else ""
+    users_map = await get_all_users_map(token)
+    
+    date_start = date.fromisoformat(f"{month}-01")
+    import calendar
+    last_day = calendar.monthrange(date_start.year, date_start.month)[1]
+    date_end = date(date_start.year, date_start.month, last_day)
+
+    query = db.query(
+        WorkLog.date_worked,
+        Customer.name.label('customer_name'),
+        Project.name.label('project_name'),
+        WorkType.name.label('work_type_name'),
+        ActivityType.name.label('activity_type_name'),
+        Platform.name.label('platform_name'),
+        WorkLog.duration_hours,
+        WorkLog.user_id,
+        WorkLog.description
+    ).join(
+        Customer, WorkLog.customer_id == Customer.id
+    ).join(
+        Project, WorkLog.project_id == Project.id
+    ).join(
+        WorkType, WorkLog.work_type_id == WorkType.id
+    ).outerjoin(
+        ActivityType, WorkLog.activity_type_id == ActivityType.id
+    ).outerjoin(
+        Platform, WorkLog.platform_id == Platform.id
+    ).filter(
+        WorkLog.date_worked >= date_start,
+        WorkLog.date_worked <= date_end
+    ).order_by(WorkLog.date_worked)
+
+    results = query.limit(3000).all()
+
+    data = []
+    for r in results:
+        user_name = users_map.get(str(r.user_id), f"Unknown ({str(r.user_id)[:8]})")
+        data.append({
+            "date": r.date_worked,
+            "user_name": user_name,
+            "customer_name": r.customer_name,
+            "project_name": r.project_name,
+            "description": r.description or "",
+            "platform": r.platform_name or "-",
+            "work_type": r.work_type_name,
+            "activity_type": r.activity_type_name or "-",
+            "duration": float(r.duration_hours)
+        })
+    return {"data": data}
+
+@router.get("/json/matrix")
+async def get_matrix_json(
+    request: Request,
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    current_user: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns Matrix Data as Pivot-Ready JSON.
+    """
+    auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
+    token = auth_header.replace("Bearer ", "") if auth_header else ""
+    users_map = await get_all_users_map(token)
+
+    query = db.query(
+        WorkLog.customer_id,
+        Customer.name.label('customer_name'),
+        WorkLog.user_id,
+        func.sum(WorkLog.duration_hours).label('total_hours')
+    ).join(
+        Customer, WorkLog.customer_id == Customer.id
+    ).filter(
+        WorkLog.date_worked >= start_date,
+        WorkLog.date_worked <= end_date
+    ).group_by(
+        WorkLog.customer_id,
+        Customer.name,
+        WorkLog.user_id
+    )
+    
+    results = query.all()
+    
+    # Return flat list, frontend can pivot
+    data = []
+    for r in results:
+        user_name = users_map.get(str(r.user_id), f"User {str(r.user_id)[:8]}")
+        data.append({
+            "customer_name": r.customer_name,
+            "user_name": user_name,
+            "total_hours": float(r.total_hours)
+        })
+        
+    return {"data": data}

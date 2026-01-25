@@ -1,381 +1,530 @@
 /**
  * =============================================================================
- * HERMES PLATFORM - Reports Page (Admin Only)
+ * HERMES PLATFORM - Reports Page (Interactive Dashboard)
  * =============================================================================
- * Professional, enterprise-grade interface for generating reports.
+ * Entegre raporlama arayüzü.
+ * Modern Dark UI Design.
  * =============================================================================
  */
 
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
-    Card,
-    DatePicker,
-    Button,
-    Form,
-    Select,
-    Typography,
-    Space,
-    Row,
-    Col,
-    message,
-    Divider,
-    Descriptions,
-    Tag
+    Card, DatePicker, Button, Select, Typography, Space,
+    Row, Col, Table, message, Segmented, Statistic, Tag, Empty, Spin, ConfigProvider
 } from 'antd'
 import {
-    FileExcelOutlined,
-    TableOutlined,
-    AppstoreOutlined,
     DownloadOutlined,
-    CalendarOutlined,
     UserOutlined,
-    FileTextOutlined,
-    AreaChartOutlined,
+    GlobalOutlined,
+    AppstoreOutlined,
+    CalendarOutlined,
+    FileExcelOutlined,
+    FilterOutlined,
+    PieChartOutlined,
     BarChartOutlined
 } from '@ant-design/icons'
-import dayjs from 'dayjs'
 import { useQuery, useMutation } from '@tanstack/react-query'
+import dayjs from 'dayjs'
 import { reportsService, authService, customerService } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 
-const { Title, Text, Paragraph } = Typography
+const { Title, Text } = Typography
 
 function ReportsPage() {
     const { user } = useAuthStore()
+    const [viewMode, setViewMode] = useState('User Work Logs') // 'User Work Logs' | 'Global Monthly Export' | 'Customer x User Matrix'
+
+    // Filters
+    const [selectedMonth, setSelectedMonth] = useState(dayjs())
+    const [selectedUser, setSelectedUser] = useState(null)
+
+    // Data Fetching for Dropdowns
+    const { data: usersResponse } = useQuery({
+        queryKey: ['users-list'],
+        queryFn: () => authService.getUsers(),
+        enabled: !!user?.is_admin
+    })
+    const users = usersResponse?.data || []
 
     // Access Control
     if (!user?.is_admin) {
-        return (
-            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexDirection: 'column' }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-                <Title level={3} style={{ color: '#fff' }}>Access Restricted</Title>
-                <Text style={{ color: '#888' }}>This area is for administrators only.</Text>
-            </div>
-        )
+        return <div style={{ padding: 40, textAlign: 'center', color: '#fff' }}>Access Restricted</div>
     }
 
     return (
-        <div style={{ padding: '40px', maxWidth: 1600, margin: '0 auto', color: '#e5e5e5', minHeight: '100%' }}>
+        <div className="reports-page fade-in" style={{ padding: '24px 40px', maxWidth: 1600, margin: '0 auto', color: '#e5e5e5' }}>
 
-            {/* Header Section */}
-            <div style={{ marginBottom: 40, borderBottom: '1px solid #333', paddingBottom: 24 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                        <Title level={2} style={{ color: '#fff', margin: 0, fontWeight: 600, letterSpacing: '-0.5px' }}>
-                            Reports & Exports
-                        </Title>
-                        <Text style={{ color: '#888', fontSize: '14px', marginTop: 8, display: 'block' }}>
-                            Generate and download system-wide data exports for analysis.
-                        </Text>
-                    </div>
+            {/* Header */}
+            <div style={{ marginBottom: 40, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div>
+                    <h1 style={{
+                        fontSize: '2rem',
+                        fontWeight: 700,
+                        margin: 0,
+                        background: 'linear-gradient(90deg, #fff, #aaa)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent'
+                    }}>
+                        Reports & Analytics
+                    </h1>
+                    <Text style={{ color: '#666', fontSize: '1rem', marginTop: 4, display: 'block' }}>
+                        Real-time dashboard and data exports
+                    </Text>
                 </div>
             </div>
 
-            {/* Reports Grid */}
-            <Row gutter={[24, 24]}>
+            {/* Controls Bar */}
+            <div style={{
+                marginBottom: 32,
+                background: 'rgba(20, 20, 20, 0.7)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: 16,
+                padding: '24px'
+            }}>
+                <Row gutter={[24, 24]} align="middle">
+                    <Col xs={24} xl={9}>
+                        <div style={{ marginBottom: 8, color: '#666', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Report Type</div>
+                        <Segmented
+                            options={[
+                                { label: 'User Logs', value: 'User Work Logs', icon: <UserOutlined /> },
+                                { label: 'Global Export', value: 'Global Monthly Export', icon: <GlobalOutlined /> },
+                                { label: 'Matrix', value: 'Customer x User Matrix', icon: <AppstoreOutlined /> }
+                            ]}
+                            value={viewMode}
+                            onChange={setViewMode}
+                            block
+                            size="large"
+                            className="modern-segmented"
+                        />
+                    </Col>
 
-                {/* 1. Weekly/Daily User Report */}
-                <Col xs={24} lg={8}>
-                    <ProReportCard
-                        title="User Work Logs"
-                        icon={<FileExcelOutlined />}
-                        tag="Detailed"
-                        description="Export granular time entries for specific users. Includes project details, descriptions, and durations."
-                    >
-                        <WeeklyUserReportForm />
-                    </ProReportCard>
-                </Col>
+                    <Col xs={24} xl={15}>
+                        <div style={{ display: 'flex', gap: 20, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                            {/* Common Month Picker */}
+                            <div style={{ flex: 1, minWidth: 200 }}>
+                                <div style={{ marginBottom: 8, color: '#666', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Analysis Period</div>
+                                <DatePicker
+                                    picker="month"
+                                    value={selectedMonth}
+                                    onChange={setSelectedMonth}
+                                    format="MMMM YYYY"
+                                    allowClear={false}
+                                    style={{ width: '100%', height: 40 }}
+                                    className="modern-picker"
+                                />
+                            </div>
 
-                {/* 2. Monthly Global Report */}
-                <Col xs={24} lg={8}>
-                    <ProReportCard
-                        title="Global Monthly Export"
-                        icon={<TableOutlined />}
-                        tag="Organization"
-                        description="Complete dump of all organization work logs for a selected month. Ideal for payroll and broad analysis."
-                    >
-                        <MonthlyGlobalReportForm />
-                    </ProReportCard>
-                </Col>
+                            {/* User Selector (Only for User Work Logs) */}
+                            {viewMode === 'User Work Logs' && (
+                                <div style={{ flex: 1, minWidth: 200 }}>
+                                    <div style={{ marginBottom: 8, color: '#666', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>User Filter</div>
+                                    <Select
+                                        placeholder="Select User"
+                                        value={selectedUser}
+                                        onChange={setSelectedUser}
+                                        options={users.map(u => ({ value: u.id, label: u.full_name }))}
+                                        allowClear
+                                        style={{ width: '100%', height: 40 }}
+                                        showSearch
+                                        filterOption={(input, option) =>
+                                            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                        }
+                                        className="modern-select"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </Col>
+                </Row>
+            </div>
 
-                {/* 3. Matrix Report */}
-                <Col xs={24} lg={8}>
-                    <ProReportCard
-                        title="Customer x User Matrix"
-                        icon={<AppstoreOutlined />}
-                        tag="Pivot"
-                        description="Cross-tabulation of Users vs. Customers showing total hours. Useful for resource allocation and billing."
-                    >
-                        <MatrixReportForm />
-                    </ProReportCard>
-                </Col>
-            </Row>
+            {/* Dashboard Content */}
+            <div style={{ minHeight: 400 }}>
+                {viewMode === 'User Work Logs' && (
+                    <UserLogsDashboard
+                        selectedMonth={selectedMonth}
+                        selectedUser={selectedUser}
+                    />
+                )}
 
-            {/* Global Styles for AntD overrides */}
+                {viewMode === 'Global Monthly Export' && (
+                    <GlobalLogsDashboard
+                        selectedMonth={selectedMonth}
+                    />
+                )}
+
+                {viewMode === 'Customer x User Matrix' && (
+                    <MatrixDashboard
+                        selectedMonth={selectedMonth}
+                    />
+                )}
+            </div>
+
+            {/* Global Styles for AntD Overrides */}
             <style>{`
-                .pro-card {
-                    background: #141414;
-                    border: 1px solid #303030;
-                    border-radius: 8px;
-                    transition: all 0.2s ease;
-                    height: 100%;
+                .modern-segmented {
+                    background: #000;
+                    padding: 4px;
+                    border: 1px solid #333;
+                }
+                .ant-segmented-item-selected {
+                    background-color: #333 !important;
+                    color: white !important;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
+                }
+                .ant-segmented-item {
+                    color: #888;
+                    font-weight: 500;
+                }
+                .ant-segmented-item:hover {
+                    color: #fff;
+                }
+                
+                /* Modern Table */
+                .dashboard-table .ant-table {
+                    background: transparent;
+                    color: #ccc;
+                }
+                .dashboard-table .ant-table-thead > tr > th {
+                    background: #111;
+                    color: #666;
+                    border-bottom: 1px solid #303030;
+                    font-size: 11px;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                }
+                .dashboard-table .ant-table-tbody > tr > td {
+                    border-bottom: 1px solid #222;
+                    padding: 16px;
+                }
+                .dashboard-table .ant-table-tbody > tr:hover > td {
+                    background: rgba(255, 255, 255, 0.03) !important;
+                }
+
+                /* Modern Card */
+                .sum-card {
+                    background: #111;
+                    border: 1px solid #262626;
+                    border-radius: 16px;
+                    padding: 24px;
                     display: flex;
                     flex-direction: column;
+                    align-items: flex-start;
+                    justify-content: center;
+                    height: 100%;
+                    transition: transform 0.2s, border-color 0.2s;
                 }
-                .pro-card:hover {
-                    border-color: #555;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                .sum-card:hover {
+                    border-color: #444;
+                    transform: translateY(-2px);
                 }
-                .ant-form-item-label > label {
-                    color: #888 !important;
-                    font-size: 12px;
-                    font-weight: 500;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
+                .sum-card-icon {
+                   width: 40px; height: 40px; 
+                   border-radius: 10px; 
+                   display: flex; alignItems: center; justifyContent: center;
+                   margin-bottom: 16px;
+                   font-size: 18px;
                 }
-                .ant-picker, .ant-select-selector {
-                    background-color: #0a0a0a !important;
+                
+                /* Force Statistic Title Color */
+                .sum-card .ant-statistic-title {
+                    color: #e5e5e5 !important;
+                    font-size: 13px;
+                    opacity: 0.8;
+                }
+
+                /* Inputs */
+                 .modern-picker, .modern-select .ant-select-selector {
+                    background-color: #111 !important;
                     border-color: #333 !important;
                     color: #e5e5e5 !important;
-                    border-radius: 6px !important;
+                    border-radius: 8px !important;
                 }
-                .ant-picker:hover, .ant-select-selector:hover {
+                .modern-picker:hover, .modern-select:hover .ant-select-selector {
                     border-color: #555 !important;
                 }
                 .ant-picker-input > input, .ant-select-selection-item {
                     color: #e5e5e5 !important;
                 }
-                /* Custom Premium Button */
-                .btn-premium {
-                    background: linear-gradient(180deg, #f3f4f6 0%, #d1d5db 100%);
-                    color: #111827 !important;
-                    border: 1px solid #9ca3af;
-                    height: 38px;
-                    font-weight: 600;
-                    border-radius: 6px;
-                    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-                    text-shadow: 0 1px 0 rgba(255,255,255,0.5);
-                    transition: all 0.2s ease;
-                }
-                .btn-premium:hover {
-                    background: linear-gradient(180deg, #ffffff 0%, #e5e7eb 100%) !important;
-                    color: #000 !important;
-                    border-color: #fff;
-                    box-shadow: 0 4px 12px rgba(255,255,255,0.15);
-                    transform: translateY(-1px);
-                }
-                .ant-tag-custom {
-                    background: #262626;
-                    border: 1px solid #424242;
-                    color: #888;
-                    border-radius: 4px;
-                    font-size: 11px;
-                    text-transform: uppercase;
-                    font-weight: 600;
+                .ant-select-arrow, .ant-picker-suffix {
+                    color: #555 !important;
                 }
             `}</style>
         </div>
     )
 }
 
-/**
- * Professional Card Component
- */
-function ProReportCard({ title, icon, description, children, tag }) {
+// =============================================================================
+// SUB-COMPONENTS (Dashboards)
+// =============================================================================
+
+function UserLogsDashboard({ selectedMonth, selectedUser }) {
+    const { data: jsonResponse, isLoading } = useQuery({
+        queryKey: ['json-user-logs', selectedMonth.format('YYYY-MM'), selectedUser],
+        queryFn: () => reportsService.getJsonUserLogs({
+            start_date: selectedMonth.startOf('month').format('YYYY-MM-DD'),
+            end_date: selectedMonth.endOf('month').format('YYYY-MM-DD'),
+            user_id: selectedUser
+        }),
+        enabled: !!selectedMonth
+    })
+
+    const logs = jsonResponse?.data || []
+
+    // Calculate Stats
+    const totalHours = useMemo(() => logs.reduce((sum, log) => sum + log.duration, 0), [logs])
+    const projectCount = useMemo(() => new Set(logs.map(l => l.project_name)).size, [logs])
+
+    // Export Handler
+    const { mutate: exportCsv, isPending: exportLoading } = useMutation({
+        mutationFn: () => reportsService.exportExcel({
+            start_date: selectedMonth.startOf('month').format('YYYY-MM-DD'),
+            end_date: selectedMonth.endOf('month').format('YYYY-MM-DD'),
+            user_id: selectedUser
+        }),
+        onSuccess: () => message.success('Export started'),
+        onError: () => message.error('Export failed')
+    })
+
+    const columns = [
+        { title: 'Date', dataIndex: 'date', width: 120, render: d => dayjs(d).format('DD MMM YYYY') },
+        { title: 'User', dataIndex: 'user_name', width: 150 },
+        { title: 'Customer', dataIndex: 'customer_name', width: 180 },
+        { title: 'Project', dataIndex: 'project_name', width: 180 },
+        { title: 'Type', dataIndex: 'work_type', width: 120, render: t => <Tag color="blue" style={{ borderRadius: 12 }}>{t}</Tag> },
+        { title: 'Description', dataIndex: 'description', ellipsis: true },
+        { title: 'Hours', dataIndex: 'duration', width: 100, align: 'right', render: h => <span style={{ color: '#4ade80', fontWeight: 'bold' }}>{h.toFixed(2)}</span> }
+    ]
+
     return (
-        <div className="pro-card">
-            <div style={{ padding: '24px', flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                    <div style={{
-                        width: 40,
-                        height: 40,
-                        background: '#262626',
-                        borderRadius: 8,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#fff',
-                        border: '1px solid #333',
-                        fontSize: 18
-                    }}>
-                        {icon}
+        <div className="fade-in">
+            {/* Stats Row */}
+            <Row gutter={[20, 20]} style={{ marginBottom: 32 }}>
+                <Col xs={24} sm={8}>
+                    <div className="sum-card">
+                        <div className="sum-card-icon" style={{ background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80' }}><BarChartOutlined /></div>
+                        <Statistic title="Total Hours" value={totalHours} precision={2} valueStyle={{ color: '#fff', fontSize: '2rem', fontWeight: 600 }} titleStyle={{ color: '#e5e5e5' }} suffix={<span style={{ fontSize: 14, color: '#888' }}>hours</span>} />
                     </div>
-                    {tag && <Tag className="ant-tag-custom">{tag}</Tag>}
-                </div>
+                </Col>
+                <Col xs={24} sm={8}>
+                    <div className="sum-card">
+                        <div className="sum-card-icon" style={{ background: 'rgba(255, 255, 255, 0.1)', color: '#fff' }}><PieChartOutlined /></div>
+                        <Statistic title="Entries" value={logs.length} valueStyle={{ color: '#fff', fontSize: '2rem', fontWeight: 600 }} titleStyle={{ color: '#e5e5e5' }} />
+                    </div>
+                </Col>
+                <Col xs={24} sm={8}>
+                    {/* Export Action Card */}
+                    <div className="sum-card" style={{ borderColor: '#3b82f6', background: 'rgba(59, 130, 246, 0.05)', cursor: 'pointer', alignItems: 'center' }} onClick={() => exportCsv()}>
+                        <div style={{ textAlign: 'center' }}>
+                            {exportLoading ? <Spin /> : <DownloadOutlined style={{ fontSize: 32, color: '#3b82f6', marginBottom: 12 }} />}
+                            <div style={{ color: '#3b82f6', fontWeight: 600, fontSize: 16 }}>Download CSV Report</div>
+                            <div style={{ color: '#666', fontSize: 12, marginTop: 4 }}>Excel Compatible Format</div>
+                        </div>
+                    </div>
+                </Col>
+            </Row>
 
-                <Title level={4} style={{ color: '#fff', margin: '0 0 8px 0', fontSize: '18px', fontWeight: 600 }}>
-                    {title}
-                </Title>
-                <div style={{ color: '#888', fontSize: '14px', lineHeight: '1.5', marginBottom: 24, minHeight: 42 }}>
-                    {description}
-                </div>
-
-                <div style={{ marginTop: 'auto' }}>
-                    {children}
-                </div>
-            </div>
+            <Card styles={{ body: { padding: 0 } }} style={{ background: '#111', border: '1px solid #303030', overflow: 'hidden', borderRadius: 16 }}>
+                <Table
+                    className="dashboard-table"
+                    dataSource={logs}
+                    columns={columns}
+                    rowKey={(r) => `${r.date}-${r.user_name}-${r.project_name}` + Math.random()}
+                    pagination={{ pageSize: 20 }}
+                    loading={isLoading}
+                    scroll={{ y: 500 }}
+                />
+            </Card>
         </div>
     )
 }
 
-// -----------------------------------------------------------------------------
-// Form 1: Detailed Customer Report
-// -----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
-// Form 1: User Work Logs Report
-// -----------------------------------------------------------------------------
-function WeeklyUserReportForm() {
-    const [form] = Form.useForm()
-    const { mutate: exportReport, isPending } = useMutation({
-        mutationFn: (values) => {
-            const monthObj = values.month || dayjs()
-            const params = {
-                start_date: monthObj.startOf('month').format('YYYY-MM-DD'),
-                end_date: monthObj.endOf('month').format('YYYY-MM-DD'),
-                user_id: values.user_id
-            }
-            return reportsService.exportExcel(params)
-        },
-        onSuccess: () => message.success('Download started'),
-        onError: () => message.error('Download failed')
+function GlobalLogsDashboard({ selectedMonth }) {
+    const { data: jsonResponse, isLoading } = useQuery({
+        queryKey: ['json-global', selectedMonth.format('YYYY-MM')],
+        queryFn: () => reportsService.getJsonGlobalDetailed(selectedMonth.format('YYYY-MM')),
+        enabled: !!selectedMonth
     })
 
-    const { data: usersResponse } = useQuery({
-        queryKey: ['users-list'],
-        queryFn: () => authService.getUsers(),
+    const logs = jsonResponse?.data || []
+
+    const totalHours = useMemo(() => logs.reduce((sum, log) => sum + log.duration, 0), [logs])
+    const activeUsers = useMemo(() => new Set(logs.map(l => l.user_name)).size, [logs])
+
+    const { mutate: exportCsv, isPending: exportLoading } = useMutation({
+        mutationFn: () => reportsService.exportGlobalDetailed(selectedMonth.format('YYYY-MM')),
+        onSuccess: () => message.success('Export started'),
+        onError: () => message.error('Export failed')
     })
-    const users = usersResponse?.data || []
+
+    const columns = [
+        { title: 'Date', dataIndex: 'date', width: 120, render: d => dayjs(d).format('DD MMM') },
+        { title: 'User', dataIndex: 'user_name', width: 150 },
+        { title: 'Customer', dataIndex: 'customer_name', width: 150 },
+        { title: 'Project', dataIndex: 'project_name', width: 150 },
+        { title: 'Platform', dataIndex: 'platform', width: 100 },
+        { title: 'Description', dataIndex: 'description', ellipsis: true },
+        { title: 'Hours', dataIndex: 'duration', width: 80, align: 'right', render: h => <span style={{ color: '#4ade80' }}>{h.toFixed(2)}</span> }
+    ]
 
     return (
-        <Form form={form} layout="vertical" onFinish={exportReport} initialValues={{ month: dayjs() }}>
-            <Form.Item
-                name="user_id"
-                label="Select User"
-                rules={[{ required: true, message: 'Required' }]}
-                style={{ marginBottom: 16 }}
-            >
-                <Select
-                    placeholder="Select User"
-                    options={users.map(u => ({ value: u.id, label: u.full_name }))}
-                    allowClear
-                    suffixIcon={<UserOutlined style={{ color: '#555' }} />}
-                    style={{ width: '100%' }}
+        <div className="fade-in">
+            <Row gutter={[20, 20]} style={{ marginBottom: 32 }}>
+                <Col xs={24} md={8}>
+                    <div className="sum-card">
+                        <div className="sum-card-icon" style={{ background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80' }}><GlobalOutlined /></div>
+                        <Statistic title="Total Organization Hours" value={totalHours} precision={2} valueStyle={{ color: '#fff', fontSize: '2rem', fontWeight: 600 }} titleStyle={{ color: '#e5e5e5' }} suffix={<span style={{ fontSize: 14, color: '#888' }}>hours</span>} />
+                    </div>
+                </Col>
+                <Col xs={24} md={8}>
+                    <div className="sum-card">
+                        <div className="sum-card-icon" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}><UserOutlined /></div>
+                        <Statistic title="Active Users" value={activeUsers} valueStyle={{ color: '#fff', fontSize: '2rem', fontWeight: 600 }} titleStyle={{ color: '#e5e5e5' }} />
+                    </div>
+                </Col>
+                <Col xs={24} md={8}>
+                    <div className="sum-card" style={{ borderColor: '#3b82f6', background: 'rgba(59, 130, 246, 0.05)', cursor: 'pointer', alignItems: 'center' }} onClick={() => exportCsv()}>
+                        <div style={{ textAlign: 'center' }}>
+                            {exportLoading ? <Spin /> : <DownloadOutlined style={{ fontSize: 32, color: '#3b82f6', marginBottom: 12 }} />}
+                            <div style={{ color: '#3b82f6', fontWeight: 600, fontSize: 16 }}>Download Global Report</div>
+                        </div>
+                    </div>
+                </Col>
+            </Row>
+
+            <Card styles={{ body: { padding: 0 } }} style={{ background: '#111', border: '1px solid #303030', overflow: 'hidden', borderRadius: 16 }}>
+                <Table
+                    className="dashboard-table"
+                    dataSource={logs}
+                    columns={columns}
+                    rowKey={(r) => `${r.date}-${r.user_name}-${r.project_name}` + Math.random()}
+                    pagination={{ pageSize: 20 }}
+                    loading={isLoading}
+                    scroll={{ y: 500 }}
                 />
-            </Form.Item>
-
-            <Form.Item
-                name="month"
-                label="Select Month"
-                rules={[{ required: true, message: 'Required' }]}
-                style={{ marginBottom: 24 }}
-            >
-                <DatePicker
-                    picker="month"
-                    style={{ width: '100%' }}
-                    format="MMMM YYYY"
-                    allowClear={false}
-                />
-            </Form.Item>
-
-            <Button
-                type="primary"
-                htmlType="submit"
-                block
-                icon={<DownloadOutlined />}
-                loading={isPending}
-                className="btn-premium"
-            >
-                Export CSV
-            </Button>
-        </Form>
-    )
-}
-
-// -----------------------------------------------------------------------------
-// Form 2: Monthly Global Report
-// -----------------------------------------------------------------------------
-function MonthlyGlobalReportForm() {
-    const [month, setMonth] = useState(dayjs())
-    const { mutate: exportReport, isPending } = useMutation({
-        mutationFn: () => {
-            const monthStr = month.format('YYYY-MM')
-            return reportsService.exportGlobalDetailed(monthStr)
-        },
-        onSuccess: () => message.success('Download started'),
-        onError: () => message.error('Download failed')
-    })
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <Form layout="vertical" style={{ flex: 1 }}>
-                <Form.Item label="Select Period" style={{ marginBottom: 24 }}>
-                    <DatePicker
-                        picker="month"
-                        value={month}
-                        onChange={setMonth}
-                        allowClear={false}
-                        style={{ width: '100%' }}
-                        format="MMMM YYYY"
-                    />
-                </Form.Item>
-                <div style={{ flex: 1 }}></div>
-                <Button
-                    type="primary"
-                    onClick={() => exportReport()}
-                    block
-                    icon={<DownloadOutlined />}
-                    loading={isPending}
-                    className="btn-premium"
-                >
-                    Export CSV
-                </Button>
-            </Form>
+            </Card>
         </div>
     )
 }
 
-// -----------------------------------------------------------------------------
-// Form 3: Matrix Report (Now Monthly Selection)
-// -----------------------------------------------------------------------------
-function MatrixReportForm() {
-    const [month, setMonth] = useState(dayjs())
-    const { mutate: exportReport, isPending } = useMutation({
-        mutationFn: () => {
-            const params = {
-                start: month.startOf('month').format('YYYY-MM-DD'),
-                end: month.endOf('month').format('YYYY-MM-DD')
+function MatrixDashboard({ selectedMonth }) {
+    const { data: jsonResponse, isLoading } = useQuery({
+        queryKey: ['json-matrix', selectedMonth.format('YYYY-MM')],
+        queryFn: () => reportsService.getJsonMatrix(
+            selectedMonth.startOf('month').format('YYYY-MM-DD'),
+            selectedMonth.endOf('month').format('YYYY-MM-DD')
+        ),
+        enabled: !!selectedMonth
+    })
+
+    const rawData = jsonResponse?.data || []
+
+    const { columns, dataSource, totalHours } = useMemo(() => {
+        if (!rawData.length) return { columns: [], dataSource: [], totalHours: 0 }
+
+        const users = Array.from(new Set(rawData.map(r => r.user_name))).sort()
+
+        // Build Data Source Map
+        const dataMap = {}
+        let total = 0
+
+        rawData.forEach(r => {
+            if (!dataMap[r.customer_name]) dataMap[r.customer_name] = { key: r.customer_name, customer: r.customer_name }
+            dataMap[r.customer_name][r.user_name] = (dataMap[r.customer_name][r.user_name] || 0) + r.total_hours
+
+            // Fix total sum to be simpler
+            total += r.total_hours
+        })
+
+        const dataSource = Object.values(dataMap)
+
+        const cols = [
+            {
+                title: 'CUSTOMER',
+                dataIndex: 'customer',
+                key: 'customer',
+                fixed: 'left',
+                width: 250,
+                render: t => <span style={{ fontWeight: 600, color: '#fff', fontSize: 13 }}>{t}</span>
+            },
+            ...users.map(u => ({
+                title: u.toUpperCase(),
+                dataIndex: u,
+                key: u,
+                width: 140,
+                align: 'center',
+                render: (val) => val ? <span style={{ color: '#4ade80', fontWeight: 500 }}>{val.toFixed(2)}</span> : <span style={{ color: '#333' }}>-</span>
+            })),
+            {
+                title: 'TOTAL',
+                key: 'row_total',
+                width: 100,
+                fixed: 'right',
+                align: 'right',
+                render: (_, record) => {
+                    const rowSum = users.reduce((acc, u) => acc + (record[u] || 0), 0)
+                    return <span style={{ fontWeight: 'bold', color: '#fff' }}>{rowSum.toFixed(2)}</span>
+                }
             }
-            return reportsService.exportGlobalMatrix(params.start, params.end)
-        },
-        onSuccess: () => message.success('Download started'),
-        onError: () => message.error('Download failed')
+        ]
+
+        return { columns: cols, dataSource, totalHours: total }
+    }, [rawData])
+
+    const { mutate: exportCsv, isPending: exportLoading } = useMutation({
+        mutationFn: () => reportsService.exportGlobalMatrix(
+            selectedMonth.startOf('month').format('YYYY-MM-DD'),
+            selectedMonth.endOf('month').format('YYYY-MM-DD')
+        ),
+        onSuccess: () => message.success('Export started'),
+        onError: () => message.error('Export failed')
     })
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <Form layout="vertical" style={{ flex: 1 }}>
-                <Form.Item label="Analysis Period" style={{ marginBottom: 24 }}>
-                    <DatePicker
-                        picker="month"
-                        value={month}
-                        onChange={setMonth}
-                        allowClear={false}
-                        style={{ width: '100%' }}
-                        format="MMMM YYYY"
+        <div className="fade-in">
+            <Row gutter={[20, 20]} style={{ marginBottom: 32 }}>
+                <Col xs={24} md={16}>
+                    <div className="sum-card" style={{ flexDirection: 'row', justifyContent: 'space-between', padding: '24px 40px', alignItems: 'center' }}>
+                        <div>
+                            <div style={{ color: '#888', marginBottom: 4, letterSpacing: 1, textTransform: 'uppercase', fontSize: 11, fontWeight: 700 }}>Total Matrix Hours</div>
+                            <div style={{ color: '#4ade80', fontSize: '2.5rem', fontWeight: 600 }}>{totalHours.toFixed(2)}<span style={{ fontSize: 16, color: '#666', marginLeft: 8 }}>h</span></div>
+                        </div>
+                        <div style={{ borderLeft: '1px solid #333', height: 40, margin: '0 30px' }}></div>
+                        <div style={{ display: 'flex', gap: 40 }}>
+                            <Statistic title="Customers" value={dataSource.length} valueStyle={{ color: '#fff' }} titleStyle={{ color: '#e5e5e5' }} prefix={<AppstoreOutlined />} />
+                            <Statistic title="Users Involved" value={columns.length - 2} valueStyle={{ color: '#fff' }} titleStyle={{ color: '#e5e5e5' }} prefix={<UserOutlined />} />
+                        </div>
+                    </div>
+                </Col>
+                <Col xs={24} md={8}>
+                    <div className="sum-card" style={{ borderColor: '#3b82f6', background: 'rgba(59, 130, 246, 0.05)', cursor: 'pointer', alignItems: 'center' }} onClick={() => exportCsv()}>
+                        <div style={{ textAlign: 'center' }}>
+                            {exportLoading ? <Spin /> : <AppstoreOutlined style={{ fontSize: 32, color: '#3b82f6', marginBottom: 12 }} />}
+                            <div style={{ color: '#3b82f6', fontWeight: 600, fontSize: 16 }}>Download Matrix CSV</div>
+                            <div style={{ color: '#666', fontSize: 12, marginTop: 4 }}>Pivot Export</div>
+                        </div>
+                    </div>
+                </Col>
+            </Row>
+
+            <Card styles={{ body: { padding: 0 } }} style={{ background: '#111', border: '1px solid #303030', overflow: 'hidden', borderRadius: 16 }}>
+                {dataSource.length > 0 ? (
+                    <Table
+                        className="dashboard-table"
+                        dataSource={dataSource}
+                        columns={columns}
+                        rowKey="key"
+                        pagination={false}
+                        loading={isLoading}
+                        scroll={{ x: 'max-content', y: 600 }}
                     />
-                </Form.Item>
-                <div style={{ flex: 1 }}></div>
-                <Button
-                    type="primary"
-                    onClick={() => exportReport()}
-                    block
-                    icon={<DownloadOutlined />}
-                    loading={isPending}
-                    className="btn-premium"
-                >
-                    Export Matrix
-                </Button>
-            </Form>
+                ) : (
+                    <div style={{ padding: 60, textAlign: 'center' }}>
+                        {isLoading ? <Spin /> : <Empty description={<span style={{ color: '#666' }}>No data found for this period</span>} />}
+                    </div>
+                )}
+            </Card>
         </div>
     )
 }

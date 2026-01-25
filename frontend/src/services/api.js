@@ -453,6 +453,26 @@ export const reportsService = {
             throw error
         }
     },
+
+    // JSON Data Endpoints for Dashboard
+    getJsonUserLogs: async (params = {}) => {
+        const response = await coreApi.get('/api/v1/core/reports/json/user-logs', { params })
+        return response.data
+    },
+
+    getJsonGlobalDetailed: async (month) => {
+        const response = await coreApi.get('/api/v1/core/reports/json/global-detailed', {
+            params: { month }
+        })
+        return response.data
+    },
+
+    getJsonMatrix: async (startDate, endDate) => {
+        const response = await coreApi.get('/api/v1/core/reports/json/matrix', {
+            params: { start_date: startDate, end_date: endDate }
+        })
+        return response.data
+    },
 }
 
 // Helper for file download
