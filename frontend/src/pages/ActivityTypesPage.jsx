@@ -50,6 +50,16 @@ function ActivityTypesPage() {
         onError: (err) => message.error(err.response?.data?.detail || 'Error'),
     })
 
+    const archiveMutation = useMutation({
+        mutationFn: ({ id }) => activityTypeService.update(id, { is_active: false }),
+        onSuccess: () => {
+            message.success('Activity type archived (soft deleted)')
+            handleDeleteCancel()
+            queryClient.invalidateQueries(['activityTypes'])
+        },
+        onError: (err) => message.error(err.response?.data?.detail || 'Error archiving activity type'),
+    })
+
     const deleteMutation = useMutation({
         mutationFn: activityTypeService.delete,
         onSuccess: () => {
@@ -57,7 +67,7 @@ function ActivityTypesPage() {
             handleDeleteCancel()
             queryClient.invalidateQueries(['activityTypes'])
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'Error'),
+        onError: (err) => message.error(err.response?.data?.detail || 'Unable to delete (Constraint Error). Try archiving instead.'),
     })
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false)
@@ -70,7 +80,11 @@ function ActivityTypesPage() {
 
     const handleDeleteConfirm = () => {
         if (deletingRecord) {
-            deleteMutation.mutate(deletingRecord.id)
+            if (deletingRecord.is_active) {
+                archiveMutation.mutate({ id: deletingRecord.id })
+            } else {
+                deleteMutation.mutate(deletingRecord.id)
+            }
         }
     }
 
@@ -213,12 +227,11 @@ function ActivityTypesPage() {
 
             <DeleteModal
                 open={deleteModalOpen}
+                isActive={deletingRecord?.is_active}
+                itemName={deletingRecord?.name}
                 onConfirm={handleDeleteConfirm}
                 onCancel={handleDeleteCancel}
-                title="Delete Activity Type"
-                description="Are you sure you want to delete this activity type? This action cannot be undone."
-                itemName={deletingRecord?.name}
-                loading={deleteMutation.isPending}
+                loading={deleteMutation.isPending || archiveMutation.isPending}
             />
         </div >
     )

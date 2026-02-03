@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: core-db
+  namespace: hermes
+spec:
+  serviceName: "core-db"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: core-db
+  template:
+    metadata:
+      labels:
+        app: core-db
+    spec:
+      containers:
+      - name: timescaledb
+        image: timescale/timescaledb:latest-pg15
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hermes-secrets
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: POSTGRES_DB_CORE
+        volumeMounts:
+        - name: core-db-data
+          mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+  - metadata:
+      name: core-db-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-db
+  namespace: hermes
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    app: core-db
+  clusterIP: None # Headless service for StatefulSet

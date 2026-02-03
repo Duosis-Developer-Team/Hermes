@@ -7,16 +7,15 @@
  */
 
 import { useState } from 'react'
+import dayjs from 'dayjs'
 import {
     Card, Table, Button, Space, Modal, Form, Input,
-    message, Popconfirm, Typography, Switch, Tag
+    message, Popconfirm, Typography, Switch, Tag, InputNumber
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { customerService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
-
-const { Title, Text } = Typography
 
 function CustomersPage() {
     const [form] = Form.useForm()
@@ -51,6 +50,16 @@ function CustomersPage() {
         onError: (err) => message.error(err.response?.data?.detail || 'Hata'),
     })
 
+    const archiveMutation = useMutation({
+        mutationFn: ({ id }) => customerService.update(id, { is_active: false }),
+        onSuccess: () => {
+            message.success('Customer archived (soft deleted)')
+            handleDeleteCancel()
+            queryClient.invalidateQueries(['customers'])
+        },
+        onError: (err) => message.error(err.response?.data?.detail || 'Error archiving customer'),
+    })
+
     const deleteMutation = useMutation({
         mutationFn: customerService.delete,
         onSuccess: () => {
@@ -58,7 +67,7 @@ function CustomersPage() {
             handleDeleteCancel()
             queryClient.invalidateQueries(['customers'])
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'Hata'),
+        onError: (err) => message.error(err.response?.data?.detail || 'Unable to delete (Constraint Error). Try archiving instead.'),
     })
 
     // Handlers
@@ -98,7 +107,13 @@ function CustomersPage() {
 
     const handleDeleteConfirm = () => {
         if (deletingRecord) {
-            deleteMutation.mutate(deletingRecord.id)
+            if (deletingRecord.is_active) {
+                // Soft Delete
+                archiveMutation.mutate({ id: deletingRecord.id })
+            } else {
+                // Hard Delete
+                deleteMutation.mutate(deletingRecord.id)
+            }
         }
     }
 
@@ -126,6 +141,42 @@ function CustomersPage() {
                     {active ? 'Active' : 'Inactive'}
                 </Tag>
             ),
+        },
+        {
+            title: 'Contract',
+            key: 'contract',
+            width: 250,
+            render: (_, record) => {
+                if (!record.contract_duration_days) return <span style={{ color: 'rgba(255, 255, 255, 0.3)' }}>-</span>
+
+                let remainingText = ""
+                if (record.contract_start_date) {
+                    // Logic: Remaining = Duration - DaysPassed
+                    // Use startOf('day') to ignore time/clock differences
+                    const startRaw = dayjs(record.contract_start_date)
+                    const todayRaw = dayjs()
+
+                    const start = startRaw.startOf('day')
+                    const today = todayRaw.startOf('day')
+
+                    const daysPassed = today.diff(start, 'day')
+                    const remaining = record.contract_duration_days - daysPassed
+
+                    remainingText = `(Remaining: ${remaining} Days)`
+                }
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '14px' }}>
+                            {record.contract_duration_days} Days
+                        </span>
+                        {remainingText && (
+                            <span style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '12px' }}>
+                                {remainingText}
+                            </span>
+                        )}
+                    </div>
+                )
+            }
         },
         {
             title: 'Created At',
@@ -187,6 +238,19 @@ function CustomersPage() {
                         <Input placeholder="e.g. ABC Tech Inc." />
                     </Form.Item>
 
+                    <Form.Item
+                        name="contract_duration_days"
+                        label="Contract Duration (Days)"
+                        extra={<span style={{ color: 'rgba(255, 255, 255, 0.65)' }}>Optional. Entering a duration will start the contract from today.</span>}
+                    >
+                        <InputNumber
+                            style={{ width: '100%' }}
+                            min={0}
+                            placeholder="e.g. 365"
+                            className="contrast-placeholder"
+                        />
+                    </Form.Item>
+
                     {editingId && (
                         <Form.Item name="is_active" label="Status" valuePropName="checked">
                             <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
@@ -211,13 +275,18 @@ function CustomersPage() {
             {/* Custom Delete Modal */}
             <DeleteModal
                 open={deleteModalOpen}
-                title="Delete Customer"
-                description="Are you sure you want to delete this customer? This will permanently remove it from the system."
+                isActive={deletingRecord?.is_active}
                 itemName={deletingRecord?.name}
                 onConfirm={handleDeleteConfirm}
                 onCancel={handleDeleteCancel}
-                loading={deleteMutation.isPending}
+                loading={deleteMutation.isPending || archiveMutation.isPending}
             />
+
+            <style>{`
+                .contrast-placeholder input::placeholder {
+                    color: rgba(255, 255, 255, 0.5) !important;
+                }
+            `}</style>
         </div>
     )
 }

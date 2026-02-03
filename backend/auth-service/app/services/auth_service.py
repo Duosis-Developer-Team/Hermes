@@ -139,6 +139,98 @@ class AuthService:
         return create_access_token(data=token_data, expires_delta=expires_delta)
     
     # =========================================================================
+    # Microsoft SSO Authentication
+    # =========================================================================
+    
+    async def authenticate_microsoft(self, code: str, redirect_uri: str) -> Token:
+        """
+        Microsoft Outlook hesabı ile giriş yapar.
+        
+        Args:
+            code: Microsoft'tan dönen authorization code
+            redirect_uri: Orijinal yönlendirme adresi
+            
+        Returns:
+            Token nesnesi
+        """
+        import httpx
+        from ..models.user import AuthProvider
+        
+        # 1. Exchange Code for Token
+        token_url = f"https://login.microsoftonline.com/{self.settings.AZURE_TENANT_ID}/oauth2/v2.0/token"
+        token_data = {
+            "client_id": self.settings.AZURE_CLIENT_ID,
+            "scope": "User.Read",
+            "code": code,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+            "client_secret": self.settings.AZURE_CLIENT_SECRET
+        }
+        
+        async with httpx.AsyncClient() as client:
+            token_resp = await client.post(token_url, data=token_data)
+            if token_resp.status_code != 200:
+                raise UnauthorizedError(f"Microsoft Login Failed: {token_resp.text}")
+            
+            token_json = token_resp.json()
+            access_token = token_json.get("access_token")
+            
+            # 2. Get User Profile from Graph API
+            graph_resp = await client.get(
+                "https://graph.microsoft.com/v1.0/me",
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            if graph_resp.status_code != 200:
+                raise UnauthorizedError("Failed to fetch Microsoft profile")
+                
+            ms_user = graph_resp.json()
+            email = ms_user.get("mail") or ms_user.get("userPrincipalName")
+            full_name = ms_user.get("displayName")
+            
+            if not email:
+                raise UnauthorizedError("No email found in Microsoft account")
+                
+        # 3. Find or Create User
+        user = self._get_user_by_email(email)
+        
+        if user:
+            # Kullanıcı zaten var
+            if not user.is_active:
+                raise UnauthorizedError("Account is disabled")
+                
+            # Eğer local hesap ise microsoft provider'a çevirmek isteyebiliriz veya
+            # sadece login olmasına izin verebiliriz. Şimdilik sadece login.
+        else:
+            # Yeni kullanıcı oluştur (Auto-provisioning)
+            user = User(
+                email=email,
+                full_name=full_name,
+                hashed_password="", # SSO kullanıcıları için boş
+                is_active=True,
+                is_admin=False, # Varsayılan olarak standart kullanıcı
+                auth_provider=AuthProvider.MICROSOFT
+            )
+            self.db.add(user)
+            self.db.commit()
+            self.db.refresh(user)
+            
+        # 4. Generate Local JWT
+        jwt = self._create_token_for_user(user)
+        
+        return Token(
+            access_token=jwt,
+            token_type="bearer",
+            expires_in=self.settings.JWT_EXPIRE_MINUTES * 60,
+            user={
+                "id": str(user.id),
+                "email": user.email,
+                "full_name": user.full_name,
+                "is_admin": user.is_admin,
+                "is_active": user.is_active
+            }
+        )
+    
+    # =========================================================================
     # Password Management
     # =========================================================================
     

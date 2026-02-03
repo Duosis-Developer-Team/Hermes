@@ -56,6 +56,16 @@ function ProjectsPage() {
         onError: (err) => message.error(err.response?.data?.detail || 'Hata'),
     })
 
+    const archiveMutation = useMutation({
+        mutationFn: ({ id }) => projectService.update(id, { is_active: false }),
+        onSuccess: () => {
+            message.success('Project archived (soft deleted)')
+            handleDeleteCancel()
+            queryClient.invalidateQueries(['projects'])
+        },
+        onError: (err) => message.error(err.response?.data?.detail || 'Error archiving project'),
+    })
+
     const deleteMutation = useMutation({
         mutationFn: projectService.delete,
         onSuccess: () => {
@@ -63,7 +73,7 @@ function ProjectsPage() {
             handleDeleteCancel()
             queryClient.invalidateQueries(['projects'])
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'Hata'),
+        onError: (err) => message.error(err.response?.data?.detail || 'Unable to delete (Constraint Error). Try archiving instead.'),
     })
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false)
@@ -76,7 +86,13 @@ function ProjectsPage() {
 
     const handleDeleteConfirm = () => {
         if (deletingRecord) {
-            deleteMutation.mutate(deletingRecord.id)
+            if (deletingRecord.is_active) {
+                // Soft Delete
+                archiveMutation.mutate({ id: deletingRecord.id })
+            } else {
+                // Hard Delete
+                deleteMutation.mutate(deletingRecord.id)
+            }
         }
     }
 
@@ -184,12 +200,11 @@ function ProjectsPage() {
 
             <DeleteModal
                 open={deleteModalOpen}
-                title="Delete Project"
-                description="Are you sure you want to delete this project? This will permanently remove it and all associated work logs."
+                isActive={deletingRecord?.is_active}
                 itemName={deletingRecord?.name}
                 onConfirm={handleDeleteConfirm}
                 onCancel={handleDeleteCancel}
-                loading={deleteMutation.isPending}
+                loading={deleteMutation.isPending || archiveMutation.isPending}
             />
         </div>
     )

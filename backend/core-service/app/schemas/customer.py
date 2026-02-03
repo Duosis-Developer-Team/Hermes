@@ -21,13 +21,16 @@ class CustomerBase(BaseModel):
 
 class CustomerCreate(CustomerBase):
     """Yeni müşteri oluşturma isteği (FR 3.1)."""
-    pass
+    contract_start_date: Optional[datetime] = None
+    contract_duration_days: Optional[int] = None
 
 
 class CustomerUpdate(BaseModel):
     """Müşteri güncelleme isteği. Tüm alanlar opsiyonel."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     is_active: Optional[bool] = None
+    contract_start_date: Optional[datetime] = None
+    contract_duration_days: Optional[int] = None
 
 
 class CustomerResponse(CustomerBase):
@@ -35,5 +38,7 @@ class CustomerResponse(CustomerBase):
     id: UUID
     is_active: bool
     created_at: datetime
+    contract_start_date: Optional[datetime] = None
+    contract_duration_days: Optional[int] = None
     
     model_config = ConfigDict(from_attributes=True)

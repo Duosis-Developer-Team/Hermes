@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reporting-service
+  namespace: hermes
+  labels:
+    app: reporting-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reporting-service
+  template:
+    metadata:
+      labels:
+        app: reporting-service
+    spec:
+      containers:
+      - name: reporting-service
+        image: hermes-reporting-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8002
+        env:
+        # Service URLs
+        - name: AUTH_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: AUTH_SERVICE_URL
+        - name: CORE_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: CORE_SERVICE_URL
+        
+        # Security
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: hermes-secrets
+              key: JWT_SECRET_KEY
+
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reporting-service
+  namespace: hermes
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8002
+    protocol: TCP
+    name: http
+  selector:
+    app: reporting-service

@@ -178,6 +178,8 @@ def verify_token(token: str) -> TokenData:
         )
     
     except JWTError as e:
+        print(f"DEBUG: Token Validation Failed: {str(e)}")
+        print(f"DEBUG: Secret: {SECRET_KEY[:4]}... Algorithm: {ALGORITHM}")
         raise UnauthorizedError(f"Token doğrulanamadı: {str(e)}")
 
 

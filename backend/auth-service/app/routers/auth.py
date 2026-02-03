@@ -85,6 +85,51 @@ async def login(
         )
 
 
+
+# =============================================================================
+# Microsoft SSO Endpoint
+# =============================================================================
+
+from pydantic import BaseModel
+
+class MicrosoftLoginRequest(BaseModel):
+    code: str
+    redirect_uri: str
+
+@router.post(
+    "/microsoft",
+    response_model=Token,
+    summary="Microsoft ile Giriş Yap (SSO)",
+    description="Microsoft Authorization Code'unu alır ve JWT token döner."
+)
+async def microsoft_login(
+    login_request: MicrosoftLoginRequest,
+    db: Session = Depends(get_db)
+) -> Token:
+    """
+    Microsoft SSO akışını tamamlar.
+    Frontend'den gelen 'code' parametresini kullanarak Microsoft'tan user bilgisini alır.
+    """
+    auth_service = AuthService(db)
+    
+    try:
+        token = await auth_service.authenticate_microsoft(
+            code=login_request.code,
+            redirect_uri=login_request.redirect_uri
+        )
+        return token
+    except UnauthorizedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+    except Exception as e:
+        # Beklenmeyen hatalar için 400 veya 500
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"SSO Error: {str(e)}"
+        )
+
 # =============================================================================
 # GET /users/me - Current User Endpoint
 # =============================================================================

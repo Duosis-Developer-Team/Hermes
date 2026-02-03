@@ -8,8 +8,8 @@
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Form, Input, Button, message } from 'antd'
-import { UserOutlined, LockOutlined } from '@ant-design/icons'
+import { Form, Input, Button, message, Divider } from 'antd'
+import { UserOutlined, LockOutlined, WindowsOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../stores/authStore'
 import { authService } from '../services/api'
 import logoIcon from '../assets/logos/logo-icon-dark.jpg'
@@ -43,6 +43,21 @@ function LoginPage() {
         } finally {
             setLoading(false)
         }
+    }
+
+    const handleMicrosoftLogin = () => {
+        const tenantId = import.meta.env.VITE_AZURE_TENANT_ID || 'common'
+        const clientId = import.meta.env.VITE_AZURE_CLIENT_ID
+        const redirectUri = window.location.origin + '/auth/callback'
+
+        if (!clientId) {
+            message.warning('Azure Client ID .env dosyasında eksik')
+            return
+        }
+
+        const url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=User.Read&prompt=select_account`
+
+        window.location.href = url
     }
 
     return (
@@ -106,6 +121,24 @@ function LoginPage() {
                                 Giriş Yap
                             </Button>
                         </Form.Item>
+
+                        <Divider plain style={{ color: '#ccc', borderColor: '#444' }}>veya</Divider>
+
+                        <Button
+                            block
+                            size="large"
+                            icon={<WindowsOutlined />}
+                            onClick={handleMicrosoftLogin}
+                            style={{
+                                background: '#2f2f2f',
+                                borderColor: '#444',
+                                color: '#fff',
+                                height: 45,
+                                fontSize: 15
+                            }}
+                        >
+                            Microsoft ile Giriş Yap
+                        </Button>
                     </Form>
                 </div>
 

@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: hermes
+  labels:
+    app: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+      - name: auth-service
+        image: hermes-auth-service:latest # Replace with actual registry image
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        env:
+        # Database Connection
+        - name: AUTH_DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: DB_HOST_AUTH
+        - name: AUTH_DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: DB_PORT
+        - name: AUTH_DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: POSTGRES_USER
+        - name: AUTH_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hermes-secrets
+              key: POSTGRES_PASSWORD
+        - name: AUTH_DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: POSTGRES_DB_AUTH
+        
+        # Security
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: hermes-secrets
+              key: JWT_SECRET_KEY
+        - name: AZURE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: hermes-secrets
+              key: AZURE_CLIENT_SECRET
+        
+        # Azure Config (from ConfigMap/Secret mix as needed, assuming others in ConfigMap or defaults)
+        # Note: Add other Azure envs if needed in ConfigMap
+        
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: hermes
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: auth-service

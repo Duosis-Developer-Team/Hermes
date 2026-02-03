@@ -27,6 +27,10 @@ class UserRole(str, enum.Enum):
     USER = "USER"
     REVIEWER = "REVIEWER"
 
+class AuthProvider(str, enum.Enum):
+    LOCAL = "local"
+    MICROSOFT = "microsoft"
+
 from ..database import Base
 
 
@@ -42,10 +46,11 @@ class User(Base):
         id (UUID): Benzersiz kullanıcı kimliği (Primary Key)
         email (str): Kullanıcı e-posta adresi (Unique, zorunlu)
         full_name (str): Kullanıcının tam adı (opsiyonel)
-        hashed_password (str): Bcrypt ile hash'lenmiş şifre (zorunlu)
+        hashed_password (str): Bcrypt ile hash'lenmiş şifre (SSO için opsiyonel)
         is_active (bool): Kullanıcı aktif mi? (soft delete için)
         is_admin (bool): Kullanıcı admin mi? (v1.0 basit rol modeli)
         created_at (datetime): Hesap oluşturulma tarihi
+        auth_provider (str): Kimlik sağlayıcı (local, microsoft)
     
     Tablo Adı: users
     Veritabanı: auth_db
@@ -84,8 +89,8 @@ class User(Base):
     
     hashed_password = Column(
         String(255),
-        nullable=False,
-        comment="Bcrypt ile hash'lenmiş şifre"
+        nullable=True,
+        comment="Bcrypt ile hash'lenmiş şifre (SSO kullanıcıları için null olabilir)"
     )
     
     # ==========================================================================
@@ -111,6 +116,14 @@ class User(Base):
         default=UserRole.USER,
         nullable=False,
         comment="Kullanıcı rolü (ADMIN, USER, REVIEWER)"
+    )
+
+    auth_provider = Column(
+        Enum(AuthProvider),
+        default=AuthProvider.LOCAL,
+        nullable=False,
+        server_default=AuthProvider.LOCAL.value,
+        comment="Kimlik sağlayıcı (local, microsoft)"
     )
     
     # ==========================================================================

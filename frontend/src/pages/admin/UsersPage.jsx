@@ -39,6 +39,16 @@ function UsersPage() {
         onError: (err) => message.error(err.response?.data?.detail || 'Error'),
     })
 
+    const archiveMutation = useMutation({
+        mutationFn: ({ id }) => authService.updateUser(id, { is_active: false }),
+        onSuccess: () => {
+            message.success('User archived (soft deleted)')
+            handleDeleteCancel()
+            queryClient.invalidateQueries(['users'])
+        },
+        onError: (err) => message.error(err.response?.data?.detail || 'Error archiving user'),
+    })
+
     const deleteMutation = useMutation({
         mutationFn: authService.deleteUser,
         onSuccess: () => {
@@ -46,7 +56,7 @@ function UsersPage() {
             handleDeleteCancel()
             queryClient.invalidateQueries(['users'])
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'Error'),
+        onError: (err) => message.error(err.response?.data?.detail || 'Unable to delete (Constraint Error). Try archiving instead.'),
     })
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false)
@@ -59,7 +69,11 @@ function UsersPage() {
 
     const handleDeleteConfirm = () => {
         if (deletingRecord) {
-            deleteMutation.mutate(deletingRecord.id)
+            if (deletingRecord.is_active) {
+                archiveMutation.mutate({ id: deletingRecord.id })
+            } else {
+                deleteMutation.mutate(deletingRecord.id)
+            }
         }
     }
 
@@ -152,12 +166,11 @@ function UsersPage() {
 
             <DeleteModal
                 open={deleteModalOpen}
-                title="Delete User"
-                description="Are you sure you want to delete this user? This will permanently remove them from the system."
+                isActive={deletingRecord?.is_active}
                 itemName={deletingRecord?.full_name || deletingRecord?.email}
                 onConfirm={handleDeleteConfirm}
                 onCancel={handleDeleteCancel}
-                loading={deleteMutation.isPending}
+                loading={deleteMutation.isPending || archiveMutation.isPending}
             />
         </div >
     )

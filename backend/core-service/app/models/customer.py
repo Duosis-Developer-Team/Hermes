@@ -18,7 +18,8 @@
 
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Boolean, DateTime
+from datetime import datetime, timezone
+from sqlalchemy import Column, String, Boolean, DateTime, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -90,6 +91,22 @@ class Customer(Base):
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
         comment="Oluşturulma tarihi"
+    )
+
+    # ==========================================================================
+    # Contract Information (New)
+    # ==========================================================================
+    
+    contract_start_date = Column(
+        DateTime(timezone=True), # Using DateTime for consistency, though Date is sufficient
+        nullable=True,
+        comment="Sözleşme başlangıç tarihi"
+    )
+    
+    contract_duration_days = Column(
+        Integer,
+        nullable=True,
+        comment="Sözleşme süresi (gün)"
     )
     
     # ==========================================================================

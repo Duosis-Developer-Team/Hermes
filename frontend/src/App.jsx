@@ -14,6 +14,7 @@ import MainLayout from './components/layout/MainLayout'
 
 // Pages
 import LoginPage from './pages/LoginPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
 import DashboardPage from './pages/DashboardPage'
 import TimeEntryPage from './pages/TimeEntryPage'
 import CustomersPage from './pages/admin/CustomersPage'
@@ -25,6 +26,7 @@ import PlatformsPage from './pages/PlatformsPage'
 import WorkLinesPage from './pages/WorkLinesPage'
 import BillableHoursPage from './pages/BillableHoursPage'
 import ReportsPage from './pages/ReportsPage'
+import ContractStatusPage from './pages/admin/ContractStatusPage'
 
 /**
  * Protected Route Component
@@ -59,6 +61,8 @@ function App() {
                     isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />
                 }
             />
+
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
             {/* Protected Routes - Main Layout */}
             <Route
@@ -97,6 +101,14 @@ function App() {
                     element={
                         <ProtectedRoute adminOnly>
                             <ReportsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/management/contracts"
+                    element={
+                        <ProtectedRoute adminOnly>
+                            <ContractStatusPage />
                         </ProtectedRoute>
                     }
                 />

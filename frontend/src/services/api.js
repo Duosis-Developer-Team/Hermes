@@ -90,6 +90,15 @@ export const authService = {
     },
 
     /**
+     * Microsoft SSO Login
+     * @param {Object} data { code, redirect_uri }
+     */
+    microsoftLogin: async (data) => {
+        const response = await authApi.post('/api/v1/auth/microsoft', data)
+        return response.data
+    },
+
+    /**
      * Mevcut kullanıcı bilgisi
      */
     getMe: async () => {

@@ -82,6 +82,11 @@ function MainLayout() {
                         icon: <FileExcelOutlined />,
                         label: 'Reports',
                     },
+                    {
+                        key: '/management/contracts',
+                        icon: <FileTextOutlined />,
+                        label: 'Contract Status',
+                    },
                 ],
             },
             {

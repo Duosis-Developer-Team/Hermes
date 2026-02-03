@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: auth-db
+  namespace: hermes
+spec:
+  serviceName: "auth-db"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-db
+  template:
+    metadata:
+      labels:
+        app: auth-db
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hermes-secrets
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: POSTGRES_DB_AUTH
+        volumeMounts:
+        - name: auth-db-data
+          mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+  - metadata:
+      name: auth-db-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-db
+  namespace: hermes
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    app: auth-db
+  clusterIP: None # Headless service for StatefulSet

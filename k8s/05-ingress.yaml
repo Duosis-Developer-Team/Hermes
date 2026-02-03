@@ -1,0 +1,59 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hermes-ingress
+  namespace: hermes
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    # Note: If apps expect /api/v1 prefix, we do NOT strip it.
+    # So rewrite-target might handle things differently depending on controller version.
+    # Standard Nginx: if we want to pass /api/v1/auth, we don't use rewrite-target / usually.
+    # Removing rewrite-target to pass full path.
+    # nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      # Auth Service Routes
+      - path: /api/v1/auth
+        pathType: Prefix
+        backend:
+          service:
+            name: auth-service
+            port:
+              number: 80
+      - path: /api/v1/users
+        pathType: Prefix
+        backend:
+          service:
+            name: auth-service
+            port:
+              number: 80
+              
+      # Reporting Service Routes
+      - path: /api/v1/reports
+        pathType: Prefix
+        backend:
+          service:
+            name: reporting-service
+            port:
+              number: 80
+              
+      # Core Service Routes (Catch-all for API)
+      - path: /api/v1
+        pathType: Prefix
+        backend:
+          service:
+            name: core-service
+            port:
+              number: 80
+              
+      # Frontend (Root)
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 80
