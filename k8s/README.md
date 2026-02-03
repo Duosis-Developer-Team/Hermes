@@ -68,10 +68,11 @@ Before deploying, ensure you have:
    # Login to Docker Hub
    docker login
    
-   # Build images
-   docker build -t yourusername/hermes-auth-service:latest ./backend/auth-service
-   docker build -t yourusername/hermes-core-service:latest ./backend/core-service
-   docker build -t yourusername/hermes-reporting-service:latest ./backend/reporting-service
+   # IMPORTANT: Build context must be ./backend for backend services (to access shared/ module)
+   # Build from project root directory
+   docker build -t yourusername/hermes-auth-service:latest -f backend/auth-service/Dockerfile ./backend
+   docker build -t yourusername/hermes-core-service:latest -f backend/core-service/Dockerfile ./backend
+   docker build -t yourusername/hermes-reporting-service:latest -f backend/reporting-service/Dockerfile ./backend
    docker build -t yourusername/hermes-frontend:latest ./frontend
    
    # Push to Docker Hub
@@ -86,10 +87,10 @@ Before deploying, ensure you have:
    # Login to GitHub Container Registry
    echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
    
-   # Build and tag
-   docker build -t ghcr.io/your-org/hermes-auth-service:latest ./backend/auth-service
-   docker build -t ghcr.io/your-org/hermes-core-service:latest ./backend/core-service
-   docker build -t ghcr.io/your-org/hermes-reporting-service:latest ./backend/reporting-service
+   # Build from project root directory
+   docker build -t ghcr.io/your-org/hermes-auth-service:latest -f backend/auth-service/Dockerfile ./backend
+   docker build -t ghcr.io/your-org/hermes-core-service:latest -f backend/core-service/Dockerfile ./backend
+   docker build -t ghcr.io/your-org/hermes-reporting-service:latest -f backend/reporting-service/Dockerfile ./backend
    docker build -t ghcr.io/your-org/hermes-frontend:latest ./frontend
    
    # Push to GitHub
@@ -104,10 +105,10 @@ Before deploying, ensure you have:
    # Login to ACR
    az acr login --name yourregistry
    
-   # Build and tag
-   docker build -t yourregistry.azurecr.io/hermes-auth-service:latest ./backend/auth-service
-   docker build -t yourregistry.azurecr.io/hermes-core-service:latest ./backend/core-service
-   docker build -t yourregistry.azurecr.io/hermes-reporting-service:latest ./backend/reporting-service
+   # Build from project root directory
+   docker build -t yourregistry.azurecr.io/hermes-auth-service:latest -f backend/auth-service/Dockerfile ./backend
+   docker build -t yourregistry.azurecr.io/hermes-core-service:latest -f backend/core-service/Dockerfile ./backend
+   docker build -t yourregistry.azurecr.io/hermes-reporting-service:latest -f backend/reporting-service/Dockerfile ./backend
    docker build -t yourregistry.azurecr.io/hermes-frontend:latest ./frontend
    
    # Push to ACR
@@ -122,10 +123,10 @@ Before deploying, ensure you have:
    # For Minikube: Use Minikube's Docker daemon
    eval $(minikube docker-env)
    
-   # Build images directly in Minikube
-   docker build -t hermes-auth-service:latest ./backend/auth-service
-   docker build -t hermes-core-service:latest ./backend/core-service
-   docker build -t hermes-reporting-service:latest ./backend/reporting-service
+   # Build images directly in Minikube (from project root)
+   docker build -t hermes-auth-service:latest -f backend/auth-service/Dockerfile ./backend
+   docker build -t hermes-core-service:latest -f backend/core-service/Dockerfile ./backend
+   docker build -t hermes-reporting-service:latest -f backend/reporting-service/Dockerfile ./backend
    docker build -t hermes-frontend:latest ./frontend
    
    # Update deployment files to use imagePullPolicy: Never or IfNotPresent
@@ -134,10 +135,10 @@ Before deploying, ensure you have:
 
    ### Option E: Private Docker Registry
    ```bash
-   # If you have your own private registry
-   docker build -t registry.yourcompany.com/hermes-auth-service:latest ./backend/auth-service
-   docker build -t registry.yourcompany.com/hermes-core-service:latest ./backend/core-service
-   docker build -t registry.yourcompany.com/hermes-reporting-service:latest ./backend/reporting-service
+   # If you have your own private registry (build from project root)
+   docker build -t registry.yourcompany.com/hermes-auth-service:latest -f backend/auth-service/Dockerfile ./backend
+   docker build -t registry.yourcompany.com/hermes-core-service:latest -f backend/core-service/Dockerfile ./backend
+   docker build -t registry.yourcompany.com/hermes-reporting-service:latest -f backend/reporting-service/Dockerfile ./backend
    docker build -t registry.yourcompany.com/hermes-frontend:latest ./frontend
    
    docker push registry.yourcompany.com/hermes-auth-service:latest
@@ -154,6 +155,43 @@ Before deploying, ensure you have:
    ```
 
    **After pushing images, update the deployment files (03-*.yaml, 04-*.yaml) with your registry paths.**
+
+   ### Option F: Using Build Scripts (Easiest)
+   
+   We provide automated build scripts for your convenience:
+   
+   **Linux/Mac/Git Bash:**
+   ```bash
+   # Make script executable
+   chmod +x build-and-push.sh
+   
+   # Build and push to Docker Hub
+   ./build-and-push.sh -r yourusername -v v1.0.0
+   
+   # Build and push to Azure Container Registry
+   ./build-and-push.sh -r yourregistry.azurecr.io -v latest
+   
+   # Build only (no push) for local testing
+   ./build-and-push.sh -n
+   
+   # Show help
+   ./build-and-push.sh -h
+   ```
+   
+   **Windows PowerShell:**
+   ```powershell
+   # Build and push to Docker Hub
+   .\build-and-push.ps1 -Registry yourusername -Version v1.0.0
+   
+   # Build and push to Azure Container Registry
+   .\build-and-push.ps1 -Registry yourregistry.azurecr.io -Version latest
+   
+   # Build only (no push) for local testing
+   .\build-and-push.ps1 -NoPush
+   
+   # Show help
+   .\build-and-push.ps1 -Help
+   ```
 
 4. **NGINX Ingress Controller**: Required for external access
    ```bash
@@ -371,19 +409,22 @@ This step depends on where your Kubernetes cluster is running:
 **Build images locally, then push to a registry:**
 
 ```bash
+# Navigate to project root first
+cd /path/to/Hermes
+
 # A) For Docker Hub (Public)
 docker login
-docker build -t yourusername/hermes-auth-service:v1.0.0 ./backend/auth-service
+docker build -t yourusername/hermes-auth-service:v1.0.0 -f backend/auth-service/Dockerfile ./backend
 docker push yourusername/hermes-auth-service:v1.0.0
 
 # B) For Azure Container Registry
 az acr login --name yourregistry
-docker build -t yourregistry.azurecr.io/hermes-auth-service:v1.0.0 ./backend/auth-service
+docker build -t yourregistry.azurecr.io/hermes-auth-service:v1.0.0 -f backend/auth-service/Dockerfile ./backend
 docker push yourregistry.azurecr.io/hermes-auth-service:v1.0.0
 
 # C) For GitHub Container Registry
 echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
-docker build -t ghcr.io/your-org/hermes-auth-service:v1.0.0 ./backend/auth-service
+docker build -t ghcr.io/your-org/hermes-auth-service:v1.0.0 -f backend/auth-service/Dockerfile ./backend
 docker push ghcr.io/your-org/hermes-auth-service:v1.0.0
 ```
 
@@ -422,10 +463,10 @@ kubectl create secret docker-registry regcred \
 # Point your shell to Minikube's Docker daemon
 eval $(minikube docker-env)
 
-# Build images (they will be available in Minikube)
-docker build -t hermes-auth-service:latest ./backend/auth-service
-docker build -t hermes-core-service:latest ./backend/core-service
-docker build -t hermes-reporting-service:latest ./backend/reporting-service
+# Build images from project root (they will be available in Minikube)
+docker build -t hermes-auth-service:latest -f backend/auth-service/Dockerfile ./backend
+docker build -t hermes-core-service:latest -f backend/core-service/Dockerfile ./backend
+docker build -t hermes-reporting-service:latest -f backend/reporting-service/Dockerfile ./backend
 docker build -t hermes-frontend:latest ./frontend
 
 # Update deployment files to use local images:
@@ -451,10 +492,10 @@ spec:
 **Load images directly into Kind:**
 
 ```bash
-# Build images normally
-docker build -t hermes-auth-service:latest ./backend/auth-service
-docker build -t hermes-core-service:latest ./backend/core-service
-docker build -t hermes-reporting-service:latest ./backend/reporting-service
+# Build images from project root
+docker build -t hermes-auth-service:latest -f backend/auth-service/Dockerfile ./backend
+docker build -t hermes-core-service:latest -f backend/core-service/Dockerfile ./backend
+docker build -t hermes-reporting-service:latest -f backend/reporting-service/Dockerfile ./backend
 docker build -t hermes-frontend:latest ./frontend
 
 # Load images into Kind cluster
@@ -474,19 +515,25 @@ kind load docker-image hermes-frontend:latest
 #!/bin/bash
 # build-and-push.sh
 
-REGISTRY="yourusername"  # Change this
+REGISTRY="yourusername"  # Change this (e.g., yourusername, yourregistry.azurecr.io, ghcr.io/your-org)
 VERSION="v1.0.0"
+
+# Navigate to project root (adjust if needed)
+cd "$(dirname "$0")/.."
 
 services=("auth-service" "core-service" "reporting-service")
 
+echo "Building and pushing images..."
+
 # Build and push backend services
 for service in "${services[@]}"; do
-  echo "Building hermes-$service..."
-  docker build -t $REGISTRY/hermes-$service:$VERSION ./backend/$service
+  echo "Building $REGISTRY/hermes-$service:$VERSION..."
+  docker build -t $REGISTRY/hermes-$service:$VERSION -f backend/$service/Dockerfile ./backend
   docker push $REGISTRY/hermes-$service:$VERSION
 done
 
 # Build and push frontend
+echo "Building $REGISTRY/hermes-frontend:$VERSION..."
 docker build -t $REGISTRY/hermes-frontend:$VERSION ./frontend
 docker push $REGISTRY/hermes-frontend:$VERSION
 
