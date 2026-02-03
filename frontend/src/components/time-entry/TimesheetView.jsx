@@ -186,7 +186,6 @@ function TimesheetView({
                 pagination={false}
                 scroll={{ x: 900 }}
                 size="small"
-                size="small"
                 className="timesheet-table"
                 locale={{ emptyText: 'Bu dönemde kayıt yok' }}
                 rowClassName="timesheet-row"

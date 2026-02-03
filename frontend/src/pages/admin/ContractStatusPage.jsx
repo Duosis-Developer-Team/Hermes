@@ -198,7 +198,7 @@ function ContractStatusPage() {
                             <CheckCircleOutlined style={{ fontSize: 24, color: '#4ade80' }} />
                         </div>
                         <div>
-                            <div className="stat-label">Safe (>90 Days)</div>
+                            <div className="stat-label">Safe (&gt;90 Days)</div>
                             <div className="stat-value" style={{ color: '#4ade80' }}>{safeCount}</div>
                         </div>
                     </div>

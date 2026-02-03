@@ -5,7 +5,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Build Request
 # -----------------------------------------------------------------------------
-FROM node:18-alpine AS builder
+FROM docker.io/library/node:18-alpine AS builder
 
 WORKDIR /app
 
@@ -20,7 +20,7 @@ RUN npm run build
 # -----------------------------------------------------------------------------
 # Stage 2: Production Server (Nginx)
 # -----------------------------------------------------------------------------
-FROM nginx:alpine
+FROM docker.io/library/nginx:alpine
 
 # Default nginx config temizle
 RUN rm /etc/nginx/conf.d/default.conf
