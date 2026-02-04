@@ -40,11 +40,17 @@ async def get_all_users_map(token: str) -> Dict[str, str]:
         headers = {"Authorization": f"Bearer {token}"}
         # print(f"DEBUG: Headers: {headers}", flush=True) # Don't log full token
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
             print("DEBUG: Sending request to auth-service (options endpoint)...", flush=True)
+            
+            # Fix: Handle double /api/v1 if present in env var
+            base_url = AUTH_SERVICE_URL.rstrip("/")
+            if base_url.endswith("/api/v1"):
+                base_url = base_url[:-7] # Remove /api/v1
+            
             # Use /options endpoint which is lighter and potentially less restrictive
             response = await client.get(
-                f"{AUTH_SERVICE_URL}/api/v1/auth/users/options",
+                f"{base_url}/api/v1/auth/users/options",
                 headers=headers
             )
             print(f"DEBUG: Auth Service Response Code: {response.status_code}", flush=True)
