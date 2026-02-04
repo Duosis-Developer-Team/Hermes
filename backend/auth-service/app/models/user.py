@@ -28,8 +28,8 @@ class UserRole(str, enum.Enum):
     REVIEWER = "REVIEWER"
 
 class AuthProvider(str, enum.Enum):
-    LOCAL = "local"
-    MICROSOFT = "microsoft"
+    LOCAL = "LOCAL"
+    MICROSOFT = "MICROSOFT"
 
 from ..database import Base
 
