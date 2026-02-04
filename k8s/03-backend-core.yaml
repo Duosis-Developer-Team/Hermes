@@ -15,10 +15,12 @@ spec:
       labels:
         app: core-service
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
       - name: core-service
-        image: hermes-core-service:latest
-        imagePullPolicy: IfNotPresent
+        image: ghcr.io/duosis-developer-team/hermes-core-service:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8001
         env:

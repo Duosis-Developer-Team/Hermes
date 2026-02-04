@@ -15,10 +15,12 @@ spec:
       labels:
         app: auth-service
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
       - name: auth-service
-        image: hermes-auth-service:latest # Replace with actual registry image
-        imagePullPolicy: IfNotPresent
+        image: ghcr.io/duosis-developer-team/hermes-auth-service:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8000
         env:

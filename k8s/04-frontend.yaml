@@ -15,10 +15,12 @@ spec:
       labels:
         app: frontend
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
       - name: frontend
-        image: hermes-frontend:latest
-        imagePullPolicy: IfNotPresent
+        image: ghcr.io/duosis-developer-team/hermes-frontend:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
         resources:

@@ -1,138 +1,78 @@
 #!/bin/bash
+
 # =============================================================================
-# Hermes - Docker Image Build and Push Script
+# Hermes Platform - Build and Push Script for GHCR
 # =============================================================================
-# This script builds all Hermes Docker images and pushes them to a registry
-#
 # Usage:
-#   ./build-and-push.sh [OPTIONS]
-#
-# Options:
-#   -r, --registry <registry>  Docker registry (default: docker.io/yourusername)
-#   -v, --version <version>    Image version tag (default: latest)
-#   -n, --no-push              Build only, don't push to registry
-#   -h, --help                 Show this help message
-#
-# Examples:
-#   ./build-and-push.sh -r duosis -v v1.0.0
-#   ./build-and-push.sh -r yourregistry.azurecr.io -v latest
-#   ./build-and-push.sh -r ghcr.io/your-org -v dev
-#   ./build-and-push.sh -n  # Build only without push
+#   export CR_PAT=YOUR_GITHUB_TOKEN
+#   ./build-and-push.sh
 # =============================================================================
 
-set -e  # Exit on error
+# Configuration
+GITHUB_USER="coskungencay"
+ORG_NAME="duosis-developer-team"
+IMAGE_TAG="latest" # You can change this to v1, v2 etc.
 
-# Default values
-REGISTRY="yourusername"
-VERSION="latest"
-NO_PUSH=false
+# Colors
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
 
-# Parse command line arguments
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    -r|--registry)
-      REGISTRY="$2"
-      shift 2
-      ;;
-    -v|--version)
-      VERSION="$2"
-      shift 2
-      ;;
-    -n|--no-push)
-      NO_PUSH=true
-      shift
-      ;;
-    -h|--help)
-      grep "^#" "$0" | grep -v "^#!/" | sed 's/^# //'
-      exit 0
-      ;;
-    *)
-      echo "Unknown option: $1"
-      echo "Use -h or --help for usage information"
-      exit 1
-      ;;
-  esac
-done
+echo -e "${GREEN}Starting Build & Push Process...${NC}"
 
-# Get script directory and project root
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
-
-# Validate directories exist
-if [ ! -d "backend" ]; then
-  echo "Error: backend directory not found. Are you in the project root?"
-  exit 1
+# 1. Check for Token
+if [ -z "$CR_PAT" ]; then
+    echo -e "${RED}Error: CR_PAT environment variable is not set.${NC}"
+    echo "Please run: export CR_PAT=your_github_token"
+    exit 1
 fi
 
-if [ ! -d "frontend" ]; then
-  echo "Error: frontend directory not found. Are you in the project root?"
-  exit 1
+# 2. Login to GHCR
+echo "Logging in to GHCR..."
+echo $CR_PAT | docker login ghcr.io -u $GITHUB_USER --password-stdin
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Login failed!${NC}"
+    exit 1
 fi
 
-# Print configuration
-echo "========================================"
-echo "Hermes Docker Image Builder"
-echo "========================================"
-echo "Registry: $REGISTRY"
-echo "Version:  $VERSION"
-echo "Push:     $([ "$NO_PUSH" = true ] && echo "No" || echo "Yes")"
-echo "========================================"
-echo ""
+# Function to build and push
+# Function to build and push
+build_and_push() {
+    SERVICE_NAME=$1
+    DOCKERFILE_PATH=$2
+    CONTEXT_DIR=$3
+    IMAGE_NAME="ghcr.io/$ORG_NAME/hermes-$SERVICE_NAME:$IMAGE_TAG"
 
-# Backend services
-services=("auth-service" "core-service" "reporting-service")
+    echo -e "\n${GREEN}[$SERVICE_NAME] Building...${NC}"
+    # Use -f for specific Dockerfile
+    docker build -f $DOCKERFILE_PATH -t $IMAGE_NAME $CONTEXT_DIR
+    
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}[$SERVICE_NAME] Build failed!${NC}"
+        exit 1
+    fi
 
-# Build and push backend services
-for service in "${services[@]}"; do
-  image_name="$REGISTRY/hermes-$service:$VERSION"
-  
-  echo "→ Building $image_name..."
-  docker build \
-    -t "$image_name" \
-    -f "backend/$service/Dockerfile" \
-    ./backend
-  
-  if [ "$NO_PUSH" = false ]; then
-    echo "→ Pushing $image_name..."
-    docker push "$image_name"
-  fi
-  
-  echo "✓ Completed $service"
-  echo ""
-done
+    echo -e "${GREEN}[$SERVICE_NAME] Pushing...${NC}"
+    docker push $IMAGE_NAME
+    
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}[$SERVICE_NAME] Push failed!${NC}"
+        exit 1
+    fi
+}
 
-# Build and push frontend
-frontend_image="$REGISTRY/hermes-frontend:$VERSION"
+# 3. Build Services
 
-echo "→ Building $frontend_image..."
-docker build -t "$frontend_image" ./frontend
+# Auth Service
+build_and_push "auth-service" "backend/auth-service/Dockerfile" "./backend"
 
-if [ "$NO_PUSH" = false ]; then
-  echo "→ Pushing $frontend_image..."
-  docker push "$frontend_image"
-fi
+# Core Service
+build_and_push "core-service" "backend/core-service/Dockerfile" "./backend"
 
-echo "✓ Completed frontend"
-echo ""
+# Reporting Service
+build_and_push "reporting-service" "backend/reporting-service/Dockerfile" "./backend"
 
-# Summary
-echo "========================================"
-echo "Build Summary"
-echo "========================================"
-echo "✓ hermes-auth-service:$VERSION"
-echo "✓ hermes-core-service:$VERSION"
-echo "✓ hermes-reporting-service:$VERSION"
-echo "✓ hermes-frontend:$VERSION"
-echo ""
-if [ "$NO_PUSH" = false ]; then
-  echo "All images built and pushed successfully!"
-  echo ""
-  echo "Next steps:"
-  echo "1. Update k8s deployment files with: $REGISTRY/hermes-*:$VERSION"
-  echo "2. Deploy to Kubernetes: kubectl apply -f k8s/"
-else
-  echo "All images built successfully!"
-  echo ""
-  echo "Images are ready for local use or manual push"
-fi
-echo "========================================"
+# Frontend
+build_and_push "frontend" "frontend/Dockerfile" "./frontend"
+
+echo -e "\n${GREEN}All images pushed successfully! 🚀${NC}"

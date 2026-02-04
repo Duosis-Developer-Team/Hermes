@@ -15,10 +15,12 @@ spec:
       labels:
         app: reporting-service
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
       - name: reporting-service
-        image: hermes-reporting-service:latest
-        imagePullPolicy: IfNotPresent
+        image: ghcr.io/duosis-developer-team/hermes-reporting-service:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8002
         env:
