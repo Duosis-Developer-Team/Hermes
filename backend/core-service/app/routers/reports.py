@@ -40,7 +40,7 @@ async def get_all_users_map(token: str) -> Dict[str, str]:
         headers = {"Authorization": f"Bearer {token}"}
         # print(f"DEBUG: Headers: {headers}", flush=True) # Don't log full token
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             print("DEBUG: Sending request to auth-service (options endpoint)...", flush=True)
             
             # Fix: Handle double /api/v1 if present in env var
