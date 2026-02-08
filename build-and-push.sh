@@ -44,8 +44,8 @@ build_and_push() {
     IMAGE_NAME="ghcr.io/$ORG_NAME/hermes-$SERVICE_NAME:$IMAGE_TAG"
 
     echo -e "\n${GREEN}[$SERVICE_NAME] Building...${NC}"
-    # Use -f for specific Dockerfile
-    docker build -f $DOCKERFILE_PATH -t $IMAGE_NAME $CONTEXT_DIR
+    # Use -f for specific Dockerfile and force AMD64 platform for server compatibility
+    docker build --platform linux/amd64 -f $DOCKERFILE_PATH -t $IMAGE_NAME $CONTEXT_DIR
     
     if [ $? -ne 0 ]; then
         echo -e "${RED}[$SERVICE_NAME] Build failed!${NC}"
