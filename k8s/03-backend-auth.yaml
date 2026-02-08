@@ -57,6 +57,16 @@ spec:
             secretKeyRef:
               name: hermes-secrets
               key: JWT_SECRET_KEY
+        - name: AZURE_CLIENT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: AZURE_CLIENT_ID
+        - name: AZURE_TENANT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: AZURE_TENANT_ID
         - name: AZURE_CLIENT_SECRET
           valueFrom:
             secretKeyRef:
