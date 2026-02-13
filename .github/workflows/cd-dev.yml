@@ -1,0 +1,76 @@
+name: CD - Dev (Hermes)
+
+on:
+  push:
+    branches: [ "dev" ]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build_push_deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      NAMESPACE: hermes-dev
+      REGISTRY: ghcr.io
+      OWNER: duosis-developer-team
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push images (tag = commit SHA)
+        run: |
+          TAG="${GITHUB_SHA}"
+
+          AUTH_IMAGE="${REGISTRY}/${OWNER}/hermes-auth-service:${TAG}"
+          CORE_IMAGE="${REGISTRY}/${OWNER}/hermes-core-service:${TAG}"
+          REPORTING_IMAGE="${REGISTRY}/${OWNER}/hermes-reporting-service:${TAG}"
+          FRONTEND_IMAGE="${REGISTRY}/${OWNER}/hermes-frontend:${TAG}"
+
+          echo "AUTH_IMAGE=$AUTH_IMAGE" >> $GITHUB_ENV
+          echo "CORE_IMAGE=$CORE_IMAGE" >> $GITHUB_ENV
+          echo "REPORTING_IMAGE=$REPORTING_IMAGE" >> $GITHUB_ENV
+          echo "FRONTEND_IMAGE=$FRONTEND_IMAGE" >> $GITHUB_ENV
+
+          docker build -t "$AUTH_IMAGE" -f "backend/auth-service/Dockerfile" ./backend
+          docker push "$AUTH_IMAGE"
+
+          docker build -t "$CORE_IMAGE" -f "backend/core-service/Dockerfile" ./backend
+          docker push "$CORE_IMAGE"
+
+          docker build -t "$REPORTING_IMAGE" -f "backend/reporting-service/Dockerfile" ./backend
+          docker push "$REPORTING_IMAGE"
+
+          docker build -t "$FRONTEND_IMAGE" ./frontend
+          docker push "$FRONTEND_IMAGE"
+
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG_B64 }}" | base64 -d > ~/.kube/config
+
+      - name: Deploy (kubectl set image + rollout)
+        run: |
+          kubectl -n "${NAMESPACE}" set image deployment/auth-service \
+            auth-service="${AUTH_IMAGE}"
+          kubectl -n "${NAMESPACE}" set image deployment/core-service \
+            core-service="${CORE_IMAGE}"
+          kubectl -n "${NAMESPACE}" set image deployment/reporting-service \
+            reporting-service="${REPORTING_IMAGE}"
+          kubectl -n "${NAMESPACE}" set image deployment/frontend \
+            frontend="${FRONTEND_IMAGE}"
+
+          kubectl -n "${NAMESPACE}" rollout status deployment/auth-service --timeout=180s
+          kubectl -n "${NAMESPACE}" rollout status deployment/core-service --timeout=180s
+          kubectl -n "${NAMESPACE}" rollout status deployment/reporting-service --timeout=180s
+          kubectl -n "${NAMESPACE}" rollout status deployment/frontend --timeout=180s
