@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from fastapi import APIRouter, Depends, Query, Response, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
@@ -379,7 +379,7 @@ async def get_user_logs_json(
     request: Request,
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
-    user_id: Optional[str] = Query(None),
+    user_ids: Optional[List[str]] = Query(None),
     customer_id: Optional[str] = Query(None),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -420,8 +420,8 @@ async def get_user_logs_json(
     if not current_user.is_admin:
          query = query.filter(WorkLog.user_id == current_user.id)
     else:
-        if user_id:
-            query = query.filter(WorkLog.user_id == user_id)
+        if user_ids:
+            query = query.filter(WorkLog.user_id.in_(user_ids))
     
     if customer_id:
         query = query.filter(WorkLog.customer_id == customer_id)

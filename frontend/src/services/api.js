@@ -465,7 +465,15 @@ export const reportsService = {
 
     // JSON Data Endpoints for Dashboard
     getJsonUserLogs: async (params = {}) => {
-        const response = await coreApi.get('/api/v1/core/reports/json/user-logs', { params })
+        const { user_ids, ...rest } = params
+        const urlParams = new URLSearchParams()
+        Object.entries(rest).forEach(([key, value]) => {
+            if (value !== null && value !== undefined) urlParams.append(key, value)
+        })
+        if (Array.isArray(user_ids) && user_ids.length > 0) {
+            user_ids.forEach(id => urlParams.append('user_ids', id))
+        }
+        const response = await coreApi.get(`/api/v1/core/reports/json/user-logs?${urlParams.toString()}`)
         return response.data
     },
 

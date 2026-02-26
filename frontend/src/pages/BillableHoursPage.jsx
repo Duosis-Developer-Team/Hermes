@@ -304,7 +304,7 @@ function BillableHoursPage() {
                         <span style={{ fontSize: '1.2rem', fontWeight: 600, color: '#4ade80' }}>
                             {parseFloat(displayValue).toFixed(2)}
                         </span>
-                        <span style={{ fontSize: '0.8rem', color: '#666', marginLeft: 4 }}>h</span>
+                        <span style={{ fontSize: '0.8rem', color: '#9FADBC', marginLeft: 4 }}>h</span>
                     </div>
                 )
             }

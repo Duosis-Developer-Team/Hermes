@@ -15,6 +15,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { activityTypeService } from '../services/api'
 import DeleteModal from '../components/common/DeleteModal'
+import { generateCode } from '../utils/codeGenerator'
 import './AdminPages.css'
 
 function ActivityTypesPage() {
@@ -202,7 +203,14 @@ function ActivityTypesPage() {
                         label="Name"
                         rules={[{ required: true }]}
                     >
-                        <Input placeholder="Activity Type Name" />
+                        <Input
+                            placeholder="Activity Type Name"
+                            onChange={(e) => {
+                                if (!editingItem) {
+                                    form.setFieldValue('code', generateCode(e.target.value))
+                                }
+                            }}
+                        />
                     </Form.Item>
                     <Form.Item
                         name="code"

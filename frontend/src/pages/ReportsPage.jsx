@@ -36,7 +36,7 @@ function ReportsPage() {
 
     // Filters
     const [selectedMonth, setSelectedMonth] = useState(dayjs())
-    const [selectedUser, setSelectedUser] = useState(null)
+    const [selectedUsers, setSelectedUsers] = useState([])
 
     // Data Fetching for Dropdowns
     const { data: usersResponse } = useQuery({
@@ -117,20 +117,26 @@ function ReportsPage() {
 
                             {/* User Selector (Only for User Work Logs) */}
                             {viewMode === 'User Work Logs' && (
-                                <div style={{ flex: 1, minWidth: 200 }}>
-                                    <div style={{ marginBottom: 8, color: '#666', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>User Filter</div>
+                                <div style={{ flex: 2, minWidth: 280 }}>
+                                    <div style={{ marginBottom: 8, color: '#666', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                        User Filter {selectedUsers.length > 0 && <span style={{ color: '#579dff' }}>({selectedUsers.length} selected)</span>}
+                                    </div>
                                     <Select
-                                        placeholder="Select User"
-                                        value={selectedUser}
-                                        onChange={setSelectedUser}
-                                        options={users.map(u => ({ value: u.id, label: u.full_name }))}
+                                        mode="multiple"
+                                        placeholder="All users (select to filter)"
+                                        value={selectedUsers}
+                                        onChange={setSelectedUsers}
+                                        options={users
+                                            .sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '', 'tr'))
+                                            .map(u => ({ value: u.id, label: u.full_name }))}
                                         allowClear
-                                        style={{ width: '100%', height: 40 }}
+                                        style={{ width: '100%', minHeight: 40 }}
                                         showSearch
                                         filterOption={(input, option) =>
                                             (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                                         }
                                         className="modern-select"
+                                        maxTagCount="responsive"
                                     />
                                 </div>
                             )}
@@ -144,7 +150,7 @@ function ReportsPage() {
                 {viewMode === 'User Work Logs' && (
                     <UserLogsDashboard
                         selectedMonth={selectedMonth}
-                        selectedUser={selectedUser}
+                        selectedUsers={selectedUsers}
                     />
                 )}
 
@@ -259,13 +265,13 @@ function ReportsPage() {
 // SUB-COMPONENTS (Dashboards)
 // =============================================================================
 
-function UserLogsDashboard({ selectedMonth, selectedUser }) {
+function UserLogsDashboard({ selectedMonth, selectedUsers }) {
     const { data: jsonResponse, isLoading } = useQuery({
-        queryKey: ['json-user-logs', selectedMonth.format('YYYY-MM'), selectedUser],
+        queryKey: ['json-user-logs', selectedMonth.format('YYYY-MM'), selectedUsers],
         queryFn: () => reportsService.getJsonUserLogs({
             start_date: selectedMonth.startOf('month').format('YYYY-MM-DD'),
             end_date: selectedMonth.endOf('month').format('YYYY-MM-DD'),
-            user_id: selectedUser
+            user_ids: selectedUsers
         }),
         enabled: !!selectedMonth
     })
@@ -281,7 +287,7 @@ function UserLogsDashboard({ selectedMonth, selectedUser }) {
         mutationFn: () => reportsService.exportExcel({
             start_date: selectedMonth.startOf('month').format('YYYY-MM-DD'),
             end_date: selectedMonth.endOf('month').format('YYYY-MM-DD'),
-            user_id: selectedUser
+            user_id: selectedUsers.length === 1 ? selectedUsers[0] : undefined
         }),
         onSuccess: () => message.success('Export started'),
         onError: () => message.error('Export failed')

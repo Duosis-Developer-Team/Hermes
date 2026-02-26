@@ -6,6 +6,7 @@
 
 from typing import List, Optional
 from uuid import UUID
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from ..models.project import Project
@@ -31,6 +32,8 @@ class ProjectService(BaseCRUDService[Project, ProjectCreate, ProjectUpdate]):
         Yeni proje oluşturur.
         
         customer_id verilmişse, müşterinin varlığını doğrular.
+        contract_duration_days verilip contract_start_date verilmemişse,
+        otomatik olarak bugünün tarihi atanır.
         """
         # Müşteri ID'si verilmişse varlığını kontrol et
         if data.customer_id:
@@ -39,6 +42,10 @@ class ProjectService(BaseCRUDService[Project, ProjectCreate, ProjectUpdate]):
             ).first()
             if not customer:
                 raise NotFoundError("Müşteri", data.customer_id)
+        
+        # Contract duration verilip start_date verilmemişse bugünü ata
+        if data.contract_duration_days and not data.contract_start_date:
+            data.contract_start_date = datetime.now(timezone.utc)
         
         return super().create(data)
     
@@ -64,5 +71,7 @@ class ProjectService(BaseCRUDService[Project, ProjectCreate, ProjectUpdate]):
             "customer_id": project.customer_id,
             "customer_name": project.customer.name if project.customer else None,
             "is_active": project.is_active,
-            "created_at": project.created_at
+            "created_at": project.created_at,
+            "contract_start_date": project.contract_start_date,
+            "contract_duration_days": project.contract_duration_days,
         }

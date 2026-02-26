@@ -215,6 +215,15 @@ body {
   transition: border-color var(--transition-fast), background var(--transition-fast) !important;
 }
 
+/* AntD v5 InputNumber - inner input element color fix */
+.ant-input-number-input {
+  color: var(--text-primary) !important;
+}
+
+.ant-input-number-suffix {
+  color: var(--text-secondary) !important;
+}
+
 .ant-input:hover,
 .ant-input-affix-wrapper:hover,
 .ant-select:hover .ant-select-selector,

@@ -123,9 +123,7 @@ function TimeEntryPage() {
         onSuccess: () => {
             message.success('Süre kaydedildi')
             queryClient.invalidateQueries(['workLogs'])
-            refetchPeriodStatus() // Update period status (logged hours)
-            setLogTimeModalOpen(false)
-            setEditingLog(null)
+            refetchPeriodStatus()
         },
         onError: (error) => {
             message.error(error.response?.data?.detail || 'Bir hata oluştu')
@@ -138,8 +136,6 @@ function TimeEntryPage() {
             message.success('Süre güncellendi')
             queryClient.invalidateQueries(['workLogs'])
             refetchPeriodStatus()
-            setLogTimeModalOpen(false)
-            setEditingLog(null)
         },
         onError: (error) => {
             message.error(error.response?.data?.detail || 'Bir hata oluştu')
@@ -195,11 +191,11 @@ function TimeEntryPage() {
         deleteMutation.mutate(log.id)
     }
 
-    const handleLogTimeSubmit = (data, editId) => {
+    const handleLogTimeSubmit = async (data, editId) => {
         if (editId) {
-            updateMutation.mutate({ id: editId, data })
+            return await updateMutation.mutateAsync({ id: editId, data })
         } else {
-            createMutation.mutate(data)
+            return await createMutation.mutateAsync(data)
         }
     }
 

@@ -15,6 +15,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { platformService } from '../services/api'
 import DeleteModal from '../components/common/DeleteModal'
+import { generateCode } from '../utils/codeGenerator'
 import './AdminPages.css'
 
 function PlatformsPage() {
@@ -202,7 +203,14 @@ function PlatformsPage() {
                         label="Name"
                         rules={[{ required: true }]}
                     >
-                        <Input placeholder="Platform Name" />
+                        <Input
+                            placeholder="Platform Name"
+                            onChange={(e) => {
+                                if (!editingItem) {
+                                    form.setFieldValue('code', generateCode(e.target.value))
+                                }
+                            }}
+                        />
                     </Form.Item>
                     <Form.Item
                         name="code"

@@ -25,7 +25,13 @@ class ProjectBase(BaseModel):
 
 class ProjectCreate(ProjectBase):
     """Yeni proje oluşturma isteği (FR 3.3)."""
-    pass
+    project_key: Optional[str] = Field(None, min_length=1, max_length=50)
+    contract_start_date: Optional[datetime] = None
+    contract_duration_days: Optional[int] = Field(
+        None,
+        ge=1,
+        description="Sözleşme süresi (gün)"
+    )
 
 
 class ProjectUpdate(BaseModel):
@@ -34,6 +40,8 @@ class ProjectUpdate(BaseModel):
     customer_id: Optional[UUID] = None
     project_key: Optional[str] = Field(None, min_length=1, max_length=50)
     is_active: Optional[bool] = None
+    contract_start_date: Optional[datetime] = None
+    contract_duration_days: Optional[int] = Field(None, ge=1)
 
 
 class ProjectResponse(ProjectBase):
@@ -42,5 +50,7 @@ class ProjectResponse(ProjectBase):
     is_active: bool
     created_at: datetime
     customer_name: Optional[str] = Field(None, description="Müşteri adı (varsa)")
-    
+    contract_start_date: Optional[datetime] = None
+    contract_duration_days: Optional[int] = None
+
     model_config = ConfigDict(from_attributes=True)

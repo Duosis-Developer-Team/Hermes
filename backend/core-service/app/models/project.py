@@ -20,7 +20,7 @@
 
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -96,6 +96,22 @@ class Project(Base):
         comment="Proje anahtarı (örn: HER-101)"
     )
     
+    # ==========================================================================
+    # Contract Information (Optional)
+    # ==========================================================================
+
+    contract_start_date = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Sözleşme başlangıç tarihi (opsiyonel)"
+    )
+
+    contract_duration_days = Column(
+        Integer,
+        nullable=True,
+        comment="Sözleşme süresi (gün cinsinden, opsiyonel)"
+    )
+
     # ==========================================================================
     # Status Flag
     # ==========================================================================

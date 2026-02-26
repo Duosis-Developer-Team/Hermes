@@ -2,100 +2,102 @@
  * =============================================================================
  * HERMES PLATFORM - Contract Status Page
  * =============================================================================
- * Müşteri sözleşme sürelerini ve kalan günlerini gösteren dashboard.
+ * Proje sözleşme sürelerini ve kalan günlerini gösteren dashboard.
+ * Veri kaynağı: projectService (proje bazlı contract alanları).
  * Modern Dark UI Design.
  * =============================================================================
  */
 
 import { useState } from 'react'
-import { Card, Table, Tag, Typography, Progress, Statistic, Row, Col, Input, Space, Button } from 'antd'
+import { Card, Table, Tag, Typography, Progress, Row, Col, Input } from 'antd'
 import { SearchOutlined, ClockCircleOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
-import { customerService } from '../../services/api'
+import { projectService } from '../../services/api'
 import dayjs from 'dayjs'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 function ContractStatusPage() {
     const [searchText, setSearchText] = useState('')
 
-    // Fetch Customers
-    const { data: customers = [], isLoading } = useQuery({
-        queryKey: ['customers', { include_inactive: false }],
-        queryFn: () => customerService.getAll({ include_inactive: false }),
+    // Fetch Projects (include inactive to show all contracts)
+    const { data: projects = [], isLoading } = useQuery({
+        queryKey: ['projects', { include_inactive: false }],
+        queryFn: () => projectService.getAll({ include_inactive: false }),
     })
 
-    // Calculate Status Logic
-    const processedData = customers.map(c => {
-        if (!c.contract_start_date || !c.contract_duration_days) {
-            return {
-                ...c,
-                remainingDays: null,
-                status: 'undefined',
-                progressPercent: 0
-            }
+    // Calculate Status Logic — only projects with contract data
+    const processedData = projects.map(p => {
+        if (!p.contract_start_date || !p.contract_duration_days) {
+            return null
         }
 
-        const startDateRaw = dayjs(c.contract_start_date)
+        const startDateRaw = dayjs(p.contract_start_date)
         const startDate = startDateRaw.startOf('day')
         const today = dayjs().startOf('day')
 
-        // Days passed since start (0 if today)
         const daysPassed = today.diff(startDate, 'day')
+        const remainingDays = p.contract_duration_days - daysPassed
+        const endDate = startDateRaw.add(p.contract_duration_days, 'day')
 
-        // Remaining
-        const remainingDays = c.contract_duration_days - daysPassed
-
-        // End Date (display)
-        const endDate = startDateRaw.add(c.contract_duration_days, 'day')
-
-        // Progress Logic
-        // elapsedDays is essentially daysPassed (capped at 0 min and duration max)
-        const totalDuration = c.contract_duration_days
+        const totalDuration = p.contract_duration_days
         const effectiveElapsed = Math.max(0, Math.min(totalDuration, daysPassed))
-
         let progressPercent = (effectiveElapsed / totalDuration) * 100
 
-        // Color/Status Logic
         let status = 'safe'
-        let color = '#4ade80' // Green
+        let color = '#4ade80'
 
         if (remainingDays < 0) {
             status = 'expired'
-            color = '#ef4444' // Red
+            color = '#ef4444'
             progressPercent = 100
         } else if (remainingDays <= 30) {
             status = 'critical'
             color = '#ef4444'
         } else if (remainingDays <= 90) {
             status = 'warning'
-            color = '#f59e0b' // Amber/Orange
+            color = '#f59e0b'
         }
 
         return {
-            ...c,
+            ...p,
             remainingDays,
-            totalDays: c.contract_duration_days,
+            totalDays: p.contract_duration_days,
             endDate: endDate.format('YYYY-MM-DD'),
             status,
             color,
             progressPercent
         }
-    }).filter(c => c.status !== 'undefined')
+    }).filter(Boolean)
         .sort((a, b) => (a.remainingDays || 9999) - (b.remainingDays || 9999))
 
-    // Filter by Search
-    const filteredData = processedData.filter(c =>
-        c.name.toLowerCase().includes(searchText.toLowerCase())
+    // Filter by Search (customer name or project name)
+    const filteredData = processedData.filter(p =>
+        (p.customer_name || '').toLowerCase().includes(searchText.toLowerCase()) ||
+        p.name.toLowerCase().includes(searchText.toLowerCase())
     )
 
-    // Columns
+    // Columns — Görev 7 sıralaması: Customer, Project, Status, Remaining Time, End Date
     const columns = [
         {
             title: 'CUSTOMER',
+            dataIndex: 'customer_name',
+            key: 'customer_name',
+            width: 200,
+            render: (name) => (
+                <Text strong style={{ fontSize: '0.95rem', color: '#fff' }}>
+                    {name || 'Internal Project'}
+                </Text>
+            )
+        },
+        {
+            title: 'PROJECT',
             dataIndex: 'name',
             key: 'name',
-            render: (text) => <Text strong style={{ fontSize: '1rem', color: '#fff' }}>{text}</Text>
+            width: 200,
+            render: (text) => (
+                <Text style={{ fontSize: '0.95rem', color: '#ccc' }}>{text}</Text>
+            )
         },
         {
             title: 'STATUS',
@@ -163,7 +165,7 @@ function ContractStatusPage() {
                         Contract Status
                     </h1>
                     <Text style={{ color: '#666', fontSize: '1rem' }}>
-                        Track customer contract durations and renewals
+                        Track project contract durations and renewals
                     </Text>
                 </div>
             </div>
@@ -220,10 +222,10 @@ function ContractStatusPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <SearchOutlined style={{ color: '#666', fontSize: 18 }} />
                     <Input
-                        placeholder="Search customers..."
+                        placeholder="Search by customer or project name..."
                         bordered={false}
                         onChange={e => setSearchText(e.target.value)}
-                        style={{ color: '#fff', fontSize: 16, width: 300 }}
+                        style={{ color: '#fff', fontSize: 16, width: 350 }}
                         className="modern-search-input"
                     />
                 </div>
@@ -250,7 +252,7 @@ function ContractStatusPage() {
                     loading={isLoading}
                     pagination={{ pageSize: 10 }}
                     rowClassName="modern-row"
-                    locale={{ emptyText: <div style={{ padding: 40, color: '#666' }}>No contract data found.</div> }}
+                    locale={{ emptyText: <div style={{ padding: 40, color: '#666' }}>No contract data found. Add contract duration to your projects.</div> }}
                 />
             </Card>
 

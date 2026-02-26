@@ -170,8 +170,8 @@ function LogTimeModal({
         try {
             const values = await form.validateFields()
             const data = {
-                customer_id: selectedCustomerId, // State fallback
-                project_id: selectedProjectId || values.project_id, // State or Form fallback
+                customer_id: selectedCustomerId,
+                project_id: selectedProjectId || values.project_id,
                 work_type_id: values.work_type_id,
                 activity_type_id: values.activity_type_id || null,
                 platform_id: values.platform_id || null,
@@ -181,32 +181,30 @@ function LogTimeModal({
                 description: values.description,
             }
 
-            console.log('Submitting Log Time:', data) // Debug
             await onSubmit?.(data, editingLog?.id)
 
             if (logAnother && !editingLog) {
-                // Reset form but stay in modal
-                form.resetFields()
+                // Kayıt başarılı — per-entry alanları temizle, step 2'de kal.
+                // Proje, müşteri ve tarih korunur; kullanıcı aynı proje için
+                // hızlıca bir sonraki kaydı girebilir.
                 form.setFieldsValue({
-                    project_id: selectedProjectId, // Restore project
-                    customer_id: selectedCustomerId, // Restore customer
-                    date_worked: initialDate ? dayjs(initialDate) : dayjs(),
                     duration_hours: 0,
+                    description: '',
+                    work_type_id: undefined,
+                    activity_type_id: undefined,
+                    platform_id: undefined,
+                    work_line_id: undefined,
                 })
-                // Don't go back to step 0, stay on form to log another for same project?
-                // Or go back? Usually 'Log Another' implies same context or fresh start.
-                // Current logic was setStep(0). Let's keep it but reset state.
-                setStep(0)
-                setSelectedProjectId(null)
+            } else {
+                handleClose()
             }
         } catch (error) {
-            console.error('Validation failed:', error)
-            // Show error to user if validation fails
-            if (error.errorFields) {
-                message.error('Please fix the validation errors.')
-            } else {
-                message.error('An error occurred: ' + (error.message || 'Unknown error'))
+            // AntD validasyon hataları
+            if (error?.errorFields) {
+                message.error('Lütfen zorunlu alanları doldurun.')
             }
+            // API hataları mutation'ın onError'ı tarafından gösterildi,
+            // modal açık kalır ve kullanıcı tekrar deneyebilir.
         }
     }
 
@@ -376,7 +374,13 @@ function LogTimeModal({
                         >
                             <Select
                                 placeholder="Please select"
-                                options={workTypes.map(w => ({ value: w.id, label: w.name }))}
+                                showSearch
+                                filterOption={(input, option) =>
+                                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                }
+                                options={[...workTypes]
+                                    .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+                                    .map(w => ({ value: w.id, label: w.name }))}
                             />
                         </Form.Item>
 
@@ -388,7 +392,13 @@ function LogTimeModal({
                             <Select
                                 placeholder="Please select"
                                 allowClear
-                                options={activityTypes.map(a => ({ value: a.id, label: a.name }))}
+                                showSearch
+                                filterOption={(input, option) =>
+                                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                }
+                                options={[...activityTypes]
+                                    .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+                                    .map(a => ({ value: a.id, label: a.name }))}
                             />
                         </Form.Item>
 
@@ -400,7 +410,13 @@ function LogTimeModal({
                             <Select
                                 placeholder="Please select"
                                 allowClear
-                                options={platforms.map(p => ({ value: p.id, label: p.name }))}
+                                showSearch
+                                filterOption={(input, option) =>
+                                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                }
+                                options={[...platforms]
+                                    .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+                                    .map(p => ({ value: p.id, label: p.name }))}
                             />
                         </Form.Item>
 
@@ -412,7 +428,13 @@ function LogTimeModal({
                             <Select
                                 placeholder="Please select"
                                 allowClear
-                                options={workLines.map(w => ({ value: w.id, label: w.name }))}
+                                showSearch
+                                filterOption={(input, option) =>
+                                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                }
+                                options={[...workLines]
+                                    .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+                                    .map(w => ({ value: w.id, label: w.name }))}
                             />
                         </Form.Item>
 

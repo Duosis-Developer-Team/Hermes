@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import {
     Card, Table, Button, Space, Modal, Form, Input, Select,
-    message, Popconfirm, Typography, Switch, Tag
+    message, Typography, Switch, Tag, InputNumber
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, ProjectOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -180,13 +180,28 @@ function ProjectsPage() {
                         <Input placeholder="e.g. E-Commerce Platform" />
                     </Form.Item>
                     <Form.Item name="customer_id" label="Customer (Optional)">
-                        <Select placeholder="Select customer (leave empty for internal projects)" allowClear options={customers.map(c => ({ value: c.id, label: c.name }))} />
+                        <Select
+                            placeholder="Select customer (leave empty for internal projects)"
+                            allowClear
+                            showSearch
+                            filterOption={(input, option) =>
+                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                            }
+                            options={customers.map(c => ({ value: c.id, label: c.name }))}
+                        />
                     </Form.Item>
                     {editingId && (
                         <Form.Item name="is_active" label="Status" valuePropName="checked">
                             <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
                         </Form.Item>
                     )}
+                    <Form.Item name="contract_duration_days" label="Contract Duration (Days) — Optional">
+                        <InputNumber
+                            min={1}
+                            placeholder="e.g. 365"
+                            style={{ width: '100%' }}
+                        />
+                    </Form.Item>
                     <Form.Item>
                         <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
                             <Button onClick={handleCloseModal}>Cancel</Button>

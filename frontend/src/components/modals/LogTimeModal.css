@@ -40,6 +40,15 @@
     color: var(--text-primary) !important;
 }
 
+/* AntD v5 inner input fix - duration field text color */
+.log-time-form .ant-input-number-input {
+    color: var(--text-primary) !important;
+}
+
+.log-time-form .ant-input-number-suffix {
+    color: var(--text-secondary) !important;
+}
+
 .log-time-form .ant-input::placeholder,
 .log-time-form .ant-select-selection-placeholder {
     color: var(--text-muted) !important;
