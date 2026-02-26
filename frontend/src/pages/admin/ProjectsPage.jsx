@@ -13,6 +13,7 @@ import {
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, ProjectOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import dayjs from 'dayjs'
 import { projectService, customerService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
 
@@ -146,6 +147,38 @@ function ProjectsPage() {
             key: 'is_active',
             width: 100,
             render: (active) => <Tag color={active ? 'success' : 'default'}>{active ? 'Active' : 'Inactive'}</Tag>,
+        },
+        {
+            title: 'Contract',
+            key: 'contract',
+            width: 200,
+            render: (_, record) => {
+                if (!record.contract_duration_days) return <span style={{ color: 'rgba(255, 255, 255, 0.3)' }}>-</span>
+
+                let remainingText = ""
+                if (record.contract_start_date) {
+                    const startRaw = dayjs(record.contract_start_date)
+                    const todayRaw = dayjs()
+
+                    const start = startRaw.startOf('day')
+                    const today = todayRaw.startOf('day')
+
+                    const daysPassed = today.diff(start, 'day')
+                    const remaining = record.contract_duration_days - daysPassed
+
+                    const color = remaining <= 0 ? '#ff4d4f' : remaining <= 30 ? '#faad14' : 'rgba(255, 255, 255, 0.45)'
+
+                    remainingText = <span style={{ color, fontSize: '12px' }}>({remaining} Days Left)</span>
+                }
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '14px' }}>
+                            {record.contract_duration_days} Days Total
+                        </span>
+                        {remainingText}
+                    </div>
+                )
+            }
         },
         {
             title: 'Actions',
