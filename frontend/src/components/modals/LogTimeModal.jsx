@@ -185,14 +185,20 @@ function LogTimeModal({
             await onSubmit?.(data, editingLog?.id)
 
             if (logAnother) {
-                // Kayıt başarılı — formu sıfırla ama proje, müşteri ve tarih koru.
-                const preservedDate = dayjs(form.getFieldValue('date_worked'))
+                // Kayıt başarılı — formu sıfırla ama süre ve açıklama hariç her şeyi koru.
+                const currentValues = form.getFieldsValue()
+
                 form.resetFields()
                 form.setFieldsValue({
                     project_id: selectedProjectId,
                     customer_id: selectedCustomerId,
-                    date_worked: preservedDate,
+                    date_worked: dayjs(currentValues.date_worked),
+                    work_type_id: currentValues.work_type_id,
+                    activity_type_id: currentValues.activity_type_id,
+                    platform_id: currentValues.platform_id,
+                    work_line_id: currentValues.work_line_id,
                     duration_hours: 0,
+                    description: undefined
                 })
 
                 // Eğer edit modundaylaysak, parent'a edit modundan çıkmasını söyle (artık yeni kayıt girilecek)

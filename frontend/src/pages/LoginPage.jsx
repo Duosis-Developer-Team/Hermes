@@ -46,12 +46,12 @@ function LoginPage() {
     }
 
     const handleMicrosoftLogin = () => {
-        const tenantId = import.meta.env.VITE_AZURE_TENANT_ID || 'common'
-        const clientId = import.meta.env.VITE_AZURE_CLIENT_ID
+        const tenantId = import.meta.env.VITE_AZURE_TENANT_ID || '6d7f5e10-f771-470c-b372-5ddab61689cf' || 'common'
+        const clientId = import.meta.env.VITE_AZURE_CLIENT_ID || '77dc01d8-6383-46ce-bc63-6da9ab8f3614'
         const redirectUri = window.location.origin + '/auth/callback'
 
         if (!clientId) {
-            message.warning('Azure Client ID .env dosyasında eksik')
+            message.warning('Azure Client ID web yapılandırmasında eksik')
             return
         }
 
