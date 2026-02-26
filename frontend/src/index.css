@@ -398,6 +398,54 @@ body {
   background: var(--color-primary) !important;
 }
 
+/* Pagination Styling */
+.ant-pagination .ant-pagination-item {
+  background: var(--bg-tertiary) !important;
+  border-color: var(--border-default) !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+.ant-pagination .ant-pagination-item a {
+  color: var(--text-secondary) !important;
+}
+
+.ant-pagination .ant-pagination-item-active {
+  background: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+}
+
+.ant-pagination .ant-pagination-item-active a {
+  color: #fff !important;
+}
+
+.ant-pagination .ant-pagination-prev .ant-pagination-item-link,
+.ant-pagination .ant-pagination-next .ant-pagination-item-link {
+  background: var(--bg-tertiary) !important;
+  border-color: var(--border-default) !important;
+  color: var(--text-secondary) !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+.ant-pagination .ant-pagination-item:not(.ant-pagination-item-active):hover,
+.ant-pagination .ant-pagination-prev:not(.ant-pagination-disabled):hover .ant-pagination-item-link,
+.ant-pagination .ant-pagination-next:not(.ant-pagination-disabled):hover .ant-pagination-item-link {
+  background: var(--bg-hover) !important;
+  border-color: var(--N500) !important;
+  color: var(--text-primary) !important;
+}
+
+.ant-pagination .ant-pagination-disabled .ant-pagination-item-link {
+  background: var(--bg-secondary) !important;
+  color: var(--text-muted) !important;
+  border-color: var(--border-default) !important;
+}
+
+.ant-pagination-options-size-changer.ant-select .ant-select-selector {
+  background: var(--bg-tertiary) !important;
+  border: 1px solid var(--border-default) !important;
+  color: var(--text-secondary) !important;
+}
+
 /* ==========================================================================
    CUSTOM COMPONENTS - Jira Style
    ========================================================================== */

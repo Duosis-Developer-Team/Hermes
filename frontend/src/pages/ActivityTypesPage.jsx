@@ -125,6 +125,7 @@ function ActivityTypesPage() {
             title: 'Name',
             dataIndex: 'name',
             key: 'name',
+            sorter: (a, b) => a.name.localeCompare(b.name, 'tr'),
         },
         {
             title: 'Code',
@@ -187,6 +188,7 @@ function ActivityTypesPage() {
                     rowKey="id"
                     loading={isLoading}
                     pagination={false}
+                    showSorterTooltip={false}
                 />
             </Card>
 

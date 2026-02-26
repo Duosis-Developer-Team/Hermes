@@ -38,7 +38,8 @@ function LogTimeModal({
     onSubmit,
     initialDate,
     editingLog = null,
-    loading = false
+    loading = false,
+    onLogAnother
 }) {
     const [form] = Form.useForm()
     const [step, setStep] = useState(0) // 0: Customer, 1: Project, 2: Form
@@ -183,9 +184,8 @@ function LogTimeModal({
 
             await onSubmit?.(data, editingLog?.id)
 
-            if (logAnother && !editingLog) {
+            if (logAnother) {
                 // Kayıt başarılı — formu sıfırla ama proje, müşteri ve tarih koru.
-                // resetFields ile tam temizlik, sonra korunan değerleri geri set et.
                 const preservedDate = form.getFieldValue('date_worked')
                 form.resetFields()
                 form.setFieldsValue({
@@ -194,6 +194,12 @@ function LogTimeModal({
                     date_worked: preservedDate,
                     duration_hours: 0,
                 })
+
+                // Eğer edit modundaylaysak, parent'a edit modundan çıkmasını söyle (artık yeni kayıt girilecek)
+                if (editingLog && onLogAnother) {
+                    onLogAnother()
+                }
+
                 message.success('Saved! Ready for next entry.')
             } else {
                 handleClose()

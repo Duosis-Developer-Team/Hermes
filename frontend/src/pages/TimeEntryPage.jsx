@@ -426,6 +426,7 @@ function TimeEntryPage() {
                     setEditingLog(null)
                 }}
                 onSubmit={handleLogTimeSubmit}
+                onLogAnother={() => setEditingLog(null)}
                 initialDate={selectedDate}
                 editingLog={editingLog}
                 loading={createMutation.isPending || updateMutation.isPending}

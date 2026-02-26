@@ -140,6 +140,7 @@ function ProjectsPage() {
             dataIndex: 'customer_name',
             key: 'customer_name',
             render: (name) => name || <p>Internal Project</p>,
+            sorter: (a, b) => (a.customer_name || 'Internal').localeCompare(b.customer_name || 'Internal'),
         },
         {
             title: 'Status',
@@ -152,6 +153,7 @@ function ProjectsPage() {
             title: 'Contract',
             key: 'contract',
             width: 200,
+            sorter: (a, b) => (a.contract_duration_days || 0) - (b.contract_duration_days || 0),
             render: (_, record) => {
                 if (!record.contract_duration_days) return <span style={{ color: 'rgba(255, 255, 255, 0.3)' }}>-</span>
 
@@ -204,7 +206,14 @@ function ProjectsPage() {
                 title={`📋 Project List (${projects.length})`}
                 extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>New Project</Button>}
             >
-                <Table dataSource={projects} columns={columns} rowKey="id" loading={isLoading} pagination={{ pageSize: 10 }} />
+                <Table
+                    dataSource={projects}
+                    columns={columns}
+                    rowKey="id"
+                    loading={isLoading}
+                    pagination={{ pageSize: 10 }}
+                    showSorterTooltip={false}
+                />
             </Card>
 
             <Modal title={editingId ? '✏️ Edit Project' : '➕ New Project'} open={modalOpen} onCancel={handleCloseModal} footer={null}>
