@@ -200,8 +200,15 @@ function ProjectsPage() {
                             min={1}
                             placeholder="e.g. 365"
                             style={{ width: '100%' }}
+                            className="contrast-placeholder"
                         />
                     </Form.Item>
+
+                    <style>{`
+                        .contrast-placeholder input::placeholder {
+                            color: rgba(255, 255, 255, 0.35) !important;
+                        }
+                    `}</style>
                     <Form.Item>
                         <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
                             <Button onClick={handleCloseModal}>Cancel</Button>

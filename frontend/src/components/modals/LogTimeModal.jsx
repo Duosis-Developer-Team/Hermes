@@ -184,17 +184,17 @@ function LogTimeModal({
             await onSubmit?.(data, editingLog?.id)
 
             if (logAnother && !editingLog) {
-                // Kayıt başarılı — per-entry alanları temizle, step 2'de kal.
-                // Proje, müşteri ve tarih korunur; kullanıcı aynı proje için
-                // hızlıca bir sonraki kaydı girebilir.
+                // Kayıt başarılı — formu sıfırla ama proje, müşteri ve tarih koru.
+                // resetFields ile tam temizlik, sonra korunan değerleri geri set et.
+                const preservedDate = form.getFieldValue('date_worked')
+                form.resetFields()
                 form.setFieldsValue({
+                    project_id: selectedProjectId,
+                    customer_id: selectedCustomerId,
+                    date_worked: preservedDate,
                     duration_hours: 0,
-                    description: '',
-                    work_type_id: undefined,
-                    activity_type_id: undefined,
-                    platform_id: undefined,
-                    work_line_id: undefined,
                 })
+                message.success('Saved! Ready for next entry.')
             } else {
                 handleClose()
             }

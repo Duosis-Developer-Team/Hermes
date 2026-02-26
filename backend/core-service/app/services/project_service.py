@@ -49,6 +49,38 @@ class ProjectService(BaseCRUDService[Project, ProjectCreate, ProjectUpdate]):
         
         return super().create(data)
     
+    def update(self, id: UUID, data: ProjectUpdate) -> Project:
+        """
+        Projeyi günceller.
+        
+        contract_duration_days verilip contract_start_date verilmemişse,
+        mevcut projede de yoksa otomatik olarak bugünün tarihi atanır.
+        """
+        # Müşteri ID'si verilmişse varlığını kontrol et
+        update_data = data.model_dump(exclude_unset=True)
+        
+        if 'customer_id' in update_data and update_data['customer_id']:
+            customer = self.db.query(Customer).filter(
+                Customer.id == update_data['customer_id']
+            ).first()
+            if not customer:
+                raise NotFoundError("Müşteri", update_data['customer_id'])
+        
+        # Contract duration verilip start_date yoksa otomatik bugünü ata
+        if 'contract_duration_days' in update_data and update_data['contract_duration_days']:
+            if 'contract_start_date' not in update_data or not update_data.get('contract_start_date'):
+                project = self.get_by_id_or_404(id)
+                if not project.contract_start_date:
+                    update_data['contract_start_date'] = datetime.now(timezone.utc)
+        
+        # Do the update manually instead of calling super().update()
+        project = self.get_by_id_or_404(id)
+        for field, value in update_data.items():
+            setattr(project, field, value)
+        self.db.commit()
+        self.db.refresh(project)
+        return project
+    
     def get_by_customer(
         self,
         customer_id: UUID,
