@@ -186,7 +186,7 @@ function LogTimeModal({
 
             if (logAnother) {
                 // Kayıt başarılı — formu sıfırla ama proje, müşteri ve tarih koru.
-                const preservedDate = form.getFieldValue('date_worked')
+                const preservedDate = dayjs(form.getFieldValue('date_worked'))
                 form.resetFields()
                 form.setFieldsValue({
                     project_id: selectedProjectId,
@@ -205,9 +205,13 @@ function LogTimeModal({
                 handleClose()
             }
         } catch (error) {
+            console.error('Submit Error:', error)
             // AntD validasyon hataları
             if (error?.errorFields) {
                 message.error('Lütfen zorunlu alanları doldurun.')
+            } else {
+                // Runtime JS hataları veya validation-dışı hatalar (örneğin date format vs)
+                message.error('Beklenmeyen bir hata oluştu: ' + (error?.message || ''))
             }
             // API hataları mutation'ın onError'ı tarafından gösterildi,
             // modal açık kalır ve kullanıcı tekrar deneyebilir.
