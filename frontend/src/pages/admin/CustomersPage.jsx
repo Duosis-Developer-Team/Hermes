@@ -183,6 +183,7 @@ function CustomersPage() {
                     rowKey="id"
                     loading={isLoading}
                     pagination={{ pageSize: 10 }}
+                    showSorterTooltip={false}
                 />
             </Card>
 
