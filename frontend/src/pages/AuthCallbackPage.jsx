@@ -55,7 +55,7 @@ function AuthCallbackPage() {
                 message.success('Giriş başarılı!')
                 navigate('/')
             } catch (error) {
-                console.error('SSO Error:', error)
+                // console.log kaldırıldı (ORTA-9)
                 message.error('Microsoft girişi başarısız oldu.')
                 navigate('/login')
             }

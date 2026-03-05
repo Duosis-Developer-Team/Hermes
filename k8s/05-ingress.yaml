@@ -14,7 +14,8 @@ spec:
     secretName: hermes-tls
   ingressClassName: nginx
   rules:
-  - http:
+  - host: 84.247.180.172
+    http:
       paths:
       # Auth Service Routes
       - path: /api/v1/auth

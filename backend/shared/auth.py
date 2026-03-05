@@ -15,7 +15,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer

@@ -92,6 +92,9 @@ def submit_timesheet(
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user)
 ):
+    if submission_in.reviewer_id and str(submission_in.reviewer_id) == str(current_user.id):
+        raise HTTPException(status_code=400, detail="Kendinizi kendi zaman çizelgeniz için onaylayıcı olarak seçemezsiniz.")
+
     # Check if already submitted
     existing = db.query(TimesheetSubmission).filter(
         TimesheetSubmission.user_id == current_user.id,

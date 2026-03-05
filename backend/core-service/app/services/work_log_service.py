@@ -183,9 +183,27 @@ class WorkLogService:
         """Kullanıcının toplam zaman girişi sayısını döner."""
         return self.db.query(WorkLog).filter(WorkLog.user_id == user_id).count()
     
-    def count_all_logs(self) -> int:
+    def count_all_logs(
+        self,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        customer_id: Optional[UUID] = None,
+        project_id: Optional[UUID] = None,
+        user_id: Optional[UUID] = None
+    ) -> int:
         """Toplam zaman girişi sayısını döner."""
-        return self.db.query(WorkLog).count()
+        query = self.db.query(WorkLog)
+        if start_date:
+            query = query.filter(WorkLog.date_worked >= start_date)
+        if end_date:
+            query = query.filter(WorkLog.date_worked <= end_date)
+        if customer_id:
+            query = query.filter(WorkLog.customer_id == customer_id)
+        if project_id:
+            query = query.filter(WorkLog.project_id == project_id)
+        if user_id:
+            query = query.filter(WorkLog.user_id == user_id)
+        return query.count()
     
     # =========================================================================
     # UPDATE

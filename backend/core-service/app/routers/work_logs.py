@@ -124,7 +124,13 @@ async def list_all_work_logs(
         project_id=project_id,
         user_id=user_id
     )
-    total = service.count_all_logs()
+    total = service.count_all_logs(
+        start_date=start_date,
+        end_date=end_date,
+        customer_id=customer_id,
+        project_id=project_id,
+        user_id=user_id
+    )
     
     return WorkLogListResponse(
         success=True,

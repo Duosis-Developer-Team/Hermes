@@ -74,7 +74,9 @@ async def get_dashboard_v1(
         data = await service.get_dashboard_data(start_date, end_date)
         return data
     except Exception as e:
+        import logging
+        logging.getLogger(__name__).error("Dashboard veri alma hatası", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Dashboard verisi alınamadı: {str(e)}"
+            detail="Dashboard verisi alınamadı. Lütfen tekrar deneyin."
         )

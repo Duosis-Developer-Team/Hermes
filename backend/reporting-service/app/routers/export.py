@@ -68,9 +68,11 @@ async def export_excel_v1(
         )
     
     except Exception as e:
+        import logging
+        logging.getLogger(__name__).error("Excel export hatası", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Excel raporu oluşturulamadı: {str(e)}"
+            detail="Excel raporu oluşturulamadı. Lütfen tekrar deneyin."
         )
 
 
