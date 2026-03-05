@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: hermes-test
+  labels:
+    app: auth-service
+    environment: test
+    project: hermes
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+        environment: test
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+      - name: auth-service
+        image: ghcr.io/duosis-developer-team/hermes-auth-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        env:
+        # Database Connection
+        - name: AUTH_DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: DB_HOST_AUTH
+        - name: AUTH_DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: DB_PORT
+        - name: AUTH_DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: POSTGRES_USER
+        - name: AUTH_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hermes-secrets
+              key: POSTGRES_PASSWORD
+        - name: AUTH_DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: POSTGRES_DB_AUTH
+
+        # Security
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: hermes-secrets
+              key: JWT_SECRET_KEY
+        - name: AZURE_CLIENT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: AZURE_CLIENT_ID
+        - name: AZURE_TENANT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: AZURE_TENANT_ID
+        - name: AZURE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: hermes-secrets
+              key: AZURE_CLIENT_SECRET
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 20
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: hermes-test
+  labels:
+    environment: test
+    project: hermes
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: auth-service

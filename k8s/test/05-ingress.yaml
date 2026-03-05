@@ -1,0 +1,61 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hermes-test-ingress
+  namespace: hermes-test
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+spec:
+  ingressClassName: nginx-test  # <-- ayrı controller, dev'e dokunmaz
+  tls:
+  - hosts:
+    - "84.247.180.172"
+    secretName: hermes-tls
+  rules:
+  # Test ortamı: https://84.247.180.172:30443
+  - http:
+      paths:
+      # Auth Service Routes
+      - path: /api/v1/auth
+        pathType: Prefix
+        backend:
+          service:
+            name: auth-service
+            port:
+              number: 80
+      - path: /api/v1/users
+        pathType: Prefix
+        backend:
+          service:
+            name: auth-service
+            port:
+              number: 80
+
+      # Reporting Service Routes
+      - path: /api/v1/reports
+        pathType: Prefix
+        backend:
+          service:
+            name: reporting-service
+            port:
+              number: 80
+
+      # Core Service Routes (Catch-all for API)
+      - path: /api/v1
+        pathType: Prefix
+        backend:
+          service:
+            name: core-service
+            port:
+              number: 80
+
+      # Frontend (Root)
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 80
+

@@ -1,0 +1,23 @@
+# Nginx Ingress Controller — NodePort Patch
+# Bu dosya, mevcut nginx-ingress controller'ın HTTP portunu 30880 olarak açar.
+#
+# Kullanım (Termius'tan):
+#   kubectl patch svc ingress-nginx-controller \
+#     -n ingress-nginx \
+#     --patch-file k8s/test/nginx-nodeport-patch.yaml
+#
+# UYARI: Bu işlem DEV ingress'ini etkilemez çünkü sadece controller servisine
+# yeni bir NodePort ekler. Mevcut 80/443 portları çalışmaya devam eder.
+
+spec:
+  ports:
+  - name: http
+    nodePort: 30880
+    port: 80
+    protocol: TCP
+    targetPort: http
+  - name: https
+    nodePort: 30443
+    port: 443
+    protocol: TCP
+    targetPort: https

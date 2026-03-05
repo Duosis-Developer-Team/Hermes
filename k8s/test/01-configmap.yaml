@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hermes-config
+  namespace: hermes-test
+  labels:
+    environment: test
+    project: hermes
+data:
+  # Database Connection Info
+  DB_HOST_AUTH: "auth-db"
+  DB_HOST_CORE: "core-db"
+  DB_PORT: "5432"
+  POSTGRES_USER: "hermes"
+  POSTGRES_DB_AUTH: "auth_db"
+  POSTGRES_DB_CORE: "core_db"
+
+  # Service URLs (Internal K8s DNS — hermes-test namespace)
+  AUTH_SERVICE_URL: "http://auth-service/api/v1"
+  CORE_SERVICE_URL: "http://core-service/api/v1"
+  REPORTING_SERVICE_URL: "http://reporting-service/api/v1"
+
+  # App Settings
+  ENVIRONMENT: "test"
+  LOG_LEVEL: "INFO"
+
+  # Azure AD Config
+  AZURE_CLIENT_ID: "77dc01d8-6383-46ce-bc63-6da9ab8f3614"
+  AZURE_TENANT_ID: "6d7f5e10-f771-470c-b372-5ddab61689cf"
