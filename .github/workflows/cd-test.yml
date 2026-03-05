@@ -1,0 +1,86 @@
+name: CD - Test (Hermes)
+
+on:
+  push:
+    branches: [ "test" ]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build_push_deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      NAMESPACE: hermes-test
+      REGISTRY: ghcr.io
+      OWNER: duosis-developer-team
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push images (tags = commit SHA & latest)
+        run: |
+          TAG="${GITHUB_SHA}"
+
+          AUTH_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-auth-service:${TAG}"
+          AUTH_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-auth-service:latest"
+          
+          CORE_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-core-service:${TAG}"
+          CORE_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-core-service:latest"
+
+          REPORTING_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-reporting-service:${TAG}"
+          REPORTING_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-reporting-service:latest"
+
+          FRONTEND_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-frontend:${TAG}"
+          FRONTEND_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-frontend:latest"
+
+          docker build -t "$AUTH_IMAGE_SHA" -t "$AUTH_IMAGE_LATEST" -f "backend/auth-service/Dockerfile" ./backend
+          docker push "$AUTH_IMAGE_SHA"
+          docker push "$AUTH_IMAGE_LATEST"
+
+          docker build -t "$CORE_IMAGE_SHA" -t "$CORE_IMAGE_LATEST" -f "backend/core-service/Dockerfile" ./backend
+          docker push "$CORE_IMAGE_SHA"
+          docker push "$CORE_IMAGE_LATEST"
+
+          docker build -t "$REPORTING_IMAGE_SHA" -t "$REPORTING_IMAGE_LATEST" -f "backend/reporting-service/Dockerfile" ./backend
+          docker push "$REPORTING_IMAGE_SHA"
+          docker push "$REPORTING_IMAGE_LATEST"
+
+          docker build -t "$FRONTEND_IMAGE_SHA" -t "$FRONTEND_IMAGE_LATEST" ./frontend
+          docker push "$FRONTEND_IMAGE_SHA"
+          docker push "$FRONTEND_IMAGE_LATEST"
+
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG_B64 }}" | base64 -d > ~/.kube/config
+
+      - name: Deploy (Force Latest and Restart)
+        run: |
+          # 1. Force the cluster deployments to point to :latest (unpins from any manual SHA)
+          kubectl -n "${NAMESPACE}" set image deployment/auth-service auth-service="${REGISTRY}/${OWNER}/hermes-auth-service:latest"
+          kubectl -n "${NAMESPACE}" set image deployment/core-service core-service="${REGISTRY}/${OWNER}/hermes-core-service:latest"
+          kubectl -n "${NAMESPACE}" set image deployment/reporting-service reporting-service="${REGISTRY}/${OWNER}/hermes-reporting-service:latest"
+          kubectl -n "${NAMESPACE}" set image deployment/frontend frontend="${REGISTRY}/${OWNER}/hermes-frontend:latest"
+
+          # 2. Trigger rollout to pull newly pushed images (cache bust)
+          kubectl -n "${NAMESPACE}" rollout restart deployment/auth-service
+          kubectl -n "${NAMESPACE}" rollout restart deployment/core-service
+          kubectl -n "${NAMESPACE}" rollout restart deployment/reporting-service
+          kubectl -n "${NAMESPACE}" rollout restart deployment/frontend
+
+          # 3. Wait for rollout completion
+          kubectl -n "${NAMESPACE}" rollout status deployment/auth-service --timeout=180s
+          kubectl -n "${NAMESPACE}" rollout status deployment/core-service --timeout=180s
+          kubectl -n "${NAMESPACE}" rollout status deployment/reporting-service --timeout=180s
+          kubectl -n "${NAMESPACE}" rollout status deployment/frontend --timeout=180s
