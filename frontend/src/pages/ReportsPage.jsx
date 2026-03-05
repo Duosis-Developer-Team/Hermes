@@ -430,7 +430,9 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             title: 'Date',
             dataIndex: 'date',
             width: 130,
-            sorter: (a, b) => a.date?.localeCompare(b.date),
+            sorter: (a, b) => (a.date || '').localeCompare(b.date || ''),
+            sortDirections: ['ascend', 'descend', null],
+            showSorterTooltip: false,
             render: d => (
                 <span style={{ color: '#888', fontFamily: 'monospace', fontSize: 13 }}>
                     {dayjs(d).format('DD MMM YYYY')}
@@ -441,24 +443,36 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             title: 'User',
             dataIndex: 'user_name',
             width: 160,
+            sorter: (a, b) => (a.user_name || '').localeCompare(b.user_name || '', 'tr'),
+            sortDirections: ['ascend', 'descend', null],
+            showSorterTooltip: false,
             render: u => <span style={{ color: '#ccc', fontWeight: 500 }}>{u}</span>
         },
         {
             title: 'Customer',
             dataIndex: 'customer_name',
             width: 180,
+            sorter: (a, b) => (a.customer_name || '').localeCompare(b.customer_name || '', 'tr'),
+            sortDirections: ['ascend', 'descend', null],
+            showSorterTooltip: false,
             render: c => <span style={{ color: '#e5e5e5' }}>{c}</span>
         },
         {
             title: 'Project',
             dataIndex: 'project_name',
             width: 200,
+            sorter: (a, b) => (a.project_name || '').localeCompare(b.project_name || '', 'tr'),
+            sortDirections: ['ascend', 'descend', null],
+            showSorterTooltip: false,
             render: p => <span style={{ color: '#e5e5e5' }}>{p}</span>
         },
         {
             title: 'Type',
             dataIndex: 'work_type',
             width: 140,
+            sorter: (a, b) => (a.work_type || '').localeCompare(b.work_type || '', 'tr'),
+            sortDirections: ['ascend', 'descend', null],
+            showSorterTooltip: false,
             render: t => (
                 <Tag style={{
                     background: 'rgba(87,157,255,0.12)',
@@ -484,6 +498,8 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             width: 90,
             align: 'right',
             sorter: (a, b) => (a.duration || 0) - (b.duration || 0),
+            sortDirections: ['ascend', 'descend', null],
+            showSorterTooltip: false,
             render: h => (
                 <span style={{ color: '#4ade80', fontWeight: 700, fontFamily: 'monospace' }}>
                     {(h || 0).toFixed(2)}
@@ -504,9 +520,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                         </div>
                         <Statistic
                             title="Total Hours"
-                            value={totalHours}
-                            precision={2}
-                            suffix={<span style={{ fontSize: 13, color: '#555', marginLeft: 4 }}>h</span>}
+                            value={`${totalHours.toFixed(2)} h`}
                         />
                     </div>
                 </Col>
@@ -567,6 +581,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                             )
                         }}
                         loading={isLoading || isFetching}
+                        showSorterTooltip={false}
                         scroll={{ y: 520 }}
                     />
                 )}
