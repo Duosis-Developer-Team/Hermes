@@ -32,8 +32,8 @@ function LoginPage() {
             // API'ye login isteği gönder
             const response = await authService.login(values.email, values.password)
 
-            // Token ve kullanıcı bilgilerini store'a kaydet
-            login(response.access_token, response.user)
+            // [KRİTİK-6] Token cookie olarak backend'den geldi; store'a yalnızca user kaydedilir
+            login(response.user)
 
             message.success('Giriş başarılı!')
             navigate('/time-entry')

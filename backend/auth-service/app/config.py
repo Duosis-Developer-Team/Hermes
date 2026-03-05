@@ -76,12 +76,17 @@ class Settings(BaseSettings):
         )
     
     # ==========================================================================
-    # JWT Configuration
+    # JWT Configuration — RS256 Asimetrik (KRİTİK-2)
     # ==========================================================================
-    
-    # UYARI: Üretim ortamında bu değeri mutlaka değiştirin!
-    JWT_SECRET_KEY: str = "hermes-dev-secret-key-change-in-production"
-    JWT_ALGORITHM: str = "HS256"
+    #
+    # auth-service: Hem private hem public key'e sahip olmalı.
+    #   JWT_PRIVATE_KEY → shared/auth.py'de SIGNING_KEY olarak yüklenir
+    #   JWT_PUBLIC_KEY  → shared/auth.py'de VERIFY_KEY olarak yüklenir
+    #
+    # Bu değerler shared/auth.py modülü tarafından doğrudan env'den okunur;
+    # burada yalnızca expire süresi ayarlanır.
+    # ==========================================================================
+
     JWT_EXPIRE_MINUTES: int = 60  # 1 saat
     
     # ==========================================================================

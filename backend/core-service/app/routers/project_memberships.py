@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -6,20 +6,23 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import ProjectMembership, Project
 from ..schemas.project_membership import ProjectMembershipCreate, ProjectMembershipUpdate, ProjectMembershipResponse
-from shared.auth import get_current_user
+from shared.auth import get_current_user, require_admin, CurrentUser
 
 router = APIRouter(
     prefix="/project-memberships",
     tags=["Project Memberships"]
 )
 
+# [KRİTİK-5] Proje üyeliği oluşturma ve silme yalnızca Admin kullanıcılara açık.
+# Standart kullanıcıların kendilerini veya başkalarını projeye eklemesi/çıkarması engellendi.
+
 @router.post("", response_model=ProjectMembershipResponse, status_code=status.HTTP_201_CREATED)
 def create_membership(
     mem_in: ProjectMembershipCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    admin: CurrentUser = Depends(require_admin),  # [KRİTİK-5] Sadece Admin
 ):
-    # Proje var mı ?
+    # Proje var mı?
     project = db.query(Project).filter(Project.id == mem_in.project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -29,7 +32,7 @@ def create_membership(
         ProjectMembership.project_id == mem_in.project_id,
         ProjectMembership.user_id == mem_in.user_id
     ).first()
-    
+
     if existing:
         raise HTTPException(status_code=400, detail="User is already a member of this project")
 
@@ -41,10 +44,10 @@ def create_membership(
 
 @router.get("", response_model=List[ProjectMembershipResponse])
 def get_memberships(
-    project_id: UUID = None,
-    user_id: UUID = None,
+    project_id: Optional[UUID] = None,
+    user_id: Optional[UUID] = None,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     query = db.query(ProjectMembership)
     if project_id:
@@ -57,7 +60,7 @@ def get_memberships(
 def delete_membership(
     mem_id: UUID,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    admin: CurrentUser = Depends(require_admin),  # [KRİTİK-5] Sadece Admin
 ):
     mem = db.query(ProjectMembership).filter(ProjectMembership.id == mem_id).first()
     if not mem:

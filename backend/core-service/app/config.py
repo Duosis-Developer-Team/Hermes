@@ -54,11 +54,15 @@ class Settings(BaseSettings):
         )
     
     # ==========================================================================
-    # JWT Configuration (Doğrulama için - auth-service ile aynı secret!)
+    # JWT Configuration — RS256 Asimetrik (KRİTİK-2)
     # ==========================================================================
-    
-    JWT_SECRET_KEY: str = "hermes-dev-secret-key-change-in-production"
-    JWT_ALGORITHM: str = "HS256"
+    #
+    # core-service: YALNIZCA JWT_PUBLIC_KEY kullanır (doğrulama).
+    # Private key bu serviste TANIMLI DEĞİL — kasıtlı izolasyon.
+    #
+    # JWT_PUBLIC_KEY → shared/auth.py'de VERIFY_KEY olarak yüklenir.
+    # K8s'te hermes-jwt-public secret'ına bağlıdır.
+    # ==========================================================================
     
     # ==========================================================================
     # Service URLs (Mikroservisler arası iletişim)

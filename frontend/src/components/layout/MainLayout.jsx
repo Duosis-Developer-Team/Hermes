@@ -25,6 +25,7 @@ import {
     SettingOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
+import { authService } from '../../services/api'
 import logoFull from '../../assets/logos/logo-full-dark.jpg'
 import logoText from '../../assets/logos/logo-text-dark.jpg'
 import './MainLayout.css'
@@ -143,9 +144,14 @@ function MainLayout() {
             icon: <LogoutOutlined />,
             label: 'Logout',
             danger: true,
-            onClick: () => {
-                logout()
-                navigate('/login')
+            onClick: async () => {
+                // [KRİTİK-6] Backend cookie'yi siler, sonra UI state temizlenir
+                try {
+                    await authService.logout()
+                } finally {
+                    logout()
+                    navigate('/login')
+                }
             },
         },
     ]

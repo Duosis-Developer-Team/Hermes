@@ -23,9 +23,13 @@ class Settings(BaseSettings):
     AUTH_SERVICE_URL: str = "http://localhost:8000"
     CORE_SERVICE_URL: str = "http://localhost:8001"
     
-    # JWT doğrulama için (auth-service ile aynı)
-    JWT_SECRET_KEY: str = "hermes-dev-secret-key-change-in-production"
-    JWT_ALGORITHM: str = "HS256"
+    # JWT Configuration — RS256 Asimetrik (KRİTİK-2)
+    #
+    # reporting-service: YALNIZCA JWT_PUBLIC_KEY kullanır (doğrulama).
+    # Private key bu serviste TANIMLI DEĞİL — kasıtlı izolasyon.
+    #
+    # JWT_PUBLIC_KEY → shared/auth.py'de VERIFY_KEY olarak yüklenir.
+    # K8s'te hermes-jwt-public secret'ına bağlıdır.
     
     CORS_ORIGINS: list = [
         "http://localhost:3000",

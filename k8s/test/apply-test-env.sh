@@ -33,8 +33,8 @@ echo ""
 
 # ---- ADIM 3: Secrets — Dev'den kopyala ----
 echo "[3/8] Secret'lar kopyalanıyor (dev → hermes-test)..."
-kubectl get secret hermes-secrets --namespace=hermes -o yaml \
-  | sed 's/namespace: hermes$/namespace: hermes-test/' \
+kubectl get secret hermes-secrets --namespace=hermes-dev -o yaml \
+  | sed 's/namespace: hermes-dev/namespace: hermes-test/' \
   | kubectl apply -f -
 echo "✓ hermes-secrets kopyalandı."
 echo ""
@@ -42,13 +42,9 @@ echo ""
 # ---- ADIM 4: TLS Secret kopyala ----
 echo "[4/8] TLS secret kopyalanıyor (dev → hermes-test)..."
 # Önce dev namespace'in adını bul (hermes veya hermes-dev)
-if kubectl get secret hermes-tls --namespace=hermes > /dev/null 2>&1; then
-  kubectl get secret hermes-tls --namespace=hermes -o yaml \
-    | sed 's/namespace: hermes$/namespace: hermes-test/' \
-    | kubectl apply -f -
-elif kubectl get secret hermes-tls --namespace=hermes-dev > /dev/null 2>&1; then
+if kubectl get secret hermes-tls --namespace=hermes-dev > /dev/null 2>&1; then
   kubectl get secret hermes-tls --namespace=hermes-dev -o yaml \
-    | sed 's/namespace: hermes-dev$/namespace: hermes-test/' \
+    | sed 's/namespace: hermes-dev/namespace: hermes-test/' \
     | kubectl apply -f -
 else
   echo "⚠️  hermes-tls bulunamadı. TLS sertifikası manuel oluşturuluyor..."
@@ -62,8 +58,8 @@ echo ""
 
 # ---- ADIM 5: GHCR Secret ----
 echo "[5/8] GHCR pull secret kopyalanıyor..."
-kubectl get secret ghcr-secret --namespace=hermes -o yaml \
-  | sed 's/namespace: hermes$/namespace: hermes-test/' \
+kubectl get secret ghcr-secret --namespace=hermes-dev -o yaml \
+  | sed 's/namespace: hermes-dev/namespace: hermes-test/' \
   | kubectl apply -f -
 echo "✓ GHCR Secret kopyalandı."
 echo ""

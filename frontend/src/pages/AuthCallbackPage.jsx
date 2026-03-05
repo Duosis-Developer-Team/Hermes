@@ -37,22 +37,20 @@ function AuthCallbackPage() {
                 // Redirect URI, Azure'da kayıtlı olanla aynı olmalı
                 const redirectUri = window.location.origin + '/auth/callback'
 
+                // [KRİTİK-6] Backend artık token döndürmez; HttpOnly cookie set eder.
+                // Response yalnızca { user } içerir. console.log'lar kaldırıldı.
                 const data = await authService.microsoftLogin({
                     code,
                     redirect_uri: redirectUri
                 })
 
-                console.log("SSO RESPONSE DATA:", data)
-
-                const { access_token, user } = data
-                console.log("Extracted Token:", access_token)
-                console.log("Extracted User:", user)
-
-                // Store'a kaydet
-                if (!access_token) {
-                    throw new Error("Access token missing in response")
+                const user = data?.user
+                if (!user) {
+                    throw new Error("Kullanıcı bilgisi alınamadı")
                 }
-                login(access_token, user)
+
+                // Store'a yalnızca kullanıcı bilgisi kaydedilir — token değil
+                login(user)
 
                 message.success('Giriş başarılı!')
                 navigate('/')

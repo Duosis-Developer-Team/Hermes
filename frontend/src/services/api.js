@@ -25,38 +25,37 @@ const API_URLS = {
 
 /**
  * Axios instance oluştur
+ *
+ * [KRİTİK-6] withCredentials: true — tarayıcı, HttpOnly cookie'yi
+ * her istekte otomatik olarak backend'e gönderir.
+ * Manuel token ekleme / Authorization header'ı KALDIRILDI.
+ *
  * @param {string} baseURL - Base URL
  */
 const createApiClient = (baseURL) => {
     const client = axios.create({
         baseURL,
         timeout: 30000,
+        withCredentials: true, // HttpOnly cookie otomatik gönderilir
         headers: {
             'Content-Type': 'application/json',
         },
     })
 
-    // Request interceptor - Token ekle
+    // Request interceptor — token ekleme yok; cookie otomatik gönderilir
     client.interceptors.request.use(
-        (config) => {
-            const token = useAuthStore.getState().token
-            if (token) {
-                config.headers.Authorization = `Bearer ${token}`
-            }
-            return config
-        },
+        (config) => config,
         (error) => Promise.reject(error)
     )
 
-    // Response interceptor - Hata yönetimi
+    // Response interceptor — 401'de UI state'ini temizle
     client.interceptors.response.use(
         (response) => response,
         (error) => {
-            // 401 Unauthorized - Token geçersiz, çıkış yap
             if (error.response?.status === 401) {
+                // Cookie backend tarafından zaten geçersiz/süresi dolmuş.
+                // Yalnızca UI state'ini temizle; cookie'yi silmek için /auth/logout çağrılmalı.
                 useAuthStore.getState().logout()
-                // React Router yönlendirmesi için location yerine reject kullan
-                // window.location.href = '/login' kaldırıldı - redirect loop'a neden oluyordu
             }
             return Promise.reject(error)
         }
@@ -76,7 +75,12 @@ const reportsApi = createApiClient(API_URLS.reports)
 
 export const authService = {
     /**
-     * Login - E-posta ve şifre ile giriş
+     * Login — E-posta ve şifre ile giriş.
+     *
+     * [KRİTİK-6] Backend artık token döndürmez; HttpOnly cookie set eder.
+     * Response yalnızca { user } içerir.
+     *
+     * @returns {{ user: object }}
      */
     login: async (email, password) => {
         const formData = new URLSearchParams()
@@ -86,16 +90,29 @@ export const authService = {
         const response = await authApi.post('/api/v1/auth/token', formData, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         })
+        // response.data = { user: {...} }
         return response.data
     },
 
     /**
-     * Microsoft SSO Login
+     * Microsoft SSO Login.
+     *
+     * [KRİTİK-6] Backend HttpOnly cookie set eder; response yalnızca { user }.
+     *
      * @param {Object} data { code, redirect_uri }
+     * @returns {{ user: object }}
      */
     microsoftLogin: async (data) => {
         const response = await authApi.post('/api/v1/auth/microsoft', data)
         return response.data
+    },
+
+    /**
+     * Oturumu kapat.
+     * Backend cookie'yi siler; store logout() ile UI state temizlenir.
+     */
+    logout: async () => {
+        await authApi.post('/api/v1/auth/logout')
     },
 
     /**

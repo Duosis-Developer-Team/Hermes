@@ -1,8 +1,9 @@
 from datetime import date, timedelta
 from typing import Optional, Dict, List
+from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Response, HTTPException, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, func, cast, String
+from sqlalchemy import desc, func
 import pandas as pd
 import io
 import httpx
@@ -91,13 +92,13 @@ async def export_excel(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     # Legacy single-value params kept for backward compatibility
-    user_id: Optional[str] = Query(None),
-    customer_id: Optional[str] = Query(None),
-    # New: multi-select filter params (UUID strings)
-    user_ids: Optional[List[str]] = Query(None),
-    customer_ids: Optional[List[str]] = Query(None),
-    project_ids: Optional[List[str]] = Query(None),
-    work_type_ids: Optional[List[str]] = Query(None),
+    user_id: Optional[UUID] = Query(None),      # [YÜKSEK-9] str → UUID
+    customer_id: Optional[UUID] = Query(None),  # [YÜKSEK-9] str → UUID
+    # [YÜKSEK-9] List[str] → List[UUID] — Pydantic geçersiz UUID'i 422 ile reddeder
+    user_ids: Optional[List[UUID]] = Query(None),
+    customer_ids: Optional[List[UUID]] = Query(None),
+    project_ids: Optional[List[UUID]] = Query(None),
+    work_type_ids: Optional[List[UUID]] = Query(None),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -137,23 +138,23 @@ async def export_excel(
         if not current_user.is_admin:
             query = query.filter(WorkLog.user_id == current_user.id)
         else:
-            # Multi-select users takes precedence over legacy single user_id
+            # [YÜKSEK-9] cast(…, String) kaldırıldı — UUID tipi doğrudan kullanılır
             if user_ids:
-                query = query.filter(cast(WorkLog.user_id, String).in_(user_ids))
+                query = query.filter(WorkLog.user_id.in_(user_ids))
             elif user_id:
-                query = query.filter(cast(WorkLog.user_id, String) == user_id)
+                query = query.filter(WorkLog.user_id == user_id)
 
-        # Multi-select filters
+        # [YÜKSEK-9] Multi-select filtreler — cast() olmadan UUID ile doğrudan karşılaştırma
         if customer_ids:
-            query = query.filter(cast(WorkLog.customer_id, String).in_(customer_ids))
+            query = query.filter(WorkLog.customer_id.in_(customer_ids))
         elif customer_id:
-            query = query.filter(cast(WorkLog.customer_id, String) == customer_id)
+            query = query.filter(WorkLog.customer_id == customer_id)
 
         if project_ids:
-            query = query.filter(cast(WorkLog.project_id, String).in_(project_ids))
+            query = query.filter(WorkLog.project_id.in_(project_ids))
 
         if work_type_ids:
-            query = query.filter(cast(WorkLog.work_type_id, String).in_(work_type_ids))
+            query = query.filter(WorkLog.work_type_id.in_(work_type_ids))
 
         # Date range
         if start_date:
@@ -375,11 +376,11 @@ async def get_user_logs_json(
     request: Request,
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
-    # Multi-select filter params
-    user_ids: Optional[List[str]] = Query(None),
-    customer_ids: Optional[List[str]] = Query(None),
-    project_ids: Optional[List[str]] = Query(None),
-    work_type_ids: Optional[List[str]] = Query(None),
+    # [YÜKSEK-9] List[str] → List[UUID] — geçersiz UUID Pydantic tarafından 422 ile reddedilir
+    user_ids: Optional[List[UUID]] = Query(None),
+    customer_ids: Optional[List[UUID]] = Query(None),
+    project_ids: Optional[List[UUID]] = Query(None),
+    work_type_ids: Optional[List[UUID]] = Query(None),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -419,18 +420,20 @@ async def get_user_logs_json(
 
     # Access control + user filter
     if not current_user.is_admin:
+        # Standart kullanıcı: yalnızca kendi verilerini görür, ek filtreler yok
         query = query.filter(WorkLog.user_id == current_user.id)
     else:
+        # [YÜKSEK-9] cast(…, String) kaldırıldı — UUID tipi doğrudan kullanılır
         if user_ids:
-            query = query.filter(cast(WorkLog.user_id, String).in_(user_ids))
+            query = query.filter(WorkLog.user_id.in_(user_ids))
 
-    # Multi-select WHERE clauses — applied only when lists are non-empty
-    if customer_ids:
-        query = query.filter(cast(WorkLog.customer_id, String).in_(customer_ids))
-    if project_ids:
-        query = query.filter(cast(WorkLog.project_id, String).in_(project_ids))
-    if work_type_ids:
-        query = query.filter(cast(WorkLog.work_type_id, String).in_(work_type_ids))
+        # [YÜKSEK-9] Multi-select filtreler — cast() olmadan UUID ile doğrudan karşılaştırma
+        if customer_ids:
+            query = query.filter(WorkLog.customer_id.in_(customer_ids))
+        if project_ids:
+            query = query.filter(WorkLog.project_id.in_(project_ids))
+        if work_type_ids:
+            query = query.filter(WorkLog.work_type_id.in_(work_type_ids))
 
     # Date range
     if start_date:
