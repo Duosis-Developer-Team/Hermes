@@ -106,13 +106,13 @@ async def export_excel(
     try:
         print("DEBUG: export_excel endpoint hit", flush=True)
         auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
-        token = auth_header.replace("Bearer ", "") if auth_header else ""
+        token = request.cookies.get("access_token") or (auth_header.replace("Bearer ", "") if auth_header else "")
 
         users_map = {}
         if current_user.is_admin:
             users_map = await get_all_users_map(token)
         else:
-            users_map = {str(current_user.id): current_user.full_name}
+            users_map = {str(current_user.id): current_user.email}
 
         # Base query
         query = db.query(
@@ -170,7 +170,7 @@ async def export_excel(
             uid_str = str(r.user_id)
             user_name = users_map.get(uid_str, f"Unknown ({uid_str[:8]})")
             if user_name.startswith("Unknown") and uid_str == str(current_user.id):
-                user_name = current_user.full_name
+                user_name = current_user.email
             data.append({
                 "Tarih": r.date_worked,
                 "Kullanıcı": user_name,
@@ -227,9 +227,9 @@ async def export_global_detailed_v2(
     current_user: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
-    # Extract token from header
+    # Extract token from header or cookie
     auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
-    token = auth_header.replace("Bearer ", "") if auth_header else ""
+    token = request.cookies.get("access_token") or (auth_header.replace("Bearer ", "") if auth_header else "")
     
     # Fetch Users
     users_map = await get_all_users_map(token)
@@ -316,7 +316,7 @@ async def export_global_matrix(
     """
     print("DEBUG: matrix endpoint hit", flush=True)
     auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
-    token = auth_header.replace("Bearer ", "") if auth_header else ""
+    token = request.cookies.get("access_token") or (auth_header.replace("Bearer ", "") if auth_header else "")
     
     users_map = await get_all_users_map(token)
 
@@ -390,13 +390,13 @@ async def get_user_logs_json(
     Empty list = no filter applied; non-empty = IN() filter.
     """
     auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
-    token = auth_header.replace("Bearer ", "") if auth_header else ""
+    token = request.cookies.get("access_token") or (auth_header.replace("Bearer ", "") if auth_header else "")
 
     users_map = {}
     if current_user.is_admin:
         users_map = await get_all_users_map(token)
     else:
-        users_map = {str(current_user.id): current_user.full_name}
+        users_map = {str(current_user.id): current_user.email}
 
     # Base query
     query = db.query(
@@ -448,7 +448,7 @@ async def get_user_logs_json(
         uid_str = str(r.user_id)
         user_name = users_map.get(uid_str, f"Unknown ({uid_str[:8]})")
         if user_name.startswith("Unknown") and uid_str == str(current_user.id):
-            user_name = current_user.full_name
+            user_name = current_user.email
         data.append({
             "date": r.date_worked,
             "user_name": user_name,
@@ -473,7 +473,7 @@ async def get_global_detailed_json(
     Returns Global Detailed Logs as JSON.
     """
     auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
-    token = auth_header.replace("Bearer ", "") if auth_header else ""
+    token = request.cookies.get("access_token") or (auth_header.replace("Bearer ", "") if auth_header else "")
     users_map = await get_all_users_map(token)
     
     date_start = date.fromisoformat(f"{month}-01")
@@ -536,7 +536,7 @@ async def get_matrix_json(
     Returns Matrix Data as Pivot-Ready JSON.
     """
     auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
-    token = auth_header.replace("Bearer ", "") if auth_header else ""
+    token = request.cookies.get("access_token") or (auth_header.replace("Bearer ", "") if auth_header else "")
     users_map = await get_all_users_map(token)
 
     query = db.query(
