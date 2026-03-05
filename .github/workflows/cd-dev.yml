@@ -28,47 +28,49 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & Push images (tag = commit SHA)
+      - name: Build & Push images (tags = commit SHA & latest)
         run: |
           TAG="${GITHUB_SHA}"
 
-          AUTH_IMAGE="${REGISTRY}/${OWNER}/hermes-auth-service:${TAG}"
-          CORE_IMAGE="${REGISTRY}/${OWNER}/hermes-core-service:${TAG}"
-          REPORTING_IMAGE="${REGISTRY}/${OWNER}/hermes-reporting-service:${TAG}"
-          FRONTEND_IMAGE="${REGISTRY}/${OWNER}/hermes-frontend:${TAG}"
+          AUTH_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-auth-service:${TAG}"
+          AUTH_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-auth-service:latest"
+          
+          CORE_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-core-service:${TAG}"
+          CORE_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-core-service:latest"
 
-          echo "AUTH_IMAGE=$AUTH_IMAGE" >> $GITHUB_ENV
-          echo "CORE_IMAGE=$CORE_IMAGE" >> $GITHUB_ENV
-          echo "REPORTING_IMAGE=$REPORTING_IMAGE" >> $GITHUB_ENV
-          echo "FRONTEND_IMAGE=$FRONTEND_IMAGE" >> $GITHUB_ENV
+          REPORTING_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-reporting-service:${TAG}"
+          REPORTING_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-reporting-service:latest"
 
-          docker build -t "$AUTH_IMAGE" -f "backend/auth-service/Dockerfile" ./backend
-          docker push "$AUTH_IMAGE"
+          FRONTEND_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-frontend:${TAG}"
+          FRONTEND_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-frontend:latest"
 
-          docker build -t "$CORE_IMAGE" -f "backend/core-service/Dockerfile" ./backend
-          docker push "$CORE_IMAGE"
+          docker build -t "$AUTH_IMAGE_SHA" -t "$AUTH_IMAGE_LATEST" -f "backend/auth-service/Dockerfile" ./backend
+          docker push "$AUTH_IMAGE_SHA"
+          docker push "$AUTH_IMAGE_LATEST"
 
-          docker build -t "$REPORTING_IMAGE" -f "backend/reporting-service/Dockerfile" ./backend
-          docker push "$REPORTING_IMAGE"
+          docker build -t "$CORE_IMAGE_SHA" -t "$CORE_IMAGE_LATEST" -f "backend/core-service/Dockerfile" ./backend
+          docker push "$CORE_IMAGE_SHA"
+          docker push "$CORE_IMAGE_LATEST"
 
-          docker build -t "$FRONTEND_IMAGE" ./frontend
-          docker push "$FRONTEND_IMAGE"
+          docker build -t "$REPORTING_IMAGE_SHA" -t "$REPORTING_IMAGE_LATEST" -f "backend/reporting-service/Dockerfile" ./backend
+          docker push "$REPORTING_IMAGE_SHA"
+          docker push "$REPORTING_IMAGE_LATEST"
+
+          docker build -t "$FRONTEND_IMAGE_SHA" -t "$FRONTEND_IMAGE_LATEST" ./frontend
+          docker push "$FRONTEND_IMAGE_SHA"
+          docker push "$FRONTEND_IMAGE_LATEST"
 
       - name: Setup kubeconfig
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBE_CONFIG_B64 }}" | base64 -d > ~/.kube/config
 
-      - name: Deploy (kubectl set image + rollout)
+      - name: Deploy (kubectl rollout restart)
         run: |
-          kubectl -n "${NAMESPACE}" set image deployment/auth-service \
-            auth-service="${AUTH_IMAGE}"
-          kubectl -n "${NAMESPACE}" set image deployment/core-service \
-            core-service="${CORE_IMAGE}"
-          kubectl -n "${NAMESPACE}" set image deployment/reporting-service \
-            reporting-service="${REPORTING_IMAGE}"
-          kubectl -n "${NAMESPACE}" set image deployment/frontend \
-            frontend="${FRONTEND_IMAGE}"
+          kubectl -n "${NAMESPACE}" rollout restart deployment/auth-service
+          kubectl -n "${NAMESPACE}" rollout restart deployment/core-service
+          kubectl -n "${NAMESPACE}" rollout restart deployment/reporting-service
+          kubectl -n "${NAMESPACE}" rollout restart deployment/frontend
 
           kubectl -n "${NAMESPACE}" rollout status deployment/auth-service --timeout=180s
           kubectl -n "${NAMESPACE}" rollout status deployment/core-service --timeout=180s
