@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     
     SERVICE_NAME: str = "core-service"
     SERVICE_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    DEBUG: bool = False
     
     # ==========================================================================
     # Database Configuration (PostgreSQL - core_db)

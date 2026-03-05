@@ -9,8 +9,11 @@ from typing import Generic, TypeVar, Type, List, Optional, Any
 from uuid import UUID
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+import logging
 
 from shared.exceptions import NotFoundError, ConflictError
+
+logger = logging.getLogger(__name__)
 
 
 # Type variables for generic CRUD operations
@@ -145,7 +148,7 @@ class BaseCRUDService(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             id: Silinecek kaydın ID'si
             soft: True ise soft delete, False ise hard delete
         """
-        print(f"DEBUG: delete called for {self.resource_name} {id} with soft={soft}")
+        logger.info(f"AUDIT: delete called for {self.resource_name} {id} with soft={soft}")
         db_obj = self.get_by_id_or_404(id)
         
         if soft and hasattr(self.model, 'is_active'):

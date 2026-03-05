@@ -77,7 +77,7 @@ services:
       - AUTH_DB_PASSWORD=hermes_dev_password
       - AUTH_DB_NAME=auth_db
       - JWT_SECRET_KEY=hermes-dev-secret-key-change-in-production
-      - DEBUG=true
+      - DEBUG=false
     ports:
       - "8000:8000"
     volumes:
@@ -103,7 +103,7 @@ services:
       - CORE_DB_NAME=core_db
       - JWT_SECRET_KEY=hermes-dev-secret-key-change-in-production
       - AUTH_SERVICE_URL=http://auth-service:8000
-      - DEBUG=true
+      - DEBUG=false
     ports:
       - "8001:8001"
     volumes:
@@ -127,7 +127,7 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:8000
       - CORE_SERVICE_URL=http://core-service:8001
       - JWT_SECRET_KEY=hermes-dev-secret-key-change-in-production
-      - DEBUG=true
+      - DEBUG=false
     ports:
       - "8002:8002"
     depends_on:

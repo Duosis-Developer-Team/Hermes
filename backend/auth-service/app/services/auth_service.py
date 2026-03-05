@@ -154,7 +154,18 @@ class AuthService:
             Token nesnesi
         """
         import httpx
+        from urllib.parse import urlparse
         from ..models.user import AuthProvider
+        
+        # [YÜKSEK-4] Validate Redirect URI against allowed CORS origins
+        is_valid_redirect = False
+        for origin in self.settings.CORS_ORIGINS:
+            if redirect_uri.startswith(origin):
+                is_valid_redirect = True
+                break
+                
+        if not is_valid_redirect:
+            raise UnauthorizedError("Geçersiz Yönlendirme Adresi (Redirect URI doğrulaması başarısız).")
         
         # 1. Exchange Code for Token
         token_url = f"https://login.microsoftonline.com/{self.settings.AZURE_TENANT_ID}/oauth2/v2.0/token"
@@ -201,6 +212,11 @@ class AuthService:
             # Eğer local hesap ise microsoft provider'a çevirmek isteyebiliriz veya
             # sadece login olmasına izin verebiliriz. Şimdilik sadece login.
         else:
+            # [YÜKSEK-5] Microsoft hesabı otomatik kayıt (Auto-provisioning) kısıtlaması
+            allowed_domain = getattr(self.settings, "ALLOWED_EMAIL_DOMAIN", "").strip()
+            if allowed_domain and not email.lower().endswith(f"@{allowed_domain.lower()}"):
+                raise UnauthorizedError(f"Yalnızca @{allowed_domain} uzantılı kurumsal e-postalar sisteme giriş yapabilir.")
+            
             # Yeni kullanıcı oluştur (Auto-provisioning)
             user = User(
                 email=email,

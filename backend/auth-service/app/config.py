@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     SERVICE_VERSION: str = "1.0.0"
     
     # Debug modu (üretimde False olmalı)
-    DEBUG: bool = True
+    DEBUG: bool = False
     
     # ==========================================================================
     # Database Configuration (PostgreSQL - auth_db)
@@ -95,6 +95,7 @@ class Settings(BaseSettings):
     AZURE_CLIENT_ID: str = ""
     AZURE_CLIENT_SECRET: str = ""
     AZURE_TENANT_ID: str = ""
+    ALLOWED_EMAIL_DOMAIN: str = "duosis.com"
     
     # ==========================================================================
     # CORS Configuration

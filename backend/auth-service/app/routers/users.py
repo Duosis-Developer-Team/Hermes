@@ -157,8 +157,8 @@ async def list_users(
 )
 async def list_user_options(
     role: str = Query(None, description="Role göre filtrele (REVIEWER, ADMIN, USER)"),
+    current_user: CurrentUser = Depends(require_admin), # Admin Only VEYA get_current_user olabilir. İhtiyaca göre get_current_user kullanıyorum ki herkes görebilsin
     db: Session = Depends(get_db)
-    # Auth middleware zaten token kontrolü yapıyor ama route seviyesinde herhangi bir authenticated user yeterli.
 ):
     """
     Tüm kullanıcıları (veya role göre filtrelenmiş) listeler.

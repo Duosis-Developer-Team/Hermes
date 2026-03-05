@@ -37,6 +37,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 EXPOSE 8001
 
+# Create and switch to non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+USER appuser
+
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8001/health || exit 1
 

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     
     SERVICE_NAME: str = "reporting-service"
     SERVICE_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    DEBUG: bool = False
     
     # Mikroservisler arası iletişim URL'leri
     AUTH_SERVICE_URL: str = "http://localhost:8000"
