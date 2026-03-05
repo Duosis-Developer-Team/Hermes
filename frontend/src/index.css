@@ -547,3 +547,44 @@ body {
     font-size: 24px;
   }
 }
+/* ==========================================================================
+   RANGE PICKER - Dark Theme In-Range Fix (global, persistent)
+   ========================================================================== */
+
+.ant-picker-cell-in-range::before,
+.ant-picker-cell-range-start::before,
+.ant-picker-cell-range-end::before {
+  background: rgba(87, 157, 255, 0.12) !important;
+}
+
+.ant-picker-cell-range-start .ant-picker-cell-inner,
+.ant-picker-cell-range-end .ant-picker-cell-inner {
+  background: var(--Blue400) !important;
+  color: #fff !important;
+}
+
+.ant-picker-cell-range-hover::before,
+.ant-picker-cell-range-hover-start::before,
+.ant-picker-cell-range-hover-end::before {
+  background: rgba(87, 157, 255, 0.06) !important;
+  border-color: rgba(87, 157, 255, 0.25) !important;
+}
+
+.ant-picker-cell-today .ant-picker-cell-inner::before {
+  border-color: var(--Blue400) !important;
+}
+
+/* ==========================================================================
+   MULTI-SELECT - Single-Line Tag Overflow (no vertical wrapping)
+   maxTagCount={3} -> first 3 names inline, rest as +N
+   ========================================================================== */
+
+.ant-select-selection-overflow {
+  flex-wrap: nowrap !important;
+  overflow: hidden !important;
+  max-height: 32px;
+}
+
+.ant-select-selection-overflow-item {
+  flex-shrink: 0;
+}
