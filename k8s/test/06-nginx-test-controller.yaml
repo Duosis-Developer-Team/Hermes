@@ -32,7 +32,7 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: [configmaps, endpoints, nodes, pods, secrets, namespaces]
-    verbs: [list, watch]
+    verbs: [list, watch, get]
   - apiGroups: [""]
     resources: [nodes]
     verbs: [get]
@@ -150,6 +150,15 @@ spec:
           - --ingress-class=nginx-test
           - --configmap=ingress-nginx-test/ingress-nginx-test-controller
           - --watch-namespace=hermes-test
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
         securityContext:
           allowPrivilegeEscalation: true
           capabilities:
