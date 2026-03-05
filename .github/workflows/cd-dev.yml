@@ -65,13 +65,21 @@ jobs:
           mkdir -p ~/.kube
           echo "${{ secrets.KUBE_CONFIG_B64 }}" | base64 -d > ~/.kube/config
 
-      - name: Deploy (kubectl rollout restart)
+      - name: Deploy (Force Latest and Restart)
         run: |
+          # 1. Force the cluster deployments to point to :latest (unpins from any manual SHA)
+          kubectl -n "${NAMESPACE}" set image deployment/auth-service auth-service="${REGISTRY}/${OWNER}/hermes-auth-service:latest"
+          kubectl -n "${NAMESPACE}" set image deployment/core-service core-service="${REGISTRY}/${OWNER}/hermes-core-service:latest"
+          kubectl -n "${NAMESPACE}" set image deployment/reporting-service reporting-service="${REGISTRY}/${OWNER}/hermes-reporting-service:latest"
+          kubectl -n "${NAMESPACE}" set image deployment/frontend frontend="${REGISTRY}/${OWNER}/hermes-frontend:latest"
+
+          # 2. Trigger rollout to pull newly pushed images (cache bust)
           kubectl -n "${NAMESPACE}" rollout restart deployment/auth-service
           kubectl -n "${NAMESPACE}" rollout restart deployment/core-service
           kubectl -n "${NAMESPACE}" rollout restart deployment/reporting-service
           kubectl -n "${NAMESPACE}" rollout restart deployment/frontend
 
+          # 3. Wait for rollout completion
           kubectl -n "${NAMESPACE}" rollout status deployment/auth-service --timeout=180s
           kubectl -n "${NAMESPACE}" rollout status deployment/core-service --timeout=180s
           kubectl -n "${NAMESPACE}" rollout status deployment/reporting-service --timeout=180s
