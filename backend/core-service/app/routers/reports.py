@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from typing import Optional, Dict, List
 from fastapi import APIRouter, Depends, Query, Response, HTTPException, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, cast, String
 import pandas as pd
 import io
 import httpx
@@ -90,29 +90,30 @@ async def export_excel(
     request: Request,
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
+    # Legacy single-value params kept for backward compatibility
     user_id: Optional[str] = Query(None),
     customer_id: Optional[str] = Query(None),
+    # New: multi-select filter params (UUID strings)
+    user_ids: Optional[List[str]] = Query(None),
+    customer_ids: Optional[List[str]] = Query(None),
+    project_ids: Optional[List[str]] = Query(None),
+    work_type_ids: Optional[List[str]] = Query(None),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     import traceback
     try:
         print("DEBUG: export_excel endpoint hit", flush=True)
-        # 1. Fetch User Map for Names
         auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
-        if not auth_header:
-            print("WARNING: No Authorization header found in request", flush=True)
-            print(f"DEBUG: Available headers: {request.headers.keys()}", flush=True)
-            
         token = auth_header.replace("Bearer ", "") if auth_header else ""
-        
+
         users_map = {}
         if current_user.is_admin:
             users_map = await get_all_users_map(token)
         else:
             users_map = {str(current_user.id): current_user.full_name}
 
-        # Query building
+        # Base query
         query = db.query(
             WorkLog.date_worked,
             Customer.name.label('customer_name'),
@@ -132,40 +133,46 @@ async def export_excel(
             ActivityType, WorkLog.activity_type_id == ActivityType.id
         )
 
-        # Filters
+        # Access control
         if not current_user.is_admin:
-             # Regular user sees only their own
-             query = query.filter(WorkLog.user_id == current_user.id)
+            query = query.filter(WorkLog.user_id == current_user.id)
         else:
-            # Admin can filter by user_id if provided
-            if user_id:
-                query = query.filter(WorkLog.user_id == user_id)
-        
-        # Filter by Customer (New)
-        if customer_id:
-            query = query.filter(WorkLog.customer_id == customer_id)
+            # Multi-select users takes precedence over legacy single user_id
+            if user_ids:
+                query = query.filter(cast(WorkLog.user_id, String).in_(user_ids))
+            elif user_id:
+                query = query.filter(cast(WorkLog.user_id, String) == user_id)
 
+        # Multi-select filters
+        if customer_ids:
+            query = query.filter(cast(WorkLog.customer_id, String).in_(customer_ids))
+        elif customer_id:
+            query = query.filter(cast(WorkLog.customer_id, String) == customer_id)
+
+        if project_ids:
+            query = query.filter(cast(WorkLog.project_id, String).in_(project_ids))
+
+        if work_type_ids:
+            query = query.filter(cast(WorkLog.work_type_id, String).in_(work_type_ids))
+
+        # Date range
         if start_date:
             query = query.filter(WorkLog.date_worked >= start_date)
         if end_date:
             query = query.filter(WorkLog.date_worked <= end_date)
-            
+
         results = query.order_by(desc(WorkLog.date_worked)).all()
-        
-        # Create DataFrame
+
+        # Build CSV data
         data = []
         for r in results:
             uid_str = str(r.user_id)
-            user_name = users_map.get(uid_str, users_map.get(str(r.user_id), f"Unknown ({uid_str[:8]})"))
-            
-            # Fallback if admin didn't toggle fetch (shouldn't happen with await) 
-            # or if map failed
+            user_name = users_map.get(uid_str, f"Unknown ({uid_str[:8]})")
             if user_name.startswith("Unknown") and uid_str == str(current_user.id):
                 user_name = current_user.full_name
-
             data.append({
                 "Tarih": r.date_worked,
-                "Kullanıcı": user_name, # New Column
+                "Kullanıcı": user_name,
                 "Müşteri": r.customer_name,
                 "Proje": r.project_name,
                 "İş Tipi": r.work_type_name,
@@ -173,29 +180,18 @@ async def export_excel(
                 "Süre (Saat)": float(r.duration_hours) if r.duration_hours is not None else 0.0,
                 "Açıklama": r.description or ""
             })
-            
+
         df = pd.DataFrame(data)
-        
-        # Create CSV file in memory
         output = io.BytesIO()
         output.write(b'\xef\xbb\xbf')
         df.to_csv(output, index=False, sep=';', encoding='utf-8')
         output.seek(0)
-        
-        # Dynamic Filename
-        filename_prefix = "hermes_rapor"
-        if customer_id and results:
-            filename_prefix = f"{results[0].customer_name.replace(' ', '_')}_Logs"
-        elif user_id and str(user_id) in users_map:
-             filename_prefix = f"{users_map[str(user_id)].replace(' ', '_')}_Logs"
-        
-        # Attach Date
-        filename = f"{filename_prefix}_{start_date or 'All'}_{end_date or 'All'}.csv"
-        
-        # Sanitize filename for HTTP headers (ASCII only)
+
+        # Dynamic filename
+        filename = f"hermes_rapor_{start_date or 'All'}_{end_date or 'All'}.csv"
         import unicodedata
         filename_ascii = unicodedata.normalize('NFKD', filename).encode('ascii', 'ignore').decode('ascii')
-        
+
         return Response(
             content=output.getvalue(),
             media_type="text/csv",
@@ -379,25 +375,29 @@ async def get_user_logs_json(
     request: Request,
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
+    # Multi-select filter params
     user_ids: Optional[List[str]] = Query(None),
-    customer_id: Optional[str] = Query(None),
+    customer_ids: Optional[List[str]] = Query(None),
+    project_ids: Optional[List[str]] = Query(None),
+    work_type_ids: Optional[List[str]] = Query(None),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Returns User Work Logs as JSON for Dashboard.
+    Returns User Work Logs as JSON for the Tempo-style dashboard.
+    Supports multi-select filtering on users, customers, projects and work types.
+    Empty list = no filter applied; non-empty = IN() filter.
     """
-    # 1. Fetch User Map
     auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
     token = auth_header.replace("Bearer ", "") if auth_header else ""
-    
+
     users_map = {}
     if current_user.is_admin:
         users_map = await get_all_users_map(token)
     else:
         users_map = {str(current_user.id): current_user.full_name}
 
-    # Query building (Same as export)
+    # Base query
     query = db.query(
         WorkLog.date_worked,
         Customer.name.label('customer_name'),
@@ -417,28 +417,35 @@ async def get_user_logs_json(
         ActivityType, WorkLog.activity_type_id == ActivityType.id
     )
 
+    # Access control + user filter
     if not current_user.is_admin:
-         query = query.filter(WorkLog.user_id == current_user.id)
+        query = query.filter(WorkLog.user_id == current_user.id)
     else:
         if user_ids:
-            query = query.filter(WorkLog.user_id.in_(user_ids))
-    
-    if customer_id:
-        query = query.filter(WorkLog.customer_id == customer_id)
+            query = query.filter(cast(WorkLog.user_id, String).in_(user_ids))
+
+    # Multi-select WHERE clauses — applied only when lists are non-empty
+    if customer_ids:
+        query = query.filter(cast(WorkLog.customer_id, String).in_(customer_ids))
+    if project_ids:
+        query = query.filter(cast(WorkLog.project_id, String).in_(project_ids))
+    if work_type_ids:
+        query = query.filter(cast(WorkLog.work_type_id, String).in_(work_type_ids))
+
+    # Date range
     if start_date:
         query = query.filter(WorkLog.date_worked >= start_date)
     if end_date:
         query = query.filter(WorkLog.date_worked <= end_date)
-        
-    results = query.order_by(WorkLog.date_worked.asc()).limit(2000).all() # Limit for JSON perf
-    
+
+    results = query.order_by(WorkLog.date_worked.asc()).limit(5000).all()
+
     data = []
     for r in results:
         uid_str = str(r.user_id)
-        user_name = users_map.get(uid_str, users_map.get(str(r.user_id), f"Unknown ({uid_str[:8]})"))
+        user_name = users_map.get(uid_str, f"Unknown ({uid_str[:8]})")
         if user_name.startswith("Unknown") and uid_str == str(current_user.id):
             user_name = current_user.full_name
-
         data.append({
             "date": r.date_worked,
             "user_name": user_name,
@@ -449,7 +456,7 @@ async def get_user_logs_json(
             "duration": float(r.duration_hours) if r.duration_hours is not None else 0.0,
             "description": r.description or ""
         })
-        
+
     return {"data": data}
 
 @router.get("/json/global-detailed")

@@ -1,61 +1,139 @@
 /**
  * =============================================================================
- * HERMES PLATFORM - Reports Page (Interactive Dashboard)
+ * HERMES PLATFORM - Reports & Analytics (Tempo-Style Unified Dashboard)
  * =============================================================================
- * Entegre raporlama arayüzü.
- * Modern Dark UI Design.
+ * JIRA Tempo mantığında dinamik filtre çubuğu ve reaktif tablo.
+ * Tek bir unified görünüm: Date Range, Users, Customers, Projects, Types.
  * =============================================================================
  */
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import {
-    Card, DatePicker, Button, Select, Typography, Space,
-    Row, Col, Table, message, Segmented, Statistic, Tag, Empty, Spin, ConfigProvider
+    DatePicker, Button, Select, Typography, Space,
+    Row, Col, Table, message, Statistic, Tag, Empty, Spin
 } from 'antd'
 import {
     DownloadOutlined,
-    UserOutlined,
-    GlobalOutlined,
-    AppstoreOutlined,
-    CalendarOutlined,
-    FileExcelOutlined,
-    FilterOutlined,
+    BarChartOutlined,
     PieChartOutlined,
-    BarChartOutlined
+    FilterOutlined,
+    CloseCircleOutlined,
+    CalendarOutlined
 } from '@ant-design/icons'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import dayjs from 'dayjs'
-import { reportsService, authService, customerService } from '../services/api'
+import {
+    reportsService,
+    authService,
+    customerService,
+    projectService,
+    workTypeService
+} from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 
-const { Title, Text } = Typography
+const { Text } = Typography
+const { RangePicker } = DatePicker
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+const buildMultiParam = (urlParams, key, arr) => {
+    if (Array.isArray(arr) && arr.length > 0) {
+        arr.forEach(id => urlParams.append(key, id))
+    }
+}
+
+// =============================================================================
+// Main Component
+// =============================================================================
 
 function ReportsPage() {
     const { user } = useAuthStore()
-    const [viewMode, setViewMode] = useState('User Work Logs') // 'User Work Logs' | 'Global Monthly Export' | 'Customer x User Matrix'
 
-    // Filters
-    const [selectedMonth, setSelectedMonth] = useState(dayjs())
+    // ── Filter State ──────────────────────────────────────────────────────────
+    const [dateRange, setDateRange] = useState([
+        dayjs().startOf('month'),
+        dayjs().endOf('month')
+    ])
     const [selectedUsers, setSelectedUsers] = useState([])
+    const [selectedCustomers, setSelectedCustomers] = useState([])
+    const [selectedProjects, setSelectedProjects] = useState([])
+    const [selectedTypes, setSelectedTypes] = useState([])
 
-    // Data Fetching for Dropdowns
-    const { data: usersResponse } = useQuery({
+    // ── Dropdown Data ─────────────────────────────────────────────────────────
+    const { data: usersData } = useQuery({
         queryKey: ['users-list'],
         queryFn: () => authService.getUsers(),
-        enabled: !!user?.is_admin
+        enabled: !!user?.is_admin,
+        staleTime: 5 * 60 * 1000
     })
-    const users = usersResponse?.data || []
+    const users = useMemo(() => (usersData?.data || []).sort((a, b) =>
+        (a.full_name || '').localeCompare(b.full_name || '', 'tr')
+    ), [usersData])
 
-    // Access Control
+    const { data: customersData } = useQuery({
+        queryKey: ['customers-list'],
+        queryFn: () => customerService.getAll(),
+        enabled: !!user?.is_admin,
+        staleTime: 5 * 60 * 1000
+    })
+    const customers = useMemo(() => {
+        const raw = customersData?.data || customersData || []
+        return Array.isArray(raw) ? [...raw].sort((a, b) => a.name.localeCompare(b.name, 'tr')) : []
+    }, [customersData])
+
+    const { data: projectsData } = useQuery({
+        queryKey: ['projects-list'],
+        queryFn: () => projectService.getAll(),
+        enabled: !!user?.is_admin,
+        staleTime: 5 * 60 * 1000
+    })
+    const projects = useMemo(() => {
+        const raw = projectsData?.data || projectsData || []
+        return Array.isArray(raw) ? [...raw].sort((a, b) => a.name.localeCompare(b.name, 'tr')) : []
+    }, [projectsData])
+
+    const { data: workTypesData } = useQuery({
+        queryKey: ['work-types-list'],
+        queryFn: () => workTypeService.getAll(),
+        enabled: !!user?.is_admin,
+        staleTime: 5 * 60 * 1000
+    })
+    const workTypes = useMemo(() => {
+        const raw = workTypesData?.data || workTypesData || []
+        return Array.isArray(raw) ? [...raw].sort((a, b) => a.name.localeCompare(b.name, 'tr')) : []
+    }, [workTypesData])
+
+    // ── Access Control ────────────────────────────────────────────────────────
     if (!user?.is_admin) {
         return <div style={{ padding: 40, textAlign: 'center', color: '#fff' }}>Access Restricted</div>
     }
 
+    // ── Clear All Filters ─────────────────────────────────────────────────────
+    const handleClearAll = () => {
+        setDateRange([dayjs().startOf('month'), dayjs().endOf('month')])
+        setSelectedUsers([])
+        setSelectedCustomers([])
+        setSelectedProjects([])
+        setSelectedTypes([])
+    }
+
+    const hasActiveFilters = selectedUsers.length > 0 || selectedCustomers.length > 0 ||
+        selectedProjects.length > 0 || selectedTypes.length > 0
+
     return (
         <div className="reports-page fade-in" style={{ padding: '24px 40px', maxWidth: 1600, margin: '0 auto', color: '#e5e5e5' }}>
 
-            {/* Header */}
-            <div style={{ marginBottom: 40, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            {/* ── Page Header ──────────────────────────────────────────────── */}
+            <div style={{
+                marginBottom: 32,
+                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                paddingBottom: 20,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-end'
+            }}>
                 <div>
                     <h1 style={{
                         fontSize: '2rem',
@@ -65,472 +143,400 @@ function ReportsPage() {
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent'
                     }}>
-                        Reports & Analytics
+                        Reports &amp; Analytics
                     </h1>
-                    <Text style={{ color: '#666', fontSize: '1rem', marginTop: 4, display: 'block' }}>
-                        Real-time dashboard and data exports
+                    <Text style={{ color: '#555', fontSize: '0.95rem', marginTop: 4, display: 'block' }}>
+                        Real-time dashboard · Filter by date, user, customer, project or type
                     </Text>
+                </div>
+
+                {hasActiveFilters && (
+                    <Button
+                        icon={<CloseCircleOutlined />}
+                        onClick={handleClearAll}
+                        style={{ background: 'transparent', border: '1px solid #444', color: '#aaa' }}
+                    >
+                        Clear All Filters
+                    </Button>
+                )}
+            </div>
+
+            {/* ── Tempo Filter Bar ─────────────────────────────────────────── */}
+            <div style={{
+                marginBottom: 28,
+                background: 'rgba(15, 15, 15, 0.85)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                borderRadius: 16,
+                padding: '20px 24px'
+            }}>
+                <div style={{
+                    display: 'flex',
+                    gap: 16,
+                    flexWrap: 'wrap',
+                    alignItems: 'flex-start'
+                }}>
+
+                    {/* Date Range */}
+                    <FilterBlock label="Date Range" icon={<CalendarOutlined />}>
+                        <RangePicker
+                            value={dateRange}
+                            onChange={setDateRange}
+                            allowClear={false}
+                            style={{ width: 260, height: 38 }}
+                            className="modern-picker"
+                            format="DD MMM YYYY"
+                        />
+                    </FilterBlock>
+
+                    {/* Users */}
+                    <FilterBlock label="Users" count={selectedUsers.length}>
+                        <Select
+                            mode="multiple"
+                            placeholder="All users"
+                            value={selectedUsers}
+                            onChange={setSelectedUsers}
+                            options={users.map(u => ({ value: u.id, label: u.full_name || u.email }))}
+                            allowClear
+                            showSearch
+                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+                            maxTagCount="responsive"
+                            style={{ minWidth: 200, width: 220 }}
+                            className="modern-select"
+                        />
+                    </FilterBlock>
+
+                    {/* Customers */}
+                    <FilterBlock label="Customers" count={selectedCustomers.length}>
+                        <Select
+                            mode="multiple"
+                            placeholder="All customers"
+                            value={selectedCustomers}
+                            onChange={setSelectedCustomers}
+                            options={customers.map(c => ({ value: c.id, label: c.name }))}
+                            allowClear
+                            showSearch
+                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+                            maxTagCount="responsive"
+                            style={{ minWidth: 200, width: 220 }}
+                            className="modern-select"
+                        />
+                    </FilterBlock>
+
+                    {/* Projects */}
+                    <FilterBlock label="Projects" count={selectedProjects.length}>
+                        <Select
+                            mode="multiple"
+                            placeholder="All projects"
+                            value={selectedProjects}
+                            onChange={setSelectedProjects}
+                            options={projects.map(p => ({ value: p.id, label: p.name }))}
+                            allowClear
+                            showSearch
+                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+                            maxTagCount="responsive"
+                            style={{ minWidth: 200, width: 220 }}
+                            className="modern-select"
+                        />
+                    </FilterBlock>
+
+                    {/* Types */}
+                    <FilterBlock label="Types" count={selectedTypes.length}>
+                        <Select
+                            mode="multiple"
+                            placeholder="All types"
+                            value={selectedTypes}
+                            onChange={setSelectedTypes}
+                            options={workTypes.map(t => ({ value: t.id, label: t.name }))}
+                            allowClear
+                            showSearch
+                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+                            maxTagCount="responsive"
+                            style={{ minWidth: 180, width: 200 }}
+                            className="modern-select"
+                        />
+                    </FilterBlock>
                 </div>
             </div>
 
-            {/* Controls Bar */}
-            <div style={{
-                marginBottom: 32,
-                background: 'rgba(20, 20, 20, 0.7)',
-                backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: 16,
-                padding: '24px'
-            }}>
-                <Row gutter={[24, 24]} align="middle">
-                    <Col xs={24} xl={9}>
-                        <div style={{ marginBottom: 8, color: '#666', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Report Type</div>
-                        <Segmented
-                            options={[
-                                { label: 'User Logs', value: 'User Work Logs', icon: <UserOutlined /> },
-                                { label: 'Global Export', value: 'Global Monthly Export', icon: <GlobalOutlined /> },
-                                { label: 'Matrix', value: 'Customer x User Matrix', icon: <AppstoreOutlined /> }
-                            ]}
-                            value={viewMode}
-                            onChange={setViewMode}
-                            block
-                            size="large"
-                            className="modern-segmented"
-                        />
-                    </Col>
+            {/* ── Main Dashboard ────────────────────────────────────────────── */}
+            <MainDashboard
+                dateRange={dateRange}
+                selectedUsers={selectedUsers}
+                selectedCustomers={selectedCustomers}
+                selectedProjects={selectedProjects}
+                selectedTypes={selectedTypes}
+            />
 
-                    <Col xs={24} xl={15}>
-                        <div style={{ display: 'flex', gap: 20, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                            {/* Common Month Picker */}
-                            <div style={{ flex: 1, minWidth: 200 }}>
-                                <div style={{ marginBottom: 8, color: '#666', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Analysis Period</div>
-                                <DatePicker
-                                    picker="month"
-                                    value={selectedMonth}
-                                    onChange={setSelectedMonth}
-                                    format="MMMM YYYY"
-                                    allowClear={false}
-                                    style={{ width: '100%', height: 40 }}
-                                    className="modern-picker"
-                                />
-                            </div>
-
-                            {/* User Selector (Only for User Work Logs) */}
-                            {viewMode === 'User Work Logs' && (
-                                <div style={{ flex: 2, minWidth: 280 }}>
-                                    <div style={{ marginBottom: 8, color: '#666', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
-                                        User Filter {selectedUsers.length > 0 && <span style={{ color: '#579dff' }}>({selectedUsers.length} selected)</span>}
-                                    </div>
-                                    <Select
-                                        mode="multiple"
-                                        placeholder="All users (select to filter)"
-                                        value={selectedUsers}
-                                        onChange={setSelectedUsers}
-                                        options={users
-                                            .sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '', 'tr'))
-                                            .map(u => ({ value: u.id, label: u.full_name }))}
-                                        allowClear
-                                        style={{ width: '100%', minHeight: 40 }}
-                                        showSearch
-                                        filterOption={(input, option) =>
-                                            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                                        }
-                                        className="modern-select"
-                                        maxTagCount="responsive"
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    </Col>
-                </Row>
-            </div>
-
-            {/* Dashboard Content */}
-            <div style={{ minHeight: 400 }}>
-                {viewMode === 'User Work Logs' && (
-                    <UserLogsDashboard
-                        selectedMonth={selectedMonth}
-                        selectedUsers={selectedUsers}
-                    />
-                )}
-
-                {viewMode === 'Global Monthly Export' && (
-                    <GlobalLogsDashboard
-                        selectedMonth={selectedMonth}
-                    />
-                )}
-
-                {viewMode === 'Customer x User Matrix' && (
-                    <MatrixDashboard
-                        selectedMonth={selectedMonth}
-                    />
-                )}
-            </div>
-
-            {/* Global Styles for AntD Overrides */}
+            {/* ── AntD Dark Overrides ───────────────────────────────────────── */}
             <style>{`
-                .modern-segmented {
-                    background: #000;
-                    padding: 4px;
-                    border: 1px solid #333;
-                }
-                .ant-segmented-item-selected {
-                    background-color: #333 !important;
-                    color: white !important;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
-                }
-                .ant-segmented-item {
-                    color: #888;
-                    font-weight: 500;
-                }
-                .ant-segmented-item:hover {
-                    color: #fff;
-                }
-                
-                /* Modern Table */
-                .dashboard-table .ant-table {
-                    background: transparent;
-                    color: #ccc;
-                }
+                /* Table */
+                .dashboard-table .ant-table { background: transparent; color: #ccc; }
                 .dashboard-table .ant-table-thead > tr > th {
-                    background: #111;
-                    color: #666;
-                    border-bottom: 1px solid #303030;
-                    font-size: 11px;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
+                    background: #0d0d0d; color: #555; border-bottom: 1px solid #252525;
+                    font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
                 }
-                .dashboard-table .ant-table-tbody > tr > td {
-                    border-bottom: 1px solid #222;
-                    padding: 16px;
-                }
-                .dashboard-table .ant-table-tbody > tr:hover > td {
-                    background: rgba(255, 255, 255, 0.03) !important;
-                }
+                .dashboard-table .ant-table-tbody > tr > td { border-bottom: 1px solid #1c1c1c; padding: 14px 16px; }
+                .dashboard-table .ant-table-tbody > tr:hover > td { background: rgba(255,255,255,0.025) !important; }
+                .dashboard-table .ant-table-pagination { padding: 12px 16px; }
 
-                /* Modern Card */
+                /* Summary Cards */
                 .sum-card {
-                    background: #111;
-                    border: 1px solid #262626;
-                    border-radius: 16px;
-                    padding: 24px;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: flex-start;
-                    justify-content: center;
-                    height: 100%;
-                    transition: transform 0.2s, border-color 0.2s;
+                    background: #0f0f0f; border: 1px solid #222; border-radius: 14px;
+                    padding: 22px 24px; display: flex; flex-direction: column;
+                    align-items: flex-start; height: 100%;
+                    transition: border-color 0.2s, transform 0.2s;
                 }
-                .sum-card:hover {
-                    border-color: #444;
-                    transform: translateY(-2px);
-                }
+                .sum-card:hover { border-color: #383838; transform: translateY(-2px); }
+                .sum-card .ant-statistic-title { color: #888 !important; font-size: 12px; margin-bottom: 4px; }
+                .sum-card .ant-statistic-content-value { color: #fff !important; font-size: 1.9rem !important; font-weight: 600 !important; }
                 .sum-card-icon {
-                   width: 40px; height: 40px; 
-                   border-radius: 10px; 
-                   display: flex; alignItems: center; justifyContent: center;
-                   margin-bottom: 16px;
-                   font-size: 18px;
-                }
-                
-                /* Force Statistic Title Color */
-                .sum-card .ant-statistic-title {
-                    color: #e5e5e5 !important;
-                    font-size: 13px;
-                    opacity: 0.8;
+                    width: 38px; height: 38px; border-radius: 10px;
+                    display: flex; align-items: center; justify-content: center;
+                    margin-bottom: 14px; font-size: 17px;
                 }
 
-                /* Inputs */
-                 .modern-picker, .modern-select .ant-select-selector {
-                    background-color: #111 !important;
-                    border-color: #333 !important;
-                    color: #e5e5e5 !important;
-                    border-radius: 8px !important;
+                /* Filter Bar Inputs */
+                .modern-picker, .modern-select .ant-select-selector {
+                    background-color: #111 !important; border-color: #2e2e2e !important;
+                    color: #e5e5e5 !important; border-radius: 8px !important;
                 }
-                .modern-picker:hover, .modern-select:hover .ant-select-selector {
-                    border-color: #555 !important;
+                .modern-picker:hover, .modern-select:hover .ant-select-selector { border-color: #555 !important; }
+                .ant-picker-input > input, .ant-select-selection-item, .ant-select-selection-placeholder { color: #ccc !important; }
+                .ant-select-arrow, .ant-picker-suffix { color: #444 !important; }
+                .ant-picker-range-separator { color: #555 !important; }
+                .filter-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 6px; display: flex; gap: 6px; align-items: center; }
+                .filter-badge { background: #3b82f6; color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 10px; font-weight: 700; }
+
+                /* Export Card */
+                .export-card {
+                    background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.3);
+                    border-radius: 14px; padding: 22px 24px; height: 100%;
+                    display: flex; flex-direction: column; align-items: center; justify-content: center;
+                    cursor: pointer; transition: background 0.2s, border-color 0.2s, transform 0.2s;
                 }
-                .ant-picker-input > input, .ant-select-selection-item {
-                    color: #e5e5e5 !important;
-                }
-                .ant-select-arrow, .ant-picker-suffix {
-                    color: #555 !important;
-                }
+                .export-card:hover { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.6); transform: translateY(-2px); }
             `}</style>
         </div>
     )
 }
 
 // =============================================================================
-// SUB-COMPONENTS (Dashboards)
+// FilterBlock — Reusable label + control wrapper
 // =============================================================================
 
-function UserLogsDashboard({ selectedMonth, selectedUsers }) {
-    const { data: jsonResponse, isLoading } = useQuery({
-        queryKey: ['json-user-logs', selectedMonth.format('YYYY-MM'), selectedUsers],
+function FilterBlock({ label, icon, count, children }) {
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="filter-label">
+                {icon && <span>{icon}</span>}
+                {label}
+                {count > 0 && <span className="filter-badge">{count}</span>}
+            </div>
+            {children}
+        </div>
+    )
+}
+
+// =============================================================================
+// MainDashboard — Reactive table + stats
+// =============================================================================
+
+function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedProjects, selectedTypes }) {
+    const startDate = dateRange?.[0]?.format('YYYY-MM-DD')
+    const endDate = dateRange?.[1]?.format('YYYY-MM-DD')
+
+    // Query key includes all filters → any change triggers refetch
+    const queryKey = [
+        'tempo-logs',
+        startDate,
+        endDate,
+        selectedUsers,
+        selectedCustomers,
+        selectedProjects,
+        selectedTypes
+    ]
+
+    const { data: jsonResponse, isLoading, isFetching } = useQuery({
+        queryKey,
         queryFn: () => reportsService.getJsonUserLogs({
-            start_date: selectedMonth.startOf('month').format('YYYY-MM-DD'),
-            end_date: selectedMonth.endOf('month').format('YYYY-MM-DD'),
-            user_ids: selectedUsers
+            start_date: startDate,
+            end_date: endDate,
+            user_ids: selectedUsers,
+            customer_ids: selectedCustomers,
+            project_ids: selectedProjects,
+            work_type_ids: selectedTypes
         }),
-        enabled: !!selectedMonth
+        enabled: !!startDate && !!endDate,
+        keepPreviousData: true
     })
 
     const logs = jsonResponse?.data || []
 
-    // Calculate Stats
-    const totalHours = useMemo(() => logs.reduce((sum, log) => sum + log.duration, 0), [logs])
-    const projectCount = useMemo(() => new Set(logs.map(l => l.project_name)).size, [logs])
+    // Reactive computed stats — always reflect currently visible data
+    const totalHours = useMemo(() => logs.reduce((sum, l) => sum + (l.duration || 0), 0), [logs])
+    const entryCount = logs.length
 
-    // Export Handler
+    // Export handler — passes exact same filters
     const { mutate: exportCsv, isPending: exportLoading } = useMutation({
         mutationFn: () => reportsService.exportExcel({
-            start_date: selectedMonth.startOf('month').format('YYYY-MM-DD'),
-            end_date: selectedMonth.endOf('month').format('YYYY-MM-DD'),
-            user_id: selectedUsers.length === 1 ? selectedUsers[0] : undefined
+            start_date: startDate,
+            end_date: endDate,
+            user_ids: selectedUsers,
+            customer_ids: selectedCustomers,
+            project_ids: selectedProjects,
+            work_type_ids: selectedTypes
         }),
-        onSuccess: () => message.success('Export started'),
+        onSuccess: () => message.success('CSV export started'),
         onError: () => message.error('Export failed')
     })
 
     const columns = [
-        { title: 'Date', dataIndex: 'date', width: 120, render: d => dayjs(d).format('DD MMM YYYY') },
-        { title: 'User', dataIndex: 'user_name', width: 150 },
-        { title: 'Customer', dataIndex: 'customer_name', width: 180 },
-        { title: 'Project', dataIndex: 'project_name', width: 180 },
-        { title: 'Type', dataIndex: 'work_type', width: 120, render: t => <Tag color="blue" style={{ borderRadius: 12 }}>{t}</Tag> },
-        { title: 'Description', dataIndex: 'description', ellipsis: true },
-        { title: 'Hours', dataIndex: 'duration', width: 100, align: 'right', render: h => <span style={{ color: '#4ade80', fontWeight: 'bold' }}>{h.toFixed(2)}</span> }
+        {
+            title: 'Date',
+            dataIndex: 'date',
+            width: 130,
+            sorter: (a, b) => a.date?.localeCompare(b.date),
+            render: d => (
+                <span style={{ color: '#888', fontFamily: 'monospace', fontSize: 13 }}>
+                    {dayjs(d).format('DD MMM YYYY')}
+                </span>
+            )
+        },
+        {
+            title: 'User',
+            dataIndex: 'user_name',
+            width: 160,
+            render: u => <span style={{ color: '#ccc', fontWeight: 500 }}>{u}</span>
+        },
+        {
+            title: 'Customer',
+            dataIndex: 'customer_name',
+            width: 180,
+            render: c => <span style={{ color: '#e5e5e5' }}>{c}</span>
+        },
+        {
+            title: 'Project',
+            dataIndex: 'project_name',
+            width: 200,
+            render: p => <span style={{ color: '#e5e5e5' }}>{p}</span>
+        },
+        {
+            title: 'Type',
+            dataIndex: 'work_type',
+            width: 140,
+            render: t => (
+                <Tag style={{
+                    background: 'rgba(87,157,255,0.12)',
+                    border: '1px solid rgba(87,157,255,0.3)',
+                    color: '#579dff',
+                    borderRadius: 10,
+                    fontSize: 11,
+                    fontWeight: 600
+                }}>
+                    {t}
+                </Tag>
+            )
+        },
+        {
+            title: 'Description',
+            dataIndex: 'description',
+            ellipsis: true,
+            render: d => <span style={{ color: '#777', fontSize: 13 }}>{d || '—'}</span>
+        },
+        {
+            title: 'Hours',
+            dataIndex: 'duration',
+            width: 90,
+            align: 'right',
+            sorter: (a, b) => (a.duration || 0) - (b.duration || 0),
+            render: h => (
+                <span style={{ color: '#4ade80', fontWeight: 700, fontFamily: 'monospace' }}>
+                    {(h || 0).toFixed(2)}
+                </span>
+            )
+        }
     ]
 
     return (
         <div className="fade-in">
-            {/* Stats Row */}
-            <Row gutter={[20, 20]} style={{ marginBottom: 32 }}>
+
+            {/* ── Summary Cards ─────────────────────────────────────────────── */}
+            <Row gutter={[20, 20]} style={{ marginBottom: 28 }}>
                 <Col xs={24} sm={8}>
                     <div className="sum-card">
-                        <div className="sum-card-icon" style={{ background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80' }}><BarChartOutlined /></div>
-                        <Statistic title="Total Hours" value={totalHours} precision={2} valueStyle={{ color: '#fff', fontSize: '2rem', fontWeight: 600 }} titleStyle={{ color: '#e5e5e5' }} suffix={<span style={{ fontSize: 14, color: '#888' }}>hours</span>} />
-                    </div>
-                </Col>
-                <Col xs={24} sm={8}>
-                    <div className="sum-card">
-                        <div className="sum-card-icon" style={{ background: 'rgba(255, 255, 255, 0.1)', color: '#fff' }}><PieChartOutlined /></div>
-                        <Statistic title="Entries" value={logs.length} valueStyle={{ color: '#fff', fontSize: '2rem', fontWeight: 600 }} titleStyle={{ color: '#e5e5e5' }} />
-                    </div>
-                </Col>
-                <Col xs={24} sm={8}>
-                    {/* Export Action Card */}
-                    <div className="sum-card" style={{ borderColor: '#3b82f6', background: 'rgba(59, 130, 246, 0.05)', cursor: 'pointer', alignItems: 'center' }} onClick={() => exportCsv()}>
-                        <div style={{ textAlign: 'center' }}>
-                            {exportLoading ? <Spin /> : <DownloadOutlined style={{ fontSize: 32, color: '#3b82f6', marginBottom: 12 }} />}
-                            <div style={{ color: '#3b82f6', fontWeight: 600, fontSize: 16 }}>Download CSV Report</div>
-                            <div style={{ color: '#666', fontSize: 12, marginTop: 4 }}>Excel Compatible Format</div>
+                        <div className="sum-card-icon" style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80' }}>
+                            <BarChartOutlined />
                         </div>
+                        <Statistic
+                            title="Total Hours"
+                            value={totalHours}
+                            precision={2}
+                            suffix={<span style={{ fontSize: 13, color: '#555', marginLeft: 4 }}>h</span>}
+                        />
+                    </div>
+                </Col>
+                <Col xs={24} sm={8}>
+                    <div className="sum-card">
+                        <div className="sum-card-icon" style={{ background: 'rgba(255,255,255,0.06)', color: '#aaa' }}>
+                            <PieChartOutlined />
+                        </div>
+                        <Statistic
+                            title="Entries"
+                            value={entryCount}
+                        />
+                    </div>
+                </Col>
+                <Col xs={24} sm={8}>
+                    <div
+                        className="export-card"
+                        onClick={() => !exportLoading && exportCsv()}
+                        title="Download filtered data as CSV"
+                    >
+                        {exportLoading
+                            ? <Spin />
+                            : <DownloadOutlined style={{ fontSize: 30, color: '#3b82f6', marginBottom: 10 }} />
+                        }
+                        <div style={{ color: '#3b82f6', fontWeight: 600, fontSize: 15 }}>Download CSV Report</div>
+                        <div style={{ color: '#444', fontSize: 11, marginTop: 4 }}>Exports current filter view</div>
                     </div>
                 </Col>
             </Row>
 
-            <Card styles={{ body: { padding: 0 } }} style={{ background: '#111', border: '1px solid #303030', overflow: 'hidden', borderRadius: 16 }}>
-                <Table
-                    className="dashboard-table"
-                    dataSource={logs}
-                    columns={columns}
-                    rowKey={(r) => `${r.date}-${r.user_name}-${r.project_name}` + Math.random()}
-                    pagination={{ pageSize: 20 }}
-                    loading={isLoading}
-                    scroll={{ y: 500 }}
-                />
-            </Card>
-        </div>
-    )
-}
-
-function GlobalLogsDashboard({ selectedMonth }) {
-    const { data: jsonResponse, isLoading } = useQuery({
-        queryKey: ['json-global', selectedMonth.format('YYYY-MM')],
-        queryFn: () => reportsService.getJsonGlobalDetailed(selectedMonth.format('YYYY-MM')),
-        enabled: !!selectedMonth
-    })
-
-    const logs = jsonResponse?.data || []
-
-    const totalHours = useMemo(() => logs.reduce((sum, log) => sum + log.duration, 0), [logs])
-    const activeUsers = useMemo(() => new Set(logs.map(l => l.user_name)).size, [logs])
-
-    const { mutate: exportCsv, isPending: exportLoading } = useMutation({
-        mutationFn: () => reportsService.exportGlobalDetailed(selectedMonth.format('YYYY-MM')),
-        onSuccess: () => message.success('Export started'),
-        onError: () => message.error('Export failed')
-    })
-
-    const columns = [
-        { title: 'Date', dataIndex: 'date', width: 120, render: d => dayjs(d).format('DD MMM') },
-        { title: 'User', dataIndex: 'user_name', width: 150 },
-        { title: 'Customer', dataIndex: 'customer_name', width: 150 },
-        { title: 'Project', dataIndex: 'project_name', width: 150 },
-        { title: 'Platform', dataIndex: 'platform', width: 100 },
-        { title: 'Description', dataIndex: 'description', ellipsis: true },
-        { title: 'Hours', dataIndex: 'duration', width: 80, align: 'right', render: h => <span style={{ color: '#4ade80' }}>{h.toFixed(2)}</span> }
-    ]
-
-    return (
-        <div className="fade-in">
-            <Row gutter={[20, 20]} style={{ marginBottom: 32 }}>
-                <Col xs={24} md={8}>
-                    <div className="sum-card">
-                        <div className="sum-card-icon" style={{ background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80' }}><GlobalOutlined /></div>
-                        <Statistic title="Total Organization Hours" value={totalHours} precision={2} valueStyle={{ color: '#fff', fontSize: '2rem', fontWeight: 600 }} titleStyle={{ color: '#e5e5e5' }} suffix={<span style={{ fontSize: 14, color: '#888' }}>hours</span>} />
+            {/* ── Data Table ────────────────────────────────────────────────── */}
+            <div style={{
+                background: '#0b0b0b',
+                border: '1px solid #1e1e1e',
+                borderRadius: 16,
+                overflow: 'hidden'
+            }}>
+                {logs.length === 0 && !isLoading ? (
+                    <div style={{ padding: 60, textAlign: 'center' }}>
+                        <Empty
+                            description={
+                                <span style={{ color: '#444' }}>No entries match the current filters</span>
+                            }
+                        />
                     </div>
-                </Col>
-                <Col xs={24} md={8}>
-                    <div className="sum-card">
-                        <div className="sum-card-icon" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}><UserOutlined /></div>
-                        <Statistic title="Active Users" value={activeUsers} valueStyle={{ color: '#fff', fontSize: '2rem', fontWeight: 600 }} titleStyle={{ color: '#e5e5e5' }} />
-                    </div>
-                </Col>
-                <Col xs={24} md={8}>
-                    <div className="sum-card" style={{ borderColor: '#3b82f6', background: 'rgba(59, 130, 246, 0.05)', cursor: 'pointer', alignItems: 'center' }} onClick={() => exportCsv()}>
-                        <div style={{ textAlign: 'center' }}>
-                            {exportLoading ? <Spin /> : <DownloadOutlined style={{ fontSize: 32, color: '#3b82f6', marginBottom: 12 }} />}
-                            <div style={{ color: '#3b82f6', fontWeight: 600, fontSize: 16 }}>Download Global Report</div>
-                        </div>
-                    </div>
-                </Col>
-            </Row>
-
-            <Card styles={{ body: { padding: 0 } }} style={{ background: '#111', border: '1px solid #303030', overflow: 'hidden', borderRadius: 16 }}>
-                <Table
-                    className="dashboard-table"
-                    dataSource={logs}
-                    columns={columns}
-                    rowKey={(r) => `${r.date}-${r.user_name}-${r.project_name}` + Math.random()}
-                    pagination={{ pageSize: 20 }}
-                    loading={isLoading}
-                    scroll={{ y: 500 }}
-                />
-            </Card>
-        </div>
-    )
-}
-
-function MatrixDashboard({ selectedMonth }) {
-    const { data: jsonResponse, isLoading } = useQuery({
-        queryKey: ['json-matrix', selectedMonth.format('YYYY-MM')],
-        queryFn: () => reportsService.getJsonMatrix(
-            selectedMonth.startOf('month').format('YYYY-MM-DD'),
-            selectedMonth.endOf('month').format('YYYY-MM-DD')
-        ),
-        enabled: !!selectedMonth
-    })
-
-    const rawData = jsonResponse?.data || []
-
-    const { columns, dataSource, totalHours } = useMemo(() => {
-        if (!rawData.length) return { columns: [], dataSource: [], totalHours: 0 }
-
-        const users = Array.from(new Set(rawData.map(r => r.user_name))).sort()
-
-        // Build Data Source Map
-        const dataMap = {}
-        let total = 0
-
-        rawData.forEach(r => {
-            if (!dataMap[r.customer_name]) dataMap[r.customer_name] = { key: r.customer_name, customer: r.customer_name }
-            dataMap[r.customer_name][r.user_name] = (dataMap[r.customer_name][r.user_name] || 0) + r.total_hours
-
-            // Fix total sum to be simpler
-            total += r.total_hours
-        })
-
-        const dataSource = Object.values(dataMap)
-
-        const cols = [
-            {
-                title: 'CUSTOMER',
-                dataIndex: 'customer',
-                key: 'customer',
-                fixed: 'left',
-                width: 250,
-                render: t => <span style={{ fontWeight: 600, color: '#fff', fontSize: 13 }}>{t}</span>
-            },
-            ...users.map(u => ({
-                title: u.toUpperCase(),
-                dataIndex: u,
-                key: u,
-                width: 140,
-                align: 'center',
-                render: (val) => val ? <span style={{ color: '#4ade80', fontWeight: 500 }}>{val.toFixed(2)}</span> : <span style={{ color: '#333' }}>-</span>
-            })),
-            {
-                title: 'TOTAL',
-                key: 'row_total',
-                width: 100,
-                fixed: 'right',
-                align: 'right',
-                render: (_, record) => {
-                    const rowSum = users.reduce((acc, u) => acc + (record[u] || 0), 0)
-                    return <span style={{ fontWeight: 'bold', color: '#fff' }}>{rowSum.toFixed(2)}</span>
-                }
-            }
-        ]
-
-        return { columns: cols, dataSource, totalHours: total }
-    }, [rawData])
-
-    const { mutate: exportCsv, isPending: exportLoading } = useMutation({
-        mutationFn: () => reportsService.exportGlobalMatrix(
-            selectedMonth.startOf('month').format('YYYY-MM-DD'),
-            selectedMonth.endOf('month').format('YYYY-MM-DD')
-        ),
-        onSuccess: () => message.success('Export started'),
-        onError: () => message.error('Export failed')
-    })
-
-    return (
-        <div className="fade-in">
-            <Row gutter={[20, 20]} style={{ marginBottom: 32 }}>
-                <Col xs={24} md={16}>
-                    <div className="sum-card" style={{ flexDirection: 'row', justifyContent: 'space-between', padding: '24px 40px', alignItems: 'center' }}>
-                        <div>
-                            <div style={{ color: '#888', marginBottom: 4, letterSpacing: 1, textTransform: 'uppercase', fontSize: 11, fontWeight: 700 }}>Total Matrix Hours</div>
-                            <div style={{ color: '#4ade80', fontSize: '2.5rem', fontWeight: 600 }}>{totalHours.toFixed(2)}<span style={{ fontSize: 16, color: '#666', marginLeft: 8 }}>h</span></div>
-                        </div>
-                        <div style={{ borderLeft: '1px solid #333', height: 40, margin: '0 30px' }}></div>
-                        <div style={{ display: 'flex', gap: 40 }}>
-                            <Statistic title="Customers" value={dataSource.length} valueStyle={{ color: '#fff' }} titleStyle={{ color: '#e5e5e5' }} prefix={<AppstoreOutlined />} />
-                            <Statistic title="Users Involved" value={columns.length - 2} valueStyle={{ color: '#fff' }} titleStyle={{ color: '#e5e5e5' }} prefix={<UserOutlined />} />
-                        </div>
-                    </div>
-                </Col>
-                <Col xs={24} md={8}>
-                    <div className="sum-card" style={{ borderColor: '#3b82f6', background: 'rgba(59, 130, 246, 0.05)', cursor: 'pointer', alignItems: 'center' }} onClick={() => exportCsv()}>
-                        <div style={{ textAlign: 'center' }}>
-                            {exportLoading ? <Spin /> : <AppstoreOutlined style={{ fontSize: 32, color: '#3b82f6', marginBottom: 12 }} />}
-                            <div style={{ color: '#3b82f6', fontWeight: 600, fontSize: 16 }}>Download Matrix CSV</div>
-                            <div style={{ color: '#666', fontSize: 12, marginTop: 4 }}>Pivot Export</div>
-                        </div>
-                    </div>
-                </Col>
-            </Row>
-
-            <Card styles={{ body: { padding: 0 } }} style={{ background: '#111', border: '1px solid #303030', overflow: 'hidden', borderRadius: 16 }}>
-                {dataSource.length > 0 ? (
+                ) : (
                     <Table
                         className="dashboard-table"
-                        dataSource={dataSource}
+                        dataSource={logs}
                         columns={columns}
-                        rowKey="key"
-                        pagination={false}
-                        loading={isLoading}
-                        scroll={{ x: 'max-content', y: 600 }}
+                        rowKey={(r, i) => `${r.date}-${r.user_name}-${r.project_name}-${i}`}
+                        pagination={{
+                            pageSize: 25,
+                            showSizeChanger: true,
+                            pageSizeOptions: ['25', '50', '100'],
+                            showTotal: (total) => (
+                                <span style={{ color: '#555' }}>{total} entries</span>
+                            )
+                        }}
+                        loading={isLoading || isFetching}
+                        scroll={{ y: 520 }}
                     />
-                ) : (
-                    <div style={{ padding: 60, textAlign: 'center' }}>
-                        {isLoading ? <Spin /> : <Empty description={<span style={{ color: '#666' }}>No data found for this period</span>} />}
-                    </div>
                 )}
-            </Card>
+            </div>
         </div>
     )
 }

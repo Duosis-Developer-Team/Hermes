@@ -379,10 +379,29 @@ export const reportsService = {
      */
     exportExcel: async (params = {}, customFilename = null) => {
         try {
-            const response = await coreApi.get('/api/v1/core/reports/export/excel/v1', {
-                params,
-                responseType: 'blob',
+            // Build URLSearchParams to handle repeated array keys correctly
+            const { user_ids, customer_ids, project_ids, work_type_ids, ...scalarParams } = params
+            const urlParams = new URLSearchParams()
+            Object.entries(scalarParams).forEach(([k, v]) => {
+                if (v !== null && v !== undefined) urlParams.append(k, v)
             })
+            if (Array.isArray(user_ids) && user_ids.length > 0) {
+                user_ids.forEach(id => urlParams.append('user_ids', id))
+            }
+            if (Array.isArray(customer_ids) && customer_ids.length > 0) {
+                customer_ids.forEach(id => urlParams.append('customer_ids', id))
+            }
+            if (Array.isArray(project_ids) && project_ids.length > 0) {
+                project_ids.forEach(id => urlParams.append('project_ids', id))
+            }
+            if (Array.isArray(work_type_ids) && work_type_ids.length > 0) {
+                work_type_ids.forEach(id => urlParams.append('work_type_ids', id))
+            }
+
+            const response = await coreApi.get(
+                `/api/v1/core/reports/export/excel/v1?${urlParams.toString()}`,
+                { responseType: 'blob' }
+            )
 
             // Check if response is actually JSON error (unexpected 401/500 treated as blob)
             if (response.data.type === 'application/json') {
@@ -465,13 +484,24 @@ export const reportsService = {
 
     // JSON Data Endpoints for Dashboard
     getJsonUserLogs: async (params = {}) => {
-        const { user_ids, ...rest } = params
+        const { user_ids, customer_ids, project_ids, work_type_ids, ...rest } = params
         const urlParams = new URLSearchParams()
+        // Scalar params
         Object.entries(rest).forEach(([key, value]) => {
             if (value !== null && value !== undefined) urlParams.append(key, value)
         })
+        // Multi-value array params (repeated keys for FastAPI List[] support)
         if (Array.isArray(user_ids) && user_ids.length > 0) {
             user_ids.forEach(id => urlParams.append('user_ids', id))
+        }
+        if (Array.isArray(customer_ids) && customer_ids.length > 0) {
+            customer_ids.forEach(id => urlParams.append('customer_ids', id))
+        }
+        if (Array.isArray(project_ids) && project_ids.length > 0) {
+            project_ids.forEach(id => urlParams.append('project_ids', id))
+        }
+        if (Array.isArray(work_type_ids) && work_type_ids.length > 0) {
+            work_type_ids.forEach(id => urlParams.append('work_type_ids', id))
         }
         const response = await coreApi.get(`/api/v1/core/reports/json/user-logs?${urlParams.toString()}`)
         return response.data
