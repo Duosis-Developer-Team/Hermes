@@ -34,7 +34,7 @@ router = APIRouter(
 
 # Cookie güvenlik ayarları — dev ortamında secure=False yapılabilir
 _COOKIE_SECURE = not settings.DEBUG       # DEBUG=True → dev HTTP; False → prod HTTPS
-_COOKIE_SAMESITE = "strict"
+_COOKIE_SAMESITE = "lax"                  # Strict'ten kaynaklı port-farkı cookie droplarını çözmek için lax (HTTP Only koruması sürer)
 _COOKIE_MAX_AGE = ACCESS_TOKEN_EXPIRE_MINUTES * 60  # saniye
 
 

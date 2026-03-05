@@ -6,6 +6,7 @@
  * =============================================================================
  */
 
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
 
@@ -51,6 +52,15 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
  */
 function App() {
     const { isAuthenticated } = useAuthStore()
+
+    // [KRİTİK-6]: Temizlik — Eski mimariden kalan güvensiz localStorage token'ını sil
+    useEffect(() => {
+        const legacyToken = localStorage.getItem('hermes-auth')
+        if (legacyToken) {
+            localStorage.removeItem('hermes-auth')
+            console.log('Legacy hermes-auth token removed from localStorage for security')
+        }
+    }, [])
 
     return (
         <Routes>
