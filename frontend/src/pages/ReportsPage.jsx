@@ -305,6 +305,40 @@ function ReportsPage() {
                 .ant-picker-input > input, .ant-select-selection-item, .ant-select-selection-placeholder { color: #ccc !important; }
                 .ant-select-arrow, .ant-picker-suffix { color: #444 !important; }
                 .ant-picker-range-separator { color: #555 !important; }
+
+                /* RangePicker — dark theme range highlight fix */
+                .ant-picker-dropdown { background: #1a1a1a !important; }
+                .ant-picker-panel-container { background: #1a1a1a !important; border: 1px solid #333 !important; border-radius: 12px !important; }
+                .ant-picker-panel { background: transparent !important; border-color: #2a2a2a !important; }
+                .ant-picker-header { color: #ccc !important; border-bottom: 1px solid #2a2a2a !important; }
+                .ant-picker-header button { color: #888 !important; }
+                .ant-picker-header button:hover { color: #fff !important; }
+                .ant-picker-content th { color: #555 !important; }
+                .ant-picker-cell { color: #555 !important; }
+                .ant-picker-cell-in-view { color: #ccc !important; }
+                /* Kill the white bar: in-range background */
+                .ant-picker-cell-in-range::before,
+                .ant-picker-cell-range-start::before,
+                .ant-picker-cell-range-end::before {
+                    background: rgba(87, 157, 255, 0.12) !important;
+                }
+                /* Hover range preview */
+                .ant-picker-cell-range-hover::before,
+                .ant-picker-cell-range-hover-start::before,
+                .ant-picker-cell-range-hover-end::before {
+                    background: rgba(87, 157, 255, 0.06) !important;
+                    border-color: rgba(87, 157, 255, 0.3) !important;
+                }
+                /* Start & end circle */
+                .ant-picker-cell-range-start .ant-picker-cell-inner,
+                .ant-picker-cell-range-end .ant-picker-cell-inner {
+                    background: #3b82f6 !important;
+                    color: #fff !important;
+                }
+                /* Today */
+                .ant-picker-cell-today .ant-picker-cell-inner::before { border-color: #3b82f6 !important; }
+                /* Hover cell */
+                .ant-picker-cell:hover .ant-picker-cell-inner { background: rgba(87,157,255,0.15) !important; }
                 .filter-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 6px; display: flex; gap: 6px; align-items: center; }
                 .filter-badge { background: #3b82f6; color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 10px; font-weight: 700; }
 
