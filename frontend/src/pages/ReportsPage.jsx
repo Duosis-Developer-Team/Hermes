@@ -163,7 +163,7 @@ function ReportsPage() {
                             allowClear
                             showSearch
                             filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount={3}
+                            maxTagCount={2}
                             style={{ minWidth: 260, width: 280 }}
                         />
                     </FilterBlock>
@@ -179,7 +179,7 @@ function ReportsPage() {
                             allowClear
                             showSearch
                             filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount={3}
+                            maxTagCount={2}
                             style={{ minWidth: 240, width: 260 }}
                         />
                     </FilterBlock>
@@ -205,7 +205,7 @@ function ReportsPage() {
                             allowClear
                             showSearch
                             filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount={3}
+                            maxTagCount={2}
                             style={{ minWidth: 260, width: 300 }}
                         />
                     </FilterBlock>
@@ -481,9 +481,9 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                         columns={columns}
                         rowKey={(r, i) => `${r.date}-${r.user_name}-${r.project_name}-${i}`}
                         pagination={{
-                            pageSize: 25,
+                            defaultPageSize: 25,
                             showSizeChanger: true,
-                            pageSizeOptions: ['25', '50', '100'],
+                            pageSizeOptions: [25, 50, 100],
                             showTotal: (total) => (
                                 <span style={{ color: 'var(--text-muted)' }}>{total} entries</span>
                             )
