@@ -3,20 +3,19 @@
  * HERMES PLATFORM - Reports & Analytics (Tempo-Style Unified Dashboard)
  * =============================================================================
  * JIRA Tempo mantığında dinamik filtre çubuğu ve reaktif tablo.
- * Tek bir unified görünüm: Date Range, Users, Customers, Projects, Types.
+ * Atlassian Design System renk paletine uygun tasarım.
  * =============================================================================
  */
 
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import {
-    DatePicker, Button, Select, Typography, Space,
+    DatePicker, Button, Select, Typography,
     Row, Col, Table, message, Statistic, Tag, Empty, Spin
 } from 'antd'
 import {
     DownloadOutlined,
     BarChartOutlined,
     PieChartOutlined,
-    FilterOutlined,
     CloseCircleOutlined,
     CalendarOutlined
 } from '@ant-design/icons'
@@ -33,16 +32,6 @@ import { useAuthStore } from '../stores/authStore'
 
 const { Text } = Typography
 const { RangePicker } = DatePicker
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-const buildMultiParam = (urlParams, key, arr) => {
-    if (Array.isArray(arr) && arr.length > 0) {
-        arr.forEach(id => urlParams.append(key, id))
-    }
-}
 
 // =============================================================================
 // Main Component
@@ -107,10 +96,12 @@ function ReportsPage() {
 
     // ── Access Control ────────────────────────────────────────────────────────
     if (!user?.is_admin) {
-        return <div style={{ padding: 40, textAlign: 'center', color: '#fff' }}>Access Restricted</div>
+        return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>Access Restricted</div>
     }
 
-    // ── Clear All Filters ─────────────────────────────────────────────────────
+    const hasActiveFilters = selectedUsers.length > 0 || selectedCustomers.length > 0 ||
+        selectedProjects.length > 0 || selectedTypes.length > 0
+
     const handleClearAll = () => {
         setDateRange([dayjs().startOf('month'), dayjs().endOf('month')])
         setSelectedUsers([])
@@ -119,63 +110,36 @@ function ReportsPage() {
         setSelectedTypes([])
     }
 
-    const hasActiveFilters = selectedUsers.length > 0 || selectedCustomers.length > 0 ||
-        selectedProjects.length > 0 || selectedTypes.length > 0
-
     return (
-        <div className="reports-page fade-in" style={{ padding: '24px 40px', maxWidth: 1600, margin: '0 auto', color: '#e5e5e5' }}>
+        <div className="reports-page fade-in" style={{ padding: '24px 32px', maxWidth: 1600, margin: '0 auto' }}>
 
             {/* ── Page Header ──────────────────────────────────────────────── */}
-            <div style={{
-                marginBottom: 32,
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
-                paddingBottom: 20,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-end'
-            }}>
+            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                    <h1 style={{
-                        fontSize: '2rem',
-                        fontWeight: 700,
-                        margin: 0,
-                        background: 'linear-gradient(90deg, #fff, #aaa)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent'
-                    }}>
-                        Reports &amp; Analytics
-                    </h1>
-                    <Text style={{ color: '#555', fontSize: '0.95rem', marginTop: 4, display: 'block' }}>
-                        Real-time dashboard · Filter by date, user, customer, project or type
-                    </Text>
+                    <h1>Reports &amp; Analytics</h1>
+                    <p>Real-time dashboard · Filter by date, user, customer, project or type</p>
                 </div>
-
                 {hasActiveFilters && (
                     <Button
                         icon={<CloseCircleOutlined />}
                         onClick={handleClearAll}
-                        style={{ background: 'transparent', border: '1px solid #444', color: '#aaa' }}
+                        style={{ marginTop: 4 }}
                     >
-                        Clear All Filters
+                        Clear Filters
                     </Button>
                 )}
             </div>
 
             {/* ── Tempo Filter Bar ─────────────────────────────────────────── */}
             <div style={{
-                marginBottom: 28,
-                background: 'rgba(15, 15, 15, 0.85)',
-                backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255,255,255,0.07)',
-                borderRadius: 16,
+                marginBottom: 24,
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-lg)',
                 padding: '20px 24px'
             }}>
-                <div style={{
-                    display: 'flex',
-                    gap: 16,
-                    flexWrap: 'wrap',
-                    alignItems: 'flex-start'
-                }}>
+                {/* Row 1: Date Range + Users + Customers */}
+                <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
 
                     {/* Date Range */}
                     <FilterBlock label="Date Range" icon={<CalendarOutlined />}>
@@ -183,8 +147,7 @@ function ReportsPage() {
                             value={dateRange}
                             onChange={setDateRange}
                             allowClear={false}
-                            style={{ width: 260, height: 38 }}
-                            className="modern-picker"
+                            style={{ width: 260 }}
                             format="DD MMM YYYY"
                         />
                     </FilterBlock>
@@ -200,9 +163,8 @@ function ReportsPage() {
                             allowClear
                             showSearch
                             filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount="responsive"
-                            style={{ minWidth: 200, width: 220 }}
-                            className="modern-select"
+                            maxTagCount={3}
+                            style={{ minWidth: 260, width: 280 }}
                         />
                     </FilterBlock>
 
@@ -217,12 +179,21 @@ function ReportsPage() {
                             allowClear
                             showSearch
                             filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount="responsive"
-                            style={{ minWidth: 200, width: 220 }}
-                            className="modern-select"
+                            maxTagCount={3}
+                            style={{ minWidth: 240, width: 260 }}
                         />
                     </FilterBlock>
+                </div>
 
+                {/* Row 2: Projects + Types (+ divider) */}
+                <div style={{
+                    display: 'flex',
+                    gap: 20,
+                    flexWrap: 'wrap',
+                    alignItems: 'flex-end',
+                    paddingTop: 16,
+                    borderTop: '1px solid var(--border-subtle)'
+                }}>
                     {/* Projects */}
                     <FilterBlock label="Projects" count={selectedProjects.length}>
                         <Select
@@ -234,9 +205,8 @@ function ReportsPage() {
                             allowClear
                             showSearch
                             filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount="responsive"
-                            style={{ minWidth: 200, width: 220 }}
-                            className="modern-select"
+                            maxTagCount={3}
+                            style={{ minWidth: 260, width: 300 }}
                         />
                     </FilterBlock>
 
@@ -251,9 +221,8 @@ function ReportsPage() {
                             allowClear
                             showSearch
                             filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount="responsive"
-                            style={{ minWidth: 180, width: 200 }}
-                            className="modern-select"
+                            maxTagCount={3}
+                            style={{ minWidth: 200, width: 240 }}
                         />
                     </FilterBlock>
                 </div>
@@ -267,105 +236,43 @@ function ReportsPage() {
                 selectedProjects={selectedProjects}
                 selectedTypes={selectedTypes}
             />
-
-            {/* ── AntD Dark Overrides ───────────────────────────────────────── */}
-            <style>{`
-                /* Table */
-                .dashboard-table .ant-table { background: transparent; color: #ccc; }
-                .dashboard-table .ant-table-thead > tr > th {
-                    background: #0d0d0d; color: #555; border-bottom: 1px solid #252525;
-                    font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
-                }
-                .dashboard-table .ant-table-tbody > tr > td { border-bottom: 1px solid #1c1c1c; padding: 14px 16px; }
-                .dashboard-table .ant-table-tbody > tr:hover > td { background: rgba(255,255,255,0.025) !important; }
-                .dashboard-table .ant-table-pagination { padding: 12px 16px; }
-
-                /* Summary Cards */
-                .sum-card {
-                    background: #0f0f0f; border: 1px solid #222; border-radius: 14px;
-                    padding: 22px 24px; display: flex; flex-direction: column;
-                    align-items: flex-start; height: 100%;
-                    transition: border-color 0.2s, transform 0.2s;
-                }
-                .sum-card:hover { border-color: #383838; transform: translateY(-2px); }
-                .sum-card .ant-statistic-title { color: #888 !important; font-size: 12px; margin-bottom: 4px; }
-                .sum-card .ant-statistic-content-value { color: #fff !important; font-size: 1.9rem !important; font-weight: 600 !important; }
-                .sum-card-icon {
-                    width: 38px; height: 38px; border-radius: 10px;
-                    display: flex; align-items: center; justify-content: center;
-                    margin-bottom: 14px; font-size: 17px;
-                }
-
-                /* Filter Bar Inputs */
-                .modern-picker, .modern-select .ant-select-selector {
-                    background-color: #111 !important; border-color: #2e2e2e !important;
-                    color: #e5e5e5 !important; border-radius: 8px !important;
-                }
-                .modern-picker:hover, .modern-select:hover .ant-select-selector { border-color: #555 !important; }
-                .ant-picker-input > input, .ant-select-selection-item, .ant-select-selection-placeholder { color: #ccc !important; }
-                .ant-select-arrow, .ant-picker-suffix { color: #444 !important; }
-                .ant-picker-range-separator { color: #555 !important; }
-
-                /* RangePicker — dark theme range highlight fix */
-                .ant-picker-dropdown { background: #1a1a1a !important; }
-                .ant-picker-panel-container { background: #1a1a1a !important; border: 1px solid #333 !important; border-radius: 12px !important; }
-                .ant-picker-panel { background: transparent !important; border-color: #2a2a2a !important; }
-                .ant-picker-header { color: #ccc !important; border-bottom: 1px solid #2a2a2a !important; }
-                .ant-picker-header button { color: #888 !important; }
-                .ant-picker-header button:hover { color: #fff !important; }
-                .ant-picker-content th { color: #555 !important; }
-                .ant-picker-cell { color: #555 !important; }
-                .ant-picker-cell-in-view { color: #ccc !important; }
-                /* Kill the white bar: in-range background */
-                .ant-picker-cell-in-range::before,
-                .ant-picker-cell-range-start::before,
-                .ant-picker-cell-range-end::before {
-                    background: rgba(87, 157, 255, 0.12) !important;
-                }
-                /* Hover range preview */
-                .ant-picker-cell-range-hover::before,
-                .ant-picker-cell-range-hover-start::before,
-                .ant-picker-cell-range-hover-end::before {
-                    background: rgba(87, 157, 255, 0.06) !important;
-                    border-color: rgba(87, 157, 255, 0.3) !important;
-                }
-                /* Start & end circle */
-                .ant-picker-cell-range-start .ant-picker-cell-inner,
-                .ant-picker-cell-range-end .ant-picker-cell-inner {
-                    background: #3b82f6 !important;
-                    color: #fff !important;
-                }
-                /* Today */
-                .ant-picker-cell-today .ant-picker-cell-inner::before { border-color: #3b82f6 !important; }
-                /* Hover cell */
-                .ant-picker-cell:hover .ant-picker-cell-inner { background: rgba(87,157,255,0.15) !important; }
-                .filter-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 6px; display: flex; gap: 6px; align-items: center; }
-                .filter-badge { background: #3b82f6; color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 10px; font-weight: 700; }
-
-                /* Export Card */
-                .export-card {
-                    background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.3);
-                    border-radius: 14px; padding: 22px 24px; height: 100%;
-                    display: flex; flex-direction: column; align-items: center; justify-content: center;
-                    cursor: pointer; transition: background 0.2s, border-color 0.2s, transform 0.2s;
-                }
-                .export-card:hover { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.6); transform: translateY(-2px); }
-            `}</style>
         </div>
     )
 }
 
 // =============================================================================
-// FilterBlock — Reusable label + control wrapper
+// FilterBlock
 // =============================================================================
 
 function FilterBlock({ label, icon, count, children }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div className="filter-label">
-                {icon && <span>{icon}</span>}
+            <div style={{
+                fontSize: 11,
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                color: 'var(--text-muted)',
+                marginBottom: 6,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5
+            }}>
+                {icon && <span style={{ opacity: 0.7 }}>{icon}</span>}
                 {label}
-                {count > 0 && <span className="filter-badge">{count}</span>}
+                {count > 0 && (
+                    <span style={{
+                        background: 'var(--Blue400)',
+                        color: '#fff',
+                        borderRadius: 10,
+                        padding: '1px 7px',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        lineHeight: '16px'
+                    }}>
+                        {count}
+                    </span>
+                )}
             </div>
             {children}
         </div>
@@ -373,22 +280,16 @@ function FilterBlock({ label, icon, count, children }) {
 }
 
 // =============================================================================
-// MainDashboard — Reactive table + stats
+// MainDashboard
 // =============================================================================
 
 function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedProjects, selectedTypes }) {
     const startDate = dateRange?.[0]?.format('YYYY-MM-DD')
     const endDate = dateRange?.[1]?.format('YYYY-MM-DD')
 
-    // Query key includes all filters → any change triggers refetch
     const queryKey = [
-        'tempo-logs',
-        startDate,
-        endDate,
-        selectedUsers,
-        selectedCustomers,
-        selectedProjects,
-        selectedTypes
+        'tempo-logs', startDate, endDate,
+        selectedUsers, selectedCustomers, selectedProjects, selectedTypes
     ]
 
     const { data: jsonResponse, isLoading, isFetching } = useQuery({
@@ -406,12 +307,9 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
     })
 
     const logs = jsonResponse?.data || []
-
-    // Reactive computed stats — always reflect currently visible data
     const totalHours = useMemo(() => logs.reduce((sum, l) => sum + (l.duration || 0), 0), [logs])
     const entryCount = logs.length
 
-    // Export handler — passes exact same filters
     const { mutate: exportCsv, isPending: exportLoading } = useMutation({
         mutationFn: () => reportsService.exportExcel({
             start_date: startDate,
@@ -434,7 +332,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
             render: d => (
-                <span style={{ color: '#888', fontFamily: 'monospace', fontSize: 13 }}>
+                <span style={{ color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 13 }}>
                     {dayjs(d).format('DD MMM YYYY')}
                 </span>
             )
@@ -446,7 +344,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             sorter: (a, b) => (a.user_name || '').localeCompare(b.user_name || '', 'tr'),
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
-            render: u => <span style={{ color: '#ccc', fontWeight: 500 }}>{u}</span>
+            render: u => <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{u}</span>
         },
         {
             title: 'Customer',
@@ -455,7 +353,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             sorter: (a, b) => (a.customer_name || '').localeCompare(b.customer_name || '', 'tr'),
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
-            render: c => <span style={{ color: '#e5e5e5' }}>{c}</span>
+            render: c => <span style={{ color: 'var(--text-primary)' }}>{c}</span>
         },
         {
             title: 'Project',
@@ -464,7 +362,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             sorter: (a, b) => (a.project_name || '').localeCompare(b.project_name || '', 'tr'),
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
-            render: p => <span style={{ color: '#e5e5e5' }}>{p}</span>
+            render: p => <span style={{ color: 'var(--text-primary)' }}>{p}</span>
         },
         {
             title: 'Type',
@@ -475,10 +373,10 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             showSorterTooltip: false,
             render: t => (
                 <Tag style={{
-                    background: 'rgba(87,157,255,0.12)',
-                    border: '1px solid rgba(87,157,255,0.3)',
-                    color: '#579dff',
-                    borderRadius: 10,
+                    background: 'rgba(87,157,255,0.15)',
+                    border: '1px solid rgba(87,157,255,0.25)',
+                    color: 'var(--Blue400)',
+                    borderRadius: 4,
                     fontSize: 11,
                     fontWeight: 600
                 }}>
@@ -490,7 +388,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             title: 'Description',
             dataIndex: 'description',
             ellipsis: true,
-            render: d => <span style={{ color: '#777', fontSize: 13 }}>{d || '—'}</span>
+            render: d => <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{d || '—'}</span>
         },
         {
             title: 'Hours',
@@ -501,7 +399,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
             render: h => (
-                <span style={{ color: '#4ade80', fontWeight: 700, fontFamily: 'monospace' }}>
+                <span style={{ color: 'var(--Green400)', fontWeight: 700, fontFamily: 'monospace' }}>
                     {(h || 0).toFixed(2)}
                 </span>
             )
@@ -511,64 +409,74 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
     return (
         <div className="fade-in">
 
-            {/* ── Summary Cards ─────────────────────────────────────────────── */}
-            <Row gutter={[20, 20]} style={{ marginBottom: 28 }}>
+            {/* ── KPI Cards ─────────────────────────────────────────────────── */}
+            <Row gutter={[20, 20]} style={{ marginBottom: 20 }}>
                 <Col xs={24} sm={8}>
-                    <div className="sum-card">
-                        <div className="sum-card-icon" style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80' }}>
-                            <BarChartOutlined />
+                    <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <BarChartOutlined style={{ color: 'var(--Green400)', fontSize: 15 }} />
+                            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                                Total Hours
+                            </span>
                         </div>
-                        <Statistic
-                            title="Total Hours"
-                            value={`${totalHours.toFixed(2)} h`}
-                        />
+                        <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                            {totalHours.toFixed(2)} <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>h</span>
+                        </div>
                     </div>
                 </Col>
                 <Col xs={24} sm={8}>
-                    <div className="sum-card">
-                        <div className="sum-card-icon" style={{ background: 'rgba(255,255,255,0.06)', color: '#aaa' }}>
-                            <PieChartOutlined />
+                    <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <PieChartOutlined style={{ color: 'var(--Blue400)', fontSize: 15 }} />
+                            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                                Entries
+                            </span>
                         </div>
-                        <Statistic
-                            title="Entries"
-                            value={entryCount}
-                        />
+                        <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                            {entryCount}
+                        </div>
                     </div>
                 </Col>
                 <Col xs={24} sm={8}>
                     <div
-                        className="export-card"
+                        className="stat-card"
                         onClick={() => !exportLoading && exportCsv()}
-                        title="Download filtered data as CSV"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 12,
+                            cursor: exportLoading ? 'not-allowed' : 'pointer',
+                            borderColor: 'var(--Blue500)',
+                            background: 'rgba(56,139,255,0.06)',
+                            flexDirection: 'row',
+                            height: '100%'
+                        }}
                     >
                         {exportLoading
-                            ? <Spin />
-                            : <DownloadOutlined style={{ fontSize: 30, color: '#3b82f6', marginBottom: 10 }} />
+                            ? <Spin size="small" />
+                            : <DownloadOutlined style={{ fontSize: 22, color: 'var(--Blue400)' }} />
                         }
-                        <div style={{ color: '#3b82f6', fontWeight: 600, fontSize: 15 }}>Download CSV Report</div>
-                        <div style={{ color: '#444', fontSize: 11, marginTop: 4 }}>Exports current filter view</div>
+                        <div>
+                            <div style={{ color: 'var(--Blue400)', fontWeight: 600, fontSize: 14 }}>Download CSV</div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 2 }}>Exports current filter view</div>
+                        </div>
                     </div>
                 </Col>
             </Row>
 
             {/* ── Data Table ────────────────────────────────────────────────── */}
-            <div style={{
-                background: '#0b0b0b',
-                border: '1px solid #1e1e1e',
-                borderRadius: 16,
-                overflow: 'hidden'
-            }}>
+            <div className="content-card">
                 {logs.length === 0 && !isLoading ? (
                     <div style={{ padding: 60, textAlign: 'center' }}>
                         <Empty
                             description={
-                                <span style={{ color: '#444' }}>No entries match the current filters</span>
+                                <span style={{ color: 'var(--text-muted)' }}>No entries match the current filters</span>
                             }
                         />
                     </div>
                 ) : (
                     <Table
-                        className="dashboard-table"
                         dataSource={logs}
                         columns={columns}
                         rowKey={(r, i) => `${r.date}-${r.user_name}-${r.project_name}-${i}`}
@@ -577,7 +485,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                             showSizeChanger: true,
                             pageSizeOptions: ['25', '50', '100'],
                             showTotal: (total) => (
-                                <span style={{ color: '#555' }}>{total} entries</span>
+                                <span style={{ color: 'var(--text-muted)' }}>{total} entries</span>
                             )
                         }}
                         loading={isLoading || isFetching}
