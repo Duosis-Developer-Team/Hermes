@@ -263,9 +263,12 @@ export const workLogService = {
 
     /**
      * Yeni giriş oluştur
+     * @param {object} data - log payload
+     * @param {string|null} targetUserId - admin: create on behalf of this user
      */
-    create: async (data) => {
-        const response = await coreApi.post('/api/v1/core/work-logs', data)
+    create: async (data, targetUserId = null) => {
+        const params = targetUserId ? { target_user_id: targetUserId } : {}
+        const response = await coreApi.post('/api/v1/core/work-logs', data, { params })
         return response.data
     },
 

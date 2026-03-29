@@ -28,18 +28,22 @@ router = APIRouter(prefix="/work-logs", tags=["Work Logs"])
 @router.post("", response_model=WorkLogResponse, status_code=status.HTTP_201_CREATED)
 async def create_work_log(
     data: WorkLogCreate,
+    target_user_id: Optional[UUID] = Query(None, description="Admin: create log on behalf of this user"),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Yeni zaman girişi oluşturur.
-    
-    Tüm kullanıcılar bu endpoint'i kullanabilir. user_id otomatik olarak
-    giriş yapan kullanıcının ID'si olarak atanır.
+
+    Admin, target_user_id query param'ı ile başka bir kullanıcı adına log oluşturabilir.
     """
     service = WorkLogService(db)
     try:
-        work_log = service.create(data, UUID(current_user.id))
+        if target_user_id and current_user.is_admin:
+            effective_user_id = target_user_id
+        else:
+            effective_user_id = UUID(current_user.id)
+        work_log = service.create(data, effective_user_id)
         return service.to_response(work_log)
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)

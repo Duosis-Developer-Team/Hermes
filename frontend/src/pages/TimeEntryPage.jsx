@@ -124,7 +124,7 @@ function TimeEntryPage() {
     // Mutations
     // ==========================================================================
     const createMutation = useMutation({
-        mutationFn: workLogService.create,
+        mutationFn: (data) => workLogService.create(data, selectedUserId || null),
         onSuccess: () => {
             message.success('Time logged')
             queryClient.invalidateQueries(['workLogs'])
@@ -137,7 +137,7 @@ function TimeEntryPage() {
 
     // Separate mutation for paste — no generic toast
     const pasteMutation = useMutation({
-        mutationFn: workLogService.create,
+        mutationFn: (data) => workLogService.create(data, selectedUserId || null),
         onSuccess: () => {
             queryClient.invalidateQueries(['workLogs'])
             refetchPeriodStatus()
