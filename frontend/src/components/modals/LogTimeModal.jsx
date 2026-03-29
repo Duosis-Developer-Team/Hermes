@@ -9,7 +9,7 @@
 
 import { useState, useEffect } from 'react'
 import {
-    Modal, Form, Input, Select, DatePicker, InputNumber,
+    Modal, Form, Input, Select, DatePicker,
     Button, Checkbox, message
 } from 'antd'
 import {
@@ -18,6 +18,7 @@ import {
     ArrowLeftOutlined,
     WarningOutlined
 } from '@ant-design/icons'
+import HoursMinutesPicker from '../common/HoursMinutesPicker'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import {
@@ -134,7 +135,7 @@ function LogTimeModal({
         } else if (open) {
             form.setFieldsValue({
                 date_worked: initialDate ? dayjs(initialDate) : dayjs(),
-                duration_hours: 0,
+                duration_hours: null,
             })
         }
     }, [editingLog, open, initialDate, form])
@@ -197,7 +198,7 @@ function LogTimeModal({
                     activity_type_id: currentValues.activity_type_id,
                     platform_id: currentValues.platform_id,
                     work_line_id: currentValues.work_line_id,
-                    duration_hours: 0,
+                    duration_hours: null,
                     description: undefined
                 })
 
@@ -354,19 +355,27 @@ function LogTimeModal({
                                 <Form.Item
                                     name="duration_hours"
                                     label="Duration"
-                                    rules={[{ required: true, message: 'Required' }]}
+                                    rules={[
+                                        {
+                                            validator: (_, val) => {
+                                                if (val === null || val === undefined || val === '') {
+                                                    return Promise.reject('Duration is required')
+                                                }
+                                                if (val === 0) {
+                                                    return Promise.reject('Duration must be greater than 0')
+                                                }
+                                                const mins = Math.round((val - Math.floor(val)) * 60)
+                                                if (mins % 15 !== 0) {
+                                                    return Promise.reject('Minutes must be in increments of 15 (0, 15, 30, 45).')
+                                                }
+                                                return Promise.resolve()
+                                            }
+                                        }
+                                    ]}
                                     style={{ marginBottom: 8 }}
                                 >
-                                    <InputNumber
-                                        min={0}
-                                        max={24}
-                                        step={0.25}
-                                        suffix="h"
-                                        style={{ width: '100%' }}
-                                        placeholder="0h"
-                                    />
+                                    <HoursMinutesPicker />
                                 </Form.Item>
-
                             </div>
                         </div>
 

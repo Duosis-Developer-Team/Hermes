@@ -10,15 +10,14 @@ import { Tag, Tooltip } from 'antd'
 import { CheckSquareOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import './WorkLogCard.css'
 
-// Format hours: 1.00 -> 1, 2.50 -> 2.5
+// Format decimal hours → "2h 30m" (handles legacy data: 2.5 → 2h 30m)
 const formatHours = (hours) => {
-    if (!hours) return '0'
+    if (!hours && hours !== 0) return '0h'
     const num = parseFloat(hours)
-    if (Number.isInteger(num)) {
-        return `${num}h`
-    }
-    // Remove trailing zeros
-    return `${parseFloat(num.toFixed(2))}h`
+    const h = Math.floor(num)
+    const m = Math.round((num - h) * 60)
+    if (m === 0) return `${h}h`
+    return `${h}h ${m}m`
 }
 
 function WorkLogCard({ workLog, onEdit, onDelete }) {

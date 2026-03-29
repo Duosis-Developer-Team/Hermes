@@ -11,7 +11,6 @@ import {
     Table,
     Button,
     Select,
-    InputNumber,
     Avatar,
     message,
     Typography,
@@ -20,6 +19,7 @@ import {
     Tooltip,
     Tag
 } from 'antd'
+import HoursMinutesPicker from '../components/common/HoursMinutesPicker'
 import {
     LeftOutlined,
     RightOutlined,
@@ -40,6 +40,15 @@ dayjs.extend(isoWeek)
 dayjs.locale('en')
 
 const { Title, Text } = Typography
+
+// Decimal hours → "2h 30m" display string (handles legacy data)
+function formatDecimalToHM(decimal) {
+    const num = parseFloat(decimal) || 0
+    const h = Math.floor(num)
+    const m = Math.round((num - h) * 60)
+    if (m === 0) return `${h}h`
+    return `${h}h ${m}m`
+}
 
 function BillableHoursPage() {
     const queryClient = useQueryClient()
@@ -184,7 +193,12 @@ function BillableHoursPage() {
     }
 
     const handleSave = (id) => {
-        if (editValue === null || editValue < 0) return
+        if (editValue === null || editValue <= 0) return
+        const mins = Math.round((editValue - Math.floor(editValue)) * 60)
+        if (mins % 15 !== 0) {
+            message.error('Minutes must be in increments of 15 (0, 15, 30, 45).')
+            return
+        }
         updateMutation.mutate({ id, billable_duration_hours: editValue })
     }
 
@@ -267,16 +281,10 @@ function BillableHoursPage() {
                     : record.duration_hours
 
                 return isEditing ? (
-                    <Space style={{ justifyContent: 'flex-end' }}>
-                        <InputNumber
-                            min={0}
-                            step={0.5}
+                    <Space style={{ justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <HoursMinutesPicker
                             value={editValue}
                             onChange={setEditValue}
-                            onPressEnter={() => handleSave(record.id)}
-                            autoFocus
-                            style={{ width: 70 }}
-                            variant="filled"
                         />
                         <Button
                             type="primary"
@@ -302,9 +310,8 @@ function BillableHoursPage() {
                         className="editable-duration-cell"
                     >
                         <span style={{ fontSize: '1.2rem', fontWeight: 600, color: '#4ade80' }}>
-                            {parseFloat(displayValue).toFixed(2)}
+                            {formatDecimalToHM(displayValue)}
                         </span>
-                        <span style={{ fontSize: '0.8rem', color: '#9FADBC', marginLeft: 4 }}>h</span>
                     </div>
                 )
             }
@@ -343,7 +350,7 @@ function BillableHoursPage() {
                     <div style={{ textAlign: 'right', paddingRight: 16, borderRight: '1px solid #333' }}>
                         <div style={{ fontSize: 12, color: '#888', letterSpacing: 1 }}>TOTAL</div>
                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#4ade80' }}>
-                            {totalHours.toFixed(2)} <span style={{ fontSize: '1rem' }}>h</span>
+                            {formatDecimalToHM(totalHours)}
                         </div>
                     </div>
 

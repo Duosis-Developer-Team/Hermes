@@ -8,9 +8,10 @@
 
 import { useState, useEffect } from 'react'
 import {
-    Modal, Form, Select, DatePicker, TimePicker, InputNumber,
+    Modal, Form, Select, DatePicker, TimePicker,
     Checkbox, Button, Input
 } from 'antd'
+import HoursMinutesPicker from '../common/HoursMinutesPicker'
 import {
     FastForwardOutlined,
     SettingOutlined,
@@ -69,7 +70,7 @@ function PlanTimeModal({
                 end_date: defaultDate,
                 start_time: dayjs().hour(9).minute(0),
                 end_time: dayjs().hour(18).minute(0),
-                planned_hours: 0,
+                planned_hours: null,
                 distribution: 'per_day',
                 repeat: 'never',
                 status: 'pending',
@@ -218,16 +219,25 @@ function PlanTimeModal({
                     <Form.Item
                         name="planned_hours"
                         label="Planned time"
-                        rules={[{ required: true }]}
+                        rules={[
+                            {
+                                validator: (_, val) => {
+                                    if (val === null || val === undefined || val === '') {
+                                        return Promise.reject('Planned time is required')
+                                    }
+                                    if (val === 0) {
+                                        return Promise.reject('Planned time must be greater than 0')
+                                    }
+                                    const mins = Math.round((val - Math.floor(val)) * 60)
+                                    if (mins % 15 !== 0) {
+                                        return Promise.reject('Minutes must be in increments of 15 (0, 15, 30, 45).')
+                                    }
+                                    return Promise.resolve()
+                                }
+                            }
+                        ]}
                     >
-                        <InputNumber
-                            min={0}
-                            max={100}
-                            step={0.5}
-                            suffix="h"
-                            style={{ width: '100%' }}
-                            placeholder="0h"
-                        />
+                        <HoursMinutesPicker />
                     </Form.Item>
 
                     <Form.Item
