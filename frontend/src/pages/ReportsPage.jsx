@@ -26,7 +26,8 @@ import {
     authService,
     customerService,
     projectService,
-    workTypeService
+    workTypeService,
+    platformService
 } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 
@@ -49,6 +50,7 @@ function ReportsPage() {
     const [selectedCustomers, setSelectedCustomers] = useState([])
     const [selectedProjects, setSelectedProjects] = useState([])
     const [selectedTypes, setSelectedTypes] = useState([])
+    const [selectedPlatforms, setSelectedPlatforms] = useState([])
 
     // ── Dropdown Data ─────────────────────────────────────────────────────────
     const { data: usersData } = useQuery({
@@ -94,13 +96,24 @@ function ReportsPage() {
         return Array.isArray(raw) ? [...raw].sort((a, b) => a.name.localeCompare(b.name, 'tr')) : []
     }, [workTypesData])
 
+    const { data: platformsData } = useQuery({
+        queryKey: ['platforms-list'],
+        queryFn: () => platformService.getAll(),
+        enabled: !!user?.is_admin,
+        staleTime: 5 * 60 * 1000
+    })
+    const platforms = useMemo(() => {
+        const raw = platformsData?.data || platformsData || []
+        return Array.isArray(raw) ? [...raw].sort((a, b) => a.name.localeCompare(b.name, 'tr')) : []
+    }, [platformsData])
+
     // ── Access Control ────────────────────────────────────────────────────────
     if (!user?.is_admin) {
         return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>Access Restricted</div>
     }
 
     const hasActiveFilters = selectedUsers.length > 0 || selectedCustomers.length > 0 ||
-        selectedProjects.length > 0 || selectedTypes.length > 0
+        selectedProjects.length > 0 || selectedTypes.length > 0 || selectedPlatforms.length > 0
 
     const handleClearAll = () => {
         setDateRange([dayjs().startOf('month'), dayjs().endOf('month')])
@@ -108,6 +121,7 @@ function ReportsPage() {
         setSelectedCustomers([])
         setSelectedProjects([])
         setSelectedTypes([])
+        setSelectedPlatforms([])
     }
 
     return (
@@ -225,6 +239,22 @@ function ReportsPage() {
                             style={{ minWidth: 200, width: 240 }}
                         />
                     </FilterBlock>
+
+                    {/* Platforms */}
+                    <FilterBlock label="Platforms" count={selectedPlatforms.length}>
+                        <Select
+                            mode="multiple"
+                            placeholder="All platforms"
+                            value={selectedPlatforms}
+                            onChange={setSelectedPlatforms}
+                            options={platforms.map(p => ({ value: p.id, label: p.name }))}
+                            allowClear
+                            showSearch
+                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+                            maxTagCount={3}
+                            style={{ minWidth: 200, width: 240 }}
+                        />
+                    </FilterBlock>
                 </div>
             </div>
 
@@ -235,6 +265,7 @@ function ReportsPage() {
                 selectedCustomers={selectedCustomers}
                 selectedProjects={selectedProjects}
                 selectedTypes={selectedTypes}
+                selectedPlatforms={selectedPlatforms}
             />
         </div>
     )
@@ -283,13 +314,13 @@ function FilterBlock({ label, icon, count, children }) {
 // MainDashboard
 // =============================================================================
 
-function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedProjects, selectedTypes }) {
+function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedProjects, selectedTypes, selectedPlatforms }) {
     const startDate = dateRange?.[0]?.format('YYYY-MM-DD')
     const endDate = dateRange?.[1]?.format('YYYY-MM-DD')
 
     const queryKey = [
         'tempo-logs', startDate, endDate,
-        selectedUsers, selectedCustomers, selectedProjects, selectedTypes
+        selectedUsers, selectedCustomers, selectedProjects, selectedTypes, selectedPlatforms
     ]
 
     const { data: jsonResponse, isLoading, isFetching } = useQuery({
@@ -300,7 +331,8 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             user_ids: selectedUsers,
             customer_ids: selectedCustomers,
             project_ids: selectedProjects,
-            work_type_ids: selectedTypes
+            work_type_ids: selectedTypes,
+            platform_ids: selectedPlatforms
         }),
         enabled: !!startDate && !!endDate,
         keepPreviousData: true
@@ -317,7 +349,8 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             user_ids: selectedUsers,
             customer_ids: selectedCustomers,
             project_ids: selectedProjects,
-            work_type_ids: selectedTypes
+            work_type_ids: selectedTypes,
+            platform_ids: selectedPlatforms
         }),
         onSuccess: () => message.success('CSV export started'),
         onError: () => message.error('Export failed')
@@ -383,6 +416,24 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                     {t}
                 </Tag>
             )
+        },
+        {
+            title: 'Platform',
+            dataIndex: 'platform_name',
+            width: 130,
+            sorter: (a, b) => (a.platform_name || '').localeCompare(b.platform_name || '', 'tr'),
+            sortDirections: ['ascend', 'descend', null],
+            showSorterTooltip: false,
+            render: p => p
+                ? <Tag style={{
+                    background: 'rgba(160,100,255,0.15)',
+                    border: '1px solid rgba(160,100,255,0.25)',
+                    color: '#c084fc',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 600
+                }}>{p}</Tag>
+                : <span style={{ color: 'var(--text-muted)' }}>—</span>
         },
         {
             title: 'Description',

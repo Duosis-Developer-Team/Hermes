@@ -397,7 +397,7 @@ export const reportsService = {
     exportExcel: async (params = {}, customFilename = null) => {
         try {
             // Build URLSearchParams to handle repeated array keys correctly
-            const { user_ids, customer_ids, project_ids, work_type_ids, ...scalarParams } = params
+            const { user_ids, customer_ids, project_ids, work_type_ids, platform_ids, ...scalarParams } = params
             const urlParams = new URLSearchParams()
             Object.entries(scalarParams).forEach(([k, v]) => {
                 if (v !== null && v !== undefined) urlParams.append(k, v)
@@ -413,6 +413,9 @@ export const reportsService = {
             }
             if (Array.isArray(work_type_ids) && work_type_ids.length > 0) {
                 work_type_ids.forEach(id => urlParams.append('work_type_ids', id))
+            }
+            if (Array.isArray(platform_ids) && platform_ids.length > 0) {
+                platform_ids.forEach(id => urlParams.append('platform_ids', id))
             }
 
             const response = await coreApi.get(
@@ -501,7 +504,7 @@ export const reportsService = {
 
     // JSON Data Endpoints for Dashboard
     getJsonUserLogs: async (params = {}) => {
-        const { user_ids, customer_ids, project_ids, work_type_ids, ...rest } = params
+        const { user_ids, customer_ids, project_ids, work_type_ids, platform_ids, ...rest } = params
         const urlParams = new URLSearchParams()
         // Scalar params
         Object.entries(rest).forEach(([key, value]) => {
@@ -519,6 +522,9 @@ export const reportsService = {
         }
         if (Array.isArray(work_type_ids) && work_type_ids.length > 0) {
             work_type_ids.forEach(id => urlParams.append('work_type_ids', id))
+        }
+        if (Array.isArray(platform_ids) && platform_ids.length > 0) {
+            platform_ids.forEach(id => urlParams.append('platform_ids', id))
         }
         const response = await coreApi.get(`/api/v1/core/reports/json/user-logs?${urlParams.toString()}`)
         return response.data
