@@ -14,6 +14,14 @@ import './SubmitPeriodModal.css'
 
 const { TextArea } = Input
 
+function formatDuration(decimal) {
+    if (!decimal) return '0h'
+    const h = Math.floor(decimal)
+    const m = Math.round((decimal - h) * 60)
+    if (m > 0) return `${h}h ${m}m`
+    return `${h}h`
+}
+
 function SubmitPeriodModal({
     open,
     onClose,
@@ -87,13 +95,13 @@ function SubmitPeriodModal({
                 <div className="hours-info">
                     <div className="hours-row">
                         <span className="hours-label">hours logged</span>
-                        <span className="hours-value">{hoursLogged}</span>
+                        <span className="hours-value">{formatDuration(hoursLogged)}</span>
                     </div>
                     <div className="hours-row">
                         <span className="hours-label">hours required</span>
-                        <span className="hours-value">{hoursRequired}</span>
+                        <span className="hours-value">{formatDuration(hoursRequired)}</span>
                         {hoursMissing > 0 && (
-                            <span className="hours-missing">{hoursMissing} missing</span>
+                            <span className="hours-missing">{formatDuration(hoursMissing)} missing</span>
                         )}
                     </div>
                 </div>

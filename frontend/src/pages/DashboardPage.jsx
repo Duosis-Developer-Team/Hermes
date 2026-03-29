@@ -23,6 +23,15 @@ const { RangePicker } = DatePicker
 // Chart colors - Jira palette
 const COLORS = ['#579DFF', '#6CC3E0', '#4BCE97', '#F5CD47', '#F87168', '#9F8FEF']
 
+// 0.75 → "0h 45m", 2.75 → "2h 45m", 2.0 → "2h"
+function formatDuration(decimal) {
+    if (!decimal) return '0h'
+    const h = Math.floor(decimal)
+    const m = Math.round((decimal - h) * 60)
+    if (m > 0) return `${h}h ${m}m`
+    return `${h}h`
+}
+
 function DashboardPage() {
     const [dateRange, setDateRange] = useState([
         dayjs().subtract(30, 'day'),
@@ -142,7 +151,7 @@ function DashboardPage() {
             <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={6}>
                     <div className="stat-card">
-                        <div className="stat-value">{data?.total_hours || 0}</div>
+                        <div className="stat-value">{formatDuration(data?.total_hours)}</div>
                         <div className="stat-label">Total Hours</div>
                     </div>
                 </Col>

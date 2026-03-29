@@ -12,8 +12,13 @@ import { DownOutlined, UpOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import './SubmitPeriodDropdown.css'
 
-/* Additional styles to support the split button if not in CSS file yet */
-/* Ideally this should be in SubmitPeriodDropdown.css but adding here or verifying CSS file next */
+function formatDuration(decimal) {
+    if (!decimal) return '0h'
+    const h = Math.floor(decimal)
+    const m = Math.round((decimal - h) * 60)
+    if (m > 0) return `${h}h ${m}m`
+    return `${h}h`
+}
 
 function SubmitPeriodDropdown({
     currentPeriod,
@@ -70,7 +75,7 @@ function SubmitPeriodDropdown({
                         {period.status}
                     </Tag>
                     {period.behind > 0 && (
-                        <span className="period-behind">{period.behind} behind</span>
+                        <span className="period-behind">{formatDuration(period.behind)} behind</span>
                     )}
                     <Button
                         type="text"
@@ -99,7 +104,7 @@ function SubmitPeriodDropdown({
                         {period.startDate.format('DD/MMM/YY')} - {period.endDate.format('DD/MMM/YY')}
                     </span>
                     <span className="period-hours">
-                        {period.hoursLogged}/{period.hoursRequired}
+                        {formatDuration(period.hoursLogged)}/{formatDuration(period.hoursRequired)}
                     </span>
                 </div>
             </div>
