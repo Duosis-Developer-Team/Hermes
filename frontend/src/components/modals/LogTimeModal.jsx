@@ -355,6 +355,7 @@ function LogTimeModal({
                                 <Form.Item
                                     name="duration_hours"
                                     label="Duration"
+                                    required
                                     rules={[
                                         {
                                             validator: (_, val) => {
@@ -413,6 +414,7 @@ function LogTimeModal({
                         <Form.Item
                             name="activity_type_id"
                             label="Activity Type"
+                            required
                             rules={[{ required: true, message: 'Activity Type is required' }]}
                         >
                             <Select
@@ -431,6 +433,7 @@ function LogTimeModal({
                         <Form.Item
                             name="platform_id"
                             label="Platform"
+                            required
                             rules={[{ required: true, message: 'Platform is required' }]}
                         >
                             <Select
