@@ -55,8 +55,8 @@ function AuthCallbackPage() {
                 message.success('Giriş başarılı!')
                 navigate('/')
             } catch (error) {
-                // console.log kaldırıldı (ORTA-9)
-                message.error('Microsoft girişi başarısız oldu.')
+                const detail = error?.response?.data?.detail || error?.message || 'Bilinmeyen hata'
+                message.error(`Microsoft girişi başarısız: ${detail}`, 8)
                 navigate('/login')
             }
         }
