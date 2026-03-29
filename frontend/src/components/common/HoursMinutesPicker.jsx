@@ -28,6 +28,7 @@ function decimalToHM(decimal) {
 
 function HoursMinutesPicker({ value, onChange, disabled = false, size = 'default' }) {
     const [hours, setHours] = useState(0)
+    const [hoursRaw, setHoursRaw] = useState('0')
     const [minutes, setMinutes] = useState(0)
     const [minutesRaw, setMinutesRaw] = useState('0') // what the input shows
     const [minutesError, setMinutesError] = useState('')
@@ -36,6 +37,7 @@ function HoursMinutesPicker({ value, onChange, disabled = false, size = 'default
     useEffect(() => {
         const { h, m } = decimalToHM(value)
         setHours(h)
+        setHoursRaw(String(h))
         setMinutes(m)
         setMinutesRaw(String(m))
         setMinutesError('')
@@ -48,16 +50,23 @@ function HoursMinutesPicker({ value, onChange, disabled = false, size = 'default
     // ── Hours ──────────────────────────────────────────────────────────────────
 
     const handleHoursChange = (e) => {
-        const parsed = parseInt(e.target.value, 10)
+        const raw = e.target.value.replace(/[^0-9]/g, '')
+        setHoursRaw(raw)
+        const parsed = parseInt(raw, 10)
         const newH = isNaN(parsed) ? 0 : Math.max(0, parsed)
         setHours(newH)
         emit(newH, minutes)
+    }
+
+    const handleHoursBlur = () => {
+        setHoursRaw(String(hours))
     }
 
     const incrementHours = (e) => {
         e.preventDefault()
         const newH = hours + 1
         setHours(newH)
+        setHoursRaw(String(newH))
         emit(newH, minutes)
     }
 
@@ -65,6 +74,7 @@ function HoursMinutesPicker({ value, onChange, disabled = false, size = 'default
         e.preventDefault()
         const newH = Math.max(0, hours - 1)
         setHours(newH)
+        setHoursRaw(String(newH))
         emit(newH, minutes)
     }
 
@@ -113,8 +123,9 @@ function HoursMinutesPicker({ value, onChange, disabled = false, size = 'default
 
     // Manual minute input — allow free typing, validate on blur
     const handleMinutesChange = (e) => {
-        setMinutesRaw(e.target.value)
-        const parsed = parseInt(e.target.value, 10)
+        const raw = e.target.value.replace(/[^0-9]/g, '')
+        setMinutesRaw(raw)
+        const parsed = parseInt(raw, 10)
         if (!isNaN(parsed)) setMinutes(parsed)
     }
 
@@ -150,10 +161,12 @@ function HoursMinutesPicker({ value, onChange, disabled = false, size = 'default
                     >−</button>
                     <input
                         className="hmp-input"
-                        type="number"
-                        min={0}
-                        value={hours}
+                        type="text"
+                        inputMode="numeric"
+                        value={hoursRaw}
                         onChange={handleHoursChange}
+                        onBlur={handleHoursBlur}
+                        onFocus={(e) => e.target.select()}
                         disabled={disabled}
                     />
                     <button
@@ -177,12 +190,12 @@ function HoursMinutesPicker({ value, onChange, disabled = false, size = 'default
                     >−</button>
                     <input
                         className={`hmp-input${minutesError ? ' hmp-input-error' : ''}`}
-                        type="number"
-                        min={0}
-                        max={59}
+                        type="text"
+                        inputMode="numeric"
                         value={minutesRaw}
                         onChange={handleMinutesChange}
                         onBlur={handleMinutesBlur}
+                        onFocus={(e) => e.target.select()}
                         disabled={disabled}
                     />
                     <button
