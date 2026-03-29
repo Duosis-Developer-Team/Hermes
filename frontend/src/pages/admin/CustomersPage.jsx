@@ -36,7 +36,7 @@ function CustomersPage() {
             handleCloseModal()
             queryClient.invalidateQueries(['customers'])
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'Hata'),
+        onError: (err) => message.error(err.response?.data?.detail || 'An error occurred'),
     })
 
     const updateMutation = useMutation({
@@ -46,7 +46,7 @@ function CustomersPage() {
             handleCloseModal()
             queryClient.invalidateQueries(['customers'])
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'Hata'),
+        onError: (err) => message.error(err.response?.data?.detail || 'An error occurred'),
     })
 
     const archiveMutation = useMutation({

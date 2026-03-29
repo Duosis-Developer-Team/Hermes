@@ -7,8 +7,8 @@
  * =============================================================================
  */
 
-import { useState, useMemo } from 'react'
-import { Button, Segmented, Space, Popconfirm, message, Avatar, Tooltip, Select } from 'antd'
+import { useState, useMemo, useEffect } from 'react'
+import { Button, Modal, Space, message, Avatar, Tooltip, Select } from 'antd'
 import {
     UnorderedListOutlined,
     TableOutlined,
@@ -20,12 +20,14 @@ import {
     FilterOutlined,
     SettingOutlined,
     FileExcelOutlined,
-    DownloadOutlined
+    DownloadOutlined,
+    ExclamationCircleOutlined,
+    DeleteOutlined
 } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
-import 'dayjs/locale/tr'
+import 'dayjs/locale/en'
 
 import WeeklyListView from '../components/time-entry/WeeklyListView'
 import TimesheetView from '../components/time-entry/TimesheetView'
@@ -38,7 +40,7 @@ import { useAuthStore } from '../stores/authStore'
 import './TimeEntryPage.css'
 
 dayjs.extend(isoWeek)
-dayjs.locale('tr')
+dayjs.locale('en')
 
 function TimeEntryPage() {
     const queryClient = useQueryClient()
@@ -58,6 +60,7 @@ function TimeEntryPage() {
     const [submitModalOpen, setSubmitModalOpen] = useState(false)
     const [selectedPeriod, setSelectedPeriod] = useState(null)
     const [selectedUserId, setSelectedUserId] = useState(null) // Admin override
+    const [deletingLog, setDeletingLog] = useState(null)   // log pending delete confirmation
 
     // ==========================================================================
     // Week Navigation
@@ -121,35 +124,49 @@ function TimeEntryPage() {
     const createMutation = useMutation({
         mutationFn: workLogService.create,
         onSuccess: () => {
-            message.success('Süre kaydedildi')
+            message.success('Time logged')
             queryClient.invalidateQueries(['workLogs'])
             refetchPeriodStatus()
         },
         onError: (error) => {
-            message.error(error.response?.data?.detail || 'Bir hata oluştu')
+            message.error(error.response?.data?.detail || 'An error occurred')
+        },
+    })
+
+    // Separate mutation for paste — no generic toast
+    const pasteMutation = useMutation({
+        mutationFn: workLogService.create,
+        onSuccess: () => {
+            queryClient.invalidateQueries(['workLogs'])
+            refetchPeriodStatus()
+        },
+        onError: (error) => {
+            message.error(error.response?.data?.detail || 'Paste failed')
         },
     })
 
     const updateMutation = useMutation({
         mutationFn: ({ id, data }) => workLogService.update(id, data),
         onSuccess: () => {
-            message.success('Süre güncellendi')
+            message.success('Time updated')
             queryClient.invalidateQueries(['workLogs'])
             refetchPeriodStatus()
         },
         onError: (error) => {
-            message.error(error.response?.data?.detail || 'Bir hata oluştu')
+            message.error(error.response?.data?.detail || 'An error occurred')
         },
     })
 
     const deleteMutation = useMutation({
         mutationFn: workLogService.delete,
         onSuccess: () => {
-            message.success('Süre silindi')
+            message.success('Log entry deleted successfully')
             queryClient.invalidateQueries(['workLogs'])
+            setDeletingLog(null)
         },
         onError: (error) => {
-            message.error(error.response?.data?.detail || 'Bir hata oluştu')
+            message.error(error.response?.data?.detail || 'An error occurred')
+            setDeletingLog(null)
         },
     })
 
@@ -188,7 +205,15 @@ function TimeEntryPage() {
     }
 
     const handleDeleteLog = (log) => {
-        deleteMutation.mutate(log.id)
+        setDeletingLog(log)
+    }
+
+    const handleDeleteConfirm = () => {
+        if (deletingLog) deleteMutation.mutate(deletingLog.id)
+    }
+
+    const handleDeleteCancel = () => {
+        setDeletingLog(null)
     }
 
     const handleLogTimeSubmit = async (data, editId) => {
@@ -205,7 +230,7 @@ function TimeEntryPage() {
             ...data,
             date_worked: data.start_date,
             duration_hours: data.planned_hours,
-            description: `Planlanan: ${data.planned_hours} saat`,
+            description: `Planned: ${data.planned_hours}h`,
         })
         setPlanTimeModalOpen(false)
     }
@@ -213,6 +238,103 @@ function TimeEntryPage() {
     const handleSubmitPeriod = (data) => {
         submitTimesheetMutation(data)
     }
+
+    // ==========================================================================
+    // Copy-Paste State
+    // ==========================================================================
+    const [selectedLogId, setSelectedLogId] = useState(null)
+    const [copiedLog, setCopiedLog] = useState(null)
+    const [targetDate, setTargetDate] = useState(null)
+
+    const handleSelectLog = (logId) => {
+        setSelectedLogId(prev => {
+            if (prev === logId) return null // toggle off
+            return logId
+        })
+        setTargetDate(null) // starting a new selection clears paste target
+    }
+
+    const handleSelectDay = (dateStr) => {
+        setTargetDate(prev => prev === dateStr ? null : dateStr) // toggle
+    }
+
+    const handleClearClipboard = () => {
+        setSelectedLogId(null)
+        setCopiedLog(null)
+        setTargetDate(null)
+    }
+
+    // Keyboard shortcut listener — Ctrl/Cmd + C/V/Escape
+    useEffect(() => {
+        const handleKeyDown = async (e) => {
+            // Guard: don't intercept when typing in a form field
+            const tag = document.activeElement?.tagName?.toUpperCase()
+            const isEditable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
+                document.activeElement?.isContentEditable === true
+            if (isEditable) return
+
+            const isMod = e.ctrlKey || e.metaKey
+
+            // ── Ctrl+C — copy selected log ──────────────────────────────────
+            if (isMod && e.key === 'c') {
+                if (selectedLogId) {
+                    const log = workLogs.find(l => l.id === selectedLogId)
+                    if (log) {
+                        setCopiedLog(log)
+                        const label = log.project_name || log.description?.substring(0, 25) || 'Log'
+                        message.info(`"${label}" copied — select a target day, then Ctrl+V`)
+                        e.preventDefault()
+                    }
+                }
+                return
+            }
+
+            // ── Ctrl+V — paste to target day ────────────────────────────────
+            if (isMod && e.key === 'v') {
+                if (!copiedLog) return // nothing in clipboard, let browser handle
+
+                e.preventDefault()
+
+                if (!targetDate) {
+                    message.warning('Select a target day first, then paste')
+                    return
+                }
+
+                const newLog = {
+                    customer_id: copiedLog.customer_id,
+                    project_id: copiedLog.project_id,
+                    work_type_id: copiedLog.work_type_id,
+                    activity_type_id: copiedLog.activity_type_id || null,
+                    platform_id: copiedLog.platform_id || null,
+                    work_line_id: copiedLog.work_line_id || null,
+                    date_worked: targetDate,
+                    duration_hours: copiedLog.duration_hours,
+                    description: copiedLog.description,
+                }
+                if (pasteMutation.isPending) return // debounce double-paste
+
+                try {
+                    await pasteMutation.mutateAsync(newLog)
+                    const formattedDate = dayjs(targetDate).format('DD MMM')
+                    message.success(`"${copiedLog.project_name || 'Log'}" pasted to ${formattedDate} ✓`)
+                    setTargetDate(null) // clear target; copiedLog stays for multiple pastes
+                } catch {
+                    // error handled by pasteMutation.onError
+                }
+                return
+            }
+
+            // ── Escape — clear clipboard & selection ────────────────────────
+            if (e.key === 'Escape') {
+                setSelectedLogId(null)
+                setCopiedLog(null)
+                setTargetDate(null)
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [selectedLogId, copiedLog, targetDate, workLogs, pasteMutation])
 
     const [exportLoading, setExportLoading] = useState(false)
 
@@ -246,10 +368,10 @@ function TimeEntryPage() {
                 user_id: selectedUserId // Pass the selected user (or null)
             }, customFilename)
 
-            message.success('Haftalık rapor (CSV) indirildi')
+            message.success('Weekly report (CSV) downloaded')
         } catch (error) {
             console.error('Export error:', error)
-            message.error('Rapor indirilirken bir hata oluştu')
+            message.error('Failed to download report')
         } finally {
             setExportLoading(false)
         }
@@ -301,7 +423,7 @@ function TimeEntryPage() {
                 </div>
 
                 <div className="user-header-right">
-                    <Tooltip title="Excel Raporu">
+                    <Tooltip title="Export CSV">
                         <Button
                             type="primary"
                             shape="circle"
@@ -386,7 +508,7 @@ function TimeEntryPage() {
                 <div className="header-right">
                     {/* Week Summary */}
                     <div className="week-summary">
-                        <span className="summary-label">Hafta:</span>
+                        <span className="summary-label">Week:</span>
                         <span className="summary-hours">{weekTotalHours}h</span>
                         <span className="summary-target">/ 40h</span>
                     </div>
@@ -407,6 +529,12 @@ function TimeEntryPage() {
                         onPlanTime={handlePlanTime}
                         onEditLog={handleEditLog}
                         onDeleteLog={handleDeleteLog}
+                        selectedLogId={selectedLogId}
+                        copiedLog={copiedLog}
+                        targetDate={targetDate}
+                        onSelectLog={handleSelectLog}
+                        onSelectDay={handleSelectDay}
+                        onClearClipboard={handleClearClipboard}
                     />
                 ) : (
                     <TimesheetView
@@ -447,6 +575,97 @@ function TimeEntryPage() {
                 onSubmit={handleSubmitPeriod}
                 loading={isSubmitting}
             />
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                open={!!deletingLog}
+                onCancel={handleDeleteCancel}
+                footer={null}
+                width={420}
+                centered
+                closable={false}
+                styles={{
+                    content: {
+                        background: '#1e1e1e',
+                        border: '1px solid #303030',
+                        borderRadius: 12,
+                        padding: '28px 28px 24px',
+                    }
+                }}
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {/* Icon + Title */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{
+                            width: 40, height: 40, borderRadius: 10,
+                            background: 'rgba(239,68,68,0.15)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0
+                        }}>
+                            <ExclamationCircleOutlined style={{ color: '#ef4444', fontSize: 20 }} />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>
+                                Confirm Deletion
+                            </div>
+                            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                                This action cannot be undone
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Log preview */}
+                    {deletingLog && (
+                        <div style={{
+                            background: '#2a2a2a',
+                            border: '1px solid #383838',
+                            borderRadius: 8,
+                            padding: '10px 14px',
+                        }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e0e0' }}>
+                                {deletingLog.project_name || 'Log Entry'}
+                            </div>
+                            {deletingLog.description && (
+                                <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>
+                                    {deletingLog.description.length > 60
+                                        ? deletingLog.description.substring(0, 60) + '…'
+                                        : deletingLog.description}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Message */}
+                    <p style={{ margin: 0, color: '#aaa', fontSize: 14, lineHeight: 1.6 }}>
+                        Are you sure you want to delete this time log?
+                    </p>
+
+                    {/* Buttons */}
+                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+                        <Button
+                            onClick={handleDeleteCancel}
+                            style={{
+                                background: 'transparent',
+                                borderColor: '#444',
+                                color: '#ccc',
+                                borderRadius: 8,
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="primary"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={handleDeleteConfirm}
+                            loading={deleteMutation.isPending}
+                            style={{ borderRadius: 8 }}
+                        >
+                            Delete
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     )
 }

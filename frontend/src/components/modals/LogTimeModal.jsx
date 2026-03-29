@@ -215,10 +215,10 @@ function LogTimeModal({
             console.error('Submit Error:', error)
             // AntD validasyon hataları
             if (error?.errorFields) {
-                message.error('Lütfen zorunlu alanları doldurun.')
+                message.error('Please fill in all required fields.')
             } else {
                 // Runtime JS hataları veya validation-dışı hatalar (örneğin date format vs)
-                message.error('Beklenmeyen bir hata oluştu: ' + (error?.message || ''))
+                message.error('Unexpected error: ' + (error?.message || ''))
             }
             // API hataları mutation'ın onError'ı tarafından gösterildi,
             // modal açık kalır ve kullanıcı tekrar deneyebilir.
@@ -405,7 +405,7 @@ function LogTimeModal({
                                     (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                                 }
                                 options={[...workTypes]
-                                    .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+                                    .sort((a, b) => a.name.localeCompare(b.name, 'en'))
                                     .map(w => ({ value: w.id, label: w.name }))}
                             />
                         </Form.Item>
@@ -424,7 +424,7 @@ function LogTimeModal({
                                     (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                                 }
                                 options={[...activityTypes]
-                                    .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+                                    .sort((a, b) => a.name.localeCompare(b.name, 'en'))
                                     .map(a => ({ value: a.id, label: a.name }))}
                             />
                         </Form.Item>
@@ -443,7 +443,7 @@ function LogTimeModal({
                                     (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                                 }
                                 options={[...platforms]
-                                    .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+                                    .sort((a, b) => a.name.localeCompare(b.name, 'en'))
                                     .map(p => ({ value: p.id, label: p.name }))}
                             />
                         </Form.Item>
@@ -461,7 +461,7 @@ function LogTimeModal({
                                     (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                                 }
                                 options={[...workLines]
-                                    .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+                                    .sort((a, b) => a.name.localeCompare(b.name, 'en'))
                                     .map(w => ({ value: w.id, label: w.name }))}
                             />
                         </Form.Item>

@@ -106,16 +106,64 @@
     cursor: not-allowed;
 }
 
-/* Mobile responsive */
+/* Compact / small variant — for use inside table cells */
+.hmp-small .hmp-fields {
+    gap: 4px;
+}
+
+.hmp-small .hmp-group {
+    gap: 2px;
+}
+
+.hmp-small .hmp-btn {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+}
+
+.hmp-small .hmp-input {
+    width: 32px;
+    height: 26px;
+    font-size: 13px;
+}
+
+.hmp-small .hmp-unit {
+    font-size: 12px;
+    min-width: 8px;
+}
+
+/* Mobile responsive — default variant only, not the compact table variant */
 @media (max-width: 480px) {
-    .hmp-input {
-        width: 38px;
-        font-size: 13px;
+    .hmp-root:not(.hmp-small) .hmp-input {
+        width: 40px;
+        height: 36px;
+        font-size: 14px;
     }
 
-    .hmp-btn {
-        width: 24px;
-        height: 24px;
-        font-size: 13px;
+    /* Minimum 36×36 visual + 44×44 touch target via padding trick */
+    .hmp-root:not(.hmp-small) .hmp-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 17px;
+        /* Extend tap area beyond visual bounds */
+        position: relative;
+    }
+
+    .hmp-root:not(.hmp-small) .hmp-btn::before {
+        content: '';
+        position: absolute;
+        inset: -4px;
+    }
+
+    .hmp-root:not(.hmp-small) .hmp-fields {
+        gap: 10px;
+    }
+
+    .hmp-root:not(.hmp-small) .hmp-group {
+        gap: 6px;
+    }
+
+    .hmp-root:not(.hmp-small) .hmp-unit {
+        font-size: 14px;
     }
 }

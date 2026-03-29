@@ -105,3 +105,32 @@
     background: rgba(255, 77, 79, 0.3);
     color: #ff4d4f;
 }
+
+/* ── Copy-Paste: selected state ─────────────────────────────────────────── */
+.worklog-card-selected {
+    border: 2px solid #4a7cff;
+    background: rgba(74, 124, 255, 0.1);
+    box-shadow: 0 0 0 1px rgba(74, 124, 255, 0.25);
+}
+
+.worklog-card-selected:hover {
+    background: rgba(74, 124, 255, 0.15);
+}
+
+/* Small "C" badge top-left corner when selected */
+.worklog-selected-badge {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 16px;
+    height: 16px;
+    background: #4a7cff;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}

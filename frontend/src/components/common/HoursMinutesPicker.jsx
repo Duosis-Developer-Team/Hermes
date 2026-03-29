@@ -26,7 +26,7 @@ function decimalToHM(decimal) {
     return { h, m }
 }
 
-function HoursMinutesPicker({ value, onChange, disabled = false }) {
+function HoursMinutesPicker({ value, onChange, disabled = false, size = 'default' }) {
     const [hours, setHours] = useState(0)
     const [minutes, setMinutes] = useState(0)
     const [minutesRaw, setMinutesRaw] = useState('0') // what the input shows
@@ -137,7 +137,7 @@ function HoursMinutesPicker({ value, onChange, disabled = false }) {
     }
 
     return (
-        <div className={`hmp-root${disabled ? ' hmp-disabled' : ''}`}>
+        <div className={`hmp-root${disabled ? ' hmp-disabled' : ''}${size === 'small' ? ' hmp-small' : ''}`}>
             <div className="hmp-fields">
                 {/* Hours */}
                 <div className="hmp-group">

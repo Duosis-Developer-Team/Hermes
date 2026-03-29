@@ -100,7 +100,7 @@ function DashboardPage() {
                     boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
                 }}>
                     <p style={{ margin: 0, fontWeight: 600, color: '#FFFFFF' }}>{label}</p>
-                    <p style={{ margin: 0 }}>{`${payload[0].value} saat`}</p>
+                    <p style={{ margin: 0 }}>{`${payload[0].value} h`}</p>
                 </div>
             )
         }
@@ -122,7 +122,7 @@ function DashboardPage() {
                 <Row justify="space-between" align="middle">
                     <Col>
                         <h1>Dashboard</h1>
-                        <p>Ekip performansı ve zaman dağılımı</p>
+                        <p>Team performance and time distribution</p>
                     </Col>
                     <Col>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#1c2128', padding: '4px 8px', borderRadius: 6, border: '1px solid #30363d' }}>
@@ -143,25 +143,25 @@ function DashboardPage() {
                 <Col xs={24} sm={12} lg={6}>
                     <div className="stat-card">
                         <div className="stat-value">{data?.total_hours || 0}</div>
-                        <div className="stat-label">Toplam Süre (saat)</div>
+                        <div className="stat-label">Total Hours</div>
                     </div>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <div className="stat-card">
                         <div className="stat-value">{data?.by_customer?.length || 0}</div>
-                        <div className="stat-label">Müşteri Sayısı</div>
+                        <div className="stat-label">Customers</div>
                     </div>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <div className="stat-card">
                         <div className="stat-value">{data?.by_project?.length || 0}</div>
-                        <div className="stat-label">Proje Sayısı</div>
+                        <div className="stat-label">Projects</div>
                     </div>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <div className="stat-card">
                         <div className="stat-value">{dashboardData?.by_user?.length || 0}</div>
-                        <div className="stat-label">Aktif Kişi</div>
+                        <div className="stat-label">Active Members</div>
                     </div>
                 </Col>
             </Row>
@@ -170,7 +170,7 @@ function DashboardPage() {
             <Row gutter={[24, 24]}>
                 {/* By Customer - Pie Chart */}
                 <Col xs={24} lg={12}>
-                    <Card title="🏢 Müşterilere Göre Dağılım">
+                    <Card title="🏢 By Customer">
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={customerData.slice(0, 8)} layout="vertical">
                                 <CartesianGrid strokeDasharray="3 3" stroke="var(--N700)" />
@@ -185,7 +185,7 @@ function DashboardPage() {
 
                 {/* By Project - Bar Chart */}
                 <Col xs={24} lg={12}>
-                    <Card title="📁 Projelere Göre Dağılım">
+                    <Card title="📁 By Project">
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={projectData.slice(0, 8)} layout="vertical">
                                 <CartesianGrid strokeDasharray="3 3" stroke="var(--N700)" />
@@ -200,7 +200,7 @@ function DashboardPage() {
 
                 {/* By User - Bar Chart */}
                 <Col xs={24}>
-                    <Card title="👥 Kullanıcılara Göre Dağılım">
+                    <Card title="👥 By User">
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={dashboardData?.by_user || []}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="var(--N700)" />
@@ -208,7 +208,7 @@ function DashboardPage() {
                                 <YAxis stroke="var(--N400)" />
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
                                 <Legend />
-                                <Bar dataKey="hours" name="Süre (saat)" fill="#6CC3E0" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="hours" name="Hours" fill="#6CC3E0" radius={[4, 4, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </Card>

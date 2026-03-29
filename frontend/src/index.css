@@ -546,6 +546,32 @@ body {
   .stat-card .stat-value {
     font-size: 24px;
   }
+
+  /* Reports page: tighter outer padding on mobile */
+  .reports-page {
+    padding: 16px !important;
+  }
+
+  /* Page header: stack title and Clear Filters button on small screens */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Filter bar: make each Select full-width inside its FilterBlock */
+  .reports-page .ant-select,
+  .reports-page .ant-picker {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  /* Ensure filter blocks themselves stretch to full row width */
+  .reports-page [class*="filter"] {
+    width: 100%;
+  }
 }
 /* ==========================================================================
    RANGE PICKER - Dark Theme In-Range Fix (global, persistent)

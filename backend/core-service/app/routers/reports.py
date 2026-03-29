@@ -99,6 +99,7 @@ async def export_excel(
     customer_ids: Optional[List[UUID]] = Query(None),
     project_ids: Optional[List[UUID]] = Query(None),
     work_type_ids: Optional[List[UUID]] = Query(None),
+    platform_ids: Optional[List[UUID]] = Query(None),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -121,6 +122,7 @@ async def export_excel(
             Project.name.label('project_name'),
             WorkType.name.label('work_type_name'),
             ActivityType.name.label('activity_type_name'),
+            Platform.name.label('platform_name'),
             WorkLog.duration_hours,
             WorkLog.user_id,
             WorkLog.description
@@ -132,6 +134,8 @@ async def export_excel(
             WorkType, WorkLog.work_type_id == WorkType.id
         ).outerjoin(
             ActivityType, WorkLog.activity_type_id == ActivityType.id
+        ).outerjoin(
+            Platform, WorkLog.platform_id == Platform.id
         )
 
         # Access control
@@ -156,6 +160,9 @@ async def export_excel(
         if work_type_ids:
             query = query.filter(WorkLog.work_type_id.in_(work_type_ids))
 
+        if platform_ids:
+            query = query.filter(WorkLog.platform_id.in_(platform_ids))
+
         # Date range
         if start_date:
             query = query.filter(WorkLog.date_worked >= start_date)
@@ -178,6 +185,7 @@ async def export_excel(
                 "Proje": r.project_name,
                 "İş Tipi": r.work_type_name,
                 "Aktivite Tipi": r.activity_type_name if r.activity_type_name else "-",
+                "Platform": r.platform_name if r.platform_name else "-",
                 "Süre (Saat)": float(r.duration_hours) if r.duration_hours is not None else 0.0,
                 "Açıklama": r.description or ""
             })
@@ -381,12 +389,13 @@ async def get_user_logs_json(
     customer_ids: Optional[List[UUID]] = Query(None),
     project_ids: Optional[List[UUID]] = Query(None),
     work_type_ids: Optional[List[UUID]] = Query(None),
+    platform_ids: Optional[List[UUID]] = Query(None),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Returns User Work Logs as JSON for the Tempo-style dashboard.
-    Supports multi-select filtering on users, customers, projects and work types.
+    Supports multi-select filtering on users, customers, projects, work types and platforms.
     Empty list = no filter applied; non-empty = IN() filter.
     """
     auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
@@ -405,6 +414,7 @@ async def get_user_logs_json(
         Project.name.label('project_name'),
         WorkType.name.label('work_type_name'),
         ActivityType.name.label('activity_type_name'),
+        Platform.name.label('platform_name'),
         WorkLog.duration_hours,
         WorkLog.user_id,
         WorkLog.description
@@ -416,6 +426,8 @@ async def get_user_logs_json(
         WorkType, WorkLog.work_type_id == WorkType.id
     ).outerjoin(
         ActivityType, WorkLog.activity_type_id == ActivityType.id
+    ).outerjoin(
+        Platform, WorkLog.platform_id == Platform.id
     )
 
     # Access control + user filter
@@ -434,6 +446,8 @@ async def get_user_logs_json(
             query = query.filter(WorkLog.project_id.in_(project_ids))
         if work_type_ids:
             query = query.filter(WorkLog.work_type_id.in_(work_type_ids))
+        if platform_ids:
+            query = query.filter(WorkLog.platform_id.in_(platform_ids))
 
     # Date range
     if start_date:
@@ -456,6 +470,7 @@ async def get_user_logs_json(
             "project_name": r.project_name,
             "work_type": r.work_type_name,
             "activity_type": r.activity_type_name if r.activity_type_name else "-",
+            "platform_name": r.platform_name or "-",
             "duration": float(r.duration_hours) if r.duration_hours is not None else 0.0,
             "description": r.description or ""
         })

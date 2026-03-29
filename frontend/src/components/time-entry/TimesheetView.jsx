@@ -187,7 +187,7 @@ function TimesheetView({
                 scroll={{ x: 900 }}
                 size="small"
                 className="timesheet-table"
-                locale={{ emptyText: 'Bu dönemde kayıt yok' }}
+                locale={{ emptyText: 'No entries found for this period' }}
                 rowClassName="timesheet-row"
                 summary={() => {
                     return (

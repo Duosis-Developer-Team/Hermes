@@ -60,7 +60,7 @@ function ReportsPage() {
         staleTime: 5 * 60 * 1000
     })
     const users = useMemo(() => (usersData?.data || []).sort((a, b) =>
-        (a.full_name || '').localeCompare(b.full_name || '', 'tr')
+        (a.full_name || '').localeCompare(b.full_name || '', 'en')
     ), [usersData])
 
     const { data: customersData } = useQuery({
@@ -71,7 +71,7 @@ function ReportsPage() {
     })
     const customers = useMemo(() => {
         const raw = customersData?.data || customersData || []
-        return Array.isArray(raw) ? [...raw].sort((a, b) => a.name.localeCompare(b.name, 'tr')) : []
+        return Array.isArray(raw) ? [...raw].sort((a, b) => a.name.localeCompare(b.name, 'en')) : []
     }, [customersData])
 
     const { data: projectsData } = useQuery({
@@ -82,7 +82,7 @@ function ReportsPage() {
     })
     const projects = useMemo(() => {
         const raw = projectsData?.data || projectsData || []
-        return Array.isArray(raw) ? [...raw].sort((a, b) => a.name.localeCompare(b.name, 'tr')) : []
+        return Array.isArray(raw) ? [...raw].sort((a, b) => a.name.localeCompare(b.name, 'en')) : []
     }, [projectsData])
 
     const { data: workTypesData } = useQuery({
@@ -93,7 +93,7 @@ function ReportsPage() {
     })
     const workTypes = useMemo(() => {
         const raw = workTypesData?.data || workTypesData || []
-        return Array.isArray(raw) ? [...raw].sort((a, b) => a.name.localeCompare(b.name, 'tr')) : []
+        return Array.isArray(raw) ? [...raw].sort((a, b) => a.name.localeCompare(b.name, 'en')) : []
     }, [workTypesData])
 
     const { data: platformsData } = useQuery({
@@ -104,7 +104,7 @@ function ReportsPage() {
     })
     const platforms = useMemo(() => {
         const raw = platformsData?.data || platformsData || []
-        return Array.isArray(raw) ? [...raw].sort((a, b) => a.name.localeCompare(b.name, 'tr')) : []
+        return Array.isArray(raw) ? [...raw].sort((a, b) => a.name.localeCompare(b.name, 'en')) : []
     }, [platformsData])
 
     // ── Access Control ────────────────────────────────────────────────────────
@@ -374,7 +374,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             title: 'User',
             dataIndex: 'user_name',
             width: 160,
-            sorter: (a, b) => (a.user_name || '').localeCompare(b.user_name || '', 'tr'),
+            sorter: (a, b) => (a.user_name || '').localeCompare(b.user_name || '', 'en'),
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
             render: u => <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{u}</span>
@@ -383,7 +383,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             title: 'Customer',
             dataIndex: 'customer_name',
             width: 180,
-            sorter: (a, b) => (a.customer_name || '').localeCompare(b.customer_name || '', 'tr'),
+            sorter: (a, b) => (a.customer_name || '').localeCompare(b.customer_name || '', 'en'),
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
             render: c => <span style={{ color: 'var(--text-primary)' }}>{c}</span>
@@ -392,7 +392,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             title: 'Project',
             dataIndex: 'project_name',
             width: 200,
-            sorter: (a, b) => (a.project_name || '').localeCompare(b.project_name || '', 'tr'),
+            sorter: (a, b) => (a.project_name || '').localeCompare(b.project_name || '', 'en'),
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
             render: p => <span style={{ color: 'var(--text-primary)' }}>{p}</span>
@@ -401,7 +401,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             title: 'Type',
             dataIndex: 'work_type',
             width: 140,
-            sorter: (a, b) => (a.work_type || '').localeCompare(b.work_type || '', 'tr'),
+            sorter: (a, b) => (a.work_type || '').localeCompare(b.work_type || '', 'en'),
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
             render: t => (
@@ -421,7 +421,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             title: 'Platform',
             dataIndex: 'platform_name',
             width: 130,
-            sorter: (a, b) => (a.platform_name || '').localeCompare(b.platform_name || '', 'tr'),
+            sorter: (a, b) => (a.platform_name || '').localeCompare(b.platform_name || '', 'en'),
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
             render: p => p
@@ -541,7 +541,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                         }}
                         loading={isLoading || isFetching}
                         showSorterTooltip={false}
-                        scroll={{ y: 520 }}
+                        scroll={{ x: 1100, y: 520 }}
                     />
                 )}
             </div>

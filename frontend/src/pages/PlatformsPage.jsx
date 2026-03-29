@@ -125,7 +125,7 @@ function PlatformsPage() {
             title: 'Name',
             dataIndex: 'name',
             key: 'name',
-            sorter: (a, b) => a.name.localeCompare(b.name, 'tr'),
+            sorter: (a, b) => a.name.localeCompare(b.name, 'en'),
         },
         {
             title: 'Code',

@@ -44,7 +44,7 @@ function ProjectsPage() {
             handleCloseModal()
             queryClient.invalidateQueries(['projects'])
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'Hata'),
+        onError: (err) => message.error(err.response?.data?.detail || 'An error occurred'),
     })
 
     const updateMutation = useMutation({
@@ -54,7 +54,7 @@ function ProjectsPage() {
             handleCloseModal()
             queryClient.invalidateQueries(['projects'])
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'Hata'),
+        onError: (err) => message.error(err.response?.data?.detail || 'An error occurred'),
     })
 
     const archiveMutation = useMutation({

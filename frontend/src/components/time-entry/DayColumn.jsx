@@ -4,18 +4,18 @@
  * =============================================================================
  * Tek bir günü temsil eden kolon - haftalık List view'da kullanılır.
  * Jira Tempo tarzı: Gün başlığı, progress, + butonu, worklog kartları.
+ * Copy-paste: hasCopiedLog=true iken kolona tıklamak onu paste hedefi yapar.
  * =============================================================================
  */
 
-import { useState } from 'react'
 import { Dropdown, Progress } from 'antd'
 import { PlusOutlined, ClockCircleOutlined, ScheduleOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import 'dayjs/locale/tr'
+import 'dayjs/locale/en'
 import WorkLogCard from './WorkLogCard'
 import './DayColumn.css'
 
-dayjs.locale('tr')
+dayjs.locale('en')
 
 const DAILY_TARGET_HOURS = 8
 
@@ -26,8 +26,15 @@ function DayColumn({
     onPlanTime,
     onEditLog,
     onDeleteLog,
-    isToday = false
+    isToday = false,
+    // Copy-paste props
+    selectedLogId,
+    isTargeted = false,
+    hasCopiedLog = false,
+    onSelectLog,
+    onSelectDay
 }) {
+    const dateKey = dayjs(date).format('YYYY-MM-DD')
     const dayName = dayjs(date).format('ddd')
     const dayNumber = dayjs(date).format('DD')
 
@@ -42,6 +49,13 @@ function DayColumn({
     // Günlük toplam saat hesapla
     const totalHours = workLogs.reduce((sum, log) => sum + (parseFloat(log.duration_hours) || 0), 0)
     const progressPercent = Math.min((totalHours / DAILY_TARGET_HOURS) * 100, 100)
+
+    // Paste target selection — fires when clicking day background (not cards or buttons)
+    const handleDayClick = () => {
+        if (hasCopiedLog) {
+            onSelectDay?.(dateKey)
+        }
+    }
 
     // + butonu dropdown menü
     const menuItems = [
@@ -60,7 +74,10 @@ function DayColumn({
     ]
 
     return (
-        <div className={`day-column ${isToday ? 'day-column-today' : ''}`}>
+        <div
+            className={`day-column${isToday ? ' day-column-today' : ''}${isTargeted ? ' day-column-targeted' : ''}`}
+            onClick={handleDayClick}
+        >
             {/* Gün Başlığı */}
             <div className="day-column-header">
                 <div className="day-column-name">
@@ -83,9 +100,12 @@ function DayColumn({
                 />
             </div>
 
-            {/* + Butonu */}
+            {/* + Butonu — stopPropagation to avoid triggering day selection */}
             <Dropdown menu={{ items: menuItems }} trigger={['click']}>
-                <button className="day-column-add-btn">
+                <button
+                    className="day-column-add-btn"
+                    onClick={(e) => e.stopPropagation()}
+                >
                     <PlusOutlined />
                 </button>
             </Dropdown>
@@ -98,8 +118,8 @@ function DayColumn({
             {/* Worklog Kartları */}
             <div className="day-column-logs">
                 {workLogs.length === 0 ? (
-                    <div className="day-column-empty">
-                        No logs
+                    <div className={`day-column-empty${hasCopiedLog ? ' day-column-empty-paste' : ''}`}>
+                        {hasCopiedLog ? '↓ Click here or press Ctrl+V' : 'No logs'}
                     </div>
                 ) : (
                     workLogs.map(log => (
@@ -108,8 +128,17 @@ function DayColumn({
                             workLog={log}
                             onEdit={onEditLog}
                             onDelete={onDeleteLog}
+                            isSelected={selectedLogId === log.id}
+                            onSelect={onSelectLog}
                         />
                     ))
+                )}
+
+                {/* Paste hint — shown at bottom when day has logs and clipboard is active */}
+                {workLogs.length > 0 && hasCopiedLog && (
+                    <div className="day-column-paste-hint">
+                        + Paste here (Ctrl+V)
+                    </div>
                 )}
             </div>
         </div>

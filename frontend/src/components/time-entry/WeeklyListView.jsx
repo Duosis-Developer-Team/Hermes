@@ -4,6 +4,7 @@
  * =============================================================================
  * Haftalık takvim görünümü - Jira Tempo List view tarzı.
  * 7 günlük kolonlar, her gün için worklogs.
+ * Copy-paste (Ctrl+C / Ctrl+V) desteği ile log klonlama.
  * =============================================================================
  */
 
@@ -21,7 +22,14 @@ function WeeklyListView({
     onLogTime,
     onPlanTime,
     onEditLog,
-    onDeleteLog
+    onDeleteLog,
+    // Copy-paste props
+    selectedLogId,
+    copiedLog,
+    targetDate,
+    onSelectLog,
+    onSelectDay,
+    onClearClipboard
 }) {
     // Haftanın 7 gününü hesapla
     const weekDays = useMemo(() => {
@@ -48,17 +56,34 @@ function WeeklyListView({
     const today = dayjs().format('YYYY-MM-DD')
 
     // Haftalık toplam saat
-    // Haftalık toplam saat
     const weekTotalHours = workLogs.reduce((sum, log) => sum + (parseFloat(log.duration_hours) || 0), 0)
     const weekTargetHours = 40
 
     return (
         <div className="weekly-list-view">
+            {/* Clipboard Banner — görünür olduğunda kullanıcıyı bilgilendirir */}
+            {copiedLog && (
+                <div className="weekly-clipboard-banner">
+                    <span className="clipboard-banner-icon">📋</span>
+                    <span className="clipboard-banner-text">
+                            <strong>{copiedLog.project_name || 'Log'}</strong> copied
+                        — click a target day, then press <kbd>Ctrl+V</kbd> to paste
+                    </span>
+                    <button
+                        className="clipboard-close-btn"
+                        onClick={onClearClipboard}
+                        title="Clear (Esc)"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
+
             {/* Hafta özeti */}
             <div className="weekly-list-summary">
-                <span>Hafta: </span>
-                <strong>{weekTotalHours}s</strong>
-                <span className="weekly-target"> / {weekTargetHours}s</span>
+                <span>Week: </span>
+                <strong>{weekTotalHours}h</strong>
+                <span className="weekly-target"> / {weekTargetHours}h</span>
             </div>
 
             {/* Günlük kolonlar */}
@@ -75,6 +100,11 @@ function WeeklyListView({
                             onEditLog={onEditLog}
                             onDeleteLog={onDeleteLog}
                             isToday={dateKey === today}
+                            selectedLogId={selectedLogId}
+                            isTargeted={dateKey === targetDate}
+                            hasCopiedLog={!!copiedLog}
+                            onSelectLog={onSelectLog}
+                            onSelectDay={onSelectDay}
                         />
                     )
                 })}

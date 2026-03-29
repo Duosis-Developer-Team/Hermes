@@ -270,8 +270,8 @@ function BillableHoursPage() {
         {
             title: 'BILLABLE HOURS',
             key: 'billable_duration_hours',
-            width: 160,
-            align: 'right',
+            width: 210,
+            className: 'billable-col',
             render: (_, record) => {
                 const isEditing = editingId === record.id
 
@@ -281,29 +281,32 @@ function BillableHoursPage() {
                     : record.duration_hours
 
                 return isEditing ? (
-                    <Space style={{ justifyContent: 'flex-end', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
                         <HoursMinutesPicker
                             value={editValue}
                             onChange={setEditValue}
-                        />
-                        <Button
-                            type="primary"
                             size="small"
-                            icon={<SaveOutlined />}
-                            onClick={() => handleSave(record.id)}
-                            loading={updateMutation.isPending}
                         />
-                        <Button
-                            size="small"
-                            type="text"
-                            onClick={() => {
-                                setEditingId(null)
-                                setEditValue(null)
-                            }}
-                        >
-                            x
-                        </Button>
-                    </Space>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                            <Button
+                                type="primary"
+                                size="small"
+                                icon={<SaveOutlined />}
+                                onClick={() => handleSave(record.id)}
+                                loading={updateMutation.isPending}
+                            />
+                            <Button
+                                size="small"
+                                type="text"
+                                onClick={() => {
+                                    setEditingId(null)
+                                    setEditValue(null)
+                                }}
+                            >
+                                x
+                            </Button>
+                        </div>
+                    </div>
                 ) : (
                     <div
                         onClick={() => handleEditStart(record)}
@@ -435,6 +438,7 @@ function BillableHoursPage() {
                     loading={logsLoading}
                     pagination={false}
                     rowClassName="modern-row"
+                    scroll={{ x: 800 }}
                     locale={{ emptyText: <div style={{ padding: 40, color: '#666' }}>No entries found.</div> }}
                 />
             </Card>
@@ -460,6 +464,12 @@ function BillableHoursPage() {
                     text-transform: uppercase;
                     letter-spacing: 1px;
                     padding: 16px 24px !important;
+                }
+                .billable-col {
+                    padding: 12px 10px !important;
+                }
+                .ant-table-thead > tr > th.billable-col {
+                    padding: 16px 10px !important;
                 }
                 .editable-duration-cell {
                     cursor: pointer;

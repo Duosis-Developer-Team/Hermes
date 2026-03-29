@@ -111,3 +111,45 @@
     color: var(--text-muted);
     font-size: 12px;
 }
+
+/* ── Copy-Paste: targeted day state ────────────────────────────────────── */
+.day-column-targeted {
+    background: rgba(74, 124, 255, 0.06) !important;
+    outline: 2px solid rgba(74, 124, 255, 0.5);
+    outline-offset: -2px;
+}
+
+.day-column-targeted .day-column-header {
+    background: rgba(74, 124, 255, 0.08);
+}
+
+/* Pulse animation on targeted column */
+@keyframes targetPulse {
+    0%, 100% { outline-color: rgba(74, 124, 255, 0.5); }
+    50%       { outline-color: rgba(74, 124, 255, 0.9); }
+}
+.day-column-targeted {
+    animation: targetPulse 1.2s ease-in-out infinite;
+}
+
+/* Empty day with clipboard active — invite user to paste */
+.day-column-empty-paste {
+    color: rgba(74, 124, 255, 0.8);
+    font-size: 11px;
+    border: 1px dashed rgba(74, 124, 255, 0.4);
+    border-radius: 6px;
+    padding: 14px 8px;
+    margin-top: 4px;
+}
+
+/* Bottom paste hint inside non-empty days */
+.day-column-paste-hint {
+    font-size: 11px;
+    color: rgba(74, 124, 255, 0.65);
+    text-align: center;
+    border: 1px dashed rgba(74, 124, 255, 0.3);
+    border-radius: 4px;
+    padding: 6px;
+    margin-top: 4px;
+    cursor: default;
+}

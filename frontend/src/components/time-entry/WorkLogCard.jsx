@@ -2,7 +2,9 @@
  * =============================================================================
  * HERMES - WorkLog Card Component (Jira Tempo Style - Redesigned)
  * =============================================================================
- * Jira style worklog kart - Checkmark icon, issue key, clean hour format
+ * Jira style worklog kart - Checkmark icon, issue key, clean hour format.
+ * isSelected: copy-paste seçili durumu — mavi çerçeve
+ * onSelect: kart tıklandığında çağrılır (copy-paste için log seçimi)
  * =============================================================================
  */
 
@@ -20,7 +22,7 @@ const formatHours = (hours) => {
     return `${h}h ${m}m`
 }
 
-function WorkLogCard({ workLog, onEdit, onDelete }) {
+function WorkLogCard({ workLog, onEdit, onDelete, isSelected = false, onSelect }) {
     const {
         project_name,
         customer_name,
@@ -34,7 +36,13 @@ function WorkLogCard({ workLog, onEdit, onDelete }) {
     const issueKey = customer_code || customer_name?.substring(0, 5).toUpperCase() || 'KEY'
 
     return (
-        <div className="worklog-card">
+        <div
+            className={`worklog-card${isSelected ? ' worklog-card-selected' : ''}`}
+            onClick={(e) => {
+                e.stopPropagation() // Prevent bubbling to DayColumn (which would set targetDate)
+                onSelect?.(workLog.id)
+            }}
+        >
             {/* Proje Adı (Ana başlık) */}
             <div className="worklog-card-title">
                 {project_name || 'Project'}
@@ -61,12 +69,12 @@ function WorkLogCard({ workLog, onEdit, onDelete }) {
                 </span>
             </div>
 
-            {/* Hover actions */}
+            {/* Hover actions — stopPropagation so they don't trigger card select or day select */}
             <div className="worklog-card-actions">
                 <Tooltip title="Edit">
                     <button
                         className="worklog-action-btn"
-                        onClick={() => onEdit?.(workLog)}
+                        onClick={(e) => { e.stopPropagation(); onEdit?.(workLog) }}
                     >
                         <EditOutlined />
                     </button>
@@ -74,12 +82,19 @@ function WorkLogCard({ workLog, onEdit, onDelete }) {
                 <Tooltip title="Delete">
                     <button
                         className="worklog-action-btn delete"
-                        onClick={() => onDelete?.(workLog)}
+                        onClick={(e) => { e.stopPropagation(); onDelete?.(workLog) }}
                     >
                         <DeleteOutlined />
                     </button>
                 </Tooltip>
             </div>
+
+            {/* Selected indicator badge */}
+            {isSelected && (
+                <div className="worklog-selected-badge" title="Press Ctrl+C to copy">
+                    C
+                </div>
+            )}
         </div>
     )
 }

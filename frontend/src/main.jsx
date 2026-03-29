@@ -11,15 +11,14 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ConfigProvider } from 'antd'
-import trTR from 'antd/locale/tr_TR'
+import enUS from 'antd/locale/en_US'
 import dayjs from 'dayjs'
-import 'dayjs/locale/tr'
+import 'dayjs/locale/en'
 
 import App from './App'
 import './index.css'
 
-// Dayjs Türkçe ayarla
-dayjs.locale('tr')
+dayjs.locale('en')
 
 // React Query client
 const queryClient = new QueryClient({
@@ -58,7 +57,7 @@ const theme = {
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
         <QueryClientProvider client={queryClient}>
-            <ConfigProvider locale={trTR} theme={theme}>
+            <ConfigProvider locale={enUS} theme={theme}>
                 <BrowserRouter>
                     <App />
                 </BrowserRouter>

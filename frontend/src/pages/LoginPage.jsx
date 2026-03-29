@@ -35,10 +35,10 @@ function LoginPage() {
             // [KRİTİK-6] Token cookie olarak backend'den geldi; store'a yalnızca user kaydedilir
             login(response.user)
 
-            message.success('Giriş başarılı!')
+            message.success('Login successful!')
             navigate('/time-entry')
         } catch (error) {
-            const errorMsg = error.response?.data?.detail || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.'
+            const errorMsg = error.response?.data?.detail || 'Login failed. Please check your credentials.'
             message.error(errorMsg)
         } finally {
             setLoading(false)
@@ -51,7 +51,7 @@ function LoginPage() {
         const redirectUri = window.location.origin + '/auth/callback'
 
         if (!clientId) {
-            message.warning('Azure Client ID web yapılandırmasında eksik')
+            message.warning('Azure Client ID is missing from the web configuration')
             return
         }
 
@@ -71,8 +71,8 @@ function LoginPage() {
                 {/* Login Card */}
                 <div className="login-card">
                     <div className="login-header">
-                        <h2>Hesabınıza giriş yapın</h2>
-                        <p>Devam etmek için bilgilerinizi girin</p>
+                        <h2>Sign in to your account</h2>
+                        <p>Enter your credentials to continue</p>
                     </div>
 
                     <Form
@@ -84,29 +84,29 @@ function LoginPage() {
                     >
                         <Form.Item
                             name="email"
-                            label="E-posta"
+                            label="Email"
                             rules={[
-                                { required: true, message: 'E-posta adresinizi girin' },
-                                { type: 'email', message: 'Geçerli bir e-posta adresi girin' }
+                                { required: true, message: 'Please enter your email' },
+                                { type: 'email', message: 'Please enter a valid email address' }
                             ]}
                         >
                             <Input
                                 prefix={<UserOutlined />}
-                                placeholder="ornek@sirket.com"
+                                placeholder="you@company.com"
                                 size="large"
                             />
                         </Form.Item>
 
                         <Form.Item
                             name="password"
-                            label="Şifre"
+                            label="Password"
                             rules={[
-                                { required: true, message: 'Şifrenizi girin' }
+                                { required: true, message: 'Please enter your password' }
                             ]}
                         >
                             <Input.Password
                                 prefix={<LockOutlined />}
-                                placeholder="Şifrenizi girin"
+                                placeholder="Enter your password"
                                 size="large"
                             />
                         </Form.Item>
@@ -118,11 +118,11 @@ function LoginPage() {
                                 loading={loading}
                                 className="login-submit-btn"
                             >
-                                Giriş Yap
+                                Sign In
                             </Button>
                         </Form.Item>
 
-                        <Divider plain style={{ color: '#ccc', borderColor: '#444' }}>veya</Divider>
+                        <Divider plain style={{ color: '#ccc', borderColor: '#444' }}>or</Divider>
 
                         <Button
                             block
@@ -137,14 +137,14 @@ function LoginPage() {
                                 fontSize: 15
                             }}
                         >
-                            Microsoft ile Giriş Yap
+                            Sign in with Microsoft
                         </Button>
                     </Form>
                 </div>
 
                 {/* Footer */}
                 <div className="login-footer">
-                    Hermes Platformu v1.0
+                    Hermes Platform v1.0
                 </div>
             </div>
         </div>
