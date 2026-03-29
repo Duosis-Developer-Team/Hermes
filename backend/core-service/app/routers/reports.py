@@ -23,6 +23,16 @@ router = APIRouter(
     tags=["Reports"]
 )
 
+def format_duration(decimal_hours) -> str:
+    """Convert decimal hours to 'Xh Ym' string. E.g. 3.25 → '3h 15m', 0.75 → '0h 45m'"""
+    if decimal_hours is None:
+        return '0h'
+    h = int(float(decimal_hours))
+    m = round((float(decimal_hours) - h) * 60)
+    if m > 0:
+        return f"{h}h {m}m"
+    return f"{h}h"
+
 # Auth Service URL (internal docker network)
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8000")
 
@@ -186,7 +196,7 @@ async def export_excel(
                 "İş Tipi": r.work_type_name,
                 "Aktivite Tipi": r.activity_type_name if r.activity_type_name else "-",
                 "Platform": r.platform_name if r.platform_name else "-",
-                "Süre (Saat)": float(r.duration_hours) if r.duration_hours is not None else 0.0,
+                "Süre": format_duration(r.duration_hours),
                 "Açıklama": r.description or ""
             })
 
