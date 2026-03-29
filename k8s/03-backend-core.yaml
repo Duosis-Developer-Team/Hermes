@@ -62,7 +62,26 @@ spec:
             secretKeyRef:
               name: hermes-secrets
               key: JWT_SECRET_KEY
-        
+        - name: JWT_PUBLIC_KEY
+          valueFrom:
+            secretKeyRef:
+              name: hermes-jwt-auth
+              key: JWT_PUBLIC_KEY
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 20
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 15
+          periodSeconds: 10
+
         resources:
           requests:
             memory: "128Mi"
