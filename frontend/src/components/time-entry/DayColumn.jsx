@@ -50,6 +50,9 @@ function DayColumn({
     const totalHours = workLogs.reduce((sum, log) => sum + (parseFloat(log.duration_hours) || 0), 0)
     const progressPercent = Math.min((totalHours / DAILY_TARGET_HOURS) * 100, 100)
 
+    const dayOfWeek = dayjs(date).day() // 0 = Sun, 6 = Sat
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+
     // Paste target selection — fires when clicking day background (not cards or buttons)
     const handleDayClick = () => {
         if (hasCopiedLog) {
@@ -75,7 +78,7 @@ function DayColumn({
 
     return (
         <div
-            className={`day-column${isToday ? ' day-column-today' : ''}${isTargeted ? ' day-column-targeted' : ''}`}
+            className={`day-column${isWeekend ? ' day-column-weekend' : ''}${isToday ? ' day-column-today' : ''}${isTargeted ? ' day-column-targeted' : ''}`}
             onClick={handleDayClick}
         >
             {/* Gün Başlığı */}

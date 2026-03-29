@@ -16,8 +16,27 @@
     border-right: none;
 }
 
+/* Weekend days — subtle darker tint, muted text */
+.day-column-weekend {
+    background: var(--bg-primary);
+}
+
+.day-column-weekend .day-name,
+.day-column-weekend .day-number {
+    color: var(--text-muted);
+}
+
+.day-column-weekend .day-column-hours {
+    color: var(--text-muted);
+}
+
+/* Today — always overrides weekend if today falls on a weekend */
 .day-column-today {
     background: var(--bg-tertiary);
+}
+
+.day-column-today .day-name {
+    color: var(--text-primary);
 }
 
 /* Header */

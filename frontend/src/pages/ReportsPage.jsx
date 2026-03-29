@@ -34,6 +34,17 @@ import { useAuthStore } from '../stores/authStore'
 const { Text } = Typography
 const { RangePicker } = DatePicker
 
+// Converts decimal hours to human-readable duration: 0.75 → "45m", 2.75 → "2h 45m", 2.0 → "2h"
+function formatDuration(decimalHours) {
+    if (!decimalHours && decimalHours !== 0) return '—'
+    const h = Math.floor(decimalHours)
+    const m = Math.round((decimalHours - h) * 60)
+    if (h > 0 && m > 0) return `${h}h ${m}m`
+    if (h > 0) return `${h}h`
+    if (m > 0) return `${m}m`
+    return '0m'
+}
+
 // =============================================================================
 // Main Component
 // =============================================================================
@@ -451,7 +462,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             showSorterTooltip: false,
             render: h => (
                 <span style={{ color: 'var(--Green400)', fontWeight: 700, fontFamily: 'monospace' }}>
-                    {(h || 0).toFixed(2)}
+                    {formatDuration(h || 0)}
                 </span>
             )
         }
@@ -471,7 +482,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                             </span>
                         </div>
                         <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-                            {totalHours.toFixed(2)} <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>h</span>
+                            {formatDuration(totalHours)}
                         </div>
                     </div>
                 </Col>

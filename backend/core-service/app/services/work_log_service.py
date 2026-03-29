@@ -250,6 +250,14 @@ class WorkLogService:
                 issue_id=update_data.get("issue_id", db_obj.issue_id)
             )
         
+        # Auto-sync billable_duration_hours when duration_hours changes,
+        # but only if billable was never manually overridden (still equals old duration).
+        if "duration_hours" in update_data and "billable_duration_hours" not in update_data:
+            old_duration = db_obj.duration_hours
+            old_billable = db_obj.billable_duration_hours
+            if old_billable is None or old_billable == old_duration:
+                update_data["billable_duration_hours"] = update_data["duration_hours"]
+
         # Alanları güncelle
         for field, value in update_data.items():
             setattr(db_obj, field, value)
