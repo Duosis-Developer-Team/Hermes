@@ -413,10 +413,10 @@ function LogTimeModal({
                         <Form.Item
                             name="activity_type_id"
                             label="Activity Type"
+                            rules={[{ required: true, message: 'Activity Type is required' }]}
                         >
                             <Select
                                 placeholder="Please select"
-                                allowClear
                                 showSearch
                                 filterOption={(input, option) =>
                                     (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -431,10 +431,10 @@ function LogTimeModal({
                         <Form.Item
                             name="platform_id"
                             label="Platform"
+                            rules={[{ required: true, message: 'Platform is required' }]}
                         >
                             <Select
                                 placeholder="Please select"
-                                allowClear
                                 showSearch
                                 filterOption={(input, option) =>
                                     (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
