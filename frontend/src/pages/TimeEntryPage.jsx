@@ -42,6 +42,15 @@ import './TimeEntryPage.css'
 dayjs.extend(isoWeek)
 dayjs.locale('en')
 
+// 0.75 → "0h 45m", 2.75 → "2h 45m", 2.0 → "2h"
+function formatDuration(decimal) {
+    if (!decimal) return '0h'
+    const h = Math.floor(decimal)
+    const m = Math.round((decimal - h) * 60)
+    if (m > 0) return `${h}h ${m}m`
+    return `${h}h`
+}
+
 function TimeEntryPage() {
     const queryClient = useQueryClient()
     const { user } = useAuthStore()
@@ -107,16 +116,9 @@ function TimeEntryPage() {
     const workLogs = workLogsResponse?.data || []
 
     // Haftalık toplam saat
-    const weekTotalHours = useMemo(() => {
-        const total = workLogs.reduce((sum, log) => {
-            const duration = parseFloat(log.duration_hours) || 0
-            return sum + duration
-        }, 0)
-
-        // Clean format: remove trailing zeros (1.00 -> 1, 2.50 -> 2.5)
-        if (Number.isInteger(total)) return total
-        return parseFloat(total.toFixed(2))
-    }, [workLogs])
+    const weekTotalHours = useMemo(() =>
+        workLogs.reduce((sum, log) => sum + (parseFloat(log.duration_hours) || 0), 0)
+    , [workLogs])
 
     // ==========================================================================
     // Mutations
@@ -509,7 +511,7 @@ function TimeEntryPage() {
                     {/* Week Summary */}
                     <div className="week-summary">
                         <span className="summary-label">Week:</span>
-                        <span className="summary-hours">{weekTotalHours}h</span>
+                        <span className="summary-hours">{formatDuration(weekTotalHours)}</span>
                         <span className="summary-target">/ 40h</span>
                     </div>
 
