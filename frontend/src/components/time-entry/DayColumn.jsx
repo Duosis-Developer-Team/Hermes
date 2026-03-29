@@ -38,12 +38,13 @@ function DayColumn({
     const dayName = dayjs(date).format('ddd')
     const dayNumber = dayjs(date).format('DD')
 
-    // Format hours: 1.00 -> 1, 2.50 -> 2.5
-    const formatHours = (hours) => {
-        if (!hours) return '0'
-        const num = parseFloat(hours)
-        if (Number.isInteger(num)) return num
-        return parseFloat(num.toFixed(2))
+    // 0.75 → "45m", 2.75 → "2h 45m", 2.0 → "2h"
+    const formatDuration = (decimal) => {
+        if (!decimal) return '0h'
+        const h = Math.floor(decimal)
+        const m = Math.round((decimal - h) * 60)
+        if (m > 0) return `${h}h ${m}m`
+        return `${h}h`
     }
 
     // Günlük toplam saat hesapla
@@ -88,7 +89,7 @@ function DayColumn({
                     <span className="day-number">{dayNumber}</span>
                 </div>
                 <div className="day-column-hours">
-                    {formatHours(totalHours)}h / {DAILY_TARGET_HOURS}h
+                    {formatDuration(totalHours)} / {DAILY_TARGET_HOURS}h
                 </div>
             </div>
 

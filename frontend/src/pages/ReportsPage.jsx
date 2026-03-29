@@ -39,10 +39,8 @@ function formatDuration(decimalHours) {
     if (!decimalHours && decimalHours !== 0) return '—'
     const h = Math.floor(decimalHours)
     const m = Math.round((decimalHours - h) * 60)
-    if (h > 0 && m > 0) return `${h}h ${m}m`
-    if (h > 0) return `${h}h`
-    if (m > 0) return `${m}m`
-    return '0m'
+    if (m > 0) return `${h}h ${m}m`
+    return `${h}h`
 }
 
 // =============================================================================

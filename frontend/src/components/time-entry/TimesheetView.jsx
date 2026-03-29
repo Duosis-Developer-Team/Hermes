@@ -13,6 +13,15 @@ import { CheckSquareOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import './TimesheetView.css'
 
+// 0.75 → "45m", 2.75 → "2h 45m", 2.0 → "2h"
+function formatDuration(decimal) {
+    if (!decimal) return ''
+    const h = Math.floor(decimal)
+    const m = Math.round((decimal - h) * 60)
+    if (m > 0) return `${h}h ${m}m`
+    return `${h}h`
+}
+
 function TimesheetView({
     weekStart,
     workLogs = [],
@@ -117,7 +126,7 @@ function TimesheetView({
             width: 70,
             align: 'center',
             render: (hours) => (
-                <span className="timesheet-logged-hours">{hours || ''}</span>
+                <span className="timesheet-logged-hours">{formatDuration(hours)}</span>
             ),
         },
         // Day columns
@@ -145,7 +154,7 @@ function TimesheetView({
                         className={`timesheet-hours-cell ${hours ? 'has-value' : ''}`}
                         onClick={() => onCellClick?.(record, dateKey)}
                     >
-                        {hours || ''}
+                        {hours ? formatDuration(hours) : ''}
                     </div>
                 ),
             }
@@ -197,7 +206,7 @@ function TimesheetView({
                                     Total
                                 </Table.Summary.Cell>
                                 <Table.Summary.Cell index={1} className="timesheet-total-value">
-                                    {grandTotal}
+                                    {formatDuration(grandTotal) || '0h'}
                                 </Table.Summary.Cell>
                                 {displayDays.map((day, i) => {
                                     const dateKey = day.format('YYYY-MM-DD')
@@ -208,7 +217,7 @@ function TimesheetView({
                                             index={i + 2}
                                             className={`timesheet-total-day ${isWeekend ? 'weekend' : ''}`}
                                         >
-                                            {dailyTotals[dateKey] || 0}
+                                            {formatDuration(dailyTotals[dateKey]) || 0}
                                         </Table.Summary.Cell>
                                     )
                                 })}

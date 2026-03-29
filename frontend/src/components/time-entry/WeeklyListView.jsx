@@ -59,6 +59,15 @@ function WeeklyListView({
     const weekTotalHours = workLogs.reduce((sum, log) => sum + (parseFloat(log.duration_hours) || 0), 0)
     const weekTargetHours = 40
 
+    // 0.75 → "45m", 2.75 → "2h 45m", 2.0 → "2h"
+    const formatDuration = (decimal) => {
+        if (!decimal) return '0h'
+        const h = Math.floor(decimal)
+        const m = Math.round((decimal - h) * 60)
+        if (m > 0) return `${h}h ${m}m`
+        return `${h}h`
+    }
+
     return (
         <div className="weekly-list-view">
             {/* Clipboard Banner — görünür olduğunda kullanıcıyı bilgilendirir */}
@@ -82,7 +91,7 @@ function WeeklyListView({
             {/* Hafta özeti */}
             <div className="weekly-list-summary">
                 <span>Week: </span>
-                <strong>{weekTotalHours}h</strong>
+                <strong>{formatDuration(weekTotalHours)}</strong>
                 <span className="weekly-target"> / {weekTargetHours}h</span>
             </div>
 
