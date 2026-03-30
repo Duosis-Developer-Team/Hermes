@@ -151,8 +151,7 @@ def fetch_weekly_logs(week_start: date, week_end: date) -> list[dict]:
     query = """
         SELECT
             wl.date_worked                          AS "Date",
-            u.full_name                             AS "User",
-            u.email                                 AS "Email",
+            wl.user_id                              AS "User",
             c.name                                  AS "Customer",
             p.name                                  AS "Project",
             wt.name                                 AS "Work Type",
@@ -168,9 +167,8 @@ def fetch_weekly_logs(week_start: date, week_end: date) -> list[dict]:
         JOIN work_types wt ON wt.id = wl.work_type_id
         LEFT JOIN activity_types at ON at.id = wl.activity_type_id
         LEFT JOIN platforms pl      ON pl.id = wl.platform_id
-        LEFT JOIN users u           ON u.id  = wl.user_id
         WHERE wl.date_worked BETWEEN %s AND %s
-        ORDER BY wl.date_worked, u.full_name
+        ORDER BY wl.date_worked, wl.user_id
     """
     conn = psycopg2.connect(
         host=DB_HOST, port=int(DB_PORT),
@@ -199,7 +197,7 @@ def format_duration(decimal_hours) -> str:
 
 def build_csv(rows: list[dict]) -> bytes:
     fieldnames = [
-        "Date", "User", "Email", "Customer", "Project",
+        "Date", "User ID", "Customer", "Project",
         "Work Type", "Activity Type", "Platform",
         "Duration", "Billable", "Description", "Created At"
     ]
@@ -210,8 +208,7 @@ def build_csv(rows: list[dict]) -> bytes:
     for r in rows:
         writer.writerow({
             "Date":          str(r["Date"]),
-            "User":          r["User"] or "",
-            "Email":         r["Email"] or "",
+            "User ID":       str(r["User"]) if r["User"] else "",
             "Customer":      r["Customer"] or "",
             "Project":       r["Project"] or "",
             "Work Type":     r["Work Type"] or "",
