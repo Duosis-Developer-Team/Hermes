@@ -35,11 +35,11 @@ spec:
                     secretKeyRef:
                       name: hermes-backup-secret
                       key: AZURE_TENANT_ID
-                - name: ONEDRIVE_DRIVE_ID
+                - name: ONEDRIVE_USER
                   valueFrom:
                     secretKeyRef:
                       name: hermes-backup-secret
-                      key: ONEDRIVE_DRIVE_ID
+                      key: ONEDRIVE_USER
                 - name: ONEDRIVE_FOLDER
                   value: "/HermesBackup"
                 # Database

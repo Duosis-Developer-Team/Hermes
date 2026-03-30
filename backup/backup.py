@@ -46,10 +46,10 @@ log = logging.getLogger(__name__)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-CLIENT_ID     = os.environ["AZURE_CLIENT_ID"]
-CLIENT_SECRET = os.environ["AZURE_CLIENT_SECRET"]
-TENANT_ID     = os.environ["AZURE_TENANT_ID"]
-DRIVE_ID      = os.environ["ONEDRIVE_DRIVE_ID"]
+CLIENT_ID      = os.environ["AZURE_CLIENT_ID"]
+CLIENT_SECRET  = os.environ["AZURE_CLIENT_SECRET"]
+TENANT_ID      = os.environ["AZURE_TENANT_ID"]
+ONEDRIVE_USER  = os.environ["ONEDRIVE_USER"]  # e.g. gencay.coskun@duosis.com
 
 DB_HOST     = os.environ.get("DB_HOST", "core-db")
 DB_PORT     = os.environ.get("DB_PORT", "5432")
@@ -89,6 +89,10 @@ def _auth_headers(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _drive_base() -> str:
+    return f"{GRAPH_URL}/users/{ONEDRIVE_USER}/drive"
+
+
 def ensure_folder(token: str, folder_path: str):
     """Create folder on OneDrive if it doesn't exist (creates all missing parents)."""
     parts = folder_path.strip("/").split("/")
@@ -96,13 +100,13 @@ def ensure_folder(token: str, folder_path: str):
     for part in parts:
         parent = current or "root"
         current = f"{current}/{part}" if current else part
-        check_url = f"{GRAPH_URL}/drives/{DRIVE_ID}/root:/{current}"
+        check_url = f"{_drive_base()}/root:/{current}"
         resp = requests.get(check_url, headers=_auth_headers(token), timeout=30)
         if resp.status_code == 404:
             if parent == "root":
-                create_url = f"{GRAPH_URL}/drives/{DRIVE_ID}/root/children"
+                create_url = f"{_drive_base()}/root/children"
             else:
-                create_url = f"{GRAPH_URL}/drives/{DRIVE_ID}/root:/{parent}:/children"
+                create_url = f"{_drive_base()}/root:/{parent}:/children"
             resp2 = requests.post(
                 create_url,
                 headers={**_auth_headers(token), "Content-Type": "application/json"},
@@ -112,13 +116,15 @@ def ensure_folder(token: str, folder_path: str):
             resp2.raise_for_status()
             log.info(f"Created OneDrive folder: /{current}")
         else:
+            if not resp.ok:
+                log.error(f"Drive check failed [{resp.status_code}]: {resp.text}")
             resp.raise_for_status()
 
 
 def upload_to_onedrive(token: str, folder: str, filename: str, content: bytes, content_type: str = "application/octet-stream") -> str:
     """Upload file. Returns webUrl."""
-    folder = folder.rstrip("/")
-    url = f"{GRAPH_URL}/drives/{DRIVE_ID}/root:{folder}/{filename}:/content"
+    folder = folder.strip("/")
+    url = f"{_drive_base()}/root:/{folder}/{filename}:/content"
     headers = {**_auth_headers(token), "Content-Type": content_type}
 
     if len(content) < 4 * 1024 * 1024:
@@ -129,7 +135,7 @@ def upload_to_onedrive(token: str, folder: str, filename: str, content: bytes, c
         return web_url
 
     # Large file — upload session
-    session_url = f"{GRAPH_URL}/drives/{DRIVE_ID}/root:{folder}/{filename}:/createUploadSession"
+    session_url = f"{_drive_base()}/root:/{folder}/{filename}:/createUploadSession"
     session = requests.post(
         session_url,
         headers={**_auth_headers(token), "Content-Type": "application/json"},
@@ -159,7 +165,7 @@ def upload_to_onedrive(token: str, folder: str, filename: str, content: bytes, c
 
 def list_files_in_folder(token: str, folder: str) -> list[dict]:
     """Returns list of {name, id, lastModifiedDateTime} for files in folder."""
-    url = f"{GRAPH_URL}/drives/{DRIVE_ID}/root:{folder}:/children"
+    url = f"{_drive_base()}/root:/{folder.strip('/')}:/children"
     resp = requests.get(url, headers=_auth_headers(token), timeout=30)
     if resp.status_code == 404:
         return []
@@ -168,7 +174,7 @@ def list_files_in_folder(token: str, folder: str) -> list[dict]:
 
 
 def delete_file(token: str, item_id: str, name: str):
-    url = f"{GRAPH_URL}/drives/{DRIVE_ID}/items/{item_id}"
+    url = f"{_drive_base()}/items/{item_id}"
     resp = requests.delete(url, headers=_auth_headers(token), timeout=30)
     resp.raise_for_status()
     log.info(f"Deleted old dump: {name}")
