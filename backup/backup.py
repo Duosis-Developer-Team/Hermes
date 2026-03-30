@@ -57,6 +57,9 @@ DB_NAME     = os.environ.get("DB_NAME", "core_db")
 DB_USER     = os.environ.get("DB_USER", "hermes")
 DB_PASSWORD = os.environ["DB_PASSWORD"]
 
+AUTH_DB_HOST = os.environ.get("AUTH_DB_HOST", "auth-db")
+AUTH_DB_NAME = os.environ.get("AUTH_DB_NAME", "auth_db")
+
 AUTHORITY  = f"https://login.microsoftonline.com/{TENANT_ID}"
 GRAPH_URL  = "https://graph.microsoft.com/v1.0"
 
@@ -147,11 +150,27 @@ def delete_file(token: str, item_id: str, name: str):
 
 # ── DB Query ─────────────────────────────────────────────────────────────────
 
-def fetch_weekly_logs(week_start: date, week_end: date) -> list[dict]:
+def fetch_users() -> dict:
+    """Returns {user_id_str: {"full_name": ..., "email": ...}} from auth_db."""
+    conn = psycopg2.connect(
+        host=AUTH_DB_HOST, port=int(DB_PORT),
+        dbname=AUTH_DB_NAME, user=DB_USER, password=DB_PASSWORD
+    )
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT id, full_name, email FROM users")
+            rows = cur.fetchall()
+        log.info(f"Fetched {len(rows)} users from auth_db.")
+        return {str(r["id"]): {"full_name": r["full_name"], "email": r["email"]} for r in rows}
+    finally:
+        conn.close()
+
+
+def fetch_weekly_logs(week_start: date, week_end: date, users: dict) -> list[dict]:
     query = """
         SELECT
             wl.date_worked                          AS "Date",
-            wl.user_id                              AS "User",
+            wl.user_id                              AS "UserID",
             c.name                                  AS "Customer",
             p.name                                  AS "Project",
             wt.name                                 AS "Work Type",
@@ -179,7 +198,14 @@ def fetch_weekly_logs(week_start: date, week_end: date) -> list[dict]:
             cur.execute(query, (week_start, week_end))
             rows = cur.fetchall()
         log.info(f"Fetched {len(rows)} rows for CSV ({week_start} – {week_end}).")
-        return [dict(r) for r in rows]
+        result = []
+        for r in rows:
+            row = dict(r)
+            user_info = users.get(str(row["UserID"]), {})
+            row["User"] = user_info.get("full_name", str(row["UserID"]))
+            row["Email"] = user_info.get("email", "")
+            result.append(row)
+        return result
     finally:
         conn.close()
 
@@ -197,7 +223,7 @@ def format_duration(decimal_hours) -> str:
 
 def build_csv(rows: list[dict]) -> bytes:
     fieldnames = [
-        "Date", "User ID", "Customer", "Project",
+        "Date", "User", "Email", "Customer", "Project",
         "Work Type", "Activity Type", "Platform",
         "Duration", "Billable", "Description", "Created At"
     ]
@@ -208,7 +234,8 @@ def build_csv(rows: list[dict]) -> bytes:
     for r in rows:
         writer.writerow({
             "Date":          str(r["Date"]),
-            "User ID":       str(r["User"]) if r["User"] else "",
+            "User":          r["User"] or "",
+            "Email":         r["Email"] or "",
             "Customer":      r["Customer"] or "",
             "Project":       r["Project"] or "",
             "Work Type":     r["Work Type"] or "",
@@ -330,9 +357,10 @@ def main():
     log.info(f"Backup period: {week_start} – {week_end}")
 
     token = get_access_token()
+    users = fetch_users()
 
     # ── 1. CSV Export ─────────────────────────────────────────────────────────
-    rows = fetch_weekly_logs(week_start, week_end)
+    rows = fetch_weekly_logs(week_start, week_end, users)
     if rows:
         csv_bytes = build_csv(rows)
         csv_filename = f"hermes_weekly_{week_start}_{week_end}.csv"

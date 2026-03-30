@@ -68,5 +68,16 @@ spec:
                     secretKeyRef:
                       name: hermes-backup-secret
                       key: DB_PASSWORD
+                # Auth Database (for user name/email lookup)
+                - name: AUTH_DB_HOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: DB_HOST_AUTH
+                - name: AUTH_DB_NAME
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: POSTGRES_DB_AUTH
           imagePullSecrets:
             - name: ghcr-secret
