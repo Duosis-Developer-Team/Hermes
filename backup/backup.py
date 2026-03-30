@@ -60,10 +60,9 @@ DB_PASSWORD = os.environ["DB_PASSWORD"]
 AUTHORITY  = f"https://login.microsoftonline.com/{TENANT_ID}"
 GRAPH_URL  = "https://graph.microsoft.com/v1.0"
 
-ONEDRIVE_ROOT    = "/HermesBackup"
-CSV_FOLDER       = f"{ONEDRIVE_ROOT}/csv"
-DUMP_FOLDER      = f"{ONEDRIVE_ROOT}/db-dumps"
-DB_DUMP_KEEP_WEEKS = 4
+ONEDRIVE_ROOT = "/HermesBackup"
+CSV_FOLDER    = f"{ONEDRIVE_ROOT}/csv"
+DUMP_FOLDER   = f"{ONEDRIVE_ROOT}/db-dumps"
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
@@ -257,23 +256,34 @@ def create_db_dump() -> bytes:
     return compressed
 
 
-def cleanup_old_dumps(token: str, keep: int = DB_DUMP_KEEP_WEEKS):
-    """Delete oldest dump files, keeping only the most recent `keep` files."""
-    files = list_files_in_folder(token, DUMP_FOLDER)
-    # Only .sql.gz files, sorted by name (YYYY-MM-DD in name → lexicographic = chronological)
-    dumps = sorted(
-        [f for f in files if f["name"].endswith(".sql.gz")],
-        key=lambda f: f["name"]
-    )
+def cleanup_old_dumps(token: str, today: date):
+    """
+    Keep only DB dumps from the current month. When the first dump of a new
+    month is uploaded, all dumps from the previous month are deleted.
 
-    to_delete = dumps[:-keep] if len(dumps) > keep else []
+    Filename format: hermes_db_YYYY-MM-DD.sql.gz
+    """
+    files = list_files_in_folder(token, DUMP_FOLDER)
+    dumps = [f for f in files if f["name"].endswith(".sql.gz")]
+
+    to_delete = []
+    for f in dumps:
+        try:
+            # hermes_db_YYYY-MM-DD.sql.gz → extract date part
+            date_str = f["name"].replace("hermes_db_", "").replace(".sql.gz", "")
+            file_date = date.fromisoformat(date_str)
+            if (file_date.year, file_date.month) < (today.year, today.month):
+                to_delete.append(f)
+        except ValueError:
+            log.warning(f"Could not parse date from filename: {f['name']}, skipping.")
+
     if not to_delete:
-        log.info(f"Dump cleanup: {len(dumps)} files present, nothing to delete.")
+        log.info("Dump cleanup: nothing to delete.")
         return
 
     for f in to_delete:
         delete_file(token, f["id"], f["name"])
-    log.info(f"Cleanup done: deleted {len(to_delete)}, kept {min(len(dumps), keep)}.")
+    log.info(f"Dump cleanup: deleted {len(to_delete)} old file(s).")
 
 
 def cleanup_old_csvs(token: str, today: date):
@@ -341,8 +351,8 @@ def main():
     dump_filename = f"hermes_db_{week_end}.sql.gz"
     upload_to_onedrive(token, DUMP_FOLDER, dump_filename, dump_bytes)
 
-    # Delete dumps older than 4 weeks
-    cleanup_old_dumps(token, keep=DB_DUMP_KEEP_WEEKS)
+    # Delete dumps from previous month
+    cleanup_old_dumps(token, today)
 
     log.info("All backup tasks completed successfully.")
 
