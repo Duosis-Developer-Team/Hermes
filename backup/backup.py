@@ -278,26 +278,16 @@ def cleanup_old_dumps(token: str, keep: int = DB_DUMP_KEEP_WEEKS):
 
 def cleanup_old_csvs(token: str, today: date):
     """
-    Keep CSVs from the current month and the previous month only.
-    Files from 2+ months ago are deleted.
+    Keep only CSVs from the current month. When the first CSV of a new month
+    is uploaded, all CSVs from the previous month are deleted.
+
+    Example: May week-1 is uploaded → all April CSVs are deleted.
 
     Filename format: hermes_weekly_YYYY-MM-DD_YYYY-MM-DD.csv
-    The month is determined from the week_start date (first date in filename).
+    Month is determined from the week_start date (first date in filename).
     """
     files = list_files_in_folder(token, CSV_FOLDER)
     csvs = [f for f in files if f["name"].endswith(".csv")]
-
-    # Calculate the cutoff: first day of the previous month
-    # Anything before this month is considered old
-    if today.month == 1:
-        cutoff_year, cutoff_month = today.year - 1, 12
-    else:
-        cutoff_year, cutoff_month = today.year, today.month - 1
-    # Keep current month AND previous month → delete anything before previous month
-    if cutoff_month == 1:
-        delete_before_year, delete_before_month = cutoff_year - 1, 12
-    else:
-        delete_before_year, delete_before_month = cutoff_year, cutoff_month - 1
 
     to_delete = []
     for f in csvs:
@@ -307,7 +297,8 @@ def cleanup_old_csvs(token: str, today: date):
             # parts: ['hermes', 'weekly', 'YYYY-MM-DD', 'YYYY-MM-DD']
             week_start_str = parts[2]
             file_date = date.fromisoformat(week_start_str)
-            if (file_date.year, file_date.month) < (delete_before_year, delete_before_month):
+            # Delete if the file belongs to any month before the current month
+            if (file_date.year, file_date.month) < (today.year, today.month):
                 to_delete.append(f)
         except (IndexError, ValueError):
             log.warning(f"Could not parse date from filename: {f['name']}, skipping.")
