@@ -1,15 +1,20 @@
 """
-HERMES - Weekly CSV Backup to OneDrive
-=======================================
-Queries core PostgreSQL DB directly, generates a weekly CSV,
-and uploads it to OneDrive via Microsoft Graph API.
+HERMES - Weekly Backup to OneDrive
+====================================
+Runs every Monday. Performs two tasks:
+
+1. CSV Export  → /HermesBackup/csv/hermes_weekly_YYYY-MM-DD_YYYY-MM-DD.csv
+   Kept forever (small files, useful as readable archive).
+
+2. DB Dump     → /HermesBackup/db-dumps/hermes_db_YYYY-MM-DD.sql.gz
+   Rolling 4-week window: after uploading, any dumps older than 4 weeks
+   are deleted from OneDrive automatically.
 
 Required environment variables (injected via K8s Secret):
   AZURE_CLIENT_ID      - Hermes-Backup-Rclone app client ID
   AZURE_CLIENT_SECRET  - client secret value
   AZURE_TENANT_ID      - Azure AD tenant ID
   ONEDRIVE_DRIVE_ID    - target OneDrive drive ID
-  ONEDRIVE_FOLDER      - destination folder path in OneDrive (e.g. /Hermes/Backups)
   DB_HOST              - PostgreSQL host (core-db)
   DB_PORT              - PostgreSQL port (5432)
   DB_NAME              - database name (core_db)
@@ -19,7 +24,9 @@ Required environment variables (injected via K8s Secret):
 
 import os
 import csv
+import gzip
 import io
+import subprocess
 import sys
 import logging
 from datetime import date, timedelta
@@ -42,16 +49,20 @@ CLIENT_ID     = os.environ["AZURE_CLIENT_ID"]
 CLIENT_SECRET = os.environ["AZURE_CLIENT_SECRET"]
 TENANT_ID     = os.environ["AZURE_TENANT_ID"]
 DRIVE_ID      = os.environ["ONEDRIVE_DRIVE_ID"]
-ONEDRIVE_FOLDER = os.environ.get("ONEDRIVE_FOLDER", "/Hermes/Backups")
 
 DB_HOST     = os.environ.get("DB_HOST", "core-db")
-DB_PORT     = int(os.environ.get("DB_PORT", 5432))
+DB_PORT     = os.environ.get("DB_PORT", "5432")
 DB_NAME     = os.environ.get("DB_NAME", "core_db")
 DB_USER     = os.environ.get("DB_USER", "hermes")
 DB_PASSWORD = os.environ["DB_PASSWORD"]
 
-AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
-GRAPH_URL = "https://graph.microsoft.com/v1.0"
+AUTHORITY  = f"https://login.microsoftonline.com/{TENANT_ID}"
+GRAPH_URL  = "https://graph.microsoft.com/v1.0"
+
+ONEDRIVE_ROOT    = "/HermesBackup"
+CSV_FOLDER       = f"{ONEDRIVE_ROOT}/csv"
+DUMP_FOLDER      = f"{ONEDRIVE_ROOT}/db-dumps"
+DB_DUMP_KEEP_WEEKS = 4
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
@@ -67,6 +78,71 @@ def get_access_token() -> str:
         raise RuntimeError(f"Token error: {result.get('error_description')}")
     log.info("Access token acquired.")
     return result["access_token"]
+
+
+# ── OneDrive helpers ──────────────────────────────────────────────────────────
+
+def _auth_headers(token: str) -> dict:
+    return {"Authorization": f"Bearer {token}"}
+
+
+def upload_to_onedrive(token: str, folder: str, filename: str, content: bytes, content_type: str = "application/octet-stream") -> str:
+    """Upload file. Returns webUrl."""
+    folder = folder.rstrip("/")
+    url = f"{GRAPH_URL}/drives/{DRIVE_ID}/root:{folder}/{filename}:/content"
+    headers = {**_auth_headers(token), "Content-Type": content_type}
+
+    if len(content) < 4 * 1024 * 1024:
+        resp = requests.put(url, headers=headers, data=content, timeout=60)
+        resp.raise_for_status()
+        web_url = resp.json().get("webUrl", "")
+        log.info(f"Uploaded '{filename}' → {web_url}")
+        return web_url
+
+    # Large file — upload session
+    session_url = f"{GRAPH_URL}/drives/{DRIVE_ID}/root:{folder}/{filename}:/createUploadSession"
+    session = requests.post(
+        session_url,
+        headers={**_auth_headers(token), "Content-Type": "application/json"},
+        json={"item": {"@microsoft.graph.conflictBehavior": "replace"}},
+        timeout=30
+    )
+    session.raise_for_status()
+    upload_url = session.json()["uploadUrl"]
+
+    chunk_size = 5 * 1024 * 1024
+    total = len(content)
+    offset = 0
+    while offset < total:
+        chunk = content[offset:offset + chunk_size]
+        end = offset + len(chunk) - 1
+        resp = requests.put(
+            upload_url,
+            headers={"Content-Length": str(len(chunk)), "Content-Range": f"bytes {offset}-{end}/{total}"},
+            data=chunk, timeout=120
+        )
+        log.info(f"  chunk {offset}-{end}: {resp.status_code}")
+        offset += len(chunk)
+
+    log.info(f"Uploaded large file '{filename}'.")
+    return ""
+
+
+def list_files_in_folder(token: str, folder: str) -> list[dict]:
+    """Returns list of {name, id, lastModifiedDateTime} for files in folder."""
+    url = f"{GRAPH_URL}/drives/{DRIVE_ID}/root:{folder}:/children"
+    resp = requests.get(url, headers=_auth_headers(token), timeout=30)
+    if resp.status_code == 404:
+        return []
+    resp.raise_for_status()
+    return resp.json().get("value", [])
+
+
+def delete_file(token: str, item_id: str, name: str):
+    url = f"{GRAPH_URL}/drives/{DRIVE_ID}/items/{item_id}"
+    resp = requests.delete(url, headers=_auth_headers(token), timeout=30)
+    resp.raise_for_status()
+    log.info(f"Deleted old dump: {name}")
 
 
 # ── DB Query ─────────────────────────────────────────────────────────────────
@@ -87,8 +163,8 @@ def fetch_weekly_logs(week_start: date, week_end: date) -> list[dict]:
             wl.description                          AS "Description",
             wl.created_at                           AS "Created At"
         FROM work_logs wl
-        JOIN customers c  ON c.id  = wl.customer_id
-        JOIN projects p   ON p.id  = wl.project_id
+        JOIN customers c   ON c.id  = wl.customer_id
+        JOIN projects p    ON p.id  = wl.project_id
         JOIN work_types wt ON wt.id = wl.work_type_id
         LEFT JOIN activity_types at ON at.id = wl.activity_type_id
         LEFT JOIN platforms pl      ON pl.id = wl.platform_id
@@ -97,32 +173,29 @@ def fetch_weekly_logs(week_start: date, week_end: date) -> list[dict]:
         ORDER BY wl.date_worked, u.full_name
     """
     conn = psycopg2.connect(
-        host=DB_HOST, port=DB_PORT,
+        host=DB_HOST, port=int(DB_PORT),
         dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD
     )
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(query, (week_start, week_end))
             rows = cur.fetchall()
-        log.info(f"Fetched {len(rows)} rows for {week_start} – {week_end}.")
+        log.info(f"Fetched {len(rows)} rows for CSV ({week_start} – {week_end}).")
         return [dict(r) for r in rows]
     finally:
         conn.close()
 
 
 def format_duration(decimal_hours) -> str:
-    """3.25 → '3h 15m', 0.75 → '0h 45m'"""
     if decimal_hours is None:
         return "0h"
     val = float(decimal_hours)
     h = int(val)
     m = round((val - h) * 60)
-    if m > 0:
-        return f"{h}h {m}m"
-    return f"{h}h"
+    return f"{h}h {m}m" if m > 0 else f"{h}h"
 
 
-# ── CSV Generation ────────────────────────────────────────────────────────────
+# ── CSV ───────────────────────────────────────────────────────────────────────
 
 def build_csv(rows: list[dict]) -> bytes:
     fieldnames = [
@@ -131,8 +204,7 @@ def build_csv(rows: list[dict]) -> bytes:
         "Duration", "Billable", "Description", "Created At"
     ]
     buf = io.StringIO()
-    # UTF-8 BOM for Excel compatibility
-    buf.write("\ufeff")
+    buf.write("\ufeff")  # UTF-8 BOM for Excel
     writer = csv.DictWriter(buf, fieldnames=fieldnames, delimiter=";")
     writer.writeheader()
     for r in rows:
@@ -153,76 +225,86 @@ def build_csv(rows: list[dict]) -> bytes:
     return buf.getvalue().encode("utf-8")
 
 
-# ── OneDrive Upload ───────────────────────────────────────────────────────────
+# ── DB Dump ───────────────────────────────────────────────────────────────────
 
-def upload_to_onedrive(token: str, filename: str, content: bytes) -> str:
-    """Upload file to OneDrive. Returns webUrl."""
-    folder = ONEDRIVE_FOLDER.rstrip("/")
-    url = f"{GRAPH_URL}/drives/{DRIVE_ID}/root:{folder}/{filename}:/content"
+def create_db_dump() -> bytes:
+    """Run pg_dump and return gzipped SQL bytes."""
+    log.info("Running pg_dump...")
+    env = os.environ.copy()
+    env["PGPASSWORD"] = DB_PASSWORD
 
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "text/csv; charset=utf-8",
-    }
+    result = subprocess.run(
+        [
+            "pg_dump",
+            "-h", DB_HOST,
+            "-p", DB_PORT,
+            "-U", DB_USER,
+            "-d", DB_NAME,
+            "--no-password",
+            "-F", "p",   # plain SQL
+        ],
+        capture_output=True,
+        env=env,
+        timeout=300
+    )
 
-    if len(content) < 4 * 1024 * 1024:
-        # Small file — single PUT
-        resp = requests.put(url, headers=headers, data=content, timeout=60)
-        resp.raise_for_status()
-        web_url = resp.json().get("webUrl", "")
-        log.info(f"Uploaded: {web_url}")
-        return web_url
-    else:
-        # Large file — upload session
-        session_url = f"{GRAPH_URL}/drives/{DRIVE_ID}/root:{folder}/{filename}:/createUploadSession"
-        session_headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-        session_body = {"item": {"@microsoft.graph.conflictBehavior": "replace"}}
-        session = requests.post(session_url, headers=session_headers, json=session_body, timeout=30)
-        session.raise_for_status()
-        upload_url = session.json()["uploadUrl"]
+    if result.returncode != 0:
+        raise RuntimeError(f"pg_dump failed: {result.stderr.decode()}")
 
-        chunk_size = 5 * 1024 * 1024
-        total = len(content)
-        offset = 0
-        while offset < total:
-            chunk = content[offset:offset + chunk_size]
-            end = offset + len(chunk) - 1
-            chunk_headers = {
-                "Content-Length": str(len(chunk)),
-                "Content-Range": f"bytes {offset}-{end}/{total}",
-            }
-            resp = requests.put(upload_url, headers=chunk_headers, data=chunk, timeout=120)
-            log.info(f"Chunk {offset}-{end}: {resp.status_code}")
-            offset += len(chunk)
+    compressed = gzip.compress(result.stdout, compresslevel=9)
+    log.info(f"DB dump: {len(result.stdout) / 1024:.1f} KB → {len(compressed) / 1024:.1f} KB compressed.")
+    return compressed
 
-        log.info("Large file upload complete.")
-        return ""
+
+def cleanup_old_dumps(token: str, keep: int = DB_DUMP_KEEP_WEEKS):
+    """Delete oldest dump files, keeping only the most recent `keep` files."""
+    files = list_files_in_folder(token, DUMP_FOLDER)
+    # Only .sql.gz files, sorted by name (YYYY-MM-DD in name → lexicographic = chronological)
+    dumps = sorted(
+        [f for f in files if f["name"].endswith(".sql.gz")],
+        key=lambda f: f["name"]
+    )
+
+    to_delete = dumps[:-keep] if len(dumps) > keep else []
+    if not to_delete:
+        log.info(f"Dump cleanup: {len(dumps)} files present, nothing to delete.")
+        return
+
+    for f in to_delete:
+        delete_file(token, f["id"], f["name"])
+    log.info(f"Cleanup done: deleted {len(to_delete)}, kept {min(len(dumps), keep)}.")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
     today = date.today()
-    # Previous full week: Mon–Sun
     days_since_monday = today.weekday()
     week_end   = today - timedelta(days=days_since_monday + 1)   # last Sunday
     week_start = week_end - timedelta(days=6)                     # last Monday
 
     log.info(f"Backup period: {week_start} – {week_end}")
 
-    rows = fetch_weekly_logs(week_start, week_end)
-
-    if not rows:
-        log.warning("No entries found for this week. Skipping upload.")
-        sys.exit(0)
-
-    csv_bytes = build_csv(rows)
-    filename  = f"hermes_weekly_{week_start}_{week_end}.csv"
-
     token = get_access_token()
-    web_url = upload_to_onedrive(token, filename, csv_bytes)
 
-    log.info(f"Backup complete. File: {filename} | Rows: {len(rows)} | URL: {web_url}")
+    # ── 1. CSV Export ─────────────────────────────────────────────────────────
+    rows = fetch_weekly_logs(week_start, week_end)
+    if rows:
+        csv_bytes = build_csv(rows)
+        csv_filename = f"hermes_weekly_{week_start}_{week_end}.csv"
+        upload_to_onedrive(token, CSV_FOLDER, csv_filename, csv_bytes, "text/csv; charset=utf-8")
+    else:
+        log.warning("No entries for this week — skipping CSV upload.")
+
+    # ── 2. DB Dump ────────────────────────────────────────────────────────────
+    dump_bytes = create_db_dump()
+    dump_filename = f"hermes_db_{week_end}.sql.gz"
+    upload_to_onedrive(token, DUMP_FOLDER, dump_filename, dump_bytes)
+
+    # Delete dumps older than 4 weeks
+    cleanup_old_dumps(token, keep=DB_DUMP_KEEP_WEEKS)
+
+    log.info("All backup tasks completed successfully.")
 
 
 if __name__ == "__main__":
