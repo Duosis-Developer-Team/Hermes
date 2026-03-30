@@ -89,6 +89,32 @@ def _auth_headers(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+def ensure_folder(token: str, folder_path: str):
+    """Create folder on OneDrive if it doesn't exist (creates all missing parents)."""
+    parts = folder_path.strip("/").split("/")
+    current = ""
+    for part in parts:
+        parent = current or "root"
+        current = f"{current}/{part}" if current else part
+        check_url = f"{GRAPH_URL}/drives/{DRIVE_ID}/root:/{current}"
+        resp = requests.get(check_url, headers=_auth_headers(token), timeout=30)
+        if resp.status_code == 404:
+            if parent == "root":
+                create_url = f"{GRAPH_URL}/drives/{DRIVE_ID}/root/children"
+            else:
+                create_url = f"{GRAPH_URL}/drives/{DRIVE_ID}/root:/{parent}:/children"
+            resp2 = requests.post(
+                create_url,
+                headers={**_auth_headers(token), "Content-Type": "application/json"},
+                json={"name": part, "folder": {}, "@microsoft.graph.conflictBehavior": "ignore"},
+                timeout=30,
+            )
+            resp2.raise_for_status()
+            log.info(f"Created OneDrive folder: /{current}")
+        else:
+            resp.raise_for_status()
+
+
 def upload_to_onedrive(token: str, folder: str, filename: str, content: bytes, content_type: str = "application/octet-stream") -> str:
     """Upload file. Returns webUrl."""
     folder = folder.rstrip("/")
@@ -357,6 +383,8 @@ def main():
     log.info(f"Backup period: {week_start} – {week_end}")
 
     token = get_access_token()
+    ensure_folder(token, CSV_FOLDER)
+    ensure_folder(token, DUMP_FOLDER)
     users = fetch_users()
 
     # ── 1. CSV Export ─────────────────────────────────────────────────────────
