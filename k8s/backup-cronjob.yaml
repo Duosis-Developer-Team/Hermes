@@ -41,7 +41,7 @@ spec:
                       name: hermes-backup-secret
                       key: ONEDRIVE_DRIVE_ID
                 - name: ONEDRIVE_FOLDER
-                  value: "/Hermes/Backups"
+                  value: "/HermesBackup"
                 # Database
                 - name: DB_HOST
                   valueFrom:
