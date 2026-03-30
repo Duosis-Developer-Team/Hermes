@@ -96,29 +96,28 @@ def _drive_base() -> str:
 def ensure_folder(token: str, folder_path: str):
     """Create folder on OneDrive if it doesn't exist (creates all missing parents)."""
     parts = folder_path.strip("/").split("/")
+    parent_id = "root"
     current = ""
     for part in parts:
-        parent = current or "root"
         current = f"{current}/{part}" if current else part
         check_url = f"{_drive_base()}/root:/{current}"
         resp = requests.get(check_url, headers=_auth_headers(token), timeout=30)
         if resp.status_code == 404:
-            if parent == "root":
-                create_url = f"{_drive_base()}/root/children"
-            else:
-                create_url = f"{_drive_base()}/root:/{parent}:/children"
+            create_url = f"{_drive_base()}/items/{parent_id}/children"
             resp2 = requests.post(
                 create_url,
                 headers={**_auth_headers(token), "Content-Type": "application/json"},
-                json={"name": part, "folder": {}, "@microsoft.graph.conflictBehavior": "ignore"},
+                json={"name": part, "folder": {}},
                 timeout=30,
             )
             resp2.raise_for_status()
+            parent_id = resp2.json()["id"]
             log.info(f"Created OneDrive folder: /{current}")
         else:
             if not resp.ok:
                 log.error(f"Drive check failed [{resp.status_code}]: {resp.text}")
             resp.raise_for_status()
+            parent_id = resp.json()["id"]
 
 
 def upload_to_onedrive(token: str, folder: str, filename: str, content: bytes, content_type: str = "application/octet-stream") -> str:
