@@ -1,0 +1,72 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hermes-weekly-backup
+  namespace: hermes
+spec:
+  # Every Monday at 02:00 UTC (backs up previous Mon–Sun)
+  schedule: "0 2 * * 1"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: ghcr.io/duosis-developer-team/hermes-backup:latest
+              imagePullPolicy: Always
+              env:
+                # Azure AD / OneDrive
+                - name: AZURE_CLIENT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-backup-secret
+                      key: AZURE_CLIENT_ID
+                - name: AZURE_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-backup-secret
+                      key: AZURE_CLIENT_SECRET
+                - name: AZURE_TENANT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-backup-secret
+                      key: AZURE_TENANT_ID
+                - name: ONEDRIVE_DRIVE_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-backup-secret
+                      key: ONEDRIVE_DRIVE_ID
+                - name: ONEDRIVE_FOLDER
+                  value: "/Hermes/Backups"
+                # Database
+                - name: DB_HOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: DB_HOST_CORE
+                - name: DB_PORT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: DB_PORT
+                - name: DB_NAME
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: POSTGRES_DB_CORE
+                - name: DB_USER
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: POSTGRES_USER
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-backup-secret
+                      key: DB_PASSWORD
+          imagePullSecrets:
+            - name: ghcr-secret

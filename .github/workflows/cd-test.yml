@@ -44,6 +44,9 @@ jobs:
           FRONTEND_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-frontend:${TAG}"
           FRONTEND_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-frontend:latest"
 
+          BACKUP_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-backup:${TAG}"
+          BACKUP_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-backup:latest"
+
           docker build -t "$AUTH_IMAGE_SHA" -t "$AUTH_IMAGE_LATEST" -f "backend/auth-service/Dockerfile" ./backend
           docker push "$AUTH_IMAGE_SHA"
           docker push "$AUTH_IMAGE_LATEST"
@@ -59,6 +62,10 @@ jobs:
           docker build -t "$FRONTEND_IMAGE_SHA" -t "$FRONTEND_IMAGE_LATEST" ./frontend
           docker push "$FRONTEND_IMAGE_SHA"
           docker push "$FRONTEND_IMAGE_LATEST"
+
+          docker build -t "$BACKUP_IMAGE_SHA" -t "$BACKUP_IMAGE_LATEST" ./backup
+          docker push "$BACKUP_IMAGE_SHA"
+          docker push "$BACKUP_IMAGE_LATEST"
 
       - name: Setup kubeconfig
         run: |
