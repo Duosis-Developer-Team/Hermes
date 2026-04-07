@@ -76,7 +76,7 @@ spec:
               name: hermes-secrets
               key: AZURE_CLIENT_SECRET
         - name: CORS_ORIGINS
-          value: '["http://localhost:3000", "http://localhost:5173", "https://84.247.180.172:30772", "http://84.247.180.172:30772", "https://84.247.180.172:30443", "http://84.247.180.172:30443"]'
+          value: '["http://localhost:3000", "http://localhost:5173", "https://84.247.180.172:30772", "http://84.247.180.172:30772", "https://84.247.180.172:30443", "http://84.247.180.172:30443", "https://hermes.duosis.com"]'
 
         livenessProbe:
           httpGet:
