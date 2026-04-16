@@ -121,7 +121,11 @@ async def create_plan_time(
     db.add(plan)
     db.flush()  # ID almak için flush
 
-    for user_id in data.user_ids:
+    # Creator her zaman assignee olur (listede olmasa bile)
+    creator_uuid = UUID(admin.id)
+    all_user_ids = list({creator_uuid} | {uid for uid in data.user_ids})
+
+    for user_id in all_user_ids:
         assignment = PlanTimeAssignment(
             plan_time_id=plan.id,
             user_id=user_id,
