@@ -151,43 +151,27 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, responding = fals
                 </Tooltip>
             )}
 
-            {/* Accept / Reject butonları — süresi geçmemişse ve kişisel atama varsa göster */}
+            {/* Accept / Reject — hover action butonları (süresi geçmemişse ve kişisel atama varsa) */}
             {!isExpired && !isOrganizerView && (
-                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                    <Button
-                        size="small"
-                        type={status === 'accepted' ? 'primary' : 'default'}
-                        icon={<CheckOutlined />}
-                        loading={responding}
-                        onClick={() => onRespond?.(id, 'accepted')}
-                        style={{
-                            fontSize: 11,
-                            height: 24,
-                            padding: '0 8px',
-                            ...(status === 'accepted'
-                                ? { background: '#52c41a', borderColor: '#52c41a' }
-                                : { borderColor: '#52c41a', color: '#52c41a' }),
-                        }}
-                    >
-                        Accept
-                    </Button>
-                    <Button
-                        size="small"
-                        type={status === 'rejected' ? 'primary' : 'default'}
-                        icon={<CloseOutlined />}
-                        loading={responding}
-                        onClick={() => onRespond?.(id, 'rejected')}
-                        style={{
-                            fontSize: 11,
-                            height: 24,
-                            padding: '0 8px',
-                            ...(status === 'rejected'
-                                ? { background: '#ff4d4f', borderColor: '#ff4d4f' }
-                                : { borderColor: '#ff4d4f', color: '#ff4d4f' }),
-                        }}
-                    >
-                        Reject
-                    </Button>
+                <div className={`plan-time-card-actions${status === 'accepted' || status === 'rejected' ? ' always-visible' : ''}`}>
+                    <Tooltip title="Accept">
+                        <button
+                            className="plan-time-action-btn"
+                            onClick={(e) => { e.stopPropagation(); onRespond?.(id, 'accepted') }}
+                            style={status === 'accepted' ? { background: 'rgba(82,196,26,0.35)', color: '#52c41a' } : { color: '#52c41a' }}
+                        >
+                            <CheckOutlined />
+                        </button>
+                    </Tooltip>
+                    <Tooltip title="Reject">
+                        <button
+                            className="plan-time-action-btn"
+                            onClick={(e) => { e.stopPropagation(); onRespond?.(id, 'rejected') }}
+                            style={status === 'rejected' ? { background: 'rgba(255,77,79,0.35)', color: '#ff4d4f' } : { color: '#ff4d4f' }}
+                        >
+                            <CloseOutlined />
+                        </button>
+                    </Tooltip>
                 </div>
             )}
         </div>
