@@ -107,12 +107,19 @@ function TimeEntryPage() {
     })
 
     // Fetch Plan Times (haftalık takvim için)
+    // Admin: getAll → oluşturduğu dahil tüm plan time'lar görünür
+    // User: getMyPlanTimes → yalnızca kendisine atananlar
     const { data: planTimesResponse, refetch: refetchPlanTimes } = useQuery({
-        queryKey: ['planTimes', weekStart.format('YYYY-MM-DD'), user?.id],
-        queryFn: () => planTimeService.getMyPlanTimes({
-            start_date: weekStart.format('YYYY-MM-DD'),
-            end_date: weekEnd.format('YYYY-MM-DD'),
-        }),
+        queryKey: ['planTimes', weekStart.format('YYYY-MM-DD'), user?.id, user?.is_admin],
+        queryFn: () => user?.is_admin
+            ? planTimeService.getAll({
+                start_date: weekStart.format('YYYY-MM-DD'),
+                end_date: weekEnd.format('YYYY-MM-DD'),
+            })
+            : planTimeService.getMyPlanTimes({
+                start_date: weekStart.format('YYYY-MM-DD'),
+                end_date: weekEnd.format('YYYY-MM-DD'),
+            }),
         enabled: !!user?.id,
     })
     const planTimes = planTimesResponse?.data || []

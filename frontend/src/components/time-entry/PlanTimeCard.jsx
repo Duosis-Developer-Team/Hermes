@@ -26,6 +26,10 @@ function getCardStyle(status, isExpired) {
             return { bg: 'rgba(82, 196, 26, 0.15)', border: '#52c41a', label: 'Accepted', labelColor: '#52c41a' }
         case 'rejected':
             return { bg: 'rgba(255, 77, 79, 0.15)', border: '#ff4d4f', label: 'Rejected', labelColor: '#ff4d4f' }
+        case null:
+        case undefined:
+            // Admin organizer view — not assigned, just created
+            return { bg: 'rgba(139, 92, 246, 0.15)', border: '#8b5cf6', label: 'Scheduled', labelColor: '#8b5cf6' }
         default: // pending
             return { bg: 'rgba(250, 173, 20, 0.15)', border: '#faad14', label: 'Pending', labelColor: '#faad14' }
     }
@@ -43,7 +47,11 @@ function PlanTimeCard({ planTime, onRespond, responding = false }) {
         description,
         status,
         recurrence,
+        assignment_id,  // undefined → admin organizer view
     } = planTime
+
+    // Admin organizer view: plan was fetched via getAll, no personal assignment
+    const isOrganizerView = !assignment_id
 
     // Süresi geçmiş mi? end_date + end_time ikilisini karşılaştır
     const endMoment = end_time
@@ -119,8 +127,8 @@ function PlanTimeCard({ planTime, onRespond, responding = false }) {
                 </Tooltip>
             )}
 
-            {/* Accept / Reject butonları — süresi geçmemişse göster */}
-            {!isExpired && (
+            {/* Accept / Reject butonları — süresi geçmemişse ve kişisel atama varsa göster */}
+            {!isExpired && !isOrganizerView && (
                 <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                     <Button
                         size="small"
