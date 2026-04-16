@@ -70,8 +70,9 @@ function WeeklyListView({
                     return dayjs(dateKey).day() === dayjs(pt.start_date).day()
                 }
                 if (pt.recurrence === 'monthly') {
-                    // Ayın aynı günü (start_date ile aynı gün numarası)
-                    return dayjs(dateKey).date() === dayjs(pt.start_date).date()
+                    // 28 günde bir (4 haftada bir) aynı hafta içi gün
+                    const diffDays = dayjs(dateKey).diff(dayjs(pt.start_date), 'day')
+                    return diffDays >= 0 && diffDays % 28 === 0
                 }
                 // one_time / daily (legacy): start_date ile end_date arasındaki tüm günler
                 return dateKey <= pt.end_date
