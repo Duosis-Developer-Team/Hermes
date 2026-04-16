@@ -242,6 +242,35 @@ function PlanTimeModal({
                             value: u.id,
                             label: u.full_name || u.email,
                         }))}
+                        optionRender={(option) => {
+                            const assignment = editingPlan?.assignments?.find(
+                                a => a.user_id === option.value
+                            )
+                            const status = assignment?.status
+                            const badgeStyle = {
+                                fontSize: 10,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.04em',
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                flexShrink: 0,
+                            }
+                            const statusBadge = status === 'accepted'
+                                ? <span style={{ ...badgeStyle, background: 'rgba(82,196,26,0.15)', color: '#52c41a' }}>Accepted</span>
+                                : status === 'rejected'
+                                ? <span style={{ ...badgeStyle, background: 'rgba(255,77,79,0.15)', color: '#ff4d4f' }}>Rejected</span>
+                                : assignment
+                                ? <span style={{ ...badgeStyle, background: 'rgba(250,173,20,0.15)', color: '#faad14' }}>Pending</span>
+                                : null
+
+                            return (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                                    <span>{option.label}</span>
+                                    {statusBadge}
+                                </div>
+                            )
+                        }}
                         maxTagCount={4}
                     />
                 </Form.Item>
