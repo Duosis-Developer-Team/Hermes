@@ -166,6 +166,7 @@ function DayColumn({
                                 onRespond={onPlanTimeRespond}
                                 onDelete={onDeletePlanTime}
                                 onEdit={onEditPlanTime}
+                                isAdmin={isAdmin}
                             />
                         ))}
                     </div>

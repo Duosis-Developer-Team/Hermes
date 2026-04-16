@@ -44,7 +44,3 @@
     color: #ff4d4f;
 }
 
-/* Accepted/Rejected aktif durum — hover beklenmeden görünür */
-.plan-time-card-actions.always-visible {
-    opacity: 1;
-}

@@ -36,7 +36,7 @@ function getCardStyle(status, isExpired) {
     }
 }
 
-function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, responding = false }) {
+function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, responding = false }) {
     const {
         id,
         project_name,
@@ -51,8 +51,10 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, responding = fals
         assignment_id,  // undefined → admin organizer view
     } = planTime
 
-    // Admin organizer view: plan was fetched via getAll, no personal assignment
-    const isOrganizerView = !assignment_id
+    // Admin her zaman edit/delete yapabilir
+    const canManage = isAdmin
+    // Kişisel assignment varsa accept/reject göster
+    const hasAssignment = !!assignment_id
 
     // Recurring planlar için expired kontrolü: weekly/monthly ise expired sayılmaz
     const isRecurring = recurrence === 'weekly' || recurrence === 'monthly'
@@ -83,8 +85,8 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, responding = fals
                 marginBottom: 6,
             }}
         >
-            {/* Organizer view: hover action butonları (WorkLogCard tarzı) */}
-            {isOrganizerView && (
+            {/* Admin: hover action butonları (WorkLogCard tarzı) */}
+            {canManage && (
                 <div className="plan-time-card-actions">
                     <Tooltip title="Edit">
                         <button
@@ -107,7 +109,7 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, responding = fals
 
             {/* Başlık satırı */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1, minWidth: 0, paddingRight: isOrganizerView ? 52 : 0 }}>
+                <div style={{ flex: 1, minWidth: 0, paddingRight: canManage ? 52 : 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 12, color: '#fff', lineHeight: 1.3, marginBottom: 2 }}>
                         {project_name || 'Plan Time'}
                     </div>
@@ -151,27 +153,49 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, responding = fals
                 </Tooltip>
             )}
 
-            {/* Accept / Reject — hover action butonları (süresi geçmemişse ve kişisel atama varsa) */}
-            {!isExpired && !isOrganizerView && (
-                <div className={`plan-time-card-actions${status === 'accepted' || status === 'rejected' ? ' always-visible' : ''}`}>
-                    <Tooltip title="Accept">
-                        <button
-                            className="plan-time-action-btn"
-                            onClick={(e) => { e.stopPropagation(); onRespond?.(id, 'accepted') }}
-                            style={status === 'accepted' ? { background: 'rgba(82,196,26,0.35)', color: '#52c41a' } : { color: '#52c41a' }}
-                        >
-                            <CheckOutlined />
-                        </button>
-                    </Tooltip>
-                    <Tooltip title="Reject">
-                        <button
-                            className="plan-time-action-btn"
-                            onClick={(e) => { e.stopPropagation(); onRespond?.(id, 'rejected') }}
-                            style={status === 'rejected' ? { background: 'rgba(255,77,79,0.35)', color: '#ff4d4f' } : { color: '#ff4d4f' }}
-                        >
-                            <CloseOutlined />
-                        </button>
-                    </Tooltip>
+            {/* Accept / Reject — altta, kartın içinde (süresi geçmemişse ve kişisel atama varsa) */}
+            {!isExpired && hasAssignment && (
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onRespond?.(id, 'accepted') }}
+                        style={{
+                            flex: 1,
+                            height: 26,
+                            border: `1px solid ${status === 'accepted' ? '#52c41a' : 'rgba(82,196,26,0.4)'}`,
+                            borderRadius: 4,
+                            background: status === 'accepted' ? 'rgba(82,196,26,0.25)' : 'transparent',
+                            color: '#52c41a',
+                            cursor: 'pointer',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 4,
+                        }}
+                    >
+                        <CheckOutlined style={{ fontSize: 10 }} /> Accept
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onRespond?.(id, 'rejected') }}
+                        style={{
+                            flex: 1,
+                            height: 26,
+                            border: `1px solid ${status === 'rejected' ? '#ff4d4f' : 'rgba(255,77,79,0.4)'}`,
+                            borderRadius: 4,
+                            background: status === 'rejected' ? 'rgba(255,77,79,0.25)' : 'transparent',
+                            color: '#ff4d4f',
+                            cursor: 'pointer',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 4,
+                        }}
+                    >
+                        <CloseOutlined style={{ fontSize: 10 }} /> Reject
+                    </button>
                 </div>
             )}
         </div>
