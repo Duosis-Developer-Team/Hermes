@@ -55,10 +55,10 @@ function ContractStatusPage() {
             status = 'expired'
             color = '#ef4444'
             progressPercent = 100
-        } else if (remainingDays <= 30) {
+        } else if (progressPercent >= 80) {
             status = 'critical'
             color = '#ef4444'
-        } else if (remainingDays <= 90) {
+        } else if (progressPercent >= 50) {
             status = 'warning'
             color = '#f59e0b'
         }
@@ -196,7 +196,7 @@ function ContractStatusPage() {
                             <ClockCircleOutlined style={{ fontSize: 24, color: '#f59e0b' }} />
                         </div>
                         <div>
-                            <div className="stat-label">Approaching (30-90 Days)</div>
+                            <div className="stat-label">Approaching (50–80% used)</div>
                             <div className="stat-value" style={{ color: '#f59e0b' }}>{warningCount}</div>
                         </div>
                     </div>
@@ -207,7 +207,7 @@ function ContractStatusPage() {
                             <CheckCircleOutlined style={{ fontSize: 24, color: '#4ade80' }} />
                         </div>
                         <div>
-                            <div className="stat-label">Safe (&gt;90 Days)</div>
+                            <div className="stat-label">On Track (&lt;50% used)</div>
                             <div className="stat-value" style={{ color: '#4ade80' }}>{safeCount}</div>
                         </div>
                     </div>

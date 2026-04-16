@@ -21,7 +21,7 @@ import './PlanTimeModal.css'
 const { TextArea } = Input
 
 const RECURRENCE_OPTIONS = [
-    { value: 'one_time', label: 'One-time (Does not repeat)' },
+    { value: 'one_time', label: 'Single Occurrence' },
     { value: 'daily', label: 'Daily' },
     { value: 'weekly', label: 'Weekly' },
 ]
