@@ -40,6 +40,18 @@
     color: var(--text-primary) !important;
 }
 
+.plan-time-form .ant-picker input {
+    color: #e0e0e0 !important;
+}
+
+.plan-time-form .ant-picker input::placeholder {
+    color: #666 !important;
+}
+
+.plan-time-form .ant-picker .ant-picker-suffix {
+    color: #666 !important;
+}
+
 /* ==========================================================================
    ISSUE SEARCH
    ========================================================================== */
