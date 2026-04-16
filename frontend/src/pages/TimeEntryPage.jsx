@@ -265,7 +265,7 @@ function TimeEntryPage() {
         onSuccess: () => {
             message.success('Meeting invite sent')
             setPlanTimeModalOpen(false)
-            refetchPlanTimes()
+            queryClient.invalidateQueries({ queryKey: ['planTimes'] })
         },
         onError: (error) => {
             message.error(error.response?.data?.detail || 'Failed to create plan time')
@@ -278,7 +278,7 @@ function TimeEntryPage() {
             message.success('Plan updated')
             setPlanTimeModalOpen(false)
             setEditingPlan(null)
-            refetchPlanTimes()
+            queryClient.invalidateQueries({ queryKey: ['planTimes'] })
         },
         onError: (error) => {
             message.error(error.response?.data?.detail || 'Failed to update plan')
@@ -290,7 +290,7 @@ function TimeEntryPage() {
         onSuccess: () => {
             message.success('Plan deleted')
             setDeletingPlan(null)
-            refetchPlanTimes()
+            queryClient.invalidateQueries({ queryKey: ['planTimes'] })
         },
         onError: () => {
             message.error('Failed to delete plan')
@@ -302,7 +302,7 @@ function TimeEntryPage() {
         mutationFn: ({ planTimeId, status }) => planTimeService.respond(planTimeId, status),
         onSuccess: (_, { status }) => {
             message.success(status === 'accepted' ? 'Accepted' : 'Rejected')
-            refetchPlanTimes()
+            queryClient.invalidateQueries({ queryKey: ['planTimes'] })
         },
         onError: () => {
             message.error('Failed to respond')
