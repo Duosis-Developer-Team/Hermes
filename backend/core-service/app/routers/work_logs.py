@@ -10,7 +10,7 @@ from typing import List, Optional
 from uuid import UUID
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy import func
+from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -113,8 +113,13 @@ async def get_billable_summary(
     Tek bir DB sorgusuyla proje bazında SUM(billable_duration_hours) hesaplar.
     Dönüş: { "success": true, "data": { "<project_uuid>": <total_hours_float>, ... } }
     """
+    # billable_duration_hours NULL ise duration_hours'a düş (eski kayıtlar için)
+    effective_hours = case(
+        (WorkLog.billable_duration_hours.isnot(None), WorkLog.billable_duration_hours),
+        else_=WorkLog.duration_hours
+    )
     rows = (
-        db.query(WorkLog.project_id, func.sum(WorkLog.billable_duration_hours))
+        db.query(WorkLog.project_id, func.sum(effective_hours))
         .filter(WorkLog.project_id.isnot(None))
         .group_by(WorkLog.project_id)
         .all()
