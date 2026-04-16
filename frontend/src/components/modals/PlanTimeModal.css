@@ -120,3 +120,74 @@
 .plan-time-form .ant-btn-primary {
     background: #4a7cff;
 }
+
+/* ==========================================================================
+   TIME PICKER POPUP — Dark Theme
+   Scoped via popupClassName="plan-time-picker-popup"
+   ========================================================================== */
+
+.plan-time-picker-popup .ant-picker-panel {
+    background: #1e1e1e !important;
+    border: 1px solid #3a3a3a !important;
+}
+
+.plan-time-picker-popup .ant-picker-panel-layout {
+    background: #1e1e1e !important;
+}
+
+.plan-time-picker-popup .ant-picker-time-panel {
+    background: #1e1e1e !important;
+}
+
+.plan-time-picker-popup .ant-picker-time-panel-column {
+    border-inline-start-color: #3a3a3a !important;
+}
+
+.plan-time-picker-popup .ant-picker-time-panel-column::-webkit-scrollbar {
+    width: 4px;
+}
+
+.plan-time-picker-popup .ant-picker-time-panel-column::-webkit-scrollbar-track {
+    background: #2d2d2d;
+}
+
+.plan-time-picker-popup .ant-picker-time-panel-column::-webkit-scrollbar-thumb {
+    background: #4a4a4a;
+    border-radius: 2px;
+}
+
+.plan-time-picker-popup .ant-picker-time-panel-cell-inner {
+    color: #e0e0e0 !important;
+    background: transparent !important;
+    border-radius: 4px !important;
+}
+
+.plan-time-picker-popup .ant-picker-time-panel-cell:hover .ant-picker-time-panel-cell-inner {
+    background: #2d2d2d !important;
+    color: #fff !important;
+}
+
+.plan-time-picker-popup .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner {
+    background: #4a7cff !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+}
+
+.plan-time-picker-popup .ant-picker-footer {
+    background: #1e1e1e !important;
+    border-top: 1px solid #3a3a3a !important;
+}
+
+.plan-time-picker-popup .ant-picker-ranges {
+    background: #1e1e1e !important;
+}
+
+.plan-time-picker-popup .ant-picker-now-btn {
+    color: #4a7cff !important;
+}
+
+.plan-time-picker-popup .ant-picker-ok .ant-btn {
+    background: #4a7cff !important;
+    border-color: #4a7cff !important;
+    color: #fff !important;
+}

@@ -172,11 +172,31 @@ function PlanTimeModal({
                     </Form.Item>
 
                     <Form.Item name="start_time" label="Start Time">
-                        <TimePicker format="HH:mm" style={{ width: '100%' }} />
+                        <TimePicker
+                            format="HH:mm"
+                            style={{ width: '100%' }}
+                            minuteStep={15}
+                            disabledTime={() => ({
+                                disabledHours: () => [0,1,2,3,4,5,6,7,8,18,19,20,21,22,23]
+                            })}
+                            hideDisabledOptions
+                            popupClassName="plan-time-picker-popup"
+                            needConfirm={false}
+                        />
                     </Form.Item>
 
                     <Form.Item name="end_time" label="End Time">
-                        <TimePicker format="HH:mm" style={{ width: '100%' }} />
+                        <TimePicker
+                            format="HH:mm"
+                            style={{ width: '100%' }}
+                            minuteStep={15}
+                            disabledTime={() => ({
+                                disabledHours: () => [0,1,2,3,4,5,6,7,8,18,19,20,21,22,23]
+                            })}
+                            hideDisabledOptions
+                            popupClassName="plan-time-picker-popup"
+                            needConfirm={false}
+                        />
                     </Form.Item>
                 </div>
 
