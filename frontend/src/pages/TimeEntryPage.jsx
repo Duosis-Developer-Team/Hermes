@@ -122,7 +122,20 @@ function TimeEntryPage() {
             }),
         enabled: !!user?.id,
     })
-    const planTimes = planTimesResponse?.data || []
+    // Admin için getAll dönüyor — assignments array'inden kendi atamasını enrich et
+    const planTimes = useMemo(() => {
+        const raw = planTimesResponse?.data || []
+        if (!user?.is_admin) return raw
+        return raw.map(pt => {
+            const myAssignment = pt.assignments?.find(a => a.user_id === user.id)
+            if (myAssignment) {
+                // Admin aynı zamanda assignee — butonlar gösterilsin
+                return { ...pt, assignment_id: `${pt.id}_self`, status: myAssignment.status }
+            }
+            // Admin yalnızca organizer — buton yok
+            return pt
+        })
+    }, [planTimesResponse, user])
 
     // Fetch Period Status
     const { data: periodStatus, refetch: refetchPeriodStatus } = useQuery({
