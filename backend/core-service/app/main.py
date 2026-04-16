@@ -22,7 +22,7 @@ from fastapi.responses import JSONResponse
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from app.config import get_settings
-from app.database import init_db
+from app.database import init_db, SessionLocal
 from app.routers import (
     customers_router,
     work_types_router,
@@ -41,6 +41,31 @@ from app.routers import (
 from shared.exceptions import HermesException
 
 
+def _migrate_billable_hours() -> None:
+    """
+    Tek seferlik veri düzeltmesi:
+    billable_duration_hours kolonu sonradan eklendiği için (df40f7c) eski
+    satırlar NULL. Bunları duration_hours ile dolduruyoruz.
+    Zaten dolu satırlar (admin manuel düzenlemiş) dokunulmaz.
+    """
+    from sqlalchemy import text
+    db = SessionLocal()
+    try:
+        result = db.execute(text(
+            "UPDATE work_logs "
+            "SET billable_duration_hours = duration_hours "
+            "WHERE billable_duration_hours IS NULL"
+        ))
+        db.commit()
+        if result.rowcount:
+            print(f"✅ {result.rowcount} eski work log için billable_duration_hours düzeltildi")
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️  billable migration hatası: {e}")
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Uygulama yaşam döngüsü yönetimi."""
@@ -48,6 +73,7 @@ async def lifespan(app: FastAPI):
     print(f"🚀 {settings.SERVICE_NAME} v{settings.SERVICE_VERSION} başlatılıyor...")
     init_db()
     print("✅ Veritabanı tabloları hazır")
+    _migrate_billable_hours()
     yield
     print(f"👋 {settings.SERVICE_NAME} kapatılıyor...")
 
