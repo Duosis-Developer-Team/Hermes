@@ -167,7 +167,8 @@ function ProjectsPage() {
                 const totalBillableHours = billableSummary[record.id] || 0
                 const usedDays = Math.floor(totalBillableHours / HOURS_PER_DAY)
                 const remainingDays = Math.max(0, record.contract_duration_days - usedDays)
-                const color = remainingDays === 0 ? '#ff4d4f' : remainingDays <= 30 ? '#faad14' : 'rgba(255, 255, 255, 0.45)'
+                const pct = Math.min(100, (usedDays / record.contract_duration_days) * 100)
+                const color = pct >= 100 ? '#ff4d4f' : pct >= 80 ? '#ff4d4f' : pct >= 50 ? '#faad14' : 'rgba(255, 255, 255, 0.45)'
 
                 return (
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -190,16 +191,16 @@ function ProjectsPage() {
 
                 const totalBillableHours = billableSummary[record.id] || 0
                 const usedDays = Math.floor(totalBillableHours / HOURS_PER_DAY)
-                const remainingDays = Math.max(0, record.contract_duration_days - usedDays)
+                const pct = Math.min(100, (usedDays / record.contract_duration_days) * 100)
                 const tagStyle = { fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', width: 'fit-content', gap: 6 }
 
-                if (usedDays >= record.contract_duration_days) {
+                if (pct >= 100) {
                     return <Tag color="error" style={tagStyle} icon={<WarningOutlined />}>EXPIRED</Tag>
                 }
-                if (remainingDays <= 30) {
+                if (pct >= 80) {
                     return <Tag color="error" style={tagStyle} icon={<WarningOutlined />}>CRITICAL</Tag>
                 }
-                if (remainingDays <= 90) {
+                if (pct >= 50) {
                     return <Tag color="warning" style={tagStyle} icon={<ClockCircleOutlined />}>WARNING</Tag>
                 }
                 return <Tag color="success" style={tagStyle} icon={<CheckCircleOutlined />}>ACTIVE</Tag>
