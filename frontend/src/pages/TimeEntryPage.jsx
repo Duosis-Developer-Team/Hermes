@@ -35,7 +35,7 @@ import SubmitPeriodDropdown from '../components/time-entry/SubmitPeriodDropdown'
 import LogTimeModal from '../components/modals/LogTimeModal'
 import PlanTimeModal from '../components/modals/PlanTimeModal'
 import SubmitPeriodModal from '../components/modals/SubmitPeriodModal'
-import { workLogService, timesheetService, reportsService, authService } from '../services/api'
+import { workLogService, timesheetService, reportsService, authService, planTimeService } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import './TimeEntryPage.css'
 
@@ -105,6 +105,17 @@ function TimeEntryPage() {
         }),
         enabled: !!user?.id,
     })
+
+    // Fetch Plan Times (haftalık takvim için)
+    const { data: planTimesResponse, refetch: refetchPlanTimes } = useQuery({
+        queryKey: ['planTimes', weekStart.format('YYYY-MM-DD'), user?.id],
+        queryFn: () => planTimeService.getMyPlanTimes({
+            start_date: weekStart.format('YYYY-MM-DD'),
+            end_date: weekEnd.format('YYYY-MM-DD'),
+        }),
+        enabled: !!user?.id,
+    })
+    const planTimes = planTimesResponse?.data || []
 
     // Fetch Period Status
     const { data: periodStatus, refetch: refetchPeriodStatus } = useQuery({
@@ -226,15 +237,35 @@ function TimeEntryPage() {
         }
     }
 
+    const createPlanTimeMutation = useMutation({
+        mutationFn: (data) => planTimeService.create(data),
+        onSuccess: () => {
+            message.success('Meeting invite sent')
+            setPlanTimeModalOpen(false)
+            refetchPlanTimes()
+        },
+        onError: (error) => {
+            message.error(error.response?.data?.detail || 'Failed to create plan time')
+        },
+    })
+
+    const respondPlanTimeMutation = useMutation({
+        mutationFn: ({ planTimeId, status }) => planTimeService.respond(planTimeId, status),
+        onSuccess: (_, { status }) => {
+            message.success(status === 'accepted' ? 'Accepted' : 'Rejected')
+            refetchPlanTimes()
+        },
+        onError: () => {
+            message.error('Failed to respond')
+        },
+    })
+
     const handlePlanTimeSubmit = (data) => {
-        // Plan time için backend henüz hazır değil, şimdilik normal log olarak kaydet
-        createMutation.mutate({
-            ...data,
-            date_worked: data.start_date,
-            duration_hours: data.planned_hours,
-            description: `Planned: ${data.planned_hours}h`,
-        })
-        setPlanTimeModalOpen(false)
+        createPlanTimeMutation.mutate(data)
+    }
+
+    const handlePlanTimeRespond = (planTimeId, status) => {
+        respondPlanTimeMutation.mutate({ planTimeId, status })
     }
 
     const handleSubmitPeriod = (data) => {
@@ -527,16 +558,19 @@ function TimeEntryPage() {
                     <WeeklyListView
                         weekStart={weekStart}
                         workLogs={workLogs}
+                        planTimes={planTimes}
                         onLogTime={handleLogTime}
-                        onPlanTime={handlePlanTime}
+                        onPlanTime={user?.is_admin ? handlePlanTime : undefined}
                         onEditLog={handleEditLog}
                         onDeleteLog={handleDeleteLog}
+                        onPlanTimeRespond={handlePlanTimeRespond}
                         selectedLogId={selectedLogId}
                         copiedLog={copiedLog}
                         targetDate={targetDate}
                         onSelectLog={handleSelectLog}
                         onSelectDay={handleSelectDay}
                         onClearClipboard={handleClearClipboard}
+                        isAdmin={user?.is_admin}
                     />
                 ) : (
                     <TimesheetView
@@ -567,7 +601,7 @@ function TimeEntryPage() {
                 onClose={() => setPlanTimeModalOpen(false)}
                 onSubmit={handlePlanTimeSubmit}
                 initialDate={selectedDate}
-                loading={createMutation.isPending}
+                loading={createPlanTimeMutation.isPending}
             />
 
             <SubmitPeriodModal

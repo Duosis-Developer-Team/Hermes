@@ -11,10 +11,11 @@ import {
     Card, Table, Button, Space, Modal, Form, Input, Select,
     message, Typography, Switch, Tag, InputNumber
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, ProjectOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, WarningOutlined, ClockCircleOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import dayjs from 'dayjs'
-import { projectService, customerService } from '../../services/api'
+import { projectService, customerService, workLogService } from '../../services/api'
+
+const HOURS_PER_DAY = 8
 import DeleteModal from '../../components/common/DeleteModal'
 
 const { Title, Text } = Typography
@@ -35,6 +36,12 @@ function ProjectsPage() {
         queryKey: ['customers'],
         queryFn: () => customerService.getAll(),
     })
+
+    const { data: billableSummaryResponse } = useQuery({
+        queryKey: ['billable-summary'],
+        queryFn: () => workLogService.getBillableSummary(),
+    })
+    const billableSummary = billableSummaryResponse?.data || {}
 
     // Mutations
     const createMutation = useMutation({
@@ -152,34 +159,50 @@ function ProjectsPage() {
         {
             title: 'Contract',
             key: 'contract',
-            width: 200,
+            width: 220,
             sorter: (a, b) => (a.contract_duration_days || 0) - (b.contract_duration_days || 0),
             render: (_, record) => {
                 if (!record.contract_duration_days) return <span style={{ color: 'rgba(255, 255, 255, 0.3)' }}>-</span>
 
-                let remainingText = ""
-                if (record.contract_start_date) {
-                    const startRaw = dayjs(record.contract_start_date)
-                    const todayRaw = dayjs()
+                const totalBillableHours = billableSummary[record.id] || 0
+                const usedDays = Math.floor(totalBillableHours / HOURS_PER_DAY)
+                const remainingDays = Math.max(0, record.contract_duration_days - usedDays)
+                const color = remainingDays === 0 ? '#ff4d4f' : remainingDays <= 30 ? '#faad14' : 'rgba(255, 255, 255, 0.45)'
 
-                    const start = startRaw.startOf('day')
-                    const today = todayRaw.startOf('day')
-
-                    const daysPassed = today.diff(start, 'day')
-                    const remaining = record.contract_duration_days - daysPassed
-
-                    const color = remaining <= 0 ? '#ff4d4f' : remaining <= 30 ? '#faad14' : 'rgba(255, 255, 255, 0.45)'
-
-                    remainingText = <span style={{ color, fontSize: '12px' }}>({remaining} Days Left)</span>
-                }
                 return (
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '14px' }}>
                             {record.contract_duration_days} Days Total
                         </span>
-                        {remainingText}
+                        <span style={{ color, fontSize: '12px' }}>
+                            ({usedDays} used / {remainingDays} left)
+                        </span>
                     </div>
                 )
+            }
+        },
+        {
+            title: 'Contract Status',
+            key: 'contract_status',
+            width: 160,
+            render: (_, record) => {
+                if (!record.contract_duration_days) return <span style={{ color: 'rgba(255, 255, 255, 0.3)' }}>-</span>
+
+                const totalBillableHours = billableSummary[record.id] || 0
+                const usedDays = Math.floor(totalBillableHours / HOURS_PER_DAY)
+                const remainingDays = Math.max(0, record.contract_duration_days - usedDays)
+                const tagStyle = { fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', width: 'fit-content', gap: 6 }
+
+                if (usedDays >= record.contract_duration_days) {
+                    return <Tag color="error" style={tagStyle} icon={<WarningOutlined />}>EXPIRED</Tag>
+                }
+                if (remainingDays <= 30) {
+                    return <Tag color="error" style={tagStyle} icon={<WarningOutlined />}>CRITICAL</Tag>
+                }
+                if (remainingDays <= 90) {
+                    return <Tag color="warning" style={tagStyle} icon={<ClockCircleOutlined />}>WARNING</Tag>
+                }
+                return <Tag color="success" style={tagStyle} icon={<CheckCircleOutlined />}>ACTIVE</Tag>
             }
         },
         {

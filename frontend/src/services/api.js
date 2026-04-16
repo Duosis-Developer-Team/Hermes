@@ -286,6 +286,15 @@ export const workLogService = {
     delete: async (id) => {
         await coreApi.delete(`/api/v1/core/work-logs/${id}`)
     },
+
+    /**
+     * Proje bazında toplam billable saat özeti (Admin)
+     * @returns {{ success: boolean, data: { [projectId: string]: number } }}
+     */
+    getBillableSummary: async () => {
+        const response = await coreApi.get('/api/v1/core/work-logs/billable-summary')
+        return response.data
+    },
 }
 
 // =============================================================================
@@ -584,6 +593,55 @@ const handleFileDownload = async (response, defaultFilename) => {
         document.body.removeChild(link)
         window.URL.revokeObjectURL(url)
     }, 2000)
+}
+
+// =============================================================================
+// CORE SERVICE - Plan Times
+// =============================================================================
+
+export const planTimeService = {
+    /**
+     * Admin: Yeni plan time oluştur ve kullanıcılara ata
+     * @param {{ customer_id, project_id, start_date, end_date, start_time, end_time, recurrence, description, user_ids }} data
+     */
+    create: async (data) => {
+        const response = await coreApi.post('/api/v1/core/plan-times', data)
+        return response.data
+    },
+
+    /**
+     * Kullanıcının kendi plan time atamalarını getir (haftalık takvim için)
+     * @param {{ start_date?: string, end_date?: string }} params
+     */
+    getMyPlanTimes: async (params = {}) => {
+        const response = await coreApi.get('/api/v1/core/plan-times/my', { params })
+        return response.data
+    },
+
+    /**
+     * Admin: Tüm plan time olaylarını getir
+     */
+    getAll: async (params = {}) => {
+        const response = await coreApi.get('/api/v1/core/plan-times', { params })
+        return response.data
+    },
+
+    /**
+     * Kullanıcının plan time olayına yanıtı (accept/reject)
+     * @param {string} planTimeId
+     * @param {'accepted'|'rejected'} status
+     */
+    respond: async (planTimeId, status) => {
+        const response = await coreApi.patch(`/api/v1/core/plan-times/${planTimeId}/respond`, { status })
+        return response.data
+    },
+
+    /**
+     * Admin: Plan time sil
+     */
+    delete: async (planTimeId) => {
+        await coreApi.delete(`/api/v1/core/plan-times/${planTimeId}`)
+    },
 }
 
 export default {

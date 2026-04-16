@@ -10,9 +10,11 @@ from typing import List, Optional
 from uuid import UUID
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..models.work_log import WorkLog
 from ..schemas.work_log import WorkLogCreate, WorkLogUpdate, WorkLogResponse, WorkLogListResponse
 from ..services.work_log_service import WorkLogService
 from shared.auth import get_current_user, require_admin, CurrentUser
@@ -98,6 +100,27 @@ async def list_work_logs(
         data=[service.to_response(wl) for wl in work_logs],
         total=total
     )
+
+
+@router.get("/billable-summary")
+async def get_billable_summary(
+    admin: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Tüm projeler için toplam billable saat özetini döner (Admin).
+
+    Tek bir DB sorgusuyla proje bazında SUM(billable_duration_hours) hesaplar.
+    Dönüş: { "success": true, "data": { "<project_uuid>": <total_hours_float>, ... } }
+    """
+    rows = (
+        db.query(WorkLog.project_id, func.sum(WorkLog.billable_duration_hours))
+        .filter(WorkLog.project_id.isnot(None))
+        .group_by(WorkLog.project_id)
+        .all()
+    )
+    summary = {str(project_id): float(total or 0) for project_id, total in rows}
+    return {"success": True, "data": summary}
 
 
 @router.get("/all", response_model=WorkLogListResponse)

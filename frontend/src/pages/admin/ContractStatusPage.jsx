@@ -12,8 +12,10 @@ import { useState } from 'react'
 import { Card, Table, Tag, Typography, Progress, Row, Col, Input } from 'antd'
 import { SearchOutlined, ClockCircleOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
-import { projectService } from '../../services/api'
+import { projectService, workLogService } from '../../services/api'
 import dayjs from 'dayjs'
+
+const HOURS_PER_DAY = 8
 
 const { Text } = Typography
 
@@ -26,28 +28,30 @@ function ContractStatusPage() {
         queryFn: () => projectService.getAll({ include_inactive: false }),
     })
 
-    // Calculate Status Logic — only projects with contract data
+    // Fetch billable hours summary (project_id → total hours)
+    const { data: billableSummaryResponse } = useQuery({
+        queryKey: ['billable-summary'],
+        queryFn: () => workLogService.getBillableSummary(),
+    })
+    const billableSummary = billableSummaryResponse?.data || {}
+
+    // Calculate Status Logic — only projects with contract data (effort-based)
     const processedData = projects.map(p => {
-        if (!p.contract_start_date || !p.contract_duration_days) {
+        if (!p.contract_duration_days) {
             return null
         }
 
-        const startDateRaw = dayjs(p.contract_start_date)
-        const startDate = startDateRaw.startOf('day')
-        const today = dayjs().startOf('day')
+        const totalDays = p.contract_duration_days
+        const totalBillableHours = billableSummary[p.id] || 0
+        const usedDays = Math.floor(totalBillableHours / HOURS_PER_DAY)
+        const remainingDays = Math.max(0, totalDays - usedDays)
 
-        const daysPassed = today.diff(startDate, 'day')
-        const remainingDays = p.contract_duration_days - daysPassed
-        const endDate = startDateRaw.add(p.contract_duration_days, 'day')
-
-        const totalDuration = p.contract_duration_days
-        const effectiveElapsed = Math.max(0, Math.min(totalDuration, daysPassed))
-        let progressPercent = (effectiveElapsed / totalDuration) * 100
+        let progressPercent = Math.min(100, (usedDays / totalDays) * 100)
 
         let status = 'safe'
         let color = '#4ade80'
 
-        if (remainingDays < 0) {
+        if (usedDays >= totalDays) {
             status = 'expired'
             color = '#ef4444'
             progressPercent = 100
@@ -61,15 +65,15 @@ function ContractStatusPage() {
 
         return {
             ...p,
+            usedDays,
             remainingDays,
-            totalDays: p.contract_duration_days,
-            endDate: endDate.format('YYYY-MM-DD'),
+            totalDays,
             status,
             color,
             progressPercent
         }
     }).filter(Boolean)
-        .sort((a, b) => (a.remainingDays || 9999) - (b.remainingDays || 9999))
+        .sort((a, b) => a.remainingDays - b.remainingDays)
 
     // Filter by Search (customer name or project name)
     const filteredData = processedData.filter(p =>
@@ -105,9 +109,9 @@ function ContractStatusPage() {
             width: 180,
             render: (_, record) => {
                 if (record.status === 'expired') return <Tag color="error" style={{ fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', width: 'fit-content', gap: 6 }} icon={<WarningOutlined />}>EXPIRED</Tag>
-                if (record.status === 'critical') return <Tag color="error" style={{ fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', width: 'fit-content', gap: 6 }} icon={<WarningOutlined />}>CRITICAL ({record.remainingDays} days)</Tag>
-                if (record.status === 'warning') return <Tag color="warning" style={{ fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', width: 'fit-content', gap: 6 }} icon={<ClockCircleOutlined />}>WARNING ({record.remainingDays} days)</Tag>
-                return <Tag color="success" style={{ fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', width: 'fit-content', gap: 6 }} icon={<CheckCircleOutlined />}>SAFE ({record.remainingDays} days)</Tag>
+                if (record.status === 'critical') return <Tag color="error" style={{ fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', width: 'fit-content', gap: 6 }} icon={<WarningOutlined />}>CRITICAL</Tag>
+                if (record.status === 'warning') return <Tag color="warning" style={{ fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', width: 'fit-content', gap: 6 }} icon={<ClockCircleOutlined />}>WARNING</Tag>
+                return <Tag color="success" style={{ fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', width: 'fit-content', gap: 6 }} icon={<CheckCircleOutlined />}>ACTIVE</Tag>
             }
         },
         {
@@ -118,9 +122,10 @@ function ContractStatusPage() {
                 <div style={{ width: '100%' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                         <span style={{ color: '#888', fontSize: 11 }}>
-                            {record.remainingDays < 0
-                                ? `${Math.abs(record.remainingDays)} days overdue`
-                                : `${record.remainingDays} / ${record.totalDays} days left`}
+                            {record.usedDays} days used
+                        </span>
+                        <span style={{ color: record.color, fontSize: 11, fontWeight: 600 }}>
+                            {record.remainingDays} days left
                         </span>
                     </div>
                     <Progress
@@ -135,12 +140,14 @@ function ContractStatusPage() {
             )
         },
         {
-            title: 'END DATE',
-            dataIndex: 'endDate',
-            key: 'endDate',
+            title: 'START DATE',
+            dataIndex: 'contract_start_date',
+            key: 'contract_start_date',
             width: 150,
             align: 'right',
-            render: (date) => <Text style={{ color: '#ccc' }}>{dayjs(date).format('DD.MM.YYYY')}</Text>
+            render: (date) => date
+                ? <Text style={{ color: '#ccc' }}>{dayjs(date).format('DD.MM.YYYY')}</Text>
+                : <Text style={{ color: '#555' }}>—</Text>
         }
     ]
 

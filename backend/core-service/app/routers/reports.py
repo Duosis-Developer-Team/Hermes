@@ -33,6 +33,14 @@ def format_duration(decimal_hours) -> str:
         return f"{h}h {m}m"
     return f"{h}h"
 
+def format_decimal_hours(decimal_hours) -> str:
+    """Convert decimal hours to '2.50h' format for CSV export.
+    Examples: 4.75 → '4.75h', 3.0 → '3.00h', 2.25 → '2.25h'
+    """
+    if decimal_hours is None:
+        return '0.00h'
+    return f"{float(decimal_hours):.2f}h"
+
 # Auth Service URL (internal docker network)
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8000")
 
@@ -196,7 +204,7 @@ async def export_excel(
                 "İş Tipi": r.work_type_name,
                 "Aktivite Tipi": r.activity_type_name if r.activity_type_name else "-",
                 "Platform": r.platform_name if r.platform_name else "-",
-                "Süre": format_duration(r.duration_hours),
+                "Süre": format_decimal_hours(r.duration_hours),
                 "Açıklama": r.description or ""
             })
 

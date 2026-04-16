@@ -13,6 +13,7 @@ import { PlusOutlined, ClockCircleOutlined, ScheduleOutlined } from '@ant-design
 import dayjs from 'dayjs'
 import 'dayjs/locale/en'
 import WorkLogCard from './WorkLogCard'
+import PlanTimeCard from './PlanTimeCard'
 import './DayColumn.css'
 
 dayjs.locale('en')
@@ -22,11 +23,14 @@ const DAILY_TARGET_HOURS = 8
 function DayColumn({
     date,
     workLogs = [],
+    planTimes = [],
     onLogTime,
     onPlanTime,
     onEditLog,
     onDeleteLog,
+    onPlanTimeRespond,
     isToday = false,
+    isAdmin = false,
     // Copy-paste props
     selectedLogId,
     isTargeted = false,
@@ -61,7 +65,7 @@ function DayColumn({
         }
     }
 
-    // + butonu dropdown menü
+    // + butonu dropdown menü — Plan Time sadece Admin için
     const menuItems = [
         {
             key: 'log-time',
@@ -69,12 +73,12 @@ function DayColumn({
             icon: <ClockCircleOutlined />,
             onClick: () => onLogTime?.(date),
         },
-        {
+        ...(isAdmin ? [{
             key: 'plan-time',
             label: 'Plan Time',
             icon: <ScheduleOutlined />,
             onClick: () => onPlanTime?.(date),
-        },
+        }] : []),
     ]
 
     return (
@@ -145,6 +149,24 @@ function DayColumn({
                     </div>
                 )}
             </div>
+
+            {/* Plan Time Kartları */}
+            {planTimes.length > 0 && (
+                <>
+                    <div className="day-column-section-title" style={{ marginTop: 8 }}>
+                        PLANNED
+                    </div>
+                    <div className="day-column-logs">
+                        {planTimes.map(pt => (
+                            <PlanTimeCard
+                                key={pt.assignment_id || pt.id}
+                                planTime={pt}
+                                onRespond={onPlanTimeRespond}
+                            />
+                        ))}
+                    </div>
+                </>
+            )}
         </div>
     )
 }

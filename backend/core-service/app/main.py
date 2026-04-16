@@ -24,9 +24,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from app.config import get_settings
 from app.database import init_db
 from app.routers import (
-    customers_router, 
-    work_types_router, 
-    projects_router, 
+    customers_router,
+    work_types_router,
+    projects_router,
     work_logs_router,
     activity_types_router,
     platforms_router,
@@ -35,7 +35,8 @@ from app.routers import (
     project_memberships_router,
     timesheets_router,
     dashboard_router,
-    reports_router
+    reports_router,
+    plan_times_router
 )
 from shared.exceptions import HermesException
 
@@ -113,6 +114,7 @@ app.include_router(project_memberships_router, prefix=API_PREFIX)
 app.include_router(timesheets_router, prefix=API_PREFIX)
 app.include_router(dashboard_router, prefix=API_PREFIX)
 app.include_router(reports_router, prefix=API_PREFIX)
+app.include_router(plan_times_router, prefix=API_PREFIX)
 
 
 @app.get("/health", tags=["Health"])

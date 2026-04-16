@@ -19,10 +19,13 @@ dayjs.extend(isoWeek)
 function WeeklyListView({
     weekStart,
     workLogs = [],
+    planTimes = [],
     onLogTime,
     onPlanTime,
     onEditLog,
     onDeleteLog,
+    onPlanTimeRespond,
+    isAdmin = false,
     // Copy-paste props
     selectedLogId,
     copiedLog,
@@ -51,6 +54,19 @@ function WeeklyListView({
         })
         return grouped
     }, [weekDays, workLogs])
+
+    // Plan times'ı günlere göre grupla
+    // Plan time start_date ile end_date arasındaki TÜM günlerde görünür
+    const planTimesByDate = useMemo(() => {
+        const grouped = {}
+        weekDays.forEach(day => {
+            const dateKey = day.format('YYYY-MM-DD')
+            grouped[dateKey] = planTimes.filter(pt => {
+                return dateKey >= pt.start_date && dateKey <= pt.end_date
+            })
+        })
+        return grouped
+    }, [weekDays, planTimes])
 
     // Bugünün tarihi
     const today = dayjs().format('YYYY-MM-DD')
@@ -104,11 +120,14 @@ function WeeklyListView({
                             key={dateKey}
                             date={day}
                             workLogs={logsByDate[dateKey] || []}
+                            planTimes={planTimesByDate[dateKey] || []}
                             onLogTime={onLogTime}
-                            onPlanTime={onPlanTime}
+                            onPlanTime={isAdmin ? onPlanTime : undefined}
                             onEditLog={onEditLog}
                             onDeleteLog={onDeleteLog}
+                            onPlanTimeRespond={onPlanTimeRespond}
                             isToday={dateKey === today}
+                            isAdmin={isAdmin}
                             selectedLogId={selectedLogId}
                             isTargeted={dateKey === targetDate}
                             hasCopiedLog={!!copiedLog}

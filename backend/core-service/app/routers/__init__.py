@@ -15,11 +15,12 @@ from .project_memberships import router as project_memberships_router
 from .timesheets import router as timesheets_router
 from .dashboard import router as dashboard_router
 from .reports import router as reports_router
+from .plan_times import router as plan_times_router
 
 __all__ = [
-    "customers_router", 
-    "work_types_router", 
-    "projects_router", 
+    "customers_router",
+    "work_types_router",
+    "projects_router",
     "work_logs_router",
     "activity_types_router",
     "platforms_router",
@@ -28,5 +29,6 @@ __all__ = [
     "project_memberships_router",
     "timesheets_router",
     "dashboard_router",
-    "reports_router"
+    "reports_router",
+    "plan_times_router"
 ]

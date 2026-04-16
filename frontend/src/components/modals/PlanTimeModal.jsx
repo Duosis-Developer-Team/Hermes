@@ -1,28 +1,30 @@
 /**
  * =============================================================================
- * HERMES - Plan Time Modal Component (Jira Tempo Style)
+ * HERMES - Plan Time Modal (Admin-Driven Meeting Invite System)
  * =============================================================================
- * Süre Planla modal'ı - Extra fields: Description, Repeat, Reviewer, Status
+ * Sadece Admin kullanabilir. MS Teams daveti mantığında: Admin bir plan
+ * oluşturur, seçilen kullanıcılara atanır. Her kullanıcı kendi takviminde
+ * Accept/Reject yapabilir.
  * =============================================================================
  */
 
 import { useState, useEffect } from 'react'
 import {
     Modal, Form, Select, DatePicker, TimePicker,
-    Checkbox, Button, Input
+    Button, Input
 } from 'antd'
-import HoursMinutesPicker from '../common/HoursMinutesPicker'
-import {
-    FastForwardOutlined,
-    SettingOutlined,
-    SearchOutlined
-} from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { customerService, projectService, authService } from '../../services/api'
 import './PlanTimeModal.css'
 
 const { TextArea } = Input
+
+const RECURRENCE_OPTIONS = [
+    { value: 'one_time', label: 'One-time (Does not repeat)' },
+    { value: 'daily', label: 'Daily' },
+    { value: 'weekly', label: 'Weekly' },
+]
 
 function PlanTimeModal({
     open,
@@ -33,11 +35,8 @@ function PlanTimeModal({
 }) {
     const [form] = Form.useForm()
     const [selectedCustomerId, setSelectedCustomerId] = useState(null)
-    const [includeNonWorkingDays, setIncludeNonWorkingDays] = useState(false)
-    const [showExtraFields, setShowExtraFields] = useState(false)
-    const [issueSearch, setIssueSearch] = useState('')
 
-    // API Queries - sadece modal açıkken çalışsın
+    // Data fetching — sadece modal açıkken
     const { data: customers = [] } = useQuery({
         queryKey: ['customers'],
         queryFn: () => customerService.getAll(),
@@ -50,11 +49,12 @@ function PlanTimeModal({
         enabled: open,
     })
 
-    const { data: users = [] } = useQuery({
-        queryKey: ['users'],
+    const { data: usersResponse } = useQuery({
+        queryKey: ['users-list'],
         queryFn: () => authService.getUsers(),
         enabled: open,
     })
+    const usersList = usersResponse?.data || []
 
     // Seçilen müşterinin projeleri
     const filteredProjects = allProjects.filter(
@@ -70,54 +70,42 @@ function PlanTimeModal({
                 end_date: defaultDate,
                 start_time: dayjs().hour(9).minute(0),
                 end_time: dayjs().hour(18).minute(0),
-                planned_hours: null,
-                distribution: 'per_day',
-                repeat: 'never',
-                status: 'pending',
+                recurrence: 'one_time',
+                user_ids: [],
             })
+            setSelectedCustomerId(null)
         }
     }, [open, initialDate, form])
 
-    // Modal kapandığında reset
     const handleClose = () => {
         setSelectedCustomerId(null)
-        setIncludeNonWorkingDays(false)
-        setShowExtraFields(false)
-        setIssueSearch('')
         form.resetFields()
         onClose?.()
     }
 
-    // Müşteri değiştiğinde
     const handleCustomerChange = (customerId) => {
         setSelectedCustomerId(customerId)
         form.setFieldValue('project_id', undefined)
     }
 
-    // Form submit
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields()
-            const data = {
+            const payload = {
                 customer_id: selectedCustomerId,
                 project_id: values.project_id,
                 start_date: values.start_date.format('YYYY-MM-DD'),
                 end_date: values.end_date.format('YYYY-MM-DD'),
-                start_time: values.start_time?.format('HH:mm'),
-                end_time: values.end_time?.format('HH:mm'),
-                planned_hours: values.planned_hours,
-                distribution: values.distribution,
-                include_non_working_days: includeNonWorkingDays,
-                description: values.description,
-                repeat: values.repeat,
-                reviewer_id: values.reviewer_id,
-                status: values.status,
-                is_planned: true,
+                start_time: values.start_time?.format('HH:mm') || null,
+                end_time: values.end_time?.format('HH:mm') || null,
+                recurrence: values.recurrence,
+                description: values.description || null,
+                user_ids: values.user_ids || [],
             }
-            onSubmit?.(data)
+            onSubmit?.(payload)
             handleClose()
-        } catch (error) {
-            console.error('Validation failed:', error)
+        } catch {
+            // Validation hataları form tarafından gösterilir
         }
     }
 
@@ -126,27 +114,27 @@ function PlanTimeModal({
             open={open}
             onCancel={handleClose}
             footer={null}
-            width={520}
+            width={540}
             className="plan-time-modal"
-            title={null}
-            closable={true}
-        >
-            <Form form={form} layout="vertical" className="plan-time-form">
-                {/* Issue Search */}
-                <div className="issue-search-wrapper">
-                    <Input
-                        placeholder="Search issues"
-                        prefix={<SearchOutlined />}
-                        value={issueSearch}
-                        onChange={(e) => setIssueSearch(e.target.value)}
-                        className="issue-search-input"
-                    />
+            title={
+                <div style={{ padding: '4px 0' }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>
+                        Plan Time
+                    </div>
+                    <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                        Create a meeting invite and assign to team members
+                    </div>
                 </div>
+            }
+            closable
+        >
+            <Form form={form} layout="vertical" className="plan-time-form" style={{ marginTop: 8 }}>
 
-                {/* Customer & Project Selection */}
+                {/* Customer & Project */}
                 <div className="form-row">
                     <Form.Item
                         name="customer_id"
+                        label="Customer"
                         rules={[{ required: true, message: 'Required' }]}
                     >
                         <Select
@@ -160,6 +148,7 @@ function PlanTimeModal({
 
                     <Form.Item
                         name="project_id"
+                        label="Project"
                         rules={[{ required: true, message: 'Required' }]}
                     >
                         <Select
@@ -172,146 +161,56 @@ function PlanTimeModal({
                     </Form.Item>
                 </div>
 
-                {/* Include non-working days */}
-                <Checkbox
-                    checked={includeNonWorkingDays}
-                    onChange={(e) => setIncludeNonWorkingDays(e.target.checked)}
-                    className="non-working-checkbox"
-                >
-                    Include non-working days
-                </Checkbox>
-
-                {/* Date & Time Row */}
+                {/* Date & Time */}
                 <div className="form-row four-cols">
-                    <Form.Item
-                        name="start_date"
-                        label="Start Date"
-                        rules={[{ required: true }]}
-                    >
+                    <Form.Item name="start_date" label="Start Date" rules={[{ required: true }]}>
                         <DatePicker format="DD/MMM/YY" style={{ width: '100%' }} />
                     </Form.Item>
 
-                    <Form.Item
-                        name="end_date"
-                        label="End Date"
-                        rules={[{ required: true }]}
-                    >
+                    <Form.Item name="end_date" label="End Date" rules={[{ required: true }]}>
                         <DatePicker format="DD/MMM/YY" style={{ width: '100%' }} />
                     </Form.Item>
 
-                    <Form.Item
-                        name="start_time"
-                        label="Start time"
-                    >
+                    <Form.Item name="start_time" label="Start Time">
                         <TimePicker format="HH:mm" style={{ width: '100%' }} />
                     </Form.Item>
 
-                    <Form.Item
-                        name="end_time"
-                        label="End time"
-                    >
+                    <Form.Item name="end_time" label="End Time">
                         <TimePicker format="HH:mm" style={{ width: '100%' }} />
                     </Form.Item>
                 </div>
 
-                {/* Planned Time & Distribution */}
-                <div className="form-row">
-                    <Form.Item
-                        name="planned_hours"
-                        label="Planned time"
-                        rules={[
-                            {
-                                validator: (_, val) => {
-                                    if (val === null || val === undefined || val === '') {
-                                        return Promise.reject('Planned time is required')
-                                    }
-                                    if (val === 0) {
-                                        return Promise.reject('Planned time must be greater than 0')
-                                    }
-                                    const mins = Math.round((val - Math.floor(val)) * 60)
-                                    if (mins % 15 !== 0) {
-                                        return Promise.reject('Minutes must be in increments of 15 (0, 15, 30, 45).')
-                                    }
-                                    return Promise.resolve()
-                                }
-                            }
-                        ]}
-                    >
-                        <HoursMinutesPicker />
-                    </Form.Item>
+                {/* Recurrence */}
+                <Form.Item name="recurrence" label="Recurrence" rules={[{ required: true }]}>
+                    <Select options={RECURRENCE_OPTIONS} />
+                </Form.Item>
 
-                    <Form.Item
-                        name="distribution"
-                        rules={[{ required: true }]}
-                    >
-                        <Select
-                            options={[
-                                { value: 'per_day', label: 'Per day' },
-                                { value: 'per_week', label: 'Per week' },
-                                { value: 'total', label: 'Total' },
-                            ]}
-                        />
-                    </Form.Item>
-                </div>
-
-                {/* Toggle Extra Fields */}
-                <div
-                    className="toggle-extra-fields"
-                    onClick={() => setShowExtraFields(!showExtraFields)}
+                {/* Assign Users */}
+                <Form.Item
+                    name="user_ids"
+                    label="Assign To"
+                    rules={[{ required: true, message: 'At least one user must be selected' }]}
                 >
-                    {showExtraFields ? 'Hide extra fields ▲' : 'Hide extra fields ▼'}
-                </div>
+                    <Select
+                        mode="multiple"
+                        placeholder="Select team members..."
+                        showSearch
+                        optionFilterProp="label"
+                        options={usersList.map(u => ({
+                            value: u.id,
+                            label: u.full_name || u.email,
+                        }))}
+                        maxTagCount={4}
+                    />
+                </Form.Item>
 
-                {/* Extra Fields */}
-                {showExtraFields && (
-                    <div className="extra-fields">
-                        {/* Description */}
-                        <Form.Item name="description" label="Description">
-                            <TextArea
-                                rows={2}
-                                placeholder="Add a detailed plan description here"
-                            />
-                        </Form.Item>
-
-                        {/* Repeat */}
-                        <Form.Item name="repeat" label="Repeat">
-                            <Select
-                                options={[
-                                    { value: 'never', label: 'Never' },
-                                    { value: 'daily', label: 'Daily' },
-                                    { value: 'weekly', label: 'Weekly' },
-                                    { value: 'monthly', label: 'Monthly' },
-                                ]}
-                            />
-                        </Form.Item>
-
-                        {/* Reviewer & Status */}
-                        <div className="form-row">
-                            <Form.Item name="reviewer_id" label="Reviewer">
-                                <Select
-                                    placeholder="Select reviewer"
-                                    allowClear
-                                    showSearch
-                                    optionFilterProp="label"
-                                    options={users?.map?.(u => ({
-                                        value: u.id,
-                                        label: u.full_name || u.email
-                                    })) || []}
-                                />
-                            </Form.Item>
-
-                            <Form.Item name="status" label="Status">
-                                <Select
-                                    options={[
-                                        { value: 'pending', label: 'Pending' },
-                                        { value: 'approved', label: 'Approved' },
-                                        { value: 'rejected', label: 'Rejected' },
-                                    ]}
-                                />
-                            </Form.Item>
-                        </div>
-                    </div>
-                )}
+                {/* Description */}
+                <Form.Item name="description" label="Description">
+                    <TextArea
+                        rows={2}
+                        placeholder="Add a meeting description or agenda..."
+                    />
+                </Form.Item>
 
                 {/* Actions */}
                 <div className="form-actions">
@@ -320,7 +219,7 @@ function PlanTimeModal({
                         onClick={handleSubmit}
                         loading={loading}
                     >
-                        Plan Time
+                        Send Invite
                     </Button>
                     <Button onClick={handleClose}>Cancel</Button>
                 </div>

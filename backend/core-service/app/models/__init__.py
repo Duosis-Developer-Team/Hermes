@@ -15,18 +15,20 @@ from .issue import Issue
 from .issue import Issue
 from .project_membership import ProjectMembership
 from .timesheet import TimesheetSubmission, TimesheetStatus
+from .plan_time import PlanTime, PlanTimeAssignment
 
 __all__ = [
-    "Customer", 
-    "WorkType", 
-    "Project", 
+    "Customer",
+    "WorkType",
+    "Project",
     "WorkLog",
     "ActivityType",
     "Platform",
     "WorkLine",
     "Issue",
-    "Issue",
     "ProjectMembership",
     "TimesheetSubmission",
     "TimesheetStatus",
+    "PlanTime",
+    "PlanTimeAssignment",
 ]
