@@ -167,6 +167,7 @@ function DayColumn({
                                 onDelete={onDeletePlanTime}
                                 onEdit={onEditPlanTime}
                                 isAdmin={isAdmin}
+                                calendarDate={dateKey}
                             />
                         ))}
                     </div>

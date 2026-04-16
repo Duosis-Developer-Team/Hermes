@@ -670,6 +670,7 @@ function TimeEntryPage() {
                 onSubmit={handlePlanTimeSubmit}
                 initialDate={selectedDate}
                 editingPlan={editingPlan}
+                currentUserId={user?.id}
                 loading={createPlanTimeMutation.isPending || updatePlanTimeMutation.isPending}
             />
 

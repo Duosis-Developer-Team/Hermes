@@ -36,7 +36,7 @@ function getCardStyle(status, isExpired) {
     }
 }
 
-function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, responding = false }) {
+function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, calendarDate = null, responding = false }) {
     const {
         id,
         project_name,
@@ -56,12 +56,15 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, 
     // Kişisel assignment varsa accept/reject göster
     const hasAssignment = !!assignment_id
 
-    // Recurring planlar için expired kontrolü: weekly/monthly ise expired sayılmaz
     const isRecurring = recurrence === 'weekly' || recurrence === 'monthly'
+
+    // Recurring planlar için o günün occurrence'ına göre expired kontrol et
+    // calendarDate: kartın gösterildiği takvim günü (YYYY-MM-DD)
+    const checkDate = isRecurring && calendarDate ? calendarDate : end_date
     const endMoment = end_time
-        ? dayjs(`${end_date} ${end_time}`)
-        : dayjs(end_date).endOf('day')
-    const isExpired = !isRecurring && endMoment.isBefore(dayjs())
+        ? dayjs(`${checkDate} ${end_time}`)
+        : dayjs(checkDate).endOf('day')
+    const isExpired = endMoment.isBefore(dayjs())
 
     const { bg, border, label, labelColor } = getCardStyle(status, isExpired)
 

@@ -16,7 +16,6 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { customerService, projectService, authService } from '../../services/api'
-import { useAuthStore } from '../../stores/authStore'
 import './PlanTimeModal.css'
 
 const { TextArea } = Input
@@ -32,12 +31,12 @@ function PlanTimeModal({
     onClose,
     onSubmit,
     initialDate,
-    editingPlan = null,   // null → create mode, object → edit mode
+    editingPlan = null,
+    currentUserId = null,  // planı oluşturan kişi — listeden gizlenir
     loading = false
 }) {
     const [form] = Form.useForm()
     const [selectedCustomerId, setSelectedCustomerId] = useState(null)
-    const { user } = useAuthStore()
 
     // Data fetching — sadece modal açıkken
     const { data: customers = [] } = useQuery({
@@ -57,8 +56,8 @@ function PlanTimeModal({
         queryFn: () => authService.getUsers(),
         enabled: open,
     })
-    // Kendi adını listeden çıkar — creator otomatik ekleniyor
-    const usersList = (usersResponse?.data || []).filter(u => u.id !== user?.id)
+    // Planı oluşturan kişiyi listeden çıkar — creator otomatik ekleniyor
+    const usersList = (usersResponse?.data || []).filter(u => u.id !== currentUserId)
 
     // Seçilen müşterinin projeleri
     const filteredProjects = allProjects.filter(
@@ -82,7 +81,7 @@ function PlanTimeModal({
                         ? editingPlan.recurrence
                         : 'one_time',
                     description: editingPlan.description || '',
-                    user_ids: (editingPlan.assignments?.map(a => a.user_id) || []).filter(id => id !== user?.id),
+                    user_ids: (editingPlan.assignments?.map(a => a.user_id) || []).filter(id => id !== currentUserId),
                 })
             } else {
                 // Create mode — default değerler
