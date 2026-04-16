@@ -59,7 +59,10 @@ jobs:
           docker push "$REPORTING_IMAGE_SHA"
           docker push "$REPORTING_IMAGE_LATEST"
 
-          docker build -t "$FRONTEND_IMAGE_SHA" -t "$FRONTEND_IMAGE_LATEST" ./frontend
+          docker build -t "$FRONTEND_IMAGE_SHA" -t "$FRONTEND_IMAGE_LATEST" \
+            --build-arg VITE_AZURE_CLIENT_ID="${{ secrets.VITE_AZURE_CLIENT_ID }}" \
+            --build-arg VITE_AZURE_TENANT_ID="${{ secrets.VITE_AZURE_TENANT_ID }}" \
+            ./frontend
           docker push "$FRONTEND_IMAGE_SHA"
           docker push "$FRONTEND_IMAGE_LATEST"
 
