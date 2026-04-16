@@ -73,7 +73,7 @@ function WeeklyListView({
                     // Ayın aynı günü (start_date ile aynı gün numarası)
                     return dayjs(dateKey).date() === dayjs(pt.start_date).date()
                 }
-                // one_time: start_date ile end_date arasındaki tüm günler
+                // one_time / daily (legacy): start_date ile end_date arasındaki tüm günler
                 return dateKey <= pt.end_date
             })
         })

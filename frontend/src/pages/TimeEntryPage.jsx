@@ -71,6 +71,7 @@ function TimeEntryPage() {
     const [selectedPeriod, setSelectedPeriod] = useState(null)
     const [selectedUserId, setSelectedUserId] = useState(null) // Admin override
     const [deletingLog, setDeletingLog] = useState(null)   // log pending delete confirmation
+    const [deletingPlan, setDeletingPlan] = useState(null) // plan pending delete confirmation
 
     // ==========================================================================
     // Week Navigation
@@ -288,10 +289,12 @@ function TimeEntryPage() {
         mutationFn: (id) => planTimeService.delete(id),
         onSuccess: () => {
             message.success('Plan deleted')
+            setDeletingPlan(null)
             refetchPlanTimes()
         },
         onError: () => {
             message.error('Failed to delete plan')
+            setDeletingPlan(null)
         },
     })
 
@@ -319,8 +322,12 @@ function TimeEntryPage() {
         setPlanTimeModalOpen(true)
     }
 
-    const handleDeletePlanTime = (id) => {
-        deletePlanTimeMutation.mutate(id)
+    const handleDeletePlanTime = (plan) => {
+        setDeletingPlan(plan)
+    }
+
+    const handleDeletePlanConfirm = () => {
+        if (deletingPlan) deletePlanTimeMutation.mutate(deletingPlan.id)
     }
 
     const handlePlanTimeRespond = (planTimeId, status) => {
@@ -673,6 +680,80 @@ function TimeEntryPage() {
                 onSubmit={handleSubmitPeriod}
                 loading={isSubmitting}
             />
+
+            {/* Plan Time Delete Confirmation Modal */}
+            <Modal
+                open={!!deletingPlan}
+                onCancel={() => setDeletingPlan(null)}
+                footer={null}
+                width={420}
+                centered
+                closable={false}
+                styles={{
+                    content: {
+                        background: '#1e1e1e',
+                        border: '1px solid #303030',
+                        borderRadius: 12,
+                        padding: '28px 28px 24px',
+                    }
+                }}
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{
+                            width: 40, height: 40, borderRadius: 10,
+                            background: 'rgba(239,68,68,0.15)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0
+                        }}>
+                            <ExclamationCircleOutlined style={{ color: '#ef4444', fontSize: 20 }} />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>Delete Plan</div>
+                            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>All assignments will be removed</div>
+                        </div>
+                    </div>
+
+                    {deletingPlan && (
+                        <div style={{
+                            background: '#2a2a2a',
+                            border: '1px solid #383838',
+                            borderRadius: 8,
+                            padding: '10px 14px',
+                        }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e0e0' }}>
+                                {deletingPlan.project_name || 'Plan Time'}
+                            </div>
+                            <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>
+                                {deletingPlan.customer_name}
+                            </div>
+                        </div>
+                    )}
+
+                    <p style={{ margin: 0, color: '#aaa', fontSize: 14, lineHeight: 1.6 }}>
+                        Are you sure you want to delete this plan?
+                    </p>
+
+                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+                        <Button
+                            onClick={() => setDeletingPlan(null)}
+                            style={{ background: 'transparent', borderColor: '#444', color: '#ccc', borderRadius: 8 }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="primary"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={handleDeletePlanConfirm}
+                            loading={deletePlanTimeMutation.isPending}
+                            style={{ borderRadius: 8 }}
+                        >
+                            Delete
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
 
             {/* Delete Confirmation Modal */}
             <Modal

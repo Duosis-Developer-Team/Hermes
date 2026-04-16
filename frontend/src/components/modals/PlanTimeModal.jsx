@@ -75,7 +75,9 @@ function PlanTimeModal({
                     end_date: editingPlan.end_date ? dayjs(editingPlan.end_date) : null,
                     start_time: editingPlan.start_time ? dayjs(editingPlan.start_time, 'HH:mm') : null,
                     end_time: editingPlan.end_time ? dayjs(editingPlan.end_time, 'HH:mm') : null,
-                    recurrence: editingPlan.recurrence || 'one_time',
+                    recurrence: ['weekly', 'monthly'].includes(editingPlan.recurrence)
+                        ? editingPlan.recurrence
+                        : 'one_time',
                     description: editingPlan.description || '',
                     user_ids: editingPlan.assignments?.map(a => a.user_id) || [],
                 })

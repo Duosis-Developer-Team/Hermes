@@ -162,7 +162,7 @@ async def get_my_plan_times(
         query = query.filter(
             or_(
                 PlanTime.end_date >= start_date,
-                PlanTime.recurrence.in_(["weekly", "monthly"])
+                PlanTime.recurrence.in_(["weekly", "monthly", "daily"])
             )
         )
     if end_date:
@@ -199,7 +199,7 @@ async def get_all_plan_times(
         query = query.filter(
             or_(
                 PlanTime.end_date >= start_date,
-                PlanTime.recurrence.in_(["weekly", "monthly"])
+                PlanTime.recurrence.in_(["weekly", "monthly", "daily"])
             )
         )
     if end_date:
@@ -288,7 +288,7 @@ async def update_plan_time(
             detail="Plan time bulunamadı."
         )
 
-    if data.recurrence and data.recurrence not in ("one_time", "weekly", "monthly"):
+    if data.recurrence and data.recurrence not in ("one_time", "weekly", "monthly", "daily"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Geçersiz recurrence değeri."

@@ -10,12 +10,14 @@
  *   Accepted → Yeşil (#52c41a)
  *   Rejected → Kırmızı (#ff4d4f)
  *   Süresi Geçmiş → Mavi (#1677ff) — diğer tüm statüsleri override eder
+ *   Organizer → Mor (#8b5cf6) — sadece oluşturan admin için
  * =============================================================================
  */
 
-import { Button, Popconfirm, Tooltip } from 'antd'
+import { Button, Tooltip } from 'antd'
 import { CheckOutlined, CloseOutlined, ClockCircleOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import './PlanTimeCard.css'
 
 function getCardStyle(status, isExpired) {
     if (isExpired) {
@@ -28,7 +30,6 @@ function getCardStyle(status, isExpired) {
             return { bg: 'rgba(255, 77, 79, 0.15)', border: '#ff4d4f', label: 'Rejected', labelColor: '#ff4d4f' }
         case null:
         case undefined:
-            // Admin organizer view — not assigned, just created
             return { bg: 'rgba(139, 92, 246, 0.15)', border: '#8b5cf6', label: 'Scheduled', labelColor: '#8b5cf6' }
         default: // pending
             return { bg: 'rgba(250, 173, 20, 0.15)', border: '#faad14', label: 'Pending', labelColor: '#faad14' }
@@ -53,11 +54,12 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, responding = fals
     // Admin organizer view: plan was fetched via getAll, no personal assignment
     const isOrganizerView = !assignment_id
 
-    // Süresi geçmiş mi? end_date + end_time ikilisini karşılaştır
+    // Recurring planlar için expired kontrolü: weekly/monthly ise expired sayılmaz
+    const isRecurring = recurrence === 'weekly' || recurrence === 'monthly'
     const endMoment = end_time
         ? dayjs(`${end_date} ${end_time}`)
         : dayjs(end_date).endOf('day')
-    const isExpired = endMoment.isBefore(dayjs())
+    const isExpired = !isRecurring && endMoment.isBefore(dayjs())
 
     const { bg, border, label, labelColor } = getCardStyle(status, isExpired)
 
@@ -71,6 +73,7 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, responding = fals
 
     return (
         <div
+            className="plan-time-card"
             style={{
                 background: bg,
                 border: `1px solid ${border}`,
@@ -78,12 +81,33 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, responding = fals
                 borderRadius: 6,
                 padding: '8px 10px',
                 marginBottom: 6,
-                position: 'relative',
             }}
         >
+            {/* Organizer view: hover action butonları (WorkLogCard tarzı) */}
+            {isOrganizerView && (
+                <div className="plan-time-card-actions">
+                    <Tooltip title="Edit">
+                        <button
+                            className="plan-time-action-btn"
+                            onClick={(e) => { e.stopPropagation(); onEdit?.(planTime) }}
+                        >
+                            <EditOutlined />
+                        </button>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                        <button
+                            className="plan-time-action-btn delete"
+                            onClick={(e) => { e.stopPropagation(); onDelete?.(planTime) }}
+                        >
+                            <DeleteOutlined />
+                        </button>
+                    </Tooltip>
+                </div>
+            )}
+
             {/* Başlık satırı */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: 0, paddingRight: isOrganizerView ? 52 : 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 12, color: '#fff', lineHeight: 1.3, marginBottom: 2 }}>
                         {project_name || 'Plan Time'}
                     </div>
@@ -125,36 +149,6 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, responding = fals
                         {description}
                     </div>
                 </Tooltip>
-            )}
-
-            {/* Organizer view: Edit / Delete butonları */}
-            {isOrganizerView && (
-                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                    <Button
-                        size="small"
-                        icon={<EditOutlined />}
-                        onClick={() => onEdit?.(planTime)}
-                        style={{ fontSize: 11, height: 24, padding: '0 8px', borderColor: '#8b5cf6', color: '#8b5cf6' }}
-                    >
-                        Edit
-                    </Button>
-                    <Popconfirm
-                        title="Delete this plan?"
-                        description="All assignments will be removed."
-                        onConfirm={() => onDelete?.(id)}
-                        okText="Delete"
-                        cancelText="Cancel"
-                        okButtonProps={{ danger: true }}
-                    >
-                        <Button
-                            size="small"
-                            icon={<DeleteOutlined />}
-                            style={{ fontSize: 11, height: 24, padding: '0 8px', borderColor: '#ff4d4f', color: '#ff4d4f' }}
-                        >
-                            Delete
-                        </Button>
-                    </Popconfirm>
-                </div>
             )}
 
             {/* Accept / Reject butonları — süresi geçmemişse ve kişisel atama varsa göster */}

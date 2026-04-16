@@ -1,0 +1,45 @@
+/**
+ * PlanTimeCard Styles
+ */
+
+.plan-time-card {
+    position: relative;
+}
+
+.plan-time-card-actions {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.plan-time-card:hover .plan-time-card-actions {
+    opacity: 1;
+}
+
+.plan-time-action-btn {
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    padding: 0;
+}
+
+.plan-time-action-btn:hover {
+    background: rgba(139, 92, 246, 0.4);
+}
+
+.plan-time-action-btn.delete:hover {
+    background: rgba(255, 77, 79, 0.3);
+    color: #ff4d4f;
+}
