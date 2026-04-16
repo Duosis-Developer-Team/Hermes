@@ -9,6 +9,7 @@ from typing import List, Optional
 from uuid import UUID
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -30,9 +31,20 @@ class PlanTimeCreate(BaseModel):
     end_date: date
     start_time: Optional[str] = None   # "HH:MM"
     end_time: Optional[str] = None     # "HH:MM"
-    recurrence: str = "one_time"       # one_time | daily | weekly
+    recurrence: str = "one_time"       # one_time | weekly | monthly
     description: Optional[str] = None
     user_ids: List[UUID]               # Atanacak kullanıcılar (en az 1)
+
+
+class PlanTimeUpdate(BaseModel):
+    customer_id: Optional[UUID] = None
+    project_id: Optional[UUID] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    recurrence: Optional[str] = None
+    description: Optional[str] = None
 
 
 class RespondPayload(BaseModel):
@@ -88,10 +100,10 @@ async def create_plan_time(
             detail="En az bir kullanıcı seçilmelidir."
         )
 
-    if data.recurrence not in ("one_time", "daily", "weekly"):
+    if data.recurrence not in ("one_time", "weekly", "monthly"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Geçersiz recurrence değeri. 'one_time', 'daily' veya 'weekly' olmalıdır."
+            detail="Geçersiz recurrence değeri. 'one_time', 'weekly' veya 'monthly' olmalıdır."
         )
 
     plan = PlanTime(
@@ -146,7 +158,13 @@ async def get_my_plan_times(
     )
 
     if start_date:
-        query = query.filter(PlanTime.end_date >= start_date)
+        # Recurring plans always show after their start; one_time needs end_date in range
+        query = query.filter(
+            or_(
+                PlanTime.end_date >= start_date,
+                PlanTime.recurrence.in_(["weekly", "monthly"])
+            )
+        )
     if end_date:
         query = query.filter(PlanTime.start_date <= end_date)
 
@@ -178,7 +196,12 @@ async def get_all_plan_times(
     query = db.query(PlanTime)
 
     if start_date:
-        query = query.filter(PlanTime.end_date >= start_date)
+        query = query.filter(
+            or_(
+                PlanTime.end_date >= start_date,
+                PlanTime.recurrence.in_(["weekly", "monthly"])
+            )
+        )
     if end_date:
         query = query.filter(PlanTime.start_date <= end_date)
 
@@ -240,6 +263,58 @@ async def respond_to_plan_time(
             "status": assignment.status
         }
     }
+
+
+# =============================================================================
+# UPDATE — Admin only
+# =============================================================================
+
+@router.patch("/{plan_time_id}")
+async def update_plan_time(
+    plan_time_id: UUID,
+    data: PlanTimeUpdate,
+    admin: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin: Plan time olayını günceller (tarih, saat, recurrence, açıklama).
+    Atamalar (user_ids) değiştirilmez.
+    """
+    plan = db.query(PlanTime).filter(PlanTime.id == plan_time_id).first()
+
+    if not plan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Plan time bulunamadı."
+        )
+
+    if data.recurrence and data.recurrence not in ("one_time", "weekly", "monthly"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Geçersiz recurrence değeri."
+        )
+
+    if data.customer_id is not None:
+        plan.customer_id = data.customer_id
+    if data.project_id is not None:
+        plan.project_id = data.project_id
+    if data.start_date is not None:
+        plan.start_date = data.start_date
+    if data.end_date is not None:
+        plan.end_date = data.end_date
+    if data.start_time is not None:
+        plan.start_time = data.start_time
+    if data.end_time is not None:
+        plan.end_time = data.end_time
+    if data.recurrence is not None:
+        plan.recurrence = data.recurrence
+    if data.description is not None:
+        plan.description = data.description
+
+    db.commit()
+    db.refresh(plan)
+
+    return {"success": True, "data": _serialize_plan_time(plan)}
 
 
 # =============================================================================

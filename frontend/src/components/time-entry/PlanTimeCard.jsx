@@ -13,8 +13,8 @@
  * =============================================================================
  */
 
-import { Button, Tooltip } from 'antd'
-import { CheckOutlined, CloseOutlined, ClockCircleOutlined } from '@ant-design/icons'
+import { Button, Popconfirm, Tooltip } from 'antd'
+import { CheckOutlined, CloseOutlined, ClockCircleOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 
 function getCardStyle(status, isExpired) {
@@ -35,7 +35,7 @@ function getCardStyle(status, isExpired) {
     }
 }
 
-function PlanTimeCard({ planTime, onRespond, responding = false }) {
+function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, responding = false }) {
     const {
         id,
         project_name,
@@ -66,7 +66,7 @@ function PlanTimeCard({ planTime, onRespond, responding = false }) {
         : start_date === end_date ? start_date : `${start_date} → ${end_date}`
 
     const recurrenceLabel = recurrence && recurrence !== 'one_time'
-        ? ` · ${recurrence.charAt(0).toUpperCase() + recurrence.slice(1)}`
+        ? ` · ${recurrence === 'weekly' ? 'Weekly' : 'Monthly'}`
         : ''
 
     return (
@@ -125,6 +125,36 @@ function PlanTimeCard({ planTime, onRespond, responding = false }) {
                         {description}
                     </div>
                 </Tooltip>
+            )}
+
+            {/* Organizer view: Edit / Delete butonları */}
+            {isOrganizerView && (
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                    <Button
+                        size="small"
+                        icon={<EditOutlined />}
+                        onClick={() => onEdit?.(planTime)}
+                        style={{ fontSize: 11, height: 24, padding: '0 8px', borderColor: '#8b5cf6', color: '#8b5cf6' }}
+                    >
+                        Edit
+                    </Button>
+                    <Popconfirm
+                        title="Delete this plan?"
+                        description="All assignments will be removed."
+                        onConfirm={() => onDelete?.(id)}
+                        okText="Delete"
+                        cancelText="Cancel"
+                        okButtonProps={{ danger: true }}
+                    >
+                        <Button
+                            size="small"
+                            icon={<DeleteOutlined />}
+                            style={{ fontSize: 11, height: 24, padding: '0 8px', borderColor: '#ff4d4f', color: '#ff4d4f' }}
+                        >
+                            Delete
+                        </Button>
+                    </Popconfirm>
+                </div>
             )}
 
             {/* Accept / Reject butonları — süresi geçmemişse ve kişisel atama varsa göster */}

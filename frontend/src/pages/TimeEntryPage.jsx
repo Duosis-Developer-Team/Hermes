@@ -66,6 +66,7 @@ function TimeEntryPage() {
     const [planTimeModalOpen, setPlanTimeModalOpen] = useState(false)
     const [selectedDate, setSelectedDate] = useState(null)
     const [editingLog, setEditingLog] = useState(null)
+    const [editingPlan, setEditingPlan] = useState(null)
     const [submitModalOpen, setSubmitModalOpen] = useState(false)
     const [selectedPeriod, setSelectedPeriod] = useState(null)
     const [selectedUserId, setSelectedUserId] = useState(null) // Admin override
@@ -229,6 +230,7 @@ function TimeEntryPage() {
 
     const handlePlanTime = (date) => {
         setSelectedDate(date)
+        setEditingPlan(null)
         setPlanTimeModalOpen(true)
     }
 
@@ -269,6 +271,30 @@ function TimeEntryPage() {
         },
     })
 
+    const updatePlanTimeMutation = useMutation({
+        mutationFn: ({ id, data }) => planTimeService.update(id, data),
+        onSuccess: () => {
+            message.success('Plan updated')
+            setPlanTimeModalOpen(false)
+            setEditingPlan(null)
+            refetchPlanTimes()
+        },
+        onError: (error) => {
+            message.error(error.response?.data?.detail || 'Failed to update plan')
+        },
+    })
+
+    const deletePlanTimeMutation = useMutation({
+        mutationFn: (id) => planTimeService.delete(id),
+        onSuccess: () => {
+            message.success('Plan deleted')
+            refetchPlanTimes()
+        },
+        onError: () => {
+            message.error('Failed to delete plan')
+        },
+    })
+
     const respondPlanTimeMutation = useMutation({
         mutationFn: ({ planTimeId, status }) => planTimeService.respond(planTimeId, status),
         onSuccess: (_, { status }) => {
@@ -281,7 +307,20 @@ function TimeEntryPage() {
     })
 
     const handlePlanTimeSubmit = (data) => {
-        createPlanTimeMutation.mutate(data)
+        if (editingPlan) {
+            updatePlanTimeMutation.mutate({ id: editingPlan.id, data })
+        } else {
+            createPlanTimeMutation.mutate(data)
+        }
+    }
+
+    const handleEditPlanTime = (plan) => {
+        setEditingPlan(plan)
+        setPlanTimeModalOpen(true)
+    }
+
+    const handleDeletePlanTime = (id) => {
+        deletePlanTimeMutation.mutate(id)
     }
 
     const handlePlanTimeRespond = (planTimeId, status) => {
@@ -584,6 +623,8 @@ function TimeEntryPage() {
                         onEditLog={handleEditLog}
                         onDeleteLog={handleDeleteLog}
                         onPlanTimeRespond={handlePlanTimeRespond}
+                        onDeletePlanTime={handleDeletePlanTime}
+                        onEditPlanTime={handleEditPlanTime}
                         selectedLogId={selectedLogId}
                         copiedLog={copiedLog}
                         targetDate={targetDate}
@@ -618,10 +659,11 @@ function TimeEntryPage() {
 
             <PlanTimeModal
                 open={planTimeModalOpen}
-                onClose={() => setPlanTimeModalOpen(false)}
+                onClose={() => { setPlanTimeModalOpen(false); setEditingPlan(null) }}
                 onSubmit={handlePlanTimeSubmit}
                 initialDate={selectedDate}
-                loading={createPlanTimeMutation.isPending}
+                editingPlan={editingPlan}
+                loading={createPlanTimeMutation.isPending || updatePlanTimeMutation.isPending}
             />
 
             <SubmitPeriodModal

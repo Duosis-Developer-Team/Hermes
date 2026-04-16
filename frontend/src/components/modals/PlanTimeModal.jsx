@@ -22,8 +22,8 @@ const { TextArea } = Input
 
 const RECURRENCE_OPTIONS = [
     { value: 'one_time', label: 'One-Time' },
-    { value: 'daily', label: 'Daily' },
     { value: 'weekly', label: 'Weekly' },
+    { value: 'monthly', label: 'Monthly' },
 ]
 
 function PlanTimeModal({
@@ -31,6 +31,7 @@ function PlanTimeModal({
     onClose,
     onSubmit,
     initialDate,
+    editingPlan = null,   // null → create mode, object → edit mode
     loading = false
 }) {
     const [form] = Form.useForm()
@@ -61,21 +62,38 @@ function PlanTimeModal({
         p => p.customer_id === selectedCustomerId
     )
 
-    // Modal açıldığında reset
+    // Modal açıldığında reset veya edit verileriyle doldur
     useEffect(() => {
         if (open) {
-            const defaultDate = initialDate ? dayjs(initialDate) : dayjs()
-            form.setFieldsValue({
-                start_date: defaultDate,
-                end_date: defaultDate,
-                start_time: dayjs().hour(9).minute(0),
-                end_time: dayjs().hour(18).minute(0),
-                recurrence: 'one_time',
-                user_ids: [],
-            })
-            setSelectedCustomerId(null)
+            if (editingPlan) {
+                // Edit mode — mevcut değerlerle doldur
+                setSelectedCustomerId(editingPlan.customer_id)
+                form.setFieldsValue({
+                    customer_id: editingPlan.customer_id,
+                    project_id: editingPlan.project_id,
+                    start_date: editingPlan.start_date ? dayjs(editingPlan.start_date) : null,
+                    end_date: editingPlan.end_date ? dayjs(editingPlan.end_date) : null,
+                    start_time: editingPlan.start_time ? dayjs(editingPlan.start_time, 'HH:mm') : null,
+                    end_time: editingPlan.end_time ? dayjs(editingPlan.end_time, 'HH:mm') : null,
+                    recurrence: editingPlan.recurrence || 'one_time',
+                    description: editingPlan.description || '',
+                    user_ids: editingPlan.assignments?.map(a => a.user_id) || [],
+                })
+            } else {
+                // Create mode — default değerler
+                const defaultDate = initialDate ? dayjs(initialDate) : dayjs()
+                form.setFieldsValue({
+                    start_date: defaultDate,
+                    end_date: defaultDate,
+                    start_time: dayjs().hour(9).minute(0),
+                    end_time: dayjs().hour(18).minute(0),
+                    recurrence: 'one_time',
+                    user_ids: [],
+                })
+                setSelectedCustomerId(null)
+            }
         }
-    }, [open, initialDate, form])
+    }, [open, initialDate, editingPlan, form])
 
     const handleClose = () => {
         setSelectedCustomerId(null)
@@ -119,10 +137,10 @@ function PlanTimeModal({
             title={
                 <div style={{ padding: '4px 0' }}>
                     <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>
-                        Plan Time
+                        {editingPlan ? 'Edit Plan Time' : 'Plan Time'}
                     </div>
                     <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
-                        Create a meeting invite and assign to team members
+                        {editingPlan ? 'Update meeting details' : 'Create a meeting invite and assign to team members'}
                     </div>
                 </div>
             }
@@ -239,7 +257,7 @@ function PlanTimeModal({
                         onClick={handleSubmit}
                         loading={loading}
                     >
-                        Send Invite
+                        {editingPlan ? 'Save Changes' : 'Send Invite'}
                     </Button>
                     <Button onClick={handleClose}>Cancel</Button>
                 </div>

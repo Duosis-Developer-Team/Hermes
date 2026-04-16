@@ -25,6 +25,8 @@ function WeeklyListView({
     onEditLog,
     onDeleteLog,
     onPlanTimeRespond,
+    onDeletePlanTime,
+    onEditPlanTime,
     isAdmin = false,
     // Copy-paste props
     selectedLogId,
@@ -55,14 +57,24 @@ function WeeklyListView({
         return grouped
     }, [weekDays, workLogs])
 
-    // Plan times'ı günlere göre grupla
-    // Plan time start_date ile end_date arasındaki TÜM günlerde görünür
+    // Plan times'ı günlere göre grupla — recurrence mantığıyla
     const planTimesByDate = useMemo(() => {
         const grouped = {}
         weekDays.forEach(day => {
             const dateKey = day.format('YYYY-MM-DD')
             grouped[dateKey] = planTimes.filter(pt => {
-                return dateKey >= pt.start_date && dateKey <= pt.end_date
+                if (dateKey < pt.start_date) return false
+
+                if (pt.recurrence === 'weekly') {
+                    // Haftanın aynı günü (start_date ile aynı gün)
+                    return dayjs(dateKey).day() === dayjs(pt.start_date).day()
+                }
+                if (pt.recurrence === 'monthly') {
+                    // Ayın aynı günü (start_date ile aynı gün numarası)
+                    return dayjs(dateKey).date() === dayjs(pt.start_date).date()
+                }
+                // one_time: start_date ile end_date arasındaki tüm günler
+                return dateKey <= pt.end_date
             })
         })
         return grouped
@@ -126,6 +138,8 @@ function WeeklyListView({
                             onEditLog={onEditLog}
                             onDeleteLog={onDeleteLog}
                             onPlanTimeRespond={onPlanTimeRespond}
+                            onDeletePlanTime={onDeletePlanTime}
+                            onEditPlanTime={onEditPlanTime}
                             isToday={dateKey === today}
                             isAdmin={isAdmin}
                             selectedLogId={selectedLogId}

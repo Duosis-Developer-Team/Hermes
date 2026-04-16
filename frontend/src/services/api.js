@@ -637,6 +637,14 @@ export const planTimeService = {
     },
 
     /**
+     * Admin: Plan time güncelle
+     */
+    update: async (planTimeId, data) => {
+        const response = await coreApi.patch(`/api/v1/core/plan-times/${planTimeId}`, data)
+        return response.data
+    },
+
+    /**
      * Admin: Plan time sil
      */
     delete: async (planTimeId) => {

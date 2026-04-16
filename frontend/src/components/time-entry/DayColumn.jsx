@@ -29,6 +29,8 @@ function DayColumn({
     onEditLog,
     onDeleteLog,
     onPlanTimeRespond,
+    onDeletePlanTime,
+    onEditPlanTime,
     isToday = false,
     isAdmin = false,
     // Copy-paste props
@@ -162,6 +164,8 @@ function DayColumn({
                                 key={pt.assignment_id || pt.id}
                                 planTime={pt}
                                 onRespond={onPlanTimeRespond}
+                                onDelete={onDeletePlanTime}
+                                onEdit={onEditPlanTime}
                             />
                         ))}
                     </div>
