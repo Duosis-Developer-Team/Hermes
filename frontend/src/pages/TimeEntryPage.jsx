@@ -124,20 +124,35 @@ function TimeEntryPage() {
             }),
         enabled: !!user?.id,
     })
-    // Admin için getAll dönüyor — assignments array'inden kendi atamasını enrich et
+    // Admin için getAll dönüyor — assignments array'inden görüntülenen kullanıcının status'unu enrich et
     const planTimes = useMemo(() => {
         const raw = planTimesResponse?.data || []
         if (!user?.is_admin) return raw
+
+        // Hangi kullanıcının takvimi görüntüleniyor?
+        const viewedId = selectedUserId || user.id
+        const isViewingOwnCalendar = viewedId === user.id
+
         return raw.map(pt => {
+            // Görüntülenen kullanıcının assignment'ı
+            const viewedAssignment = pt.assignments?.find(a => a.user_id === viewedId)
+            // Admin'in kendi assignment'ı (edit/delete yetkisi için)
             const myAssignment = pt.assignments?.find(a => a.user_id === user.id)
-            if (myAssignment) {
-                // Admin aynı zamanda assignee — butonlar gösterilsin
+
+            if (viewedAssignment) {
+                return {
+                    ...pt,
+                    // Accept/Reject sadece kendi takvimine bakarken çalışsın
+                    assignment_id: isViewingOwnCalendar ? `${pt.id}_self` : undefined,
+                    status: viewedAssignment.status,
+                }
+            }
+            if (myAssignment && isViewingOwnCalendar) {
                 return { ...pt, assignment_id: `${pt.id}_self`, status: myAssignment.status }
             }
-            // Admin yalnızca organizer — buton yok
             return pt
         })
-    }, [planTimesResponse, user])
+    }, [planTimesResponse, user, selectedUserId])
 
     // Fetch Period Status
     const { data: periodStatus, refetch: refetchPeriodStatus } = useQuery({
