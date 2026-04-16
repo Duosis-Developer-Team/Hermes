@@ -6,9 +6,10 @@
  * =============================================================================
  */
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
+import { authService } from './services/api'
 
 // Layouts
 import MainLayout from './components/layout/MainLayout'
@@ -51,16 +52,33 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
  * Main App Component
  */
 function App() {
-    const { isAuthenticated } = useAuthStore()
+    const { isAuthenticated, login } = useAuthStore()
+    const [sessionChecked, setSessionChecked] = useState(false)
 
-    // [KRİTİK-6]: Temizlik — Eski mimariden kalan güvensiz localStorage token'ını sil
     useEffect(() => {
+        // [KRİTİK-6]: Temizlik — Eski mimariden kalan güvensiz localStorage token'ını sil
         const legacyToken = localStorage.getItem('hermes-auth')
         if (legacyToken) {
             localStorage.removeItem('hermes-auth')
             console.log('Legacy hermes-auth token removed from localStorage for security')
         }
+
+        // Sayfa yenilemesinde mevcut HttpOnly cookie üzerinden oturumu geri yükle
+        authService.getMe()
+            .then(user => {
+                if (user) login(user)
+            })
+            .catch(() => {
+                // Cookie yok veya süresi dolmuş — login sayfasında kalınır
+            })
+            .finally(() => {
+                setSessionChecked(true)
+            })
     }, [])
+
+    // /me kontrolü bitmeden route'ları render etme — aksi halde cookie hâlâ geçerliyken
+    // isAuthenticated=false olduğu için login'e yönlendirme yapılır
+    if (!sessionChecked) return null
 
     return (
         <Routes>

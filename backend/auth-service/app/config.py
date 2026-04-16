@@ -87,7 +87,7 @@ class Settings(BaseSettings):
     # burada yalnızca expire süresi ayarlanır.
     # ==========================================================================
 
-    JWT_EXPIRE_MINUTES: int = 60  # 1 saat
+    JWT_EXPIRE_MINUTES: int = 1440  # 24 saat
     
     # ==========================================================================
     # Azure AD / SSO Configuration
