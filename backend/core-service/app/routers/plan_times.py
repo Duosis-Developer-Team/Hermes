@@ -45,6 +45,7 @@ class PlanTimeUpdate(BaseModel):
     end_time: Optional[str] = None
     recurrence: Optional[str] = None
     description: Optional[str] = None
+    user_ids: Optional[List[UUID]] = None  # None → dokunma, [] → hepsini sil
 
 
 class RespondPayload(BaseModel):
@@ -310,6 +311,25 @@ async def update_plan_time(
         plan.recurrence = data.recurrence
     if data.description is not None:
         plan.description = data.description
+
+    # Assignments güncelle — user_ids verilmişse
+    if data.user_ids is not None:
+        existing = {a.user_id: a for a in plan.assignments}
+        new_ids = set(data.user_ids)
+
+        # Yeni eklenenlere pending assignment oluştur
+        for uid in new_ids:
+            if uid not in existing:
+                db.add(PlanTimeAssignment(
+                    plan_time_id=plan.id,
+                    user_id=uid,
+                    status="pending"
+                ))
+
+        # Listeden çıkarılanları sil
+        for uid, assignment in existing.items():
+            if uid not in new_ids:
+                db.delete(assignment)
 
     db.commit()
     db.refresh(plan)
