@@ -4,7 +4,10 @@
  * =============================================================================
  * Mirrors WorkLogCard interaction model:
  *   - Body click toggles selection for the copy/paste workflow.
- *   - The detail modal is opened via a dedicated hover icon (top-right).
+ *   - Hover shows Edit (pencil) and Delete (trash) actions in the
+ *     top-right corner — same placement and style as Time Entry.
+ *   - Edit opens the existing CreateTaskModal in edit mode.
+ *   - Delete fires a confirmation flow handled by the parent page.
  *   - The completion checkbox stays on the left.
  *
  * Receives a `userMap` prop (id → user object) populated by the parent
@@ -20,7 +23,8 @@
 import { Checkbox, Tooltip } from 'antd'
 import {
     ClockCircleOutlined,
-    InfoCircleOutlined,
+    DeleteOutlined,
+    EditOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import './TaskCard.css'
@@ -42,7 +46,7 @@ function userLabel(id, userMap) {
 
 /**
  * Compact due-date marker variant — used on a different day column than
- * the scheduled card.
+ * the scheduled card. Click opens the same edit flow on the parent page.
  */
 export function TaskDueMarker({ task, userMap = {}, currentUserId, onClick }) {
     const showAssignee = currentUserId && task.assigner_user_id === currentUserId
@@ -76,10 +80,13 @@ function TaskCard({
     task,
     userMap = {},
     currentUserId,
-    /** Detail modal opener — fired by the hover info icon, not the body. */
-    onOpenDetail,
+    isAdmin = false,
     /** Selection toggle — fired by body click (Time Entry parity). */
     onSelect,
+    /** Opens the create/edit modal in edit mode. Hover Edit icon. */
+    onEdit,
+    /** Hover Delete icon — parent shows the confirm modal. */
+    onDelete,
     onToggleCompletion,
     canToggleCompletion,
     completionLoading = false,
@@ -87,6 +94,8 @@ function TaskCard({
 }) {
     const isCompleted = task.status === 'completed'
     const assigneeIsMe = task.assignee_user_id === currentUserId
+    const assignerIsMe = task.assigner_user_id === currentUserId
+    const canEditCore = isAdmin || assignerIsMe
     const showAssignee = !assigneeIsMe // only show "Assignee:" if I'm not the assignee
     const duration = formatMinutes(task.estimated_duration_minutes)
     const dueDifferent =
@@ -99,15 +108,18 @@ function TaskCard({
     }
 
     const handleBodyClick = (event) => {
-        // Stop bubbling so the day column doesn't also pick this up as a
-        // paste target click.
         event.stopPropagation()
         onSelect?.(task.id)
     }
 
-    const handleDetailClick = (event) => {
+    const handleEditClick = (event) => {
         event.stopPropagation()
-        onOpenDetail?.(task)
+        onEdit?.(task)
+    }
+
+    const handleDeleteClick = (event) => {
+        event.stopPropagation()
+        onDelete?.(task)
     }
 
     const subProjectSegment = task.sub_project_name
@@ -154,28 +166,27 @@ function TaskCard({
                     {subProjectSegment}
                 </div>
 
-                <div className="task-card-footer">
-                    <div className="task-card-badges">
-                        <span
-                            className={`task-card-priority task-card-priority-${task.priority}`}
-                        >
-                            {task.priority}
-                        </span>
-                        <span
-                            className={`task-card-status task-card-status-${task.status}`}
-                        >
-                            {task.status === 'in_progress'
-                                ? 'in progress'
-                                : task.status}
-                        </span>
-                    </div>
-                    {duration && (
-                        <span className="task-card-duration">
-                            <ClockCircleOutlined style={{ marginRight: 4 }} />
-                            {duration}
-                        </span>
-                    )}
+                <div className="task-card-badges">
+                    <span
+                        className={`task-card-priority task-card-priority-${task.priority}`}
+                    >
+                        {task.priority}
+                    </span>
+                    <span
+                        className={`task-card-status task-card-status-${task.status}`}
+                    >
+                        {task.status === 'in_progress'
+                            ? 'in progress'
+                            : task.status}
+                    </span>
                 </div>
+
+                {duration && (
+                    <div className="task-card-duration-row">
+                        <ClockCircleOutlined style={{ marginRight: 4 }} />
+                        {duration}
+                    </div>
+                )}
 
                 {dueDifferent && (
                     <div className="task-card-due-hint">
@@ -195,18 +206,29 @@ function TaskCard({
                 )}
             </div>
 
-            {/* Hover actions — top-right, like Time Entry's WorkLogCard */}
-            <div className="task-card-actions">
-                <Tooltip title="View details">
-                    <button
-                        type="button"
-                        className="task-card-action-btn"
-                        onClick={handleDetailClick}
-                    >
-                        <InfoCircleOutlined />
-                    </button>
-                </Tooltip>
-            </div>
+            {/* Hover actions — top-right, mirrors WorkLogCard exactly */}
+            {canEditCore && (
+                <div className="task-card-actions">
+                    <Tooltip title="Edit">
+                        <button
+                            type="button"
+                            className="task-card-action-btn"
+                            onClick={handleEditClick}
+                        >
+                            <EditOutlined />
+                        </button>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                        <button
+                            type="button"
+                            className="task-card-action-btn delete"
+                            onClick={handleDeleteClick}
+                        >
+                            <DeleteOutlined />
+                        </button>
+                    </Tooltip>
+                </div>
+            )}
 
             {isSelected && (
                 <div

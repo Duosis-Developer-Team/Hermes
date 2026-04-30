@@ -16,6 +16,7 @@ import {
     Button,
     Card,
     Empty,
+    Modal,
     Select,
     Space,
     Spin,
@@ -27,6 +28,8 @@ import {
     RightOutlined,
     PlusOutlined,
     FilterOutlined,
+    ExclamationCircleOutlined,
+    DeleteOutlined,
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -43,7 +46,6 @@ import { useAuthStore } from '../stores/authStore'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
 import TasksWeeklyView from '../components/tasks/TasksWeeklyView'
 import CreateTaskModal from '../components/modals/CreateTaskModal'
-import TaskDetailModal from '../components/modals/TaskDetailModal'
 
 dayjs.extend(isoWeek)
 
@@ -80,8 +82,8 @@ function TasksPage() {
 
     const [createOpen, setCreateOpen] = useState(false)
     const [editingTask, setEditingTask] = useState(null)
-    const [detailTask, setDetailTask] = useState(null)
     const [initialDate, setInitialDate] = useState(null)
+    const [deletingTask, setDeletingTask] = useState(null)
 
     // ── Copy/paste state — Time Entry parity ──────────────────────────────
     const [selectedTaskId, setSelectedTaskId] = useState(null)
@@ -180,36 +182,37 @@ function TasksPage() {
 
     const updateMutation = useMutation({
         mutationFn: ({ id, data }) => taskService.update(id, data),
-        onSuccess: (updated) => {
+        onSuccess: () => {
             message.success('Task updated.')
             queryClient.invalidateQueries({ queryKey: ['tasks'] })
             setCreateOpen(false)
             setEditingTask(null)
-            setDetailTask(updated)
         },
         onError: (err) => {
             message.error(err?.response?.data?.detail || 'Failed to update task.')
         },
     })
 
-    const noteMutation = useMutation({
-        mutationFn: ({ id, note }) => taskService.updateNote(id, note),
-        onSuccess: (updated) => {
-            queryClient.invalidateQueries({ queryKey: ['tasks'] })
-            setDetailTask(updated)
-        },
-    })
-
     const completionMutation = useMutation({
         mutationFn: ({ id, completed }) => taskService.setCompleted(id, completed),
-        onSuccess: (updated) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] })
-            if (detailTask && detailTask.id === updated.id) {
-                setDetailTask(updated)
-            }
         },
         onError: (err) => {
             message.error(err?.response?.data?.detail || 'Failed to update status.')
+        },
+    })
+
+    const deleteMutation = useMutation({
+        mutationFn: (taskId) => taskService.delete(taskId),
+        onSuccess: () => {
+            message.success('Task deleted.')
+            queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            setDeletingTask(null)
+        },
+        onError: (err) => {
+            message.error(err?.response?.data?.detail || 'Failed to delete task.')
+            setDeletingTask(null)
         },
     })
 
@@ -247,10 +250,6 @@ function TasksPage() {
 
     const handleToggleCompletion = (task, nextCompleted) => {
         completionMutation.mutate({ id: task.id, completed: nextCompleted })
-    }
-
-    const handleSaveNote = async (task, note) => {
-        await noteMutation.mutateAsync({ id: task.id, note })
     }
 
     const handleClearFilters = () => {
@@ -522,7 +521,8 @@ function TasksPage() {
                     userMap={userMap}
                     currentUserId={user?.id}
                     isAdmin={isTaskAdmin}
-                    onOpenDetail={(t) => setDetailTask(t)}
+                    onEditTask={handleEdit}
+                    onDeleteTask={(t) => setDeletingTask(t)}
                     onToggleCompletion={handleToggleCompletion}
                     onCreate={handleCreate}
                     canCreate={canCreateTask}
@@ -536,7 +536,7 @@ function TasksPage() {
                 />
             )}
 
-            {/* Modals */}
+            {/* Create / Edit modal — same Hermes Time Entry pattern */}
             <CreateTaskModal
                 open={createOpen}
                 onClose={() => {
@@ -551,22 +551,103 @@ function TasksPage() {
                 loading={createMutation.isPending || updateMutation.isPending}
             />
 
-            <TaskDetailModal
-                open={!!detailTask}
-                task={detailTask}
-                userMap={userMap}
-                currentUserId={user?.id}
-                isAdmin={isTaskAdmin}
-                onClose={() => setDetailTask(null)}
-                onEdit={(t) => {
-                    setDetailTask(null)
-                    handleEdit(t)
+            {/* Delete confirmation — mirrors Time Entry's delete modal */}
+            <Modal
+                open={!!deletingTask}
+                onCancel={() => setDeletingTask(null)}
+                footer={null}
+                width={420}
+                centered
+                closable={false}
+                styles={{
+                    content: {
+                        background: '#1e1e1e',
+                        border: '1px solid #303030',
+                        borderRadius: 12,
+                        padding: '28px 28px 24px',
+                    },
                 }}
-                onSaveNote={handleSaveNote}
-                onToggleComplete={handleToggleCompletion}
-                noteSaving={noteMutation.isPending}
-                completionSaving={completionMutation.isPending}
-            />
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div
+                            style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 10,
+                                background: 'rgba(239,68,68,0.15)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                            }}
+                        >
+                            <ExclamationCircleOutlined
+                                style={{ color: '#ef4444', fontSize: 20 }}
+                            />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>
+                                Delete Task
+                            </div>
+                            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                                The task will be archived and removed from the calendar.
+                            </div>
+                        </div>
+                    </div>
+
+                    {deletingTask && (
+                        <div
+                            style={{
+                                background: '#2a2a2a',
+                                border: '1px solid #383838',
+                                borderRadius: 8,
+                                padding: '10px 14px',
+                            }}
+                        >
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e0e0' }}>
+                                {deletingTask.title}
+                            </div>
+                            <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>
+                                {deletingTask.customer_name || '—'}
+                                {deletingTask.project_name
+                                    ? ` · ${deletingTask.project_name}`
+                                    : ''}
+                            </div>
+                        </div>
+                    )}
+
+                    <p style={{ margin: 0, color: '#aaa', fontSize: 14, lineHeight: 1.6 }}>
+                        Are you sure you want to delete this task?
+                    </p>
+
+                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+                        <Button
+                            onClick={() => setDeletingTask(null)}
+                            style={{
+                                background: 'transparent',
+                                borderColor: '#444',
+                                color: '#ccc',
+                                borderRadius: 8,
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="primary"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() =>
+                                deletingTask && deleteMutation.mutate(deletingTask.id)
+                            }
+                            loading={deleteMutation.isPending}
+                            style={{ borderRadius: 8 }}
+                        >
+                            Delete
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     )
 }

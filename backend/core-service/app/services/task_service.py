@@ -914,3 +914,25 @@ def update_task_note(
     db.commit()
     db.refresh(task)
     return task
+
+
+def delete_task(db: Session, user: CurrentUser, task_id: UUID) -> None:
+    """Soft delete via archived_at — task disappears from default list but
+    the row is preserved (no destructive deletion).
+
+    Permission: admin OR the task's assigner. Assignees cannot delete.
+    """
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found.",
+        )
+    if not _user_can_edit_core(user, task):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to delete this task.",
+        )
+    if task.archived_at is None:
+        task.archived_at = datetime.now(timezone.utc)
+        db.commit()

@@ -41,7 +41,8 @@ function TaskDayColumn({
     currentUserId,
     isAdmin,
     userMap,
-    onOpenDetail,
+    onEditTask,
+    onDeleteTask,
     onSelectTask,
     onSelectDay,
     onToggleCompletion,
@@ -117,8 +118,10 @@ function TaskDayColumn({
                                     task={t}
                                     userMap={userMap}
                                     currentUserId={currentUserId}
-                                    onOpenDetail={onOpenDetail}
+                                    isAdmin={isAdmin}
                                     onSelect={onSelectTask}
+                                    onEdit={onEditTask}
+                                    onDelete={onDeleteTask}
                                     onToggleCompletion={onToggleCompletion}
                                     canToggleCompletion={canToggle}
                                     completionLoading={completionLoading}
@@ -132,7 +135,7 @@ function TaskDayColumn({
                                 task={t}
                                 userMap={userMap}
                                 currentUserId={currentUserId}
-                                onClick={onOpenDetail}
+                                onClick={onEditTask}
                             />
                         ))}
 
@@ -155,7 +158,8 @@ function TasksWeeklyView({
     userMap = {},
     currentUserId,
     isAdmin,
-    onOpenDetail,
+    onEditTask,
+    onDeleteTask,
     onToggleCompletion,
     onCreate,
     canCreate,
@@ -248,7 +252,8 @@ function TasksWeeklyView({
                             currentUserId={currentUserId}
                             isAdmin={isAdmin}
                             userMap={userMap}
-                            onOpenDetail={onOpenDetail}
+                            onEditTask={onEditTask}
+                            onDeleteTask={onDeleteTask}
                             onSelectTask={onSelectTask}
                             onSelectDay={onSelectDay}
                             onToggleCompletion={onToggleCompletion}

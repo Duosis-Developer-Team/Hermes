@@ -911,6 +911,12 @@ export const taskService = {
         })
         return response.data
     },
+
+    /** Soft delete — sets archived_at; row is preserved. */
+    delete: async (taskId) => {
+        const response = await coreApi.delete(`/api/v1/core/tasks/${taskId}`)
+        return response.data
+    },
 }
 
 export default {

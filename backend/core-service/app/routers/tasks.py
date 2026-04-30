@@ -254,3 +254,15 @@ async def complete_task(
         db, current_user, task_id, payload.completed
     )
     return _serialize_task(task)
+
+
+@router.delete("/{task_id}", status_code=200)
+async def delete_task(
+    task_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Soft delete — sets archived_at, the row is preserved."""
+    task_service.require_task_access(db, current_user)
+    task_service.delete_task(db, current_user, task_id)
+    return {"deleted": True}
