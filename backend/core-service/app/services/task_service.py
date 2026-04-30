@@ -1274,6 +1274,32 @@ def update_task_status(
     return task
 
 
+def reject_task(
+    db: Session,
+    user: CurrentUser,
+    task_id: UUID,
+) -> Task:
+    """Mark a task as rejected. Same permission gate as completion —
+    assignee, assigner, or admin. Clears any prior completion fields
+    so the row stays consistent with chk_tasks_completion_consistency.
+    """
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found.",
+        )
+    if not _user_can_update_status(user, task):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to reject this task.",
+        )
+    _apply_status_change(task, user, "rejected")
+    db.commit()
+    db.refresh(task)
+    return task
+
+
 def update_task_completion(
     db: Session,
     user: CurrentUser,

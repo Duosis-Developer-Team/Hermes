@@ -266,7 +266,7 @@ class Task(Base):
             name="chk_tasks_priority",
         ),
         CheckConstraint(
-            "status IN ('pending', 'in_progress', 'completed', 'cancelled')",
+            "status IN ('pending', 'in_progress', 'completed', 'cancelled', 'rejected')",
             name="chk_tasks_status",
         ),
         CheckConstraint(

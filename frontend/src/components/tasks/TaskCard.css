@@ -82,6 +82,7 @@
 .task-card-status-in_progress { background: #1e3a8a; color: #bfdbfe; }
 .task-card-status-completed   { background: #166534; color: #bbf7d0; }
 .task-card-status-cancelled   { background: #6b21a8; color: #e9d5ff; }
+.task-card-status-rejected    { background: #b91c1c; color: #fee2e2; }
 
 .task-card-due-hint {
     margin-top: 6px;

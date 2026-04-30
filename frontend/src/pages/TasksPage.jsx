@@ -50,7 +50,7 @@ import { useTaskPermissions } from '../hooks/useTaskPermissions'
 import TasksWeeklyView from '../components/tasks/TasksWeeklyView'
 import TasksListView from '../components/tasks/TasksListView'
 import CreateTaskModal from '../components/modals/CreateTaskModal'
-import TaskNoteModal from '../components/modals/TaskNoteModal'
+import TaskReviewModal from '../components/modals/TaskReviewModal'
 import LogTimeModal from '../components/modals/LogTimeModal'
 import './TasksPage.css'
 
@@ -61,6 +61,7 @@ const STATUS_OPTIONS = [
     { value: 'in_progress', label: 'In Progress' },
     { value: 'completed', label: 'Completed' },
     { value: 'cancelled', label: 'Cancelled' },
+    { value: 'rejected', label: 'Rejected' },
 ]
 
 const PRIORITY_OPTIONS = [
@@ -91,7 +92,7 @@ function TasksPage() {
     const [editingTask, setEditingTask] = useState(null)
     const [initialDate, setInitialDate] = useState(null)
     const [deletingTask, setDeletingTask] = useState(null)
-    const [noteTask, setNoteTask] = useState(null)
+    const [reviewTask, setReviewTask] = useState(null)
     // Task to prefill the Log Time modal with. Set on first completion
     // and on the explicit "Log Time" action; never set on reopen.
     const [logTimeTask, setLogTimeTask] = useState(null)
@@ -306,12 +307,28 @@ function TasksPage() {
         },
     })
 
-    const noteMutation = useMutation({
-        mutationFn: ({ id, note }) => taskService.updateNote(id, note),
+    const rejectMutation = useMutation({
+        mutationFn: (taskId) => taskService.reject(taskId),
+        onSuccess: (updated) => {
+            message.success('Task rejected.')
+            queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            // Refresh the modal so it shows the rejected banner before
+            // the user closes it. Same pattern as the legacy note modal.
+            if (reviewTask && reviewTask.id === updated.id) setReviewTask(updated)
+        },
+        onError: (err) => {
+            message.error(err?.response?.data?.detail || 'Failed to reject task.')
+        },
+    })
+
+    const reopenMutation = useMutation({
+        mutationFn: (taskId) => taskService.updateStatus(taskId, 'pending'),
         onSuccess: (updated) => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] })
-            // If the modal is still showing this task, refresh its data.
-            if (noteTask && noteTask.id === updated.id) setNoteTask(updated)
+            if (reviewTask && reviewTask.id === updated.id) setReviewTask(updated)
+        },
+        onError: (err) => {
+            message.error(err?.response?.data?.detail || 'Failed to reopen task.')
         },
     })
 
@@ -364,7 +381,7 @@ function TasksPage() {
         if (nextCompleted) {
             // Auto-open Log Time only on first transition to completed.
             // Reopen (completed → pending) intentionally does nothing.
-            setNoteTask(null)
+            setReviewTask(null)
             setLogTimeTask(task)
         }
     }
@@ -377,8 +394,23 @@ function TasksPage() {
         await workLogMutation.mutateAsync(data)
     }
 
-    const handleSaveNote = async (task, note) => {
-        await noteMutation.mutateAsync({ id: task.id, note })
+    const handleOpenReview = (task) => {
+        setReviewTask(task)
+    }
+
+    const handleReviewMarkCompleted = async (task) => {
+        // Closes review, flips status, and the existing toggle handler
+        // auto-opens the Log Time modal on success.
+        setReviewTask(null)
+        await handleToggleCompletion(task, true)
+    }
+
+    const handleReviewReject = async (task) => {
+        await rejectMutation.mutateAsync(task.id)
+    }
+
+    const handleReviewReopen = async (task) => {
+        await reopenMutation.mutateAsync(task.id)
     }
 
     const handleClearFilters = () => {
@@ -786,7 +818,7 @@ function TasksPage() {
                     isAdmin={isTaskAdmin}
                     onEditTask={handleEdit}
                     onDeleteTask={(t) => setDeletingTask(t)}
-                    onOpenNote={(t) => setNoteTask(t)}
+                    onOpenReview={handleOpenReview}
                     onToggleCompletion={handleToggleCompletion}
                     completionLoading={completionMutation.isPending}
                     onOpenLogTime={handleOpenLogTime}
@@ -803,7 +835,7 @@ function TasksPage() {
                     groupByAssignee={viewScope === 'assigned'}
                     onEditTask={handleEdit}
                     onDeleteTask={(t) => setDeletingTask(t)}
-                    onOpenNote={(t) => setNoteTask(t)}
+                    onOpenReview={handleOpenReview}
                     onToggleCompletion={handleToggleCompletion}
                     onOpenLogTime={handleOpenLogTime}
                     onCreate={handleCreate}
@@ -839,27 +871,29 @@ function TasksPage() {
                 }
             />
 
-            {/* Note modal — assignee/admin can edit, assigner read-only.
-                Completion toggle is wider: assignee, assigner, or admin. */}
-            <TaskNoteModal
-                open={!!noteTask}
-                task={noteTask}
-                onClose={() => setNoteTask(null)}
-                onSave={handleSaveNote}
-                saving={noteMutation.isPending}
-                canEdit={
-                    isTaskAdmin ||
-                    (noteTask && noteTask.assignee_user_id === user?.id)
-                }
-                canToggleCompletion={
-                    !!noteTask &&
-                    (isTaskAdmin ||
-                        noteTask.assignee_user_id === user?.id ||
-                        noteTask.assigner_user_id === user?.id)
-                }
-                onToggleCompletion={handleToggleCompletion}
-                completionLoading={completionMutation.isPending}
+            {/* Review modal — read-only details + decision actions.
+                Same canAct gate the backend enforces (admin, assignee,
+                assigner). Marking completed auto-opens the Log Time
+                flow via handleToggleCompletion. */}
+            <TaskReviewModal
+                open={!!reviewTask}
+                task={reviewTask}
                 userMap={userMap}
+                onClose={() => setReviewTask(null)}
+                canAct={
+                    !!reviewTask &&
+                    (isTaskAdmin ||
+                        reviewTask.assignee_user_id === user?.id ||
+                        reviewTask.assigner_user_id === user?.id)
+                }
+                onMarkCompleted={handleReviewMarkCompleted}
+                onReject={handleReviewReject}
+                onReopen={handleReviewReopen}
+                actionLoading={
+                    rejectMutation.isPending ||
+                    reopenMutation.isPending ||
+                    completionMutation.isPending
+                }
             />
 
             {/* Delete confirmation — mirrors Time Entry's delete modal */}

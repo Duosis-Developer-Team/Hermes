@@ -945,14 +945,6 @@ export const taskService = {
         return response.data
     },
 
-    /** Update assignee note (assignee only). */
-    updateNote: async (taskId, assigneeNote) => {
-        const response = await coreApi.patch(`/api/v1/core/tasks/${taskId}/note`, {
-            assignee_note: assigneeNote,
-        })
-        return response.data
-    },
-
     /** Update task status (assignee/assigner/admin). */
     updateStatus: async (taskId, status) => {
         const response = await coreApi.patch(`/api/v1/core/tasks/${taskId}/status`, {
@@ -966,6 +958,12 @@ export const taskService = {
         const response = await coreApi.patch(`/api/v1/core/tasks/${taskId}/complete`, {
             completed,
         })
+        return response.data
+    },
+
+    /** Reject a task (assignee/assigner/admin). */
+    reject: async (taskId) => {
+        const response = await coreApi.patch(`/api/v1/core/tasks/${taskId}/reject`)
         return response.data
     },
 

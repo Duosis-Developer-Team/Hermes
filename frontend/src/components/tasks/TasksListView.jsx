@@ -21,8 +21,8 @@ import { Button, Checkbox, Space, Table, Tag, Tooltip } from 'antd'
 import {
     DeleteOutlined,
     EditOutlined,
+    EyeOutlined,
     FieldTimeOutlined,
-    FileTextOutlined,
 } from '@ant-design/icons'
 
 const PRIORITY_RANK = { low: 0, medium: 1, high: 2, urgent: 3 }
@@ -32,6 +32,7 @@ const STATUS_RANK = {
     in_progress: 1,
     completed: 2,
     cancelled: 3,
+    rejected: 4,
 }
 
 const PRIORITY_COLOR = {
@@ -46,6 +47,7 @@ const STATUS_COLOR = {
     in_progress: 'blue',
     completed: 'green',
     cancelled: 'magenta',
+    rejected: 'red',
 }
 
 function userLabel(id, userMap) {
@@ -61,7 +63,7 @@ function TasksListView({
     isAdmin = false,
     onEditTask,
     onDeleteTask,
-    onOpenNote,
+    onOpenReview,
     onToggleCompletion,
     completionLoading = false,
     onOpenLogTime,
@@ -85,6 +87,7 @@ function TasksListView({
         { text: 'In Progress', value: 'in_progress' },
         { text: 'Completed', value: 'completed' },
         { text: 'Cancelled', value: 'cancelled' },
+        { text: 'Rejected', value: 'rejected' },
     ]
 
     const columns = [
@@ -207,17 +210,11 @@ function TasksListView({
                                 />
                             </Tooltip>
                         )}
-                        <Tooltip
-                            title={
-                                record.assignee_user_id === currentUserId
-                                    ? 'Edit Note'
-                                    : 'View Note'
-                            }
-                        >
+                        <Tooltip title="Review Task">
                             <Button
                                 size="small"
-                                icon={<FileTextOutlined />}
-                                onClick={() => onOpenNote?.(record)}
+                                icon={<EyeOutlined />}
+                                onClick={() => onOpenReview?.(record)}
                             />
                         </Tooltip>
                         {canEdit && (

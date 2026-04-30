@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 PriorityLiteral = Literal["low", "medium", "high", "urgent"]
-StatusLiteral = Literal["pending", "in_progress", "completed", "cancelled"]
+StatusLiteral = Literal["pending", "in_progress", "completed", "cancelled", "rejected"]
 
 
 # =============================================================================

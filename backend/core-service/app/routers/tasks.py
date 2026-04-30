@@ -366,6 +366,18 @@ async def complete_task(
     return _serialize_task(task)
 
 
+@router.patch("/{task_id}/reject", response_model=TaskResponse)
+async def reject_task(
+    task_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Mark a task as rejected (assignee/assigner/admin)."""
+    task_service.require_task_access(db, current_user)
+    task = task_service.reject_task(db, current_user, task_id)
+    return _serialize_task(task)
+
+
 @router.delete("/{task_id}", status_code=200)
 async def delete_task(
     task_id: UUID,

@@ -44,7 +44,7 @@ function renderTasksGroupedByAssignee({
     onSelectTask,
     onEditTask,
     onDeleteTask,
-    onOpenNote,
+    onOpenReview,
     onToggleCompletion,
     onOpenLogTime,
     completionLoading,
@@ -84,7 +84,7 @@ function renderTasksGroupedByAssignee({
                             onSelect={onSelectTask}
                             onEdit={onEditTask}
                             onDelete={onDeleteTask}
-                            onOpenNote={onOpenNote}
+                            onOpenReview={onOpenReview}
                             onOpenLogTime={onOpenLogTime}
                             onToggleCompletion={onToggleCompletion}
                             canToggleCompletion={canToggle}
@@ -114,7 +114,7 @@ function TaskDayColumn({
     groupByAssignee = false,
     onEditTask,
     onDeleteTask,
-    onOpenNote,
+    onOpenReview,
     onSelectTask,
     onSelectDay,
     onToggleCompletion,
@@ -190,7 +190,7 @@ function TaskDayColumn({
                                   onSelectTask,
                                   onEditTask,
                                   onDeleteTask,
-                                  onOpenNote,
+                                  onOpenReview,
                                   onToggleCompletion,
                                   onOpenLogTime,
                                   completionLoading,
@@ -210,7 +210,7 @@ function TaskDayColumn({
                                           onSelect={onSelectTask}
                                           onEdit={onEditTask}
                                           onDelete={onDeleteTask}
-                                          onOpenNote={onOpenNote}
+                                          onOpenReview={onOpenReview}
                                           onOpenLogTime={onOpenLogTime}
                                           onToggleCompletion={onToggleCompletion}
                                           canToggleCompletion={canToggle}
@@ -251,7 +251,7 @@ function TasksWeeklyView({
     groupByAssignee = false,
     onEditTask,
     onDeleteTask,
-    onOpenNote,
+    onOpenReview,
     onToggleCompletion,
     onOpenLogTime,
     onCreate,
@@ -348,7 +348,7 @@ function TasksWeeklyView({
                             groupByAssignee={groupByAssignee}
                             onEditTask={onEditTask}
                             onDeleteTask={onDeleteTask}
-                            onOpenNote={onOpenNote}
+                            onOpenReview={onOpenReview}
                             onSelectTask={onSelectTask}
                             onSelectDay={onSelectDay}
                             onToggleCompletion={onToggleCompletion}

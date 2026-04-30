@@ -24,8 +24,8 @@ import { Checkbox, Tooltip } from 'antd'
 import {
     DeleteOutlined,
     EditOutlined,
+    EyeOutlined,
     FieldTimeOutlined,
-    FileTextOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import './TaskCard.css'
@@ -81,8 +81,9 @@ function TaskCard({
     onEdit,
     /** Hover Delete icon — parent shows the confirm modal. */
     onDelete,
-    /** Hover Note icon — opens the note modal (read or edit). */
-    onOpenNote,
+    /** Hover Review icon — opens the read-only Review Task modal that
+        also surfaces the Mark as Completed / Reject Task actions. */
+    onOpenReview,
     /** Hover Log Time icon (completed only) and body click on completed.
         Parent opens the prefilled Log Time modal. */
     onOpenLogTime,
@@ -129,9 +130,9 @@ function TaskCard({
         onDelete?.(task)
     }
 
-    const handleNoteClick = (event) => {
+    const handleReviewClick = (event) => {
         event.stopPropagation()
-        onOpenNote?.(task)
+        onOpenReview?.(task)
     }
 
     const subProjectSegment = task.sub_project_name
@@ -232,13 +233,13 @@ function TaskCard({
                         </button>
                     </Tooltip>
                 )}
-                <Tooltip title={assigneeIsMe ? 'Edit Note' : 'View Note'}>
+                <Tooltip title="Review Task">
                     <button
                         type="button"
                         className="task-card-action-btn"
-                        onClick={handleNoteClick}
+                        onClick={handleReviewClick}
                     >
-                        <FileTextOutlined />
+                        <EyeOutlined />
                     </button>
                 </Tooltip>
                 {canEditCore && (

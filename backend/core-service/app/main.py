@@ -69,6 +69,39 @@ def _migrate_billable_hours() -> None:
         db.close()
 
 
+def _migrate_tasks_status_rejected() -> None:
+    """
+    Idempotent additive migration: extend the tasks.status check
+    constraint to allow the new value 'rejected'. The existing
+    constraint only permits ('pending', 'in_progress', 'completed',
+    'cancelled'), so attempting to write status='rejected' would
+    otherwise be blocked at insert/update time.
+
+    Safe to re-run on every startup: we DROP IF EXISTS the old
+    constraint and ADD the new one with the same name. No row is
+    touched and no data is deleted.
+    """
+    from sqlalchemy import text
+
+    db = SessionLocal()
+    try:
+        db.execute(text(
+            "ALTER TABLE tasks DROP CONSTRAINT IF EXISTS chk_tasks_status"
+        ))
+        db.execute(text(
+            "ALTER TABLE tasks ADD CONSTRAINT chk_tasks_status "
+            "CHECK (status IN ("
+            "'pending', 'in_progress', 'completed', 'cancelled', 'rejected'"
+            "))"
+        ))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️  tasks.status 'rejected' migration hatası: {e}")
+    finally:
+        db.close()
+
+
 def _migrate_tasks_assignment_batch_id() -> None:
     """
     Idempotent additive migration for migration 007:
@@ -104,6 +137,7 @@ async def lifespan(app: FastAPI):
     print("✅ Veritabanı tabloları hazır")
     _migrate_billable_hours()
     _migrate_tasks_assignment_batch_id()
+    _migrate_tasks_status_rejected()
     yield
     print(f"👋 {settings.SERVICE_NAME} kapatılıyor...")
 
