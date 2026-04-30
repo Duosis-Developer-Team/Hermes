@@ -19,6 +19,7 @@ from .plan_time import PlanTime, PlanTimeAssignment
 from .task import (
     TaskUserPermission,
     TaskAssignmentRelation,
+    TaskAssignmentGroupRelation,
     TaskSubProject,
     Task,
 )
@@ -51,6 +52,7 @@ __all__ = [
     "PlanTimeAssignment",
     "TaskUserPermission",
     "TaskAssignmentRelation",
+    "TaskAssignmentGroupRelation",
     "TaskSubProject",
     "Task",
     "UserGroup",

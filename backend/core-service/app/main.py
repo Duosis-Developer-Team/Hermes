@@ -69,6 +69,32 @@ def _migrate_billable_hours() -> None:
         db.close()
 
 
+def _migrate_tasks_assignment_batch_id() -> None:
+    """
+    Idempotent additive migration for migration 007:
+    adds tasks.assignment_batch_id (nullable UUID) + index. SQLAlchemy
+    create_all() never modifies existing tables, so we apply the ALTER
+    explicitly. Safe to re-run on every startup.
+    """
+    from sqlalchemy import text
+
+    db = SessionLocal()
+    try:
+        db.execute(text(
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assignment_batch_id UUID"
+        ))
+        db.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_tasks_assignment_batch_id "
+            "ON tasks(assignment_batch_id)"
+        ))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️  tasks.assignment_batch_id migration hatası: {e}")
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Uygulama yaşam döngüsü yönetimi."""
@@ -77,6 +103,7 @@ async def lifespan(app: FastAPI):
     init_db()
     print("✅ Veritabanı tabloları hazır")
     _migrate_billable_hours()
+    _migrate_tasks_assignment_batch_id()
     yield
     print(f"👋 {settings.SERVICE_NAME} kapatılıyor...")
 

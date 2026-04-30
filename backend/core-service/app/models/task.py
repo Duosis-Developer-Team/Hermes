@@ -98,6 +98,46 @@ class TaskAssignmentRelation(Base):
     )
 
 
+class TaskAssignmentGroupRelation(Base):
+    """Assigner -> user_group mapping.
+
+    When such a relation exists, the assigner can target the group as a
+    single assignee in Create Task, OR target any active member of the
+    group individually. Effective per-user assignability is computed in
+    task_service.can_assign_to.
+    """
+
+    __tablename__ = "task_assignment_group_relations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    assigner_user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    assignee_group_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user_groups.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "assigner_user_id",
+            "assignee_group_id",
+            name="uq_task_assignment_group_relation",
+        ),
+    )
+
+
 # =============================================================================
 # task_sub_projects
 # =============================================================================
@@ -205,6 +245,12 @@ class Task(Base):
         nullable=False,
     )
     archived_at = Column(DateTime(timezone=True), nullable=True, index=True)
+
+    # Group-assignment tracking — populated when a single Create-Task
+    # action fanned the same task out to every active member of a user
+    # group. Lets the assigner see all per-member rows as one batch in
+    # the UI without changing the per-row task semantics.
+    assignment_batch_id = Column(UUID(as_uuid=True), nullable=True, index=True)
 
     customer = relationship("Customer")
     project = relationship("Project")

@@ -40,6 +40,9 @@ class TaskPermissionMeResponse(BaseModel):
     is_admin: bool
     # IDs only — frontend resolves names via auth-service /users/lookup.
     assignable_user_ids: List[UUID] = Field(default_factory=list)
+    # Group-assignee target IDs (admins → all active groups; non-admin
+    # assigners → groups with a direct task_assignment_group_relation).
+    assignable_group_ids: List[UUID] = Field(default_factory=list)
 
 
 # =============================================================================
@@ -62,6 +65,23 @@ class TaskAssignmentRelationResponse(BaseModel):
     id: UUID
     assigner_user_id: UUID
     assignee_user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+# =============================================================================
+# Assignment Group Relations (assigner -> group)
+# =============================================================================
+
+class TaskAssignmentGroupRelationCreate(BaseModel):
+    assigner_user_id: UUID
+    assignee_group_id: UUID
+
+
+class TaskAssignmentGroupRelationResponse(BaseModel):
+    id: UUID
+    assigner_user_id: UUID
+    assignee_group_id: UUID
     created_at: datetime
     updated_at: datetime
 
@@ -221,3 +241,35 @@ class TaskResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     archived_at: Optional[datetime] = None
+    assignment_batch_id: Optional[UUID] = None
+
+
+# =============================================================================
+# Group Task Creation (fan out to active group members)
+# =============================================================================
+
+class TaskCreateForGroup(BaseModel):
+    customer_id: UUID
+    project_id: UUID
+    sub_project_id: Optional[UUID] = None
+    assignee_group_id: UUID
+    title: str = Field(..., min_length=1, max_length=255)
+    description: str = Field(..., min_length=1)
+    scheduled_date: date
+    due_date: Optional[date] = None
+    estimated_duration_minutes: Optional[int] = Field(None, gt=0)
+    priority: PriorityLiteral = "medium"
+
+    @field_validator("description")
+    @classmethod
+    def _description_not_blank(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Description is required.")
+        return v
+
+
+class TaskGroupCreateResponse(BaseModel):
+    """Response for POST /tasks/group — one batch_id, N created tasks."""
+    assignment_batch_id: UUID
+    assignee_group_id: UUID
+    tasks: List[TaskResponse]

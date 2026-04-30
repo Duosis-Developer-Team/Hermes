@@ -28,6 +28,8 @@ from ..models.task import Task, TaskSubProject
 from ..schemas.task import (
     TaskCompleteUpdate,
     TaskCreate,
+    TaskCreateForGroup,
+    TaskGroupCreateResponse,
     TaskNoteUpdate,
     TaskPermissionMeResponse,
     TaskResponse,
@@ -87,6 +89,7 @@ def _serialize_task(task: Task) -> TaskResponse:
         created_at=task.created_at,
         updated_at=task.updated_at,
         archived_at=task.archived_at,
+        assignment_batch_id=task.assignment_batch_id,
     )
 
 
@@ -108,17 +111,22 @@ async def get_my_task_permissions(
     can_assign = task_service.can_assign_tasks(db, current_user)
 
     assignable_user_ids: List[UUID] = []
+    assignable_group_ids: List[UUID] = []
     if can_assign and not is_admin:
-        # Admins can assign to anyone — frontend fetches all active users
-        # via auth-service. For non-admins we restrict to the explicit
-        # assigner -> assignee mapping.
+        # Admins can target anyone — frontend fetches all active users
+        # / groups directly. Non-admins are scoped to their explicit
+        # mappings.
         assignable_user_ids = task_service.get_assignable_user_ids(db, current_user)
+        assignable_group_ids = task_service.get_assignable_group_ids(
+            db, current_user
+        )
 
     return TaskPermissionMeResponse(
         can_access_tasks=can_access,
         can_assign_tasks=can_assign,
         is_admin=is_admin,
         assignable_user_ids=assignable_user_ids,
+        assignable_group_ids=assignable_group_ids,
     )
 
 
@@ -193,6 +201,43 @@ async def create_task(
     task_service.require_task_assigner(db, current_user)
     task = task_service.create_task(db, current_user, payload)
     return _serialize_task(task)
+
+
+@router.post(
+    "/group",
+    response_model=TaskGroupCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_tasks_for_group(
+    payload: TaskCreateForGroup,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Fan a single create-task action out to every active member of a
+    group. One Task row per member; all rows share the same
+    assignment_batch_id so the assigner can track them as one batch.
+    """
+    task_service.require_task_access(db, current_user)
+    task_service.require_task_assigner(db, current_user)
+    batch_id, tasks = task_service.create_tasks_for_group(
+        db,
+        current_user,
+        customer_id=payload.customer_id,
+        project_id=payload.project_id,
+        sub_project_id=payload.sub_project_id,
+        assignee_group_id=payload.assignee_group_id,
+        title=payload.title,
+        description=payload.description,
+        scheduled_date=payload.scheduled_date,
+        due_date=payload.due_date,
+        estimated_duration_minutes=payload.estimated_duration_minutes,
+        priority=payload.priority,
+    )
+    return TaskGroupCreateResponse(
+        assignment_batch_id=batch_id,
+        assignee_group_id=payload.assignee_group_id,
+        tasks=[_serialize_task(t) for t in tasks],
+    )
 
 
 @router.get("/{task_id}", response_model=TaskResponse)

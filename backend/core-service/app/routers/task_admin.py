@@ -23,6 +23,8 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..schemas.task import (
+    TaskAssignmentGroupRelationCreate,
+    TaskAssignmentGroupRelationResponse,
     TaskAssignmentRelationCreate,
     TaskAssignmentRelationResponse,
     TaskGroupMemberOverrideResponse,
@@ -155,6 +157,66 @@ async def delete_assignment_relation(
     db: Session = Depends(get_db),
 ):
     task_service.delete_assignment_relation(db, relation_id)
+    return {"deleted": True}
+
+
+# =============================================================================
+# Assignment Group Relations (assigner -> group)
+# =============================================================================
+
+@router.get(
+    "/task-assignment-group-relations",
+    response_model=List[TaskAssignmentGroupRelationResponse],
+)
+async def list_assignment_group_relations(
+    admin: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    relations = task_service.list_assignment_group_relations(db)
+    return [
+        TaskAssignmentGroupRelationResponse(
+            id=r.id,
+            assigner_user_id=r.assigner_user_id,
+            assignee_group_id=r.assignee_group_id,
+            created_at=r.created_at,
+            updated_at=r.updated_at,
+        )
+        for r in relations
+    ]
+
+
+@router.post(
+    "/task-assignment-group-relations",
+    response_model=TaskAssignmentGroupRelationResponse,
+    status_code=201,
+)
+async def create_assignment_group_relation(
+    data: TaskAssignmentGroupRelationCreate,
+    admin: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    relation = task_service.create_assignment_group_relation(
+        db, data.assigner_user_id, data.assignee_group_id
+    )
+    return TaskAssignmentGroupRelationResponse(
+        id=relation.id,
+        assigner_user_id=relation.assigner_user_id,
+        assignee_group_id=relation.assignee_group_id,
+        created_at=relation.created_at,
+        updated_at=relation.updated_at,
+    )
+
+
+@router.delete(
+    "/task-assignment-group-relations/{relation_id}",
+    status_code=200,
+)
+async def delete_assignment_group_relation(
+    relation_id: UUID,
+    admin: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    task_service.delete_assignment_group_relation(db, relation_id)
     return {"deleted": True}
 
 

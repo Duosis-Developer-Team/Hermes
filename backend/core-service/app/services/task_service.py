@@ -22,6 +22,7 @@ from ..models.customer import Customer
 from ..models.project import Project
 from ..models.task import (
     Task,
+    TaskAssignmentGroupRelation,
     TaskAssignmentRelation,
     TaskSubProject,
     TaskUserPermission,
@@ -153,7 +154,13 @@ def can_assign_tasks(db: Session, user: CurrentUser) -> bool:
 
 
 def get_assignable_user_ids(db: Session, user: CurrentUser) -> List[UUID]:
-    """Return assignee IDs allowed for the given user (admin handled by caller)."""
+    """Return assignee IDs reachable directly via task_assignment_relations.
+
+    Group-based reach is handled separately in get_assignable_group_ids and
+    in can_assign_to — this helper purposely stays scoped to direct
+    user→user mappings so callers (e.g. /permissions/me) can present the
+    two columns independently.
+    """
     rows = (
         db.query(TaskAssignmentRelation.assignee_user_id)
         .filter(TaskAssignmentRelation.assigner_user_id == UUID(user.id))
@@ -162,12 +169,104 @@ def get_assignable_user_ids(db: Session, user: CurrentUser) -> List[UUID]:
     return [r[0] for r in rows]
 
 
+def get_assignable_group_ids(db: Session, user: CurrentUser) -> List[UUID]:
+    """Return group IDs the assigner may target via Create-Task-for-Group."""
+    rows = (
+        db.query(TaskAssignmentGroupRelation.assignee_group_id)
+        .filter(TaskAssignmentGroupRelation.assigner_user_id == UUID(user.id))
+        .all()
+    )
+    return [r[0] for r in rows]
+
+
+def get_active_group_member_ids(db: Session, group_id: UUID) -> List[UUID]:
+    """Active members of a group whose group is itself active.
+
+    Used both to fan a group-create-task out to per-member rows and to
+    answer the "is target user reachable through any group I'm mapped
+    to?" question in can_assign_to.
+    """
+    rows = (
+        db.query(UserGroupMember.user_id)
+        .join(UserGroup, UserGroup.id == UserGroupMember.group_id)
+        .filter(
+            UserGroupMember.group_id == group_id,
+            UserGroupMember.is_active.is_(True),
+            UserGroup.is_active.is_(True),
+        )
+        .all()
+    )
+    return [r[0] for r in rows]
+
+
+def _is_target_reachable_via_group(
+    db: Session,
+    assigner_user_id: UUID,
+    assignee_user_id: UUID,
+) -> bool:
+    """True if any group mapped to the assigner has the assignee as an
+    active member of an active group.
+    """
+    return (
+        db.query(TaskAssignmentGroupRelation.id)
+        .join(
+            UserGroup,
+            UserGroup.id == TaskAssignmentGroupRelation.assignee_group_id,
+        )
+        .join(UserGroupMember, UserGroupMember.group_id == UserGroup.id)
+        .filter(
+            TaskAssignmentGroupRelation.assigner_user_id == assigner_user_id,
+            UserGroup.is_active.is_(True),
+            UserGroupMember.user_id == assignee_user_id,
+            UserGroupMember.is_active.is_(True),
+        )
+        .first()
+        is not None
+    )
+
+
 def can_assign_to(db: Session, user: CurrentUser, assignee_user_id: UUID) -> bool:
+    """True if `user` can assign tasks to `assignee_user_id`.
+
+    Allowed when:
+      - admin, OR
+      - direct user→user relation exists, OR
+      - any group mapped to the assigner contains the target as an
+        active member.
+    """
     if is_task_admin(user):
         return True
     if not can_assign_tasks(db, user):
         return False
-    return assignee_user_id in get_assignable_user_ids(db, user)
+    user_uuid = UUID(user.id)
+    direct = (
+        db.query(TaskAssignmentRelation.id)
+        .filter(
+            TaskAssignmentRelation.assigner_user_id == user_uuid,
+            TaskAssignmentRelation.assignee_user_id == assignee_user_id,
+        )
+        .first()
+    )
+    if direct is not None:
+        return True
+    return _is_target_reachable_via_group(db, user_uuid, assignee_user_id)
+
+
+def can_assign_to_group(db: Session, user: CurrentUser, group_id: UUID) -> bool:
+    """Admin OR direct group relation."""
+    if is_task_admin(user):
+        return True
+    if not can_assign_tasks(db, user):
+        return False
+    rel = (
+        db.query(TaskAssignmentGroupRelation.id)
+        .filter(
+            TaskAssignmentGroupRelation.assigner_user_id == UUID(user.id),
+            TaskAssignmentGroupRelation.assignee_group_id == group_id,
+        )
+        .first()
+    )
+    return rel is not None
 
 
 def require_task_access(db: Session, user: CurrentUser) -> None:
@@ -333,6 +432,83 @@ def delete_assignment_relation(db: Session, relation_id: UUID) -> None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Assignment mapping not found.",
+        )
+    db.delete(relation)
+    db.commit()
+
+
+# =============================================================================
+# Assignment Group Relations (assigner -> group)
+# =============================================================================
+
+def list_assignment_group_relations(
+    db: Session,
+) -> List[TaskAssignmentGroupRelation]:
+    return (
+        db.query(TaskAssignmentGroupRelation)
+        .order_by(TaskAssignmentGroupRelation.created_at.desc())
+        .all()
+    )
+
+
+def create_assignment_group_relation(
+    db: Session,
+    assigner_user_id: UUID,
+    assignee_group_id: UUID,
+) -> TaskAssignmentGroupRelation:
+    """Idempotent — returns the existing row when the pair already maps."""
+    perm = get_task_permission(db, assigner_user_id)
+    if not perm or not perm.can_assign_tasks:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Selected assigner does not have task assignment permission.",
+        )
+
+    group = (
+        db.query(UserGroup).filter(UserGroup.id == assignee_group_id).first()
+    )
+    if not group:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Group not found.",
+        )
+    if not group.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Group is inactive.",
+        )
+
+    existing = (
+        db.query(TaskAssignmentGroupRelation)
+        .filter(
+            TaskAssignmentGroupRelation.assigner_user_id == assigner_user_id,
+            TaskAssignmentGroupRelation.assignee_group_id == assignee_group_id,
+        )
+        .first()
+    )
+    if existing:
+        return existing
+
+    relation = TaskAssignmentGroupRelation(
+        assigner_user_id=assigner_user_id,
+        assignee_group_id=assignee_group_id,
+    )
+    db.add(relation)
+    db.commit()
+    db.refresh(relation)
+    return relation
+
+
+def delete_assignment_group_relation(db: Session, relation_id: UUID) -> None:
+    relation = (
+        db.query(TaskAssignmentGroupRelation)
+        .filter(TaskAssignmentGroupRelation.id == relation_id)
+        .first()
+    )
+    if not relation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Group assignment mapping not found.",
         )
     db.delete(relation)
     db.commit()
@@ -713,6 +889,130 @@ def create_task(
     db.commit()
     db.refresh(task)
     return task
+
+
+def create_tasks_for_group(
+    db: Session,
+    user: CurrentUser,
+    *,
+    customer_id: UUID,
+    project_id: UUID,
+    sub_project_id: Optional[UUID],
+    assignee_group_id: UUID,
+    title: str,
+    description: str,
+    scheduled_date: date,
+    due_date: Optional[date],
+    estimated_duration_minutes: Optional[int],
+    priority: str,
+) -> tuple[UUID, List[Task]]:
+    """Fan a single Create-Task-for-Group action out into one Task row per
+    active group member. Returns (assignment_batch_id, created_tasks).
+
+    Scope rules:
+      - Admin: always allowed.
+      - Non-admin: must have a direct task_assignment_group_relation to the
+        target group.
+      - Members must have task access (TaskUserPermission.can_access_tasks).
+        Members without it are skipped (warning only). If the eligible set
+        is empty after filtering, the call fails with 400 so nothing is
+        created.
+
+    All rows share the same assignment_batch_id so the assigner can later
+    track the batch as one logical action.
+    """
+    _ensure_customer(db, customer_id)
+    _ensure_project(db, project_id, customer_id)
+    _ensure_sub_project_for_create(
+        db, sub_project_id, customer_id, project_id
+    )
+
+    description = (description or "").strip()
+    if not description:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Description is required.",
+        )
+
+    # Group must exist and be active.
+    group = db.query(UserGroup).filter(UserGroup.id == assignee_group_id).first()
+    if not group:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Group not found.",
+        )
+    if not group.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Group is inactive and cannot receive new tasks.",
+        )
+
+    # Permission: admin or direct group mapping.
+    if not can_assign_to_group(db, user, assignee_group_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to assign tasks to this group.",
+        )
+
+    if due_date and due_date < scheduled_date:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Due date cannot be before the scheduled date.",
+        )
+
+    # Filter to active members WITH task access. Members without access
+    # would receive a row they can't see; safer to skip them cleanly.
+    candidate_ids = get_active_group_member_ids(db, assignee_group_id)
+    if not candidate_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The group has no active members.",
+        )
+    perm_rows = (
+        db.query(TaskUserPermission.user_id, TaskUserPermission.can_access_tasks)
+        .filter(TaskUserPermission.user_id.in_(candidate_ids))
+        .all()
+    )
+    perm_map = {uid: bool(allowed) for uid, allowed in perm_rows}
+    eligible_ids = [uid for uid in candidate_ids if perm_map.get(uid)]
+    if not eligible_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "No active member of this group has task access enabled. "
+                "Grant Can Access Tasks first in Direct User Overrides "
+                "or via group permissions."
+            ),
+        )
+
+    import uuid as _uuid
+
+    batch_id = _uuid.uuid4()
+    assigner_uuid = UUID(user.id)
+    title_clean = title.strip()
+    created: List[Task] = []
+    for assignee_id in eligible_ids:
+        row = Task(
+            customer_id=customer_id,
+            project_id=project_id,
+            sub_project_id=sub_project_id,
+            title=title_clean,
+            description=description,
+            assignee_user_id=assignee_id,
+            assigner_user_id=assigner_uuid,
+            scheduled_date=scheduled_date,
+            due_date=due_date,
+            estimated_duration_minutes=estimated_duration_minutes,
+            priority=priority,
+            status="pending",
+            assignment_batch_id=batch_id,
+        )
+        db.add(row)
+        created.append(row)
+    db.commit()
+    for row in created:
+        db.refresh(row)
+    return batch_id, created
 
 
 def update_task(
