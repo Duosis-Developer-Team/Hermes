@@ -1,15 +1,36 @@
 /**
  * =============================================================================
- * HERMES - Add / Edit User Group Member Modal
+ * HERMES - Add / Edit Group Member Modal
  * =============================================================================
- * Title is the in-group "Member Title" (e.g. Senior Developer). Task-
- * specific permission overrides are managed separately under
- * Task Management → Task Access.
+ * Two distinct modes share one shell:
+ *
+ * Add mode:
+ *   - Multi-select user picker (already-members are filtered out by the
+ *     parent before the modal opens).
+ *   - Optional Default Member Title — applied to every selected user. If
+ *     blank, members are added with no title; admin can refine each one
+ *     later via the row edit button.
+ *   - Submit shape: { user_ids: UUID[], title: string|null }.
+ *
+ * Edit mode:
+ *   - User identity is shown read-only as "Full Name — Email" (never the
+ *     raw UUID). Resolved via the userMap prop the parent already builds
+ *     from auth-service /users/lookup.
+ *   - Only Member Title is editable; submit shape: { title?, clear_title? }.
  * =============================================================================
  */
 
 import { useEffect, useMemo } from 'react'
 import { Alert, Form, Input, Modal, Select } from 'antd'
+
+function userDisplay(user) {
+    if (!user) return ''
+    const name = user.full_name || user.email || user.id
+    if (user.email && user.full_name) {
+        return `${user.full_name} — ${user.email}`
+    }
+    return name
+}
 
 function UserGroupMemberModal({
     open,
@@ -18,6 +39,8 @@ function UserGroupMemberModal({
     editingMember = null,
     /** users not yet in the group (for Add flow) */
     candidateUsers = [],
+    /** id → user object (for read-only display in Edit flow) */
+    userMap = {},
     loading = false,
 }) {
     const [form] = Form.useForm()
@@ -27,7 +50,6 @@ function UserGroupMemberModal({
         if (!open) return
         if (editingMember) {
             form.setFieldsValue({
-                user_id: editingMember.user_id,
                 title: editingMember.title || '',
             })
         } else {
@@ -39,9 +61,18 @@ function UserGroupMemberModal({
         () =>
             candidateUsers.map((u) => ({
                 value: u.id,
-                label: u.full_name || u.email,
+                label: userDisplay(u),
             })),
         [candidateUsers]
+    )
+
+    const editingUserLabel = useMemo(
+        () =>
+            editingMember
+                ? userDisplay(userMap?.[editingMember.user_id]) ||
+                  editingMember.user_id
+                : '',
+        [editingMember, userMap]
     )
 
     const handleFinish = async (values) => {
@@ -55,9 +86,10 @@ function UserGroupMemberModal({
             }
             await onSubmit(payload, editingMember)
         } else {
+            const userIds = Array.isArray(values.user_ids) ? values.user_ids : []
             await onSubmit(
                 {
-                    user_id: values.user_id,
+                    user_ids: userIds,
                     title: trimmed || null,
                 },
                 null
@@ -66,17 +98,22 @@ function UserGroupMemberModal({
     }
 
     const noCandidates = !isEditing && candidateUsers.length === 0
+    const okText = isEditing
+        ? 'Save Changes'
+        : `Add Member${
+              !isEditing && form.getFieldValue?.('user_ids')?.length > 1 ? 's' : ''
+          }`
 
     return (
         <Modal
-            title={isEditing ? 'Edit Member Title' : 'Add Member'}
+            title={isEditing ? 'Edit Member Title' : 'Add Members'}
             open={open}
             onCancel={onClose}
-            okText={isEditing ? 'Save Changes' : 'Add Member'}
+            okText={isEditing ? 'Save Changes' : 'Add Members'}
             cancelText="Cancel"
             confirmLoading={loading}
             onOk={() => form.submit()}
-            width={480}
+            width={520}
             destroyOnClose
             okButtonProps={{ disabled: noCandidates }}
         >
@@ -90,24 +127,42 @@ function UserGroupMemberModal({
             )}
 
             <Form form={form} layout="vertical" onFinish={handleFinish}>
-                <Form.Item
-                    label="User"
-                    name="user_id"
-                    rules={[{ required: true, message: 'User is required.' }]}
-                >
-                    <Select
-                        showSearch
-                        disabled={isEditing}
-                        placeholder="Select user"
-                        optionFilterProp="label"
-                        options={userOptions}
-                    />
-                </Form.Item>
+                {isEditing ? (
+                    <Form.Item label="User">
+                        <Input value={editingUserLabel} disabled />
+                    </Form.Item>
+                ) : (
+                    <Form.Item
+                        label="Users"
+                        name="user_ids"
+                        rules={[
+                            {
+                                required: true,
+                                message: 'Pick at least one user.',
+                            },
+                        ]}
+                    >
+                        <Select
+                            mode="multiple"
+                            showSearch
+                            placeholder="Select one or more users"
+                            optionFilterProp="label"
+                            options={userOptions}
+                            maxTagCount="responsive"
+                        />
+                    </Form.Item>
+                )}
 
                 <Form.Item
-                    label="Member Title"
+                    label={
+                        isEditing ? 'Member Title' : 'Default Member Title'
+                    }
                     name="title"
-                    extra="Optional. Examples: Senior Developer, Junior Developer, Team Lead."
+                    extra={
+                        isEditing
+                            ? 'Examples: Senior Developer, Junior Developer, Team Lead.'
+                            : 'Optional. Applied to every selected user. Leave empty to add with no title.'
+                    }
                 >
                     <Input maxLength={255} placeholder="Senior Developer" />
                 </Form.Item>

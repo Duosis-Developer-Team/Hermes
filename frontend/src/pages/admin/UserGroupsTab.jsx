@@ -137,22 +137,7 @@ function RealMembersTable({ group, allUsersById, users }) {
         [users, memberUserIds]
     )
 
-    const addMutation = useMutation({
-        mutationFn: (data) => userGroupService.addMember(group.id, data),
-        onSuccess: () => {
-            message.success('Member added.')
-            setMemberModalOpen(false)
-            setEditingMember(null)
-            queryClient.invalidateQueries({
-                queryKey: ['admin-user-group-members', group.id],
-            })
-            queryClient.invalidateQueries({ queryKey: ['admin-user-groups'] })
-            queryClient.invalidateQueries({ queryKey: ['task-permissions'] })
-        },
-        onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to add member.')
-        },
-    })
+    const [bulkAdding, setBulkAdding] = useState(false)
 
     const updateMutation = useMutation({
         mutationFn: ({ memberId, data }) =>
@@ -169,6 +154,46 @@ function RealMembersTable({ group, allUsersById, users }) {
             message.error(err?.response?.data?.detail || 'Failed to update member.')
         },
     })
+
+    const handleBulkAdd = async ({ user_ids: userIds = [], title = null }) => {
+        if (!userIds.length) return
+        setBulkAdding(true)
+        try {
+            const results = await Promise.allSettled(
+                userIds.map((userId) =>
+                    userGroupService.addMember(group.id, {
+                        user_id: userId,
+                        title: title || null,
+                    })
+                )
+            )
+            const succeeded = results.filter((r) => r.status === 'fulfilled').length
+            const failed = results.length - succeeded
+            if (succeeded > 0) {
+                message.success(
+                    `${succeeded} member${succeeded === 1 ? '' : 's'} added to ${group.name}.`
+                )
+            }
+            if (failed > 0) {
+                const firstFail = results.find((r) => r.status === 'rejected')
+                message.error(
+                    firstFail?.reason?.response?.data?.detail ||
+                        `${failed} member${failed === 1 ? '' : 's'} could not be added.`
+                )
+            }
+            queryClient.invalidateQueries({
+                queryKey: ['admin-user-group-members', group.id],
+            })
+            queryClient.invalidateQueries({ queryKey: ['admin-user-groups'] })
+            queryClient.invalidateQueries({ queryKey: ['task-permissions'] })
+            if (succeeded > 0) {
+                setMemberModalOpen(false)
+                setEditingMember(null)
+            }
+        } finally {
+            setBulkAdding(false)
+        }
+    }
 
     const removeMutation = useMutation({
         mutationFn: (memberId) => userGroupService.removeMember(group.id, memberId),
@@ -192,7 +217,7 @@ function RealMembersTable({ group, allUsersById, users }) {
                 data: payload,
             })
         } else {
-            await addMutation.mutateAsync(payload)
+            await handleBulkAdd(payload)
         }
     }
 
@@ -302,7 +327,8 @@ function RealMembersTable({ group, allUsersById, users }) {
                 onSubmit={handleSubmit}
                 editingMember={editingMember}
                 candidateUsers={candidateUsers}
-                loading={addMutation.isPending || updateMutation.isPending}
+                userMap={allUsersById}
+                loading={bulkAdding || updateMutation.isPending}
             />
         </div>
     )
