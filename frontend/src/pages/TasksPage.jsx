@@ -43,6 +43,7 @@ import {
     projectService,
     taskService,
     taskSubProjectService,
+    workLogService,
 } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
@@ -50,6 +51,7 @@ import TasksWeeklyView from '../components/tasks/TasksWeeklyView'
 import TasksListView from '../components/tasks/TasksListView'
 import CreateTaskModal from '../components/modals/CreateTaskModal'
 import TaskNoteModal from '../components/modals/TaskNoteModal'
+import LogTimeModal from '../components/modals/LogTimeModal'
 import './TasksPage.css'
 
 dayjs.extend(isoWeek)
@@ -90,6 +92,9 @@ function TasksPage() {
     const [initialDate, setInitialDate] = useState(null)
     const [deletingTask, setDeletingTask] = useState(null)
     const [noteTask, setNoteTask] = useState(null)
+    // Task to prefill the Log Time modal with. Set on first completion
+    // and on the explicit "Log Time" action; never set on reopen.
+    const [logTimeTask, setLogTimeTask] = useState(null)
 
     // ── View switches ──────────────────────────────────────────────────────
     // Scope: 'my' = tasks assigned to viewed user; 'assigned' = tasks
@@ -277,6 +282,17 @@ function TasksPage() {
         },
     })
 
+    const workLogMutation = useMutation({
+        mutationFn: (data) => workLogService.create(data),
+        onSuccess: () => {
+            message.success('Time logged.')
+            setLogTimeTask(null)
+        },
+        onError: (err) => {
+            message.error(err?.response?.data?.detail || 'Failed to log time.')
+        },
+    })
+
     const deleteMutation = useMutation({
         mutationFn: (taskId) => taskService.delete(taskId),
         onSuccess: () => {
@@ -336,8 +352,29 @@ function TasksPage() {
         await createMutation.mutateAsync(payload)
     }
 
-    const handleToggleCompletion = (task, nextCompleted) => {
-        completionMutation.mutate({ id: task.id, completed: nextCompleted })
+    const handleToggleCompletion = async (task, nextCompleted) => {
+        try {
+            await completionMutation.mutateAsync({
+                id: task.id,
+                completed: nextCompleted,
+            })
+        } catch {
+            return
+        }
+        if (nextCompleted) {
+            // Auto-open Log Time only on first transition to completed.
+            // Reopen (completed → pending) intentionally does nothing.
+            setNoteTask(null)
+            setLogTimeTask(task)
+        }
+    }
+
+    const handleOpenLogTime = (task) => {
+        setLogTimeTask(task)
+    }
+
+    const handleLogTimeSubmit = async (data) => {
+        await workLogMutation.mutateAsync(data)
     }
 
     const handleSaveNote = async (task, note) => {
@@ -713,6 +750,7 @@ function TasksPage() {
                     onOpenNote={(t) => setNoteTask(t)}
                     onToggleCompletion={handleToggleCompletion}
                     completionLoading={completionMutation.isPending}
+                    onOpenLogTime={handleOpenLogTime}
                 />
             ) : (
                 <TasksWeeklyView
@@ -728,6 +766,7 @@ function TasksPage() {
                     onDeleteTask={(t) => setDeletingTask(t)}
                     onOpenNote={(t) => setNoteTask(t)}
                     onToggleCompletion={handleToggleCompletion}
+                    onOpenLogTime={handleOpenLogTime}
                     onCreate={handleCreate}
                     canCreate={canCreateTask}
                     completionLoading={completionMutation.isPending}
@@ -881,6 +920,18 @@ function TasksPage() {
                     </div>
                 </div>
             </Modal>
+
+            {/* Log Time modal — opens automatically after a task is
+                completed for the first time, and on the explicit
+                "Log Time" action for a completed task. */}
+            <LogTimeModal
+                open={!!logTimeTask}
+                onClose={() => setLogTimeTask(null)}
+                onSubmit={handleLogTimeSubmit}
+                prefillTask={logTimeTask}
+                initialDate={logTimeTask?.scheduled_date || null}
+                loading={workLogMutation.isPending}
+            />
         </div>
     )
 }

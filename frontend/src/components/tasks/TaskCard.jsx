@@ -25,6 +25,7 @@ import {
     ClockCircleOutlined,
     DeleteOutlined,
     EditOutlined,
+    FieldTimeOutlined,
     FileTextOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
@@ -82,7 +83,9 @@ function TaskCard({
     userMap = {},
     currentUserId,
     isAdmin = false,
-    /** Selection toggle — fired by body click (Time Entry parity). */
+    /** Selection toggle — fired by body click on a non-completed task
+        (Time Entry parity). On a completed task body click instead opens
+        the Log Time modal via onOpenLogTime. */
     onSelect,
     /** Opens the create/edit modal in edit mode. Hover Edit icon. */
     onEdit,
@@ -90,6 +93,9 @@ function TaskCard({
     onDelete,
     /** Hover Note icon — opens the note modal (read or edit). */
     onOpenNote,
+    /** Hover Log Time icon (completed only) and body click on completed.
+        Parent opens the prefilled Log Time modal. */
+    onOpenLogTime,
     onToggleCompletion,
     canToggleCompletion,
     completionLoading = false,
@@ -112,7 +118,16 @@ function TaskCard({
 
     const handleBodyClick = (event) => {
         event.stopPropagation()
+        if (isCompleted && onOpenLogTime) {
+            onOpenLogTime(task)
+            return
+        }
         onSelect?.(task.id)
+    }
+
+    const handleLogTimeClick = (event) => {
+        event.stopPropagation()
+        onOpenLogTime?.(task)
     }
 
     const handleEditClick = (event) => {
@@ -146,7 +161,12 @@ function TaskCard({
             tabIndex={0}
             onClick={handleBodyClick}
             onKeyDown={(e) => {
-                if (e.key === 'Enter') onSelect?.(task.id)
+                if (e.key !== 'Enter') return
+                if (isCompleted && onOpenLogTime) {
+                    onOpenLogTime(task)
+                    return
+                }
+                onSelect?.(task.id)
             }}
         >
             <Tooltip
@@ -216,6 +236,17 @@ function TaskCard({
 
             {/* Hover actions — top-right, mirrors WorkLogCard exactly */}
             <div className="task-card-actions">
+                {isCompleted && onOpenLogTime && (
+                    <Tooltip title="Log Time">
+                        <button
+                            type="button"
+                            className="task-card-action-btn"
+                            onClick={handleLogTimeClick}
+                        >
+                            <FieldTimeOutlined />
+                        </button>
+                    </Tooltip>
+                )}
                 <Tooltip title={assigneeIsMe ? 'Edit Note' : 'View Note'}>
                     <button
                         type="button"

@@ -21,6 +21,7 @@ import { Button, Checkbox, Space, Table, Tag, Tooltip } from 'antd'
 import {
     DeleteOutlined,
     EditOutlined,
+    FieldTimeOutlined,
     FileTextOutlined,
 } from '@ant-design/icons'
 
@@ -63,6 +64,7 @@ function TasksListView({
     onOpenNote,
     onToggleCompletion,
     completionLoading = false,
+    onOpenLogTime,
 }) {
     const assigneeFilters = useMemo(() => {
         const seen = new Set()
@@ -189,12 +191,22 @@ function TasksListView({
         {
             title: 'Actions',
             key: 'actions',
-            width: 140,
+            width: 180,
             render: (_, record) => {
                 const canEdit =
                     isAdmin || record.assigner_user_id === currentUserId
+                const isCompleted = record.status === 'completed'
                 return (
                     <Space>
+                        {isCompleted && onOpenLogTime && (
+                            <Tooltip title="Log Time">
+                                <Button
+                                    size="small"
+                                    icon={<FieldTimeOutlined />}
+                                    onClick={() => onOpenLogTime(record)}
+                                />
+                            </Tooltip>
+                        )}
                         <Tooltip
                             title={
                                 record.assignee_user_id === currentUserId

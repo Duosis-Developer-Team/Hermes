@@ -40,7 +40,15 @@ function LogTimeModal({
     initialDate,
     editingLog = null,
     loading = false,
-    onLogAnother
+    onLogAnother,
+    /**
+     * When provided (and not editingLog), the modal opens straight on the
+     * form step with customer/project/description prefilled from the
+     * given task. Used by Tasks → Log Time. Sub project is intentionally
+     * ignored — Time Entry has its own work-line/platform taxonomy.
+     * Shape: { customer_id, project_id, title, description, scheduled_date }
+     */
+    prefillTask = null,
 }) {
     const [form] = Form.useForm()
     const [step, setStep] = useState(0) // 0: Customer, 1: Project, 2: Form
@@ -132,13 +140,38 @@ function LogTimeModal({
                 platform_id: editingLog.platform_id || null,
                 work_line_id: editingLog.work_line_id || null,
             })
+        } else if (prefillTask && open) {
+            // Task-driven open — skip customer/project picker, prefill
+            // the description from the task. Duration + Time-Entry-only
+            // fields (work_type, activity, platform, work_line) stay
+            // empty for the user to fill in manually.
+            setSelectedCustomerId(prefillTask.customer_id)
+            setSelectedProjectId(prefillTask.project_id)
+            setStep(2)
+            const title = prefillTask.title || ''
+            const body = prefillTask.description || ''
+            const description = body
+                ? `Task: ${title}\n\n${body}`
+                : `Task: ${title}`
+            const dateValue = prefillTask.scheduled_date
+                ? dayjs(prefillTask.scheduled_date)
+                : initialDate
+                ? dayjs(initialDate)
+                : dayjs()
+            form.setFieldsValue({
+                customer_id: prefillTask.customer_id,
+                project_id: prefillTask.project_id,
+                date_worked: dateValue,
+                duration_hours: null,
+                description,
+            })
         } else if (open) {
             form.setFieldsValue({
                 date_worked: initialDate ? dayjs(initialDate) : dayjs(),
                 duration_hours: null,
             })
         }
-    }, [editingLog, open, initialDate, form])
+    }, [editingLog, prefillTask, open, initialDate, form])
 
     // Modal kapandığında reset
     const handleClose = () => {

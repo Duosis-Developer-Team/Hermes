@@ -46,6 +46,7 @@ function renderTasksGroupedByAssignee({
     onDeleteTask,
     onOpenNote,
     onToggleCompletion,
+    onOpenLogTime,
     completionLoading,
 }) {
     // Group tasks by assignee_user_id, preserving the original ordering
@@ -84,6 +85,7 @@ function renderTasksGroupedByAssignee({
                             onEdit={onEditTask}
                             onDelete={onDeleteTask}
                             onOpenNote={onOpenNote}
+                            onOpenLogTime={onOpenLogTime}
                             onToggleCompletion={onToggleCompletion}
                             canToggleCompletion={canToggle}
                             completionLoading={completionLoading}
@@ -116,6 +118,7 @@ function TaskDayColumn({
     onSelectTask,
     onSelectDay,
     onToggleCompletion,
+    onOpenLogTime,
     canCreate,
     onCreate,
     completionLoading,
@@ -189,6 +192,7 @@ function TaskDayColumn({
                                   onDeleteTask,
                                   onOpenNote,
                                   onToggleCompletion,
+                                  onOpenLogTime,
                                   completionLoading,
                               })
                             : tasks.map((t) => {
@@ -207,6 +211,7 @@ function TaskDayColumn({
                                           onEdit={onEditTask}
                                           onDelete={onDeleteTask}
                                           onOpenNote={onOpenNote}
+                                          onOpenLogTime={onOpenLogTime}
                                           onToggleCompletion={onToggleCompletion}
                                           canToggleCompletion={canToggle}
                                           completionLoading={completionLoading}
@@ -248,6 +253,7 @@ function TasksWeeklyView({
     onDeleteTask,
     onOpenNote,
     onToggleCompletion,
+    onOpenLogTime,
     onCreate,
     canCreate,
     completionLoading,
@@ -346,6 +352,7 @@ function TasksWeeklyView({
                             onSelectTask={onSelectTask}
                             onSelectDay={onSelectDay}
                             onToggleCompletion={onToggleCompletion}
+                            onOpenLogTime={onOpenLogTime}
                             canCreate={canCreate}
                             onCreate={onCreate}
                             completionLoading={completionLoading}
