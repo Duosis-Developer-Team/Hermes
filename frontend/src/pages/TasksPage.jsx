@@ -41,7 +41,7 @@ import {
 } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
-import TaskCard from '../components/tasks/TaskCard'
+import TasksWeeklyView from '../components/tasks/TasksWeeklyView'
 import CreateTaskModal from '../components/modals/CreateTaskModal'
 import TaskDetailModal from '../components/modals/TaskDetailModal'
 
@@ -84,11 +84,6 @@ function TasksPage() {
     const [initialDate, setInitialDate] = useState(null)
 
     const weekEnd = weekStart.endOf('isoWeek')
-    const weekDays = useMemo(() => {
-        const days = []
-        for (let i = 0; i < 7; i++) days.push(weekStart.add(i, 'day'))
-        return days
-    }, [weekStart])
 
     // Filter selectors data
     const { data: customers = [] } = useQuery({
@@ -163,18 +158,6 @@ function TasksPage() {
         for (const u of usersForTasks) map[u.id] = u
         return map
     }, [usersForTasks])
-
-    const tasksByDate = useMemo(() => {
-        const grouped = {}
-        weekDays.forEach((d) => {
-            grouped[d.format('YYYY-MM-DD')] = []
-        })
-        tasks.forEach((t) => {
-            const key = t.scheduled_date
-            if (key in grouped) grouped[key].push(t)
-        })
-        return grouped
-    }, [tasks, weekDays])
 
     // Mutations
     const createMutation = useMutation({
@@ -398,119 +381,24 @@ function TasksPage() {
                 </Space>
             </Card>
 
-            {/* Calendar */}
+            {/* Calendar — always visible (full weekly grid even when empty) */}
             {isLoading ? (
                 <div style={{ textAlign: 'center', padding: 48 }}>
                     <Spin />
                 </div>
-            ) : tasks.length === 0 ? (
-                <Empty description="No tasks found for the selected period." />
             ) : (
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-                        gap: 12,
-                    }}
-                >
-                    {weekDays.map((day) => {
-                        const key = day.format('YYYY-MM-DD')
-                        const list = tasksByDate[key] || []
-                        const isToday = day.isSame(dayjs(), 'day')
-                        return (
-                            <div
-                                key={key}
-                                style={{
-                                    background: '#161616',
-                                    border: '1px solid #303030',
-                                    borderRadius: 8,
-                                    padding: 12,
-                                    minHeight: 220,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        marginBottom: 8,
-                                    }}
-                                >
-                                    <div>
-                                        <div
-                                            style={{
-                                                fontSize: 11,
-                                                color: '#9b9b9b',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: 0.5,
-                                            }}
-                                        >
-                                            {day.format('ddd')}
-                                        </div>
-                                        <div
-                                            style={{
-                                                fontSize: 16,
-                                                fontWeight: 600,
-                                                color: isToday ? '#1677ff' : '#fff',
-                                            }}
-                                        >
-                                            {day.format('DD MMM')}
-                                        </div>
-                                    </div>
-                                    {(canAssignTasks || isTaskAdmin) && (
-                                        <Tooltip title="Create task on this day">
-                                            <Button
-                                                size="small"
-                                                type="text"
-                                                icon={<PlusOutlined />}
-                                                onClick={() => handleCreate(day)}
-                                                disabled={!canCreateTask}
-                                            />
-                                        </Tooltip>
-                                    )}
-                                </div>
-
-                                <div style={{ flex: 1 }}>
-                                    {list.length === 0 ? (
-                                        <div
-                                            style={{
-                                                color: '#5a5a5a',
-                                                fontSize: 12,
-                                                fontStyle: 'italic',
-                                                marginTop: 4,
-                                            }}
-                                        >
-                                            No tasks
-                                        </div>
-                                    ) : (
-                                        list.map((task) => (
-                                            <TaskCard
-                                                key={task.id}
-                                                task={task}
-                                                userMap={userMap}
-                                                currentUserId={user?.id}
-                                                onClick={(t) => setDetailTask(t)}
-                                                onToggleCompletion={
-                                                    handleToggleCompletion
-                                                }
-                                                canToggleCompletion={
-                                                    isTaskAdmin ||
-                                                    task.assignee_user_id === user?.id ||
-                                                    task.assigner_user_id === user?.id
-                                                }
-                                                completionLoading={
-                                                    completionMutation.isPending
-                                                }
-                                            />
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
+                <TasksWeeklyView
+                    weekStart={weekStart}
+                    tasks={tasks}
+                    userMap={userMap}
+                    currentUserId={user?.id}
+                    isAdmin={isTaskAdmin}
+                    onClickTask={(t) => setDetailTask(t)}
+                    onToggleCompletion={handleToggleCompletion}
+                    onCreate={handleCreate}
+                    canCreate={canCreateTask}
+                    completionLoading={completionMutation.isPending}
+                />
             )}
 
             {/* Modals */}

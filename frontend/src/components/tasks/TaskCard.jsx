@@ -2,34 +2,21 @@
  * =============================================================================
  * HERMES - Task Card
  * =============================================================================
- * Renders a single task row on the Tasks page. Reuses Hermes Ant Design
- * styling so the card visually matches WorkLogCard / Time Entry list rows.
- *
+ * Mirrors the WorkLogCard look so Tasks reads as a sibling of Time Entry.
  * Receives a `userMap` prop (id → user object) populated by the parent
  * page from a single auth-service /users/lookup call.
+ *
+ * Variants:
+ *   - default    : a normal task card on its scheduled date
+ *   - completed  : green/strikethrough state, still clickable
+ *   - dueMarker  : compact "Due: …" indicator shown on the due-date column
  * =============================================================================
  */
 
-import { Tag, Tooltip, Checkbox } from 'antd'
-import {
-    ClockCircleOutlined,
-    UserOutlined,
-    CalendarOutlined,
-} from '@ant-design/icons'
-
-const PRIORITY_COLOR = {
-    low: 'default',
-    medium: 'blue',
-    high: 'orange',
-    urgent: 'red',
-}
-
-const STATUS_COLOR = {
-    pending: 'default',
-    in_progress: 'blue',
-    completed: 'green',
-    cancelled: 'magenta',
-}
+import { Checkbox, Tooltip } from 'antd'
+import { ClockCircleOutlined } from '@ant-design/icons'
+import dayjs from 'dayjs'
+import './TaskCard.css'
 
 function formatMinutes(min) {
     if (!min || min <= 0) return null
@@ -46,6 +33,35 @@ function userLabel(id, userMap) {
     return u?.full_name || u?.email || id
 }
 
+/**
+ * Compact due-date marker variant — used on a different day column than
+ * the scheduled card.
+ */
+export function TaskDueMarker({ task, userMap = {}, currentUserId, onClick }) {
+    const showAssignee = currentUserId && task.assigner_user_id === currentUserId
+    return (
+        <div
+            className="task-due-marker"
+            role="button"
+            tabIndex={0}
+            onClick={() => onClick?.(task)}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter') onClick?.(task)
+            }}
+        >
+            <span className="task-due-marker-label">Due</span>
+            <div className="task-due-marker-title">{task.title}</div>
+            <div className="task-due-marker-meta">
+                {task.customer_name || '—'}
+                {task.project_name ? ` · ${task.project_name}` : ''}
+                {showAssignee
+                    ? ` · ${userLabel(task.assignee_user_id, userMap)}`
+                    : ''}
+            </div>
+        </div>
+    )
+}
+
 function TaskCard({
     task,
     userMap = {},
@@ -57,10 +73,11 @@ function TaskCard({
 }) {
     const isCompleted = task.status === 'completed'
     const assigneeIsMe = task.assignee_user_id === currentUserId
-    const showAssignedBy = assigneeIsMe
-    const otherUserId = showAssignedBy ? task.assigner_user_id : task.assignee_user_id
-    const otherLabel = showAssignedBy ? 'Assigned by' : 'Assignee'
+    const assignerIsMe = task.assigner_user_id === currentUserId
+    const showAssignee = !assigneeIsMe // only show "Assignee:" if I'm not the assignee
     const duration = formatMinutes(task.estimated_duration_minutes)
+    const dueDifferent =
+        task.due_date && task.due_date !== task.scheduled_date
 
     const handleCheckboxClick = (event) => {
         event.stopPropagation()
@@ -74,26 +91,13 @@ function TaskCard({
 
     return (
         <div
+            className={`task-card${isCompleted ? ' task-card-completed' : ''}`}
             role="button"
             tabIndex={0}
             onClick={() => onClick?.(task)}
             onKeyDown={(e) => {
                 if (e.key === 'Enter') onClick?.(task)
             }}
-            style={{
-                background: '#1f1f1f',
-                border: '1px solid #303030',
-                borderRadius: 8,
-                padding: '10px 12px',
-                marginBottom: 8,
-                cursor: 'pointer',
-                display: 'flex',
-                gap: 12,
-                alignItems: 'flex-start',
-                transition: 'border-color 0.15s ease',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#434343')}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#303030')}
         >
             <Tooltip
                 title={
@@ -101,10 +105,11 @@ function TaskCard({
                         ? isCompleted
                             ? 'Reopen task'
                             : 'Mark as completed'
-                        : 'Only the assignee or admin can change completion'
+                        : 'Only the assignee, assigner, or admin can change completion'
                 }
             >
                 <Checkbox
+                    className="task-card-checkbox"
                     checked={isCompleted}
                     disabled={!canToggleCompletion || completionLoading}
                     onClick={handleCheckboxClick}
@@ -112,67 +117,52 @@ function TaskCard({
                 />
             </Tooltip>
 
-            <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: 8,
-                    }}
-                >
-                    <span
-                        style={{
-                            fontSize: 14,
-                            fontWeight: 600,
-                            color: isCompleted ? '#888' : '#fff',
-                            textDecoration: isCompleted ? 'line-through' : 'none',
-                            wordBreak: 'break-word',
-                        }}
-                    >
-                        {task.title}
-                    </span>
-                    <Tag color={PRIORITY_COLOR[task.priority] || 'default'}>
-                        {task.priority}
-                    </Tag>
-                    <Tag color={STATUS_COLOR[task.status] || 'default'}>
-                        {task.status.replace('_', ' ')}
-                    </Tag>
+            <div className="task-card-body">
+                <div className="task-card-title">{task.title}</div>
+                <div className="task-card-meta">
+                    {task.customer_name || '—'} · {task.project_name || '—'}
+                    {subProjectSegment}
                 </div>
 
-                <div
-                    style={{
-                        marginTop: 4,
-                        fontSize: 12,
-                        color: '#9b9b9b',
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 12,
-                    }}
-                >
-                    <span>
-                        {task.customer_name || '—'} · {task.project_name || '—'}
-                        {subProjectSegment}
-                    </span>
+                <div className="task-card-footer">
+                    <div className="task-card-badges">
+                        <span
+                            className={`task-card-priority task-card-priority-${task.priority}`}
+                        >
+                            {task.priority}
+                        </span>
+                        <span
+                            className={`task-card-status task-card-status-${task.status}`}
+                        >
+                            {task.status === 'in_progress'
+                                ? 'in progress'
+                                : task.status}
+                        </span>
+                    </div>
                     {duration && (
-                        <span>
+                        <span className="task-card-duration">
                             <ClockCircleOutlined style={{ marginRight: 4 }} />
                             {duration}
                         </span>
                     )}
-                    {task.due_date && task.due_date !== task.scheduled_date && (
-                        <span>
-                            <CalendarOutlined style={{ marginRight: 4 }} />
-                            Due {task.due_date}
-                        </span>
-                    )}
-                    {otherUserId && (
-                        <span>
-                            <UserOutlined style={{ marginRight: 4 }} />
-                            {otherLabel}: {userLabel(otherUserId, userMap)}
-                        </span>
-                    )}
                 </div>
+
+                {dueDifferent && (
+                    <div className="task-card-due-hint">
+                        Due {dayjs(task.due_date).format('DD MMM')}
+                    </div>
+                )}
+
+                {showAssignee && task.assignee_user_id && (
+                    <div className="task-card-assignee-hint">
+                        Assignee: {userLabel(task.assignee_user_id, userMap)}
+                    </div>
+                )}
+                {!showAssignee && task.assigner_user_id && (
+                    <div className="task-card-assignee-hint">
+                        Assigned by: {userLabel(task.assigner_user_id, userMap)}
+                    </div>
+                )}
             </div>
         </div>
     )

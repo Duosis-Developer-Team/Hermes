@@ -20,13 +20,13 @@ import {
     Input,
     Select,
     DatePicker,
-    InputNumber,
     Alert,
     Space,
 } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 
+import HoursMinutesPicker from '../common/HoursMinutesPicker'
 import {
     authService,
     customerService,
@@ -123,19 +123,18 @@ function CreateTaskModal({
                     ? dayjs(editingTask.scheduled_date)
                     : null,
                 due_date: editingTask.due_date ? dayjs(editingTask.due_date) : null,
-                estimated_duration_minutes:
-                    editingTask.estimated_duration_minutes || null,
+                duration_hours_decimal: editingTask.estimated_duration_minutes
+                    ? editingTask.estimated_duration_minutes / 60
+                    : 0,
                 priority: editingTask.priority || 'medium',
             })
         } else {
             form.resetFields()
+            const baseValues = { priority: 'medium', duration_hours_decimal: 0 }
             if (initialDate) {
-                form.setFieldsValue({
-                    scheduled_date: dayjs(initialDate),
-                    priority: 'medium',
-                })
+                form.setFieldsValue({ ...baseValues, scheduled_date: dayjs(initialDate) })
             } else {
-                form.setFieldsValue({ priority: 'medium' })
+                form.setFieldsValue(baseValues)
             }
         }
     }, [open, editingTask, initialDate, form])
@@ -161,19 +160,25 @@ function CreateTaskModal({
             return
         }
         const subProjectId = values.sub_project_id || null
+        const description = (values.description || '').trim()
+        if (!description) {
+            form.setFields([
+                { name: 'description', errors: ['Description is required.'] },
+            ])
+            return
+        }
+        const decimalHours = parseFloat(values.duration_hours_decimal) || 0
+        const minutes = Math.round(decimalHours * 60)
         const payload = {
             customer_id: values.customer_id,
             project_id: values.project_id,
             sub_project_id: subProjectId,
             assignee_user_id: values.assignee_user_id,
             title: values.title?.trim(),
-            description: values.description || null,
+            description,
             scheduled_date: scheduled,
             due_date: due,
-            estimated_duration_minutes:
-                values.estimated_duration_minutes != null
-                    ? Number(values.estimated_duration_minutes)
-                    : null,
+            estimated_duration_minutes: minutes > 0 ? minutes : null,
             priority: values.priority || 'medium',
         }
         // For edits, signal explicit clear if user removed the sub project.
@@ -297,10 +302,24 @@ function CreateTaskModal({
                     <Input maxLength={255} placeholder="Short, action-oriented task title" />
                 </Form.Item>
 
-                <Form.Item label="Description" name="description">
+                <Form.Item
+                    label="Description"
+                    name="description"
+                    rules={[
+                        { required: true, message: 'Description is required.' },
+                        {
+                            validator: (_, value) =>
+                                !value || value.trim().length > 0
+                                    ? Promise.resolve()
+                                    : Promise.reject(
+                                          new Error('Description is required.')
+                                      ),
+                        },
+                    ]}
+                >
                     <Input.TextArea
-                        rows={3}
-                        placeholder="Optional additional context for the assignee"
+                        rows={4}
+                        placeholder="Task instructions and context for the assignee"
                     />
                 </Form.Item>
 
@@ -323,16 +342,12 @@ function CreateTaskModal({
 
                 <Space size="middle" style={{ display: 'flex' }}>
                     <Form.Item
-                        label="Estimated Duration (minutes)"
-                        name="estimated_duration_minutes"
+                        label="Estimated Duration"
+                        name="duration_hours_decimal"
                         style={{ flex: 1 }}
+                        extra="Minutes step 15. Same input as Time Entry."
                     >
-                        <InputNumber
-                            min={1}
-                            step={15}
-                            style={{ width: '100%' }}
-                            placeholder="e.g. 90"
-                        />
+                        <HoursMinutesPicker />
                     </Form.Item>
 
                     <Form.Item

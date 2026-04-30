@@ -658,12 +658,19 @@ def create_task(
             detail="Due date cannot be before the scheduled date.",
         )
 
+    description = (data.description or "").strip()
+    if not description:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Description is required.",
+        )
+
     task = Task(
         customer_id=data.customer_id,
         project_id=data.project_id,
         sub_project_id=data.sub_project_id,
         title=data.title.strip(),
-        description=data.description,
+        description=description,
         assignee_user_id=data.assignee_user_id,
         assigner_user_id=UUID(user.id),
         scheduled_date=data.scheduled_date,
@@ -776,7 +783,13 @@ def update_task(
             )
         task.title = title
     if data.description is not None:
-        task.description = data.description
+        new_description = data.description.strip()
+        if not new_description:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Description is required.",
+            )
+        task.description = new_description
     if data.scheduled_date is not None:
         task.scheduled_date = data.scheduled_date
     if data.due_date is not None:

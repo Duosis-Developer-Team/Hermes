@@ -110,11 +110,19 @@ class TaskCreate(BaseModel):
     sub_project_id: Optional[UUID] = None  # Optional — task can be created directly under project.
     assignee_user_id: UUID
     title: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
+    # Description is now required: holds the actual task instructions.
+    description: str = Field(..., min_length=1)
     scheduled_date: date
     due_date: Optional[date] = None
     estimated_duration_minutes: Optional[int] = Field(None, gt=0)
     priority: PriorityLiteral = "medium"
+
+    @field_validator("description")
+    @classmethod
+    def _description_not_blank(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Description is required.")
+        return v
 
 
 class TaskUpdate(BaseModel):
