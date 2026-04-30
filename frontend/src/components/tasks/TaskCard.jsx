@@ -2,19 +2,26 @@
  * =============================================================================
  * HERMES - Task Card
  * =============================================================================
- * Mirrors the WorkLogCard look so Tasks reads as a sibling of Time Entry.
+ * Mirrors WorkLogCard interaction model:
+ *   - Body click toggles selection for the copy/paste workflow.
+ *   - The detail modal is opened via a dedicated hover icon (top-right).
+ *   - The completion checkbox stays on the left.
+ *
  * Receives a `userMap` prop (id → user object) populated by the parent
  * page from a single auth-service /users/lookup call.
  *
  * Variants:
  *   - default    : a normal task card on its scheduled date
- *   - completed  : green/strikethrough state, still clickable
+ *   - completed  : green/strikethrough state, still selectable + clickable
  *   - dueMarker  : compact "Due: …" indicator shown on the due-date column
  * =============================================================================
  */
 
 import { Checkbox, Tooltip } from 'antd'
-import { ClockCircleOutlined } from '@ant-design/icons'
+import {
+    ClockCircleOutlined,
+    InfoCircleOutlined,
+} from '@ant-design/icons'
 import dayjs from 'dayjs'
 import './TaskCard.css'
 
@@ -44,7 +51,10 @@ export function TaskDueMarker({ task, userMap = {}, currentUserId, onClick }) {
             className="task-due-marker"
             role="button"
             tabIndex={0}
-            onClick={() => onClick?.(task)}
+            onClick={(e) => {
+                e.stopPropagation()
+                onClick?.(task)
+            }}
             onKeyDown={(e) => {
                 if (e.key === 'Enter') onClick?.(task)
             }}
@@ -66,14 +76,17 @@ function TaskCard({
     task,
     userMap = {},
     currentUserId,
-    onClick,
+    /** Detail modal opener — fired by the hover info icon, not the body. */
+    onOpenDetail,
+    /** Selection toggle — fired by body click (Time Entry parity). */
+    onSelect,
     onToggleCompletion,
     canToggleCompletion,
     completionLoading = false,
+    isSelected = false,
 }) {
     const isCompleted = task.status === 'completed'
     const assigneeIsMe = task.assignee_user_id === currentUserId
-    const assignerIsMe = task.assigner_user_id === currentUserId
     const showAssignee = !assigneeIsMe // only show "Assignee:" if I'm not the assignee
     const duration = formatMinutes(task.estimated_duration_minutes)
     const dueDifferent =
@@ -85,18 +98,35 @@ function TaskCard({
         onToggleCompletion?.(task, !isCompleted)
     }
 
+    const handleBodyClick = (event) => {
+        // Stop bubbling so the day column doesn't also pick this up as a
+        // paste target click.
+        event.stopPropagation()
+        onSelect?.(task.id)
+    }
+
+    const handleDetailClick = (event) => {
+        event.stopPropagation()
+        onOpenDetail?.(task)
+    }
+
     const subProjectSegment = task.sub_project_name
         ? ` · ${task.sub_project_name}`
         : ''
 
+    const className =
+        'task-card' +
+        (isCompleted ? ' task-card-completed' : '') +
+        (isSelected ? ' task-card-selected' : '')
+
     return (
         <div
-            className={`task-card${isCompleted ? ' task-card-completed' : ''}`}
+            className={className}
             role="button"
             tabIndex={0}
-            onClick={() => onClick?.(task)}
+            onClick={handleBodyClick}
             onKeyDown={(e) => {
-                if (e.key === 'Enter') onClick?.(task)
+                if (e.key === 'Enter') onSelect?.(task.id)
             }}
         >
             <Tooltip
@@ -164,6 +194,28 @@ function TaskCard({
                     </div>
                 )}
             </div>
+
+            {/* Hover actions — top-right, like Time Entry's WorkLogCard */}
+            <div className="task-card-actions">
+                <Tooltip title="View details">
+                    <button
+                        type="button"
+                        className="task-card-action-btn"
+                        onClick={handleDetailClick}
+                    >
+                        <InfoCircleOutlined />
+                    </button>
+                </Tooltip>
+            </div>
+
+            {isSelected && (
+                <div
+                    className="task-card-selected-badge"
+                    title="Press Ctrl+C to copy"
+                >
+                    C
+                </div>
+            )}
         </div>
     )
 }

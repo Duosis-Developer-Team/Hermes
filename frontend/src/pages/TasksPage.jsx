@@ -11,7 +11,7 @@
  * =============================================================================
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
     Button,
     Card,
@@ -82,6 +82,11 @@ function TasksPage() {
     const [editingTask, setEditingTask] = useState(null)
     const [detailTask, setDetailTask] = useState(null)
     const [initialDate, setInitialDate] = useState(null)
+
+    // ── Copy/paste state — Time Entry parity ──────────────────────────────
+    const [selectedTaskId, setSelectedTaskId] = useState(null)
+    const [copiedTask, setCopiedTask] = useState(null)
+    const [targetDate, setTargetDate] = useState(null)
 
     const weekEnd = weekStart.endOf('isoWeek')
 
@@ -208,6 +213,18 @@ function TasksPage() {
         },
     })
 
+    // ── Paste mutation — separate from createMutation so it doesn't show
+    // the generic "Task created successfully" toast (paste has its own).
+    const pasteMutation = useMutation({
+        mutationFn: (data) => taskService.create(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] })
+        },
+        onError: (err) => {
+            message.error(err?.response?.data?.detail || 'Paste failed.')
+        },
+    })
+
     const handleCreate = (date) => {
         setEditingTask(null)
         setInitialDate(date ? date.format('YYYY-MM-DD') : null)
@@ -243,6 +260,118 @@ function TasksPage() {
         setProjectFilter(null)
         setSubProjectFilter(null)
     }
+
+    // ── Copy/paste handlers — Time Entry parity ────────────────────────────
+    const handleSelectTask = (taskId) => {
+        setSelectedTaskId((prev) => (prev === taskId ? null : taskId))
+        // Starting a new selection clears any pending paste target.
+        setTargetDate(null)
+    }
+
+    const handleSelectDay = (dateStr) => {
+        setTargetDate((prev) => (prev === dateStr ? null : dateStr))
+    }
+
+    const handleClearClipboard = () => {
+        setSelectedTaskId(null)
+        setCopiedTask(null)
+        setTargetDate(null)
+    }
+
+    // Keyboard shortcuts — Ctrl/Cmd + C/V/Escape (Time Entry parity)
+    useEffect(() => {
+        const handleKeyDown = async (e) => {
+            // Don't intercept while typing in a form field.
+            const tag = document.activeElement?.tagName?.toUpperCase()
+            const isEditable =
+                tag === 'INPUT' ||
+                tag === 'TEXTAREA' ||
+                tag === 'SELECT' ||
+                document.activeElement?.isContentEditable === true
+            if (isEditable) return
+
+            const isMod = e.ctrlKey || e.metaKey
+
+            // ── Ctrl/Cmd+C — copy selected task ─────────────────────────────
+            if (isMod && e.key === 'c') {
+                if (selectedTaskId) {
+                    const task = tasks.find((t) => t.id === selectedTaskId)
+                    if (task) {
+                        setCopiedTask(task)
+                        const label = task.title || 'Task'
+                        message.info(
+                            `"${label}" copied — select a target day, then Ctrl+V`
+                        )
+                        e.preventDefault()
+                    }
+                }
+                return
+            }
+
+            // ── Ctrl/Cmd+V — paste to target day ────────────────────────────
+            if (isMod && e.key === 'v') {
+                if (!copiedTask) return // nothing in clipboard, let browser handle
+                e.preventDefault()
+
+                if (!targetDate) {
+                    message.warning('Select a target day first, then paste')
+                    return
+                }
+                if (pasteMutation.isPending) return // debounce double-paste
+
+                // Preserve the original due-date offset, if any.
+                let newDueDate = null
+                if (copiedTask.due_date && copiedTask.scheduled_date) {
+                    const offsetDays = dayjs(copiedTask.due_date).diff(
+                        dayjs(copiedTask.scheduled_date),
+                        'day'
+                    )
+                    newDueDate = dayjs(targetDate)
+                        .add(offsetDays, 'day')
+                        .format('YYYY-MM-DD')
+                }
+
+                const payload = {
+                    customer_id: copiedTask.customer_id,
+                    project_id: copiedTask.project_id,
+                    sub_project_id: copiedTask.sub_project_id || null,
+                    assignee_user_id: copiedTask.assignee_user_id,
+                    title: copiedTask.title,
+                    description: copiedTask.description,
+                    scheduled_date: targetDate,
+                    due_date: newDueDate,
+                    estimated_duration_minutes:
+                        copiedTask.estimated_duration_minutes || null,
+                    priority: copiedTask.priority || 'medium',
+                    // status, assignee_note, completed_* intentionally omitted —
+                    // backend defaults handle them (status=pending, others null).
+                }
+
+                try {
+                    await pasteMutation.mutateAsync(payload)
+                    const formattedDate = dayjs(targetDate).format('DD MMM')
+                    message.success(
+                        `"${copiedTask.title || 'Task'}" pasted to ${formattedDate} ✓`
+                    )
+                    // Clear target only — keep copiedTask for repeated pastes.
+                    setTargetDate(null)
+                } catch {
+                    // pasteMutation.onError already showed an error toast.
+                }
+                return
+            }
+
+            // ── Escape — clear clipboard & selection ────────────────────────
+            if (e.key === 'Escape') {
+                setSelectedTaskId(null)
+                setCopiedTask(null)
+                setTargetDate(null)
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [selectedTaskId, copiedTask, targetDate, tasks, pasteMutation])
 
     const canCreateTask =
         isTaskAdmin || (canAssignTasks && (isTaskAdmin || assignableUserIds.length > 0))
@@ -393,11 +522,17 @@ function TasksPage() {
                     userMap={userMap}
                     currentUserId={user?.id}
                     isAdmin={isTaskAdmin}
-                    onClickTask={(t) => setDetailTask(t)}
+                    onOpenDetail={(t) => setDetailTask(t)}
                     onToggleCompletion={handleToggleCompletion}
                     onCreate={handleCreate}
                     canCreate={canCreateTask}
                     completionLoading={completionMutation.isPending}
+                    selectedTaskId={selectedTaskId}
+                    copiedTask={copiedTask}
+                    targetDate={targetDate}
+                    onSelectTask={handleSelectTask}
+                    onSelectDay={handleSelectDay}
+                    onClearClipboard={handleClearClipboard}
                 />
             )}
 

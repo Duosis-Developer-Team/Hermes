@@ -11,11 +11,17 @@
  *   - Compact "Due" markers for tasks scheduled earlier in the visible
  *     week whose due date falls on that day (so the user can see what's
  *     coming due).
+ *
+ * Copy/paste integration mirrors the Time Entry pattern:
+ *   - Selected card shows a blue border + "C" badge.
+ *   - Targeted day column shows the same `day-column-targeted` highlight
+ *     and pulse animation as Time Entry.
+ *   - Top banner is shown while a task is in the clipboard, with the
+ *     same wording / Ctrl+V hint as Time Entry.
  * =============================================================================
  */
 
 import { useMemo } from 'react'
-import { Dropdown } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 
@@ -29,22 +35,38 @@ function TaskDayColumn({
     dueMarkers,
     isToday,
     isWeekend,
+    isTargeted,
+    hasCopiedTask,
+    selectedTaskId,
     currentUserId,
     isAdmin,
     userMap,
-    onClickTask,
+    onOpenDetail,
+    onSelectTask,
+    onSelectDay,
     onToggleCompletion,
     canCreate,
     onCreate,
     completionLoading,
 }) {
+    const dateKey = dayjs(date).format('YYYY-MM-DD')
     const dayName = dayjs(date).format('ddd')
     const dayNumber = dayjs(date).format('DD')
 
+    const handleDayClick = () => {
+        if (hasCopiedTask) {
+            onSelectDay?.(dateKey)
+        }
+    }
+
+    const className =
+        'day-column' +
+        (isWeekend ? ' day-column-weekend' : '') +
+        (isToday ? ' day-column-today' : '') +
+        (isTargeted ? ' day-column-targeted' : '')
+
     return (
-        <div
-            className={`day-column${isWeekend ? ' day-column-weekend' : ''}${isToday ? ' day-column-today' : ''}`}
-        >
+        <div className={className} onClick={handleDayClick}>
             {/* Header */}
             <div className="day-column-header">
                 <div className="day-column-name">
@@ -73,7 +95,15 @@ function TaskDayColumn({
             <div className="day-column-section-title">TASKS</div>
             <div className="day-column-logs">
                 {tasks.length === 0 && dueMarkers.length === 0 ? (
-                    <div className="day-column-empty">No tasks</div>
+                    <div
+                        className={`day-column-empty${
+                            hasCopiedTask ? ' day-column-empty-paste' : ''
+                        }`}
+                    >
+                        {hasCopiedTask
+                            ? '↓ Click here or press Ctrl+V'
+                            : 'No tasks'}
+                    </div>
                 ) : (
                     <>
                         {tasks.map((t) => {
@@ -87,10 +117,12 @@ function TaskDayColumn({
                                     task={t}
                                     userMap={userMap}
                                     currentUserId={currentUserId}
-                                    onClick={onClickTask}
+                                    onOpenDetail={onOpenDetail}
+                                    onSelect={onSelectTask}
                                     onToggleCompletion={onToggleCompletion}
                                     canToggleCompletion={canToggle}
                                     completionLoading={completionLoading}
+                                    isSelected={selectedTaskId === t.id}
                                 />
                             )
                         })}
@@ -100,9 +132,16 @@ function TaskDayColumn({
                                 task={t}
                                 userMap={userMap}
                                 currentUserId={currentUserId}
-                                onClick={onClickTask}
+                                onClick={onOpenDetail}
                             />
                         ))}
+
+                        {/* Bottom paste hint (Time Entry parity) */}
+                        {hasCopiedTask && (
+                            <div className="day-column-paste-hint">
+                                + Paste here (Ctrl+V)
+                            </div>
+                        )}
                     </>
                 )}
             </div>
@@ -116,11 +155,18 @@ function TasksWeeklyView({
     userMap = {},
     currentUserId,
     isAdmin,
-    onClickTask,
+    onOpenDetail,
     onToggleCompletion,
     onCreate,
     canCreate,
     completionLoading,
+    /** Copy/paste props */
+    selectedTaskId,
+    copiedTask,
+    targetDate,
+    onSelectTask,
+    onSelectDay,
+    onClearClipboard,
 }) {
     const weekDays = useMemo(() => {
         const days = []
@@ -128,7 +174,6 @@ function TasksWeeklyView({
         return days
     }, [weekStart])
 
-    // Tasks grouped by scheduled_date.
     const tasksByDate = useMemo(() => {
         const grouped = {}
         for (const d of weekDays) {
@@ -141,9 +186,6 @@ function TasksWeeklyView({
         return grouped
     }, [tasks, weekDays])
 
-    // Due markers: task whose due_date is in the visible week AND differs
-    // from its scheduled_date AND is not yet completed (completed tasks
-    // already convey their own status, no need to clutter).
     const dueMarkersByDate = useMemo(() => {
         const grouped = {}
         const weekKeys = new Set(weekDays.map((d) => d.format('YYYY-MM-DD')))
@@ -162,9 +204,30 @@ function TasksWeeklyView({
 
     return (
         <div className="weekly-list-view">
+            {/* Clipboard banner — Time Entry parity */}
+            {copiedTask && (
+                <div className="weekly-clipboard-banner">
+                    <span className="clipboard-banner-icon">📋</span>
+                    <span className="clipboard-banner-text">
+                        <strong>{copiedTask.title || 'Task'}</strong> copied —
+                        click a target day, then press <kbd>Ctrl+V</kbd> to paste
+                    </span>
+                    <button
+                        type="button"
+                        className="clipboard-close-btn"
+                        onClick={onClearClipboard}
+                        title="Clear (Esc)"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
+
             <div className="weekly-list-summary">
                 <span>Week:</span>
-                <strong>{tasks.length} task{tasks.length === 1 ? '' : 's'}</strong>
+                <strong>
+                    {tasks.length} task{tasks.length === 1 ? '' : 's'}
+                </strong>
             </div>
 
             <div className="weekly-list-columns">
@@ -179,10 +242,15 @@ function TasksWeeklyView({
                             dueMarkers={dueMarkersByDate[key] || []}
                             isToday={key === today}
                             isWeekend={dow === 0 || dow === 6}
+                            isTargeted={key === targetDate}
+                            hasCopiedTask={!!copiedTask}
+                            selectedTaskId={selectedTaskId}
                             currentUserId={currentUserId}
                             isAdmin={isAdmin}
                             userMap={userMap}
-                            onClickTask={onClickTask}
+                            onOpenDetail={onOpenDetail}
+                            onSelectTask={onSelectTask}
+                            onSelectDay={onSelectDay}
                             onToggleCompletion={onToggleCompletion}
                             canCreate={canCreate}
                             onCreate={onCreate}
