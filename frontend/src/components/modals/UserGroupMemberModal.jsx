@@ -25,11 +25,9 @@ import { Alert, Form, Input, Modal, Select } from 'antd'
 
 function userDisplay(user) {
     if (!user) return ''
-    const name = user.full_name || user.email || user.id
-    if (user.email && user.full_name) {
-        return `${user.full_name} — ${user.email}`
-    }
-    return name
+    // Prefer the user's full name; fall back to email or ID only when name
+    // is missing, so the modal never exposes a raw UUID.
+    return user.full_name || user.email || user.id
 }
 
 function UserGroupMemberModal({
