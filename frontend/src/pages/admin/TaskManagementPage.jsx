@@ -51,6 +51,7 @@ import {
     taskSubProjectService,
 } from '../../services/api'
 import './TaskManagementPage.css'
+import TaskAccessByGroupTab from './TaskAccessByGroupTab'
 
 // =============================================================================
 // Shared user lookup (used by tabs 1 and 2)
@@ -518,7 +519,6 @@ function SubProjectsTab() {
     const queryClient = useQueryClient()
     const [filterCustomer, setFilterCustomer] = useState(null)
     const [filterProject, setFilterProject] = useState(null)
-    const [includeInactive, setIncludeInactive] = useState(false)
 
     const [modalOpen, setModalOpen] = useState(false)
     const [editing, setEditing] = useState(null)
@@ -545,17 +545,11 @@ function SubProjectsTab() {
     }, [projects, formCustomerId])
 
     const { data: subProjects = [], isLoading } = useQuery({
-        queryKey: [
-            'admin-task-sub-projects',
-            filterCustomer,
-            filterProject,
-            includeInactive,
-        ],
+        queryKey: ['admin-task-sub-projects', filterCustomer, filterProject],
         queryFn: () =>
             taskSubProjectService.list({
                 customer_id: filterCustomer || undefined,
                 project_id: filterProject || undefined,
-                include_inactive: includeInactive ? true : undefined,
             }),
     })
 
@@ -744,12 +738,6 @@ function SubProjectsTab() {
                             label: p.name,
                         }))}
                     />
-                    <Switch
-                        checked={includeInactive}
-                        onChange={setIncludeInactive}
-                        checkedChildren="With archived"
-                        unCheckedChildren="Active only"
-                    />
                 </Space>
                 <Button
                     type="primary"
@@ -855,6 +843,11 @@ function TaskManagementPage() {
                 <Tabs
                     className="task-mgmt-tabs"
                     items={[
+                        {
+                            key: 'access-by-group',
+                            label: 'Task Access',
+                            children: <TaskAccessByGroupTab />,
+                        },
                         {
                             key: 'direct',
                             label: 'Direct User Overrides',
