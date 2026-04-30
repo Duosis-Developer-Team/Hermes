@@ -14,7 +14,7 @@
  * =============================================================================
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
     Card,
     Tabs,
@@ -84,19 +84,63 @@ function TaskAccessTab() {
         return map
     }, [permissionRows])
 
+    // Admins always have full task access. Auto-upsert their permission rows
+    // so (a) the table reflects reality and (b) admins can be selected as
+    // assigners in the Assignment Hierarchy tab without manual toggling.
+    const adminsNeedingFix = useMemo(() => {
+        return users.filter((u) => {
+            if (!u.is_admin || !u.is_active) return false
+            const p = permMap[u.id]
+            return !p || !p.can_access_tasks || !p.can_assign_tasks
+        })
+    }, [users, permMap])
+
+    const inFlightRef = useRef(new Set())
+
+    useEffect(() => {
+        if (adminsNeedingFix.length === 0) return
+        const toFix = adminsNeedingFix.filter(
+            (u) => !inFlightRef.current.has(u.id)
+        )
+        if (toFix.length === 0) return
+        toFix.forEach((u) => inFlightRef.current.add(u.id))
+        Promise.all(
+            toFix.map((u) =>
+                taskPermissionService
+                    .updateUserPermission(u.id, {
+                        can_access_tasks: true,
+                        can_assign_tasks: true,
+                    })
+                    .finally(() => inFlightRef.current.delete(u.id))
+            )
+        )
+            .then(() => {
+                queryClient.invalidateQueries({
+                    queryKey: ['admin-task-permissions'],
+                })
+                queryClient.invalidateQueries({ queryKey: ['task-permissions'] })
+            })
+            .catch(() => {
+                /* swallow — table will retry next mount */
+            })
+    }, [adminsNeedingFix, queryClient])
+
     // Merge users (full list) with permission rows (sparse).
+    // Admin rows are forced to true/true in the UI (auto-correction may
+    // still be in flight; the toggles are locked anyway).
     const rows = useMemo(() => {
         return users.map((u) => {
             const perm = permMap[u.id]
+            const isAdmin = !!u.is_admin
             return {
                 user_id: u.id,
                 full_name: u.full_name || u.email,
                 email: u.email,
                 role: u.role,
-                is_admin: !!u.is_admin,
+                is_admin: isAdmin,
                 is_active: !!u.is_active,
-                can_access_tasks: !!perm?.can_access_tasks,
-                can_assign_tasks: !!perm?.can_assign_tasks,
+                can_access_tasks: isAdmin ? true : !!perm?.can_access_tasks,
+                can_assign_tasks: isAdmin ? true : !!perm?.can_assign_tasks,
                 updated_at: perm?.updated_at || null,
             }
         })
@@ -164,26 +208,50 @@ function TaskAccessTab() {
             title: 'Can Access Tasks',
             dataIndex: 'can_access_tasks',
             render: (val, row) => (
-                <Switch
-                    checked={!!val}
-                    disabled={!row.is_active || updateMutation.isPending}
-                    onChange={(checked) =>
-                        handleToggle(row, 'can_access_tasks', checked)
+                <Tooltip
+                    title={
+                        row.is_admin
+                            ? 'Admins always have task access (auto).'
+                            : ''
                     }
-                />
+                >
+                    <Switch
+                        checked={!!val}
+                        disabled={
+                            row.is_admin ||
+                            !row.is_active ||
+                            updateMutation.isPending
+                        }
+                        onChange={(checked) =>
+                            handleToggle(row, 'can_access_tasks', checked)
+                        }
+                    />
+                </Tooltip>
             ),
         },
         {
             title: 'Can Assign Tasks',
             dataIndex: 'can_assign_tasks',
             render: (val, row) => (
-                <Switch
-                    checked={!!val}
-                    disabled={!row.is_active || updateMutation.isPending}
-                    onChange={(checked) =>
-                        handleToggle(row, 'can_assign_tasks', checked)
+                <Tooltip
+                    title={
+                        row.is_admin
+                            ? 'Admins always have assignment permission (auto).'
+                            : ''
                     }
-                />
+                >
+                    <Switch
+                        checked={!!val}
+                        disabled={
+                            row.is_admin ||
+                            !row.is_active ||
+                            updateMutation.isPending
+                        }
+                        onChange={(checked) =>
+                            handleToggle(row, 'can_assign_tasks', checked)
+                        }
+                    />
+                </Tooltip>
             ),
         },
     ]
