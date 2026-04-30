@@ -2,18 +2,26 @@
  * =============================================================================
  * HERMES - Task Note Modal
  * =============================================================================
- * Lightweight inline editor for a task's assignee_note. Replaces the
- * old read-only Task Detail modal with a focused single-purpose dialog.
+ * Lightweight inline editor for a task's assignee_note. Also surfaces
+ * the completion control so the assignee can mark the task done from
+ * the same modal they already open from a task card.
  *
  * Permission semantics:
- *   - Assignee:  full edit
- *   - Admin:     full edit (override; rarely used)
- *   - Assigner:  read-only (sees what the assignee wrote)
+ *   - Note edit:       Assignee, Admin (assigner is read-only)
+ *   - Mark/Reopen:     Assignee, Admin, Assigner
  * =============================================================================
  */
 
 import { useEffect, useState } from 'react'
-import { Alert, Button, Input, Modal, Space, message } from 'antd'
+import { Alert, Button, Input, Modal, Space, Tag, message } from 'antd'
+import { CheckCircleOutlined, UndoOutlined } from '@ant-design/icons'
+import dayjs from 'dayjs'
+
+function userLabel(id, userMap) {
+    if (!id) return null
+    const u = userMap?.[id]
+    return u?.full_name || u?.email || id
+}
 
 function TaskNoteModal({
     open,
@@ -22,6 +30,10 @@ function TaskNoteModal({
     onSave,
     saving = false,
     canEdit = false,
+    canToggleCompletion = false,
+    onToggleCompletion,
+    completionLoading = false,
+    userMap = {},
 }) {
     const [note, setNote] = useState('')
 
@@ -31,6 +43,8 @@ function TaskNoteModal({
 
     if (!task) return null
 
+    const isCompleted = task.status === 'completed'
+
     const handleSave = async () => {
         try {
             await onSave?.(task, note)
@@ -39,6 +53,10 @@ function TaskNoteModal({
         } catch (err) {
             message.error(err?.response?.data?.detail || 'Failed to save note.')
         }
+    }
+
+    const handleToggle = () => {
+        onToggleCompletion?.(task, !isCompleted)
     }
 
     return (
@@ -51,6 +69,31 @@ function TaskNoteModal({
             destroyOnClose
         >
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                {isCompleted && (
+                    <Alert
+                        type="success"
+                        showIcon
+                        icon={<CheckCircleOutlined />}
+                        message={
+                            <div>
+                                <Tag color="green" style={{ marginRight: 8 }}>
+                                    COMPLETED
+                                </Tag>
+                                {task.completed_at
+                                    ? `on ${dayjs(task.completed_at).format(
+                                          'YYYY-MM-DD HH:mm'
+                                      )}`
+                                    : null}
+                                {task.completed_by_user_id
+                                    ? ` by ${userLabel(
+                                          task.completed_by_user_id,
+                                          userMap
+                                      )}`
+                                    : null}
+                            </div>
+                        }
+                    />
+                )}
                 {!canEdit && (
                     <Alert
                         type="info"
@@ -65,13 +108,46 @@ function TaskNoteModal({
                     placeholder="Progress, blockers, or completion notes."
                     disabled={!canEdit}
                 />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                    <Button onClick={onClose}>{canEdit ? 'Cancel' : 'Close'}</Button>
-                    {canEdit && (
-                        <Button type="primary" loading={saving} onClick={handleSave}>
-                            Save Note
+                <div
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                    }}
+                >
+                    {canToggleCompletion ? (
+                        <Button
+                            icon={
+                                isCompleted ? (
+                                    <UndoOutlined />
+                                ) : (
+                                    <CheckCircleOutlined />
+                                )
+                            }
+                            type={isCompleted ? 'default' : 'primary'}
+                            loading={completionLoading}
+                            onClick={handleToggle}
+                        >
+                            {isCompleted ? 'Reopen' : 'Mark as Completed'}
                         </Button>
+                    ) : (
+                        <span />
                     )}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <Button onClick={onClose}>
+                            {canEdit ? 'Cancel' : 'Close'}
+                        </Button>
+                        {canEdit && (
+                            <Button
+                                type="primary"
+                                loading={saving}
+                                onClick={handleSave}
+                            >
+                                Save Note
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </Space>
         </Modal>

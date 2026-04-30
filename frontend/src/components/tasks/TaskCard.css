@@ -207,6 +207,15 @@
     color: rgba(255, 255, 255, 0.55);
 }
 
+/* List view — completed row tinted green so it visually echoes the
+   calendar/card variant. */
+.task-row-completed > td {
+    background: rgba(22, 101, 52, 0.18) !important;
+}
+.task-row-completed:hover > td {
+    background: rgba(22, 101, 52, 0.26) !important;
+}
+
 /* ── Due marker (shown on the due-date column when ≠ scheduled) ─ */
 .task-due-marker {
     background: rgba(251, 191, 36, 0.12);

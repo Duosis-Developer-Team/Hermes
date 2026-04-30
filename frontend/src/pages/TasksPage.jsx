@@ -711,6 +711,8 @@ function TasksPage() {
                     onEditTask={handleEdit}
                     onDeleteTask={(t) => setDeletingTask(t)}
                     onOpenNote={(t) => setNoteTask(t)}
+                    onToggleCompletion={handleToggleCompletion}
+                    completionLoading={completionMutation.isPending}
                 />
             ) : (
                 <TasksWeeklyView
@@ -759,7 +761,8 @@ function TasksPage() {
                 }
             />
 
-            {/* Note modal — assignee/admin can edit, assigner read-only */}
+            {/* Note modal — assignee/admin can edit, assigner read-only.
+                Completion toggle is wider: assignee, assigner, or admin. */}
             <TaskNoteModal
                 open={!!noteTask}
                 task={noteTask}
@@ -770,6 +773,15 @@ function TasksPage() {
                     isTaskAdmin ||
                     (noteTask && noteTask.assignee_user_id === user?.id)
                 }
+                canToggleCompletion={
+                    !!noteTask &&
+                    (isTaskAdmin ||
+                        noteTask.assignee_user_id === user?.id ||
+                        noteTask.assigner_user_id === user?.id)
+                }
+                onToggleCompletion={handleToggleCompletion}
+                completionLoading={completionMutation.isPending}
+                userMap={userMap}
             />
 
             {/* Delete confirmation — mirrors Time Entry's delete modal */}

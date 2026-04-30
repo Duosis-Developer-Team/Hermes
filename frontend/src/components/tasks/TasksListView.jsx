@@ -17,7 +17,7 @@
  */
 
 import { useMemo } from 'react'
-import { Button, Space, Table, Tag, Tooltip } from 'antd'
+import { Button, Checkbox, Space, Table, Tag, Tooltip } from 'antd'
 import {
     DeleteOutlined,
     EditOutlined,
@@ -61,6 +61,8 @@ function TasksListView({
     onEditTask,
     onDeleteTask,
     onOpenNote,
+    onToggleCompletion,
+    completionLoading = false,
 }) {
     const assigneeFilters = useMemo(() => {
         const seen = new Set()
@@ -84,6 +86,38 @@ function TasksListView({
     ]
 
     const columns = [
+        {
+            title: 'Done',
+            key: 'completed',
+            width: 64,
+            align: 'center',
+            render: (_, record) => {
+                const isCompleted = record.status === 'completed'
+                const canToggle =
+                    isAdmin ||
+                    record.assignee_user_id === currentUserId ||
+                    record.assigner_user_id === currentUserId
+                return (
+                    <Tooltip
+                        title={
+                            canToggle
+                                ? isCompleted
+                                    ? 'Reopen task'
+                                    : 'Mark as completed'
+                                : 'Only the assignee, assigner, or admin can change completion'
+                        }
+                    >
+                        <Checkbox
+                            checked={isCompleted}
+                            disabled={!canToggle || completionLoading}
+                            onChange={() =>
+                                onToggleCompletion?.(record, !isCompleted)
+                            }
+                        />
+                    </Tooltip>
+                )
+            },
+        },
         {
             title: 'Task Title',
             dataIndex: 'title',
@@ -204,6 +238,9 @@ function TasksListView({
             rowKey="id"
             columns={columns}
             dataSource={tasks}
+            rowClassName={(record) =>
+                record.status === 'completed' ? 'task-row-completed' : ''
+            }
             pagination={{ pageSize: 20 }}
             locale={{ emptyText: 'No tasks for the selected filters.' }}
         />
