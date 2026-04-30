@@ -15,7 +15,6 @@
 
 import { useMemo, useState } from 'react'
 import {
-    Alert,
     Button,
     Card,
     Empty,
@@ -374,16 +373,6 @@ function AddRuleModal({
                         />
                     </Form.Item>
                 )}
-
-                <Alert
-                    type="info"
-                    showIcon
-                    message={
-                        targetType === 'group'
-                            ? 'Mapping to a group also lets the assigner target each active group member individually at task-creation time.'
-                            : 'A user-to-user rule lets the assigner pick this user as a single assignee.'
-                    }
-                />
             </Form>
         </Modal>
     )
