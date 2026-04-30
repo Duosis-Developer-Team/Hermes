@@ -34,6 +34,7 @@ import { useNavigate } from 'react-router-dom'
 import {
     authService,
     taskGroupPermissionService,
+    taskPermissionService,
     userGroupService,
 } from '../../services/api'
 
@@ -181,6 +182,133 @@ function GroupMemberOverridesPanel({ group, allUsersById }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Additional Users — people who are not in any group but still need
+// task access. Toggles write directly to task_user_permissions and
+// keep the same Access/Assign vocabulary used everywhere else.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AdditionalUsersSection({ users }) {
+    const queryClient = useQueryClient()
+
+    const { data: permissionRows = [], isLoading: permsLoading } = useQuery({
+        queryKey: ['admin-task-permissions'],
+        queryFn: () => taskPermissionService.listAdminUsers(),
+    })
+
+    const permByUserId = useMemo(() => {
+        const map = {}
+        for (const p of permissionRows) map[p.user_id] = p
+        return map
+    }, [permissionRows])
+
+    const updateMutation = useMutation({
+        mutationFn: ({ userId, data }) =>
+            taskPermissionService.updateUserPermission(userId, data),
+        onSuccess: () => {
+            message.success('Permissions updated.')
+            queryClient.invalidateQueries({ queryKey: ['admin-task-permissions'] })
+            queryClient.invalidateQueries({
+                queryKey: ['admin-task-permissions-effective'],
+            })
+            queryClient.invalidateQueries({ queryKey: ['task-permissions'] })
+        },
+        onError: (err) => {
+            message.error(
+                err?.response?.data?.detail || 'Failed to update permissions.'
+            )
+        },
+    })
+
+    const rows = useMemo(
+        () =>
+            users.map((u) => {
+                const perm = permByUserId[u.id]
+                return {
+                    user_id: u.id,
+                    full_name: u.full_name || u.email,
+                    email: u.email,
+                    is_active: !!u.is_active,
+                    can_access_tasks: !!perm?.can_access_tasks,
+                    can_assign_tasks: !!perm?.can_assign_tasks,
+                }
+            }),
+        [users, permByUserId]
+    )
+
+    const handleToggle = (row, field, value) => {
+        const next = {
+            can_access_tasks:
+                field === 'can_access_tasks' ? value : !!row.can_access_tasks,
+            can_assign_tasks:
+                field === 'can_assign_tasks' ? value : !!row.can_assign_tasks,
+        }
+        if (field === 'can_access_tasks' && !value) next.can_assign_tasks = false
+        if (field === 'can_assign_tasks' && value) next.can_access_tasks = true
+        updateMutation.mutate({ userId: row.user_id, data: next })
+    }
+
+    const columns = [
+        {
+            title: 'User',
+            dataIndex: 'full_name',
+            render: (val, row) => val || row.email || row.user_id,
+        },
+        { title: 'Email', dataIndex: 'email' },
+        {
+            title: 'Access Tasks',
+            dataIndex: 'can_access_tasks',
+            width: 140,
+            render: (val, row) => (
+                <Switch
+                    checked={!!val}
+                    disabled={!row.is_active || updateMutation.isPending}
+                    onChange={(checked) =>
+                        handleToggle(row, 'can_access_tasks', checked)
+                    }
+                />
+            ),
+        },
+        {
+            title: 'Assign Tasks',
+            dataIndex: 'can_assign_tasks',
+            width: 140,
+            render: (val, row) => (
+                <Switch
+                    checked={!!val}
+                    disabled={!row.is_active || updateMutation.isPending}
+                    onChange={(checked) =>
+                        handleToggle(row, 'can_assign_tasks', checked)
+                    }
+                />
+            ),
+        },
+    ]
+
+    return (
+        <div style={{ marginTop: 32 }}>
+            <div style={{ marginBottom: 8 }}>
+                <strong style={{ fontSize: 15 }}>Additional Users</strong>
+                <div style={{ color: '#9b9b9b', fontSize: 12, marginTop: 2 }}>
+                    People with task permissions outside any group.
+                </div>
+            </div>
+            <Table
+                rowKey="user_id"
+                size="small"
+                columns={columns}
+                dataSource={rows}
+                loading={permsLoading}
+                pagination={false}
+                locale={{
+                    emptyText:
+                        'Everyone with access is already in a group.',
+                }}
+            />
+        </div>
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Tab
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -209,6 +337,27 @@ function TaskAccessByGroupTab() {
         queryKey: ['admin-task-group-permissions'],
         queryFn: () => taskGroupPermissionService.list(),
     })
+
+    const { data: effectiveRows = [] } = useQuery({
+        queryKey: ['admin-task-permissions-effective'],
+        queryFn: () => taskPermissionService.listEffective(),
+    })
+
+    const groupMemberIds = useMemo(() => {
+        const set = new Set()
+        for (const row of effectiveRows) {
+            if (row.is_group_member) set.add(row.user_id)
+        }
+        return set
+    }, [effectiveRows])
+
+    const nonGroupUsers = useMemo(
+        () =>
+            users.filter(
+                (u) => u.is_active && !groupMemberIds.has(u.id)
+            ),
+        [users, groupMemberIds]
+    )
 
     const permByGroupId = useMemo(() => {
         const map = {}
@@ -356,6 +505,8 @@ function TaskAccessByGroupTab() {
                     rowExpandable: () => true,
                 }}
             />
+
+            <AdditionalUsersSection users={nonGroupUsers} />
         </>
     )
 }

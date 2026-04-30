@@ -340,29 +340,24 @@ def list_task_permissions(db: Session) -> List[TaskUserPermission]:
 
 
 def list_effective_perm_data(db: Session) -> dict:
-    """Returns a per-user snapshot of everything the Individual Overrides
-    tab needs to render the "effective" + "source" columns without N+1
-    queries on the frontend.
+    """Returns a per-user snapshot used by the Task Access page.
 
     Shape:
         {
           user_id_str: {
-            "direct_can_access_tasks": bool | None,   # None when no row
+            "direct_can_access_tasks": bool | None,
             "direct_can_assign_tasks": bool | None,
             "group_grants_access": [group_id_str, ...],
             "group_grants_assign": [group_id_str, ...],
+            "is_group_member": bool,
           },
           ...
         }
 
-    Caller (router) merges this with the auth-service user list and
-    decides admin source ("Admin role") + final effective state.
-
-    Group grant resolution per (user, group):
-        member.can_access_tasks_override is TRUE  → grants access
-        member.can_access_tasks_override is FALSE → does not grant
-        member.can_access_tasks_override IS NULL  → use group default
-        no member row exists                      → use group default
+    `is_group_member` is true if the user belongs to any active group
+    (regardless of whether the group has a task-permission row yet),
+    so the frontend can render the "Additional Users" bucket as
+    "everyone who is in no group at all".
     """
     out: dict = {}
 
@@ -373,11 +368,12 @@ def list_effective_perm_data(db: Session) -> dict:
             "direct_can_assign_tasks": bool(p.can_assign_tasks),
             "group_grants_access": [],
             "group_grants_assign": [],
+            "is_group_member": False,
         }
 
-    # Active memberships in active groups that have a permission row,
-    # joined with overrides so we can resolve the actual contribution
-    # in one pass.
+    # Active memberships in active groups. LEFT JOIN to TaskGroupPermission
+    # so users in groups that have no permission row yet still register as
+    # group members — they should not show up under "Additional Users".
     rows = (
         db.query(
             UserGroupMember.user_id,
@@ -389,7 +385,7 @@ def list_effective_perm_data(db: Session) -> dict:
         )
         .select_from(UserGroupMember)
         .join(UserGroup, UserGroup.id == UserGroupMember.group_id)
-        .join(
+        .outerjoin(
             TaskGroupPermission,
             TaskGroupPermission.group_id == UserGroup.id,
         )
@@ -415,7 +411,9 @@ def list_effective_perm_data(db: Session) -> dict:
                 "direct_can_assign_tasks": False,
                 "group_grants_access": [],
                 "group_grants_assign": [],
+                "is_group_member": False,
             }
+        out[u]["is_group_member"] = True
         access_grant = ov_a if ov_a is not None else bool(def_a)
         if access_grant:
             out[u]["group_grants_access"].append(str(group_id))
