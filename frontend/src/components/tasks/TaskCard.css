@@ -107,6 +107,21 @@
     color: #9ca3af;
 }
 
+.task-assignee-group {
+    margin-bottom: 10px;
+}
+
+.task-assignee-group-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #93b4ff;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 4px 0;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(147, 180, 255, 0.18);
+}
+
 /* ── Hover actions (top-right) ───────────────────────────────── */
 .task-card-actions {
     position: absolute;

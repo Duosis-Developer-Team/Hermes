@@ -25,6 +25,7 @@ import {
     ClockCircleOutlined,
     DeleteOutlined,
     EditOutlined,
+    FileTextOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import './TaskCard.css'
@@ -87,6 +88,8 @@ function TaskCard({
     onEdit,
     /** Hover Delete icon — parent shows the confirm modal. */
     onDelete,
+    /** Hover Note icon — opens the note modal (read or edit). */
+    onOpenNote,
     onToggleCompletion,
     canToggleCompletion,
     completionLoading = false,
@@ -120,6 +123,11 @@ function TaskCard({
     const handleDeleteClick = (event) => {
         event.stopPropagation()
         onDelete?.(task)
+    }
+
+    const handleNoteClick = (event) => {
+        event.stopPropagation()
+        onOpenNote?.(task)
     }
 
     const subProjectSegment = task.sub_project_name
@@ -207,28 +215,39 @@ function TaskCard({
             </div>
 
             {/* Hover actions — top-right, mirrors WorkLogCard exactly */}
-            {canEditCore && (
-                <div className="task-card-actions">
-                    <Tooltip title="Edit">
-                        <button
-                            type="button"
-                            className="task-card-action-btn"
-                            onClick={handleEditClick}
-                        >
-                            <EditOutlined />
-                        </button>
-                    </Tooltip>
-                    <Tooltip title="Delete">
-                        <button
-                            type="button"
-                            className="task-card-action-btn delete"
-                            onClick={handleDeleteClick}
-                        >
-                            <DeleteOutlined />
-                        </button>
-                    </Tooltip>
-                </div>
-            )}
+            <div className="task-card-actions">
+                <Tooltip title={assigneeIsMe ? 'Edit Note' : 'View Note'}>
+                    <button
+                        type="button"
+                        className="task-card-action-btn"
+                        onClick={handleNoteClick}
+                    >
+                        <FileTextOutlined />
+                    </button>
+                </Tooltip>
+                {canEditCore && (
+                    <>
+                        <Tooltip title="Edit">
+                            <button
+                                type="button"
+                                className="task-card-action-btn"
+                                onClick={handleEditClick}
+                            >
+                                <EditOutlined />
+                            </button>
+                        </Tooltip>
+                        <Tooltip title="Delete">
+                            <button
+                                type="button"
+                                className="task-card-action-btn delete"
+                                onClick={handleDeleteClick}
+                            >
+                                <DeleteOutlined />
+                            </button>
+                        </Tooltip>
+                    </>
+                )}
+            </div>
 
             {isSelected && (
                 <div

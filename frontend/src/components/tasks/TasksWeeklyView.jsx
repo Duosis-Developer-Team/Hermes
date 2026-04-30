@@ -29,6 +29,73 @@ import TaskCard, { TaskDueMarker } from './TaskCard'
 import '../time-entry/DayColumn.css'
 import '../time-entry/WeeklyListView.css'
 
+function userLabel(id, userMap) {
+    if (!id) return 'Unassigned'
+    const u = userMap?.[id]
+    return u?.full_name || u?.email || id
+}
+
+function renderTasksGroupedByAssignee({
+    tasks,
+    userMap,
+    currentUserId,
+    isAdmin,
+    selectedTaskId,
+    onSelectTask,
+    onEditTask,
+    onDeleteTask,
+    onOpenNote,
+    onToggleCompletion,
+    completionLoading,
+}) {
+    // Group tasks by assignee_user_id, preserving the original ordering
+    // for stable rendering.
+    const order = []
+    const buckets = new Map()
+    for (const t of tasks) {
+        const key = t.assignee_user_id || ''
+        if (!buckets.has(key)) {
+            buckets.set(key, [])
+            order.push(key)
+        }
+        buckets.get(key).push(t)
+    }
+
+    return order.map((assigneeId) => {
+        const list = buckets.get(assigneeId) || []
+        return (
+            <div key={assigneeId || 'unassigned'} className="task-assignee-group">
+                <div className="task-assignee-group-label">
+                    {userLabel(assigneeId, userMap)}
+                </div>
+                {list.map((t) => {
+                    const canToggle =
+                        isAdmin ||
+                        t.assignee_user_id === currentUserId ||
+                        t.assigner_user_id === currentUserId
+                    return (
+                        <TaskCard
+                            key={t.id}
+                            task={t}
+                            userMap={userMap}
+                            currentUserId={currentUserId}
+                            isAdmin={isAdmin}
+                            onSelect={onSelectTask}
+                            onEdit={onEditTask}
+                            onDelete={onDeleteTask}
+                            onOpenNote={onOpenNote}
+                            onToggleCompletion={onToggleCompletion}
+                            canToggleCompletion={canToggle}
+                            completionLoading={completionLoading}
+                            isSelected={selectedTaskId === t.id}
+                        />
+                    )
+                })}
+            </div>
+        )
+    })
+}
+
 function TaskDayColumn({
     date,
     tasks,
@@ -41,8 +108,11 @@ function TaskDayColumn({
     currentUserId,
     isAdmin,
     userMap,
+    /** When true, group tasks under their assignee inside the column. */
+    groupByAssignee = false,
     onEditTask,
     onDeleteTask,
+    onOpenNote,
     onSelectTask,
     onSelectDay,
     onToggleCompletion,
@@ -107,28 +177,43 @@ function TaskDayColumn({
                     </div>
                 ) : (
                     <>
-                        {tasks.map((t) => {
-                            const canToggle =
-                                isAdmin ||
-                                t.assignee_user_id === currentUserId ||
-                                t.assigner_user_id === currentUserId
-                            return (
-                                <TaskCard
-                                    key={t.id}
-                                    task={t}
-                                    userMap={userMap}
-                                    currentUserId={currentUserId}
-                                    isAdmin={isAdmin}
-                                    onSelect={onSelectTask}
-                                    onEdit={onEditTask}
-                                    onDelete={onDeleteTask}
-                                    onToggleCompletion={onToggleCompletion}
-                                    canToggleCompletion={canToggle}
-                                    completionLoading={completionLoading}
-                                    isSelected={selectedTaskId === t.id}
-                                />
-                            )
-                        })}
+                        {groupByAssignee
+                            ? renderTasksGroupedByAssignee({
+                                  tasks,
+                                  userMap,
+                                  currentUserId,
+                                  isAdmin,
+                                  selectedTaskId,
+                                  onSelectTask,
+                                  onEditTask,
+                                  onDeleteTask,
+                                  onOpenNote,
+                                  onToggleCompletion,
+                                  completionLoading,
+                              })
+                            : tasks.map((t) => {
+                                  const canToggle =
+                                      isAdmin ||
+                                      t.assignee_user_id === currentUserId ||
+                                      t.assigner_user_id === currentUserId
+                                  return (
+                                      <TaskCard
+                                          key={t.id}
+                                          task={t}
+                                          userMap={userMap}
+                                          currentUserId={currentUserId}
+                                          isAdmin={isAdmin}
+                                          onSelect={onSelectTask}
+                                          onEdit={onEditTask}
+                                          onDelete={onDeleteTask}
+                                          onOpenNote={onOpenNote}
+                                          onToggleCompletion={onToggleCompletion}
+                                          canToggleCompletion={canToggle}
+                                          completionLoading={completionLoading}
+                                          isSelected={selectedTaskId === t.id}
+                                      />
+                                  )
+                              })}
                         {dueMarkers.map((t) => (
                             <TaskDueMarker
                                 key={`due-${t.id}`}
@@ -158,8 +243,10 @@ function TasksWeeklyView({
     userMap = {},
     currentUserId,
     isAdmin,
+    groupByAssignee = false,
     onEditTask,
     onDeleteTask,
+    onOpenNote,
     onToggleCompletion,
     onCreate,
     canCreate,
@@ -252,8 +339,10 @@ function TasksWeeklyView({
                             currentUserId={currentUserId}
                             isAdmin={isAdmin}
                             userMap={userMap}
+                            groupByAssignee={groupByAssignee}
                             onEditTask={onEditTask}
                             onDeleteTask={onDeleteTask}
+                            onOpenNote={onOpenNote}
                             onSelectTask={onSelectTask}
                             onSelectDay={onSelectDay}
                             onToggleCompletion={onToggleCompletion}

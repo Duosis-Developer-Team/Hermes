@@ -17,6 +17,7 @@ import {
     Card,
     Empty,
     Modal,
+    Segmented,
     Select,
     Space,
     Spin,
@@ -45,7 +46,9 @@ import {
 import { useAuthStore } from '../stores/authStore'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
 import TasksWeeklyView from '../components/tasks/TasksWeeklyView'
+import TasksListView from '../components/tasks/TasksListView'
 import CreateTaskModal from '../components/modals/CreateTaskModal'
+import TaskNoteModal from '../components/modals/TaskNoteModal'
 
 dayjs.extend(isoWeek)
 
@@ -84,6 +87,22 @@ function TasksPage() {
     const [editingTask, setEditingTask] = useState(null)
     const [initialDate, setInitialDate] = useState(null)
     const [deletingTask, setDeletingTask] = useState(null)
+    const [noteTask, setNoteTask] = useState(null)
+
+    // ── View switches ──────────────────────────────────────────────────────
+    // Scope: 'my' = tasks assigned to me; 'assigned' = tasks I assigned.
+    const [viewScope, setViewScope] = useState('my')
+    // Layout: 'calendar' or 'list'.
+    const [viewLayout, setViewLayout] = useState('calendar')
+
+    // "Assigned by Me" requires task-assign permission or admin.
+    const canViewAssignedByMe = isTaskAdmin || canAssignTasks
+    // If a non-assigner ends up with viewScope='assigned' (e.g. permission
+    // was revoked while the page is open), force back to 'my'.
+    if (viewScope === 'assigned' && !canViewAssignedByMe) {
+        // Setting state during render is fine because it's idempotent here.
+        setViewScope('my')
+    }
 
     // ── Copy/paste state — Time Entry parity ──────────────────────────────
     const [selectedTaskId, setSelectedTaskId] = useState(null)
@@ -118,9 +137,22 @@ function TasksPage() {
         enabled: canAccessTasks,
     })
 
+    // Scope filter:
+    //  - 'my'       → assignee_user_id = current user
+    //  - 'assigned' → assigner_user_id = current user
+    // Backend enforces visibility independently; these filters narrow the
+    // result set so each scope is unambiguous.
+    const scopeParams = useMemo(() => {
+        if (!user?.id) return {}
+        return viewScope === 'assigned'
+            ? { assigner_user_id: user.id }
+            : { assignee_user_id: user.id }
+    }, [viewScope, user?.id])
+
     const { data: tasks = [], isLoading } = useQuery({
         queryKey: [
             'tasks',
+            viewScope,
             weekStart.format('YYYY-MM-DD'),
             statusFilter,
             priorityFilter,
@@ -137,6 +169,7 @@ function TasksPage() {
                 customer_id: customerFilter || undefined,
                 project_id: projectFilter || undefined,
                 sub_project_id: subProjectFilter || undefined,
+                ...scopeParams,
             }),
         enabled: canAccessTasks,
     })
@@ -216,6 +249,15 @@ function TasksPage() {
         },
     })
 
+    const noteMutation = useMutation({
+        mutationFn: ({ id, note }) => taskService.updateNote(id, note),
+        onSuccess: (updated) => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            // If the modal is still showing this task, refresh its data.
+            if (noteTask && noteTask.id === updated.id) setNoteTask(updated)
+        },
+    })
+
     // ── Paste mutation — separate from createMutation so it doesn't show
     // the generic "Task created successfully" toast (paste has its own).
     const pasteMutation = useMutation({
@@ -250,6 +292,10 @@ function TasksPage() {
 
     const handleToggleCompletion = (task, nextCompleted) => {
         completionMutation.mutate({ id: task.id, completed: nextCompleted })
+    }
+
+    const handleSaveNote = async (task, note) => {
+        await noteMutation.mutateAsync({ id: task.id, note })
     }
 
     const handleClearFilters = () => {
@@ -402,23 +448,56 @@ function TasksPage() {
                         Manage assigned technical work
                     </div>
                 </div>
-                <Space>
-                    <Button
-                        icon={<LeftOutlined />}
-                        onClick={() =>
-                            setWeekStart((prev) => prev.subtract(1, 'week'))
+                <Space wrap>
+                    {/* Scope: My Tasks / Assigned by Me */}
+                    <Segmented
+                        value={viewScope}
+                        onChange={setViewScope}
+                        options={
+                            canViewAssignedByMe
+                                ? [
+                                      { label: 'My Tasks', value: 'my' },
+                                      { label: 'Assigned by Me', value: 'assigned' },
+                                  ]
+                                : [{ label: 'My Tasks', value: 'my' }]
                         }
                     />
-                    <Button onClick={() => setWeekStart(dayjs().startOf('isoWeek'))}>
-                        Today
-                    </Button>
-                    <Button
-                        icon={<RightOutlined />}
-                        onClick={() => setWeekStart((prev) => prev.add(1, 'week'))}
+                    {/* Layout: Calendar / List */}
+                    <Segmented
+                        value={viewLayout}
+                        onChange={setViewLayout}
+                        options={[
+                            { label: 'Calendar', value: 'calendar' },
+                            { label: 'List', value: 'list' },
+                        ]}
                     />
-                    <span style={{ color: '#fff', fontWeight: 500 }}>
-                        {weekStart.format('DD MMM')} – {weekEnd.format('DD MMM, YYYY')}
-                    </span>
+                    {viewLayout === 'calendar' && (
+                        <>
+                            <Button
+                                icon={<LeftOutlined />}
+                                onClick={() =>
+                                    setWeekStart((prev) => prev.subtract(1, 'week'))
+                                }
+                            />
+                            <Button
+                                onClick={() =>
+                                    setWeekStart(dayjs().startOf('isoWeek'))
+                                }
+                            >
+                                Today
+                            </Button>
+                            <Button
+                                icon={<RightOutlined />}
+                                onClick={() =>
+                                    setWeekStart((prev) => prev.add(1, 'week'))
+                                }
+                            />
+                            <span style={{ color: '#fff', fontWeight: 500 }}>
+                                {weekStart.format('DD MMM')} –{' '}
+                                {weekEnd.format('DD MMM, YYYY')}
+                            </span>
+                        </>
+                    )}
                     {(canAssignTasks || isTaskAdmin) && (
                         <Tooltip
                             title={
@@ -514,6 +593,16 @@ function TasksPage() {
                 <div style={{ textAlign: 'center', padding: 48 }}>
                     <Spin />
                 </div>
+            ) : viewLayout === 'list' ? (
+                <TasksListView
+                    tasks={tasks}
+                    userMap={userMap}
+                    currentUserId={user?.id}
+                    isAdmin={isTaskAdmin}
+                    onEditTask={handleEdit}
+                    onDeleteTask={(t) => setDeletingTask(t)}
+                    onOpenNote={(t) => setNoteTask(t)}
+                />
             ) : (
                 <TasksWeeklyView
                     weekStart={weekStart}
@@ -521,8 +610,12 @@ function TasksPage() {
                     userMap={userMap}
                     currentUserId={user?.id}
                     isAdmin={isTaskAdmin}
+                    /* In Assigned by Me mode each day shows tasks grouped
+                       by assignee — admins/assigners scan teams quickly. */
+                    groupByAssignee={viewScope === 'assigned'}
                     onEditTask={handleEdit}
                     onDeleteTask={(t) => setDeletingTask(t)}
+                    onOpenNote={(t) => setNoteTask(t)}
                     onToggleCompletion={handleToggleCompletion}
                     onCreate={handleCreate}
                     canCreate={canCreateTask}
@@ -549,6 +642,19 @@ function TasksPage() {
                 assignableUserIds={assignableUserIds}
                 isAdmin={isTaskAdmin}
                 loading={createMutation.isPending || updateMutation.isPending}
+            />
+
+            {/* Note modal — assignee/admin can edit, assigner read-only */}
+            <TaskNoteModal
+                open={!!noteTask}
+                task={noteTask}
+                onClose={() => setNoteTask(null)}
+                onSave={handleSaveNote}
+                saving={noteMutation.isPending}
+                canEdit={
+                    isTaskAdmin ||
+                    (noteTask && noteTask.assignee_user_id === user?.id)
+                }
             />
 
             {/* Delete confirmation — mirrors Time Entry's delete modal */}
