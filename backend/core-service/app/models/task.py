@@ -233,3 +233,93 @@ class Task(Base):
             name="chk_tasks_completion_consistency",
         ),
     )
+
+
+# =============================================================================
+# task_groups
+# =============================================================================
+
+class TaskGroup(Base):
+    """Named permission group with default access / assign flags."""
+
+    __tablename__ = "task_groups"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    can_access_tasks_default = Column(Boolean, nullable=False, default=False)
+    can_assign_tasks_default = Column(Boolean, nullable=False, default=False)
+    is_active = Column(Boolean, nullable=False, default=True, index=True)
+    created_by_user_id = Column(UUID(as_uuid=True), nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    archived_at = Column(DateTime(timezone=True), nullable=True)
+
+    members = relationship(
+        "TaskGroupMember",
+        back_populates="group",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("name", name="uq_task_groups_name"),
+    )
+
+
+# =============================================================================
+# task_group_members
+# =============================================================================
+
+class TaskGroupMember(Base):
+    """User membership in a task group with optional task title and overrides.
+
+    `can_access_tasks_override` / `can_assign_tasks_override` are tri-state:
+        NULL  → inherit the group default
+        TRUE  → force the membership's contribution to true
+        FALSE → suppress this membership's contribution (other sources can
+                still grant the permission)
+    """
+
+    __tablename__ = "task_group_members"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    group_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("task_groups.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    task_title = Column(String(255), nullable=True)
+    can_access_tasks_override = Column(Boolean, nullable=True)
+    can_assign_tasks_override = Column(Boolean, nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    group = relationship("TaskGroup", back_populates="members")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "group_id",
+            "user_id",
+            name="uq_task_group_members_group_user",
+        ),
+    )

@@ -21,6 +21,8 @@ from .task import (
     TaskAssignmentRelation,
     TaskSubProject,
     Task,
+    TaskGroup,
+    TaskGroupMember,
 )
 
 __all__ = [
@@ -41,4 +43,6 @@ __all__ = [
     "TaskAssignmentRelation",
     "TaskSubProject",
     "Task",
+    "TaskGroup",
+    "TaskGroupMember",
 ]

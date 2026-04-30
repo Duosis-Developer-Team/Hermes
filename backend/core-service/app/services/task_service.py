@@ -21,11 +21,17 @@ from ..models.project import Project
 from ..models.task import (
     Task,
     TaskAssignmentRelation,
+    TaskGroup,
+    TaskGroupMember,
     TaskSubProject,
     TaskUserPermission,
 )
 from ..schemas.task import (
     TaskCreate,
+    TaskGroupCreate,
+    TaskGroupMemberCreate,
+    TaskGroupMemberUpdate,
+    TaskGroupUpdate,
     TaskNoteUpdate,
     TaskPermissionUpdate,
     TaskSubProjectCreate,
@@ -53,18 +59,75 @@ def get_task_permission(db: Session, user_id: UUID) -> Optional[TaskUserPermissi
     )
 
 
+def _effective_group_grant(
+    db: Session,
+    user_id: UUID,
+    *,
+    column: str,
+) -> bool:
+    """Returns True if any active group membership grants the given column.
+
+    Per-membership contribution:
+        override IS TRUE                                      → contributes True
+        override IS FALSE                                     → contributes False (suppresses *this* group only)
+        override IS NULL AND group default                    → contributes default
+
+    A FALSE override on one group does NOT block other groups' or direct
+    permissions from granting True — the outer OR still wins.
+
+    `column` must be one of 'access' or 'assign'.
+    """
+    if column == "access":
+        override_col = TaskGroupMember.can_access_tasks_override
+        default_col = TaskGroup.can_access_tasks_default
+    elif column == "assign":
+        override_col = TaskGroupMember.can_assign_tasks_override
+        default_col = TaskGroup.can_assign_tasks_default
+    else:
+        raise ValueError("column must be 'access' or 'assign'")
+
+    rows = (
+        db.query(override_col, default_col)
+        .join(TaskGroup, TaskGroupMember.group_id == TaskGroup.id)
+        .filter(
+            TaskGroupMember.user_id == user_id,
+            TaskGroup.is_active.is_(True),
+        )
+        .all()
+    )
+    for override, default in rows:
+        if override is True:
+            return True
+        if override is None and bool(default):
+            return True
+    return False
+
+
 def can_access_tasks(db: Session, user: CurrentUser) -> bool:
+    """Effective permission: admin OR direct OR any active group membership."""
     if is_task_admin(user):
         return True
-    perm = get_task_permission(db, UUID(user.id))
-    return bool(perm and perm.can_access_tasks)
+    user_uuid = UUID(user.id)
+    perm = get_task_permission(db, user_uuid)
+    if perm and perm.can_access_tasks:
+        return True
+    return _effective_group_grant(db, user_uuid, column="access")
 
 
 def can_assign_tasks(db: Session, user: CurrentUser) -> bool:
+    """Effective permission: admin OR direct OR any active group membership.
+
+    Note: granting `can_assign_tasks` only means "the user can create tasks";
+    the assignment hierarchy (task_assignment_relations) still controls who
+    they can assign to.
+    """
     if is_task_admin(user):
         return True
-    perm = get_task_permission(db, UUID(user.id))
-    return bool(perm and perm.can_access_tasks and perm.can_assign_tasks)
+    user_uuid = UUID(user.id)
+    perm = get_task_permission(db, user_uuid)
+    if perm and perm.can_access_tasks and perm.can_assign_tasks:
+        return True
+    return _effective_group_grant(db, user_uuid, column="assign")
 
 
 def get_assignable_user_ids(db: Session, user: CurrentUser) -> List[UUID]:
@@ -816,3 +879,246 @@ def update_task_note(
     db.commit()
     db.refresh(task)
     return task
+
+
+# =============================================================================
+# Task Groups — CRUD
+# =============================================================================
+
+def list_task_groups(db: Session, include_archived: bool = False) -> List[TaskGroup]:
+    query = db.query(TaskGroup)
+    if not include_archived:
+        query = query.filter(TaskGroup.archived_at.is_(None))
+    return query.order_by(TaskGroup.name.asc()).all()
+
+
+def get_member_count_map(db: Session) -> dict:
+    """Return {group_id_str: count} for all groups."""
+    from sqlalchemy import func
+
+    rows = (
+        db.query(TaskGroupMember.group_id, func.count(TaskGroupMember.id))
+        .group_by(TaskGroupMember.group_id)
+        .all()
+    )
+    return {str(gid): int(c) for gid, c in rows}
+
+
+def get_task_group(db: Session, group_id: UUID) -> TaskGroup:
+    group = db.query(TaskGroup).filter(TaskGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task group not found.",
+        )
+    return group
+
+
+def create_task_group(
+    db: Session,
+    data: TaskGroupCreate,
+    created_by_user_id: UUID,
+) -> TaskGroup:
+    name = data.name.strip()
+    if not name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Group name is required.",
+        )
+    duplicate = db.query(TaskGroup).filter(TaskGroup.name == name).first()
+    if duplicate:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A task group with the same name already exists.",
+        )
+    group = TaskGroup(
+        name=name,
+        description=data.description,
+        can_access_tasks_default=bool(data.can_access_tasks_default),
+        can_assign_tasks_default=bool(data.can_assign_tasks_default),
+        is_active=True,
+        created_by_user_id=created_by_user_id,
+    )
+    db.add(group)
+    db.commit()
+    db.refresh(group)
+    return group
+
+
+def update_task_group(
+    db: Session,
+    group_id: UUID,
+    data: TaskGroupUpdate,
+) -> TaskGroup:
+    group = get_task_group(db, group_id)
+
+    if data.name is not None:
+        new_name = data.name.strip()
+        if not new_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Group name is required.",
+            )
+        if new_name != group.name:
+            duplicate = (
+                db.query(TaskGroup)
+                .filter(TaskGroup.name == new_name, TaskGroup.id != group.id)
+                .first()
+            )
+            if duplicate:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="A task group with the same name already exists.",
+                )
+            group.name = new_name
+
+    if data.description is not None:
+        group.description = data.description
+    if data.can_access_tasks_default is not None:
+        group.can_access_tasks_default = bool(data.can_access_tasks_default)
+    if data.can_assign_tasks_default is not None:
+        group.can_assign_tasks_default = bool(data.can_assign_tasks_default)
+    if data.is_active is not None:
+        group.is_active = bool(data.is_active)
+        if not group.is_active and group.archived_at is None:
+            group.archived_at = datetime.now(timezone.utc)
+        if group.is_active and group.archived_at is not None:
+            group.archived_at = None
+
+    db.commit()
+    db.refresh(group)
+    return group
+
+
+def archive_task_group(db: Session, group_id: UUID) -> TaskGroup:
+    group = get_task_group(db, group_id)
+    group.is_active = False
+    group.archived_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(group)
+    return group
+
+
+# =============================================================================
+# Task Group Members — CRUD
+# =============================================================================
+
+def list_task_group_members(db: Session, group_id: UUID) -> List[TaskGroupMember]:
+    # Ensure group exists (404 otherwise).
+    get_task_group(db, group_id)
+    return (
+        db.query(TaskGroupMember)
+        .filter(TaskGroupMember.group_id == group_id)
+        .order_by(TaskGroupMember.created_at.asc())
+        .all()
+    )
+
+
+def get_task_group_member(db: Session, group_id: UUID, member_id: UUID) -> TaskGroupMember:
+    member = (
+        db.query(TaskGroupMember)
+        .filter(TaskGroupMember.id == member_id, TaskGroupMember.group_id == group_id)
+        .first()
+    )
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Group member not found.",
+        )
+    return member
+
+
+def add_task_group_member(
+    db: Session,
+    group_id: UUID,
+    data: TaskGroupMemberCreate,
+) -> TaskGroupMember:
+    get_task_group(db, group_id)
+
+    duplicate = (
+        db.query(TaskGroupMember)
+        .filter(
+            TaskGroupMember.group_id == group_id,
+            TaskGroupMember.user_id == data.user_id,
+        )
+        .first()
+    )
+    if duplicate:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This user is already a member of the group.",
+        )
+
+    title = (data.task_title or "").strip() or None
+    member = TaskGroupMember(
+        group_id=group_id,
+        user_id=data.user_id,
+        task_title=title,
+        can_access_tasks_override=data.can_access_tasks_override,
+        can_assign_tasks_override=data.can_assign_tasks_override,
+    )
+    db.add(member)
+    db.commit()
+    db.refresh(member)
+    return member
+
+
+def update_task_group_member(
+    db: Session,
+    group_id: UUID,
+    member_id: UUID,
+    data: TaskGroupMemberUpdate,
+) -> TaskGroupMember:
+    member = get_task_group_member(db, group_id, member_id)
+
+    # Title — supports clear sentinel.
+    if data.clear_task_title:
+        member.task_title = None
+    elif data.task_title is not None:
+        title = data.task_title.strip()
+        member.task_title = title or None
+
+    # Access override (tri-state).
+    if data.clear_access_override:
+        member.can_access_tasks_override = None
+    elif data.can_access_tasks_override is not None:
+        member.can_access_tasks_override = bool(data.can_access_tasks_override)
+
+    # Assign override (tri-state).
+    if data.clear_assign_override:
+        member.can_assign_tasks_override = None
+    elif data.can_assign_tasks_override is not None:
+        member.can_assign_tasks_override = bool(data.can_assign_tasks_override)
+
+    db.commit()
+    db.refresh(member)
+    return member
+
+
+def remove_task_group_member(db: Session, group_id: UUID, member_id: UUID) -> None:
+    """Hard-deletes the membership row only — does not touch the user account
+    or any business data (tasks, work logs, etc.).
+    """
+    member = get_task_group_member(db, group_id, member_id)
+    db.delete(member)
+    db.commit()
+
+
+def effective_member_contribution(
+    member: TaskGroupMember,
+    group: TaskGroup,
+) -> tuple[bool, bool]:
+    """Compute (effective_access_in_group, effective_assign_in_group)
+    for a single membership, used purely for display/serialization.
+    """
+    if member.can_access_tasks_override is not None:
+        access = bool(member.can_access_tasks_override)
+    else:
+        access = bool(group.can_access_tasks_default)
+    if member.can_assign_tasks_override is not None:
+        assign = bool(member.can_assign_tasks_override)
+    else:
+        assign = bool(group.can_assign_tasks_default)
+    # Group inactive ⇒ contributes nothing in the global effective check,
+    # but for display we still report the would-be state.
+    return access, assign
