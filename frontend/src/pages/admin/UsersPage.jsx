@@ -8,7 +8,7 @@
 
 import { useState } from 'react'
 import { Card, Table, Button, Space, Modal, Form, Input, message, Popconfirm, Typography, Switch, Tag, Checkbox, Select } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, CrownOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, CrownOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
@@ -111,7 +111,6 @@ function UsersPage() {
                 let icon = <UserOutlined />
 
                 if (effectiveRole === 'ADMIN') { color = 'gold'; icon = <CrownOutlined /> }
-                else if (effectiveRole === 'REVIEWER') { color = 'purple'; icon = <SafetyCertificateOutlined /> }
                 else { color = 'blue' }
 
                 return <Tag icon={icon} color={color}>{effectiveRole}</Tag>
@@ -155,7 +154,6 @@ function UsersPage() {
                     <Form.Item name="role" label="Role" initialValue="USER">
                         <Select>
                             <Select.Option value="USER">User</Select.Option>
-                            <Select.Option value="REVIEWER">Reviewer</Select.Option>
                             <Select.Option value="ADMIN">Admin</Select.Option>
                         </Select>
                     </Form.Item>

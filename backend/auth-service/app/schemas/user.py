@@ -13,9 +13,17 @@ from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from enum import Enum
 
 class UserRole(str, Enum):
+    """Selectable user roles for the API surface.
+
+    REVIEWER was previously part of the timesheet-review flow and is no
+    longer offered as a selectable option in the admin UI / API. The value
+    is intentionally retained on the SQLAlchemy model + Postgres ENUM type
+    so any historical row stays readable without a destructive
+    ALTER TYPE ... DROP VALUE on production data.
+    """
+
     ADMIN = "ADMIN"
     USER = "USER"
-    REVIEWER = "REVIEWER"
 
 
 # =============================================================================
