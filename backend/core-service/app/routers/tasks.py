@@ -131,6 +131,71 @@ async def get_my_task_permissions(
 
 
 # =============================================================================
+# Assignable groups (read-only minimal info for task users)
+# =============================================================================
+
+@router.get("/assignable-groups")
+async def list_assignable_groups(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Returns minimal info for groups the current user may target with
+    Create-Task-for-Group:
+        - admin: every active user_group
+        - non-admin assigner: only groups with a direct
+          task_assignment_group_relations row.
+
+    Shape: [{ id, name, member_count }]. Used by Create Task modal so
+    non-admins can see group names without needing the /admin/user-groups
+    endpoint.
+    """
+    task_service.require_task_access(db, current_user)
+
+    from ..models.user_group import UserGroup
+
+    if task_service.is_task_admin(current_user):
+        groups = (
+            db.query(UserGroup)
+            .filter(UserGroup.is_active.is_(True))
+            .order_by(UserGroup.name.asc())
+            .all()
+        )
+    else:
+        if not task_service.can_assign_tasks(db, current_user):
+            return []
+        ids = task_service.get_assignable_group_ids(db, current_user)
+        if not ids:
+            return []
+        groups = (
+            db.query(UserGroup)
+            .filter(UserGroup.id.in_(ids), UserGroup.is_active.is_(True))
+            .order_by(UserGroup.name.asc())
+            .all()
+        )
+
+    # Compute active member counts in a single grouped query.
+    from sqlalchemy import func as _func
+    from ..models.user_group import UserGroupMember
+
+    rows = (
+        db.query(UserGroupMember.group_id, _func.count(UserGroupMember.id))
+        .filter(UserGroupMember.is_active.is_(True))
+        .group_by(UserGroupMember.group_id)
+        .all()
+    )
+    counts = {str(gid): int(c) for gid, c in rows}
+
+    return [
+        {
+            "id": str(g.id),
+            "name": g.name,
+            "member_count": counts.get(str(g.id), 0),
+        }
+        for g in groups
+    ]
+
+
+# =============================================================================
 # Sub Projects (read-only for task users)
 # =============================================================================
 

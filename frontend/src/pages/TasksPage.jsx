@@ -249,6 +249,24 @@ function TasksPage() {
         },
     })
 
+    const createGroupMutation = useMutation({
+        mutationFn: (data) => taskService.createForGroup(data),
+        onSuccess: (res) => {
+            const count = Array.isArray(res?.tasks) ? res.tasks.length : 0
+            message.success(
+                `${count} task${count === 1 ? '' : 's'} created for the group.`
+            )
+            queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            setCreateOpen(false)
+            setEditingTask(null)
+        },
+        onError: (err) => {
+            message.error(
+                err?.response?.data?.detail || 'Failed to create group tasks.'
+            )
+        },
+    })
+
     const completionMutation = useMutation({
         mutationFn: ({ id, completed }) => taskService.setCompleted(id, completed),
         onSuccess: () => {
@@ -305,12 +323,17 @@ function TasksPage() {
         setCreateOpen(true)
     }
 
-    const handleSubmitTask = async (payload, taskId) => {
-        if (taskId) {
-            await updateMutation.mutateAsync({ id: taskId, data: payload })
-        } else {
-            await createMutation.mutateAsync(payload)
+    const handleSubmitTask = async (payload, meta = {}) => {
+        // meta = { taskId? , isGroup? } — modal decides which one.
+        if (meta.taskId) {
+            await updateMutation.mutateAsync({ id: meta.taskId, data: payload })
+            return
         }
+        if (meta.isGroup) {
+            await createGroupMutation.mutateAsync(payload)
+            return
+        }
+        await createMutation.mutateAsync(payload)
     }
 
     const handleToggleCompletion = (task, nextCompleted) => {
@@ -729,7 +752,11 @@ function TasksPage() {
                 editingTask={editingTask}
                 assignableUserIds={assignableUserIds}
                 isAdmin={isTaskAdmin}
-                loading={createMutation.isPending || updateMutation.isPending}
+                loading={
+                    createMutation.isPending ||
+                    updateMutation.isPending ||
+                    createGroupMutation.isPending
+                }
             />
 
             {/* Note modal — assignee/admin can edit, assigner read-only */}

@@ -720,6 +720,37 @@ export const taskAssignmentService = {
     },
 }
 
+// =============================================================================
+// CORE SERVICE - Task Assignment Group Relations (assigner -> group)
+// =============================================================================
+
+export const taskAssignmentGroupService = {
+    /** Admin: list all assigner -> group mappings. */
+    list: async () => {
+        const response = await coreApi.get(
+            '/api/v1/core/admin/task-assignment-group-relations'
+        )
+        return response.data
+    },
+
+    /** Admin: create one mapping. Idempotent server-side. */
+    create: async (data) => {
+        const response = await coreApi.post(
+            '/api/v1/core/admin/task-assignment-group-relations',
+            data
+        )
+        return response.data
+    },
+
+    /** Admin: delete one mapping. */
+    delete: async (relationId) => {
+        const response = await coreApi.delete(
+            `/api/v1/core/admin/task-assignment-group-relations/${relationId}`
+        )
+        return response.data
+    },
+}
+
 export const taskSubProjectService = {
     /**
      * List sub projects (any task user / admin).
@@ -876,6 +907,24 @@ export const taskService = {
         return response.data
     },
 
+    /**
+     * Fan a single create-task action out to every active member of a
+     * group. Returns { assignment_batch_id, assignee_group_id, tasks }.
+     */
+    createForGroup: async (data) => {
+        const response = await coreApi.post('/api/v1/core/tasks/group', data)
+        return response.data
+    },
+
+    /**
+     * Minimal info for groups the current user may target with
+     * Create-Task-for-Group. Returns [{id, name, member_count}].
+     */
+    listAssignableGroups: async () => {
+        const response = await coreApi.get('/api/v1/core/tasks/assignable-groups')
+        return response.data
+    },
+
     /** Get a single task by ID. */
     getById: async (taskId) => {
         const response = await coreApi.get(`/api/v1/core/tasks/${taskId}`)
@@ -932,6 +981,7 @@ export default {
     reportsService,
     taskPermissionService,
     taskAssignmentService,
+    taskAssignmentGroupService,
     taskSubProjectService,
     taskService,
     userGroupService,

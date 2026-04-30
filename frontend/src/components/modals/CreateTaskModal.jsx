@@ -31,6 +31,7 @@ import {
     authService,
     customerService,
     projectService,
+    taskService,
     taskSubProjectService,
 } from '../../services/api'
 
@@ -51,6 +52,10 @@ function CreateTaskModal({
     isAdmin = false,
     loading = false,
 }) {
+    // Form value for assignee is a prefixed string:
+    //   "user:<uuid>"  → single-user task
+    //   "group:<uuid>" → fan-out per active group member (only on create)
+    // Edit mode is single-user only (each task row is per assignee).
     const [form] = Form.useForm()
     const isEditing = !!editingTask
 
@@ -101,13 +106,44 @@ function CreateTaskModal({
         staleTime: 60 * 1000,
     })
 
+    const { data: assignableGroups = [] } = useQuery({
+        queryKey: ['tasks-assignable-groups'],
+        queryFn: () => taskService.listAssignableGroups(),
+        enabled: open,
+        staleTime: 60 * 1000,
+    })
+
+    // Build the grouped option list for the assignee dropdown.
+    // - Edit mode: single-user only (no group rows).
+    // - Create mode: Groups section (if any) + Users section.
     const assigneeOptions = useMemo(() => {
-        const list = isAdmin ? allActiveUsers : mappedUsers
-        return list.map((u) => ({
-            value: u.id,
+        const userList = isAdmin ? allActiveUsers : mappedUsers
+        const userOptions = userList.map((u) => ({
+            value: `user:${u.id}`,
             label: u.full_name || u.email,
         }))
-    }, [isAdmin, allActiveUsers, mappedUsers])
+        if (editingTask) {
+            return userOptions
+        }
+        if (assignableGroups.length === 0) {
+            return userOptions
+        }
+        return [
+            {
+                label: 'Groups',
+                options: assignableGroups.map((g) => ({
+                    value: `group:${g.id}`,
+                    label: `${g.name} (${g.member_count} member${
+                        g.member_count === 1 ? '' : 's'
+                    })`,
+                })),
+            },
+            {
+                label: 'Users',
+                options: userOptions,
+            },
+        ]
+    }, [isAdmin, allActiveUsers, mappedUsers, assignableGroups, editingTask])
 
     useEffect(() => {
         if (!open) return
@@ -116,7 +152,7 @@ function CreateTaskModal({
                 customer_id: editingTask.customer_id,
                 project_id: editingTask.project_id,
                 sub_project_id: editingTask.sub_project_id || undefined,
-                assignee_user_id: editingTask.assignee_user_id,
+                assignee: `user:${editingTask.assignee_user_id}`,
                 title: editingTask.title,
                 description: editingTask.description || '',
                 scheduled_date: editingTask.scheduled_date
@@ -169,11 +205,15 @@ function CreateTaskModal({
         }
         const decimalHours = parseFloat(values.duration_hours_decimal) || 0
         const minutes = Math.round(decimalHours * 60)
-        const payload = {
+        const assigneeRaw = values.assignee || ''
+        const [assigneeKind, assigneeId] = assigneeRaw.includes(':')
+            ? assigneeRaw.split(':')
+            : ['user', assigneeRaw]
+
+        const basePayload = {
             customer_id: values.customer_id,
             project_id: values.project_id,
             sub_project_id: subProjectId,
-            assignee_user_id: values.assignee_user_id,
             title: values.title?.trim(),
             description,
             scheduled_date: scheduled,
@@ -181,15 +221,33 @@ function CreateTaskModal({
             estimated_duration_minutes: minutes > 0 ? minutes : null,
             priority: values.priority || 'medium',
         }
-        // For edits, signal explicit clear if user removed the sub project.
+
+        if (assigneeKind === 'group' && !isEditing) {
+            // Group assignee: backend fans the task out to one row per
+            // active member via POST /tasks/group.
+            await onSubmit(
+                { ...basePayload, assignee_group_id: assigneeId },
+                { isGroup: true }
+            )
+            return
+        }
+
+        const payload = { ...basePayload, assignee_user_id: assigneeId }
         if (isEditing) {
             payload.clear_sub_project =
                 !!editingTask.sub_project_id && !subProjectId
         }
-        await onSubmit(payload, editingTask?.id)
+        await onSubmit(payload, { taskId: editingTask?.id })
     }
 
-    const noAssignableUsers = assigneeOptions.length === 0
+    // Assignee dropdown is empty when there are no users AND no groups
+    // available — applies in either flat or grouped option shape.
+    const noAssignableUsers = useMemo(() => {
+        if (!assigneeOptions || assigneeOptions.length === 0) return true
+        return assigneeOptions.every((opt) =>
+            Array.isArray(opt.options) ? opt.options.length === 0 : false
+        ) && !assigneeOptions.some((opt) => !Array.isArray(opt.options))
+    }, [assigneeOptions])
 
     return (
         <Modal
@@ -275,15 +333,20 @@ function CreateTaskModal({
 
                 <Form.Item
                     label="Assignee"
-                    name="assignee_user_id"
+                    name="assignee"
                     rules={[{ required: true, message: 'Assignee is required.' }]}
+                    extra={
+                        !isEditing && assignableGroups.length > 0
+                            ? 'Picking a group creates one task per active group member.'
+                            : undefined
+                    }
                 >
                     <Select
                         showSearch
                         placeholder={
                             noAssignableUsers
                                 ? 'No assignable users'
-                                : 'Select assignee'
+                                : 'Select user or group'
                         }
                         disabled={noAssignableUsers}
                         optionFilterProp="label"

@@ -25,6 +25,7 @@ const DEFAULT_PERMISSIONS = {
     can_assign_tasks: false,
     is_admin: false,
     assignable_user_ids: [],
+    assignable_group_ids: [],
 }
 
 export function useTaskPermissions() {
@@ -47,6 +48,9 @@ export function useTaskPermissions() {
         isTaskAdmin: !!data.is_admin,
         assignableUserIds: Array.isArray(data.assignable_user_ids)
             ? data.assignable_user_ids
+            : [],
+        assignableGroupIds: Array.isArray(data.assignable_group_ids)
+            ? data.assignable_group_ids
             : [],
         permissions: data,
     }
