@@ -149,10 +149,13 @@ function TaskCard({
         ? ` · ${task.sub_project_name}`
         : ''
 
+    // Completed tasks are not selectable for copy/paste — drop the
+    // selected styling and the C badge regardless of stale state.
+    const showAsSelected = isSelected && !isCompleted
     const className =
         'task-card' +
         (isCompleted ? ' task-card-completed' : '') +
-        (isSelected ? ' task-card-selected' : '')
+        (showAsSelected ? ' task-card-selected' : '')
 
     return (
         <div
@@ -280,7 +283,7 @@ function TaskCard({
                 )}
             </div>
 
-            {isSelected && (
+            {showAsSelected && (
                 <div
                     className="task-card-selected-badge"
                     title="Press Ctrl+C to copy"

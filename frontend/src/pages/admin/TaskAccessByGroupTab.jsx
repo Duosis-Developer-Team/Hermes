@@ -287,7 +287,9 @@ function AdditionalUsersSection({ users }) {
     return (
         <div style={{ marginTop: 32 }}>
             <div style={{ marginBottom: 8 }}>
-                <strong style={{ fontSize: 15 }}>Additional Users</strong>
+                <strong style={{ fontSize: 15, color: '#fff' }}>
+                    Additional Users
+                </strong>
                 <div style={{ color: '#9b9b9b', fontSize: 12, marginTop: 2 }}>
                     People with task permissions outside any group.
                 </div>

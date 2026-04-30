@@ -390,6 +390,28 @@ function TasksPage() {
     }
 
     // ── Copy/paste handlers — Time Entry parity ────────────────────────────
+    // If the copied source task or the currently-selected task transitions
+    // to completed (e.g. another tab marks it done, or we mark it
+    // ourselves), drop it from the clipboard/selection — completed tasks
+    // are not copy/paste-able.
+    useEffect(() => {
+        if (!tasks?.length) return
+        if (copiedTask) {
+            const live = tasks.find((t) => t.id === copiedTask.id)
+            if (live && live.status === 'completed') {
+                setCopiedTask(null)
+                setTargetDate(null)
+                message.info('Clipboard cleared — task was completed.')
+            }
+        }
+        if (selectedTaskId) {
+            const live = tasks.find((t) => t.id === selectedTaskId)
+            if (live && live.status === 'completed') {
+                setSelectedTaskId(null)
+            }
+        }
+    }, [tasks, copiedTask, selectedTaskId])
+
     const handleSelectTask = (taskId) => {
         setSelectedTaskId((prev) => (prev === taskId ? null : taskId))
         // Starting a new selection clears any pending paste target.
@@ -425,6 +447,11 @@ function TasksPage() {
                 if (selectedTaskId) {
                     const task = tasks.find((t) => t.id === selectedTaskId)
                     if (task) {
+                        if (task.status === 'completed') {
+                            message.info('Completed tasks cannot be copied.')
+                            e.preventDefault()
+                            return
+                        }
                         setCopiedTask(task)
                         const label = task.title || 'Task'
                         message.info(
@@ -440,6 +467,20 @@ function TasksPage() {
             if (isMod && e.key === 'v') {
                 if (!copiedTask) return // nothing in clipboard, let browser handle
                 e.preventDefault()
+
+                // Race guard: source task may have been completed between
+                // copy and paste. The auto-clear effect handles most cases,
+                // but cover the gap explicitly.
+                const live = tasks.find((t) => t.id === copiedTask.id)
+                if (
+                    copiedTask.status === 'completed' ||
+                    (live && live.status === 'completed')
+                ) {
+                    message.info('Completed tasks cannot be pasted.')
+                    setCopiedTask(null)
+                    setTargetDate(null)
+                    return
+                }
 
                 if (!targetDate) {
                     message.warning('Select a target day first, then paste')
