@@ -5,6 +5,10 @@
  * Wraps GET /api/v1/core/tasks/permissions/me with React Query so the
  * sidebar, route guard, and task pages share a single source of truth.
  *
+ * Backend now returns assignable user IDs only. This hook resolves names
+ * via authService.lookupUsers (called by callers as needed) and exposes
+ * a normalized `assignableUserIds` array.
+ *
  * - Stale-while-revalidate: 5 min
  * - Disabled while not authenticated
  * - Falls back to false flags on error (sidebar item hidden)
@@ -20,7 +24,7 @@ const DEFAULT_PERMISSIONS = {
     can_access_tasks: false,
     can_assign_tasks: false,
     is_admin: false,
-    assignable_users: [],
+    assignable_user_ids: [],
 }
 
 export function useTaskPermissions() {
@@ -41,8 +45,8 @@ export function useTaskPermissions() {
         canAccessTasks: !!data.can_access_tasks,
         canAssignTasks: !!data.can_assign_tasks,
         isTaskAdmin: !!data.is_admin,
-        assignableUsers: Array.isArray(data.assignable_users)
-            ? data.assignable_users
+        assignableUserIds: Array.isArray(data.assignable_user_ids)
+            ? data.assignable_user_ids
             : [],
         permissions: data,
     }

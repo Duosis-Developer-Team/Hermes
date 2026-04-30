@@ -171,7 +171,7 @@ class Task(Base):
     sub_project_id = Column(
         UUID(as_uuid=True),
         ForeignKey("task_sub_projects.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
 

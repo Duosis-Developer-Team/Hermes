@@ -4,6 +4,10 @@
  * =============================================================================
  * Calendar / list view of tasks scoped to the current user's visibility.
  * Layout matches the Time Entry page (weekly columns, Hermes Ant Design).
+ *
+ * After fetching tasks, this page calls auth-service /users/lookup once to
+ * resolve assigner / assignee names, then passes the resulting userMap to
+ * the card and detail modal.
  * =============================================================================
  */
 
@@ -29,6 +33,7 @@ import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 
 import {
+    authService,
     customerService,
     projectService,
     taskService,
@@ -63,7 +68,7 @@ function TasksPage() {
         canAccessTasks,
         canAssignTasks,
         isTaskAdmin,
-        assignableUsers,
+        assignableUserIds,
     } = useTaskPermissions()
 
     const [weekStart, setWeekStart] = useState(() => dayjs().startOf('isoWeek'))
@@ -133,6 +138,31 @@ function TasksPage() {
             }),
         enabled: canAccessTasks,
     })
+
+    // Collect every user id referenced by the current task list and resolve
+    // names with a single auth-service /users/lookup call.
+    const referencedUserIds = useMemo(() => {
+        const ids = new Set()
+        for (const t of tasks) {
+            if (t.assignee_user_id) ids.add(t.assignee_user_id)
+            if (t.assigner_user_id) ids.add(t.assigner_user_id)
+            if (t.completed_by_user_id) ids.add(t.completed_by_user_id)
+        }
+        return Array.from(ids)
+    }, [tasks])
+
+    const { data: usersForTasks = [] } = useQuery({
+        queryKey: ['auth-users-lookup', { ids: referencedUserIds }],
+        queryFn: () => authService.lookupUsers({ ids: referencedUserIds }),
+        enabled: canAccessTasks && referencedUserIds.length > 0,
+        staleTime: 60 * 1000,
+    })
+
+    const userMap = useMemo(() => {
+        const map = {}
+        for (const u of usersForTasks) map[u.id] = u
+        return map
+    }, [usersForTasks])
 
     const tasksByDate = useMemo(() => {
         const grouped = {}
@@ -231,6 +261,9 @@ function TasksPage() {
         setSubProjectFilter(null)
     }
 
+    const canCreateTask =
+        isTaskAdmin || (canAssignTasks && (isTaskAdmin || assignableUserIds.length > 0))
+
     if (!canAccessTasks) {
         return (
             <div style={{ padding: 24 }}>
@@ -278,7 +311,7 @@ function TasksPage() {
                     {(canAssignTasks || isTaskAdmin) && (
                         <Tooltip
                             title={
-                                assignableUsers.length === 0 && !isTaskAdmin
+                                !isTaskAdmin && assignableUserIds.length === 0
                                     ? 'You have no assignable users.'
                                     : 'Create a new task'
                             }
@@ -286,7 +319,7 @@ function TasksPage() {
                             <Button
                                 type="primary"
                                 icon={<PlusOutlined />}
-                                disabled={!isTaskAdmin && assignableUsers.length === 0}
+                                disabled={!canCreateTask}
                                 onClick={() => handleCreate(dayjs())}
                             >
                                 Create Task
@@ -433,10 +466,7 @@ function TasksPage() {
                                                 type="text"
                                                 icon={<PlusOutlined />}
                                                 onClick={() => handleCreate(day)}
-                                                disabled={
-                                                    !isTaskAdmin &&
-                                                    assignableUsers.length === 0
-                                                }
+                                                disabled={!canCreateTask}
                                             />
                                         </Tooltip>
                                     )}
@@ -459,6 +489,7 @@ function TasksPage() {
                                             <TaskCard
                                                 key={task.id}
                                                 task={task}
+                                                userMap={userMap}
                                                 currentUserId={user?.id}
                                                 onClick={(t) => setDetailTask(t)}
                                                 onToggleCompletion={
@@ -466,8 +497,8 @@ function TasksPage() {
                                                 }
                                                 canToggleCompletion={
                                                     isTaskAdmin ||
-                                                    task.assignee_user?.id === user?.id ||
-                                                    task.assigner_user?.id === user?.id
+                                                    task.assignee_user_id === user?.id ||
+                                                    task.assigner_user_id === user?.id
                                                 }
                                                 completionLoading={
                                                     completionMutation.isPending
@@ -492,7 +523,7 @@ function TasksPage() {
                 onSubmit={handleSubmitTask}
                 initialDate={initialDate}
                 editingTask={editingTask}
-                assignableUsers={assignableUsers}
+                assignableUserIds={assignableUserIds}
                 isAdmin={isTaskAdmin}
                 loading={createMutation.isPending || updateMutation.isPending}
             />
@@ -500,6 +531,7 @@ function TasksPage() {
             <TaskDetailModal
                 open={!!detailTask}
                 task={detailTask}
+                userMap={userMap}
                 currentUserId={user?.id}
                 isAdmin={isTaskAdmin}
                 onClose={() => setDetailTask(null)}

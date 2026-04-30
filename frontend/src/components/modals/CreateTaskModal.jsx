@@ -4,6 +4,12 @@
  * =============================================================================
  * Mirrors Hermes Ant Design modal style. Reuses customer/project selectors
  * from existing core API and the task-only sub-projects API.
+ *
+ * - Sub Project is OPTIONAL (task can be created directly under a project).
+ * - Admin sees all active users in the assignee dropdown (fetched from
+ *   auth-service /users/lookup directly).
+ * - Non-admin assigner sees only mapped assignee IDs from
+ *   /tasks/permissions/me, resolved to names via the same auth lookup.
  * =============================================================================
  */
 
@@ -22,6 +28,7 @@ import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 
 import {
+    authService,
     customerService,
     projectService,
     taskSubProjectService,
@@ -40,7 +47,7 @@ function CreateTaskModal({
     onSubmit,
     initialDate,
     editingTask = null,
-    assignableUsers = [],
+    assignableUserIds = [],
     isAdmin = false,
     loading = false,
 }) {
@@ -77,14 +84,39 @@ function CreateTaskModal({
         enabled: open && !!customerId && !!projectId,
     })
 
+    // Resolve assignee user list:
+    // - Admin: fetch all active users directly from auth-service.
+    // - Non-admin: backend gave us assignable user IDs; resolve names via lookup.
+    const { data: allActiveUsers = [] } = useQuery({
+        queryKey: ['auth-users-lookup', { include_inactive: false }],
+        queryFn: () => authService.lookupUsers(),
+        enabled: open && isAdmin,
+        staleTime: 60 * 1000,
+    })
+
+    const { data: mappedUsers = [] } = useQuery({
+        queryKey: ['auth-users-lookup', { ids: assignableUserIds }],
+        queryFn: () => authService.lookupUsers({ ids: assignableUserIds }),
+        enabled: open && !isAdmin && assignableUserIds.length > 0,
+        staleTime: 60 * 1000,
+    })
+
+    const assigneeOptions = useMemo(() => {
+        const list = isAdmin ? allActiveUsers : mappedUsers
+        return list.map((u) => ({
+            value: u.id,
+            label: u.full_name || u.email,
+        }))
+    }, [isAdmin, allActiveUsers, mappedUsers])
+
     useEffect(() => {
         if (!open) return
         if (editingTask) {
             form.setFieldsValue({
                 customer_id: editingTask.customer_id,
                 project_id: editingTask.project_id,
-                sub_project_id: editingTask.sub_project_id,
-                assignee_user_id: editingTask.assignee_user?.id,
+                sub_project_id: editingTask.sub_project_id || undefined,
+                assignee_user_id: editingTask.assignee_user_id,
                 title: editingTask.title,
                 description: editingTask.description || '',
                 scheduled_date: editingTask.scheduled_date
@@ -128,10 +160,11 @@ function CreateTaskModal({
             ])
             return
         }
+        const subProjectId = values.sub_project_id || null
         const payload = {
             customer_id: values.customer_id,
             project_id: values.project_id,
-            sub_project_id: values.sub_project_id,
+            sub_project_id: subProjectId,
             assignee_user_id: values.assignee_user_id,
             title: values.title?.trim(),
             description: values.description || null,
@@ -143,12 +176,15 @@ function CreateTaskModal({
                     : null,
             priority: values.priority || 'medium',
         }
+        // For edits, signal explicit clear if user removed the sub project.
+        if (isEditing) {
+            payload.clear_sub_project =
+                !!editingTask.sub_project_id && !subProjectId
+        }
         await onSubmit(payload, editingTask?.id)
     }
 
-    const noAssignableUsers = assignableUsers.length === 0
-    const showSubProjectsEmpty =
-        customerId && projectId && !subProjectsLoading && subProjects.length === 0
+    const noAssignableUsers = assigneeOptions.length === 0
 
     return (
         <Modal
@@ -200,9 +236,7 @@ function CreateTaskModal({
                     <Select
                         showSearch
                         placeholder={
-                            customerId
-                                ? 'Select project'
-                                : 'Select a customer first'
+                            customerId ? 'Select project' : 'Select a customer first'
                         }
                         disabled={!customerId}
                         onChange={handleProjectChange}
@@ -217,20 +251,14 @@ function CreateTaskModal({
                 <Form.Item
                     label="Sub Project"
                     name="sub_project_id"
-                    rules={[{ required: true, message: 'Sub project is required.' }]}
-                    extra={
-                        showSubProjectsEmpty ? (
-                            <span style={{ color: '#ff7875' }}>
-                                No task sub-projects are available for this project.
-                            </span>
-                        ) : null
-                    }
+                    extra="Optional — leave empty to create the task directly under the project."
                 >
                     <Select
+                        allowClear
                         showSearch
                         placeholder={
                             projectId
-                                ? 'Select sub project'
+                                ? 'Select sub project (optional)'
                                 : 'Select a project first'
                         }
                         disabled={!projectId}
@@ -254,22 +282,19 @@ function CreateTaskModal({
                         }
                         disabled={noAssignableUsers}
                         optionFilterProp="label"
-                        options={assignableUsers.map((u) => ({
-                            value: u.id,
-                            label: u.full_name || u.email,
-                        }))}
+                        options={assigneeOptions}
                     />
                 </Form.Item>
 
                 <Form.Item
-                    label="Title"
+                    label="Task Title"
                     name="title"
                     rules={[
-                        { required: true, message: 'Title is required.' },
+                        { required: true, message: 'Task title is required.' },
                         { max: 255, message: 'Max 255 characters.' },
                     ]}
                 >
-                    <Input maxLength={255} placeholder="Short, action-oriented title" />
+                    <Input maxLength={255} placeholder="Short, action-oriented task title" />
                 </Form.Item>
 
                 <Form.Item label="Description" name="description">

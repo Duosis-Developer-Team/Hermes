@@ -7,14 +7,12 @@
 # =============================================================================
 
 import logging
-import os
 from datetime import date, datetime, timezone
-from typing import Iterable, List, Optional, Sequence
+from typing import List, Optional, Sequence
 from uuid import UUID
 
-import httpx
 from fastapi import HTTPException, status
-from sqlalchemy import and_, or_
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -33,87 +31,10 @@ from ..schemas.task import (
     TaskSubProjectCreate,
     TaskSubProjectUpdate,
     TaskUpdate,
-    TaskUserInfo,
 )
 from shared.auth import CurrentUser
 
 logger = logging.getLogger(__name__)
-
-
-AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8000")
-
-
-# =============================================================================
-# Auth Service helpers
-# =============================================================================
-
-def _resolve_auth_base_url() -> str:
-    base_url = AUTH_SERVICE_URL.rstrip("/")
-    if base_url.endswith("/api/v1"):
-        base_url = base_url[: -len("/api/v1")]
-    return base_url
-
-
-async def fetch_users_lookup(
-    token: Optional[str] = None,
-    ids: Optional[Sequence[UUID]] = None,
-    include_inactive: bool = False,
-) -> List[dict]:
-    """Fetch minimal user info from auth-service /users/lookup.
-
-    Returns list of dicts with id, full_name, email, role, is_admin, is_active.
-    On failure returns an empty list — the caller falls back to ID-only display.
-    """
-    if not token:
-        return []
-    headers = {"Authorization": f"Bearer {token}"}
-    params: dict = {}
-    if ids:
-        params["ids"] = [str(i) for i in ids]
-    if include_inactive:
-        params["include_inactive"] = "true"
-    base_url = _resolve_auth_base_url()
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(
-                f"{base_url}/api/v1/auth/users/lookup",
-                headers=headers,
-                params=params,
-            )
-            if response.status_code != 200:
-                logger.warning(
-                    "auth /users/lookup failed status=%s body=%s",
-                    response.status_code,
-                    response.text[:200],
-                )
-                return []
-            data = response.json()
-            return data if isinstance(data, list) else []
-    except Exception:
-        logger.exception("auth /users/lookup exception")
-        return []
-
-
-def build_user_info_map(users: Iterable[dict]) -> dict:
-    """Index a users-lookup response by str(uuid)."""
-    result: dict[str, dict] = {}
-    for u in users:
-        uid = str(u.get("id", ""))
-        if uid:
-            result[uid] = u
-    return result
-
-
-def to_task_user_info(user_id: UUID, info_map: dict) -> TaskUserInfo:
-    info = info_map.get(str(user_id), {})
-    return TaskUserInfo(
-        id=user_id,
-        full_name=info.get("full_name"),
-        email=info.get("email"),
-        role=info.get("role"),
-        is_admin=info.get("is_admin"),
-        is_active=info.get("is_active"),
-    )
 
 
 # =============================================================================
@@ -250,21 +171,19 @@ def create_assignment_relations(
     db: Session,
     assigner_user_id: UUID,
     assignee_user_ids: Sequence[UUID],
-    *,
-    assigner_is_admin_in_db: bool,
 ) -> List[TaskAssignmentRelation]:
     """Idempotently create assigner -> assignee mappings.
 
-    `assigner_is_admin_in_db` reflects the auth-service is_admin flag for the
-    assigner — used to bypass the can_assign_tasks check when relevant.
+    The assigner must already have `can_assign_tasks = true` in
+    task_user_permissions. Admin's own row is set up the same way, so no
+    cross-service is_admin lookup is needed.
     """
-    if not assigner_is_admin_in_db:
-        perm = get_task_permission(db, assigner_user_id)
-        if not perm or not perm.can_assign_tasks:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Selected assigner does not have task assignment permission.",
-            )
+    perm = get_task_permission(db, assigner_user_id)
+    if not perm or not perm.can_assign_tasks:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Selected assigner does not have task assignment permission.",
+        )
 
     created_or_existing: List[TaskAssignmentRelation] = []
     for assignee_id in assignee_user_ids:
@@ -373,10 +292,13 @@ def _ensure_project(db: Session, project_id: UUID, customer_id: UUID) -> Project
 
 def _ensure_sub_project_for_create(
     db: Session,
-    sub_project_id: UUID,
+    sub_project_id: Optional[UUID],
     customer_id: UUID,
     project_id: UUID,
-) -> TaskSubProject:
+) -> Optional[TaskSubProject]:
+    """Validate sub project if provided. Sub project is optional."""
+    if sub_project_id is None:
+        return None
     sub = (
         db.query(TaskSubProject)
         .filter(TaskSubProject.id == sub_project_id)
@@ -544,32 +466,25 @@ def _validate_assignment(
     db: Session,
     user: CurrentUser,
     assignee_user_id: UUID,
-    *,
-    assignee_lookup_info: Optional[dict] = None,
 ) -> None:
-    """Common assignment validation used on create / reassign."""
+    """Common assignment validation used on create / reassign.
+
+    Active-flag check on assignee is delegated to auth-service via the
+    `task_user_permissions` row check (assignee must have task access, which
+    admins explicitly enable only for active users).
+    """
     if not is_task_admin(user) and not can_assign_to(db, user, assignee_user_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not allowed to assign tasks to this user.",
         )
 
-    # Assignee must have task access.
     assignee_perm = get_task_permission(db, assignee_user_id)
     if not assignee_perm or not assignee_perm.can_access_tasks:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Selected assignee does not have task access.",
         )
-
-    # If we have lookup info for the assignee, also enforce active flag.
-    if assignee_lookup_info is not None:
-        is_active = assignee_lookup_info.get("is_active")
-        if is_active is False:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Selected assignee is inactive.",
-            )
 
 
 def _user_can_view_task(user: CurrentUser, task: Task) -> bool:
@@ -666,17 +581,13 @@ def create_task(
     db: Session,
     user: CurrentUser,
     data: TaskCreate,
-    *,
-    assignee_lookup_info: Optional[dict] = None,
 ) -> Task:
     _ensure_customer(db, data.customer_id)
     _ensure_project(db, data.project_id, data.customer_id)
     _ensure_sub_project_for_create(
         db, data.sub_project_id, data.customer_id, data.project_id
     )
-    _validate_assignment(
-        db, user, data.assignee_user_id, assignee_lookup_info=assignee_lookup_info
-    )
+    _validate_assignment(db, user, data.assignee_user_id)
 
     if data.due_date and data.due_date < data.scheduled_date:
         raise HTTPException(
@@ -709,8 +620,6 @@ def update_task(
     user: CurrentUser,
     task_id: UUID,
     data: TaskUpdate,
-    *,
-    assignee_lookup_info: Optional[dict] = None,
 ) -> Task:
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
@@ -726,45 +635,57 @@ def update_task(
 
     new_customer_id = data.customer_id or task.customer_id
     new_project_id = data.project_id or task.project_id
-    new_sub_project_id = data.sub_project_id or task.sub_project_id
 
-    if (
+    # Sub project semantics:
+    # - clear_sub_project=True  → null it out (regardless of sub_project_id)
+    # - sub_project_id provided → use new value (validated below)
+    # - omitted                 → keep existing
+    if data.clear_sub_project:
+        new_sub_project_id: Optional[UUID] = None
+    elif data.sub_project_id is not None:
+        new_sub_project_id = data.sub_project_id
+    else:
+        new_sub_project_id = task.sub_project_id
+
+    relationship_changed = (
         data.customer_id is not None
         or data.project_id is not None
         or data.sub_project_id is not None
-    ):
+        or data.clear_sub_project is True
+    )
+
+    if relationship_changed:
         _ensure_customer(db, new_customer_id)
         _ensure_project(db, new_project_id, new_customer_id)
-        sub = (
-            db.query(TaskSubProject)
-            .filter(TaskSubProject.id == new_sub_project_id)
-            .first()
-        )
-        if not sub:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Sub project not found.",
+        if new_sub_project_id is not None:
+            sub = (
+                db.query(TaskSubProject)
+                .filter(TaskSubProject.id == new_sub_project_id)
+                .first()
             )
-        if sub.customer_id != new_customer_id or sub.project_id != new_project_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Sub project does not belong to the selected customer/project.",
-            )
-        # Allow keeping an archived sub project on existing tasks, but if the
-        # user is moving to a different sub project it must be active.
-        if sub.id != task.sub_project_id and not sub.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Sub project is archived and cannot be used for new tasks.",
-            )
+            if not sub:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Sub project not found.",
+                )
+            if (
+                sub.customer_id != new_customer_id
+                or sub.project_id != new_project_id
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Sub project does not belong to the selected customer/project.",
+                )
+            # Allow keeping an archived sub project on existing tasks, but if
+            # the user is moving to a different sub project it must be active.
+            if sub.id != task.sub_project_id and not sub.is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Sub project is archived and cannot be used for new tasks.",
+                )
 
     if data.assignee_user_id is not None and data.assignee_user_id != task.assignee_user_id:
-        _validate_assignment(
-            db,
-            user,
-            data.assignee_user_id,
-            assignee_lookup_info=assignee_lookup_info,
-        )
+        _validate_assignment(db, user, data.assignee_user_id)
         task.assignee_user_id = data.assignee_user_id
 
     new_scheduled = data.scheduled_date or task.scheduled_date
@@ -779,7 +700,9 @@ def update_task(
         task.customer_id = data.customer_id
     if data.project_id is not None:
         task.project_id = data.project_id
-    if data.sub_project_id is not None:
+    if data.clear_sub_project:
+        task.sub_project_id = None
+    elif data.sub_project_id is not None:
         task.sub_project_id = data.sub_project_id
     if data.title is not None:
         title = data.title.strip()

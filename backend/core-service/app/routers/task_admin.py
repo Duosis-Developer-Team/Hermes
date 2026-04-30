@@ -2,7 +2,7 @@
 # HERMES PLATFORM - Task Admin Router
 # =============================================================================
 # Admin-only endpoints under `/admin/...` for managing the Tasks module:
-#   GET  /admin/task-permissions/users
+#   GET  /admin/task-permissions/users      — list permission rows (IDs only)
 #   PUT  /admin/task-permissions/users/{user_id}
 #   GET  /admin/task-assignment-relations
 #   POST /admin/task-assignment-relations
@@ -10,16 +10,18 @@
 #   POST /admin/tasks/sub-projects
 #   PUT  /admin/tasks/sub-projects/{sub_project_id}
 #   PATCH /admin/tasks/sub-projects/{sub_project_id}/archive
+#
+# User name/email enrichment is delegated to the frontend (which calls
+# auth-service /users/lookup directly).
 # =============================================================================
 
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models.task import TaskAssignmentRelation, TaskUserPermission
 from ..schemas.task import (
     TaskAssignmentRelationCreate,
     TaskAssignmentRelationResponse,
@@ -28,10 +30,9 @@ from ..schemas.task import (
     TaskSubProjectCreate,
     TaskSubProjectResponse,
     TaskSubProjectUpdate,
-    TaskUserInfo,
 )
 from ..services import task_service
-from ..routers.tasks import _extract_request_token, _serialize_sub_project
+from ..routers.tasks import _serialize_sub_project
 from shared.auth import CurrentUser, require_admin
 
 
@@ -46,50 +47,26 @@ router = APIRouter(prefix="/admin", tags=["Task Admin"])
     "/task-permissions/users",
     response_model=List[TaskPermissionRow],
 )
-async def list_task_permission_users(
-    request: Request,
+async def list_task_permission_rows(
     admin: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    token = _extract_request_token(request)
-    users = await task_service.fetch_users_lookup(token, include_inactive=True)
-    info_map = task_service.build_user_info_map(users)
+    """Returns one row per existing permission record (IDs only).
 
+    Frontend fetches the full user list separately from auth-service and
+    merges with these rows to render the admin Task Access table. Users
+    without a permission row default to false flags client-side.
+    """
     perms = task_service.list_task_permissions(db)
-    perm_map = {str(p.user_id): p for p in perms}
-
-    rows: List[TaskPermissionRow] = []
-    for u in users:
-        uid = str(u.get("id"))
-        perm: TaskUserPermission | None = perm_map.get(uid)
-        rows.append(
-            TaskPermissionRow(
-                user_id=UUID(uid),
-                full_name=u.get("full_name"),
-                email=u.get("email"),
-                role=u.get("role"),
-                is_admin=bool(u.get("is_admin")),
-                is_active=bool(u.get("is_active", True)),
-                can_access_tasks=bool(perm.can_access_tasks) if perm else False,
-                can_assign_tasks=bool(perm.can_assign_tasks) if perm else False,
-                updated_at=perm.updated_at if perm else None,
-            )
+    return [
+        TaskPermissionRow(
+            user_id=p.user_id,
+            can_access_tasks=bool(p.can_access_tasks),
+            can_assign_tasks=bool(p.can_assign_tasks),
+            updated_at=p.updated_at,
         )
-
-    # Also surface any DB rows for users we couldn't look up (defensive).
-    for uid, perm in perm_map.items():
-        if uid not in info_map:
-            rows.append(
-                TaskPermissionRow(
-                    user_id=UUID(uid),
-                    is_admin=False,
-                    is_active=False,
-                    can_access_tasks=bool(perm.can_access_tasks),
-                    can_assign_tasks=bool(perm.can_assign_tasks),
-                    updated_at=perm.updated_at,
-                )
-            )
-    return rows
+        for p in perms
+    ]
 
 
 @router.put(
@@ -99,23 +76,14 @@ async def list_task_permission_users(
 async def update_task_permission(
     user_id: UUID,
     data: TaskPermissionUpdate,
-    request: Request,
     admin: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     perm = task_service.upsert_task_permission(db, user_id, data)
-    token = _extract_request_token(request)
-    users = await task_service.fetch_users_lookup(token, ids=[user_id])
-    info = users[0] if users else {}
     return TaskPermissionRow(
         user_id=user_id,
-        full_name=info.get("full_name"),
-        email=info.get("email"),
-        role=info.get("role"),
-        is_admin=bool(info.get("is_admin", False)),
-        is_active=bool(info.get("is_active", True)),
-        can_access_tasks=perm.can_access_tasks,
-        can_assign_tasks=perm.can_assign_tasks,
+        can_access_tasks=bool(perm.can_access_tasks),
+        can_assign_tasks=bool(perm.can_assign_tasks),
         updated_at=perm.updated_at,
     )
 
@@ -124,45 +92,25 @@ async def update_task_permission(
 # Assignment Relations
 # =============================================================================
 
-def _serialize_relation(
-    relation: TaskAssignmentRelation,
-    info_map: dict,
-) -> TaskAssignmentRelationResponse:
-    return TaskAssignmentRelationResponse(
-        id=relation.id,
-        assigner_user=task_service.to_task_user_info(
-            relation.assigner_user_id, info_map
-        ),
-        assignee_user=task_service.to_task_user_info(
-            relation.assignee_user_id, info_map
-        ),
-        created_at=relation.created_at,
-        updated_at=relation.updated_at,
-    )
-
-
 @router.get(
     "/task-assignment-relations",
     response_model=List[TaskAssignmentRelationResponse],
 )
 async def list_assignment_relations(
-    request: Request,
     admin: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     relations = task_service.list_assignment_relations(db)
-    user_ids: set = set()
-    for r in relations:
-        user_ids.add(r.assigner_user_id)
-        user_ids.add(r.assignee_user_id)
-    info_map: dict = {}
-    if user_ids:
-        token = _extract_request_token(request)
-        users = await task_service.fetch_users_lookup(
-            token, ids=list(user_ids), include_inactive=True
+    return [
+        TaskAssignmentRelationResponse(
+            id=r.id,
+            assigner_user_id=r.assigner_user_id,
+            assignee_user_id=r.assignee_user_id,
+            created_at=r.created_at,
+            updated_at=r.updated_at,
         )
-        info_map = task_service.build_user_info_map(users)
-    return [_serialize_relation(r, info_map) for r in relations]
+        for r in relations
+    ]
 
 
 @router.post(
@@ -172,28 +120,24 @@ async def list_assignment_relations(
 )
 async def create_assignment_relations(
     data: TaskAssignmentRelationCreate,
-    request: Request,
     admin: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    token = _extract_request_token(request)
-    users = await task_service.fetch_users_lookup(
-        token,
-        ids=[data.assigner_user_id, *data.assignee_user_ids],
-        include_inactive=True,
-    )
-    info_map = task_service.build_user_info_map(users)
-
-    assigner_info = info_map.get(str(data.assigner_user_id))
-    assigner_is_admin = bool(assigner_info and assigner_info.get("is_admin"))
-
     relations = task_service.create_assignment_relations(
         db,
         data.assigner_user_id,
         data.assignee_user_ids,
-        assigner_is_admin_in_db=assigner_is_admin,
     )
-    return [_serialize_relation(r, info_map) for r in relations]
+    return [
+        TaskAssignmentRelationResponse(
+            id=r.id,
+            assigner_user_id=r.assigner_user_id,
+            assignee_user_id=r.assignee_user_id,
+            created_at=r.created_at,
+            updated_at=r.updated_at,
+        )
+        for r in relations
+    ]
 
 
 @router.delete(

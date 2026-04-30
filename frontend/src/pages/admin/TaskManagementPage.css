@@ -1,0 +1,32 @@
+/* =============================================================================
+   HERMES - Task Management Page (dark theme overrides)
+   =============================================================================
+   The default Ant Design Tabs renders inactive tab labels with dark text on a
+   dark Card background. Override here so labels stay readable, matching the
+   Hermes dark UI.
+   ============================================================================= */
+
+.task-mgmt-card .ant-card-head-title {
+    color: #fff;
+}
+
+.task-mgmt-tabs .ant-tabs-tab .ant-tabs-tab-btn {
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.task-mgmt-tabs .ant-tabs-tab:hover .ant-tabs-tab-btn {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.task-mgmt-tabs .ant-tabs-tab-active .ant-tabs-tab-btn,
+.task-mgmt-tabs .ant-tabs-tab-active:hover .ant-tabs-tab-btn {
+    color: #1677ff;
+}
+
+.task-mgmt-tabs .ant-tabs-ink-bar {
+    background: #1677ff;
+}
+
+.task-mgmt-tabs .ant-tabs-nav::before {
+    border-bottom-color: #303030;
+}

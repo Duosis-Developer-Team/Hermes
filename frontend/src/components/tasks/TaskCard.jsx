@@ -4,6 +4,9 @@
  * =============================================================================
  * Renders a single task row on the Tasks page. Reuses Hermes Ant Design
  * styling so the card visually matches WorkLogCard / Time Entry list rows.
+ *
+ * Receives a `userMap` prop (id → user object) populated by the parent
+ * page from a single auth-service /users/lookup call.
  * =============================================================================
  */
 
@@ -37,8 +40,15 @@ function formatMinutes(min) {
     return `${m}m`
 }
 
+function userLabel(id, userMap) {
+    if (!id) return '—'
+    const u = userMap?.[id]
+    return u?.full_name || u?.email || id
+}
+
 function TaskCard({
     task,
+    userMap = {},
     currentUserId,
     onClick,
     onToggleCompletion,
@@ -46,9 +56,9 @@ function TaskCard({
     completionLoading = false,
 }) {
     const isCompleted = task.status === 'completed'
-    const assigneeIsMe = task.assignee_user?.id === currentUserId
+    const assigneeIsMe = task.assignee_user_id === currentUserId
     const showAssignedBy = assigneeIsMe
-    const otherUser = showAssignedBy ? task.assigner_user : task.assignee_user
+    const otherUserId = showAssignedBy ? task.assigner_user_id : task.assignee_user_id
     const otherLabel = showAssignedBy ? 'Assigned by' : 'Assignee'
     const duration = formatMinutes(task.estimated_duration_minutes)
 
@@ -57,6 +67,10 @@ function TaskCard({
         if (!canToggleCompletion || completionLoading) return
         onToggleCompletion?.(task, !isCompleted)
     }
+
+    const subProjectSegment = task.sub_project_name
+        ? ` · ${task.sub_project_name}`
+        : ''
 
     return (
         <div
@@ -137,11 +151,8 @@ function TaskCard({
                     }}
                 >
                     <span>
-                        {task.customer_name || '—'} ·{' '}
-                        {task.project_name || '—'}
-                        {task.sub_project_name
-                            ? ` · ${task.sub_project_name}`
-                            : ''}
+                        {task.customer_name || '—'} · {task.project_name || '—'}
+                        {subProjectSegment}
                     </span>
                     {duration && (
                         <span>
@@ -155,10 +166,10 @@ function TaskCard({
                             Due {task.due_date}
                         </span>
                     )}
-                    {otherUser && (
+                    {otherUserId && (
                         <span>
                             <UserOutlined style={{ marginRight: 4 }} />
-                            {otherLabel}: {otherUser.full_name || otherUser.email || '—'}
+                            {otherLabel}: {userLabel(otherUserId, userMap)}
                         </span>
                     )}
                 </div>

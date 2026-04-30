@@ -5,6 +5,9 @@
  * Read view + assignee actions (note + completion). Assigner / admin can
  * open the edit modal from here. Backend remains the source of truth on
  * permissions; this UI only mirrors them.
+ *
+ * Task data carries user IDs only; names/emails are resolved from the
+ * `userMap` prop populated by the parent page via auth-service /users/lookup.
  * =============================================================================
  */
 
@@ -44,9 +47,16 @@ function formatMinutes(min) {
     return `${m}m`
 }
 
+function userLabel(id, userMap) {
+    if (!id) return '—'
+    const u = userMap?.[id]
+    return u?.full_name || u?.email || id
+}
+
 function TaskDetailModal({
     open,
     task,
+    userMap = {},
     currentUserId,
     isAdmin = false,
     onClose,
@@ -64,8 +74,8 @@ function TaskDetailModal({
 
     if (!task) return null
 
-    const assigneeIsMe = task.assignee_user?.id === currentUserId
-    const assignerIsMe = task.assigner_user?.id === currentUserId
+    const assigneeIsMe = task.assignee_user_id === currentUserId
+    const assignerIsMe = task.assigner_user_id === currentUserId
     const canEditCore = isAdmin || assignerIsMe
     const canEditNote = isAdmin || assigneeIsMe
     const canToggleCompletion = isAdmin || assigneeIsMe || assignerIsMe
@@ -114,18 +124,16 @@ function TaskDetailModal({
                     <Descriptions.Item label="Project">
                         {task.project_name || '—'}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Sub Project">
-                        {task.sub_project_name || '—'}
-                    </Descriptions.Item>
+                    {task.sub_project_id && (
+                        <Descriptions.Item label="Sub Project">
+                            {task.sub_project_name || '—'}
+                        </Descriptions.Item>
+                    )}
                     <Descriptions.Item label="Assigner">
-                        {task.assigner_user?.full_name ||
-                            task.assigner_user?.email ||
-                            '—'}
+                        {userLabel(task.assigner_user_id, userMap)}
                     </Descriptions.Item>
                     <Descriptions.Item label="Assignee">
-                        {task.assignee_user?.full_name ||
-                            task.assignee_user?.email ||
-                            '—'}
+                        {userLabel(task.assignee_user_id, userMap)}
                     </Descriptions.Item>
                     <Descriptions.Item label="Scheduled Date">
                         {task.scheduled_date}
@@ -142,9 +150,7 @@ function TaskDetailModal({
                     {isCompleted && (
                         <Descriptions.Item label="Completed">
                             {task.completed_at} · by{' '}
-                            {task.completed_by_user?.full_name ||
-                                task.completed_by_user?.email ||
-                                '—'}
+                            {userLabel(task.completed_by_user_id, userMap)}
                         </Descriptions.Item>
                     )}
                 </Descriptions>

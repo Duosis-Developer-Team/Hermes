@@ -6,6 +6,11 @@
  *   1. Task Access — toggle can_access_tasks / can_assign_tasks per user.
  *   2. Assignment Hierarchy — assigner -> assignees mappings.
  *   3. Sub Projects — task-only sub projects under existing customer/project.
+ *
+ * User list is fetched directly from auth-service (/users/lookup).
+ * Permission rows / relations come from core-service and are merged
+ * client-side with the user list so the table works even if any single
+ * service call fails.
  * =============================================================================
  */
 
@@ -36,12 +41,27 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
+    authService,
     customerService,
     projectService,
     taskAssignmentService,
     taskPermissionService,
     taskSubProjectService,
 } from '../../services/api'
+import './TaskManagementPage.css'
+
+// =============================================================================
+// Shared user lookup (used by tabs 1 and 2)
+// =============================================================================
+
+function useAllUsers() {
+    return useQuery({
+        queryKey: ['auth-users-lookup', { include_inactive: true }],
+        queryFn: () =>
+            authService.lookupUsers({ include_inactive: true }),
+        staleTime: 60 * 1000,
+    })
+}
 
 // =============================================================================
 // Tab 1 — Task Access
@@ -50,10 +70,37 @@ import {
 function TaskAccessTab() {
     const queryClient = useQueryClient()
 
-    const { data: rows = [], isLoading } = useQuery({
+    const { data: users = [], isLoading: usersLoading } = useAllUsers()
+    const { data: permissionRows = [], isLoading: permsLoading } = useQuery({
         queryKey: ['admin-task-permissions'],
         queryFn: () => taskPermissionService.listAdminUsers(),
     })
+
+    const permMap = useMemo(() => {
+        const map = {}
+        for (const row of permissionRows) {
+            map[row.user_id] = row
+        }
+        return map
+    }, [permissionRows])
+
+    // Merge users (full list) with permission rows (sparse).
+    const rows = useMemo(() => {
+        return users.map((u) => {
+            const perm = permMap[u.id]
+            return {
+                user_id: u.id,
+                full_name: u.full_name || u.email,
+                email: u.email,
+                role: u.role,
+                is_admin: !!u.is_admin,
+                is_active: !!u.is_active,
+                can_access_tasks: !!perm?.can_access_tasks,
+                can_assign_tasks: !!perm?.can_assign_tasks,
+                updated_at: perm?.updated_at || null,
+            }
+        })
+    }, [users, permMap])
 
     const updateMutation = useMutation({
         mutationFn: ({ userId, data }) =>
@@ -110,7 +157,8 @@ function TaskAccessTab() {
         {
             title: 'Active',
             dataIndex: 'is_active',
-            render: (val) => (val ? <Tag color="green">Active</Tag> : <Tag>Inactive</Tag>),
+            render: (val) =>
+                val ? <Tag color="green">Active</Tag> : <Tag>Inactive</Tag>,
         },
         {
             title: 'Can Access Tasks',
@@ -119,7 +167,9 @@ function TaskAccessTab() {
                 <Switch
                     checked={!!val}
                     disabled={!row.is_active || updateMutation.isPending}
-                    onChange={(checked) => handleToggle(row, 'can_access_tasks', checked)}
+                    onChange={(checked) =>
+                        handleToggle(row, 'can_access_tasks', checked)
+                    }
                 />
             ),
         },
@@ -130,7 +180,9 @@ function TaskAccessTab() {
                 <Switch
                     checked={!!val}
                     disabled={!row.is_active || updateMutation.isPending}
-                    onChange={(checked) => handleToggle(row, 'can_assign_tasks', checked)}
+                    onChange={(checked) =>
+                        handleToggle(row, 'can_assign_tasks', checked)
+                    }
                 />
             ),
         },
@@ -139,10 +191,11 @@ function TaskAccessTab() {
     return (
         <Table
             rowKey="user_id"
-            loading={isLoading}
+            loading={usersLoading || permsLoading}
             columns={columns}
             dataSource={rows}
             pagination={{ pageSize: 20 }}
+            locale={{ emptyText: 'No users found.' }}
         />
     )
 }
@@ -156,23 +209,57 @@ function AssignmentHierarchyTab() {
     const [modalOpen, setModalOpen] = useState(false)
     const [form] = Form.useForm()
 
+    const { data: users = [] } = useAllUsers()
+    const { data: permissionRows = [] } = useQuery({
+        queryKey: ['admin-task-permissions'],
+        queryFn: () => taskPermissionService.listAdminUsers(),
+    })
     const { data: relations = [], isLoading } = useQuery({
         queryKey: ['admin-task-assignment-relations'],
         queryFn: () => taskAssignmentService.list(),
     })
 
-    const { data: permissionRows = [] } = useQuery({
-        queryKey: ['admin-task-permissions'],
-        queryFn: () => taskPermissionService.listAdminUsers(),
-    })
+    const userMap = useMemo(() => {
+        const map = {}
+        for (const u of users) map[u.id] = u
+        return map
+    }, [users])
+
+    const permMap = useMemo(() => {
+        const map = {}
+        for (const p of permissionRows) map[p.user_id] = p
+        return map
+    }, [permissionRows])
 
     const possibleAssigners = useMemo(
-        () => permissionRows.filter((r) => r.is_active && (r.is_admin || r.can_assign_tasks)),
-        [permissionRows]
+        () =>
+            users.filter(
+                (u) => u.is_active && !!permMap[u.id]?.can_assign_tasks
+            ),
+        [users, permMap]
     )
     const possibleAssignees = useMemo(
-        () => permissionRows.filter((r) => r.is_active && r.can_access_tasks),
-        [permissionRows]
+        () =>
+            users.filter(
+                (u) => u.is_active && !!permMap[u.id]?.can_access_tasks
+            ),
+        [users, permMap]
+    )
+
+    const enrichedRelations = useMemo(
+        () =>
+            relations.map((r) => {
+                const a = userMap[r.assigner_user_id] || {}
+                const b = userMap[r.assignee_user_id] || {}
+                return {
+                    ...r,
+                    assigner_label:
+                        a.full_name || a.email || r.assigner_user_id,
+                    assignee_label:
+                        b.full_name || b.email || r.assignee_user_id,
+                }
+            }),
+        [relations, userMap]
     )
 
     const createMutation = useMutation({
@@ -211,22 +298,8 @@ function AssignmentHierarchyTab() {
     }
 
     const columns = [
-        {
-            title: 'Assigner',
-            dataIndex: ['assigner_user', 'full_name'],
-            render: (_, record) =>
-                record.assigner_user?.full_name ||
-                record.assigner_user?.email ||
-                record.assigner_user?.id,
-        },
-        {
-            title: 'Assignee',
-            dataIndex: ['assignee_user', 'full_name'],
-            render: (_, record) =>
-                record.assignee_user?.full_name ||
-                record.assignee_user?.email ||
-                record.assignee_user?.id,
-        },
+        { title: 'Assigner', dataIndex: 'assigner_label' },
+        { title: 'Assignee', dataIndex: 'assignee_label' },
         {
             title: 'Created',
             dataIndex: 'created_at',
@@ -267,7 +340,7 @@ function AssignmentHierarchyTab() {
             <Table
                 rowKey="id"
                 columns={columns}
-                dataSource={relations}
+                dataSource={enrichedRelations}
                 loading={isLoading}
                 locale={{ emptyText: 'No assignment mappings found.' }}
                 pagination={{ pageSize: 20 }}
@@ -293,9 +366,14 @@ function AssignmentHierarchyTab() {
                             placeholder="Select assigner"
                             optionFilterProp="label"
                             options={possibleAssigners.map((u) => ({
-                                value: u.user_id,
+                                value: u.id,
                                 label: u.full_name || u.email,
                             }))}
+                            notFoundContent={
+                                possibleAssigners.length === 0
+                                    ? 'No users with Can Assign Tasks enabled. Enable it in Task Access first.'
+                                    : undefined
+                            }
                         />
                     </Form.Item>
                     <Form.Item
@@ -314,9 +392,14 @@ function AssignmentHierarchyTab() {
                             placeholder="Select assignees"
                             optionFilterProp="label"
                             options={possibleAssignees.map((u) => ({
-                                value: u.user_id,
+                                value: u.id,
                                 label: u.full_name || u.email,
                             }))}
+                            notFoundContent={
+                                possibleAssignees.length === 0
+                                    ? 'No users with Can Access Tasks enabled. Enable it in Task Access first.'
+                                    : undefined
+                            }
                         />
                     </Form.Item>
                 </Form>
@@ -380,15 +463,11 @@ function SubProjectsTab() {
             message.success('Sub project created.')
             setModalOpen(false)
             form.resetFields()
-            queryClient.invalidateQueries({
-                queryKey: ['admin-task-sub-projects'],
-            })
+            queryClient.invalidateQueries({ queryKey: ['admin-task-sub-projects'] })
             queryClient.invalidateQueries({ queryKey: ['task-sub-projects'] })
         },
         onError: (err) => {
-            message.error(
-                err?.response?.data?.detail || 'Failed to create sub project.'
-            )
+            message.error(err?.response?.data?.detail || 'Failed to create sub project.')
         },
     })
 
@@ -399,15 +478,11 @@ function SubProjectsTab() {
             setModalOpen(false)
             setEditing(null)
             form.resetFields()
-            queryClient.invalidateQueries({
-                queryKey: ['admin-task-sub-projects'],
-            })
+            queryClient.invalidateQueries({ queryKey: ['admin-task-sub-projects'] })
             queryClient.invalidateQueries({ queryKey: ['task-sub-projects'] })
         },
         onError: (err) => {
-            message.error(
-                err?.response?.data?.detail || 'Failed to update sub project.'
-            )
+            message.error(err?.response?.data?.detail || 'Failed to update sub project.')
         },
     })
 
@@ -415,32 +490,23 @@ function SubProjectsTab() {
         mutationFn: (id) => taskSubProjectService.archive(id),
         onSuccess: () => {
             message.success('Sub project archived.')
-            queryClient.invalidateQueries({
-                queryKey: ['admin-task-sub-projects'],
-            })
+            queryClient.invalidateQueries({ queryKey: ['admin-task-sub-projects'] })
             queryClient.invalidateQueries({ queryKey: ['task-sub-projects'] })
         },
         onError: (err) => {
-            message.error(
-                err?.response?.data?.detail || 'Failed to archive sub project.'
-            )
+            message.error(err?.response?.data?.detail || 'Failed to archive sub project.')
         },
     })
 
     const reactivateMutation = useMutation({
-        mutationFn: (id) =>
-            taskSubProjectService.update(id, { is_active: true }),
+        mutationFn: (id) => taskSubProjectService.update(id, { is_active: true }),
         onSuccess: () => {
             message.success('Sub project reactivated.')
-            queryClient.invalidateQueries({
-                queryKey: ['admin-task-sub-projects'],
-            })
+            queryClient.invalidateQueries({ queryKey: ['admin-task-sub-projects'] })
             queryClient.invalidateQueries({ queryKey: ['task-sub-projects'] })
         },
         onError: (err) => {
-            message.error(
-                err?.response?.data?.detail || 'Failed to reactivate sub project.'
-            )
+            message.error(err?.response?.data?.detail || 'Failed to reactivate sub project.')
         },
     })
 
@@ -610,9 +676,7 @@ function SubProjectsTab() {
                 }}
                 onOk={() => form.submit()}
                 okText={editing ? 'Save Changes' : 'Create Sub Project'}
-                confirmLoading={
-                    createMutation.isPending || updateMutation.isPending
-                }
+                confirmLoading={createMutation.isPending || updateMutation.isPending}
                 destroyOnClose
             >
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
@@ -683,9 +747,11 @@ function TaskManagementPage() {
         <div style={{ padding: 24 }}>
             <Card
                 title="Task Management"
+                className="task-mgmt-card"
                 style={{ background: '#161616', borderColor: '#303030' }}
             >
                 <Tabs
+                    className="task-mgmt-tabs"
                     items={[
                         { key: 'access', label: 'Task Access', children: <TaskAccessTab /> },
                         {

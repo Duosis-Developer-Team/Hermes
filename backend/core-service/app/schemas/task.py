@@ -1,6 +1,10 @@
 # =============================================================================
 # HERMES PLATFORM - Tasks Module Schemas (Pydantic)
 # =============================================================================
+# User name/email enrichment is delegated to the frontend (which calls
+# auth-service /users/lookup directly). Backend responses carry user IDs,
+# never embed names. This avoids cross-service httpx coupling.
+# =============================================================================
 
 from datetime import date, datetime
 from typing import List, Optional, Literal
@@ -14,19 +18,6 @@ StatusLiteral = Literal["pending", "in_progress", "completed", "cancelled"]
 
 
 # =============================================================================
-# Minimal user info embedded in task / permission responses
-# =============================================================================
-
-class TaskUserInfo(BaseModel):
-    id: UUID
-    full_name: Optional[str] = None
-    email: Optional[str] = None
-    role: Optional[str] = None
-    is_admin: Optional[bool] = None
-    is_active: Optional[bool] = None
-
-
-# =============================================================================
 # Task User Permissions
 # =============================================================================
 
@@ -36,12 +27,8 @@ class TaskPermissionUpdate(BaseModel):
 
 
 class TaskPermissionRow(BaseModel):
+    """Permission row only — frontend joins with user list from auth-service."""
     user_id: UUID
-    full_name: Optional[str] = None
-    email: Optional[str] = None
-    role: Optional[str] = None
-    is_admin: bool = False
-    is_active: bool = True
     can_access_tasks: bool = False
     can_assign_tasks: bool = False
     updated_at: Optional[datetime] = None
@@ -51,7 +38,8 @@ class TaskPermissionMeResponse(BaseModel):
     can_access_tasks: bool
     can_assign_tasks: bool
     is_admin: bool
-    assignable_users: List[TaskUserInfo] = Field(default_factory=list)
+    # IDs only — frontend resolves names via auth-service /users/lookup.
+    assignable_user_ids: List[UUID] = Field(default_factory=list)
 
 
 # =============================================================================
@@ -72,8 +60,8 @@ class TaskAssignmentRelationCreate(BaseModel):
 
 class TaskAssignmentRelationResponse(BaseModel):
     id: UUID
-    assigner_user: TaskUserInfo
-    assignee_user: TaskUserInfo
+    assigner_user_id: UUID
+    assignee_user_id: UUID
     created_at: datetime
     updated_at: datetime
 
@@ -119,7 +107,7 @@ class TaskSubProjectResponse(BaseModel):
 class TaskCreate(BaseModel):
     customer_id: UUID
     project_id: UUID
-    sub_project_id: UUID
+    sub_project_id: Optional[UUID] = None  # Optional — task can be created directly under project.
     assignee_user_id: UUID
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
@@ -133,6 +121,8 @@ class TaskUpdate(BaseModel):
     customer_id: Optional[UUID] = None
     project_id: Optional[UUID] = None
     sub_project_id: Optional[UUID] = None
+    # Sentinel: client may send `clear_sub_project=true` to explicitly null it.
+    clear_sub_project: Optional[bool] = None
     assignee_user_id: Optional[UUID] = None
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
@@ -161,12 +151,12 @@ class TaskResponse(BaseModel):
     customer_name: Optional[str] = None
     project_id: UUID
     project_name: Optional[str] = None
-    sub_project_id: UUID
+    sub_project_id: Optional[UUID] = None
     sub_project_name: Optional[str] = None
     title: str
     description: Optional[str] = None
-    assignee_user: TaskUserInfo
-    assigner_user: TaskUserInfo
+    assignee_user_id: UUID
+    assigner_user_id: UUID
     scheduled_date: date
     due_date: Optional[date] = None
     estimated_duration_minutes: Optional[int] = None
@@ -174,7 +164,7 @@ class TaskResponse(BaseModel):
     status: str
     assignee_note: Optional[str] = None
     completed_at: Optional[datetime] = None
-    completed_by_user: Optional[TaskUserInfo] = None
+    completed_by_user_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
     archived_at: Optional[datetime] = None
