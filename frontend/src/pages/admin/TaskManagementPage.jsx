@@ -16,7 +16,6 @@ import {
     Card,
     Tabs,
     Table,
-    Tag,
     Button,
     Modal,
     Form,
@@ -29,8 +28,7 @@ import {
 import {
     PlusOutlined,
     EditOutlined,
-    InboxOutlined,
-    UndoOutlined,
+    DeleteOutlined,
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -55,7 +53,7 @@ function SubProjectsTab() {
 
     const [modalOpen, setModalOpen] = useState(false)
     const [editing, setEditing] = useState(null)
-    const [archivingSub, setArchivingSub] = useState(null)
+    const [deletingSub, setDeletingSub] = useState(null)
     const [form] = Form.useForm()
 
     const { data: customers = [] } = useQuery({
@@ -116,29 +114,17 @@ function SubProjectsTab() {
         },
     })
 
-    const archiveMutation = useMutation({
-        mutationFn: (id) => taskSubProjectService.archive(id),
+    const deleteMutation = useMutation({
+        mutationFn: (id) => taskSubProjectService.delete(id),
         onSuccess: () => {
-            message.success('Sub project archived.')
-            setArchivingSub(null)
+            message.success('Sub project deleted.')
+            setDeletingSub(null)
             queryClient.invalidateQueries({ queryKey: ['admin-task-sub-projects'] })
             queryClient.invalidateQueries({ queryKey: ['task-sub-projects'] })
         },
         onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to archive sub project.')
-            setArchivingSub(null)
-        },
-    })
-
-    const reactivateMutation = useMutation({
-        mutationFn: (id) => taskSubProjectService.update(id, { is_active: true }),
-        onSuccess: () => {
-            message.success('Sub project reactivated.')
-            queryClient.invalidateQueries({ queryKey: ['admin-task-sub-projects'] })
-            queryClient.invalidateQueries({ queryKey: ['task-sub-projects'] })
-        },
-        onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to reactivate sub project.')
+            message.error(err?.response?.data?.detail || 'Failed to delete sub project.')
+            setDeletingSub(null)
         },
     })
 
@@ -188,12 +174,6 @@ function SubProjectsTab() {
             render: (val) => val || '—',
         },
         {
-            title: 'Active',
-            dataIndex: 'is_active',
-            render: (val) =>
-                val ? <Tag color="green">Active</Tag> : <Tag>Archived</Tag>,
-        },
-        {
             title: 'Created',
             dataIndex: 'created_at',
             render: (val) => (val ? new Date(val).toLocaleDateString() : '—'),
@@ -209,24 +189,14 @@ function SubProjectsTab() {
                             onClick={() => handleOpenEdit(record)}
                         />
                     </Tooltip>
-                    {record.is_active ? (
-                        <Button
-                            size="small"
-                            danger
-                            icon={<InboxOutlined />}
-                            onClick={() => setArchivingSub(record)}
-                        >
-                            Archive
-                        </Button>
-                    ) : (
-                        <Button
-                            size="small"
-                            icon={<UndoOutlined />}
-                            onClick={() => reactivateMutation.mutate(record.id)}
-                        >
-                            Reactivate
-                        </Button>
-                    )}
+                    <Button
+                        size="small"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={() => setDeletingSub(record)}
+                    >
+                        Delete
+                    </Button>
                 </Space>
             ),
         },
@@ -359,25 +329,25 @@ function SubProjectsTab() {
             </Modal>
 
             <DangerConfirmModal
-                open={!!archivingSub}
-                title="Archive sub project?"
-                body="It will not be selectable for new tasks. Existing tasks remain visible."
-                itemName={archivingSub?.name}
+                open={!!deletingSub}
+                title="Delete sub project?"
+                body="This will permanently remove the sub project. This action cannot be undone."
+                itemName={deletingSub?.name}
                 itemSubtitle={
-                    archivingSub
-                        ? `${archivingSub.customer_name || '—'}${
-                              archivingSub.project_name
-                                  ? ` · ${archivingSub.project_name}`
+                    deletingSub
+                        ? `${deletingSub.customer_name || '—'}${
+                              deletingSub.project_name
+                                  ? ` · ${deletingSub.project_name}`
                                   : ''
                           }`
                         : null
                 }
-                confirmLabel="Archive"
-                onCancel={() => setArchivingSub(null)}
+                confirmLabel="Delete"
+                onCancel={() => setDeletingSub(null)}
                 onConfirm={() =>
-                    archivingSub && archiveMutation.mutate(archivingSub.id)
+                    deletingSub && deleteMutation.mutate(deletingSub.id)
                 }
-                loading={archiveMutation.isPending}
+                loading={deleteMutation.isPending}
             />
         </>
     )

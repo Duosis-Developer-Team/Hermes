@@ -784,10 +784,10 @@ export const taskSubProjectService = {
         return response.data
     },
 
-    /** Admin: archive a sub project. */
-    archive: async (subProjectId) => {
-        const response = await coreApi.patch(
-            `/api/v1/core/admin/tasks/sub-projects/${subProjectId}/archive`
+    /** Admin: delete a sub project. Refuses with 409 if used by tasks. */
+    delete: async (subProjectId) => {
+        const response = await coreApi.delete(
+            `/api/v1/core/admin/tasks/sub-projects/${subProjectId}`
         )
         return response.data
     },

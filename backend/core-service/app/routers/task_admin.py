@@ -9,7 +9,7 @@
 #   DELETE /admin/task-assignment-relations/{relation_id}
 #   POST /admin/tasks/sub-projects
 #   PUT  /admin/tasks/sub-projects/{sub_project_id}
-#   PATCH /admin/tasks/sub-projects/{sub_project_id}/archive
+#   DELETE /admin/tasks/sub-projects/{sub_project_id}
 #
 # User name/email enrichment is delegated to the frontend (which calls
 # auth-service /users/lookup directly).
@@ -276,17 +276,17 @@ async def update_sub_project(
     return _serialize_sub_project(sub)
 
 
-@router.patch(
-    "/tasks/sub-projects/{sub_project_id}/archive",
-    response_model=TaskSubProjectResponse,
+@router.delete(
+    "/tasks/sub-projects/{sub_project_id}",
+    status_code=200,
 )
-async def archive_sub_project(
+async def delete_sub_project(
     sub_project_id: UUID,
     admin: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    sub = task_service.archive_sub_project(db, sub_project_id)
-    return _serialize_sub_project(sub)
+    task_service.delete_sub_project(db, sub_project_id)
+    return {"deleted": True}
 
 
 

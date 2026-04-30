@@ -786,7 +786,8 @@ def update_sub_project(
     return sub
 
 
-def archive_sub_project(db: Session, sub_project_id: UUID) -> TaskSubProject:
+def delete_sub_project(db: Session, sub_project_id: UUID) -> None:
+    """Hard delete a sub project. Refuses if any task still references it."""
     sub = (
         db.query(TaskSubProject)
         .filter(TaskSubProject.id == sub_project_id)
@@ -797,11 +798,20 @@ def archive_sub_project(db: Session, sub_project_id: UUID) -> TaskSubProject:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Sub project not found.",
         )
-    sub.is_active = False
-    sub.archived_at = datetime.now(timezone.utc)
+
+    in_use = (
+        db.query(Task.id)
+        .filter(Task.sub_project_id == sub_project_id)
+        .first()
+    )
+    if in_use:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This sub project is used in existing tasks and cannot be deleted.",
+        )
+
+    db.delete(sub)
     db.commit()
-    db.refresh(sub)
-    return sub
 
 
 # =============================================================================
