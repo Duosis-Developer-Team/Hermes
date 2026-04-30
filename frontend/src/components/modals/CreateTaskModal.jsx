@@ -26,7 +26,6 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 
-import HoursMinutesPicker from '../common/HoursMinutesPicker'
 import {
     authService,
     customerService,
@@ -159,14 +158,11 @@ function CreateTaskModal({
                     ? dayjs(editingTask.scheduled_date)
                     : null,
                 due_date: editingTask.due_date ? dayjs(editingTask.due_date) : null,
-                duration_hours_decimal: editingTask.estimated_duration_minutes
-                    ? editingTask.estimated_duration_minutes / 60
-                    : 0,
                 priority: editingTask.priority || 'medium',
             })
         } else {
             form.resetFields()
-            const baseValues = { priority: 'medium', duration_hours_decimal: 0 }
+            const baseValues = { priority: 'medium' }
             if (initialDate) {
                 form.setFieldsValue({ ...baseValues, scheduled_date: dayjs(initialDate) })
             } else {
@@ -203,8 +199,6 @@ function CreateTaskModal({
             ])
             return
         }
-        const decimalHours = parseFloat(values.duration_hours_decimal) || 0
-        const minutes = Math.round(decimalHours * 60)
         const assigneeRaw = values.assignee || ''
         const [assigneeKind, assigneeId] = assigneeRaw.includes(':')
             ? assigneeRaw.split(':')
@@ -218,7 +212,6 @@ function CreateTaskModal({
             description,
             scheduled_date: scheduled,
             due_date: due,
-            estimated_duration_minutes: minutes > 0 ? minutes : null,
             priority: values.priority || 'medium',
         }
 
@@ -403,25 +396,13 @@ function CreateTaskModal({
                     </Form.Item>
                 </Space>
 
-                <Space size="middle" style={{ display: 'flex' }}>
-                    <Form.Item
-                        label="Estimated Duration"
-                        name="duration_hours_decimal"
-                        style={{ flex: 1 }}
-                        extra="Minutes step 15. Same input as Time Entry."
-                    >
-                        <HoursMinutesPicker />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Priority"
-                        name="priority"
-                        rules={[{ required: true }]}
-                        style={{ flex: 1 }}
-                    >
-                        <Select options={PRIORITY_OPTIONS} />
-                    </Form.Item>
-                </Space>
+                <Form.Item
+                    label="Priority"
+                    name="priority"
+                    rules={[{ required: true }]}
+                >
+                    <Select options={PRIORITY_OPTIONS} />
+                </Form.Item>
             </Form>
         </Modal>
     )

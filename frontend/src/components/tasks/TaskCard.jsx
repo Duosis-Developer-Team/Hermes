@@ -22,7 +22,6 @@
 
 import { Checkbox, Tooltip } from 'antd'
 import {
-    ClockCircleOutlined,
     DeleteOutlined,
     EditOutlined,
     FieldTimeOutlined,
@@ -30,15 +29,6 @@ import {
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import './TaskCard.css'
-
-function formatMinutes(min) {
-    if (!min || min <= 0) return null
-    const h = Math.floor(min / 60)
-    const m = min % 60
-    if (h && m) return `${h}h ${m}m`
-    if (h) return `${h}h`
-    return `${m}m`
-}
 
 function userLabel(id, userMap) {
     if (!id) return '—'
@@ -106,7 +96,6 @@ function TaskCard({
     const assignerIsMe = task.assigner_user_id === currentUserId
     const canEditCore = isAdmin || assignerIsMe
     const showAssignee = !assigneeIsMe // only show "Assignee:" if I'm not the assignee
-    const duration = formatMinutes(task.estimated_duration_minutes)
     const dueDifferent =
         task.due_date && task.due_date !== task.scheduled_date
 
@@ -211,13 +200,6 @@ function TaskCard({
                             : task.status}
                     </span>
                 </div>
-
-                {duration && (
-                    <div className="task-card-duration-row">
-                        <ClockCircleOutlined style={{ marginRight: 4 }} />
-                        {duration}
-                    </div>
-                )}
 
                 {dueDifferent && (
                     <div className="task-card-due-hint">

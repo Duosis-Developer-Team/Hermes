@@ -509,8 +509,6 @@ function TasksPage() {
                     description: copiedTask.description,
                     scheduled_date: targetDate,
                     due_date: newDueDate,
-                    estimated_duration_minutes:
-                        copiedTask.estimated_duration_minutes || null,
                     priority: copiedTask.priority || 'medium',
                     // status, assignee_note, completed_* intentionally omitted —
                     // backend defaults handle them (status=pending, others null).
