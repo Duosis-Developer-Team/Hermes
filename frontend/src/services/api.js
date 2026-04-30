@@ -685,6 +685,14 @@ export const taskPermissionService = {
         return response.data
     },
 
+    /** Admin: list per-user effective permission data (direct + group grants). */
+    listEffective: async () => {
+        const response = await coreApi.get(
+            '/api/v1/core/admin/task-permissions/effective'
+        )
+        return response.data
+    },
+
     /** Admin: upsert a user's task permission flags. */
     updateUserPermission: async (userId, data) => {
         const response = await coreApi.put(

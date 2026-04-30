@@ -95,6 +95,30 @@ async def update_task_permission(
     )
 
 
+@router.get(
+    "/task-permissions/effective",
+)
+async def list_effective_permissions(
+    admin: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Returns per-user effective permission data used by the
+    Individual Overrides tab.
+
+    Frontend merges with the auth-service user list to decide the
+    final "effective" badge and source label (admin role, individual
+    override, group: <name>, or no access).
+    """
+    data = task_service.list_effective_perm_data(db)
+    return [
+        {
+            "user_id": uid,
+            **payload,
+        }
+        for uid, payload in data.items()
+    ]
+
+
 # =============================================================================
 # Assignment Relations
 # =============================================================================

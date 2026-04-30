@@ -48,6 +48,7 @@ import {
     taskAssignmentService,
     taskPermissionService,
     taskSubProjectService,
+    userGroupService,
 } from '../../services/api'
 import './TaskManagementPage.css'
 import TaskAccessByGroupTab from './TaskAccessByGroupTab'
@@ -79,6 +80,14 @@ function TaskAccessTab() {
         queryKey: ['admin-task-permissions'],
         queryFn: () => taskPermissionService.listAdminUsers(),
     })
+    const { data: effectiveRows = [] } = useQuery({
+        queryKey: ['admin-task-permissions-effective'],
+        queryFn: () => taskPermissionService.listEffective(),
+    })
+    const { data: allGroups = [] } = useQuery({
+        queryKey: ['admin-user-groups'],
+        queryFn: () => userGroupService.list(),
+    })
 
     const permMap = useMemo(() => {
         const map = {}
@@ -87,6 +96,18 @@ function TaskAccessTab() {
         }
         return map
     }, [permissionRows])
+
+    const effectiveMap = useMemo(() => {
+        const map = {}
+        for (const row of effectiveRows) map[row.user_id] = row
+        return map
+    }, [effectiveRows])
+
+    const groupNameById = useMemo(() => {
+        const map = {}
+        for (const g of allGroups) map[g.id] = g.name
+        return map
+    }, [allGroups])
 
     // First-time bootstrap for admins: when an admin has *no* permission
     // row at all, seed it with true/true so the table doesn't open with
@@ -130,13 +151,47 @@ function TaskAccessTab() {
             })
     }, [adminsNeedingFix, queryClient])
 
-    // Merge users (full list) with permission rows (sparse).
-    // Admin rows are forced to true/true in the UI (auto-correction may
-    // still be in flight; the toggles are locked anyway).
+    // Merge users (full list) with permission rows (sparse) and the
+    // backend-computed effective permission snapshot. Effective +
+    // source columns are read-only; the editable toggles below remain
+    // tied to the direct task_user_permissions row only.
     const rows = useMemo(() => {
         return users.map((u) => {
             const perm = permMap[u.id]
+            const eff = effectiveMap[u.id] || {
+                direct_can_access_tasks: false,
+                direct_can_assign_tasks: false,
+                group_grants_access: [],
+                group_grants_assign: [],
+            }
             const isAdmin = !!u.is_admin
+            const directAccess = !!perm?.can_access_tasks
+            const directAssign = !!perm?.can_assign_tasks
+            const groupAccess = (eff.group_grants_access || []).length > 0
+            const groupAssign = (eff.group_grants_assign || []).length > 0
+            const effAccess = isAdmin || directAccess || groupAccess
+            const effAssign = isAdmin || directAssign || groupAssign
+
+            const sourceLabels = (kind) => {
+                const labels = []
+                if (isAdmin) labels.push('Admin role')
+                if (kind === 'access' && directAccess) {
+                    labels.push('Individual override')
+                }
+                if (kind === 'assign' && directAssign) {
+                    labels.push('Individual override')
+                }
+                const grants =
+                    kind === 'access'
+                        ? eff.group_grants_access
+                        : eff.group_grants_assign
+                for (const gid of grants || []) {
+                    const name = groupNameById[gid] || 'Group'
+                    labels.push(`Group: ${name}`)
+                }
+                return labels
+            }
+
             return {
                 user_id: u.id,
                 full_name: u.full_name || u.email,
@@ -144,12 +199,18 @@ function TaskAccessTab() {
                 role: u.role,
                 is_admin: isAdmin,
                 is_active: !!u.is_active,
-                can_access_tasks: isAdmin ? true : !!perm?.can_access_tasks,
-                can_assign_tasks: isAdmin ? true : !!perm?.can_assign_tasks,
+                // Editable individual overrides (raw direct row values).
+                can_access_tasks: directAccess,
+                can_assign_tasks: directAssign,
+                // Read-only computed.
+                effective_access: effAccess,
+                effective_assign: effAssign,
+                sources_access: sourceLabels('access'),
+                sources_assign: sourceLabels('assign'),
                 updated_at: perm?.updated_at || null,
             }
         })
-    }, [users, permMap])
+    }, [users, permMap, effectiveMap, groupNameById])
 
     const updateMutation = useMutation({
         mutationFn: ({ userId, data }) =>
@@ -157,6 +218,9 @@ function TaskAccessTab() {
         onSuccess: () => {
             message.success('Task permissions updated.')
             queryClient.invalidateQueries({ queryKey: ['admin-task-permissions'] })
+            queryClient.invalidateQueries({
+                queryKey: ['admin-task-permissions-effective'],
+            })
             queryClient.invalidateQueries({ queryKey: ['task-permissions'] })
             queryClient.invalidateQueries({
                 queryKey: ['admin-task-assignment-relations'],
@@ -186,6 +250,27 @@ function TaskAccessTab() {
         updateMutation.mutate({ userId: row.user_id, data: next })
     }
 
+    const renderEffectiveBadge = (granted) =>
+        granted ? <Tag color="green">Enabled</Tag> : <Tag>Disabled</Tag>
+
+    const renderSources = (labels) => {
+        if (!labels || labels.length === 0) {
+            return <span style={{ color: '#888' }}>No access</span>
+        }
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {labels.map((l, i) => (
+                    <span
+                        key={`${l}-${i}`}
+                        style={{ fontSize: 12, color: '#cbd5e1' }}
+                    >
+                        {l}
+                    </span>
+                ))}
+            </div>
+        )
+    }
+
     const columns = [
         {
             title: 'User',
@@ -199,18 +284,43 @@ function TaskAccessTab() {
             render: (val) => val || '—',
         },
         {
-            title: 'Admin',
-            dataIndex: 'is_admin',
-            render: (val) => (val ? <Tag color="gold">Admin</Tag> : '—'),
-        },
-        {
             title: 'Active',
             dataIndex: 'is_active',
             render: (val) =>
                 val ? <Tag color="green">Active</Tag> : <Tag>Inactive</Tag>,
         },
         {
-            title: 'Access Tasks',
+            title: 'Effective Access',
+            dataIndex: 'effective_access',
+            render: (val) => renderEffectiveBadge(val),
+        },
+        {
+            title: 'Effective Assign',
+            dataIndex: 'effective_assign',
+            render: (val) => renderEffectiveBadge(val),
+        },
+        {
+            title: 'Source',
+            key: 'source',
+            render: (_, row) => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div>
+                        <span style={{ color: '#9b9b9b', fontSize: 11 }}>
+                            ACCESS:
+                        </span>{' '}
+                        {renderSources(row.sources_access)}
+                    </div>
+                    <div>
+                        <span style={{ color: '#9b9b9b', fontSize: 11 }}>
+                            ASSIGN:
+                        </span>{' '}
+                        {renderSources(row.sources_assign)}
+                    </div>
+                </div>
+            ),
+        },
+        {
+            title: 'Individual Access',
             dataIndex: 'can_access_tasks',
             render: (val, row) => (
                 <Switch
@@ -223,7 +333,7 @@ function TaskAccessTab() {
             ),
         },
         {
-            title: 'Assign Tasks',
+            title: 'Individual Assign',
             dataIndex: 'can_assign_tasks',
             render: (val, row) => (
                 <Switch
@@ -238,14 +348,32 @@ function TaskAccessTab() {
     ]
 
     return (
-        <Table
-            rowKey="user_id"
-            loading={usersLoading || permsLoading}
-            columns={columns}
-            dataSource={rows}
-            pagination={{ pageSize: 20 }}
-            locale={{ emptyText: 'No users found.' }}
-        />
+        <>
+            <div
+                style={{
+                    marginBottom: 12,
+                    padding: '10px 14px',
+                    background: '#1a1a1a',
+                    border: '1px solid #303030',
+                    borderRadius: 8,
+                    color: '#9b9b9b',
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                }}
+            >
+                Individual overrides are combined with group permissions and
+                admin role. The Effective columns show the final result;
+                Source explains where it comes from.
+            </div>
+            <Table
+                rowKey="user_id"
+                loading={usersLoading || permsLoading}
+                columns={columns}
+                dataSource={rows}
+                pagination={{ pageSize: 20 }}
+                locale={{ emptyText: 'No users found.' }}
+            />
+        </>
     )
 }
 
@@ -610,7 +738,7 @@ function TaskManagementPage() {
                         },
                         {
                             key: 'direct',
-                            label: 'Direct User Overrides',
+                            label: 'Individual Overrides',
                             children: <TaskAccessTab />,
                         },
                         {

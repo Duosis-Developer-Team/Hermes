@@ -68,6 +68,9 @@ function GroupMemberOverridesPanel({ group, allUsersById }) {
             queryClient.invalidateQueries({
                 queryKey: ['admin-task-group-member-overrides', group.id],
             })
+            queryClient.invalidateQueries({
+                queryKey: ['admin-task-permissions-effective'],
+            })
             queryClient.invalidateQueries({ queryKey: ['task-permissions'] })
         },
         onError: (err) => {
@@ -217,8 +220,17 @@ function TaskAccessByGroupTab() {
         mutationFn: ({ groupId, data }) =>
             taskGroupPermissionService.upsertGroupDefaults(groupId, data),
         onSuccess: () => {
+            // The backend cascades the changed default(s) to every
+            // existing member override in the group, so refetch the
+            // member-override list as well to reflect the new state.
             queryClient.invalidateQueries({
                 queryKey: ['admin-task-group-permissions'],
+            })
+            queryClient.invalidateQueries({
+                queryKey: ['admin-task-group-member-overrides'],
+            })
+            queryClient.invalidateQueries({
+                queryKey: ['admin-task-permissions-effective'],
             })
             queryClient.invalidateQueries({ queryKey: ['task-permissions'] })
         },

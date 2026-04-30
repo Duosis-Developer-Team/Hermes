@@ -339,6 +339,93 @@ def list_task_permissions(db: Session) -> List[TaskUserPermission]:
     return db.query(TaskUserPermission).all()
 
 
+def list_effective_perm_data(db: Session) -> dict:
+    """Returns a per-user snapshot of everything the Individual Overrides
+    tab needs to render the "effective" + "source" columns without N+1
+    queries on the frontend.
+
+    Shape:
+        {
+          user_id_str: {
+            "direct_can_access_tasks": bool | None,   # None when no row
+            "direct_can_assign_tasks": bool | None,
+            "group_grants_access": [group_id_str, ...],
+            "group_grants_assign": [group_id_str, ...],
+          },
+          ...
+        }
+
+    Caller (router) merges this with the auth-service user list and
+    decides admin source ("Admin role") + final effective state.
+
+    Group grant resolution per (user, group):
+        member.can_access_tasks_override is TRUE  → grants access
+        member.can_access_tasks_override is FALSE → does not grant
+        member.can_access_tasks_override IS NULL  → use group default
+        no member row exists                      → use group default
+    """
+    out: dict = {}
+
+    # Direct overrides (one row per user, sparse).
+    for p in db.query(TaskUserPermission).all():
+        out[str(p.user_id)] = {
+            "direct_can_access_tasks": bool(p.can_access_tasks),
+            "direct_can_assign_tasks": bool(p.can_assign_tasks),
+            "group_grants_access": [],
+            "group_grants_assign": [],
+        }
+
+    # Active memberships in active groups that have a permission row,
+    # joined with overrides so we can resolve the actual contribution
+    # in one pass.
+    rows = (
+        db.query(
+            UserGroupMember.user_id,
+            UserGroup.id.label("group_id"),
+            TaskGroupPermission.can_access_tasks_default,
+            TaskGroupPermission.can_assign_tasks_default,
+            TaskGroupMemberOverride.can_access_tasks_override,
+            TaskGroupMemberOverride.can_assign_tasks_override,
+        )
+        .select_from(UserGroupMember)
+        .join(UserGroup, UserGroup.id == UserGroupMember.group_id)
+        .join(
+            TaskGroupPermission,
+            TaskGroupPermission.group_id == UserGroup.id,
+        )
+        .outerjoin(
+            TaskGroupMemberOverride,
+            and_(
+                TaskGroupMemberOverride.group_id == UserGroup.id,
+                TaskGroupMemberOverride.user_id == UserGroupMember.user_id,
+            ),
+        )
+        .filter(
+            UserGroupMember.is_active.is_(True),
+            UserGroup.is_active.is_(True),
+        )
+        .all()
+    )
+
+    for user_id, group_id, def_a, def_aa, ov_a, ov_aa in rows:
+        u = str(user_id)
+        if u not in out:
+            out[u] = {
+                "direct_can_access_tasks": False,
+                "direct_can_assign_tasks": False,
+                "group_grants_access": [],
+                "group_grants_assign": [],
+            }
+        access_grant = ov_a if ov_a is not None else bool(def_a)
+        if access_grant:
+            out[u]["group_grants_access"].append(str(group_id))
+        assign_grant = ov_aa if ov_aa is not None else bool(def_aa)
+        if assign_grant:
+            out[u]["group_grants_assign"].append(str(group_id))
+
+    return out
+
+
 # =============================================================================
 # Assignment Relations
 # =============================================================================

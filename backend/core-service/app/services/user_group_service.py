@@ -281,18 +281,56 @@ def upsert_task_group_permission(
     can_access_tasks_default: bool,
     can_assign_tasks_default: bool,
 ) -> TaskGroupPermission:
+    """Upsert per-group defaults AND cascade the change to existing
+    member overrides for any column that actually flipped.
+
+    Rationale (UI requirement):
+        Toggling a group's "Access Tasks" OFF should make every member
+        row visually OFF as well — no admin should ever see "group OFF
+        + member ON" at the same time. The cascade rewrites existing
+        override rows on the changed column only; the other column
+        stays untouched. Members without an override row already
+        follow the new group default, so no extra work is needed for
+        them.
+    """
     get_user_group(db, group_id)  # ensure group exists
+
+    new_access = bool(can_access_tasks_default)
+    new_assign = bool(can_assign_tasks_default)
+
     perm = get_task_group_permission(db, group_id)
     if perm is None:
+        old_access = None
+        old_assign = None
         perm = TaskGroupPermission(
             group_id=group_id,
-            can_access_tasks_default=bool(can_access_tasks_default),
-            can_assign_tasks_default=bool(can_assign_tasks_default),
+            can_access_tasks_default=new_access,
+            can_assign_tasks_default=new_assign,
         )
         db.add(perm)
     else:
-        perm.can_access_tasks_default = bool(can_access_tasks_default)
-        perm.can_assign_tasks_default = bool(can_assign_tasks_default)
+        old_access = bool(perm.can_access_tasks_default)
+        old_assign = bool(perm.can_assign_tasks_default)
+        perm.can_access_tasks_default = new_access
+        perm.can_assign_tasks_default = new_assign
+
+    # Cascade only the columns that actually changed, so flipping
+    # access doesn't accidentally rewrite assign overrides.
+    if old_access is None or old_access != new_access:
+        db.query(TaskGroupMemberOverride).filter(
+            TaskGroupMemberOverride.group_id == group_id
+        ).update(
+            {TaskGroupMemberOverride.can_access_tasks_override: new_access},
+            synchronize_session=False,
+        )
+    if old_assign is None or old_assign != new_assign:
+        db.query(TaskGroupMemberOverride).filter(
+            TaskGroupMemberOverride.group_id == group_id
+        ).update(
+            {TaskGroupMemberOverride.can_assign_tasks_override: new_assign},
+            synchronize_session=False,
+        )
+
     db.commit()
     db.refresh(perm)
     return perm
