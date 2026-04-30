@@ -33,7 +33,6 @@ import {
     Tooltip,
     Popconfirm,
 } from 'antd'
-import TaskGroupsTab from './TaskGroupsTab'
 import {
     PlusOutlined,
     DeleteOutlined,
@@ -856,11 +855,6 @@ function TaskManagementPage() {
                 <Tabs
                     className="task-mgmt-tabs"
                     items={[
-                        {
-                            key: 'groups',
-                            label: 'Task Groups',
-                            children: <TaskGroupsTab />,
-                        },
                         {
                             key: 'direct',
                             label: 'Direct User Overrides',

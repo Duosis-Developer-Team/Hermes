@@ -7,15 +7,17 @@
  */
 
 import { useState } from 'react'
-import { Card, Table, Button, Space, Modal, Form, Input, message, Popconfirm, Typography, Switch, Tag, Checkbox, Select } from 'antd'
+import { Card, Table, Button, Space, Modal, Form, Input, message, Popconfirm, Typography, Switch, Tag, Checkbox, Select, Tabs } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, CrownOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
+import UserGroupsTab from './UserGroupsTab'
+import './UsersPage.css'
 
 const { Title, Text } = Typography
 
-function UsersPage() {
+function UsersTab() {
     const [form] = Form.useForm()
     const [modalOpen, setModalOpen] = useState(false)
     const [editingId, setEditingId] = useState(null)
@@ -128,11 +130,7 @@ function UsersPage() {
     ]
 
     return (
-        <div className="users-page fade-in">
-            <div className="page-header">
-                <h1>Users</h1>
-                <p>Manage system users</p>
-            </div>
+        <>
             <Card title={`📋 User List (${users.length})`} extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>New User</Button>}>
                 <Table dataSource={users} columns={columns} rowKey="id" loading={isLoading} pagination={{ pageSize: 10 }} />
             </Card>
@@ -170,7 +168,25 @@ function UsersPage() {
                 onCancel={handleDeleteCancel}
                 loading={deleteMutation.isPending || archiveMutation.isPending}
             />
-        </div >
+        </>
+    )
+}
+
+function UsersPage() {
+    return (
+        <div className="users-page fade-in">
+            <div className="page-header">
+                <h1>Users</h1>
+                <p>Manage users and groups</p>
+            </div>
+            <Tabs
+                className="users-page-tabs"
+                items={[
+                    { key: 'users', label: 'Users', children: <UsersTab /> },
+                    { key: 'groups', label: 'Groups', children: <UserGroupsTab /> },
+                ]}
+            />
+        </div>
     )
 }
 

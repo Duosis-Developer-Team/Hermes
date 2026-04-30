@@ -1,0 +1,24 @@
+/* =============================================================================
+   HERMES - Users Page (tab readability on dark theme)
+   ============================================================================= */
+
+.users-page-tabs .ant-tabs-tab .ant-tabs-tab-btn {
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.users-page-tabs .ant-tabs-tab:hover .ant-tabs-tab-btn {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.users-page-tabs .ant-tabs-tab-active .ant-tabs-tab-btn,
+.users-page-tabs .ant-tabs-tab-active:hover .ant-tabs-tab-btn {
+    color: #1677ff;
+}
+
+.users-page-tabs .ant-tabs-ink-bar {
+    background: #1677ff;
+}
+
+.users-page-tabs .ant-tabs-nav::before {
+    border-bottom-color: #303030;
+}

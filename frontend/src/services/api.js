@@ -754,32 +754,36 @@ export const taskSubProjectService = {
     },
 }
 
-export const taskGroupService = {
-    /** Admin: list task groups (with member counts). */
+// =============================================================================
+// CORE SERVICE - User Groups (general)
+// =============================================================================
+
+export const userGroupService = {
+    /** Admin: list active user groups (with member counts). */
     list: async (params = {}) => {
-        const response = await coreApi.get('/api/v1/core/admin/task-groups', { params })
+        const response = await coreApi.get('/api/v1/core/admin/user-groups', { params })
         return response.data
     },
 
-    /** Admin: create a new task group. */
+    /** Admin: create a new user group. */
     create: async (data) => {
-        const response = await coreApi.post('/api/v1/core/admin/task-groups', data)
+        const response = await coreApi.post('/api/v1/core/admin/user-groups', data)
         return response.data
     },
 
-    /** Admin: update group fields / defaults / active. */
+    /** Admin: update group fields / active. */
     update: async (groupId, data) => {
         const response = await coreApi.put(
-            `/api/v1/core/admin/task-groups/${groupId}`,
+            `/api/v1/core/admin/user-groups/${groupId}`,
             data
         )
         return response.data
     },
 
-    /** Admin: archive a task group (soft). */
-    archive: async (groupId) => {
-        const response = await coreApi.patch(
-            `/api/v1/core/admin/task-groups/${groupId}/archive`
+    /** Admin: soft "delete" — sets is_active=false + deactivated_at. */
+    deactivate: async (groupId) => {
+        const response = await coreApi.delete(
+            `/api/v1/core/admin/user-groups/${groupId}`
         )
         return response.data
     },
@@ -787,7 +791,7 @@ export const taskGroupService = {
     /** Admin: list members of a group. */
     listMembers: async (groupId) => {
         const response = await coreApi.get(
-            `/api/v1/core/admin/task-groups/${groupId}/members`
+            `/api/v1/core/admin/user-groups/${groupId}/members`
         )
         return response.data
     },
@@ -795,25 +799,65 @@ export const taskGroupService = {
     /** Admin: add a user to the group. */
     addMember: async (groupId, data) => {
         const response = await coreApi.post(
-            `/api/v1/core/admin/task-groups/${groupId}/members`,
+            `/api/v1/core/admin/user-groups/${groupId}/members`,
             data
         )
         return response.data
     },
 
-    /** Admin: update a member's task title and overrides. */
+    /** Admin: update a member's title. */
     updateMember: async (groupId, memberId, data) => {
         const response = await coreApi.put(
-            `/api/v1/core/admin/task-groups/${groupId}/members/${memberId}`,
+            `/api/v1/core/admin/user-groups/${groupId}/members/${memberId}`,
             data
         )
         return response.data
     },
 
-    /** Admin: remove a user from the group (membership only). */
+    /** Admin: remove membership (hard delete of the row only). */
     removeMember: async (groupId, memberId) => {
         const response = await coreApi.delete(
-            `/api/v1/core/admin/task-groups/${groupId}/members/${memberId}`
+            `/api/v1/core/admin/user-groups/${groupId}/members/${memberId}`
+        )
+        return response.data
+    },
+}
+
+// =============================================================================
+// CORE SERVICE - Task Group Permissions (per UserGroup defaults + overrides)
+// =============================================================================
+
+export const taskGroupPermissionService = {
+    /** Admin: list per-group task-permission rows (sparse). */
+    list: async () => {
+        const response = await coreApi.get(
+            '/api/v1/core/admin/task-permissions/groups'
+        )
+        return response.data
+    },
+
+    /** Admin: upsert per-group task-permission defaults. */
+    upsertGroupDefaults: async (groupId, data) => {
+        const response = await coreApi.put(
+            `/api/v1/core/admin/task-permissions/groups/${groupId}`,
+            data
+        )
+        return response.data
+    },
+
+    /** Admin: list member overrides for a group. */
+    listMemberOverrides: async (groupId) => {
+        const response = await coreApi.get(
+            `/api/v1/core/admin/task-permissions/groups/${groupId}/member-overrides`
+        )
+        return response.data
+    },
+
+    /** Admin: upsert (or clear) a member override (per user × group). */
+    upsertMemberOverride: async (groupId, userId, data) => {
+        const response = await coreApi.put(
+            `/api/v1/core/admin/task-permissions/groups/${groupId}/member-overrides/${userId}`,
+            data
         )
         return response.data
     },
@@ -884,5 +928,7 @@ export default {
     taskAssignmentService,
     taskSubProjectService,
     taskService,
+    userGroupService,
+    taskGroupPermissionService,
 }
 
