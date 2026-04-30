@@ -19,7 +19,6 @@
 import { useMemo, useState } from 'react'
 import {
     Button,
-    Popconfirm,
     Space,
     Table,
     Tag,
@@ -37,6 +36,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { authService, userGroupService } from '../../services/api'
 import UserGroupModal from '../../components/modals/UserGroupModal'
 import UserGroupMemberModal from '../../components/modals/UserGroupMemberModal'
+import DangerConfirmModal from '../../components/common/DangerConfirmModal'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Virtual group helpers
@@ -121,6 +121,7 @@ function RealMembersTable({ group, allUsersById, users }) {
     const queryClient = useQueryClient()
     const [memberModalOpen, setMemberModalOpen] = useState(false)
     const [editingMember, setEditingMember] = useState(null)
+    const [removingMember, setRemovingMember] = useState(null)
 
     const { data: members = [], isLoading } = useQuery({
         queryKey: ['admin-user-group-members', group.id],
@@ -199,6 +200,7 @@ function RealMembersTable({ group, allUsersById, users }) {
         mutationFn: (memberId) => userGroupService.removeMember(group.id, memberId),
         onSuccess: () => {
             message.success('Member removed.')
+            setRemovingMember(null)
             queryClient.invalidateQueries({
                 queryKey: ['admin-user-group-members', group.id],
             })
@@ -207,6 +209,7 @@ function RealMembersTable({ group, allUsersById, users }) {
         },
         onError: (err) => {
             message.error(err?.response?.data?.detail || 'Failed to remove member.')
+            setRemovingMember(null)
         },
     })
 
@@ -267,15 +270,14 @@ function RealMembersTable({ group, allUsersById, users }) {
                             }}
                         />
                     </Tooltip>
-                    <Popconfirm
-                        title="Remove from group?"
-                        description="The user account is not affected. Tasks already assigned remain."
-                        okText="Remove"
-                        okButtonProps={{ danger: true }}
-                        onConfirm={() => removeMutation.mutate(record.id)}
-                    >
-                        <Button size="small" danger icon={<DeleteOutlined />} />
-                    </Popconfirm>
+                    <Tooltip title="Remove from group">
+                        <Button
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => setRemovingMember(record)}
+                        />
+                    </Tooltip>
                 </Space>
             ),
         },
@@ -330,6 +332,31 @@ function RealMembersTable({ group, allUsersById, users }) {
                 userMap={allUsersById}
                 loading={bulkAdding || updateMutation.isPending}
             />
+
+            <DangerConfirmModal
+                open={!!removingMember}
+                title="Remove member from group?"
+                body="This removes the user from this group only. The user account is not affected, and existing tasks remain unchanged."
+                itemName={
+                    removingMember
+                        ? allUsersById[removingMember.user_id]?.full_name ||
+                          allUsersById[removingMember.user_id]?.email ||
+                          removingMember.user_id
+                        : null
+                }
+                itemSubtitle={
+                    removingMember
+                        ? group.name +
+                          (removingMember.title ? ` · ${removingMember.title}` : '')
+                        : null
+                }
+                confirmLabel="Remove"
+                onCancel={() => setRemovingMember(null)}
+                onConfirm={() =>
+                    removingMember && removeMutation.mutate(removingMember.id)
+                }
+                loading={removeMutation.isPending}
+            />
         </div>
     )
 }
@@ -341,6 +368,7 @@ function RealMembersTable({ group, allUsersById, users }) {
 function UserGroupsTab() {
     const queryClient = useQueryClient()
     const [groupModalOpen, setGroupModalOpen] = useState(false)
+    const [deletingGroup, setDeletingGroup] = useState(null)
     const [editingGroup, setEditingGroup] = useState(null)
 
     const { data: users = [] } = useQuery({
@@ -398,11 +426,13 @@ function UserGroupsTab() {
         mutationFn: (groupId) => userGroupService.deactivate(groupId),
         onSuccess: () => {
             message.success('Group deleted.')
+            setDeletingGroup(null)
             queryClient.invalidateQueries({ queryKey: ['admin-user-groups'] })
             queryClient.invalidateQueries({ queryKey: ['task-permissions'] })
         },
         onError: (err) => {
             message.error(err?.response?.data?.detail || 'Failed to delete group.')
+            setDeletingGroup(null)
         },
     })
 
@@ -458,17 +488,14 @@ function UserGroupsTab() {
                                 }}
                             />
                         </Tooltip>
-                        <Popconfirm
-                            title="Delete this group?"
-                            description="The group will be deactivated. Members and any historical task data are preserved."
-                            okText="Delete"
-                            okButtonProps={{ danger: true }}
-                            onConfirm={() => deactivateMutation.mutate(record.id)}
+                        <Button
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => setDeletingGroup(record)}
                         >
-                            <Button size="small" danger icon={<DeleteOutlined />}>
-                                Delete
-                            </Button>
-                        </Popconfirm>
+                            Delete
+                        </Button>
                     </Space>
                 ),
         },
@@ -529,6 +556,26 @@ function UserGroupsTab() {
                 onSubmit={handleSubmit}
                 editingGroup={editingGroup}
                 loading={createMutation.isPending || updateMutation.isPending}
+            />
+
+            <DangerConfirmModal
+                open={!!deletingGroup}
+                title="Delete group?"
+                body="This removes the group from active use. User accounts and existing tasks remain unchanged."
+                itemName={deletingGroup?.name}
+                itemSubtitle={
+                    deletingGroup
+                        ? `${deletingGroup.member_count ?? 0} member${
+                              deletingGroup.member_count === 1 ? '' : 's'
+                          }`
+                        : null
+                }
+                confirmLabel="Delete Group"
+                onCancel={() => setDeletingGroup(null)}
+                onConfirm={() =>
+                    deletingGroup && deactivateMutation.mutate(deletingGroup.id)
+                }
+                loading={deactivateMutation.isPending}
             />
         </>
     )
