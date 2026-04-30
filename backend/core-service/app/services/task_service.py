@@ -1055,28 +1055,34 @@ def create_tasks_for_group(
             detail="Due date cannot be before the scheduled date.",
         )
 
-    # Filter to active members WITH task access. Members without access
-    # would receive a row they can't see; safer to skip them cleanly.
+    # Filter to active members WITH effective task access. Members without
+    # access would receive a row they can't see; safer to skip them cleanly.
+    # Effective access = direct row TRUE OR any active group membership
+    # grants access (group default + member override). The earlier
+    # version of this filter only looked at direct rows, which silently
+    # dropped members whose access came purely from a group default.
     candidate_ids = get_active_group_member_ids(db, assignee_group_id)
     if not candidate_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="The group has no active members.",
         )
-    perm_rows = (
-        db.query(TaskUserPermission.user_id, TaskUserPermission.can_access_tasks)
-        .filter(TaskUserPermission.user_id.in_(candidate_ids))
-        .all()
-    )
-    perm_map = {uid: bool(allowed) for uid, allowed in perm_rows}
-    eligible_ids = [uid for uid in candidate_ids if perm_map.get(uid)]
+    eff_data = list_effective_perm_data(db)
+    eligible_ids = [
+        uid
+        for uid in candidate_ids
+        if (
+            eff_data.get(str(uid), {}).get("direct_can_access_tasks")
+            or eff_data.get(str(uid), {}).get("group_grants_access")
+        )
+    ]
     if not eligible_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
                 "No active member of this group has task access enabled. "
-                "Grant Can Access Tasks first in Direct User Overrides "
-                "or via group permissions."
+                "Grant Access Tasks for the group, or for the individual "
+                "user, in Task Management → Task Access."
             ),
         )
 
