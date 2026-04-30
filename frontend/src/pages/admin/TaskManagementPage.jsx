@@ -2,15 +2,17 @@
  * =============================================================================
  * HERMES - Admin Task Management Page
  * =============================================================================
- * Three tabs:
- *   1. Task Access — toggle can_access_tasks / can_assign_tasks per user.
- *   2. Assignment Hierarchy — assigner -> assignees mappings.
- *   3. Sub Projects — task-only sub projects under existing customer/project.
+ * Tabs:
+ *   1. Task Groups          — group-based permission management (primary).
+ *   2. Direct User Overrides — flat per-user toggles (exception path).
+ *   3. Assignment Hierarchy  — assigner -> assignees mappings.
+ *   4. Sub Projects          — task-only sub projects under customer/project.
  *
- * User list is fetched directly from auth-service (/users/lookup).
- * Permission rows / relations come from core-service and are merged
- * client-side with the user list so the table works even if any single
- * service call fails.
+ * Effective permission (computed in backend) is:
+ *   admin OR direct toggle OR any active group membership grants true.
+ *
+ * User list is fetched directly from auth-service (/users/lookup) and
+ * merged with permission / membership rows client-side.
  * =============================================================================
  */
 
@@ -31,6 +33,7 @@ import {
     Tooltip,
     Popconfirm,
 } from 'antd'
+import TaskGroupsTab from './TaskGroupsTab'
 import {
     PlusOutlined,
     DeleteOutlined,
@@ -853,7 +856,16 @@ function TaskManagementPage() {
                 <Tabs
                     className="task-mgmt-tabs"
                     items={[
-                        { key: 'access', label: 'Task Access', children: <TaskAccessTab /> },
+                        {
+                            key: 'groups',
+                            label: 'Task Groups',
+                            children: <TaskGroupsTab />,
+                        },
+                        {
+                            key: 'direct',
+                            label: 'Direct User Overrides',
+                            children: <TaskAccessTab />,
+                        },
                         {
                             key: 'hierarchy',
                             label: 'Assignment Hierarchy',

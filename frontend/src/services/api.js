@@ -754,6 +754,71 @@ export const taskSubProjectService = {
     },
 }
 
+export const taskGroupService = {
+    /** Admin: list task groups (with member counts). */
+    list: async (params = {}) => {
+        const response = await coreApi.get('/api/v1/core/admin/task-groups', { params })
+        return response.data
+    },
+
+    /** Admin: create a new task group. */
+    create: async (data) => {
+        const response = await coreApi.post('/api/v1/core/admin/task-groups', data)
+        return response.data
+    },
+
+    /** Admin: update group fields / defaults / active. */
+    update: async (groupId, data) => {
+        const response = await coreApi.put(
+            `/api/v1/core/admin/task-groups/${groupId}`,
+            data
+        )
+        return response.data
+    },
+
+    /** Admin: archive a task group (soft). */
+    archive: async (groupId) => {
+        const response = await coreApi.patch(
+            `/api/v1/core/admin/task-groups/${groupId}/archive`
+        )
+        return response.data
+    },
+
+    /** Admin: list members of a group. */
+    listMembers: async (groupId) => {
+        const response = await coreApi.get(
+            `/api/v1/core/admin/task-groups/${groupId}/members`
+        )
+        return response.data
+    },
+
+    /** Admin: add a user to the group. */
+    addMember: async (groupId, data) => {
+        const response = await coreApi.post(
+            `/api/v1/core/admin/task-groups/${groupId}/members`,
+            data
+        )
+        return response.data
+    },
+
+    /** Admin: update a member's task title and overrides. */
+    updateMember: async (groupId, memberId, data) => {
+        const response = await coreApi.put(
+            `/api/v1/core/admin/task-groups/${groupId}/members/${memberId}`,
+            data
+        )
+        return response.data
+    },
+
+    /** Admin: remove a user from the group (membership only). */
+    removeMember: async (groupId, memberId) => {
+        const response = await coreApi.delete(
+            `/api/v1/core/admin/task-groups/${groupId}/members/${memberId}`
+        )
+        return response.data
+    },
+}
+
 export const taskService = {
     /** List tasks visible to the current user with optional filters. */
     list: async (params = {}) => {
