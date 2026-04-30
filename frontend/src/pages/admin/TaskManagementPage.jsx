@@ -31,7 +31,6 @@ import {
     Space,
     message,
     Tooltip,
-    Popconfirm,
 } from 'antd'
 import {
     PlusOutlined,
@@ -53,6 +52,7 @@ import {
 import './TaskManagementPage.css'
 import TaskAccessByGroupTab from './TaskAccessByGroupTab'
 import AssignmentHierarchyTab from './AssignmentHierarchyTab'
+import DangerConfirmModal from '../../components/common/DangerConfirmModal'
 
 // =============================================================================
 // Shared user lookup (used by tabs 1 and 2)
@@ -88,14 +88,15 @@ function TaskAccessTab() {
         return map
     }, [permissionRows])
 
-    // Admins always have full task access. Auto-upsert their permission rows
-    // so (a) the table reflects reality and (b) admins can be selected as
-    // assigners in the Assignment Hierarchy tab without manual toggling.
+    // First-time bootstrap for admins: when an admin has *no* permission
+    // row at all, seed it with true/true so the table doesn't open with
+    // empty toggles. Once the row exists we leave it alone — admins are
+    // free to toggle their own row OFF later if they want, and we won't
+    // overwrite that choice on the next page load.
     const adminsNeedingFix = useMemo(() => {
         return users.filter((u) => {
             if (!u.is_admin || !u.is_active) return false
-            const p = permMap[u.id]
-            return !p || !p.can_access_tasks || !p.can_assign_tasks
+            return !permMap[u.id] // missing row only
         })
     }, [users, permMap])
 
@@ -209,53 +210,29 @@ function TaskAccessTab() {
                 val ? <Tag color="green">Active</Tag> : <Tag>Inactive</Tag>,
         },
         {
-            title: 'Can Access Tasks',
+            title: 'Access Tasks',
             dataIndex: 'can_access_tasks',
             render: (val, row) => (
-                <Tooltip
-                    title={
-                        row.is_admin
-                            ? 'Admins always have task access (auto).'
-                            : ''
+                <Switch
+                    checked={!!val}
+                    disabled={!row.is_active || updateMutation.isPending}
+                    onChange={(checked) =>
+                        handleToggle(row, 'can_access_tasks', checked)
                     }
-                >
-                    <Switch
-                        checked={!!val}
-                        disabled={
-                            row.is_admin ||
-                            !row.is_active ||
-                            updateMutation.isPending
-                        }
-                        onChange={(checked) =>
-                            handleToggle(row, 'can_access_tasks', checked)
-                        }
-                    />
-                </Tooltip>
+                />
             ),
         },
         {
-            title: 'Can Assign Tasks',
+            title: 'Assign Tasks',
             dataIndex: 'can_assign_tasks',
             render: (val, row) => (
-                <Tooltip
-                    title={
-                        row.is_admin
-                            ? 'Admins always have assignment permission (auto).'
-                            : ''
+                <Switch
+                    checked={!!val}
+                    disabled={!row.is_active || updateMutation.isPending}
+                    onChange={(checked) =>
+                        handleToggle(row, 'can_assign_tasks', checked)
                     }
-                >
-                    <Switch
-                        checked={!!val}
-                        disabled={
-                            row.is_admin ||
-                            !row.is_active ||
-                            updateMutation.isPending
-                        }
-                        onChange={(checked) =>
-                            handleToggle(row, 'can_assign_tasks', checked)
-                        }
-                    />
-                </Tooltip>
+                />
             ),
         },
     ]
@@ -283,6 +260,7 @@ function SubProjectsTab() {
 
     const [modalOpen, setModalOpen] = useState(false)
     const [editing, setEditing] = useState(null)
+    const [archivingSub, setArchivingSub] = useState(null)
     const [form] = Form.useForm()
 
     const { data: customers = [] } = useQuery({
@@ -347,11 +325,13 @@ function SubProjectsTab() {
         mutationFn: (id) => taskSubProjectService.archive(id),
         onSuccess: () => {
             message.success('Sub project archived.')
+            setArchivingSub(null)
             queryClient.invalidateQueries({ queryKey: ['admin-task-sub-projects'] })
             queryClient.invalidateQueries({ queryKey: ['task-sub-projects'] })
         },
         onError: (err) => {
             message.error(err?.response?.data?.detail || 'Failed to archive sub project.')
+            setArchivingSub(null)
         },
     })
 
@@ -435,17 +415,14 @@ function SubProjectsTab() {
                         />
                     </Tooltip>
                     {record.is_active ? (
-                        <Popconfirm
-                            title="Archive sub project?"
-                            description="It will not be selectable for new tasks. Existing tasks remain visible."
-                            okText="Archive"
-                            okButtonProps={{ danger: true }}
-                            onConfirm={() => archiveMutation.mutate(record.id)}
+                        <Button
+                            size="small"
+                            danger
+                            icon={<InboxOutlined />}
+                            onClick={() => setArchivingSub(record)}
                         >
-                            <Button size="small" danger icon={<InboxOutlined />}>
-                                Archive
-                            </Button>
-                        </Popconfirm>
+                            Archive
+                        </Button>
                     ) : (
                         <Button
                             size="small"
@@ -585,6 +562,28 @@ function SubProjectsTab() {
                     </Form.Item>
                 </Form>
             </Modal>
+
+            <DangerConfirmModal
+                open={!!archivingSub}
+                title="Archive sub project?"
+                body="It will not be selectable for new tasks. Existing tasks remain visible."
+                itemName={archivingSub?.name}
+                itemSubtitle={
+                    archivingSub
+                        ? `${archivingSub.customer_name || '—'}${
+                              archivingSub.project_name
+                                  ? ` · ${archivingSub.project_name}`
+                                  : ''
+                          }`
+                        : null
+                }
+                confirmLabel="Archive"
+                onCancel={() => setArchivingSub(null)}
+                onConfirm={() =>
+                    archivingSub && archiveMutation.mutate(archivingSub.id)
+                }
+                loading={archiveMutation.isPending}
+            />
         </>
     )
 }

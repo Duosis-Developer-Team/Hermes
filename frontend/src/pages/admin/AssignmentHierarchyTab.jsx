@@ -638,8 +638,8 @@ function AssignmentHierarchyTab() {
 
             <DangerConfirmModal
                 open={!!removingUserRelation}
-                title="Remove user assignment rule?"
-                body="This prevents the assigner from picking this user directly. Existing tasks already created remain unchanged."
+                title="Remove assignment mapping?"
+                body="This prevents future assignment through this mapping. Existing tasks remain unchanged."
                 itemName={
                     removingUser
                         ? userLabel(removingUser)
@@ -656,8 +656,8 @@ function AssignmentHierarchyTab() {
 
             <DangerConfirmModal
                 open={!!removingGroupRelation}
-                title="Remove group assignment rule?"
-                body="This prevents the assigner from targeting this group. Existing tasks created via the group remain unchanged."
+                title="Remove assignment mapping?"
+                body="This prevents future assignment through this mapping. Existing tasks remain unchanged."
                 itemName={removingGroupName}
                 confirmLabel="Remove"
                 onCancel={() => setRemovingGroupRelation(null)}

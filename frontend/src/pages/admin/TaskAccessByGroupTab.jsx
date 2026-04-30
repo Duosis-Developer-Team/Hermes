@@ -21,11 +21,9 @@
 import { useMemo, useState } from 'react'
 import {
     Button,
-    Select,
     Space,
     Switch,
     Table,
-    Tag,
     Tooltip,
     message,
 } from 'antd'
@@ -38,27 +36,6 @@ import {
     taskGroupPermissionService,
     userGroupService,
 } from '../../services/api'
-
-const OVERRIDE_OPTIONS = [
-    { value: 'inherit', label: 'Inherit from group' },
-    { value: 'enabled', label: 'Force enabled' },
-    { value: 'disabled', label: 'Force disabled' },
-]
-
-function overrideToValue(override) {
-    if (override === true) return 'enabled'
-    if (override === false) return 'disabled'
-    return 'inherit'
-}
-
-function valueToPayload(value, currentOverride, fieldName, clearFieldName) {
-    if (value === 'enabled') return { [fieldName]: true }
-    if (value === 'disabled') return { [fieldName]: false }
-    if (currentOverride !== null && currentOverride !== undefined) {
-        return { [clearFieldName]: true }
-    }
-    return {}
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Member overrides panel — rendered inside each group's expanded row
@@ -100,34 +77,31 @@ function GroupMemberOverridesPanel({ group, allUsersById }) {
         },
     })
 
-    const handleOverrideChange = (member, kind, value) => {
-        const current = overrideByUserId[member.user_id] || null
-        const payload = valueToPayload(
-            value,
-            current
-                ? kind === 'access'
-                    ? current.can_access_tasks_override
-                    : current.can_assign_tasks_override
-                : null,
+    // Simple binary toggle: ON = explicit TRUE override, OFF = explicit
+    // FALSE override. The "inherit-from-default" tri-state is gone in v1
+    // for a cleaner UX; the underlying nullable column is preserved on
+    // the backend so old NULL rows still resolve to the group default.
+    const handleMemberToggle = (member, kind, checked) => {
+        const fieldName =
             kind === 'access'
                 ? 'can_access_tasks_override'
-                : 'can_assign_tasks_override',
-            kind === 'access' ? 'clear_access_override' : 'clear_assign_override'
-        )
-        if (Object.keys(payload).length === 0) return // nothing to send
-        upsertMutation.mutate({ userId: member.user_id, data: payload })
+                : 'can_assign_tasks_override'
+        upsertMutation.mutate({
+            userId: member.user_id,
+            data: { [fieldName]: !!checked },
+        })
     }
 
     const rows = useMemo(
         () =>
             members.map((m) => {
                 const o = overrideByUserId[m.user_id]
+                // The toggle state mirrors the *effective* contribution
+                // — explicit override if set, else group default.
                 return {
                     ...m,
-                    access_choice: overrideToValue(o?.can_access_tasks_override),
-                    assign_choice: overrideToValue(o?.can_assign_tasks_override),
-                    effective_access_in_group: o?.effective_access_in_group ?? null,
-                    effective_assign_in_group: o?.effective_assign_in_group ?? null,
+                    effective_access_in_group: !!o?.effective_access_in_group,
+                    effective_assign_in_group: !!o?.effective_assign_in_group,
                 }
             }),
         [members, overrideByUserId]
@@ -154,38 +128,32 @@ function GroupMemberOverridesPanel({ group, allUsersById }) {
             render: (val) => val || <span style={{ color: '#888' }}>—</span>,
         },
         {
-            title: 'Access Override',
-            dataIndex: 'access_choice',
-            width: 200,
+            title: 'Access Tasks',
+            dataIndex: 'effective_access_in_group',
+            width: 140,
             render: (val, record) => (
-                <Select
-                    size="small"
-                    value={val}
-                    style={{ width: '100%' }}
-                    options={OVERRIDE_OPTIONS}
-                    onChange={(next) =>
-                        handleOverrideChange(record, 'access', next)
-                    }
+                <Switch
+                    checked={!!val}
                     disabled={upsertMutation.isPending}
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(_, e) => e?.stopPropagation?.()}
+                    onChange={(checked) =>
+                        handleMemberToggle(record, 'access', checked)
+                    }
                 />
             ),
         },
         {
-            title: 'Assign Override',
-            dataIndex: 'assign_choice',
-            width: 200,
+            title: 'Assign Tasks',
+            dataIndex: 'effective_assign_in_group',
+            width: 140,
             render: (val, record) => (
-                <Select
-                    size="small"
-                    value={val}
-                    style={{ width: '100%' }}
-                    options={OVERRIDE_OPTIONS}
-                    onChange={(next) =>
-                        handleOverrideChange(record, 'assign', next)
-                    }
+                <Switch
+                    checked={!!val}
                     disabled={upsertMutation.isPending}
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(_, e) => e?.stopPropagation?.()}
+                    onChange={(checked) =>
+                        handleMemberToggle(record, 'assign', checked)
+                    }
                 />
             ),
         },
@@ -194,8 +162,7 @@ function GroupMemberOverridesPanel({ group, allUsersById }) {
     return (
         <div style={{ padding: '8px 0' }}>
             <div style={{ marginBottom: 8, color: '#9b9b9b', fontSize: 12 }}>
-                Members are managed in Users → Groups. Use the override pickers
-                to grant or suppress each member's contribution to this group.
+                Members are managed in Users → Groups.
             </div>
             <Table
                 rowKey="id"
@@ -304,9 +271,9 @@ function TaskAccessByGroupTab() {
             align: 'center',
         },
         {
-            title: 'Default Can Access Tasks',
+            title: 'Access Tasks',
             dataIndex: 'can_access_tasks_default',
-            width: 180,
+            width: 140,
             render: (val, row) => (
                 <Switch
                     checked={!!val}
@@ -319,9 +286,9 @@ function TaskAccessByGroupTab() {
             ),
         },
         {
-            title: 'Default Can Assign Tasks',
+            title: 'Assign Tasks',
             dataIndex: 'can_assign_tasks_default',
-            width: 180,
+            width: 140,
             render: (val, row) => (
                 <Switch
                     checked={!!val}
@@ -354,11 +321,6 @@ function TaskAccessByGroupTab() {
                         Manage Groups
                     </Button>
                 </Tooltip>
-                <Space>
-                    <Tag color="default">
-                        Tip: expand a group to set per-member overrides.
-                    </Tag>
-                </Space>
             </div>
 
             <Table
