@@ -209,6 +209,9 @@ function AssignmentHierarchyTab() {
     const [modalOpen, setModalOpen] = useState(false)
     const [form] = Form.useForm()
 
+    // Watch the selected assigner so the assignees dropdown can exclude it.
+    const watchedAssigner = Form.useWatch('assigner_user_id', form)
+
     const { data: users = [] } = useAllUsers()
     const { data: permissionRows = [] } = useQuery({
         queryKey: ['admin-task-permissions'],
@@ -245,6 +248,30 @@ function AssignmentHierarchyTab() {
             ),
         [users, permMap]
     )
+
+    // Exclude the currently selected assigner from the assignee options so a
+    // user cannot map themselves (also enforced server-side via the
+    // chk_task_assignment_not_self constraint).
+    const assigneeOptions = useMemo(
+        () =>
+            possibleAssignees
+                .filter((u) => u.id !== watchedAssigner)
+                .map((u) => ({
+                    value: u.id,
+                    label: u.full_name || u.email,
+                })),
+        [possibleAssignees, watchedAssigner]
+    )
+
+    // If the assigner changes after assignees were already picked, drop any
+    // assignee that now equals the new assigner (auto-clean).
+    const handleAssignerChange = (nextAssignerId) => {
+        const current = form.getFieldValue('assignee_user_ids') || []
+        const filtered = current.filter((id) => id !== nextAssignerId)
+        if (filtered.length !== current.length) {
+            form.setFieldValue('assignee_user_ids', filtered)
+        }
+    }
 
     const enrichedRelations = useMemo(
         () =>
@@ -365,6 +392,7 @@ function AssignmentHierarchyTab() {
                             showSearch
                             placeholder="Select assigner"
                             optionFilterProp="label"
+                            onChange={handleAssignerChange}
                             options={possibleAssigners.map((u) => ({
                                 value: u.id,
                                 label: u.full_name || u.email,
@@ -385,19 +413,23 @@ function AssignmentHierarchyTab() {
                                 message: 'Pick at least one assignee.',
                             },
                         ]}
+                        extra={
+                            watchedAssigner
+                                ? 'The selected assigner is hidden from this list.'
+                                : undefined
+                        }
                     >
                         <Select
                             mode="multiple"
                             showSearch
                             placeholder="Select assignees"
                             optionFilterProp="label"
-                            options={possibleAssignees.map((u) => ({
-                                value: u.id,
-                                label: u.full_name || u.email,
-                            }))}
+                            options={assigneeOptions}
                             notFoundContent={
                                 possibleAssignees.length === 0
                                     ? 'No users with Can Access Tasks enabled. Enable it in Task Access first.'
+                                    : assigneeOptions.length === 0
+                                    ? 'No other users are available — assigner is excluded from this list.'
                                     : undefined
                             }
                         />
