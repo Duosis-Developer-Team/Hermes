@@ -422,27 +422,14 @@ function TasksPage() {
     }
 
     // ── Copy/paste handlers — Time Entry parity ────────────────────────────
-    // If the copied source task or the currently-selected task transitions
-    // to completed (e.g. another tab marks it done, or we mark it
-    // ourselves), drop it from the clipboard/selection — completed tasks
-    // are not copy/paste-able.
-    useEffect(() => {
-        if (!tasks?.length) return
-        if (copiedTask) {
-            const live = tasks.find((t) => t.id === copiedTask.id)
-            if (live && live.status === 'completed') {
-                setCopiedTask(null)
-                setTargetDate(null)
-                message.info('Clipboard cleared — task was completed.')
-            }
-        }
-        if (selectedTaskId) {
-            const live = tasks.find((t) => t.id === selectedTaskId)
-            if (live && live.status === 'completed') {
-                setSelectedTaskId(null)
-            }
-        }
-    }, [tasks, copiedTask, selectedTaskId])
+    // The "completed tasks can't be copied" rule is enforced at three
+    // points only:
+    //   1. TaskCard body click → never routes to onSelect when completed.
+    //   2. Ctrl+C handler below — refuses if the selected task is completed.
+    //   3. Ctrl+V handler below — refuses if the copied task is completed.
+    // We deliberately do NOT auto-clear copiedTask from a tasks-query
+    // effect: an over-aggressive auto-clear was racing the paste flow
+    // and silently dropping the clipboard.
 
     const handleSelectTask = (taskId) => {
         setSelectedTaskId((prev) => (prev === taskId ? null : taskId))
@@ -500,14 +487,10 @@ function TasksPage() {
                 if (!copiedTask) return // nothing in clipboard, let browser handle
                 e.preventDefault()
 
-                // Race guard: source task may have been completed between
-                // copy and paste. The auto-clear effect handles most cases,
-                // but cover the gap explicitly.
-                const live = tasks.find((t) => t.id === copiedTask.id)
-                if (
-                    copiedTask.status === 'completed' ||
-                    (live && live.status === 'completed')
-                ) {
+                // Completed tasks are not copy/paste-able. Check the
+                // snapshot we took at copy time — the live lookup is
+                // unnecessary and was racing with the paste flow.
+                if (copiedTask.status === 'completed') {
                     message.info('Completed tasks cannot be pasted.')
                     setCopiedTask(null)
                     setTargetDate(null)
@@ -532,13 +515,21 @@ function TasksPage() {
                         .format('YYYY-MM-DD')
                 }
 
+                // Description is required by the backend (min_length=1).
+                // Old/legacy tasks may have a null or empty description in
+                // the DB; fall back to the title so paste never 422s on
+                // that alone.
+                const safeDescription =
+                    (copiedTask.description && copiedTask.description.trim()) ||
+                    copiedTask.title ||
+                    'Task'
                 const payload = {
                     customer_id: copiedTask.customer_id,
                     project_id: copiedTask.project_id,
                     sub_project_id: copiedTask.sub_project_id || null,
                     assignee_user_id: copiedTask.assignee_user_id,
                     title: copiedTask.title,
-                    description: copiedTask.description,
+                    description: safeDescription,
                     scheduled_date: targetDate,
                     due_date: newDueDate,
                     priority: copiedTask.priority || 'medium',
