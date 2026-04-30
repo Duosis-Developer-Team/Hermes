@@ -154,72 +154,48 @@ class TaskCompleteUpdate(BaseModel):
 
 
 # =============================================================================
-# Task Groups
+# Task Group Permissions  (per UserGroup task defaults)
 # =============================================================================
 
-class TaskGroupCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
-    can_access_tasks_default: bool = False
-    can_assign_tasks_default: bool = False
-
-
-class TaskGroupUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
-    description: Optional[str] = None
-    can_access_tasks_default: Optional[bool] = None
-    can_assign_tasks_default: Optional[bool] = None
-    is_active: Optional[bool] = None
-
-
-class TaskGroupResponse(BaseModel):
-    id: UUID
-    name: str
-    description: Optional[str] = None
+class TaskGroupPermissionUpdate(BaseModel):
     can_access_tasks_default: bool
     can_assign_tasks_default: bool
-    is_active: bool
-    created_by_user_id: Optional[UUID] = None
-    member_count: int = 0
-    created_at: datetime
-    updated_at: datetime
-    archived_at: Optional[datetime] = None
+
+
+class TaskGroupPermissionResponse(BaseModel):
+    group_id: UUID
+    can_access_tasks_default: bool
+    can_assign_tasks_default: bool
+    updated_at: Optional[datetime] = None
 
 
 # =============================================================================
-# Task Group Members
+# Task Group Member Overrides  (tri-state per user × group)
 # =============================================================================
 
-class TaskGroupMemberCreate(BaseModel):
-    user_id: UUID
-    task_title: Optional[str] = Field(None, max_length=255)
-    can_access_tasks_override: Optional[bool] = None
-    can_assign_tasks_override: Optional[bool] = None
+class TaskGroupMemberOverrideUpdate(BaseModel):
+    """Tri-state semantics:
+        - omit a field          → leave it untouched
+        - field=True or False   → set explicit override
+        - clear_*=True          → null out the override (inherit default)
+    """
 
-
-class TaskGroupMemberUpdate(BaseModel):
-    task_title: Optional[str] = Field(None, max_length=255)
-    # Sentinel: client may clear the title back to None.
-    clear_task_title: Optional[bool] = None
     can_access_tasks_override: Optional[bool] = None
     clear_access_override: Optional[bool] = None
     can_assign_tasks_override: Optional[bool] = None
     clear_assign_override: Optional[bool] = None
 
 
-class TaskGroupMemberResponse(BaseModel):
-    id: UUID
+class TaskGroupMemberOverrideResponse(BaseModel):
     group_id: UUID
     user_id: UUID
-    task_title: Optional[str] = None
     can_access_tasks_override: Optional[bool] = None
     can_assign_tasks_override: Optional[bool] = None
     # Group's effective contribution for this member (computed):
     # access override if set, else group default; same for assign.
     effective_access_in_group: bool
     effective_assign_in_group: bool
-    created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
 
 class TaskResponse(BaseModel):

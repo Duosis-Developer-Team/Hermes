@@ -18,6 +18,7 @@ from .reports import router as reports_router
 from .plan_times import router as plan_times_router
 from .tasks import router as tasks_router
 from .task_admin import router as task_admin_router
+from .user_group_admin import router as user_group_admin_router
 
 __all__ = [
     "customers_router",
@@ -35,4 +36,5 @@ __all__ = [
     "plan_times_router",
     "tasks_router",
     "task_admin_router",
+    "user_group_admin_router",
 ]

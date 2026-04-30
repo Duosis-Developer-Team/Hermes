@@ -236,90 +236,14 @@ class Task(Base):
 
 
 # =============================================================================
-# task_groups
+# Legacy task_groups / task_group_members
 # =============================================================================
-
-class TaskGroup(Base):
-    """Named permission group with default access / assign flags."""
-
-    __tablename__ = "task_groups"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String(255), nullable=False)
-    description = Column(Text, nullable=True)
-    can_access_tasks_default = Column(Boolean, nullable=False, default=False)
-    can_assign_tasks_default = Column(Boolean, nullable=False, default=False)
-    is_active = Column(Boolean, nullable=False, default=True, index=True)
-    created_by_user_id = Column(UUID(as_uuid=True), nullable=True)
-    created_at = Column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        nullable=False,
-    )
-    updated_at = Column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-        nullable=False,
-    )
-    archived_at = Column(DateTime(timezone=True), nullable=True)
-
-    members = relationship(
-        "TaskGroupMember",
-        back_populates="group",
-        cascade="all, delete-orphan",
-    )
-
-    __table_args__ = (
-        UniqueConstraint("name", name="uq_task_groups_name"),
-    )
-
-
+# The TaskGroup and TaskGroupMember model classes were removed in the
+# user-groups refactor. Their physical tables remain in the database for
+# rollback safety but the application no longer references them. The new
+# group system lives in models/user_group.py:
+#   - UserGroup
+#   - UserGroupMember
+#   - TaskGroupPermission           (per-group task access/assign defaults)
+#   - TaskGroupMemberOverride       (per-member tri-state overrides)
 # =============================================================================
-# task_group_members
-# =============================================================================
-
-class TaskGroupMember(Base):
-    """User membership in a task group with optional task title and overrides.
-
-    `can_access_tasks_override` / `can_assign_tasks_override` are tri-state:
-        NULL  → inherit the group default
-        TRUE  → force the membership's contribution to true
-        FALSE → suppress this membership's contribution (other sources can
-                still grant the permission)
-    """
-
-    __tablename__ = "task_group_members"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    group_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("task_groups.id", ondelete="RESTRICT"),
-        nullable=False,
-        index=True,
-    )
-    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    task_title = Column(String(255), nullable=True)
-    can_access_tasks_override = Column(Boolean, nullable=True)
-    can_assign_tasks_override = Column(Boolean, nullable=True)
-    created_at = Column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        nullable=False,
-    )
-    updated_at = Column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-        nullable=False,
-    )
-
-    group = relationship("TaskGroup", back_populates="members")
-
-    __table_args__ = (
-        UniqueConstraint(
-            "group_id",
-            "user_id",
-            name="uq_task_group_members_group_user",
-        ),
-    )

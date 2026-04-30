@@ -25,19 +25,18 @@ from ..database import get_db
 from ..schemas.task import (
     TaskAssignmentRelationCreate,
     TaskAssignmentRelationResponse,
-    TaskGroupCreate,
-    TaskGroupMemberCreate,
-    TaskGroupMemberResponse,
-    TaskGroupMemberUpdate,
-    TaskGroupResponse,
-    TaskGroupUpdate,
+    TaskGroupMemberOverrideResponse,
+    TaskGroupMemberOverrideUpdate,
+    TaskGroupPermissionResponse,
+    TaskGroupPermissionUpdate,
     TaskPermissionRow,
     TaskPermissionUpdate,
     TaskSubProjectCreate,
     TaskSubProjectResponse,
     TaskSubProjectUpdate,
 )
-from ..services import task_service
+from ..models.user_group import TaskGroupPermission
+from ..services import task_service, user_group_service
 from ..routers.tasks import _serialize_sub_project
 from shared.auth import CurrentUser, require_admin
 
@@ -204,164 +203,140 @@ async def archive_sub_project(
     return _serialize_sub_project(sub)
 
 
+
 # =============================================================================
-# Task Groups
+# Task Group Permissions  (per UserGroup defaults)
 # =============================================================================
-
-def _serialize_task_group(group, member_count: int = 0) -> TaskGroupResponse:
-    return TaskGroupResponse(
-        id=group.id,
-        name=group.name,
-        description=group.description,
-        can_access_tasks_default=bool(group.can_access_tasks_default),
-        can_assign_tasks_default=bool(group.can_assign_tasks_default),
-        is_active=bool(group.is_active),
-        created_by_user_id=group.created_by_user_id,
-        member_count=member_count,
-        created_at=group.created_at,
-        updated_at=group.updated_at,
-        archived_at=group.archived_at,
-    )
-
-
-def _serialize_task_group_member(member, group) -> TaskGroupMemberResponse:
-    access, assign = task_service.effective_member_contribution(member, group)
-    return TaskGroupMemberResponse(
-        id=member.id,
-        group_id=member.group_id,
-        user_id=member.user_id,
-        task_title=member.task_title,
-        can_access_tasks_override=member.can_access_tasks_override,
-        can_assign_tasks_override=member.can_assign_tasks_override,
-        effective_access_in_group=access,
-        effective_assign_in_group=assign,
-        created_at=member.created_at,
-        updated_at=member.updated_at,
-    )
-
+# These endpoints set the "task" aspect of a global UserGroup. The group
+# itself (name, description, members) is managed under
+# /admin/user-groups/... in routers/user_group_admin.py.
+# =============================================================================
 
 @router.get(
-    "/task-groups",
-    response_model=List[TaskGroupResponse],
+    "/task-permissions/groups",
+    response_model=List[TaskGroupPermissionResponse],
 )
-async def list_task_groups(
-    include_archived: bool = False,
+async def list_task_group_permissions(
     admin: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    groups = task_service.list_task_groups(db, include_archived=include_archived)
-    counts = task_service.get_member_count_map(db)
+    """All task permission rows (sparse — only groups that have been
+    configured at least once). Frontend joins with /admin/user-groups
+    to render the full matrix.
+    """
+    rows = db.query(TaskGroupPermission).all()
     return [
-        _serialize_task_group(g, member_count=counts.get(str(g.id), 0))
-        for g in groups
+        TaskGroupPermissionResponse(
+            group_id=r.group_id,
+            can_access_tasks_default=bool(r.can_access_tasks_default),
+            can_assign_tasks_default=bool(r.can_assign_tasks_default),
+            updated_at=r.updated_at,
+        )
+        for r in rows
     ]
 
 
-@router.post(
-    "/task-groups",
-    response_model=TaskGroupResponse,
-    status_code=201,
-)
-async def create_task_group(
-    data: TaskGroupCreate,
-    admin: CurrentUser = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    group = task_service.create_task_group(db, data, UUID(admin.id))
-    return _serialize_task_group(group, member_count=0)
-
-
 @router.put(
-    "/task-groups/{group_id}",
-    response_model=TaskGroupResponse,
+    "/task-permissions/groups/{group_id}",
+    response_model=TaskGroupPermissionResponse,
 )
-async def update_task_group(
+async def upsert_task_group_permission(
     group_id: UUID,
-    data: TaskGroupUpdate,
+    data: TaskGroupPermissionUpdate,
     admin: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    group = task_service.update_task_group(db, group_id, data)
-    counts = task_service.get_member_count_map(db)
-    return _serialize_task_group(group, member_count=counts.get(str(group.id), 0))
+    perm = user_group_service.upsert_task_group_permission(
+        db,
+        group_id,
+        can_access_tasks_default=data.can_access_tasks_default,
+        can_assign_tasks_default=data.can_assign_tasks_default,
+    )
+    return TaskGroupPermissionResponse(
+        group_id=perm.group_id,
+        can_access_tasks_default=bool(perm.can_access_tasks_default),
+        can_assign_tasks_default=bool(perm.can_assign_tasks_default),
+        updated_at=perm.updated_at,
+    )
 
 
-@router.patch(
-    "/task-groups/{group_id}/archive",
-    response_model=TaskGroupResponse,
-)
-async def archive_task_group(
+# =============================================================================
+# Task Group Member Overrides  (tri-state per user × group)
+# =============================================================================
+
+def _serialize_override(
+    *,
     group_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    group = task_service.archive_task_group(db, group_id)
-    counts = task_service.get_member_count_map(db)
-    return _serialize_task_group(group, member_count=counts.get(str(group.id), 0))
+    user_id: UUID,
+    override,
+    permission,
+) -> TaskGroupMemberOverrideResponse:
+    access, assign = user_group_service.effective_member_contribution(
+        override=override,
+        permission=permission,
+    )
+    return TaskGroupMemberOverrideResponse(
+        group_id=group_id,
+        user_id=user_id,
+        can_access_tasks_override=(
+            override.can_access_tasks_override if override else None
+        ),
+        can_assign_tasks_override=(
+            override.can_assign_tasks_override if override else None
+        ),
+        effective_access_in_group=access,
+        effective_assign_in_group=assign,
+        updated_at=override.updated_at if override else None,
+    )
 
-
-# =============================================================================
-# Task Group Members
-# =============================================================================
 
 @router.get(
-    "/task-groups/{group_id}/members",
-    response_model=List[TaskGroupMemberResponse],
+    "/task-permissions/groups/{group_id}/member-overrides",
+    response_model=List[TaskGroupMemberOverrideResponse],
 )
-async def list_task_group_members(
+async def list_task_group_member_overrides(
     group_id: UUID,
     admin: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    group = task_service.get_task_group(db, group_id)
-    members = task_service.list_task_group_members(db, group_id)
-    return [_serialize_task_group_member(m, group) for m in members]
-
-
-@router.post(
-    "/task-groups/{group_id}/members",
-    response_model=TaskGroupMemberResponse,
-    status_code=201,
-)
-async def add_task_group_member(
-    group_id: UUID,
-    data: TaskGroupMemberCreate,
-    admin: CurrentUser = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    member = task_service.add_task_group_member(db, group_id, data)
-    group = task_service.get_task_group(db, group_id)
-    return _serialize_task_group_member(member, group)
+    user_group_service.get_user_group(db, group_id)  # 404 if missing
+    permission = user_group_service.get_task_group_permission(db, group_id)
+    overrides = user_group_service.list_task_group_member_overrides(db, group_id)
+    return [
+        _serialize_override(
+            group_id=group_id,
+            user_id=o.user_id,
+            override=o,
+            permission=permission,
+        )
+        for o in overrides
+    ]
 
 
 @router.put(
-    "/task-groups/{group_id}/members/{member_id}",
-    response_model=TaskGroupMemberResponse,
+    "/task-permissions/groups/{group_id}/member-overrides/{user_id}",
+    response_model=TaskGroupMemberOverrideResponse,
 )
-async def update_task_group_member(
+async def upsert_task_group_member_override(
     group_id: UUID,
-    member_id: UUID,
-    data: TaskGroupMemberUpdate,
+    user_id: UUID,
+    data: TaskGroupMemberOverrideUpdate,
     admin: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    member = task_service.update_task_group_member(db, group_id, member_id, data)
-    group = task_service.get_task_group(db, group_id)
-    return _serialize_task_group_member(member, group)
-
-
-@router.delete(
-    "/task-groups/{group_id}/members/{member_id}",
-    status_code=200,
-)
-async def remove_task_group_member(
-    group_id: UUID,
-    member_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    """Removes group membership only. Does not delete the user account or
-    any business data (tasks, work logs, etc.).
-    """
-    task_service.remove_task_group_member(db, group_id, member_id)
-    return {"deleted": True}
+    override = user_group_service.upsert_task_group_member_override(
+        db,
+        group_id,
+        user_id,
+        access_value=data.can_access_tasks_override,
+        clear_access=bool(data.clear_access_override),
+        assign_value=data.can_assign_tasks_override,
+        clear_assign=bool(data.clear_assign_override),
+    )
+    permission = user_group_service.get_task_group_permission(db, group_id)
+    return _serialize_override(
+        group_id=group_id,
+        user_id=user_id,
+        override=override,
+        permission=permission,
+    )

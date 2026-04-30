@@ -7,6 +7,7 @@ from .work_type_service import WorkTypeService
 from .project_service import ProjectService
 from .work_log_service import WorkLogService
 from . import task_service
+from . import user_group_service
 
 __all__ = [
     "CustomerService",
@@ -14,4 +15,5 @@ __all__ = [
     "ProjectService",
     "WorkLogService",
     "task_service",
+    "user_group_service",
 ]

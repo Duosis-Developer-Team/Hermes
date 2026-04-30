@@ -21,9 +21,19 @@ from .task import (
     TaskAssignmentRelation,
     TaskSubProject,
     Task,
-    TaskGroup,
-    TaskGroupMember,
 )
+from .user_group import (
+    UserGroup,
+    UserGroupMember,
+    TaskGroupPermission,
+    TaskGroupMemberOverride,
+)
+
+# NOTE: The legacy TaskGroup / TaskGroupMember classes have been removed
+# from import. Their physical tables (task_groups, task_group_members)
+# remain in the database for rollback safety but the application no
+# longer reads or writes to them. A separate explicit cleanup migration
+# may drop them later, after user approval.
 
 __all__ = [
     "Customer",
@@ -43,6 +53,8 @@ __all__ = [
     "TaskAssignmentRelation",
     "TaskSubProject",
     "Task",
-    "TaskGroup",
-    "TaskGroupMember",
+    "UserGroup",
+    "UserGroupMember",
+    "TaskGroupPermission",
+    "TaskGroupMemberOverride",
 ]
