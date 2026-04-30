@@ -10,7 +10,7 @@
 # - PUT /users/{user_id}: Kullanıcıyı günceller (Admin)
 # =============================================================================
 
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
@@ -23,7 +23,7 @@ from ..schemas.user import (
     UserListResponse
 )
 from ..services.user_service import UserService
-from shared.auth import require_admin, CurrentUser
+from shared.auth import require_admin, get_current_user, CurrentUser
 from shared.exceptions import NotFoundError, ConflictError
 from shared.responses import success_response
 
@@ -186,6 +186,54 @@ async def list_user_options(
     
     return [
         {"id": u.id, "full_name": u.full_name or u.email, "role": u.role} 
+        for u in users
+    ]
+
+
+# =============================================================================
+# GET /users/lookup - Minimal user info for any authenticated user
+# =============================================================================
+
+@router.get(
+    "/lookup",
+    summary="Lookup users (minimal fields, any authenticated user)",
+    description=(
+        "Returns minimal info (id, full_name, email, role, is_admin, is_active) "
+        "for active users. Used by feature modules (e.g. Tasks) to display "
+        "assigner/assignee names without requiring admin privileges. "
+        "Optionally filter to a specific list of user IDs via repeated 'ids' query."
+    )
+)
+async def lookup_users(
+    ids: Optional[List[UUID]] = Query(None, description="Optional filter — restrict to these user IDs"),
+    include_inactive: bool = Query(False, description="Include inactive users (admin only — ignored otherwise)"),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Lightweight, read-only user lookup for any authenticated user."""
+    from ..models.user import User
+
+    query = db.query(User)
+
+    if include_inactive and current_user.is_admin:
+        pass  # No filter
+    else:
+        query = query.filter(User.is_active == True)  # noqa: E712
+
+    if ids:
+        query = query.filter(User.id.in_(ids))
+
+    users = query.order_by(User.full_name.asc().nulls_last(), User.email.asc()).all()
+
+    return [
+        {
+            "id": str(u.id),
+            "full_name": u.full_name or u.email,
+            "email": u.email,
+            "role": u.role.value if hasattr(u.role, "value") else (str(u.role) if u.role else None),
+            "is_admin": bool(u.is_admin),
+            "is_active": bool(u.is_active),
+        }
         for u in users
     ]
 

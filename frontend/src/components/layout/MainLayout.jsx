@@ -23,9 +23,11 @@ import {
     MenuFoldOutlined,
     MenuUnfoldOutlined,
     SettingOutlined,
+    CheckSquareOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
 import { authService } from '../../services/api'
+import { useTaskPermissions } from '../../hooks/useTaskPermissions'
 import logoFull from '../../assets/logos/logo-full-dark.jpg'
 import logoText from '../../assets/logos/logo-text-dark.jpg'
 import './MainLayout.css'
@@ -48,6 +50,8 @@ function MainLayout() {
     const { user, logout } = useAuthStore()
 
     const isAdmin = user?.is_admin === true
+    const { canAccessTasks } = useTaskPermissions()
+    const showTasksItem = isAdmin || canAccessTasks
 
     // Menu items
     const menuItems = [
@@ -57,6 +61,14 @@ function MainLayout() {
             icon: <ClockCircleOutlined />,
             label: 'Time Entry',
         },
+
+        ...(showTasksItem ? [
+            {
+                key: '/tasks',
+                icon: <CheckSquareOutlined />,
+                label: 'Tasks',
+            },
+        ] : []),
 
         // Admin Menüsü
         ...(isAdmin ? [
@@ -87,6 +99,11 @@ function MainLayout() {
                         key: '/management/contracts',
                         icon: <FileTextOutlined />,
                         label: 'Contract Status',
+                    },
+                    {
+                        key: '/task-management',
+                        icon: <CheckSquareOutlined />,
+                        label: 'Task Management',
                     },
                 ],
             },

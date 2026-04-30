@@ -153,6 +153,22 @@ export const authService = {
     deleteUser: async (userId) => {
         await authApi.delete(`/api/v1/auth/users/${userId}`)
     },
+
+    /**
+     * Lightweight user lookup for any authenticated user.
+     * Used by feature modules (e.g. Tasks) for assigner/assignee display.
+     * params: { ids?: string[], include_inactive?: boolean }
+     */
+    lookupUsers: async (params = {}) => {
+        const { ids, include_inactive } = params
+        const search = new URLSearchParams()
+        if (Array.isArray(ids)) ids.forEach(id => search.append('ids', id))
+        if (include_inactive) search.append('include_inactive', 'true')
+        const qs = search.toString()
+        const url = qs ? `/api/v1/auth/users/lookup?${qs}` : '/api/v1/auth/users/lookup'
+        const response = await authApi.get(url)
+        return response.data
+    },
 }
 
 // =============================================================================
@@ -652,6 +668,142 @@ export const planTimeService = {
     },
 }
 
+// =============================================================================
+// CORE SERVICE - Tasks Module
+// =============================================================================
+
+export const taskPermissionService = {
+    /** Current user's task capability + assignable users. */
+    getMyPermissions: async () => {
+        const response = await coreApi.get('/api/v1/core/tasks/permissions/me')
+        return response.data
+    },
+
+    /** Admin: list every user's task permission flags. */
+    listAdminUsers: async () => {
+        const response = await coreApi.get('/api/v1/core/admin/task-permissions/users')
+        return response.data
+    },
+
+    /** Admin: upsert a user's task permission flags. */
+    updateUserPermission: async (userId, data) => {
+        const response = await coreApi.put(
+            `/api/v1/core/admin/task-permissions/users/${userId}`,
+            data
+        )
+        return response.data
+    },
+}
+
+export const taskAssignmentService = {
+    /** Admin: list all assigner -> assignee mappings. */
+    list: async () => {
+        const response = await coreApi.get('/api/v1/core/admin/task-assignment-relations')
+        return response.data
+    },
+
+    /** Admin: bulk create mappings. */
+    create: async (data) => {
+        const response = await coreApi.post(
+            '/api/v1/core/admin/task-assignment-relations',
+            data
+        )
+        return response.data
+    },
+
+    /** Admin: delete a mapping. */
+    delete: async (relationId) => {
+        const response = await coreApi.delete(
+            `/api/v1/core/admin/task-assignment-relations/${relationId}`
+        )
+        return response.data
+    },
+}
+
+export const taskSubProjectService = {
+    /**
+     * List sub projects (any task user / admin).
+     * params: { customer_id?, project_id?, include_inactive? }
+     */
+    list: async (params = {}) => {
+        const response = await coreApi.get('/api/v1/core/tasks/sub-projects', { params })
+        return response.data
+    },
+
+    /** Admin: create a task sub project. */
+    create: async (data) => {
+        const response = await coreApi.post('/api/v1/core/admin/tasks/sub-projects', data)
+        return response.data
+    },
+
+    /** Admin: update a sub project. */
+    update: async (subProjectId, data) => {
+        const response = await coreApi.put(
+            `/api/v1/core/admin/tasks/sub-projects/${subProjectId}`,
+            data
+        )
+        return response.data
+    },
+
+    /** Admin: archive a sub project. */
+    archive: async (subProjectId) => {
+        const response = await coreApi.patch(
+            `/api/v1/core/admin/tasks/sub-projects/${subProjectId}/archive`
+        )
+        return response.data
+    },
+}
+
+export const taskService = {
+    /** List tasks visible to the current user with optional filters. */
+    list: async (params = {}) => {
+        const response = await coreApi.get('/api/v1/core/tasks', { params })
+        return response.data
+    },
+
+    /** Create a new task (assigner / admin only). */
+    create: async (data) => {
+        const response = await coreApi.post('/api/v1/core/tasks', data)
+        return response.data
+    },
+
+    /** Get a single task by ID. */
+    getById: async (taskId) => {
+        const response = await coreApi.get(`/api/v1/core/tasks/${taskId}`)
+        return response.data
+    },
+
+    /** Update a task's core fields (assigner / admin only). */
+    update: async (taskId, data) => {
+        const response = await coreApi.put(`/api/v1/core/tasks/${taskId}`, data)
+        return response.data
+    },
+
+    /** Update assignee note (assignee only). */
+    updateNote: async (taskId, assigneeNote) => {
+        const response = await coreApi.patch(`/api/v1/core/tasks/${taskId}/note`, {
+            assignee_note: assigneeNote,
+        })
+        return response.data
+    },
+
+    /** Update task status (assignee/assigner/admin). */
+    updateStatus: async (taskId, status) => {
+        const response = await coreApi.patch(`/api/v1/core/tasks/${taskId}/status`, {
+            status,
+        })
+        return response.data
+    },
+
+    /** Convenience: mark complete / reopen. */
+    setCompleted: async (taskId, completed) => {
+        const response = await coreApi.patch(`/api/v1/core/tasks/${taskId}/complete`, {
+            completed,
+        })
+        return response.data
+    },
+}
+
 export default {
     authService,
     customerService,
@@ -663,5 +815,9 @@ export default {
     workLineService,
     timesheetService,
     reportsService,
+    taskPermissionService,
+    taskAssignmentService,
+    taskSubProjectService,
+    taskService,
 }
 

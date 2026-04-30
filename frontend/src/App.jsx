@@ -29,6 +29,9 @@ import WorkLinesPage from './pages/WorkLinesPage'
 import BillableHoursPage from './pages/BillableHoursPage'
 import ReportsPage from './pages/ReportsPage'
 import ContractStatusPage from './pages/admin/ContractStatusPage'
+import TasksPage from './pages/TasksPage'
+import TaskManagementPage from './pages/admin/TaskManagementPage'
+import { useTaskPermissions } from './hooks/useTaskPermissions'
 
 /**
  * Protected Route Component
@@ -45,6 +48,29 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
         return <Navigate to="/time-entry" replace />
     }
 
+    return children
+}
+
+/**
+ * Task-Protected Route — admin OR can_access_tasks.
+ * Backend remains the source of truth; this is UX only.
+ */
+const TaskProtectedRoute = ({ children }) => {
+    const { isAuthenticated, user } = useAuthStore()
+    const { isLoading, canAccessTasks, isTaskAdmin } = useTaskPermissions()
+
+    if (!isAuthenticated) {
+        return <Navigate to="/login" replace />
+    }
+    if (user?.is_admin) {
+        return children
+    }
+    if (isLoading) {
+        return null
+    }
+    if (!canAccessTasks && !isTaskAdmin) {
+        return <Navigate to="/time-entry" replace />
+    }
     return children
 }
 
@@ -106,6 +132,24 @@ function App() {
 
                 {/* Standard User Pages */}
                 <Route path="time-entry" element={<TimeEntryPage />} />
+
+                {/* Tasks — admin or users with can_access_tasks */}
+                <Route
+                    path="tasks"
+                    element={
+                        <TaskProtectedRoute>
+                            <TasksPage />
+                        </TaskProtectedRoute>
+                    }
+                />
+                <Route
+                    path="task-management"
+                    element={
+                        <ProtectedRoute adminOnly>
+                            <TaskManagementPage />
+                        </ProtectedRoute>
+                    }
+                />
 
                 {/* Admin Pages */}
                 <Route

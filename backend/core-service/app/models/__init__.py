@@ -16,6 +16,12 @@ from .issue import Issue
 from .project_membership import ProjectMembership
 from .timesheet import TimesheetSubmission, TimesheetStatus
 from .plan_time import PlanTime, PlanTimeAssignment
+from .task import (
+    TaskUserPermission,
+    TaskAssignmentRelation,
+    TaskSubProject,
+    Task,
+)
 
 __all__ = [
     "Customer",
@@ -31,4 +37,8 @@ __all__ = [
     "TimesheetStatus",
     "PlanTime",
     "PlanTimeAssignment",
+    "TaskUserPermission",
+    "TaskAssignmentRelation",
+    "TaskSubProject",
+    "Task",
 ]
