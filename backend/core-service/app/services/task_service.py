@@ -620,6 +620,14 @@ def list_tasks_for_user(
 
     if not is_task_admin(user):
         user_uuid = UUID(user.id)
+        # Defense-in-depth: even though the visibility filter below already
+        # collapses any other-user filter to an empty result, explicitly
+        # coerce assignee_user_id / assigner_user_id to the current user so
+        # the intent is unambiguous and there is no path to leak via filters.
+        if assignee_user_id is not None and assignee_user_id != user_uuid:
+            assignee_user_id = user_uuid
+        if assigner_user_id is not None and assigner_user_id != user_uuid:
+            assigner_user_id = user_uuid
         query = query.filter(
             or_(
                 Task.assignee_user_id == user_uuid,

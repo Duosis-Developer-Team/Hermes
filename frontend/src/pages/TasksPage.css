@@ -1,0 +1,103 @@
+/**
+ * =============================================================================
+ * HERMES - Tasks Page Styles
+ * =============================================================================
+ * Mirrors the Time Entry page header so the two pages read as siblings.
+ * The class names below are scoped to .tasks-page to avoid leaking into
+ * Time Entry, which keeps its own copy in TimeEntryPage.css.
+ * =============================================================================
+ */
+
+.tasks-page {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-primary);
+}
+
+/* ── Top user header (avatar + identity / admin selector + tabs + Create) ── */
+
+.tasks-page .tasks-user-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    background: transparent;
+    border-bottom: 1px solid var(--border-default);
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.tasks-page .tasks-user-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.tasks-page .tasks-user-avatar {
+    background-color: var(--color-primary);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.tasks-page .tasks-user-name {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.tasks-page .tasks-user-header-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+/* ── Underline tab links (Time Entry parity) ──────────────────────────── */
+
+.tasks-page .tasks-tabs {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.tasks-page .tasks-tab-link {
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    padding: 8px 0;
+    position: relative;
+    transition: color 0.2s;
+    user-select: none;
+}
+
+.tasks-page .tasks-tab-link:hover {
+    color: var(--text-primary);
+}
+
+.tasks-page .tasks-tab-link.active {
+    color: var(--color-primary);
+}
+
+.tasks-page .tasks-tab-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--color-primary);
+}
+
+/* Subtle separator between scope tabs and view tabs */
+.tasks-page .tasks-tabs-divider {
+    width: 1px;
+    height: 16px;
+    background: var(--border-default);
+}
+
+/* Body padding similar to existing layout */
+.tasks-page .tasks-body {
+    padding: 16px 24px 24px;
+}

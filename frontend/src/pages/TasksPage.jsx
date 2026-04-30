@@ -13,11 +13,11 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import {
+    Avatar,
     Button,
     Card,
     Empty,
     Modal,
-    Segmented,
     Select,
     Space,
     Spin,
@@ -31,6 +31,7 @@ import {
     FilterOutlined,
     ExclamationCircleOutlined,
     DeleteOutlined,
+    UserOutlined,
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -49,6 +50,7 @@ import TasksWeeklyView from '../components/tasks/TasksWeeklyView'
 import TasksListView from '../components/tasks/TasksListView'
 import CreateTaskModal from '../components/modals/CreateTaskModal'
 import TaskNoteModal from '../components/modals/TaskNoteModal'
+import './TasksPage.css'
 
 dayjs.extend(isoWeek)
 
@@ -90,19 +92,26 @@ function TasksPage() {
     const [noteTask, setNoteTask] = useState(null)
 
     // ── View switches ──────────────────────────────────────────────────────
-    // Scope: 'my' = tasks assigned to me; 'assigned' = tasks I assigned.
+    // Scope: 'my' = tasks assigned to viewed user; 'assigned' = tasks
+    // assigned by viewed user. For admins the "viewed user" comes from the
+    // user selector below; for non-admins it is always themselves.
     const [viewScope, setViewScope] = useState('my')
     // Layout: 'calendar' or 'list'.
     const [viewLayout, setViewLayout] = useState('calendar')
+    // Admin-only user selector (Time Entry parity). null → current user.
+    const [selectedUserId, setSelectedUserId] = useState(null)
 
     // "Assigned by Me" requires task-assign permission or admin.
     const canViewAssignedByMe = isTaskAdmin || canAssignTasks
     // If a non-assigner ends up with viewScope='assigned' (e.g. permission
     // was revoked while the page is open), force back to 'my'.
     if (viewScope === 'assigned' && !canViewAssignedByMe) {
-        // Setting state during render is fine because it's idempotent here.
         setViewScope('my')
     }
+
+    // Effective viewed user. Non-admin path always resolves to current user
+    // regardless of the selector — backend also coerces, defense in depth.
+    const viewedUserId = isTaskAdmin ? selectedUserId || user?.id : user?.id
 
     // ── Copy/paste state — Time Entry parity ──────────────────────────────
     const [selectedTaskId, setSelectedTaskId] = useState(null)
@@ -138,21 +147,23 @@ function TasksPage() {
     })
 
     // Scope filter:
-    //  - 'my'       → assignee_user_id = current user
-    //  - 'assigned' → assigner_user_id = current user
-    // Backend enforces visibility independently; these filters narrow the
-    // result set so each scope is unambiguous.
+    //  - 'my'       → assignee_user_id = viewed user
+    //  - 'assigned' → assigner_user_id = viewed user
+    // For non-admins, viewedUserId is always the current user (and the
+    // backend enforces this anyway). Admins drive viewedUserId via the
+    // user selector to inspect any teammate's calendar.
     const scopeParams = useMemo(() => {
-        if (!user?.id) return {}
+        if (!viewedUserId) return {}
         return viewScope === 'assigned'
-            ? { assigner_user_id: user.id }
-            : { assignee_user_id: user.id }
-    }, [viewScope, user?.id])
+            ? { assigner_user_id: viewedUserId }
+            : { assignee_user_id: viewedUserId }
+    }, [viewScope, viewedUserId])
 
     const { data: tasks = [], isLoading } = useQuery({
         queryKey: [
             'tasks',
             viewScope,
+            viewedUserId,
             weekStart.format('YYYY-MM-DD'),
             statusFilter,
             priorityFilter,
@@ -193,11 +204,23 @@ function TasksPage() {
         staleTime: 60 * 1000,
     })
 
+    // Admin user-selector: full active user list (Time Entry parity).
+    const { data: allActiveUsers = [] } = useQuery({
+        queryKey: ['auth-users-lookup', { include_inactive: false }],
+        queryFn: () => authService.lookupUsers(),
+        enabled: canAccessTasks && isTaskAdmin,
+        staleTime: 60 * 1000,
+    })
+
     const userMap = useMemo(() => {
         const map = {}
+        // Combine the two lookup result sets so both selector + cards see
+        // the same names — admins always have allActiveUsers; non-admins
+        // get the small set referenced by visible tasks.
+        for (const u of allActiveUsers) map[u.id] = u
         for (const u of usersForTasks) map[u.id] = u
         return map
-    }, [usersForTasks])
+    }, [usersForTasks, allActiveUsers])
 
     // Mutations
     const createMutation = useMutation({
@@ -429,75 +452,95 @@ function TasksPage() {
         )
     }
 
+    const userSelectorOptions = useMemo(() => {
+        if (!user?.id) return []
+        const me = { value: user.id, label: user.full_name || 'Me' }
+        if (!isTaskAdmin) return [me]
+        const others = allActiveUsers
+            .filter((u) => u.id !== user.id)
+            .map((u) => ({ value: u.id, label: u.full_name || u.email }))
+        return [me, ...others]
+    }, [user, isTaskAdmin, allActiveUsers])
+
     return (
-        <div style={{ padding: 24 }}>
-            {/* Header */}
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: 16,
-                    flexWrap: 'wrap',
-                    gap: 12,
-                }}
-            >
-                <div>
-                    <h1 style={{ margin: 0, color: '#fff' }}>Tasks</h1>
-                    <div style={{ color: '#9b9b9b', fontSize: 13, marginTop: 2 }}>
-                        Manage assigned technical work
-                    </div>
-                </div>
-                <Space wrap>
-                    {/* Scope: My Tasks / Assigned by Me */}
-                    <Segmented
-                        value={viewScope}
-                        onChange={setViewScope}
-                        options={
-                            canViewAssignedByMe
-                                ? [
-                                      { label: 'My Tasks', value: 'my' },
-                                      { label: 'Assigned by Me', value: 'assigned' },
-                                  ]
-                                : [{ label: 'My Tasks', value: 'my' }]
-                        }
+        <div className="tasks-page">
+            {/* User header — same shape as Time Entry: avatar + identity / admin selector left,
+                tab links + week nav + Create on the right. */}
+            <div className="tasks-user-header">
+                <div className="tasks-user-header-left">
+                    <Avatar
+                        size={40}
+                        icon={<UserOutlined />}
+                        className="tasks-user-avatar"
                     />
-                    {/* Layout: Calendar / List */}
-                    <Segmented
-                        value={viewLayout}
-                        onChange={setViewLayout}
-                        options={[
-                            { label: 'Calendar', value: 'calendar' },
-                            { label: 'List', value: 'list' },
-                        ]}
-                    />
-                    {viewLayout === 'calendar' && (
-                        <>
-                            <Button
-                                icon={<LeftOutlined />}
-                                onClick={() =>
-                                    setWeekStart((prev) => prev.subtract(1, 'week'))
-                                }
-                            />
-                            <Button
-                                onClick={() =>
-                                    setWeekStart(dayjs().startOf('isoWeek'))
-                                }
-                            >
-                                Today
-                            </Button>
-                            <Button
-                                icon={<RightOutlined />}
-                                onClick={() =>
-                                    setWeekStart((prev) => prev.add(1, 'week'))
-                                }
-                            />
-                            <span style={{ color: '#fff', fontWeight: 500 }}>
-                                {weekStart.format('DD MMM')} –{' '}
-                                {weekEnd.format('DD MMM, YYYY')}
-                            </span>
-                        </>
+                    {isTaskAdmin ? (
+                        <Select
+                            value={selectedUserId || user?.id}
+                            onChange={setSelectedUserId}
+                            style={{
+                                width: 220,
+                                fontSize: '1.2rem',
+                                fontWeight: 600,
+                            }}
+                            bordered={false}
+                            loading={!allActiveUsers.length}
+                            options={userSelectorOptions}
+                            showSearch
+                            filterOption={(input, option) =>
+                                (option?.label ?? '')
+                                    .toLowerCase()
+                                    .includes(input.toLowerCase())
+                            }
+                        />
+                    ) : (
+                        <h1 className="tasks-user-name">
+                            {user?.full_name || 'User'}
+                        </h1>
                     )}
+                </div>
+
+                <div className="tasks-user-header-right">
+                    {/* Scope tabs */}
+                    <div className="tasks-tabs">
+                        <span
+                            className={`tasks-tab-link ${
+                                viewScope === 'my' ? 'active' : ''
+                            }`}
+                            onClick={() => setViewScope('my')}
+                        >
+                            My Tasks
+                        </span>
+                        {canViewAssignedByMe && (
+                            <span
+                                className={`tasks-tab-link ${
+                                    viewScope === 'assigned' ? 'active' : ''
+                                }`}
+                                onClick={() => setViewScope('assigned')}
+                            >
+                                Assigned by Me
+                            </span>
+                        )}
+                    </div>
+                    <div className="tasks-tabs-divider" />
+                    {/* Layout tabs */}
+                    <div className="tasks-tabs">
+                        <span
+                            className={`tasks-tab-link ${
+                                viewLayout === 'calendar' ? 'active' : ''
+                            }`}
+                            onClick={() => setViewLayout('calendar')}
+                        >
+                            Calendar
+                        </span>
+                        <span
+                            className={`tasks-tab-link ${
+                                viewLayout === 'list' ? 'active' : ''
+                            }`}
+                            onClick={() => setViewLayout('list')}
+                        >
+                            List
+                        </span>
+                    </div>
                     {(canAssignTasks || isTaskAdmin) && (
                         <Tooltip
                             title={
@@ -516,8 +559,51 @@ function TasksPage() {
                             </Button>
                         </Tooltip>
                     )}
-                </Space>
+                </div>
             </div>
+
+            {/* Week navigation row — only for calendar layout */}
+            {viewLayout === 'calendar' && (
+                <div
+                    className="tasks-body"
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: 12,
+                        paddingBottom: 0,
+                    }}
+                >
+                    <Space>
+                        <Button
+                            icon={<LeftOutlined />}
+                            onClick={() =>
+                                setWeekStart((prev) => prev.subtract(1, 'week'))
+                            }
+                        />
+                        <Button
+                            onClick={() =>
+                                setWeekStart(dayjs().startOf('isoWeek'))
+                            }
+                        >
+                            Today
+                        </Button>
+                        <Button
+                            icon={<RightOutlined />}
+                            onClick={() =>
+                                setWeekStart((prev) => prev.add(1, 'week'))
+                            }
+                        />
+                        <span style={{ color: '#fff', fontWeight: 500 }}>
+                            {weekStart.format('DD MMM')} –{' '}
+                            {weekEnd.format('DD MMM, YYYY')}
+                        </span>
+                    </Space>
+                </div>
+            )}
+
+            <div className="tasks-body">
 
             {/* Filters */}
             <Card
@@ -628,6 +714,8 @@ function TasksPage() {
                     onClearClipboard={handleClearClipboard}
                 />
             )}
+
+            </div>
 
             {/* Create / Edit modal — same Hermes Time Entry pattern */}
             <CreateTaskModal
