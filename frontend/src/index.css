@@ -614,3 +614,59 @@ body {
 .ant-select-selection-overflow-item {
   flex-shrink: 0;
 }
+
+/* ==========================================================================
+   DARK THEME LEGIBILITY - Select dropdown empty / notFoundContent
+   Default Ant Design renders these in a near-default text color, which
+   appears almost black on the dark dropdown background.
+   ========================================================================== */
+
+.ant-select-dropdown .ant-select-item-empty,
+.ant-select-dropdown .ant-empty,
+.ant-select-dropdown .ant-empty-description,
+.ant-select-empty {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* notFoundContent passed as plain text/node — render parent area readable */
+.ant-select-dropdown .rc-virtual-list-holder-inner > div:not(.ant-select-item) {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* ==========================================================================
+   DARK THEME LEGIBILITY - Modal-scoped form text
+   The default theme uses --text-muted/--text-secondary for labels/help/
+   placeholders, which is fine on Card backgrounds but too dim inside
+   modals on darker overlays. Brighten these only inside .ant-modal-body
+   so non-modal pages stay unchanged.
+   ========================================================================== */
+
+.ant-modal-body .ant-form-item-label > label {
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+
+.ant-modal-body .ant-form-item-extra,
+.ant-modal-body .ant-form-item-explain,
+.ant-modal-body .ant-form-item-explain-error {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.ant-modal-body .ant-form-item-explain-error {
+  color: var(--Red400) !important;
+}
+
+.ant-modal-body .ant-input::placeholder,
+.ant-modal-body .ant-input-number-input::placeholder,
+.ant-modal-body .ant-select-selection-placeholder,
+.ant-modal-body .ant-picker-input > input::placeholder {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+/* Descriptions inside modals (used by Task Detail) */
+.ant-modal-body .ant-descriptions-item-label {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.ant-modal-body .ant-descriptions-item-content {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
