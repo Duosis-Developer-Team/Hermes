@@ -59,6 +59,13 @@ class WorkLogBase(BaseModel):
     # submitted via the Task → Log Time flow. Pure Time Entry rows
     # leave this null.
     task_id: Optional[UUID] = Field(None, description="Bağlı task ID'si")
+
+    # Meetings integration — set by the frontend when a work log is
+    # submitted via the Meeting → Log Time flow. Same nullable
+    # semantics as task_id; plain Time Entry rows leave it null.
+    meeting_id: Optional[UUID] = Field(
+        None, description="Bağlı meeting ID'si"
+    )
     
     @field_validator('duration_hours', 'billable_duration_hours', mode='before')
     @classmethod

@@ -17,6 +17,7 @@ import { Alert, Button, Modal, Space, Tag, Typography } from 'antd'
 import {
     CalendarOutlined,
     CheckCircleOutlined,
+    FieldTimeOutlined,
     LinkOutlined,
     LockOutlined,
     TeamOutlined,
@@ -40,6 +41,7 @@ function MeetingReviewModal({
     open,
     meeting,
     onClose,
+    onLogTime,
     isLogged = false,
 }) {
     if (!meeting) return null
@@ -234,21 +236,42 @@ function MeetingReviewModal({
                 <div
                     style={{
                         display: 'flex',
-                        justifyContent: 'flex-end',
+                        justifyContent: 'space-between',
                         gap: 8,
                         paddingTop: 4,
+                        flexWrap: 'wrap',
                     }}
                 >
-                    {meeting.join_url && (
+                    {/* Log Time is the primary post-meeting action.
+                        It opens the existing Time Entry modal pre-
+                        filled with the meeting's date/duration/
+                        description; customer + project stay user-
+                        selected. Cancelled meetings can still be
+                        logged (the user may have done prep work). */}
+                    {onLogTime && !isLogged && (
                         <Button
                             type="primary"
-                            icon={<LinkOutlined />}
-                            onClick={handleOpenTeams}
+                            icon={<FieldTimeOutlined />}
+                            onClick={() => onLogTime(meeting)}
                         >
-                            Open in Teams
+                            Log Time
                         </Button>
                     )}
-                    <Button onClick={onClose}>Close</Button>
+                    {/* Right-aligned cluster: Teams + Close. The
+                        spacer <span/> keeps Close pinned right when
+                        Log Time isn't shown. */}
+                    {(!onLogTime || isLogged) && <span />}
+                    <Space>
+                        {meeting.join_url && (
+                            <Button
+                                icon={<LinkOutlined />}
+                                onClick={handleOpenTeams}
+                            >
+                                Open in Teams
+                            </Button>
+                        )}
+                        <Button onClick={onClose}>Close</Button>
+                    </Space>
                 </div>
             </Space>
         </Modal>

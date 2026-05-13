@@ -31,9 +31,14 @@ import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 
 import { useAuthStore } from '../stores/authStore'
-import { authService, meetingService } from '../services/api'
+import {
+    authService,
+    meetingService,
+    workLogService,
+} from '../services/api'
 import MeetingsWeeklyView from '../components/meetings/MeetingsWeeklyView'
 import MeetingReviewModal from '../components/modals/MeetingReviewModal'
+import LogTimeModal from '../components/modals/LogTimeModal'
 import './MeetingsPage.css'
 
 dayjs.extend(isoWeek)
@@ -57,6 +62,10 @@ function MeetingsPage() {
     const viewedUserId = isAdmin ? selectedUserId || user?.id : user?.id
 
     const [reviewMeeting, setReviewMeeting] = useState(null)
+    // Meeting to prefill the Log Time modal with. Independent of
+    // reviewMeeting so the user can cancel the Log Time modal and
+    // still see the review modal underneath.
+    const [logTimeMeeting, setLogTimeMeeting] = useState(null)
 
     // Pull the meetings for the visible week. Admin passes user_id to
     // peek at someone else's calendar; non-admin's user_id is silently
@@ -84,6 +93,32 @@ function MeetingsPage() {
         enabled: isAdmin,
         staleTime: 60 * 1000,
     })
+
+    // Logged-meeting set — drives the green "Logged" pill on
+    // MeetingCard. Pulls the viewed user's work_logs for the visible
+    // week and keeps the ones that link back to a meeting. Admin
+    // viewing another user via the user selector sees that user's
+    // logs (workLogService.getMyLogs forwards user_id; the backend
+    // enforces the admin-only override).
+    const { data: weekWorkLogsResponse } = useQuery({
+        queryKey: ['workLogs', weekStartStr, viewedUserId],
+        queryFn: () =>
+            workLogService.getMyLogs({
+                start_date: weekStartStr,
+                end_date: weekEndStr,
+                limit: 500,
+                user_id: isAdmin ? selectedUserId || undefined : undefined,
+            }),
+        enabled: !!user?.id,
+    })
+    const loggedMeetingIds = useMemo(() => {
+        const set = new Set()
+        const logs = weekWorkLogsResponse?.data || weekWorkLogsResponse || []
+        for (const l of Array.isArray(logs) ? logs : []) {
+            if (l?.meeting_id) set.add(l.meeting_id)
+        }
+        return set
+    }, [weekWorkLogsResponse])
 
     const userSelectorOptions = useMemo(() => {
         if (!user?.id) return []
@@ -129,13 +164,59 @@ function MeetingsPage() {
         },
     })
 
-    // Logged-meeting placeholder — Stage 5 will wire this to a real
-    // workLogs query that returns meeting_id. For now the set stays
-    // empty so the green "Logged" pill never shows incorrectly.
-    const loggedMeetingIds = useMemo(() => new Set(), [])
-
     const handleSelectMeeting = (meeting) => {
         setReviewMeeting(meeting)
+    }
+
+    // Work log mutation — used by the Meeting → Log Time flow. Same
+    // service Time Entry uses; admin acting on behalf of the selected
+    // user honours target_user_id via the second arg (backend gates
+    // on is_admin).
+    const workLogMutation = useMutation({
+        mutationFn: (data) =>
+            workLogService.create(
+                data,
+                isAdmin ? selectedUserId || null : null,
+            ),
+        onSuccess: (_created, variables) => {
+            const dateStr = variables?.date_worked
+            message.success(
+                dateStr
+                    ? `Time logged for ${dateStr}.`
+                    : 'Time logged.'
+            )
+            setLogTimeMeeting(null)
+            // Invalidate every query that might surface the new log:
+            //   - workLogs    → Time Entry calendar
+            //   - periodStatus → Time Entry header progress bar
+            //   - meetings    → Meetings page (Logged badge piggy-
+            //     backs on the workLogs query keyed by week, so
+            //     invalidating workLogs is what actually flips the
+            //     pill; we also nudge meetings for safety).
+            queryClient.invalidateQueries({ queryKey: ['workLogs'] })
+            queryClient.invalidateQueries({ queryKey: ['periodStatus'] })
+            queryClient.invalidateQueries({ queryKey: ['meetings'] })
+        },
+        onError: (err) => {
+            message.error(
+                err?.response?.data?.detail || 'Failed to log time.'
+            )
+        },
+    })
+
+    const handleOpenLogTime = (meeting) => {
+        setReviewMeeting(null)
+        setLogTimeMeeting(meeting)
+    }
+
+    const handleLogTimeSubmit = async (data) => {
+        // Attach meeting_id outside the modal so the modal itself
+        // stays generic (same pattern Tasks uses for task_id).
+        const payload = {
+            ...data,
+            meeting_id: logTimeMeeting?.id || null,
+        }
+        await workLogMutation.mutateAsync(payload)
     }
 
     return (
@@ -245,6 +326,23 @@ function MeetingsPage() {
                 open={!!reviewMeeting}
                 meeting={reviewMeeting}
                 onClose={() => setReviewMeeting(null)}
+                onLogTime={handleOpenLogTime}
+                isLogged={
+                    !!reviewMeeting &&
+                    loggedMeetingIds.has(reviewMeeting.id)
+                }
+            />
+
+            {/* Log Time modal — opens from the Meeting Review modal.
+                The meeting stays in the calendar after the log; the
+                green Logged pill appears once workLogs invalidate
+                completes. */}
+            <LogTimeModal
+                open={!!logTimeMeeting}
+                onClose={() => setLogTimeMeeting(null)}
+                onSubmit={handleLogTimeSubmit}
+                prefillMeeting={logTimeMeeting}
+                loading={workLogMutation.isPending}
             />
         </div>
     )

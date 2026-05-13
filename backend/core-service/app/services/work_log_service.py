@@ -15,6 +15,7 @@ from ..models.customer import Customer
 from ..models.project import Project
 from ..models.work_type import WorkType
 from ..models.task import Task
+from ..models.meeting import Meeting
 from ..schemas.work_log import WorkLogCreate, WorkLogUpdate
 from shared.exceptions import NotFoundError, ForbiddenError
 from . import task_service
@@ -79,6 +80,21 @@ class WorkLogService:
             if not exists:
                 linked_task_id = None
 
+        # Optional meeting link — Meetings → Log Time flow passes
+        # meeting_id. Same defensive pattern as task_id: drop the
+        # link silently if the referenced meeting no longer exists
+        # (e.g. user logging time off a card while a concurrent
+        # re-sync deleted/replaced the event row).
+        linked_meeting_id = data.meeting_id
+        if linked_meeting_id is not None:
+            exists = (
+                self.db.query(Meeting.id)
+                .filter(Meeting.id == linked_meeting_id)
+                .first()
+            )
+            if not exists:
+                linked_meeting_id = None
+
         # WorkLog oluştur
         db_obj = WorkLog(
             user_id=user_id,
@@ -99,6 +115,7 @@ class WorkLogService:
             billable_duration_hours=data.billable_duration_hours if data.billable_duration_hours is not None else data.duration_hours,
             description=data.description,
             task_id=linked_task_id,
+            meeting_id=linked_meeting_id,
         )
 
         self.db.add(db_obj)

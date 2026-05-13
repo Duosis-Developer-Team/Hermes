@@ -49,6 +49,16 @@ function LogTimeModal({
      * Shape: { customer_id, project_id, title, description, scheduled_date }
      */
     prefillTask = null,
+    /**
+     * When provided (and not editingLog), the modal opens at the
+     * customer step (NOT the form) so the user picks customer + project
+     * themselves — synced meetings don't carry that information. Date,
+     * duration, and description are prefilled and read by the form once
+     * the user reaches step 2. Used by Meetings → Log Time.
+     * Shape: { id, subject, body_preview, sensitivity, start_datetime,
+     *          end_datetime, duration_minutes }
+     */
+    prefillMeeting = null,
 }) {
     const [form] = Form.useForm()
     const [step, setStep] = useState(0) // 0: Customer, 1: Project, 2: Form
@@ -165,13 +175,52 @@ function LogTimeModal({
                 duration_hours: null,
                 description,
             })
+        } else if (prefillMeeting && open) {
+            // Meeting-driven open — STAY at the customer step. Synced
+            // meetings don't carry Hermes customer/project; the user
+            // picks them. Date, duration and description are
+            // prefilled so when they reach the form step those
+            // fields are already there.
+            setSelectedCustomerId(null)
+            setSelectedProjectId(null)
+            setStep(0)
+            const isPrivate =
+                prefillMeeting.sensitivity === 'private' ||
+                prefillMeeting.sensitivity === 'confidential'
+            const subject = isPrivate
+                ? 'Private Meeting'
+                : prefillMeeting.subject || '(Untitled meeting)'
+            const body = isPrivate
+                ? ''
+                : (prefillMeeting.body_preview || '').trim()
+            const description = body
+                ? `Meeting: ${subject}\n\n${body}`
+                : `Meeting: ${subject}`
+            const dateValue = prefillMeeting.start_datetime
+                ? dayjs(prefillMeeting.start_datetime)
+                : initialDate
+                ? dayjs(initialDate)
+                : dayjs()
+            // Round to the existing Time Entry 15-minute step. Floor
+            // never below 0.25 h (modal's minimum) so empty/zero
+            // durations land on a valid value.
+            const rawMin = Number(prefillMeeting.duration_minutes) || 0
+            const quartersHours = Math.max(
+                0.25,
+                Math.round(rawMin / 15) / 4
+            )
+            form.setFieldsValue({
+                date_worked: dateValue,
+                duration_hours: quartersHours,
+                description,
+            })
         } else if (open) {
             form.setFieldsValue({
                 date_worked: initialDate ? dayjs(initialDate) : dayjs(),
                 duration_hours: null,
             })
         }
-    }, [editingLog, prefillTask, open, initialDate, form])
+    }, [editingLog, prefillTask, prefillMeeting, open, initialDate, form])
 
     // Modal kapandığında reset
     const handleClose = () => {
