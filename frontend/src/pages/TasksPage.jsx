@@ -288,6 +288,13 @@ function TasksPage() {
         onSuccess: () => {
             message.success('Time logged.')
             setLogTimeTask(null)
+            // The work log is created in core_db just like a Time
+            // Entry — must invalidate the same caches Time Entry uses
+            // so the new row shows up when the user navigates there
+            // (without this, React Query serves stale data within its
+            // staleTime window and the user thinks the log vanished).
+            queryClient.invalidateQueries({ queryKey: ['workLogs'] })
+            queryClient.invalidateQueries({ queryKey: ['periodStatus'] })
         },
         onError: (err) => {
             message.error(err?.response?.data?.detail || 'Failed to log time.')
@@ -462,6 +469,12 @@ function TasksPage() {
             const isMod = e.ctrlKey || e.metaKey
 
             // ── Ctrl/Cmd+C — copy selected task ─────────────────────────────
+            // Store a *frozen snapshot* of the task instead of the live
+            // object reference. tasks-query invalidation after create /
+            // paste / edit replaces the array contents; if we held the
+            // live reference, later renders could mutate it (status,
+            // dates) and break paste. The snapshot is everything we
+            // need to rebuild a create payload.
             if (isMod && e.key === 'c') {
                 if (selectedTaskId) {
                     const task = tasks.find((t) => t.id === selectedTaskId)
@@ -471,10 +484,21 @@ function TasksPage() {
                             e.preventDefault()
                             return
                         }
-                        setCopiedTask(task)
-                        const label = task.title || 'Task'
+                        const snapshot = {
+                            id: task.id,
+                            customer_id: task.customer_id,
+                            project_id: task.project_id,
+                            sub_project_id: task.sub_project_id || null,
+                            assignee_user_id: task.assignee_user_id,
+                            title: task.title || 'Task',
+                            description: task.description || '',
+                            original_scheduled_date: task.scheduled_date,
+                            original_due_date: task.due_date || null,
+                            priority: task.priority || 'medium',
+                        }
+                        setCopiedTask(snapshot)
                         message.info(
-                            `"${label}" copied — select a target day, then Ctrl+V`
+                            `"${snapshot.title}" copied — select a target day, then Ctrl+V`
                         )
                         e.preventDefault()
                     }
@@ -487,27 +511,22 @@ function TasksPage() {
                 if (!copiedTask) return // nothing in clipboard, let browser handle
                 e.preventDefault()
 
-                // Completed tasks are not copy/paste-able. Check the
-                // snapshot we took at copy time — the live lookup is
-                // unnecessary and was racing with the paste flow.
-                if (copiedTask.status === 'completed') {
-                    message.info('Completed tasks cannot be pasted.')
-                    setCopiedTask(null)
-                    setTargetDate(null)
-                    return
-                }
-
                 if (!targetDate) {
                     message.warning('Select a target day first, then paste')
                     return
                 }
                 if (pasteMutation.isPending) return // debounce double-paste
 
-                // Preserve the original due-date offset, if any.
+                // Preserve the original due-date offset relative to the
+                // original scheduled date; both fields live on the
+                // snapshot the Ctrl+C handler captured.
                 let newDueDate = null
-                if (copiedTask.due_date && copiedTask.scheduled_date) {
-                    const offsetDays = dayjs(copiedTask.due_date).diff(
-                        dayjs(copiedTask.scheduled_date),
+                if (
+                    copiedTask.original_due_date &&
+                    copiedTask.original_scheduled_date
+                ) {
+                    const offsetDays = dayjs(copiedTask.original_due_date).diff(
+                        dayjs(copiedTask.original_scheduled_date),
                         'day'
                     )
                     newDueDate = dayjs(targetDate)
@@ -516,9 +535,8 @@ function TasksPage() {
                 }
 
                 // Description is required by the backend (min_length=1).
-                // Old/legacy tasks may have a null or empty description in
-                // the DB; fall back to the title so paste never 422s on
-                // that alone.
+                // The snapshot may have an empty description for legacy
+                // tasks; fall back to the title.
                 const safeDescription =
                     (copiedTask.description && copiedTask.description.trim()) ||
                     copiedTask.title ||
@@ -541,7 +559,7 @@ function TasksPage() {
                     await pasteMutation.mutateAsync(payload)
                     const formattedDate = dayjs(targetDate).format('DD MMM')
                     message.success(
-                        `"${copiedTask.title || 'Task'}" pasted to ${formattedDate} ✓`
+                        `"${copiedTask.title}" pasted to ${formattedDate} ✓`
                     )
                     // Clear target only — keep copiedTask for repeated pastes.
                     setTargetDate(null)
