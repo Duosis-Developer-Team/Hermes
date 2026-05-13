@@ -70,6 +70,21 @@ class Settings(BaseSettings):
     
     # Kubernetes içinde: http://auth-service
     AUTH_SERVICE_URL: str = "http://localhost:8000"
+
+    # ==========================================================================
+    # Microsoft Graph (Meetings module — Stage 2)
+    # ==========================================================================
+    # App-only client credentials flow against Azure AD. All three values
+    # must be set together for sync to work. When any one is missing the
+    # graph client refuses to initialise and the Meetings sync endpoint
+    # returns a structured "not configured" error — the app itself
+    # never crashes on startup just because Graph is unconfigured.
+    AZURE_TENANT_ID: str = ""
+    AZURE_CLIENT_ID: str = ""
+    AZURE_CLIENT_SECRET: str = ""
+    GRAPH_AUTHORITY: str = "https://login.microsoftonline.com"
+    GRAPH_BASE_URL: str = "https://graph.microsoft.com/v1.0"
+    GRAPH_SCOPE: str = "https://graph.microsoft.com/.default"
     
     # ==========================================================================
     # CORS Configuration
