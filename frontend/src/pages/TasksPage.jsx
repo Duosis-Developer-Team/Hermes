@@ -65,16 +65,17 @@ const STATUS_OPTIONS = [
     { value: 'rejected', label: 'Rejected' },
 ]
 
-// System views — the single source of truth for scope + date filters
-// on the Tasks page. Architecture deliberately stays simple so a
-// follow-up commit can swap this in for a per-user saved_views table
-// without churning callers.
-//
-// `assignerOnly: true` hides the view from users without
-// task-assign permission (mirrors the old "Assigned by Me" pill gate).
-const SAVED_VIEWS = [
+// Scope (primary) — which pool of tasks we're looking at. Single-
+// select. "Assigned by Me" stays hidden from users without assign
+// permission (same gate as the legacy pill).
+const TASK_SCOPES = [
     { value: 'my-tasks', label: 'My Tasks' },
     { value: 'assigned-by-me', label: 'Assigned by Me', assignerOnly: true },
+]
+
+// Quick filters (secondary) — optional single-select chip on top of
+// the scope. Clicking the active chip clears it.
+const TASK_QUICK_FILTERS = [
     { value: 'due-this-week', label: 'Due This Week' },
     { value: 'overdue', label: 'Overdue' },
     { value: 'completed-this-week', label: 'Completed This Week' },
@@ -114,20 +115,21 @@ function TasksPage() {
     const [logTimeTask, setLogTimeTask] = useState(null)
 
     // ── View switches ──────────────────────────────────────────────────────
-    // The Saved View is the SINGLE source of truth for scope + date
-    // filters. The standalone My / Assigned-by-Me scope pills are gone
-    // and live as 'my-tasks' / 'assigned-by-me' views instead.
+    // Scope (primary) and Quick Filter (secondary, optional) are two
+    // independent controls now. Layout (Calendar/List/Board) is a
+    // third independent axis — none of these auto-flip each other.
     const [viewLayout, setViewLayout] = useState('calendar')
-    const [currentView, setCurrentView] = useState('my-tasks')
+    const [taskScope, setTaskScope] = useState('my-tasks')
+    const [taskQuickFilter, setTaskQuickFilter] = useState(null)
     // Admin-only user selector (Time Entry parity). null → current user.
     const [selectedUserId, setSelectedUserId] = useState(null)
 
     // "Assigned by Me" requires task-assign permission or admin.
     const canViewAssignedByMe = isTaskAdmin || canAssignTasks
     // If permission is revoked while the page is open and the user is on
-    // 'assigned-by-me', fall back to 'my-tasks' so the view stays valid.
-    if (currentView === 'assigned-by-me' && !canViewAssignedByMe) {
-        setCurrentView('my-tasks')
+    // the Assigned-by-Me scope, fall back to My Tasks.
+    if (taskScope === 'assigned-by-me' && !canViewAssignedByMe) {
+        setTaskScope('my-tasks')
     }
 
     // Effective viewed user. Non-admin path always resolves to current user
@@ -176,55 +178,49 @@ function TasksPage() {
     const weekStartStr = weekStart.format('YYYY-MM-DD')
     const weekEndStr = weekEnd.format('YYYY-MM-DD')
 
-    const viewParams = useMemo(() => {
-        switch (currentView) {
-            case 'my-tasks':
-                return { scope: 'my' }
-            case 'assigned-by-me':
-                return { scope: 'assigned' }
+    // Scope → backend assignee_user_id / assigner_user_id.
+    const effectiveScopeParams = useMemo(() => {
+        if (!viewedUserId) return {}
+        return taskScope === 'assigned-by-me'
+            ? { assigner_user_id: viewedUserId }
+            : { assignee_user_id: viewedUserId }
+    }, [taskScope, viewedUserId])
+
+    // Quick filter → additional backend filter params. When set, the
+    // scheduled-date week window is intentionally dropped so the
+    // filter can match tasks scheduled in other weeks (e.g. an
+    // "Overdue" task scheduled three weeks ago).
+    const quickFilterParams = useMemo(() => {
+        switch (taskQuickFilter) {
             case 'due-this-week':
                 return {
-                    scope: 'my',
                     due_from: weekStartStr,
                     due_to: weekEndStr,
                     status_exclude: ['completed', 'rejected'],
                 }
             case 'overdue':
                 return {
-                    scope: 'my',
                     due_to: yesterdayStr,
                     status_exclude: ['completed', 'rejected'],
                 }
             case 'completed-this-week':
                 return {
-                    scope: 'my',
                     statuses: ['completed'],
                     completed_from: weekStartStr,
                     completed_to: weekEndStr,
                 }
             default:
-                return { scope: 'my' }
+                return null
         }
-    }, [currentView, weekStartStr, weekEndStr, yesterdayStr])
+    }, [taskQuickFilter, weekStartStr, weekEndStr, yesterdayStr])
 
-    const effectiveScopeParams = useMemo(() => {
-        if (!viewedUserId) return {}
-        return viewParams.scope === 'assigned'
-            ? { assigner_user_id: viewedUserId }
-            : { assignee_user_id: viewedUserId }
-    }, [viewParams.scope, viewedUserId])
-
-    // True when the active view drops the scheduled-date window —
-    // Calendar's weekly grid can still render but is much sparser.
-    const viewIsDateRange =
-        currentView === 'due-this-week' ||
-        currentView === 'overdue' ||
-        currentView === 'completed-this-week'
+    const viewIsDateRange = !!quickFilterParams
 
     const { data: tasks = [], isLoading } = useQuery({
         queryKey: [
             'tasks',
-            currentView,
+            taskScope,
+            taskQuickFilter,
             viewedUserId,
             weekStartStr,
             statusFilter,
@@ -248,25 +244,19 @@ function TasksPage() {
                 sub_project_id: subProjectFilter || undefined,
                 ...effectiveScopeParams,
             }
-            if (viewIsDateRange) {
-                // Date-range views: drop the scheduled-date window so
-                // "Overdue" reaches older weeks and "Completed This
-                // Week" finds rows scheduled outside this week.
+            if (quickFilterParams) {
+                // Quick filter active — drop the scheduled-date window
+                // so "Overdue" reaches older weeks and "Completed This
+                // Week" finds rows scheduled outside this week. Works
+                // with either scope (My Tasks or Assigned by Me).
                 return taskService.list({
                     ...base,
-                    statuses: viewParams.statuses,
-                    status_exclude: viewParams.status_exclude,
-                    due_from: viewParams.due_from,
-                    due_to: viewParams.due_to,
-                    completed_from: viewParams.completed_from,
-                    completed_to: viewParams.completed_to,
+                    ...quickFilterParams,
                 })
             }
-            // Scope-only views ("My Tasks" / "Assigned by Me") still
-            // page by week, matching the historic scope-pill behavior.
-            // For Calendar specifically, ask the backend to also
-            // include tasks whose due_date falls in [weekStart,
-            // weekEnd] — that's what lets the due-marker column light
+            // No quick filter — page by current week. Calendar asks
+            // the backend to also include tasks whose due_date falls
+            // in [weekStart, weekEnd] so the due-marker column lights
             // up for tasks scheduled in a different week.
             return taskService.list({
                 ...base,
@@ -767,15 +757,15 @@ function TasksPage() {
                     <div
                         className="tasks-views"
                         role="tablist"
-                        aria-label="Task views"
+                        aria-label="Task scope"
                     >
-                        {SAVED_VIEWS.filter(
-                            (v) => !v.assignerOnly || canViewAssignedByMe
-                        ).map((v) => {
-                            const isActive = currentView === v.value
+                        {TASK_SCOPES.filter(
+                            (s) => !s.assignerOnly || canViewAssignedByMe
+                        ).map((s) => {
+                            const isActive = taskScope === s.value
                             return (
                                 <button
-                                    key={v.value}
+                                    key={s.value}
                                     type="button"
                                     role="tab"
                                     aria-selected={isActive}
@@ -786,14 +776,14 @@ function TasksPage() {
                                     }`}
                                     onClick={() => {
                                         if (isActive) return
-                                        // Views only change scope/filters.
-                                        // Calendar/List/Board layout is
-                                        // owned by the user's explicit
-                                        // layout-tab click.
-                                        setCurrentView(v.value)
+                                        // Scope only changes which pool
+                                        // of tasks we view. Quick
+                                        // filter and Calendar/List/
+                                        // Board layout stay as-is.
+                                        setTaskScope(s.value)
                                     }}
                                 >
-                                    {v.label}
+                                    {s.label}
                                 </button>
                             )
                         })}
@@ -830,6 +820,40 @@ function TasksPage() {
                         in Calendar, mirroring Time Entry. No large
                         always-on Create button here. */}
                 </div>
+            </div>
+
+            {/* Quick filter chip strip — secondary control, layers
+                on top of the active scope. Single-select; clicking
+                the active chip clears it. Independent of layout. */}
+            <div
+                className="tasks-quickfilters"
+                role="toolbar"
+                aria-label="Quick task filters"
+            >
+                {TASK_QUICK_FILTERS.map((f) => {
+                    const isActive = taskQuickFilter === f.value
+                    return (
+                        <button
+                            key={f.value}
+                            type="button"
+                            aria-pressed={isActive}
+                            className={`tasks-quickfilter-chip${
+                                isActive
+                                    ? ' tasks-quickfilter-chip-active'
+                                    : ''
+                            }`}
+                            onClick={() => {
+                                // Toggle: clicking the active chip
+                                // clears the filter back to none.
+                                setTaskQuickFilter(
+                                    isActive ? null : f.value
+                                )
+                            }}
+                        >
+                            {f.label}
+                        </button>
+                    )
+                })}
             </div>
 
             {/* Week navigation row — only for calendar layout. Tight
@@ -988,7 +1012,7 @@ function TasksPage() {
                     isAdmin={isTaskAdmin}
                     /* In Assigned by Me mode each day shows tasks grouped
                        by assignee — admins/assigners scan teams quickly. */
-                    groupByAssignee={currentView === 'assigned-by-me'}
+                    groupByAssignee={taskScope === 'assigned-by-me'}
                     onEditTask={handleEdit}
                     onDeleteTask={(t) => setDeletingTask(t)}
                     onOpenReview={handleOpenReview}
