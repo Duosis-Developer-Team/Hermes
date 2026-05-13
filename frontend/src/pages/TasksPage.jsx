@@ -66,12 +66,16 @@ const STATUS_OPTIONS = [
     { value: 'rejected', label: 'Rejected' },
 ]
 
-// System saved views — fixed presets for now. Architecture deliberately
-// stays simple so a follow-up commit can swap this in for a per-user
-// saved_views table without churning callers.
+// System views — the single source of truth for scope + date filters
+// on the Tasks page. Architecture deliberately stays simple so a
+// follow-up commit can swap this in for a per-user saved_views table
+// without churning callers.
+//
+// `assignerOnly: true` hides the view from users without
+// task-assign permission (mirrors the old "Assigned by Me" pill gate).
 const SAVED_VIEWS = [
-    { value: 'my-open', label: 'My Open Tasks' },
-    { value: 'assigned-by-me', label: 'Assigned by Me' },
+    { value: 'my-tasks', label: 'My Tasks' },
+    { value: 'assigned-by-me', label: 'Assigned by Me', assignerOnly: true },
     { value: 'due-this-week', label: 'Due This Week' },
     { value: 'overdue', label: 'Overdue' },
     { value: 'completed-this-week', label: 'Completed This Week' },
@@ -111,23 +115,20 @@ function TasksPage() {
     const [logTimeTask, setLogTimeTask] = useState(null)
 
     // ── View switches ──────────────────────────────────────────────────────
-    // Scope: 'my' = tasks assigned to viewed user; 'assigned' = tasks
-    // assigned by viewed user. For admins the "viewed user" comes from the
-    // user selector below; for non-admins it is always themselves.
-    const [viewScope, setViewScope] = useState('my')
-    // Layout: 'calendar' or 'list' or 'board'.
+    // The Saved View is the SINGLE source of truth for scope + date
+    // filters. The standalone My / Assigned-by-Me scope pills are gone
+    // and live as 'my-tasks' / 'assigned-by-me' views instead.
     const [viewLayout, setViewLayout] = useState('calendar')
-    // Active saved view key, or null when in default (week-based) mode.
-    const [savedView, setSavedView] = useState(null)
+    const [currentView, setCurrentView] = useState('my-tasks')
     // Admin-only user selector (Time Entry parity). null → current user.
     const [selectedUserId, setSelectedUserId] = useState(null)
 
     // "Assigned by Me" requires task-assign permission or admin.
     const canViewAssignedByMe = isTaskAdmin || canAssignTasks
-    // If a non-assigner ends up with viewScope='assigned' (e.g. permission
-    // was revoked while the page is open), force back to 'my'.
-    if (viewScope === 'assigned' && !canViewAssignedByMe) {
-        setViewScope('my')
+    // If permission is revoked while the page is open and the user is on
+    // 'assigned-by-me', fall back to 'my-tasks' so the view stays valid.
+    if (currentView === 'assigned-by-me' && !canViewAssignedByMe) {
+        setCurrentView('my-tasks')
     }
 
     // Effective viewed user. Non-admin path always resolves to current user
@@ -167,73 +168,64 @@ function TasksPage() {
         enabled: canAccessTasks,
     })
 
-    // Scope filter:
-    //  - 'my'       → assignee_user_id = viewed user
-    //  - 'assigned' → assigner_user_id = viewed user
-    // For non-admins, viewedUserId is always the current user (and the
-    // backend enforces this anyway). Admins drive viewedUserId via the
-    // user selector to inspect any teammate's calendar.
-    const scopeParams = useMemo(() => {
-        if (!viewedUserId) return {}
-        return viewScope === 'assigned'
-            ? { assigner_user_id: viewedUserId }
-            : { assignee_user_id: viewedUserId }
-    }, [viewScope, viewedUserId])
-
-    // Translate the active saved view into list-endpoint params. When
-    // a view is active it dictates date/status semantics and the
-    // scheduled-date window is dropped entirely so historical and
-    // future tasks are reachable from the same screen.
+    // Translate the active view into list-endpoint params. Every view
+    // declares its own scope (assignee_user_id vs assigner_user_id),
+    // and the date-range views drop the scheduled-date window so
+    // history and future are reachable from the same screen.
     const todayStr = dayjs().format('YYYY-MM-DD')
     const yesterdayStr = dayjs().subtract(1, 'day').format('YYYY-MM-DD')
     const weekStartStr = weekStart.format('YYYY-MM-DD')
     const weekEndStr = weekEnd.format('YYYY-MM-DD')
 
-    const savedViewParams = useMemo(() => {
-        switch (savedView) {
-            case 'my-open':
-                return {
-                    status_exclude: ['completed', 'rejected'],
-                    forceScope: 'my',
-                }
+    const viewParams = useMemo(() => {
+        switch (currentView) {
+            case 'my-tasks':
+                return { scope: 'my' }
             case 'assigned-by-me':
-                return { forceScope: 'assigned' }
+                return { scope: 'assigned' }
             case 'due-this-week':
                 return {
+                    scope: 'my',
                     due_from: weekStartStr,
                     due_to: weekEndStr,
                     status_exclude: ['completed', 'rejected'],
                 }
             case 'overdue':
                 return {
+                    scope: 'my',
                     due_to: yesterdayStr,
                     status_exclude: ['completed', 'rejected'],
                 }
             case 'completed-this-week':
                 return {
+                    scope: 'my',
                     statuses: ['completed'],
                     completed_from: weekStartStr,
                     completed_to: weekEndStr,
                 }
             default:
-                return null
+                return { scope: 'my' }
         }
-    }, [savedView, weekStartStr, weekEndStr, yesterdayStr])
+    }, [currentView, weekStartStr, weekEndStr, yesterdayStr])
 
     const effectiveScopeParams = useMemo(() => {
-        if (savedViewParams?.forceScope === 'assigned') {
-            return { assigner_user_id: viewedUserId }
-        }
-        if (savedViewParams?.forceScope === 'my') {
-            return { assignee_user_id: viewedUserId }
-        }
-        return scopeParams
-    }, [savedViewParams, scopeParams, viewedUserId])
+        if (!viewedUserId) return {}
+        return viewParams.scope === 'assigned'
+            ? { assigner_user_id: viewedUserId }
+            : { assignee_user_id: viewedUserId }
+    }, [viewParams.scope, viewedUserId])
+
+    // True when the active view drops the scheduled-date window —
+    // Calendar's weekly grid can still render but is much sparser.
+    const viewIsDateRange =
+        currentView === 'due-this-week' ||
+        currentView === 'overdue' ||
+        currentView === 'completed-this-week'
 
     const { data: tasks = [], isLoading } = useQuery({
         queryKey: [
             'tasks',
-            viewScope,
+            currentView,
             viewedUserId,
             weekStartStr,
             statusFilter,
@@ -241,7 +233,6 @@ function TasksPage() {
             customerFilter,
             projectFilter,
             subProjectFilter,
-            savedView,
             todayStr,
         ],
         queryFn: () => {
@@ -253,20 +244,22 @@ function TasksPage() {
                 sub_project_id: subProjectFilter || undefined,
                 ...effectiveScopeParams,
             }
-            if (savedViewParams) {
-                // Drop the scheduled-date window so "Overdue" reaches
-                // older weeks and "Completed This Week" can find rows
-                // scheduled outside this week.
+            if (viewIsDateRange) {
+                // Date-range views: drop the scheduled-date window so
+                // "Overdue" reaches older weeks and "Completed This
+                // Week" finds rows scheduled outside this week.
                 return taskService.list({
                     ...base,
-                    statuses: savedViewParams.statuses,
-                    status_exclude: savedViewParams.status_exclude,
-                    due_from: savedViewParams.due_from,
-                    due_to: savedViewParams.due_to,
-                    completed_from: savedViewParams.completed_from,
-                    completed_to: savedViewParams.completed_to,
+                    statuses: viewParams.statuses,
+                    status_exclude: viewParams.status_exclude,
+                    due_from: viewParams.due_from,
+                    due_to: viewParams.due_to,
+                    completed_from: viewParams.completed_from,
+                    completed_to: viewParams.completed_to,
                 })
             }
+            // Scope-only views ("My Tasks" / "Assigned by Me") still
+            // page by week, matching the historic scope-pill behavior.
             return taskService.list({
                 ...base,
                 start_date: weekStartStr,
@@ -752,60 +745,59 @@ function TasksPage() {
 
                 <div className="tasks-user-header-right">
                     {/* Scope tabs */}
-                    <div className="tasks-tabs">
-                        <span
-                            className={`tasks-tab-link ${
-                                viewScope === 'my' ? 'active' : ''
-                            }`}
-                            onClick={() => setViewScope('my')}
-                        >
-                            My Tasks
-                        </span>
-                        {canViewAssignedByMe && (
-                            <span
-                                className={`tasks-tab-link ${
-                                    viewScope === 'assigned' ? 'active' : ''
-                                }`}
-                                onClick={() => setViewScope('assigned')}
-                            >
-                                Assigned by Me
-                            </span>
-                        )}
-                    </div>
-                    <div className="tasks-tabs-divider" />
                     {/* Free-text task search — visibility enforced server-side */}
                     <TasksSearchBar
                         userMap={userMap}
                         onSelect={handleOpenReview}
                     />
                     <div className="tasks-tabs-divider" />
-                    {/* Saved Views — preset filter combos */}
-                    <Select
-                        size="small"
-                        allowClear
-                        placeholder="Views"
-                        style={{ width: 200 }}
-                        value={savedView}
-                        onChange={(v) => {
-                            setSavedView(v || null)
-                            // Saved views span weeks; the list/board
-                            // layouts are the natural home for them.
-                            if (v && viewLayout === 'calendar') {
-                                setViewLayout('list')
-                            }
-                            // Keep the scope tab visually in sync with
-                            // the view's forced scope so the user
-                            // doesn't see "My Tasks" highlighted while
-                            // the query is asking for tasks they
-                            // assigned (or vice versa).
-                            if (v === 'assigned-by-me' && canViewAssignedByMe) {
-                                setViewScope('assigned')
-                            } else if (v === 'my-open') {
-                                setViewScope('my')
-                            }
-                        }}
-                        options={SAVED_VIEWS}
-                    />
+                    {/* Views — sole scope+filter controller. The
+                        previous standalone My/Assigned-by-Me pills are
+                        now folded into this segmented control. */}
+                    <div
+                        className="tasks-views"
+                        role="tablist"
+                        aria-label="Task views"
+                    >
+                        {SAVED_VIEWS.filter(
+                            (v) => !v.assignerOnly || canViewAssignedByMe
+                        ).map((v) => {
+                            const isActive = currentView === v.value
+                            return (
+                                <button
+                                    key={v.value}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={isActive}
+                                    className={`tasks-views-pill${
+                                        isActive
+                                            ? ' tasks-views-pill-active'
+                                            : ''
+                                    }`}
+                                    onClick={() => {
+                                        if (isActive) return
+                                        setCurrentView(v.value)
+                                        // Date-range views span weeks;
+                                        // List is the natural home. The
+                                        // user can still flip back to
+                                        // Calendar manually.
+                                        const isDateRange =
+                                            v.value === 'due-this-week' ||
+                                            v.value === 'overdue' ||
+                                            v.value === 'completed-this-week'
+                                        if (
+                                            isDateRange &&
+                                            viewLayout === 'calendar'
+                                        ) {
+                                            setViewLayout('list')
+                                        }
+                                    }}
+                                >
+                                    {v.label}
+                                </button>
+                            )
+                        })}
+                    </div>
                     <div className="tasks-tabs-divider" />
                     {/* Layout tabs */}
                     <div className="tasks-tabs">
@@ -813,16 +805,7 @@ function TasksPage() {
                             className={`tasks-tab-link ${
                                 viewLayout === 'calendar' ? 'active' : ''
                             }`}
-                            onClick={() => {
-                                setViewLayout('calendar')
-                                // Calendar's week grid groups by
-                                // scheduled_date in the current week.
-                                // Saved views deliberately span weeks
-                                // and drop the scheduled-date window,
-                                // so a stale view would leave the
-                                // grid mostly empty. Clear it.
-                                if (savedView) setSavedView(null)
-                            }}
+                            onClick={() => setViewLayout('calendar')}
                         >
                             Calendar
                         </span>
@@ -1016,7 +999,7 @@ function TasksPage() {
                     isAdmin={isTaskAdmin}
                     /* In Assigned by Me mode each day shows tasks grouped
                        by assignee — admins/assigners scan teams quickly. */
-                    groupByAssignee={viewScope === 'assigned'}
+                    groupByAssignee={currentView === 'assigned-by-me'}
                     onEditTask={handleEdit}
                     onDeleteTask={(t) => setDeletingTask(t)}
                     onOpenReview={handleOpenReview}

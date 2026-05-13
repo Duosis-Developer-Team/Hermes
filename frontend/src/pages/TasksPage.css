@@ -97,6 +97,57 @@
     background: var(--border-default);
 }
 
+/* ── Views segmented bar (sole scope + filter controller) ─────────────────
+   Sits in the header alongside the layout tabs. Pill-style segments with
+   a translucent active fill so it reads as a first-class navigation
+   control rather than a dropdown. */
+.tasks-page .tasks-views {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 2px;
+    padding: 3px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+}
+
+.tasks-page .tasks-views-pill {
+    cursor: pointer;
+    appearance: none;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-weight: 500;
+    line-height: 1;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: background 140ms ease, color 140ms ease,
+        border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.tasks-page .tasks-views-pill:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.tasks-page .tasks-views-pill:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.45);
+}
+
+.tasks-page .tasks-views-pill-active {
+    color: #fff;
+    background: rgba(99, 102, 241, 0.18);
+    border-color: rgba(99, 102, 241, 0.55);
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.15),
+        0 0 18px -10px rgba(99, 102, 241, 0.85);
+}
+.tasks-page .tasks-views-pill-active:hover {
+    background: rgba(99, 102, 241, 0.22);
+}
+
 /* Body padding similar to existing layout */
 .tasks-page .tasks-body {
     padding: 16px 24px 24px;
