@@ -150,16 +150,22 @@ function GroupMemberOverridesPanel({ group, allUsersById }) {
             title: 'Assign Tasks',
             dataIndex: 'effective_assign_in_group',
             width: 140,
-            render: (val, record) => (
-                <Switch
-                    checked={!!val}
-                    disabled={upsertMutation.isPending}
-                    onClick={(_, e) => e?.stopPropagation?.()}
-                    onChange={(checked) =>
-                        handleMemberToggle(record, 'assign', checked)
-                    }
-                />
-            ),
+            render: (val, record) => {
+                // Invariant — assign requires access. If access is OFF
+                // for this member, the Assign toggle is forced off and
+                // disabled. Backend enforces the same invariant.
+                const accessOff = !record.effective_access_in_group
+                return (
+                    <Switch
+                        checked={!accessOff && !!val}
+                        disabled={accessOff || upsertMutation.isPending}
+                        onClick={(_, e) => e?.stopPropagation?.()}
+                        onChange={(checked) =>
+                            handleMemberToggle(record, 'assign', checked)
+                        }
+                    />
+                )
+            },
         },
     ]
 
@@ -272,15 +278,22 @@ function AdditionalUsersSection({ users }) {
             title: 'Assign Tasks',
             dataIndex: 'can_assign_tasks',
             width: 140,
-            render: (val, row) => (
-                <Switch
-                    checked={!!val}
-                    disabled={!row.is_active || updateMutation.isPending}
-                    onChange={(checked) =>
-                        handleToggle(row, 'can_assign_tasks', checked)
-                    }
-                />
-            ),
+            render: (val, row) => {
+                const accessOff = !row.can_access_tasks
+                return (
+                    <Switch
+                        checked={!accessOff && !!val}
+                        disabled={
+                            !row.is_active ||
+                            accessOff ||
+                            updateMutation.isPending
+                        }
+                        onChange={(checked) =>
+                            handleToggle(row, 'can_assign_tasks', checked)
+                        }
+                    />
+                )
+            },
         },
     ]
 
@@ -400,6 +413,12 @@ function TaskAccessByGroupTab() {
             can_assign_tasks_default:
                 kind === 'assign' ? checked : !!current?.can_assign_tasks_default,
         }
+        // Invariant — assign requires access. Mirror what the
+        // backend enforces so the client-side toast feels accurate
+        // before the refetch lands.
+        if (!data.can_access_tasks_default) {
+            data.can_assign_tasks_default = false
+        }
         upsertPermMutation.mutate({ groupId: group.id, data })
     }
 
@@ -452,16 +471,19 @@ function TaskAccessByGroupTab() {
             title: 'Assign Tasks',
             dataIndex: 'can_assign_tasks_default',
             width: 140,
-            render: (val, row) => (
-                <Switch
-                    checked={!!val}
-                    disabled={upsertPermMutation.isPending}
-                    onClick={(_, e) => e?.stopPropagation?.()}
-                    onChange={(checked) =>
-                        handleDefaultToggle(row, 'assign', checked)
-                    }
-                />
-            ),
+            render: (val, row) => {
+                const accessOff = !row.can_access_tasks_default
+                return (
+                    <Switch
+                        checked={!accessOff && !!val}
+                        disabled={accessOff || upsertPermMutation.isPending}
+                        onClick={(_, e) => e?.stopPropagation?.()}
+                        onChange={(checked) =>
+                            handleDefaultToggle(row, 'assign', checked)
+                        }
+                    />
+                )
+            },
         },
     ]
 

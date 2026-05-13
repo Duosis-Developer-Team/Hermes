@@ -14,6 +14,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from ..models.task import TaskAssignmentRelation, TaskUserPermission
 from ..models.user_group import (
     TaskGroupMemberOverride,
     TaskGroupPermission,
@@ -297,6 +298,11 @@ def upsert_task_group_permission(
 
     new_access = bool(can_access_tasks_default)
     new_assign = bool(can_assign_tasks_default)
+    # Invariant — assign requires access. If the group's access
+    # default is being turned OFF, force assign default OFF in the
+    # same write so the resolver never sees a contradiction.
+    if not new_access:
+        new_assign = False
 
     perm = get_task_group_permission(db, group_id)
     if perm is None:
@@ -372,6 +378,27 @@ def upsert_task_group_member_override(
     assign_value: Optional[bool],
     clear_assign: bool,
 ) -> TaskGroupMemberOverride:
+    """Persist a per-member override for a single group.
+
+    Two invariants are enforced server-side so a bad client can't
+    leave the resolver in a contradictory state:
+
+      1) "Assign requires access". If access is being explicitly
+         turned OFF, assign goes OFF in the same write. The Access
+         Tasks toggle then becomes the canonical kill switch.
+
+      2) Denial cascade onto the direct task_user_permissions row.
+         Without this, a Tasks Access UI that only edits the group
+         override is unable to actually deny a user who still has
+         a legacy direct row from an earlier Hermes version
+         (the "direct row is final" semantics meant the override
+         was silently shadowed). When access or assign is being
+         turned OFF here, we also turn the matching column OFF on
+         the direct row (if one exists). The opposite direction
+         (turning a member ON) deliberately does NOT cascade —
+         that's an additive grant within one group, not a
+         platform-wide permission change.
+    """
     get_user_group(db, group_id)
     override = get_task_group_member_override(db, group_id, user_id)
     if override is None:
@@ -383,6 +410,12 @@ def upsert_task_group_member_override(
         )
         db.add(override)
 
+    # Invariant: explicit access=False forces assign=False in the
+    # same payload (caller doesn't need to remember to send both).
+    if access_value is False:
+        assign_value = False
+        clear_assign = False
+
     if clear_access:
         override.can_access_tasks_override = None
     elif access_value is not None:
@@ -392,6 +425,37 @@ def upsert_task_group_member_override(
         override.can_assign_tasks_override = None
     elif assign_value is not None:
         override.can_assign_tasks_override = bool(assign_value)
+
+    # Denial cascade onto the direct row (only when explicitly
+    # turning OFF; ON is additive and stays scoped to this group).
+    direct = (
+        db.query(TaskUserPermission)
+        .filter(TaskUserPermission.user_id == user_id)
+        .first()
+    )
+    if direct is not None:
+        cascade_changed = False
+        if access_value is False:
+            if direct.can_access_tasks or direct.can_assign_tasks:
+                cascade_changed = True
+            direct.can_access_tasks = False
+            direct.can_assign_tasks = False
+        elif assign_value is False:
+            if direct.can_assign_tasks:
+                cascade_changed = True
+            direct.can_assign_tasks = False
+        if cascade_changed and not direct.can_assign_tasks:
+            # User can no longer assign — clear out any
+            # hierarchy rows that name them as the assigner.
+            db.query(TaskAssignmentRelation).filter(
+                TaskAssignmentRelation.assigner_user_id == user_id
+            ).delete(synchronize_session=False)
+        if cascade_changed and not direct.can_access_tasks:
+            # User can no longer be assigned to — clear out any
+            # hierarchy rows that name them as the assignee.
+            db.query(TaskAssignmentRelation).filter(
+                TaskAssignmentRelation.assignee_user_id == user_id
+            ).delete(synchronize_session=False)
 
     db.commit()
     db.refresh(override)
