@@ -14,8 +14,10 @@ from ..models.work_log import WorkLog
 from ..models.customer import Customer
 from ..models.project import Project
 from ..models.work_type import WorkType
+from ..models.task import Task
 from ..schemas.work_log import WorkLogCreate, WorkLogUpdate
 from shared.exceptions import NotFoundError, ForbiddenError
+from . import task_service
 
 
 class WorkLogService:
@@ -63,28 +65,55 @@ class WorkLogService:
             issue_id=data.issue_id
         )
         
+        # Optional task link — Tasks → Log Time flow passes task_id so
+        # we can pin the work log to its source task. Verify the task
+        # actually exists; if not, drop the link silently rather than
+        # 404'ing the work log creation.
+        linked_task_id = data.task_id
+        if linked_task_id is not None:
+            exists = (
+                self.db.query(Task.id)
+                .filter(Task.id == linked_task_id)
+                .first()
+            )
+            if not exists:
+                linked_task_id = None
+
         # WorkLog oluştur
         db_obj = WorkLog(
             user_id=user_id,
             customer_id=data.customer_id,
             project_id=data.project_id,
             work_type_id=data.work_type_id,
-            
+
             # Yeni Alanlar (v1.1)
             activity_type_id=data.activity_type_id,
             platform_id=data.platform_id,
             work_line_id=data.work_line_id,
             issue_id=data.issue_id,
             issue_key_manual=data.issue_key_manual,
-            
+
             date_worked=data.date_worked,
             duration_hours=data.duration_hours,
             # Varsayılan olarak billable = duration
             billable_duration_hours=data.billable_duration_hours if data.billable_duration_hours is not None else data.duration_hours,
-            description=data.description
+            description=data.description,
+            task_id=linked_task_id,
         )
-        
+
         self.db.add(db_obj)
+        self.db.flush()  # need db_obj.id for the activity event
+
+        if linked_task_id is not None:
+            task_service.record_log_time_event(
+                self.db,
+                task_id=linked_task_id,
+                actor_user_id=user_id,
+                work_log_id=db_obj.id,
+                duration_hours=float(db_obj.duration_hours),
+                date_worked=db_obj.date_worked,
+            )
+
         self.db.commit()
         self.db.refresh(db_obj)
         return db_obj

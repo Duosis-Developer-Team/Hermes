@@ -27,6 +27,7 @@ from ..models.task import (
     TaskSubProject,
     TaskUserPermission,
 )
+from ..models.task_activity import TaskActivityEvent
 from ..models.user_group import (
     TaskGroupMemberOverride,
     TaskGroupPermission,
@@ -981,6 +982,21 @@ def create_task(
         status="pending",
     )
     db.add(task)
+    db.flush()  # need task.id for the activity event below
+    _record_task_event(
+        db,
+        task_id=task.id,
+        actor_user_id=UUID(user.id),
+        event_type="task_created",
+        event_data={
+            "title": task.title,
+            "assignee_user_id": str(task.assignee_user_id),
+            "scheduled_date": task.scheduled_date.isoformat()
+            if task.scheduled_date else None,
+            "due_date": task.due_date.isoformat() if task.due_date else None,
+            "priority": task.priority,
+        },
+    )
     db.commit()
     db.refresh(task)
     return task
@@ -1110,6 +1126,23 @@ def create_tasks_for_group(
         )
         db.add(row)
         created.append(row)
+    db.flush()  # populate task.id for event emission below
+    for row in created:
+        _record_task_event(
+            db,
+            task_id=row.id,
+            actor_user_id=assigner_uuid,
+            event_type="task_created",
+            event_data={
+                "title": row.title,
+                "assignee_user_id": str(row.assignee_user_id),
+                "scheduled_date": row.scheduled_date.isoformat()
+                if row.scheduled_date else None,
+                "due_date": row.due_date.isoformat() if row.due_date else None,
+                "priority": row.priority,
+                "assignment_batch_id": str(batch_id),
+            },
+        )
     db.commit()
     for row in created:
         db.refresh(row)
@@ -1133,6 +1166,25 @@ def update_task(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not allowed to edit this task.",
         )
+
+    # Snapshot the fields we'll diff for the activity event. status is
+    # excluded — _apply_status_change emits its own dedicated event.
+    def _snapshot(t: Task) -> dict:
+        return {
+            "title": t.title,
+            "description": t.description,
+            "assignee_user_id": str(t.assignee_user_id)
+            if t.assignee_user_id else None,
+            "scheduled_date": t.scheduled_date.isoformat()
+            if t.scheduled_date else None,
+            "due_date": t.due_date.isoformat() if t.due_date else None,
+            "priority": t.priority,
+            "customer_id": str(t.customer_id),
+            "project_id": str(t.project_id),
+            "sub_project_id": str(t.sub_project_id)
+            if t.sub_project_id else None,
+        }
+    before_snapshot = _snapshot(task)
 
     new_customer_id = data.customer_id or task.customer_id
     new_project_id = data.project_id or task.project_id
@@ -1231,24 +1283,101 @@ def update_task(
         task.priority = data.priority
 
     if data.status is not None:
-        _apply_status_change(task, user, data.status)
+        _apply_status_change(db, task, user, data.status)
+
+    # Emit a single task_updated event for non-status field changes.
+    after_snapshot = _snapshot(task)
+    changes = {
+        k: {"from": before_snapshot[k], "to": after_snapshot[k]}
+        for k in before_snapshot
+        if before_snapshot[k] != after_snapshot[k]
+    }
+    if changes:
+        _record_task_event(
+            db,
+            task_id=task.id,
+            actor_user_id=UUID(user.id),
+            event_type="task_updated",
+            event_data={"changes": changes},
+        )
 
     db.commit()
     db.refresh(task)
     return task
 
 
-def _apply_status_change(task: Task, user: CurrentUser, new_status: str) -> None:
+def _record_task_event(
+    db: Session,
+    *,
+    task_id: UUID,
+    actor_user_id: Optional[UUID],
+    event_type: str,
+    event_data: Optional[dict] = None,
+) -> None:
+    """Append a row to task_activity_events. Caller is responsible for
+    db.commit() — we deliberately don't commit here so the event lands
+    in the same transaction as the task change it describes."""
+    event = TaskActivityEvent(
+        task_id=task_id,
+        actor_user_id=actor_user_id,
+        event_type=event_type,
+        event_data=event_data,
+    )
+    db.add(event)
+
+
+def _apply_status_change(
+    db: Session,
+    task: Task,
+    user: CurrentUser,
+    new_status: str,
+) -> None:
+    """Set status + completion bookkeeping AND emit the matching
+    activity event (task_completed / task_rejected / task_reopened)."""
     if new_status == task.status:
         return
+    old_status = task.status
+    actor = UUID(user.id)
     if new_status == "completed":
         task.status = "completed"
         task.completed_at = datetime.now(timezone.utc)
-        task.completed_by_user_id = UUID(user.id)
+        task.completed_by_user_id = actor
+        _record_task_event(
+            db,
+            task_id=task.id,
+            actor_user_id=actor,
+            event_type="task_completed",
+            event_data={"from": old_status},
+        )
+    elif new_status == "rejected":
+        task.status = "rejected"
+        task.completed_at = None
+        task.completed_by_user_id = None
+        _record_task_event(
+            db,
+            task_id=task.id,
+            actor_user_id=actor,
+            event_type="task_rejected",
+            event_data={"from": old_status},
+        )
     else:
         task.status = new_status
         task.completed_at = None
         task.completed_by_user_id = None
+        # Treat any move out of completed/rejected as a reopen so the
+        # timeline tells a clean recovery story.
+        event_type = (
+            "task_reopened"
+            if old_status in ("completed", "rejected")
+            else "task_status_changed"
+        )
+        _record_task_event(
+            db,
+            task_id=task.id,
+            actor_user_id=actor,
+            event_type=event_type,
+            event_data={"from": old_status, "to": new_status},
+        )
 
 
 def update_task_status(
@@ -1268,7 +1397,7 @@ def update_task_status(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not allowed to update this task status.",
         )
-    _apply_status_change(task, user, new_status)
+    _apply_status_change(db, task, user, new_status)
     db.commit()
     db.refresh(task)
     return task
@@ -1294,7 +1423,7 @@ def reject_task(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not allowed to reject this task.",
         )
-    _apply_status_change(task, user, "rejected")
+    _apply_status_change(db, task, user, "rejected")
     db.commit()
     db.refresh(task)
     return task
@@ -1318,11 +1447,11 @@ def update_task_completion(
             detail="You are not allowed to change this task completion state.",
         )
     if completed:
-        _apply_status_change(task, user, "completed")
+        _apply_status_change(db, task, user, "completed")
     else:
         # Reopen — pick in_progress unless task was pending originally.
         if task.status == "completed":
-            _apply_status_change(task, user, "in_progress")
+            _apply_status_change(db, task, user, "in_progress")
     db.commit()
     db.refresh(task)
     return task
@@ -1370,4 +1499,70 @@ def delete_task(db: Session, user: CurrentUser, task_id: UUID) -> None:
         )
     if task.archived_at is None:
         task.archived_at = datetime.now(timezone.utc)
+        _record_task_event(
+            db,
+            task_id=task.id,
+            actor_user_id=UUID(user.id),
+            event_type="task_deleted",
+            event_data=None,
+        )
         db.commit()
+
+
+def list_task_activity(
+    db: Session,
+    user: CurrentUser,
+    task_id: UUID,
+    *,
+    limit: int = 200,
+) -> List[TaskActivityEvent]:
+    """Newest-first feed of events for a task. Visibility mirrors the
+    rest of the task surface: admin, the assignee, or the assigner can
+    read; everyone else gets 403."""
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found.",
+        )
+    user_uuid = UUID(user.id)
+    if not (
+        is_task_admin(user)
+        or task.assignee_user_id == user_uuid
+        or task.assigner_user_id == user_uuid
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to view this task's activity.",
+        )
+    return (
+        db.query(TaskActivityEvent)
+        .filter(TaskActivityEvent.task_id == task_id)
+        .order_by(TaskActivityEvent.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def record_log_time_event(
+    db: Session,
+    *,
+    task_id: UUID,
+    actor_user_id: UUID,
+    work_log_id: UUID,
+    duration_hours: float,
+    date_worked,
+) -> None:
+    """Append a log_time_created event. Called by the work-log service
+    when a freshly created work log is linked to a task. Caller commits."""
+    _record_task_event(
+        db,
+        task_id=task_id,
+        actor_user_id=actor_user_id,
+        event_type="log_time_created",
+        event_data={
+            "work_log_id": str(work_log_id),
+            "duration_hours": float(duration_hours),
+            "date_worked": date_worked.isoformat() if date_worked else None,
+        },
+    )

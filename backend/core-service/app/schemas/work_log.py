@@ -54,6 +54,11 @@ class WorkLogBase(BaseModel):
     work_line_id: Optional[UUID] = Field(None, description="İş kolu ID'si")
     issue_id: Optional[UUID] = Field(None, description="Jira issue ID'si")
     issue_key_manual: Optional[str] = Field(None, description="Jira issue key (manuel)")
+
+    # Tasks integration — set by the frontend when a work log is
+    # submitted via the Task → Log Time flow. Pure Time Entry rows
+    # leave this null.
+    task_id: Optional[UUID] = Field(None, description="Bağlı task ID'si")
     
     @field_validator('duration_hours', 'billable_duration_hours', mode='before')
     @classmethod

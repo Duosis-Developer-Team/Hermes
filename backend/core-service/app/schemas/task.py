@@ -218,6 +218,15 @@ class TaskGroupMemberOverrideResponse(BaseModel):
     updated_at: Optional[datetime] = None
 
 
+class TaskActivityEventResponse(BaseModel):
+    id: UUID
+    task_id: UUID
+    actor_user_id: Optional[UUID] = None
+    event_type: str
+    event_data: Optional[dict] = None
+    created_at: datetime
+
+
 class TaskResponse(BaseModel):
     id: UUID
     customer_id: UUID

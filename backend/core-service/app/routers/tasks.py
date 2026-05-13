@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.task import Task, TaskSubProject
 from ..schemas.task import (
+    TaskActivityEventResponse,
     TaskCompleteUpdate,
     TaskCreate,
     TaskCreateForGroup,
@@ -388,3 +389,29 @@ async def delete_task(
     task_service.require_task_access(db, current_user)
     task_service.delete_task(db, current_user, task_id)
     return {"deleted": True}
+
+
+@router.get(
+    "/{task_id}/activity",
+    response_model=List[TaskActivityEventResponse],
+)
+async def list_task_activity(
+    task_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Newest-first activity feed for a task. Visible to admin, the
+    assignee, or the assigner."""
+    task_service.require_task_access(db, current_user)
+    events = task_service.list_task_activity(db, current_user, task_id)
+    return [
+        TaskActivityEventResponse(
+            id=e.id,
+            task_id=e.task_id,
+            actor_user_id=e.actor_user_id,
+            event_type=e.event_type,
+            event_data=e.event_data,
+            created_at=e.created_at,
+        )
+        for e in events
+    ]
