@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: hermes-config
-  namespace: hermes
+  namespace: hermes-dev
 data:
   # Database Connection Info
   DB_HOST_AUTH: "auth-db"

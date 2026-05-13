@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: reporting-service
-  namespace: hermes
+  namespace: hermes-dev
   labels:
     app: reporting-service
 spec:
@@ -76,7 +76,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: reporting-service
-  namespace: hermes
+  namespace: hermes-dev
 spec:
   type: ClusterIP
   ports:

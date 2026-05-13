@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: hermes-weekly-backup
-  namespace: hermes
+  namespace: hermes-dev
 spec:
   # Every Monday at 02:00 UTC (backs up previous Mon–Sun)
   schedule: "0 2 * * 1"

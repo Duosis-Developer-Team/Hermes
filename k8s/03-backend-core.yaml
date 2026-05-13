@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: core-service
-  namespace: hermes
+  namespace: hermes-dev
   labels:
     app: core-service
 spec:
@@ -120,7 +120,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: core-service
-  namespace: hermes
+  namespace: hermes-dev
 spec:
   type: ClusterIP
   ports:
