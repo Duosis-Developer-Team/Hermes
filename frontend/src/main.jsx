@@ -16,6 +16,7 @@ import dayjs from 'dayjs'
 import 'dayjs/locale/en'
 
 import App from './App'
+import AppErrorBoundary from './components/common/AppErrorBoundary'
 import './index.css'
 
 dayjs.locale('en')
@@ -56,12 +57,14 @@ const theme = {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
-        <QueryClientProvider client={queryClient}>
-            <ConfigProvider locale={enUS} theme={theme}>
-                <BrowserRouter>
-                    <App />
-                </BrowserRouter>
-            </ConfigProvider>
-        </QueryClientProvider>
+        <AppErrorBoundary>
+            <QueryClientProvider client={queryClient}>
+                <ConfigProvider locale={enUS} theme={theme}>
+                    <BrowserRouter>
+                        <App />
+                    </BrowserRouter>
+                </ConfigProvider>
+            </QueryClientProvider>
+        </AppErrorBoundary>
     </React.StrictMode>,
 )

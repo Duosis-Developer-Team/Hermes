@@ -8,8 +8,31 @@
 
 import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { Spin } from 'antd'
 import { useAuthStore } from './stores/authStore'
 import { authService } from './services/api'
+
+/**
+ * Centered loader used in place of `return null` while auth + task
+ * permissions are in flight. A literal `null` here is what produces
+ * the dreaded "stuck on a gray screen" effect on a cold hard refresh
+ * of /tasks (or any protected route).
+ */
+function CenteredLoader() {
+    return (
+        <div
+            style={{
+                minHeight: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#0f0f0f',
+            }}
+        >
+            <Spin size="large" />
+        </div>
+    )
+}
 
 // Layouts
 import MainLayout from './components/layout/MainLayout'
@@ -66,7 +89,9 @@ const TaskProtectedRoute = ({ children }) => {
         return children
     }
     if (isLoading) {
-        return null
+        // Show a visible loader instead of `null` so a slow permission
+        // fetch doesn't read as a "stuck on gray" failure to the user.
+        return <CenteredLoader />
     }
     if (!canAccessTasks && !isTaskAdmin) {
         return <Navigate to="/time-entry" replace />
@@ -103,8 +128,11 @@ function App() {
     }, [])
 
     // /me kontrolü bitmeden route'ları render etme — aksi halde cookie hâlâ geçerliyken
-    // isAuthenticated=false olduğu için login'e yönlendirme yapılır
-    if (!sessionChecked) return null
+    // isAuthenticated=false olduğu için login'e yönlendirme yapılır.
+    // Render a visible loader rather than `null` so a slow /me call
+    // doesn't look like a "stuck gray screen" to the user (especially
+    // on cold hard-refresh of a protected route like /tasks).
+    if (!sessionChecked) return <CenteredLoader />
 
     return (
         <Routes>
