@@ -227,23 +227,30 @@ function MeetingsPage() {
             <div className="meetings-user-header">
                 <div className="meetings-user-header-left">
                     <Avatar
-                        size={36}
+                        size={40}
                         icon={<UserOutlined />}
                         className="meetings-user-avatar"
-                    >
-                        {(user?.full_name || user?.email || '?')
-                            .charAt(0)
-                            .toUpperCase()}
-                    </Avatar>
+                    />
                     {isAdmin ? (
                         <Select
-                            size="middle"
                             value={viewedUserId}
                             onChange={(v) =>
                                 setSelectedUserId(v === user?.id ? null : v)
                             }
+                            style={{
+                                width: 220,
+                                fontSize: '1.2rem',
+                                fontWeight: 600,
+                            }}
+                            bordered={false}
+                            loading={!allActiveUsers.length}
                             options={userSelectorOptions}
-                            style={{ minWidth: 220 }}
+                            showSearch
+                            filterOption={(input, option) =>
+                                (option?.label ?? '')
+                                    .toLowerCase()
+                                    .includes(input.toLowerCase())
+                            }
                         />
                     ) : (
                         <h1 className="meetings-user-name">
