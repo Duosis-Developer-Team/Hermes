@@ -506,32 +506,29 @@ def create_assignment_relations(
 ) -> List[TaskAssignmentRelation]:
     """Idempotently create assigner -> assignee mappings.
 
-    Effective-permission semantics — both sides resolve through
-    direct task_user_permissions rows AND active group membership
-    (default ± per-member override), matching what the rest of the
-    Tasks module enforces. A user whose Assign Tasks comes purely
-    from a group default is just as valid an assigner as one with
-    a direct row.
-    """
-    if not user_has_task_assign(db, assigner_user_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Selected assigner does not have task assignment permission.",
-        )
+    Assignment Hierarchy is *configuration*, not a permission grant.
+    The admin can pre-wire who would be allowed to assign to whom;
+    whether either side is currently entitled is decided at runtime
+    by the effective resolver (require_task_assigner on the assigner
+    side, user_has_task_access on the target side). Doing the perm
+    check here, at config time, made the modal look as if it was
+    refusing valid users just because their Assign Tasks was
+    currently off — and made it impossible to pre-stage a hierarchy
+    for someone whose permissions hadn't been granted yet.
 
+    Runtime enforcement is unchanged: create_task /
+    create_tasks_for_group / paste still call
+    _validate_assignment(), which calls user_has_task_access on the
+    assignee. The router still calls require_task_assigner on the
+    caller. So even if a mapping exists, a non-permitted assigner
+    can't actually create tasks against it.
+    """
     created_or_existing: List[TaskAssignmentRelation] = []
     for assignee_id in assignee_user_ids:
         if assignee_id == assigner_user_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Assigner and assignee cannot be the same user.",
-            )
-        # Assignee only needs effective Task Access to receive
-        # tasks — Assign Tasks is irrelevant for receiving.
-        if not user_has_task_access(db, assignee_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="All assignees must have task access enabled first.",
             )
         existing = (
             db.query(TaskAssignmentRelation)
@@ -606,14 +603,14 @@ def create_assignment_group_relation(
     assigner_user_id: UUID,
     assignee_group_id: UUID,
 ) -> TaskAssignmentGroupRelation:
-    """Idempotent — returns the existing row when the pair already maps."""
-    perm = get_task_permission(db, assigner_user_id)
-    if not perm or not perm.can_assign_tasks:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Selected assigner does not have task assignment permission.",
-        )
+    """Idempotent — returns the existing row when the pair already maps.
 
+    Same configuration-not-grant stance as create_assignment_relations:
+    we don't gate the mapping on the assigner's current Assign Tasks
+    permission. Runtime task creation (require_task_assigner +
+    can_assign_to_group) still does that check before any task is
+    actually written.
+    """
     group = (
         db.query(UserGroup).filter(UserGroup.id == assignee_group_id).first()
     )

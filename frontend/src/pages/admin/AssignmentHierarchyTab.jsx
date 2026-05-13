@@ -313,7 +313,7 @@ function AddRuleModal({
                         }))}
                         notFoundContent={
                             eligibleAssigners.length === 0
-                                ? 'No users with Can Assign Tasks enabled. Enable it in Direct User Overrides first.'
+                                ? 'No active users found.'
                                 : undefined
                         }
                     />
@@ -344,7 +344,7 @@ function AddRuleModal({
                             }))}
                             notFoundContent={
                                 eligibleAssignees.length === 0
-                                    ? 'No users with Can Access Tasks enabled.'
+                                    ? 'No active users found.'
                                     : undefined
                             }
                         />
@@ -407,21 +407,20 @@ function AssignmentHierarchyTab() {
         return map
     }, [permissionRows])
 
+    // Assignment Hierarchy is configuration — show every active user.
+    // Whether a mapping is *effective* at task-create time is enforced
+    // by the backend's effective resolver (admin / Access Tasks /
+    // Assign Tasks). Filtering the selector by direct-row permissions
+    // hid users who had Access/Assign through a group, and made it
+    // look like the hierarchy modal was missing users that the
+    // Users page clearly listed.
     const eligibleAssigners = useMemo(
-        () =>
-            users.filter(
-                (u) =>
-                    u.is_active &&
-                    (u.is_admin || !!permMap[u.id]?.can_assign_tasks)
-            ),
-        [users, permMap]
+        () => users.filter((u) => u.is_active),
+        [users]
     )
     const eligibleAssignees = useMemo(
-        () =>
-            users.filter(
-                (u) => u.is_active && !!permMap[u.id]?.can_access_tasks
-            ),
-        [users, permMap]
+        () => users.filter((u) => u.is_active),
+        [users]
     )
 
     const { data: groups = [] } = useQuery({
