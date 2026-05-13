@@ -20,7 +20,7 @@
  */
 
 import { useState } from 'react'
-import { Alert, Button, Modal, Space, Spin, Tag, Typography } from 'antd'
+import { Alert, Button, Modal, Space, Spin, Tabs, Tag, Typography } from 'antd'
 import {
     CheckCircleOutlined,
     CloseCircleOutlined,
@@ -31,6 +31,7 @@ import dayjs from 'dayjs'
 
 import DangerConfirmModal from '../common/DangerConfirmModal'
 import { taskService } from '../../services/api'
+import TaskCommentsThread from '../tasks/TaskCommentsThread'
 import './TaskReviewModal.css'
 
 const { Text, Paragraph } = Typography
@@ -191,6 +192,8 @@ function TaskReviewModal({
     onReject,
     onReopen,
     actionLoading = false,
+    currentUserId,
+    isAdmin = false,
 }) {
     const [confirmRejectOpen, setConfirmRejectOpen] = useState(false)
 
@@ -267,76 +270,118 @@ function TaskReviewModal({
                         />
                     )}
 
-                    <div>
-                        <Row label="Customer">{task.customer_name || '—'}</Row>
-                        <Row label="Project">{task.project_name || '—'}</Row>
-                        {task.sub_project_name && (
-                            <Row label="Sub Project">
-                                {task.sub_project_name}
-                            </Row>
-                        )}
-                        <Row label="Assigner">
-                            {userLabel(task.assigner_user_id, userMap)}
-                        </Row>
-                        <Row label="Assignee">
-                            {userLabel(task.assignee_user_id, userMap)}
-                        </Row>
-                        <Row label="Scheduled">
-                            {task.scheduled_date || '—'}
-                        </Row>
-                        {task.due_date && (
-                            <Row label="Due">{task.due_date}</Row>
-                        )}
-                        <Row label="Priority">
-                            <Tag color={PRIORITY_COLOR[task.priority] || 'default'}>
-                                {task.priority}
-                            </Tag>
-                        </Row>
-                        <Row label="Status">
-                            <Tag color={STATUS_COLOR[status] || 'default'}>
-                                {STATUS_LABEL[status] || status}
-                            </Tag>
-                        </Row>
-                    </div>
-
-                    {task.description && (
-                        <div>
-                            <Text style={{ color: '#9b9b9b' }}>Description</Text>
-                            <Paragraph
-                                style={{
-                                    color: '#fff',
-                                    background: '#1a1a1a',
-                                    border: '1px solid #303030',
-                                    borderRadius: 6,
-                                    padding: 10,
-                                    marginTop: 4,
-                                    whiteSpace: 'pre-wrap',
-                                }}
-                            >
-                                {task.description}
-                            </Paragraph>
-                        </div>
-                    )}
-
-                    <div>
-                        <Text style={{ color: '#9b9b9b' }}>Activity</Text>
-                        <div
-                            style={{
-                                marginTop: 6,
-                                background: '#1a1a1a',
-                                border: '1px solid #303030',
-                                borderRadius: 6,
-                                padding: 10,
-                                maxHeight: 220,
-                                overflowY: 'auto',
-                            }}
-                        >
-                            <ActivityTimeline
-                                taskId={task.id}
-                                userMap={userMap}
-                            />
-                        </div>
-                    </div>
+                    <Tabs
+                        defaultActiveKey="details"
+                        items={[
+                            {
+                                key: 'details',
+                                label: 'Details',
+                                children: (
+                                    <div className="task-review-tab-body">
+                                        <Row label="Customer">
+                                            {task.customer_name || '—'}
+                                        </Row>
+                                        <Row label="Project">
+                                            {task.project_name || '—'}
+                                        </Row>
+                                        {task.sub_project_name && (
+                                            <Row label="Sub Project">
+                                                {task.sub_project_name}
+                                            </Row>
+                                        )}
+                                        <Row label="Assigner">
+                                            {userLabel(
+                                                task.assigner_user_id,
+                                                userMap
+                                            )}
+                                        </Row>
+                                        <Row label="Assignee">
+                                            {userLabel(
+                                                task.assignee_user_id,
+                                                userMap
+                                            )}
+                                        </Row>
+                                        <Row label="Scheduled">
+                                            {task.scheduled_date || '—'}
+                                        </Row>
+                                        {task.due_date && (
+                                            <Row label="Due">
+                                                {task.due_date}
+                                            </Row>
+                                        )}
+                                        <Row label="Priority">
+                                            <Tag
+                                                color={
+                                                    PRIORITY_COLOR[
+                                                        task.priority
+                                                    ] || 'default'
+                                                }
+                                            >
+                                                {task.priority}
+                                            </Tag>
+                                        </Row>
+                                        <Row label="Status">
+                                            <Tag
+                                                color={
+                                                    STATUS_COLOR[status] ||
+                                                    'default'
+                                                }
+                                            >
+                                                {STATUS_LABEL[status] || status}
+                                            </Tag>
+                                        </Row>
+                                        {task.description && (
+                                            <div style={{ marginTop: 10 }}>
+                                                <Text style={{ color: '#9b9b9b' }}>
+                                                    Description
+                                                </Text>
+                                                <Paragraph
+                                                    style={{
+                                                        color: '#fff',
+                                                        background: '#1a1a1a',
+                                                        border:
+                                                            '1px solid #303030',
+                                                        borderRadius: 6,
+                                                        padding: 10,
+                                                        marginTop: 4,
+                                                        whiteSpace: 'pre-wrap',
+                                                    }}
+                                                >
+                                                    {task.description}
+                                                </Paragraph>
+                                            </div>
+                                        )}
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: 'activity',
+                                label: 'Activity',
+                                children: (
+                                    <div className="task-review-tab-body">
+                                        <ActivityTimeline
+                                            taskId={task.id}
+                                            userMap={userMap}
+                                        />
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: 'comments',
+                                label: 'Comments',
+                                children: (
+                                    <div className="task-review-tab-body">
+                                        <TaskCommentsThread
+                                            taskId={task.id}
+                                            currentUserId={currentUserId}
+                                            isAdmin={isAdmin}
+                                            userMap={userMap}
+                                        />
+                                    </div>
+                                ),
+                            },
+                        ]}
+                    />
 
                     <div
                         style={{

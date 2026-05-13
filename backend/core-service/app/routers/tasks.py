@@ -27,6 +27,9 @@ from ..database import get_db
 from ..models.task import Task, TaskSubProject
 from ..schemas.task import (
     TaskActivityEventResponse,
+    TaskCommentCreate,
+    TaskCommentResponse,
+    TaskCommentUpdate,
     TaskCompleteUpdate,
     TaskCreate,
     TaskCreateForGroup,
@@ -473,3 +476,80 @@ async def list_task_activity(
         )
         for e in events
     ]
+
+
+# =============================================================================
+# Comments
+# =============================================================================
+
+def _serialize_comment(c) -> TaskCommentResponse:
+    return TaskCommentResponse(
+        id=c.id,
+        task_id=c.task_id,
+        author_user_id=c.author_user_id,
+        body=c.body,
+        created_at=c.created_at,
+        updated_at=c.updated_at,
+    )
+
+
+@router.get(
+    "/{task_id}/comments",
+    response_model=List[TaskCommentResponse],
+)
+async def list_comments(
+    task_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    task_service.require_task_access(db, current_user)
+    comments = task_service.list_task_comments(db, current_user, task_id)
+    return [_serialize_comment(c) for c in comments]
+
+
+@router.post(
+    "/{task_id}/comments",
+    response_model=TaskCommentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_comment(
+    task_id: UUID,
+    payload: TaskCommentCreate,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    task_service.require_task_access(db, current_user)
+    comment = task_service.create_task_comment(
+        db, current_user, task_id, payload.body
+    )
+    return _serialize_comment(comment)
+
+
+@router.put(
+    "/{task_id}/comments/{comment_id}",
+    response_model=TaskCommentResponse,
+)
+async def update_comment(
+    task_id: UUID,
+    comment_id: UUID,
+    payload: TaskCommentUpdate,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    task_service.require_task_access(db, current_user)
+    comment = task_service.update_task_comment(
+        db, current_user, task_id, comment_id, payload.body
+    )
+    return _serialize_comment(comment)
+
+
+@router.delete("/{task_id}/comments/{comment_id}", status_code=200)
+async def delete_comment(
+    task_id: UUID,
+    comment_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    task_service.require_task_access(db, current_user)
+    task_service.delete_task_comment(db, current_user, task_id, comment_id)
+    return {"deleted": True}

@@ -1,3 +1,9 @@
+.task-review-tab-body {
+    padding-top: 6px;
+    max-height: 360px;
+    overflow-y: auto;
+}
+
 .task-activity-timeline {
     display: flex;
     flex-direction: column;

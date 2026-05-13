@@ -990,6 +990,37 @@ export const taskService = {
         return response.data
     },
 
+    /** Oldest-first comments thread for a task. */
+    listComments: async (taskId) => {
+        const response = await coreApi.get(
+            `/api/v1/core/tasks/${taskId}/comments`
+        )
+        return response.data
+    },
+    /** Add a comment to a task. */
+    createComment: async (taskId, body) => {
+        const response = await coreApi.post(
+            `/api/v1/core/tasks/${taskId}/comments`,
+            { body }
+        )
+        return response.data
+    },
+    /** Edit own comment (or any, if admin). */
+    updateComment: async (taskId, commentId, body) => {
+        const response = await coreApi.put(
+            `/api/v1/core/tasks/${taskId}/comments/${commentId}`,
+            { body }
+        )
+        return response.data
+    },
+    /** Soft-delete own comment (or any, if admin). */
+    deleteComment: async (taskId, commentId) => {
+        const response = await coreApi.delete(
+            `/api/v1/core/tasks/${taskId}/comments/${commentId}`
+        )
+        return response.data
+    },
+
     /** Soft delete — sets archived_at; row is preserved. */
     delete: async (taskId) => {
         const response = await coreApi.delete(`/api/v1/core/tasks/${taskId}`)

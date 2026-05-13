@@ -223,6 +223,32 @@ def _migrate_work_logs_task_id() -> None:
         db.close()
 
 
+def _migrate_task_comments() -> None:
+    """
+    Idempotent additive migration for task_comments. SQLAlchemy's
+    create_all() (the model is registered in models/__init__.py)
+    creates the table itself; we add a composite index for the
+    most common access pattern — list a single task's comments
+    oldest-first — and never destroy data.
+
+    Safe to re-run on every startup.
+    """
+    from sqlalchemy import text
+
+    db = SessionLocal()
+    try:
+        db.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_task_comments_task_created "
+            "ON task_comments(task_id, created_at)"
+        ))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️  task_comments migration hatası: {e}")
+    finally:
+        db.close()
+
+
 def _migrate_task_activity_events() -> None:
     """
     Idempotent additive migration for task_activity_events. The table
@@ -288,6 +314,7 @@ async def lifespan(app: FastAPI):
     _migrate_tasks_task_number()
     _migrate_work_logs_task_id()
     _migrate_task_activity_events()
+    _migrate_task_comments()
     yield
     print(f"👋 {settings.SERVICE_NAME} kapatılıyor...")
 

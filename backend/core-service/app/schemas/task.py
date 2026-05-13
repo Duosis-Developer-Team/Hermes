@@ -218,6 +218,43 @@ class TaskGroupMemberOverrideResponse(BaseModel):
     updated_at: Optional[datetime] = None
 
 
+class TaskCommentCreate(BaseModel):
+    body: str = Field(..., min_length=1, max_length=5000)
+
+    @field_validator("body")
+    @classmethod
+    def _body_not_blank(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Comment body is required.")
+        if len(v) > 5000:
+            raise ValueError("Comment body is too long.")
+        return v
+
+
+class TaskCommentUpdate(BaseModel):
+    body: str = Field(..., min_length=1, max_length=5000)
+
+    @field_validator("body")
+    @classmethod
+    def _body_not_blank(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Comment body is required.")
+        if len(v) > 5000:
+            raise ValueError("Comment body is too long.")
+        return v
+
+
+class TaskCommentResponse(BaseModel):
+    id: UUID
+    task_id: UUID
+    author_user_id: UUID
+    body: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+
 class TaskActivityEventResponse(BaseModel):
     id: UUID
     task_id: UUID

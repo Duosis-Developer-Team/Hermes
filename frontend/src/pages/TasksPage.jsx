@@ -1078,6 +1078,8 @@ function TasksPage() {
                     reopenMutation.isPending ||
                     completionMutation.isPending
                 }
+                currentUserId={user?.id}
+                isAdmin={isTaskAdmin}
             />
 
             {/* Delete confirmation — mirrors Time Entry's delete modal */}

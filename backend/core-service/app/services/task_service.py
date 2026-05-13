@@ -28,6 +28,7 @@ from ..models.task import (
     TaskUserPermission,
 )
 from ..models.task_activity import TaskActivityEvent
+from ..models.task_comment import TaskComment
 from ..models.user_group import (
     TaskGroupMemberOverride,
     TaskGroupPermission,
@@ -1670,6 +1671,145 @@ def list_task_activity(
         .limit(limit)
         .all()
     )
+
+
+# =============================================================================
+# Task Comments
+# =============================================================================
+# Visibility rule: a user can view comments only if they can view the
+# task (admin / assignee / assigner). Edit + delete additionally
+# require author-of-comment OR admin. Soft delete via deleted_at; the
+# body is never returned once deleted.
+
+def _get_task_for_comment(
+    db: Session, user: CurrentUser, task_id: UUID
+) -> Task:
+    """Load the task and enforce visibility. Hide 'task exists' from
+    unrelated users with a 404, matching get_task_for_user."""
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task or not _user_can_view_task(user, task):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found.",
+        )
+    return task
+
+
+def list_task_comments(
+    db: Session, user: CurrentUser, task_id: UUID
+) -> List[TaskComment]:
+    """Oldest-first conversation feed of non-deleted comments."""
+    _get_task_for_comment(db, user, task_id)
+    return (
+        db.query(TaskComment)
+        .filter(
+            TaskComment.task_id == task_id,
+            TaskComment.deleted_at.is_(None),
+        )
+        .order_by(TaskComment.created_at.asc())
+        .all()
+    )
+
+
+def create_task_comment(
+    db: Session, user: CurrentUser, task_id: UUID, body: str
+) -> TaskComment:
+    _get_task_for_comment(db, user, task_id)
+    actor = UUID(user.id)
+    comment = TaskComment(
+        task_id=task_id,
+        author_user_id=actor,
+        body=body,
+    )
+    db.add(comment)
+    db.flush()
+    _record_task_event(
+        db,
+        task_id=task_id,
+        actor_user_id=actor,
+        event_type="comment_added",
+        event_data={"comment_id": str(comment.id)},
+    )
+    db.commit()
+    db.refresh(comment)
+    return comment
+
+
+def update_task_comment(
+    db: Session,
+    user: CurrentUser,
+    task_id: UUID,
+    comment_id: UUID,
+    body: str,
+) -> TaskComment:
+    _get_task_for_comment(db, user, task_id)
+    comment = (
+        db.query(TaskComment)
+        .filter(
+            TaskComment.id == comment_id,
+            TaskComment.task_id == task_id,
+            TaskComment.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not comment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Comment not found.",
+        )
+    actor = UUID(user.id)
+    if comment.author_user_id != actor and not is_task_admin(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only edit your own comments.",
+        )
+    comment.body = body
+    comment.updated_at = datetime.now(timezone.utc)
+    _record_task_event(
+        db,
+        task_id=task_id,
+        actor_user_id=actor,
+        event_type="comment_updated",
+        event_data={"comment_id": str(comment.id)},
+    )
+    db.commit()
+    db.refresh(comment)
+    return comment
+
+
+def delete_task_comment(
+    db: Session, user: CurrentUser, task_id: UUID, comment_id: UUID
+) -> None:
+    _get_task_for_comment(db, user, task_id)
+    comment = (
+        db.query(TaskComment)
+        .filter(
+            TaskComment.id == comment_id,
+            TaskComment.task_id == task_id,
+            TaskComment.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not comment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Comment not found.",
+        )
+    actor = UUID(user.id)
+    if comment.author_user_id != actor and not is_task_admin(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only delete your own comments.",
+        )
+    comment.deleted_at = datetime.now(timezone.utc)
+    _record_task_event(
+        db,
+        task_id=task_id,
+        actor_user_id=actor,
+        event_type="comment_deleted",
+        event_data={"comment_id": str(comment.id)},
+    )
+    db.commit()
 
 
 def record_log_time_event(

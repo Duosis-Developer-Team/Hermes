@@ -24,6 +24,7 @@ from .task import (
     Task,
 )
 from .task_activity import TaskActivityEvent
+from .task_comment import TaskComment
 from .user_group import (
     UserGroup,
     UserGroupMember,
@@ -57,6 +58,7 @@ __all__ = [
     "TaskSubProject",
     "Task",
     "TaskActivityEvent",
+    "TaskComment",
     "UserGroup",
     "UserGroupMember",
     "TaskGroupPermission",
