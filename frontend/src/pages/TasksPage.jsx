@@ -49,6 +49,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
 import TasksWeeklyView from '../components/tasks/TasksWeeklyView'
 import TasksListView from '../components/tasks/TasksListView'
+import TasksBoardView from '../components/tasks/TasksBoardView'
 import CreateTaskModal from '../components/modals/CreateTaskModal'
 import TaskReviewModal from '../components/modals/TaskReviewModal'
 import LogTimeModal from '../components/modals/LogTimeModal'
@@ -694,6 +695,14 @@ function TasksPage() {
                         >
                             List
                         </span>
+                        <span
+                            className={`tasks-tab-link ${
+                                viewLayout === 'board' ? 'active' : ''
+                            }`}
+                            onClick={() => setViewLayout('board')}
+                        >
+                            Board
+                        </span>
                     </div>
                     {(canAssignTasks || isTaskAdmin) && (
                         <Tooltip
@@ -845,6 +854,19 @@ function TasksPage() {
                     onToggleCompletion={handleToggleCompletion}
                     completionLoading={completionMutation.isPending}
                     onOpenLogTime={handleOpenLogTime}
+                />
+            ) : viewLayout === 'board' ? (
+                <TasksBoardView
+                    tasks={tasks}
+                    userMap={userMap}
+                    currentUserId={user?.id}
+                    isAdmin={isTaskAdmin}
+                    onEditTask={handleEdit}
+                    onDeleteTask={(t) => setDeletingTask(t)}
+                    onOpenReview={handleOpenReview}
+                    onOpenLogTime={handleOpenLogTime}
+                    onToggleCompletion={handleToggleCompletion}
+                    completionLoading={completionMutation.isPending}
                 />
             ) : (
                 <TasksWeeklyView
