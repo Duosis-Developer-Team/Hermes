@@ -25,6 +25,8 @@ import {
     FieldTimeOutlined,
 } from '@ant-design/icons'
 
+import { TaskDueBadge } from './TaskCard'
+
 const PRIORITY_RANK = { low: 0, medium: 1, high: 2, urgent: 3 }
 
 const STATUS_RANK = {
@@ -189,7 +191,15 @@ function TasksListView({
                 (a.due_date || '9999-12-31').localeCompare(
                     b.due_date || '9999-12-31'
                 ),
-            render: (val) => val || <span style={{ color: '#888' }}>—</span>,
+            render: (val, record) =>
+                val ? (
+                    <Space size={6} wrap>
+                        <span>{val}</span>
+                        <TaskDueBadge task={record} />
+                    </Space>
+                ) : (
+                    <span style={{ color: '#888' }}>—</span>
+                ),
         },
         {
             title: 'Actions',

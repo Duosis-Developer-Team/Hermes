@@ -84,6 +84,18 @@
 .task-card-status-cancelled   { background: #6b21a8; color: #e9d5ff; }
 .task-card-status-rejected    { background: #b91c1c; color: #fee2e2; }
 
+.task-due-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+}
+.task-due-badge-overdue   { background: #7f1d1d; color: #fecaca; }
+.task-due-badge-due_today { background: #9a3412; color: #fed7aa; }
+.task-due-badge-due_soon  { background: #713f12; color: #fde68a; }
+
 .task-card-due-hint {
     margin-top: 6px;
     font-size: 11px;

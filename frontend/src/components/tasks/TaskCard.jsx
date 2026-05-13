@@ -37,6 +37,46 @@ function userLabel(id, userMap) {
 }
 
 /**
+ * Returns the due-date severity bucket for a task, or null when the
+ * task does not warrant any badge. Completed/rejected tasks never
+ * surface as overdue — they're done business, the due date is moot.
+ *
+ * Exposed for reuse by list and board views.
+ */
+export function taskDueState(task) {
+    if (!task?.due_date) return null
+    if (task.status === 'completed' || task.status === 'rejected') return null
+    const today = dayjs().startOf('day')
+    const due = dayjs(task.due_date).startOf('day')
+    const diffDays = due.diff(today, 'day')
+    if (diffDays < 0) return 'overdue'
+    if (diffDays === 0) return 'due_today'
+    if (diffDays <= 2) return 'due_soon'
+    return null
+}
+
+const DUE_STATE_LABEL = {
+    overdue: 'OVERDUE',
+    due_today: 'DUE TODAY',
+    due_soon: 'DUE SOON',
+}
+
+/** Badge component reused across card/list/board surfaces. */
+export function TaskDueBadge({ task, compact = false }) {
+    const state = taskDueState(task)
+    if (!state) return null
+    return (
+        <span
+            className={`task-due-badge task-due-badge-${state}${
+                compact ? ' task-due-badge-compact' : ''
+            }`}
+        >
+            {DUE_STATE_LABEL[state]}
+        </span>
+    )
+}
+
+/**
  * Compact due-date marker variant — used on a different day column than
  * the scheduled card. Click opens the same edit flow on the parent page.
  */
@@ -200,6 +240,7 @@ function TaskCard({
                             ? 'in progress'
                             : task.status}
                     </span>
+                    <TaskDueBadge task={task} />
                 </div>
 
                 {dueDifferent && (
