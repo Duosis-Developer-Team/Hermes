@@ -70,6 +70,30 @@ spec:
         - name: CORS_ORIGINS
           value: '["http://localhost:3000", "http://localhost:5173", "https://84.247.180.172:30772", "http://84.247.180.172:30772", "https://84.247.180.172:30443", "http://84.247.180.172:30443", "https://hermes.duosis.com"]'
 
+        # Microsoft Graph (Meetings module). All three must be set for
+        # /admin/meetings/sync to work; if any is missing the service
+        # still starts and the endpoint returns a clean "not configured"
+        # error instead of crashing. Values are already provisioned in
+        # the auth-service deployment, we just project them here too.
+        - name: AZURE_TENANT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: AZURE_TENANT_ID
+              optional: true
+        - name: AZURE_CLIENT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: AZURE_CLIENT_ID
+              optional: true
+        - name: AZURE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: hermes-secrets
+              key: AZURE_CLIENT_SECRET
+              optional: true
+
         livenessProbe:
           httpGet:
             path: /health
