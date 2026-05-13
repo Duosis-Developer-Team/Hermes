@@ -99,7 +99,7 @@ function describeActivityEvent(event) {
         case 'task_created':
             return 'created the task'
         case 'task_updated':
-            return 'edited the task'
+            return 'updated the task'
         case 'task_completed':
             return 'marked the task as completed'
         case 'task_rejected':
@@ -110,6 +110,12 @@ function describeActivityEvent(event) {
             return 'deleted the task'
         case 'task_status_changed':
             return `changed status to ${STATUS_HUMAN[d.to] || d.to || 'unknown'}`
+        case 'comment_added':
+            return 'added a comment'
+        case 'comment_updated':
+            return 'updated a comment'
+        case 'comment_deleted':
+            return 'deleted a comment'
         case 'log_time_created': {
             const hours = d.duration_hours
             const label =
@@ -118,7 +124,10 @@ function describeActivityEvent(event) {
             return `${label}${date}`
         }
         default:
-            return t || 'activity'
+            // Defensive fallback for any future event type we forget
+            // to map: humanize by replacing underscores with spaces.
+            // We never want raw snake_case keys to surface in the UI.
+            return (t || 'activity').replace(/_/g, ' ')
     }
 }
 
@@ -229,6 +238,7 @@ function TaskReviewModal({
                 onCancel={onClose}
                 footer={null}
                 width={560}
+                className="task-review-modal"
                 destroyOnClose
             >
                 <Space direction="vertical" size="middle" style={{ width: '100%' }}>

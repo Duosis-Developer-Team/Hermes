@@ -4,6 +4,37 @@
     overflow-y: auto;
 }
 
+/* ── Dark-theme tab text inside Review Task modal ─────────────────────────
+   AntD's default tab colors lean toward near-black, which disappears on
+   the Hermes dark modal background. Lift inactive tabs to the same
+   light grey used elsewhere; keep the indigo accent on the active tab
+   plus its underline ink bar. */
+.task-review-modal .ant-tabs-nav {
+    margin-bottom: 8px;
+}
+.task-review-modal .ant-tabs-tab {
+    color: #cbd5e1;
+    transition: color 140ms ease;
+}
+.task-review-modal .ant-tabs-tab:hover {
+    color: #fff;
+}
+.task-review-modal .ant-tabs-tab:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4);
+    border-radius: 4px;
+}
+.task-review-modal .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn,
+.task-review-modal .ant-tabs-tab-active {
+    color: #6366f1 !important;
+}
+.task-review-modal .ant-tabs-ink-bar {
+    background: #6366f1;
+}
+.task-review-modal .ant-tabs-nav::before {
+    border-bottom-color: #303030;
+}
+
 .task-activity-timeline {
     display: flex;
     flex-direction: column;
