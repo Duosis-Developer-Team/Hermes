@@ -583,6 +583,17 @@ function TasksPage() {
                 if (selectedTaskId) {
                     const task = tasks.find((t) => t.id === selectedTaskId)
                     if (task) {
+                        // Copy is the first step of an assign action;
+                        // a user without Assign Tasks would only hit
+                        // a 403 at paste time anyway, so refuse at
+                        // copy time with a clear toast.
+                        if (!isTaskAdmin && !canAssignTasks) {
+                            message.info(
+                                'You do not have permission to assign tasks.'
+                            )
+                            e.preventDefault()
+                            return
+                        }
                         if (task.status === 'completed') {
                             message.info('Completed tasks cannot be copied.')
                             e.preventDefault()
@@ -614,6 +625,19 @@ function TasksPage() {
             if (isMod && e.key === 'v') {
                 if (!copiedTask) return // nothing in clipboard, let browser handle
                 e.preventDefault()
+
+                // Defense-in-depth — backend already rejects without
+                // assign permission. Surface a friendly toast instead
+                // of a generic "Paste failed" if permissions were
+                // revoked between Ctrl+C and Ctrl+V.
+                if (!isTaskAdmin && !canAssignTasks) {
+                    message.info(
+                        'You do not have permission to assign tasks.'
+                    )
+                    setCopiedTask(null)
+                    setTargetDate(null)
+                    return
+                }
 
                 if (!targetDate) {
                     message.warning('Select a target day first, then paste')
@@ -683,7 +707,15 @@ function TasksPage() {
 
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [selectedTaskId, copiedTask, targetDate, tasks, pasteMutation])
+    }, [
+        selectedTaskId,
+        copiedTask,
+        targetDate,
+        tasks,
+        pasteMutation,
+        canAssignTasks,
+        isTaskAdmin,
+    ])
 
     const canCreateTask =
         isTaskAdmin || (canAssignTasks && (isTaskAdmin || assignableUserIds.length > 0))

@@ -128,61 +128,92 @@ def _effective_group_grant(
     return False
 
 
+def _resolve_effective_for_user(
+    db: Session,
+    user_id: UUID,
+    *,
+    column: str,
+) -> bool:
+    """Single source of truth for effective Task Access / Assign Tasks
+    permission resolution. Both column="access" and column="assign"
+    routes through here.
+
+    Resolution order:
+
+      1) If a direct task_user_permissions row exists (admin
+         explicitly set it via the "Additional Users" panel), its
+         value is FINAL — both True AND False are honoured. This
+         is the fix for the regression where flipping a user OFF
+         in Additional Users left them with task access because
+         the resolver fell through to group defaults.
+            - For "access": perm.can_access_tasks decides outright.
+            - For "assign": you can never "assign" without "access",
+              so require BOTH to be true; otherwise return False.
+              No fall-through.
+
+      2) No direct row → walk active group memberships
+         (_effective_group_grant):
+            - Member override TRUE  → contributes True
+            - Member override FALSE → contributes False (suppresses
+              this group; other group memberships can still grant)
+            - Override NULL + group default TRUE → contributes True
+            - Else → contributes False
+         Final is OR across contributions.
+
+    Admin role is handled by the CurrentUser-typed callers because
+    is_task_admin needs the CurrentUser, not just a UUID.
+    """
+    perm = get_task_permission(db, user_id)
+    if perm is not None:
+        if column == "access":
+            return bool(perm.can_access_tasks)
+        # column == "assign"
+        if not perm.can_access_tasks:
+            return False
+        return bool(perm.can_assign_tasks)
+    return _effective_group_grant(db, user_id, column=column)
+
+
 def can_access_tasks(db: Session, user: CurrentUser) -> bool:
-    """Effective permission: admin OR direct OR any active group membership."""
+    """Effective permission for the calling user. Admin role wins
+    globally; otherwise the per-user resolver decides."""
     if is_task_admin(user):
         return True
-    user_uuid = UUID(user.id)
-    perm = get_task_permission(db, user_uuid)
-    if perm and perm.can_access_tasks:
-        return True
-    return _effective_group_grant(db, user_uuid, column="access")
+    return _resolve_effective_for_user(
+        db, UUID(user.id), column="access"
+    )
 
 
 def can_assign_tasks(db: Session, user: CurrentUser) -> bool:
-    """Effective permission: admin OR direct OR any active group membership.
+    """Effective assign permission for the calling user.
 
-    Note: granting `can_assign_tasks` only means "the user can create tasks";
-    the assignment hierarchy (task_assignment_relations) still controls who
-    they can assign to.
+    Note: granting `can_assign_tasks` only means "the user can create
+    tasks"; the assignment hierarchy (task_assignment_relations)
+    still controls WHO they can assign to. The hierarchy alone never
+    grants assign permission.
     """
     if is_task_admin(user):
         return True
-    user_uuid = UUID(user.id)
-    perm = get_task_permission(db, user_uuid)
-    if perm and perm.can_access_tasks and perm.can_assign_tasks:
-        return True
-    return _effective_group_grant(db, user_uuid, column="assign")
+    return _resolve_effective_for_user(
+        db, UUID(user.id), column="assign"
+    )
 
 
 def user_has_task_access(db: Session, user_id: UUID) -> bool:
-    """Effective Task Access for an arbitrary user_id.
-
-    Mirrors can_access_tasks(user) but works on the assignee/target
-    side where we only have a UUID (and never a CurrentUser, so the
-    is_admin shortcut isn't available). The admin role check is
-    implicit: the frontend bootstraps every admin's direct
-    task_user_permissions row, so admins still resolve True here.
-
-    Resolution order:
-      1) direct task_user_permissions row with can_access_tasks=true
-      2) any active group membership granting access (group default
-         ± per-member override) via _effective_group_grant
+    """Same effective resolver as can_access_tasks, but accepts a
+    raw UUID. Used by the assignee-side validation (e.g. paste
+    target, group fan-out filter). The admin-role shortcut isn't
+    available here because we don't have a CurrentUser — admins
+    still resolve True via their bootstrapped direct row.
     """
-    perm = get_task_permission(db, user_id)
-    if perm and perm.can_access_tasks:
-        return True
-    return _effective_group_grant(db, user_id, column="access")
+    return _resolve_effective_for_user(db, user_id, column="access")
 
 
 def user_has_task_assign(db: Session, user_id: UUID) -> bool:
-    """Effective Assign Tasks for an arbitrary user_id. Same idea as
-    user_has_task_access; only used by the assignment-hierarchy
-    admin endpoint that links assigner → assignee pairs."""
-    perm = get_task_permission(db, user_id)
-    if perm and perm.can_access_tasks and perm.can_assign_tasks:
-        return True
-    return _effective_group_grant(db, user_id, column="assign")
+    """Same effective resolver as can_assign_tasks but for an
+    arbitrary user_id. Used by the admin Assignment Hierarchy
+    endpoint that links assigner → assignee pairs."""
+    return _resolve_effective_for_user(db, user_id, column="assign")
 
 
 def get_assignable_user_ids(db: Session, user: CurrentUser) -> List[UUID]:
