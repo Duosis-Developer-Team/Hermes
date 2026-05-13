@@ -235,6 +235,7 @@ function TasksPage() {
         onSuccess: () => {
             message.success('Task created successfully.')
             queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
             setCreateOpen(false)
             setEditingTask(null)
         },
@@ -248,6 +249,7 @@ function TasksPage() {
         onSuccess: () => {
             message.success('Task updated.')
             queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
             setCreateOpen(false)
             setEditingTask(null)
         },
@@ -264,6 +266,7 @@ function TasksPage() {
                 `${count} task${count === 1 ? '' : 's'} created for the group.`
             )
             queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
             setCreateOpen(false)
             setEditingTask(null)
         },
@@ -278,6 +281,7 @@ function TasksPage() {
         mutationFn: ({ id, completed }) => taskService.setCompleted(id, completed),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
         },
         onError: (err) => {
             message.error(err?.response?.data?.detail || 'Failed to update status.')
@@ -307,6 +311,7 @@ function TasksPage() {
             // staleTime window and the user thinks the log vanished).
             queryClient.invalidateQueries({ queryKey: ['workLogs'] })
             queryClient.invalidateQueries({ queryKey: ['periodStatus'] })
+            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
         },
         onError: (err) => {
             message.error(err?.response?.data?.detail || 'Failed to log time.')
@@ -318,6 +323,7 @@ function TasksPage() {
         onSuccess: () => {
             message.success('Task deleted.')
             queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
             setDeletingTask(null)
         },
         onError: (err) => {
@@ -331,6 +337,7 @@ function TasksPage() {
         onSuccess: (updated) => {
             message.success('Task rejected.')
             queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
             // Refresh the modal so it shows the rejected banner before
             // the user closes it. Same pattern as the legacy note modal.
             if (reviewTask && reviewTask.id === updated.id) setReviewTask(updated)
@@ -344,6 +351,7 @@ function TasksPage() {
         mutationFn: (taskId) => taskService.updateStatus(taskId, 'pending'),
         onSuccess: (updated) => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
             if (reviewTask && reviewTask.id === updated.id) setReviewTask(updated)
         },
         onError: (err) => {
@@ -357,6 +365,7 @@ function TasksPage() {
         mutationFn: (data) => taskService.create(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
         },
         onError: (err) => {
             message.error(err?.response?.data?.detail || 'Paste failed.')
@@ -410,8 +419,11 @@ function TasksPage() {
     }
 
     const handleLogTimeSubmit = async (data) => {
+        // Carry the task_id so the backend can link work_logs.task_id
+        // and emit the log_time_created activity event.
+        const payload = { ...data, task_id: logTimeTask?.id || null }
         await workLogMutation.mutateAsync({
-            data,
+            data: payload,
             assigneeUserId: logTimeTask?.assignee_user_id || null,
         })
     }

@@ -967,6 +967,14 @@ export const taskService = {
         return response.data
     },
 
+    /** Newest-first activity feed for a task. */
+    listActivity: async (taskId) => {
+        const response = await coreApi.get(
+            `/api/v1/core/tasks/${taskId}/activity`
+        )
+        return response.data
+    },
+
     /** Soft delete — sets archived_at; row is preserved. */
     delete: async (taskId) => {
         const response = await coreApi.delete(`/api/v1/core/tasks/${taskId}`)

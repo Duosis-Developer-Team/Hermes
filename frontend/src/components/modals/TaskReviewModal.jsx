@@ -20,15 +20,18 @@
  */
 
 import { useState } from 'react'
-import { Alert, Button, Modal, Space, Tag, Typography } from 'antd'
+import { Alert, Button, Modal, Space, Spin, Tag, Typography } from 'antd'
 import {
     CheckCircleOutlined,
     CloseCircleOutlined,
     UndoOutlined,
 } from '@ant-design/icons'
+import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 
 import DangerConfirmModal from '../common/DangerConfirmModal'
+import { taskService } from '../../services/api'
+import './TaskReviewModal.css'
 
 const { Text, Paragraph } = Typography
 
@@ -59,6 +62,114 @@ function userLabel(id, userMap) {
     if (!id) return '—'
     const u = userMap?.[id]
     return u?.full_name || u?.email || id
+}
+
+/**
+ * Compact "x ago" formatter — keeps us off the optional dayjs
+ * relativeTime plugin so the bundle stays the same size.
+ */
+function relativeTimeShort(iso) {
+    if (!iso) return ''
+    const then = dayjs(iso)
+    const now = dayjs()
+    const diffSec = now.diff(then, 'second')
+    if (diffSec < 60) return 'just now'
+    const diffMin = now.diff(then, 'minute')
+    if (diffMin < 60) return `${diffMin}m ago`
+    const diffHr = now.diff(then, 'hour')
+    if (diffHr < 24) return `${diffHr}h ago`
+    const diffDay = now.diff(then, 'day')
+    if (diffDay < 7) return `${diffDay}d ago`
+    return then.format('YYYY-MM-DD HH:mm')
+}
+
+const STATUS_HUMAN = {
+    pending: 'pending',
+    in_progress: 'in progress',
+    completed: 'completed',
+    rejected: 'rejected',
+    cancelled: 'cancelled',
+}
+
+function describeActivityEvent(event) {
+    const t = event?.event_type
+    const d = event?.event_data || {}
+    switch (t) {
+        case 'task_created':
+            return 'created the task'
+        case 'task_updated':
+            return 'edited the task'
+        case 'task_completed':
+            return 'marked the task as completed'
+        case 'task_rejected':
+            return 'rejected the task'
+        case 'task_reopened':
+            return 'reopened the task'
+        case 'task_deleted':
+            return 'deleted the task'
+        case 'task_status_changed':
+            return `changed status to ${STATUS_HUMAN[d.to] || d.to || 'unknown'}`
+        case 'log_time_created': {
+            const hours = d.duration_hours
+            const label =
+                hours != null ? `logged ${Number(hours).toFixed(2)} h` : 'logged time'
+            const date = d.date_worked ? ` for ${d.date_worked}` : ''
+            return `${label}${date}`
+        }
+        default:
+            return t || 'activity'
+    }
+}
+
+function ActivityTimeline({ taskId, userMap }) {
+    const { data: events = [], isLoading } = useQuery({
+        queryKey: ['task-activity', taskId],
+        queryFn: () => taskService.listActivity(taskId),
+        enabled: !!taskId,
+        staleTime: 30 * 1000,
+    })
+
+    if (isLoading) {
+        return (
+            <div style={{ textAlign: 'center', padding: 12 }}>
+                <Spin size="small" />
+            </div>
+        )
+    }
+    if (events.length === 0) {
+        return (
+            <div style={{ color: '#9b9b9b', fontSize: 12, padding: '4px 0' }}>
+                No activity yet.
+            </div>
+        )
+    }
+    return (
+        <div className="task-activity-timeline">
+            {events.map((e) => (
+                <div key={e.id} className="task-activity-event">
+                    <div className="task-activity-dot" />
+                    <div className="task-activity-body">
+                        <div className="task-activity-line">
+                            <span className="task-activity-actor">
+                                {userLabel(e.actor_user_id, userMap)}
+                            </span>{' '}
+                            <span className="task-activity-text">
+                                {describeActivityEvent(e)}
+                            </span>
+                        </div>
+                        <div
+                            className="task-activity-time"
+                            title={dayjs(e.created_at).format(
+                                'YYYY-MM-DD HH:mm:ss'
+                            )}
+                        >
+                            {relativeTimeShort(e.created_at)}
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    )
 }
 
 function Row({ label, children }) {
@@ -202,6 +313,26 @@ function TaskReviewModal({
                             </Paragraph>
                         </div>
                     )}
+
+                    <div>
+                        <Text style={{ color: '#9b9b9b' }}>Activity</Text>
+                        <div
+                            style={{
+                                marginTop: 6,
+                                background: '#1a1a1a',
+                                border: '1px solid #303030',
+                                borderRadius: 6,
+                                padding: 10,
+                                maxHeight: 220,
+                                overflowY: 'auto',
+                            }}
+                        >
+                            <ActivityTimeline
+                                taskId={task.id}
+                                userMap={userMap}
+                            />
+                        </div>
+                    </div>
 
                     <div
                         style={{

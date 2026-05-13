@@ -1,0 +1,48 @@
+.task-activity-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.task-activity-event {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.task-activity-dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #6366f1;
+    margin-top: 6px;
+}
+
+.task-activity-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.task-activity-line {
+    font-size: 13px;
+    line-height: 1.4;
+    color: #d4d4d4;
+}
+
+.task-activity-actor {
+    color: #fff;
+    font-weight: 600;
+}
+
+.task-activity-text {
+    color: #cbd5e1;
+}
+
+.task-activity-time {
+    font-size: 11px;
+    color: #9b9b9b;
+}
