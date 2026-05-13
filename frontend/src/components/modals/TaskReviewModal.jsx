@@ -217,7 +217,11 @@ function TaskReviewModal({
     return (
         <>
             <Modal
-                title={`Review Task · ${task.title}`}
+                title={
+                    task.task_code
+                        ? `${task.task_code} · ${task.title}`
+                        : `Review Task · ${task.title}`
+                }
                 open={open}
                 onCancel={onClose}
                 footer={null}

@@ -126,6 +126,25 @@ function TasksListView({
             },
         },
         {
+            title: 'Code',
+            dataIndex: 'task_code',
+            key: 'task_code',
+            width: 92,
+            sorter: (a, b) => (a.task_number || 0) - (b.task_number || 0),
+            render: (val) => (
+                <span
+                    style={{
+                        color: '#9b9b9b',
+                        fontWeight: 600,
+                        fontSize: 12,
+                        letterSpacing: '0.04em',
+                    }}
+                >
+                    {val || '—'}
+                </span>
+            ),
+        },
+        {
             title: 'Task Title',
             dataIndex: 'title',
             key: 'title',

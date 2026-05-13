@@ -102,6 +102,85 @@ def _migrate_tasks_status_rejected() -> None:
         db.close()
 
 
+def _migrate_tasks_task_number() -> None:
+    """
+    Idempotent additive migration for the Task ID / short-code feature.
+
+    Adds a sequence + tasks.task_number column. Existing rows get
+    backfilled in created_at order so older tasks earn smaller codes.
+    Steps:
+      1) CREATE SEQUENCE IF NOT EXISTS task_number_seq
+      2) ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_number BIGINT
+      3) Backfill any NULL task_number values in created_at order
+         (idempotent — only touches rows still NULL).
+      4) ALTER COLUMN SET DEFAULT nextval('task_number_seq') so new
+         rows pick the next value without app-side bookkeeping.
+      5) Advance the sequence past the current max so concurrent
+         inserts during deploy don't collide with backfill values.
+      6) ALTER COLUMN SET NOT NULL — only safe once no NULLs remain.
+      7) CREATE UNIQUE INDEX IF NOT EXISTS for the column.
+
+    Safe to re-run on every startup. No row is deleted; no data is
+    overwritten.
+    """
+    from sqlalchemy import text
+
+    db = SessionLocal()
+    try:
+        db.execute(text(
+            "CREATE SEQUENCE IF NOT EXISTS task_number_seq"
+        ))
+        db.execute(text(
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_number BIGINT"
+        ))
+        # Backfill in created_at order so older rows get lower numbers.
+        # WITH-clause UPDATE keyed by task id; nextval() runs once per
+        # row picked, in the deterministic order we asked for.
+        db.execute(text(
+            "WITH ranked AS ("
+            "    SELECT id FROM tasks "
+            "    WHERE task_number IS NULL "
+            "    ORDER BY created_at, id"
+            ") "
+            "UPDATE tasks "
+            "SET task_number = nextval('task_number_seq') "
+            "FROM ranked "
+            "WHERE tasks.id = ranked.id"
+        ))
+        db.execute(text(
+            "ALTER TABLE tasks "
+            "ALTER COLUMN task_number SET DEFAULT nextval('task_number_seq')"
+        ))
+        # Push the sequence past the highest existing value so new
+        # inserts can't collide with a backfilled row.
+        db.execute(text(
+            "SELECT setval("
+            "  'task_number_seq', "
+            "  COALESCE((SELECT MAX(task_number) FROM tasks), 0), "
+            "  true"
+            ")"
+        ))
+        # Only flip to NOT NULL if every row is filled — defensive.
+        null_count = db.execute(text(
+            "SELECT COUNT(*) FROM tasks WHERE task_number IS NULL"
+        )).scalar()
+        if (null_count or 0) == 0:
+            db.execute(text(
+                "ALTER TABLE tasks "
+                "ALTER COLUMN task_number SET NOT NULL"
+            ))
+        db.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_tasks_task_number "
+            "ON tasks(task_number)"
+        ))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️  tasks.task_number migration hatası: {e}")
+    finally:
+        db.close()
+
+
 def _migrate_work_logs_task_id() -> None:
     """
     Idempotent additive migration: add work_logs.task_id (nullable FK
@@ -206,6 +285,7 @@ async def lifespan(app: FastAPI):
     _migrate_billable_hours()
     _migrate_tasks_assignment_batch_id()
     _migrate_tasks_status_rejected()
+    _migrate_tasks_task_number()
     _migrate_work_logs_task_id()
     _migrate_task_activity_events()
     yield

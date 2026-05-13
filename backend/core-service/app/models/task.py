@@ -16,10 +16,12 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     Integer,
+    BigInteger,
     Date,
     UniqueConstraint,
     CheckConstraint,
     Index,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -195,6 +197,19 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Human-readable short code source. The actual code shown to users
+    # ("TASK-184") is composed in the serializer. Values come from the
+    # task_number_seq PostgreSQL sequence so concurrent inserts can
+    # never collide, and copy/paste / group fan-out each get their
+    # own number for free (no application-level logic needed).
+    task_number = Column(
+        BigInteger,
+        server_default=text("nextval('task_number_seq')"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
 
     customer_id = Column(
         UUID(as_uuid=True),

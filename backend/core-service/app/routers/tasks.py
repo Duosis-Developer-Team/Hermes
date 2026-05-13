@@ -67,8 +67,13 @@ def _serialize_sub_project(sub: TaskSubProject) -> TaskSubProjectResponse:
 
 
 def _serialize_task(task: Task) -> TaskResponse:
+    task_code = (
+        f"TASK-{task.task_number}" if task.task_number is not None else None
+    )
     return TaskResponse(
         id=task.id,
+        task_number=task.task_number,
+        task_code=task_code,
         customer_id=task.customer_id,
         customer_name=task.customer.name if task.customer else None,
         project_id=task.project_id,

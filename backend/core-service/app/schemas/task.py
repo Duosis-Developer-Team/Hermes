@@ -229,6 +229,8 @@ class TaskActivityEventResponse(BaseModel):
 
 class TaskResponse(BaseModel):
     id: UUID
+    task_number: Optional[int] = None
+    task_code: Optional[str] = None
     customer_id: UUID
     customer_name: Optional[str] = None
     project_id: UUID

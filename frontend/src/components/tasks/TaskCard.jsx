@@ -221,7 +221,12 @@ function TaskCard({
             </Tooltip>
 
             <div className="task-card-body">
-                <div className="task-card-title">{task.title}</div>
+                <div className="task-card-title">
+                    {task.task_code && (
+                        <span className="task-card-code">{task.task_code}</span>
+                    )}
+                    <span className="task-card-title-text">{task.title}</span>
+                </div>
                 <div className="task-card-meta">
                     {task.customer_name || '—'} · {task.project_name || '—'}
                     {subProjectSegment}

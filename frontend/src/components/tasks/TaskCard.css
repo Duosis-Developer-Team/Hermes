@@ -84,6 +84,18 @@
 .task-card-status-cancelled   { background: #6b21a8; color: #e9d5ff; }
 .task-card-status-rejected    { background: #b91c1c; color: #fee2e2; }
 
+.task-card-code {
+    color: #9b9b9b;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin-right: 6px;
+    text-transform: uppercase;
+}
+.task-card-completed .task-card-code {
+    color: rgba(255, 255, 255, 0.5);
+}
+
 .task-due-badge {
     font-size: 10px;
     font-weight: 700;
