@@ -232,6 +232,11 @@ function TasksPage() {
             customerFilter,
             projectFilter,
             subProjectFilter,
+            // Calendar widens the date window with an OR on due_date so
+            // due markers render even when the task is scheduled in a
+            // different week. List/Board keep the strict scheduled-date
+            // semantics. Key on viewLayout so we don't share cache.
+            viewLayout,
             todayStr,
         ],
         queryFn: () => {
@@ -259,10 +264,16 @@ function TasksPage() {
             }
             // Scope-only views ("My Tasks" / "Assigned by Me") still
             // page by week, matching the historic scope-pill behavior.
+            // For Calendar specifically, ask the backend to also
+            // include tasks whose due_date falls in [weekStart,
+            // weekEnd] — that's what lets the due-marker column light
+            // up for tasks scheduled in a different week.
             return taskService.list({
                 ...base,
                 start_date: weekStartStr,
                 end_date: weekEndStr,
+                include_due_in_range:
+                    viewLayout === 'calendar' ? true : undefined,
             })
         },
         enabled: canAccessTasks,

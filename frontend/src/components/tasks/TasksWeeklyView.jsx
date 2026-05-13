@@ -291,7 +291,8 @@ function TasksWeeklyView({
             if (!t.due_date) continue
             if (t.due_date === t.scheduled_date) continue
             if (!weekKeys.has(t.due_date)) continue
-            if (t.status === 'completed') continue
+            // Closed-out work isn't an active reminder.
+            if (t.status === 'completed' || t.status === 'rejected') continue
             grouped[t.due_date].push(t)
         }
         return grouped

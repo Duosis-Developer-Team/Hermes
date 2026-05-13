@@ -249,6 +249,13 @@ async def list_tasks(
     completed_from: Optional[date] = Query(None),
     completed_to: Optional[date] = Query(None),
     include_archived: bool = Query(False),
+    include_due_in_range: bool = Query(
+        False,
+        description=(
+            "Calendar opt-in: also return tasks whose due_date "
+            "(not just scheduled_date) falls in [start_date, end_date]."
+        ),
+    ),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -273,6 +280,7 @@ async def list_tasks(
         completed_from=completed_from,
         completed_to=completed_to,
         include_archived=effective_include_archived,
+        include_due_in_range=bool(include_due_in_range),
     )
     return [_serialize_task(t) for t in tasks]
 

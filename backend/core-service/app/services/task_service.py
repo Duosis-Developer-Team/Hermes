@@ -926,6 +926,7 @@ def list_tasks_for_user(
     completed_from: Optional[date] = None,
     completed_to: Optional[date] = None,
     include_archived: bool = False,
+    include_due_in_range: bool = False,
 ) -> List[Task]:
     query = db.query(Task)
 
@@ -949,10 +950,32 @@ def list_tasks_for_user(
             )
         )
 
-    if start_date:
-        query = query.filter(Task.scheduled_date >= start_date)
-    if end_date:
-        query = query.filter(Task.scheduled_date <= end_date)
+    # Date-range gating.
+    #   - include_due_in_range=False (default): match by scheduled_date
+    #     only, preserving the legacy List/Board behavior.
+    #   - include_due_in_range=True: match if EITHER scheduled_date OR
+    #     due_date falls in the window. Calendar uses this so a task
+    #     scheduled in one week with a due date in another shows up
+    #     as a due marker on the visible week.
+    if start_date and end_date and include_due_in_range:
+        query = query.filter(
+            or_(
+                and_(
+                    Task.scheduled_date >= start_date,
+                    Task.scheduled_date <= end_date,
+                ),
+                and_(
+                    Task.due_date.isnot(None),
+                    Task.due_date >= start_date,
+                    Task.due_date <= end_date,
+                ),
+            )
+        )
+    else:
+        if start_date:
+            query = query.filter(Task.scheduled_date >= start_date)
+        if end_date:
+            query = query.filter(Task.scheduled_date <= end_date)
     if assignee_user_id:
         query = query.filter(Task.assignee_user_id == assignee_user_id)
     if assigner_user_id:
