@@ -879,10 +879,16 @@ def list_tasks_for_user(
     assignee_user_id: Optional[UUID] = None,
     assigner_user_id: Optional[UUID] = None,
     task_status: Optional[str] = None,
+    statuses: Optional[List[str]] = None,
+    status_exclude: Optional[List[str]] = None,
     priority: Optional[str] = None,
     customer_id: Optional[UUID] = None,
     project_id: Optional[UUID] = None,
     sub_project_id: Optional[UUID] = None,
+    due_from: Optional[date] = None,
+    due_to: Optional[date] = None,
+    completed_from: Optional[date] = None,
+    completed_to: Optional[date] = None,
     include_archived: bool = False,
 ) -> List[Task]:
     query = db.query(Task)
@@ -917,6 +923,10 @@ def list_tasks_for_user(
         query = query.filter(Task.assigner_user_id == assigner_user_id)
     if task_status:
         query = query.filter(Task.status == task_status)
+    if statuses:
+        query = query.filter(Task.status.in_(statuses))
+    if status_exclude:
+        query = query.filter(~Task.status.in_(status_exclude))
     if priority:
         query = query.filter(Task.priority == priority)
     if customer_id:
@@ -925,6 +935,19 @@ def list_tasks_for_user(
         query = query.filter(Task.project_id == project_id)
     if sub_project_id:
         query = query.filter(Task.sub_project_id == sub_project_id)
+    if due_from:
+        query = query.filter(Task.due_date >= due_from)
+    if due_to:
+        query = query.filter(Task.due_date <= due_to)
+    if completed_from:
+        query = query.filter(Task.completed_at >= completed_from)
+    if completed_to:
+        # completed_at is a timestamp — make the inclusive upper bound the
+        # end of that day so callers can pass a date.
+        end_of_day = datetime.combine(
+            completed_to, datetime.max.time(), tzinfo=timezone.utc
+        )
+        query = query.filter(Task.completed_at <= end_of_day)
 
     return (
         query.order_by(Task.scheduled_date.asc(), Task.created_at.asc()).all()

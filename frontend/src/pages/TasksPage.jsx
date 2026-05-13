@@ -65,6 +65,17 @@ const STATUS_OPTIONS = [
     { value: 'rejected', label: 'Rejected' },
 ]
 
+// System saved views — fixed presets for now. Architecture deliberately
+// stays simple so a follow-up commit can swap this in for a per-user
+// saved_views table without churning callers.
+const SAVED_VIEWS = [
+    { value: 'my-open', label: 'My Open Tasks' },
+    { value: 'assigned-by-me', label: 'Assigned by Me' },
+    { value: 'due-this-week', label: 'Due This Week' },
+    { value: 'overdue', label: 'Overdue' },
+    { value: 'completed-this-week', label: 'Completed This Week' },
+]
+
 const PRIORITY_OPTIONS = [
     { value: 'low', label: 'Low' },
     { value: 'medium', label: 'Medium' },
@@ -103,8 +114,10 @@ function TasksPage() {
     // assigned by viewed user. For admins the "viewed user" comes from the
     // user selector below; for non-admins it is always themselves.
     const [viewScope, setViewScope] = useState('my')
-    // Layout: 'calendar' or 'list'.
+    // Layout: 'calendar' or 'list' or 'board'.
     const [viewLayout, setViewLayout] = useState('calendar')
+    // Active saved view key, or null when in default (week-based) mode.
+    const [savedView, setSavedView] = useState(null)
     // Admin-only user selector (Time Entry parity). null → current user.
     const [selectedUserId, setSelectedUserId] = useState(null)
 
@@ -166,29 +179,99 @@ function TasksPage() {
             : { assignee_user_id: viewedUserId }
     }, [viewScope, viewedUserId])
 
+    // Translate the active saved view into list-endpoint params. When
+    // a view is active it dictates date/status semantics and the
+    // scheduled-date window is dropped entirely so historical and
+    // future tasks are reachable from the same screen.
+    const todayStr = dayjs().format('YYYY-MM-DD')
+    const yesterdayStr = dayjs().subtract(1, 'day').format('YYYY-MM-DD')
+    const weekStartStr = weekStart.format('YYYY-MM-DD')
+    const weekEndStr = weekEnd.format('YYYY-MM-DD')
+
+    const savedViewParams = useMemo(() => {
+        switch (savedView) {
+            case 'my-open':
+                return {
+                    status_exclude: ['completed', 'rejected'],
+                    forceScope: 'my',
+                }
+            case 'assigned-by-me':
+                return { forceScope: 'assigned' }
+            case 'due-this-week':
+                return {
+                    due_from: weekStartStr,
+                    due_to: weekEndStr,
+                    status_exclude: ['completed', 'rejected'],
+                }
+            case 'overdue':
+                return {
+                    due_to: yesterdayStr,
+                    status_exclude: ['completed', 'rejected'],
+                }
+            case 'completed-this-week':
+                return {
+                    statuses: ['completed'],
+                    completed_from: weekStartStr,
+                    completed_to: weekEndStr,
+                }
+            default:
+                return null
+        }
+    }, [savedView, weekStartStr, weekEndStr, yesterdayStr])
+
+    const effectiveScopeParams = useMemo(() => {
+        if (savedViewParams?.forceScope === 'assigned') {
+            return { assigner_user_id: viewedUserId }
+        }
+        if (savedViewParams?.forceScope === 'my') {
+            return { assignee_user_id: viewedUserId }
+        }
+        return scopeParams
+    }, [savedViewParams, scopeParams, viewedUserId])
+
     const { data: tasks = [], isLoading } = useQuery({
         queryKey: [
             'tasks',
             viewScope,
             viewedUserId,
-            weekStart.format('YYYY-MM-DD'),
+            weekStartStr,
             statusFilter,
             priorityFilter,
             customerFilter,
             projectFilter,
             subProjectFilter,
+            savedView,
+            todayStr,
         ],
-        queryFn: () =>
-            taskService.list({
-                start_date: weekStart.format('YYYY-MM-DD'),
-                end_date: weekEnd.format('YYYY-MM-DD'),
+        queryFn: () => {
+            const base = {
                 status: statusFilter || undefined,
                 priority: priorityFilter || undefined,
                 customer_id: customerFilter || undefined,
                 project_id: projectFilter || undefined,
                 sub_project_id: subProjectFilter || undefined,
-                ...scopeParams,
-            }),
+                ...effectiveScopeParams,
+            }
+            if (savedViewParams) {
+                // Drop the scheduled-date window so "Overdue" reaches
+                // older weeks and "Completed This Week" can find rows
+                // scheduled outside this week.
+                return taskService.list({
+                    ...base,
+                    statuses: savedViewParams.statuses,
+                    status_exclude: savedViewParams.status_exclude,
+                    due_from: savedViewParams.due_from,
+                    due_to: savedViewParams.due_to,
+                    completed_from: savedViewParams.completed_from,
+                    completed_to: savedViewParams.completed_to,
+                })
+            }
+            return taskService.list({
+                ...base,
+                start_date: weekStartStr,
+                end_date: weekEndStr,
+            })
+        },
         enabled: canAccessTasks,
     })
 
@@ -688,6 +771,24 @@ function TasksPage() {
                             </span>
                         )}
                     </div>
+                    <div className="tasks-tabs-divider" />
+                    {/* Saved Views — preset filter combos */}
+                    <Select
+                        size="small"
+                        allowClear
+                        placeholder="Views"
+                        style={{ width: 200 }}
+                        value={savedView}
+                        onChange={(v) => {
+                            setSavedView(v || null)
+                            // Saved views span weeks; the list/board
+                            // layouts are the natural home for them.
+                            if (v && viewLayout === 'calendar') {
+                                setViewLayout('list')
+                            }
+                        }}
+                        options={SAVED_VIEWS}
+                    />
                     <div className="tasks-tabs-divider" />
                     {/* Layout tabs */}
                     <div className="tasks-tabs">
