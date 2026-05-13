@@ -158,7 +158,18 @@ class WorkLog(Base):
     )
 
     issue_key_manual = Column(String(50), nullable=True, index=True)
-    
+
+    # Optional link to the task this work log was logged against. Set
+    # when the user opens Log Time from a completed task; null for
+    # plain Time Entry rows. ON DELETE SET NULL so deleting a task
+    # never destroys its time history.
+    task_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("tasks.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # ==========================================================================
     # Work Log Details
     # ==========================================================================

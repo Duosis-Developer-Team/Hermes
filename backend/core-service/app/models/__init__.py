@@ -23,6 +23,7 @@ from .task import (
     TaskSubProject,
     Task,
 )
+from .task_activity import TaskActivityEvent
 from .user_group import (
     UserGroup,
     UserGroupMember,
@@ -55,6 +56,7 @@ __all__ = [
     "TaskAssignmentGroupRelation",
     "TaskSubProject",
     "Task",
+    "TaskActivityEvent",
     "UserGroup",
     "UserGroupMember",
     "TaskGroupPermission",

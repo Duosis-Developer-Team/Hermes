@@ -102,6 +102,74 @@ def _migrate_tasks_status_rejected() -> None:
         db.close()
 
 
+def _migrate_work_logs_task_id() -> None:
+    """
+    Idempotent additive migration: add work_logs.task_id (nullable FK
+    → tasks.id, ON DELETE SET NULL). Lets Log Time submitted from a
+    completed task store a real link to that task. Backward
+    compatible — plain Time Entry rows stay NULL.
+
+    Safe to re-run on every startup.
+    """
+    from sqlalchemy import text
+
+    db = SessionLocal()
+    try:
+        db.execute(text(
+            "ALTER TABLE work_logs ADD COLUMN IF NOT EXISTS task_id UUID"
+        ))
+        # The FK constraint name is fixed so re-runs no-op cleanly.
+        db.execute(text(
+            "DO $$ BEGIN "
+            "  IF NOT EXISTS ("
+            "    SELECT 1 FROM information_schema.table_constraints "
+            "    WHERE table_name = 'work_logs' "
+            "      AND constraint_name = 'fk_work_logs_task_id'"
+            "  ) THEN "
+            "    ALTER TABLE work_logs "
+            "    ADD CONSTRAINT fk_work_logs_task_id "
+            "    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE SET NULL; "
+            "  END IF; "
+            "END $$;"
+        ))
+        db.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_work_logs_task_id "
+            "ON work_logs(task_id)"
+        ))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️  work_logs.task_id migration hatası: {e}")
+    finally:
+        db.close()
+
+
+def _migrate_task_activity_events() -> None:
+    """
+    Idempotent additive migration for task_activity_events. The table
+    itself is created by SQLAlchemy's create_all() (the model is
+    registered in models/__init__.py) but we also guarantee the
+    helpful composite index here so we never depend on a particular
+    column-order being picked by create_all.
+
+    Safe to re-run on every startup.
+    """
+    from sqlalchemy import text
+
+    db = SessionLocal()
+    try:
+        db.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_task_activity_events_task_created "
+            "ON task_activity_events(task_id, created_at DESC)"
+        ))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️  task_activity_events migration hatası: {e}")
+    finally:
+        db.close()
+
+
 def _migrate_tasks_assignment_batch_id() -> None:
     """
     Idempotent additive migration for migration 007:
@@ -138,6 +206,8 @@ async def lifespan(app: FastAPI):
     _migrate_billable_hours()
     _migrate_tasks_assignment_batch_id()
     _migrate_tasks_status_rejected()
+    _migrate_work_logs_task_id()
+    _migrate_task_activity_events()
     yield
     print(f"👋 {settings.SERVICE_NAME} kapatılıyor...")
 
