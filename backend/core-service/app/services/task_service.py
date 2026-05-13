@@ -155,6 +155,36 @@ def can_assign_tasks(db: Session, user: CurrentUser) -> bool:
     return _effective_group_grant(db, user_uuid, column="assign")
 
 
+def user_has_task_access(db: Session, user_id: UUID) -> bool:
+    """Effective Task Access for an arbitrary user_id.
+
+    Mirrors can_access_tasks(user) but works on the assignee/target
+    side where we only have a UUID (and never a CurrentUser, so the
+    is_admin shortcut isn't available). The admin role check is
+    implicit: the frontend bootstraps every admin's direct
+    task_user_permissions row, so admins still resolve True here.
+
+    Resolution order:
+      1) direct task_user_permissions row with can_access_tasks=true
+      2) any active group membership granting access (group default
+         ± per-member override) via _effective_group_grant
+    """
+    perm = get_task_permission(db, user_id)
+    if perm and perm.can_access_tasks:
+        return True
+    return _effective_group_grant(db, user_id, column="access")
+
+
+def user_has_task_assign(db: Session, user_id: UUID) -> bool:
+    """Effective Assign Tasks for an arbitrary user_id. Same idea as
+    user_has_task_access; only used by the assignment-hierarchy
+    admin endpoint that links assigner → assignee pairs."""
+    perm = get_task_permission(db, user_id)
+    if perm and perm.can_access_tasks and perm.can_assign_tasks:
+        return True
+    return _effective_group_grant(db, user_id, column="assign")
+
+
 def get_assignable_user_ids(db: Session, user: CurrentUser) -> List[UUID]:
     """Return assignee IDs reachable directly via task_assignment_relations.
 
@@ -445,12 +475,14 @@ def create_assignment_relations(
 ) -> List[TaskAssignmentRelation]:
     """Idempotently create assigner -> assignee mappings.
 
-    The assigner must already have `can_assign_tasks = true` in
-    task_user_permissions. Admin's own row is set up the same way, so no
-    cross-service is_admin lookup is needed.
+    Effective-permission semantics — both sides resolve through
+    direct task_user_permissions rows AND active group membership
+    (default ± per-member override), matching what the rest of the
+    Tasks module enforces. A user whose Assign Tasks comes purely
+    from a group default is just as valid an assigner as one with
+    a direct row.
     """
-    perm = get_task_permission(db, assigner_user_id)
-    if not perm or not perm.can_assign_tasks:
+    if not user_has_task_assign(db, assigner_user_id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Selected assigner does not have task assignment permission.",
@@ -463,9 +495,9 @@ def create_assignment_relations(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Assigner and assignee cannot be the same user.",
             )
-        # Assignee must have task access — the only way to receive tasks.
-        assignee_perm = get_task_permission(db, assignee_id)
-        if not assignee_perm or not assignee_perm.can_access_tasks:
+        # Assignee only needs effective Task Access to receive
+        # tasks — Assign Tasks is irrelevant for receiving.
+        if not user_has_task_access(db, assignee_id):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="All assignees must have task access enabled first.",
@@ -825,11 +857,15 @@ def _validate_assignment(
     user: CurrentUser,
     assignee_user_id: UUID,
 ) -> None:
-    """Common assignment validation used on create / reassign.
+    """Common assignment validation used on create / reassign / paste.
 
-    Active-flag check on assignee is delegated to auth-service via the
-    `task_user_permissions` row check (assignee must have task access, which
-    admins explicitly enable only for active users).
+    Two distinct checks — never collapsed into one error:
+      1) The CURRENT user (assigner) is authorised to assign to this
+         target (admin OR reachable through assignment hierarchy /
+         group mapping).
+      2) The TARGET (assignee) has effective Task Access — directly,
+         through group default, or through a per-member override.
+         Assign Tasks is NOT required to receive a task; only access.
     """
     if not is_task_admin(user) and not can_assign_to(db, user, assignee_user_id):
         raise HTTPException(
@@ -837,8 +873,7 @@ def _validate_assignment(
             detail="You are not allowed to assign tasks to this user.",
         )
 
-    assignee_perm = get_task_permission(db, assignee_user_id)
-    if not assignee_perm or not assignee_perm.can_access_tasks:
+    if not user_has_task_access(db, assignee_user_id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Selected assignee does not have task access.",
