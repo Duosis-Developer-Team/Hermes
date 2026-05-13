@@ -688,14 +688,11 @@ function TasksPage() {
     const canCreateTask =
         isTaskAdmin || (canAssignTasks && (isTaskAdmin || assignableUserIds.length > 0))
 
-    if (!canAccessTasks) {
-        return (
-            <div style={{ padding: 24 }}>
-                <Empty description="You do not have access to the Tasks module." />
-            </div>
-        )
-    }
-
+    // Compute BEFORE the no-access early return below — useMemo is a
+    // hook and must run in the same order on every render. Cold-load
+    // of /tasks starts with canAccessTasks=false (permissions still
+    // fetching) and flips to true once they resolve; hopping over a
+    // hook between those two renders triggers React #310.
     const userSelectorOptions = useMemo(() => {
         if (!user?.id) return []
         const me = { value: user.id, label: user.full_name || 'Me' }
@@ -705,6 +702,14 @@ function TasksPage() {
             .map((u) => ({ value: u.id, label: u.full_name || u.email }))
         return [me, ...others]
     }, [user, isTaskAdmin, allActiveUsers])
+
+    if (!canAccessTasks) {
+        return (
+            <div style={{ padding: 24 }}>
+                <Empty description="You do not have access to the Tasks module." />
+            </div>
+        )
+    }
 
     return (
         <div className="tasks-page">
