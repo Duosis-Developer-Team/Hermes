@@ -24,6 +24,7 @@ import {
     MenuUnfoldOutlined,
     SettingOutlined,
     CheckSquareOutlined,
+    CalendarOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
 import { authService } from '../../services/api'
@@ -69,6 +70,15 @@ function MainLayout() {
                 label: 'Tasks',
             },
         ] : []),
+
+        // Meetings — synced from Microsoft Teams / Outlook calendars.
+        // Visible to every authenticated user; backend filters down to
+        // meetings the user is actually an attendee of.
+        {
+            key: '/meetings',
+            icon: <CalendarOutlined />,
+            label: 'Meetings',
+        },
 
         // Admin Menüsü
         ...(isAdmin ? [

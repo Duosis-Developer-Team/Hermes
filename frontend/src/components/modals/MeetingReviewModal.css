@@ -1,0 +1,10 @@
+/* =============================================================================
+   Meeting Review Modal — dark theme polish (mirrors TaskReviewModal)
+   ============================================================================= */
+
+.meeting-review-modal .ant-modal-title {
+    color: #fff;
+}
+.meeting-review-modal .ant-modal-close {
+    color: #9b9b9b;
+}

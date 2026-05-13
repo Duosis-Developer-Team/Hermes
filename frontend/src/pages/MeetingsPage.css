@@ -1,0 +1,53 @@
+/* =============================================================================
+   HERMES - Meetings page styles
+   Mirrors TasksPage / TimeEntry rhythm so the page reads as a
+   sibling. Cyan accents pick up the Meetings module identity (Tasks
+   uses indigo, Meetings uses cyan).
+   ============================================================================= */
+
+.meetings-page {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-primary);
+}
+
+.meetings-user-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background: transparent;
+    border-bottom: 1px solid var(--border-default);
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.meetings-user-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.meetings-user-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.meetings-user-avatar {
+    background-color: #06b6d4;  /* cyan — distinguishes from indigo
+                                    avatars used by Time Entry/Tasks */
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.meetings-user-name {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.meetings-body {
+    padding: 16px 24px 24px;
+}

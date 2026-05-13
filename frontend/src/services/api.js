@@ -1028,6 +1028,58 @@ export const taskService = {
     },
 }
 
+// =============================================================================
+// MEETINGS SERVICE (Microsoft Teams / Outlook integration)
+// =============================================================================
+
+export const meetingService = {
+    /**
+     * Visibility-bound list. Non-admin sees only meetings where they
+     * are a mapped attendee; admin can pass user_id to view another
+     * user's meetings.
+     * params: { start_date?, end_date?, user_id?, include_cancelled? }
+     */
+    list: async (params = {}) => {
+        const response = await coreApi.get('/api/v1/core/meetings', { params })
+        return response.data
+    },
+
+    /** Single meeting fetch (visibility-bound, 404 on denial). */
+    get: async (meetingId) => {
+        const response = await coreApi.get(
+            `/api/v1/core/meetings/${meetingId}`
+        )
+        return response.data
+    },
+
+    /** Admin only — current Graph config + last sync snapshot. */
+    getSyncStatus: async () => {
+        const response = await coreApi.get(
+            '/api/v1/core/admin/meetings/sync-status'
+        )
+        return response.data
+    },
+
+    /**
+     * Admin only — trigger a Microsoft Graph sync for a date range.
+     * Resolves with the full MeetingSyncResult (includes per-user
+     * breakdown). The endpoint fails gracefully if Graph isn't
+     * configured; check `result.ok` and `result.error` for the
+     * user-facing message.
+     */
+    sync: async ({ start_date, end_date, user_id = null } = {}) => {
+        const response = await coreApi.post(
+            '/api/v1/core/admin/meetings/sync',
+            {
+                start_date,
+                end_date,
+                user_id: user_id || null,
+            }
+        )
+        return response.data
+    },
+}
+
 export default {
     authService,
     customerService,
@@ -1046,5 +1098,6 @@ export default {
     taskService,
     userGroupService,
     taskGroupPermissionService,
+    meetingService,
 }
 

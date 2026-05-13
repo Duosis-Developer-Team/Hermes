@@ -1,0 +1,99 @@
+/* =============================================================================
+   HERMES - Meetings Weekly View
+   =============================================================================
+   Visual rhythm matches TasksWeeklyView / TimeEntry's DayColumn — same
+   column width, same gaps, same header style — so navigation between
+   calendars stays muscle-memory.
+   ============================================================================= */
+
+.meetings-weekly-view {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.meetings-weekly-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #9b9b9b;
+    font-size: 13px;
+    padding: 0 4px;
+}
+.meetings-weekly-summary strong {
+    color: #fff;
+}
+
+.meetings-weekly-columns {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(160px, 1fr));
+    gap: 8px;
+    align-items: start;
+}
+
+.meeting-day-column {
+    background: #161616;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    min-height: 220px;
+    max-height: calc(100vh - 240px);
+    overflow: hidden;
+}
+.meeting-day-column-weekend {
+    background: #131313;
+}
+.meeting-day-column-today {
+    border-color: rgba(34, 211, 238, 0.45);
+    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.18);
+}
+
+.meeting-day-column-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #232323;
+    background: #1a1a1a;
+}
+.meeting-day-name {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9b9b9b;
+}
+.meeting-day-number {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+}
+.meeting-day-count {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    color: #9b9b9b;
+    background: #262626;
+    border-radius: 10px;
+    padding: 1px 8px;
+}
+.meeting-day-column-today .meeting-day-number {
+    color: #22d3ee;
+}
+
+.meeting-day-column-body {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    flex: 1 1 auto;
+}
+
+.meeting-day-column-empty {
+    color: #5b5b5b;
+    font-size: 12px;
+    text-align: center;
+    padding: 12px 6px;
+    font-style: italic;
+}

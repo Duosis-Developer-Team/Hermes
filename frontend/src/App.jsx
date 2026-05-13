@@ -54,6 +54,7 @@ import ReportsPage from './pages/ReportsPage'
 import ContractStatusPage from './pages/admin/ContractStatusPage'
 import TasksPage from './pages/TasksPage'
 import TaskManagementPage from './pages/admin/TaskManagementPage'
+import MeetingsPage from './pages/MeetingsPage'
 import { useTaskPermissions } from './hooks/useTaskPermissions'
 
 /**
@@ -178,6 +179,10 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
+
+                {/* Meetings — every authenticated user; backend
+                    visibility narrows to their own attended events. */}
+                <Route path="meetings" element={<MeetingsPage />} />
 
                 {/* Admin Pages */}
                 <Route
