@@ -27,7 +27,6 @@ import {
 import {
     LeftOutlined,
     RightOutlined,
-    PlusOutlined,
     FilterOutlined,
     ExclamationCircleOutlined,
     DeleteOutlined,
@@ -776,21 +775,11 @@ function TasksPage() {
                                     }`}
                                     onClick={() => {
                                         if (isActive) return
+                                        // Views only change scope/filters.
+                                        // Calendar/List/Board layout is
+                                        // owned by the user's explicit
+                                        // layout-tab click.
                                         setCurrentView(v.value)
-                                        // Date-range views span weeks;
-                                        // List is the natural home. The
-                                        // user can still flip back to
-                                        // Calendar manually.
-                                        const isDateRange =
-                                            v.value === 'due-this-week' ||
-                                            v.value === 'overdue' ||
-                                            v.value === 'completed-this-week'
-                                        if (
-                                            isDateRange &&
-                                            viewLayout === 'calendar'
-                                        ) {
-                                            setViewLayout('list')
-                                        }
                                     }}
                                 >
                                     {v.label}
@@ -826,28 +815,16 @@ function TasksPage() {
                             Board
                         </span>
                     </div>
-                    {(canAssignTasks || isTaskAdmin) && (
-                        <Tooltip
-                            title={
-                                !isTaskAdmin && assignableUserIds.length === 0
-                                    ? 'You have no assignable users.'
-                                    : 'Create a new task'
-                            }
-                        >
-                            <Button
-                                type="primary"
-                                icon={<PlusOutlined />}
-                                disabled={!canCreateTask}
-                                onClick={() => handleCreate(dayjs())}
-                            >
-                                Create Task
-                            </Button>
-                        </Tooltip>
-                    )}
+                    {/* Task creation lives on the day-column "+" buttons
+                        in Calendar, mirroring Time Entry. No large
+                        always-on Create button here. */}
                 </div>
             </div>
 
-            {/* Week navigation row — only for calendar layout */}
+            {/* Week navigation row — only for calendar layout. Tight
+                vertical padding so the grid sits close to the header,
+                matching Time Entry's visual rhythm now that the large
+                Create button has been removed from the header. */}
             {viewLayout === 'calendar' && (
                 <div
                     className="tasks-body"
@@ -857,6 +834,7 @@ function TasksPage() {
                         alignItems: 'center',
                         flexWrap: 'wrap',
                         gap: 12,
+                        paddingTop: 10,
                         paddingBottom: 0,
                     }}
                 >
