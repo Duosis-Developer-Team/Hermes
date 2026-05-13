@@ -954,6 +954,111 @@ def list_tasks_for_user(
     )
 
 
+def search_tasks_for_user(
+    db: Session,
+    user: CurrentUser,
+    *,
+    q: Optional[str],
+    task_status: Optional[str] = None,
+    priority: Optional[str] = None,
+    customer_id: Optional[UUID] = None,
+    project_id: Optional[UUID] = None,
+    assignee_user_id: Optional[UUID] = None,
+    assigner_user_id: Optional[UUID] = None,
+    due_from: Optional[date] = None,
+    due_to: Optional[date] = None,
+    limit: int = 50,
+) -> List[Task]:
+    """Free-text task search bound by the same visibility gate as
+    list_tasks_for_user: a non-admin caller only ever matches tasks
+    where they are the assignee or the assigner. Frontend MUST NOT be
+    relied on to filter — visibility is enforced here.
+
+    `q` matches (case-insensitive):
+      - task code via numeric task_number (accepts "184" or
+        "TASK-184" / "task 184")
+      - title, description
+      - customer.name, project.name, sub_project.name
+        (sub-project is LEFT-joined so tasks without one still match)
+
+    Assignee / assigner full-name search lives in auth-service. The
+    frontend resolves names → user IDs and passes them via the
+    assignee_user_id / assigner_user_id query params, which we honour
+    here exactly like list_tasks_for_user does.
+
+    Results are limited and ordered by updated_at DESC so the most
+    recently touched task surfaces first.
+    """
+    from ..models.customer import Customer
+    from ..models.project import Project
+
+    query = (
+        db.query(Task)
+        .outerjoin(Customer, Customer.id == Task.customer_id)
+        .outerjoin(Project, Project.id == Task.project_id)
+        .outerjoin(TaskSubProject, TaskSubProject.id == Task.sub_project_id)
+        .filter(Task.archived_at.is_(None))
+    )
+
+    # Same gate as list_tasks_for_user — non-admin sees only tasks
+    # they are the assignee or assigner of.
+    if not is_task_admin(user):
+        user_uuid = UUID(user.id)
+        if assignee_user_id is not None and assignee_user_id != user_uuid:
+            assignee_user_id = user_uuid
+        if assigner_user_id is not None and assigner_user_id != user_uuid:
+            assigner_user_id = user_uuid
+        query = query.filter(
+            or_(
+                Task.assignee_user_id == user_uuid,
+                Task.assigner_user_id == user_uuid,
+            )
+        )
+
+    if assignee_user_id:
+        query = query.filter(Task.assignee_user_id == assignee_user_id)
+    if assigner_user_id:
+        query = query.filter(Task.assigner_user_id == assigner_user_id)
+    if task_status:
+        query = query.filter(Task.status == task_status)
+    if priority:
+        query = query.filter(Task.priority == priority)
+    if customer_id:
+        query = query.filter(Task.customer_id == customer_id)
+    if project_id:
+        query = query.filter(Task.project_id == project_id)
+    if due_from:
+        query = query.filter(Task.due_date >= due_from)
+    if due_to:
+        query = query.filter(Task.due_date <= due_to)
+
+    if q:
+        needle = q.strip()
+        like = f"%{needle}%"
+        text_clauses = [
+            Task.title.ilike(like),
+            Task.description.ilike(like),
+            Customer.name.ilike(like),
+            Project.name.ilike(like),
+            TaskSubProject.name.ilike(like),
+        ]
+        # If the query contains digits, also match on the task code's
+        # numeric part. Accepts "184", "TASK-184", "task 184" etc.
+        digits = "".join(ch for ch in needle if ch.isdigit())
+        if digits:
+            try:
+                text_clauses.append(Task.task_number == int(digits))
+            except ValueError:
+                pass
+        query = query.filter(or_(*text_clauses))
+
+    return (
+        query.order_by(Task.updated_at.desc(), Task.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
 def get_task_for_user(db: Session, user: CurrentUser, task_id: UUID) -> Task:
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task or not _user_can_view_task(user, task):

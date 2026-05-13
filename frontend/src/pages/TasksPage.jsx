@@ -50,6 +50,7 @@ import { useTaskPermissions } from '../hooks/useTaskPermissions'
 import TasksWeeklyView from '../components/tasks/TasksWeeklyView'
 import TasksListView from '../components/tasks/TasksListView'
 import TasksBoardView from '../components/tasks/TasksBoardView'
+import TasksSearchBar from '../components/tasks/TasksSearchBar'
 import CreateTaskModal from '../components/modals/CreateTaskModal'
 import TaskReviewModal from '../components/modals/TaskReviewModal'
 import LogTimeModal from '../components/modals/LogTimeModal'
@@ -771,6 +772,12 @@ function TasksPage() {
                             </span>
                         )}
                     </div>
+                    <div className="tasks-tabs-divider" />
+                    {/* Free-text task search — visibility enforced server-side */}
+                    <TasksSearchBar
+                        userMap={userMap}
+                        onSelect={handleOpenReview}
+                    />
                     <div className="tasks-tabs-divider" />
                     {/* Saved Views — preset filter combos */}
                     <Select

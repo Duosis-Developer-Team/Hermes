@@ -975,6 +975,21 @@ export const taskService = {
         return response.data
     },
 
+    /**
+     * Visibility-bound task search. Non-admin callers only ever get
+     * tasks where they are the assignee or assigner; the same gate
+     * the list endpoint applies.
+     * params: { q, status?, priority?, customer_id?, project_id?,
+     *           assignee_user_id?, assigner_user_id?, due_from?,
+     *           due_to?, limit? }
+     */
+    search: async (params = {}) => {
+        const response = await coreApi.get('/api/v1/core/tasks/search', {
+            params,
+        })
+        return response.data
+    },
+
     /** Soft delete — sets archived_at; row is preserved. */
     delete: async (taskId) => {
         const response = await coreApi.delete(`/api/v1/core/tasks/${taskId}`)

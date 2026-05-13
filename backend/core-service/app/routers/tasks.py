@@ -323,6 +323,47 @@ async def create_tasks_for_group(
     )
 
 
+# NOTE: /search MUST be declared before /{task_id} below — FastAPI
+# matches in declaration order and would otherwise treat "search" as
+# a task_id and 422 the request.
+@router.get("/search", response_model=List[TaskResponse])
+async def search_tasks(
+    q: Optional[str] = Query(None, description="Free-text search."),
+    task_status: Optional[str] = Query(None, alias="status"),
+    priority: Optional[str] = Query(None),
+    customer_id: Optional[UUID] = Query(None),
+    project_id: Optional[UUID] = Query(None),
+    assignee_user_id: Optional[UUID] = Query(None),
+    assigner_user_id: Optional[UUID] = Query(None),
+    due_from: Optional[date] = Query(None),
+    due_to: Optional[date] = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Visibility-bound free-text task search.
+
+    Non-admin callers can ONLY match tasks where they are the
+    assignee or the assigner — same gate as list_tasks_for_user.
+    """
+    task_service.require_task_access(db, current_user)
+    tasks = task_service.search_tasks_for_user(
+        db,
+        current_user,
+        q=q,
+        task_status=task_status,
+        priority=priority,
+        customer_id=customer_id,
+        project_id=project_id,
+        assignee_user_id=assignee_user_id,
+        assigner_user_id=assigner_user_id,
+        due_from=due_from,
+        due_to=due_to,
+        limit=limit,
+    )
+    return [_serialize_task(t) for t in tasks]
+
+
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(
     task_id: UUID,
