@@ -223,6 +223,67 @@ def _migrate_work_logs_task_id() -> None:
         db.close()
 
 
+def _migrate_meetings_schema() -> None:
+    """
+    Idempotent additive migration for the Meetings module
+    (Microsoft Teams / Outlook calendar integration).
+
+    SQLAlchemy's create_all() handles the actual table creation
+    because Meeting + MeetingAttendee are registered in
+    models/__init__.py. This helper:
+
+      1) Guarantees the composite index meetings(start_datetime,
+         is_cancelled) for the calendar week-window scans, which
+         create_all() can't be relied on to emit deterministically.
+      2) Adds work_logs.meeting_id (nullable UUID FK → meetings.id
+         ON DELETE SET NULL) so a Log Time submitted from a meeting
+         card can link to its source. Mirrors the existing
+         work_logs.task_id pattern exactly.
+
+    Safe to re-run on every startup. No row is touched and no data
+    is deleted.
+    """
+    from sqlalchemy import text
+
+    db = SessionLocal()
+    try:
+        # Composite scan index for "this week's meetings, hide
+        # cancelled" — the most common Meetings page query.
+        db.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_meetings_start_cancelled "
+            "ON meetings(start_datetime, is_cancelled)"
+        ))
+
+        # work_logs.meeting_id — additive, mirrors task_id.
+        db.execute(text(
+            "ALTER TABLE work_logs ADD COLUMN IF NOT EXISTS meeting_id UUID"
+        ))
+        db.execute(text(
+            "DO $$ BEGIN "
+            "  IF NOT EXISTS ("
+            "    SELECT 1 FROM information_schema.table_constraints "
+            "    WHERE table_name = 'work_logs' "
+            "      AND constraint_name = 'fk_work_logs_meeting_id'"
+            "  ) THEN "
+            "    ALTER TABLE work_logs "
+            "    ADD CONSTRAINT fk_work_logs_meeting_id "
+            "    FOREIGN KEY (meeting_id) REFERENCES meetings(id) "
+            "    ON DELETE SET NULL; "
+            "  END IF; "
+            "END $$;"
+        ))
+        db.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_work_logs_meeting_id "
+            "ON work_logs(meeting_id)"
+        ))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️  meetings schema migration hatası: {e}")
+    finally:
+        db.close()
+
+
 def _migrate_task_comments() -> None:
     """
     Idempotent additive migration for task_comments. SQLAlchemy's
@@ -315,6 +376,10 @@ async def lifespan(app: FastAPI):
     _migrate_work_logs_task_id()
     _migrate_task_activity_events()
     _migrate_task_comments()
+    # Meetings: create_all builds the tables (models registered in
+    # models/__init__.py); this helper adds the helpful index +
+    # work_logs.meeting_id link column.
+    _migrate_meetings_schema()
     yield
     print(f"👋 {settings.SERVICE_NAME} kapatılıyor...")
 

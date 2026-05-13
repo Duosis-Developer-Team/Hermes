@@ -170,6 +170,17 @@ class WorkLog(Base):
         index=True,
     )
 
+    # Optional link to a synced Teams/Outlook meeting. Set when the
+    # user opens Log Time from a Meetings calendar card. Same
+    # SET NULL stance — deleting/un-syncing a meeting never destroys
+    # its time history.
+    meeting_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("meetings.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # ==========================================================================
     # Work Log Details
     # ==========================================================================
