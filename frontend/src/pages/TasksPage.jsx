@@ -284,9 +284,20 @@ function TasksPage() {
     })
 
     const workLogMutation = useMutation({
-        mutationFn: (data) => workLogService.create(data),
-        onSuccess: () => {
-            message.success('Time logged.')
+        // Route the log to the task's *assignee* — that's whose work it
+        // was. Backend (POST /work-logs) honours target_user_id only
+        // when the caller is admin; for a non-admin assignee logging
+        // their own task this collapses to "log for self" anyway. The
+        // page-level `selectedUserId` (admin view-as override) is
+        // deliberately NOT passed here — the task itself dictates the
+        // owner, not the viewing context.
+        mutationFn: ({ data, assigneeUserId }) =>
+            workLogService.create(data, assigneeUserId || null),
+        onSuccess: (_created, variables) => {
+            const dateStr = variables?.data?.date_worked
+            message.success(
+                dateStr ? `Time logged for ${dateStr}.` : 'Time logged.'
+            )
             setLogTimeTask(null)
             // The work log is created in core_db just like a Time
             // Entry — must invalidate the same caches Time Entry uses
@@ -398,7 +409,10 @@ function TasksPage() {
     }
 
     const handleLogTimeSubmit = async (data) => {
-        await workLogMutation.mutateAsync(data)
+        await workLogMutation.mutateAsync({
+            data,
+            assigneeUserId: logTimeTask?.assignee_user_id || null,
+        })
     }
 
     const handleOpenReview = (task) => {
