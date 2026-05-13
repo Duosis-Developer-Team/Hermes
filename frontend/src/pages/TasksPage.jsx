@@ -786,6 +786,16 @@ function TasksPage() {
                             if (v && viewLayout === 'calendar') {
                                 setViewLayout('list')
                             }
+                            // Keep the scope tab visually in sync with
+                            // the view's forced scope so the user
+                            // doesn't see "My Tasks" highlighted while
+                            // the query is asking for tasks they
+                            // assigned (or vice versa).
+                            if (v === 'assigned-by-me' && canViewAssignedByMe) {
+                                setViewScope('assigned')
+                            } else if (v === 'my-open') {
+                                setViewScope('my')
+                            }
                         }}
                         options={SAVED_VIEWS}
                     />
@@ -796,7 +806,16 @@ function TasksPage() {
                             className={`tasks-tab-link ${
                                 viewLayout === 'calendar' ? 'active' : ''
                             }`}
-                            onClick={() => setViewLayout('calendar')}
+                            onClick={() => {
+                                setViewLayout('calendar')
+                                // Calendar's week grid groups by
+                                // scheduled_date in the current week.
+                                // Saved views deliberately span weeks
+                                // and drop the scheduled-date window,
+                                // so a stale view would leave the
+                                // grid mostly empty. Clear it.
+                                if (savedView) setSavedView(null)
+                            }}
                         >
                             Calendar
                         </span>
