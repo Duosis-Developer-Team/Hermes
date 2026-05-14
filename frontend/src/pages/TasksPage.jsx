@@ -872,9 +872,11 @@ function TasksPage() {
             {/* Quick filter chip strip — secondary control, layers
                 on top of the active scope. Single-select; clicking
                 the active chip clears it. Independent of layout.
-                A "Clear" pill appears at the end whenever the view is
-                anything other than the default (My Tasks, no quick
-                filter) so users can always get back without reload. */}
+                A "Clear" pill appears at the end whenever a quick
+                filter is active so users can drop the secondary
+                filter without remembering which chip was on. The
+                primary scope (My Tasks / Assigned by Me) is not a
+                filter and is unaffected by Clear. */}
             <div
                 className="tasks-quickfilters"
                 role="toolbar"
@@ -904,19 +906,18 @@ function TasksPage() {
                         </button>
                     )
                 })}
-                {(taskScope !== 'my-tasks' || taskQuickFilter !== null) && (
+                {taskQuickFilter !== null && (
                     <button
                         type="button"
                         className="tasks-quickfilter-clear"
-                        aria-label="Clear view filters"
+                        aria-label="Clear quick filter"
                         onClick={() => {
-                            // Reset to the default My Tasks view.
-                            // Layout (Calendar/List/Board) stays where
-                            // the user left it; the other cross-filters
-                            // (status, priority, customer, project,
-                            // sub-project) have their own clear controls
-                            // and aren't touched here.
-                            setTaskScope('my-tasks')
+                            // Scoped to the quick-filter chip strip:
+                            // only clears Due/Overdue/Completed. The
+                            // My Tasks vs Assigned by Me scope is
+                            // primary navigation, not a filter, and
+                            // stays put. Layout and the cross-filter
+                            // dropdowns are also untouched.
                             setTaskQuickFilter(null)
                         }}
                     >
