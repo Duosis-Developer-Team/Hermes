@@ -31,6 +31,7 @@ import {
     ExclamationCircleOutlined,
     DeleteOutlined,
     UserOutlined,
+    CloseOutlined,
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -870,7 +871,10 @@ function TasksPage() {
 
             {/* Quick filter chip strip — secondary control, layers
                 on top of the active scope. Single-select; clicking
-                the active chip clears it. Independent of layout. */}
+                the active chip clears it. Independent of layout.
+                A "Clear" pill appears at the end whenever the view is
+                anything other than the default (My Tasks, no quick
+                filter) so users can always get back without reload. */}
             <div
                 className="tasks-quickfilters"
                 role="toolbar"
@@ -900,6 +904,26 @@ function TasksPage() {
                         </button>
                     )
                 })}
+                {(taskScope !== 'my-tasks' || taskQuickFilter !== null) && (
+                    <button
+                        type="button"
+                        className="tasks-quickfilter-clear"
+                        aria-label="Clear view filters"
+                        onClick={() => {
+                            // Reset to the default My Tasks view.
+                            // Layout (Calendar/List/Board) stays where
+                            // the user left it; the other cross-filters
+                            // (status, priority, customer, project,
+                            // sub-project) have their own clear controls
+                            // and aren't touched here.
+                            setTaskScope('my-tasks')
+                            setTaskQuickFilter(null)
+                        }}
+                    >
+                        <CloseOutlined />
+                        Clear
+                    </button>
+                )}
             </div>
 
             {/* Week navigation row — only for calendar layout. Tight

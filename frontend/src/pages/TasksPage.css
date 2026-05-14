@@ -199,6 +199,44 @@
     background: rgba(99, 102, 241, 0.2);
 }
 
+/* Clear pill — borderless, muted reset control that appears only
+   when the view is non-default. Smaller visual weight than the
+   filter chips so it reads as "exit," not "another filter." */
+.tasks-page .tasks-quickfilter-clear {
+    cursor: pointer;
+    appearance: none;
+    border: 1px dashed transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    padding: 5px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 4px;
+    transition: background 140ms ease, color 140ms ease,
+        border-color 140ms ease;
+}
+
+.tasks-page .tasks-quickfilter-clear .anticon {
+    font-size: 10px;
+}
+
+.tasks-page .tasks-quickfilter-clear:hover {
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.tasks-page .tasks-quickfilter-clear:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+}
+
 /* Body padding similar to existing layout */
 .tasks-page .tasks-body {
     padding: 16px 24px 24px;
