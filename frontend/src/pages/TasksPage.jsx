@@ -96,6 +96,7 @@ function TasksPage() {
         canAssignTasks,
         isTaskAdmin,
         assignableUserIds,
+        assignableGroupIds,
     } = useTaskPermissions()
 
     const [weekStart, setWeekStart] = useState(() => dayjs().startOf('isoWeek'))
@@ -717,8 +718,16 @@ function TasksPage() {
         isTaskAdmin,
     ])
 
+    // Create requires assign permission AND at least one assignable
+    // target (user OR group). Previously this only counted
+    // assignableUserIds, which hid Create from users who could only
+    // assign through a group mapping — and also hid it from anyone
+    // whose direct user→user mappings had been wiped by an earlier
+    // permission OFF cascade.
     const canCreateTask =
-        isTaskAdmin || (canAssignTasks && (isTaskAdmin || assignableUserIds.length > 0))
+        isTaskAdmin ||
+        (canAssignTasks &&
+            (assignableUserIds.length > 0 || assignableGroupIds.length > 0))
 
     // Compute BEFORE the no-access early return below — useMemo is a
     // hook and must run in the same order on every render. Cold-load

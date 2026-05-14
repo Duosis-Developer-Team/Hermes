@@ -428,34 +428,27 @@ def upsert_task_group_member_override(
 
     # Denial cascade onto the direct row (only when explicitly
     # turning OFF; ON is additive and stays scoped to this group).
+    # We intentionally do NOT delete task_assignment_relations
+    # rows here. The previous cascade did, which made permission
+    # restoration destructive: turning Assign OFF wiped the
+    # assigner's hierarchy mappings, and turning Assign back ON
+    # left them with can_assign_tasks=true but zero assignable
+    # targets — so the Create button stayed hidden on the
+    # frontend (canCreateTask requires at least one assignable
+    # user/group). The resolver already gates assignment by
+    # can_assign_tasks; hierarchy rows are inert while denied
+    # and become live again when permission is restored.
     direct = (
         db.query(TaskUserPermission)
         .filter(TaskUserPermission.user_id == user_id)
         .first()
     )
     if direct is not None:
-        cascade_changed = False
         if access_value is False:
-            if direct.can_access_tasks or direct.can_assign_tasks:
-                cascade_changed = True
             direct.can_access_tasks = False
             direct.can_assign_tasks = False
         elif assign_value is False:
-            if direct.can_assign_tasks:
-                cascade_changed = True
             direct.can_assign_tasks = False
-        if cascade_changed and not direct.can_assign_tasks:
-            # User can no longer assign — clear out any
-            # hierarchy rows that name them as the assigner.
-            db.query(TaskAssignmentRelation).filter(
-                TaskAssignmentRelation.assigner_user_id == user_id
-            ).delete(synchronize_session=False)
-        if cascade_changed and not direct.can_access_tasks:
-            # User can no longer be assigned to — clear out any
-            # hierarchy rows that name them as the assignee.
-            db.query(TaskAssignmentRelation).filter(
-                TaskAssignmentRelation.assignee_user_id == user_id
-            ).delete(synchronize_session=False)
 
     db.commit()
     db.refresh(override)
