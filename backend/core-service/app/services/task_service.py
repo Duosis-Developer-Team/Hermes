@@ -140,19 +140,9 @@ def _resolve_effective_for_user(
 
     Resolution order:
 
-      1) If a direct task_user_permissions row exists (admin
-         explicitly set it via the "Additional Users" panel), its
-         value is FINAL — both True AND False are honoured. This
-         is the fix for the regression where flipping a user OFF
-         in Additional Users left them with task access because
-         the resolver fell through to group defaults.
-            - For "access": perm.can_access_tasks decides outright.
-            - For "assign": you can never "assign" without "access",
-              so require BOTH to be true; otherwise return False.
-              No fall-through.
-
-      2) No direct row → walk active group memberships
-         (_effective_group_grant):
+      1) If the user has ANY active group membership in an active
+         group, the direct task_user_permissions row is ignored.
+         Group permissions own the answer (_effective_group_grant):
             - Member override TRUE  → contributes True
             - Member override FALSE → contributes False (suppresses
               this group; other group memberships can still grant)
@@ -160,18 +150,51 @@ def _resolve_effective_for_user(
             - Else → contributes False
          Final is OR across contributions.
 
+         Why: the "Additional Users" panel is scoped to users with
+         no group membership (the admin tab filters by
+         is_group_member=False). Once a user is grouped, the group
+         tab is the canonical control surface — so a stale direct
+         row (left behind by an OFF cascade or a legacy bootstrap)
+         must never shadow the group answer. Without this rule,
+         toggling a member ON in the group panel could not undo a
+         prior OFF cascade because the resolver short-circuited on
+         the stale direct=false row.
+
+      2) No active group membership → fall back to the direct
+         task_user_permissions row (the "Additional Users" panel
+         writes here). Both True and False are honoured:
+            - For "access": perm.can_access_tasks decides outright.
+            - For "assign": you can never "assign" without "access",
+              so require BOTH to be true; otherwise return False.
+
+      3) No direct row either → False.
+
     Admin role is handled by the CurrentUser-typed callers because
     is_task_admin needs the CurrentUser, not just a UUID.
     """
+    has_active_group = (
+        db.query(UserGroupMember.id)
+        .join(UserGroup, UserGroup.id == UserGroupMember.group_id)
+        .filter(
+            UserGroupMember.user_id == user_id,
+            UserGroupMember.is_active.is_(True),
+            UserGroup.is_active.is_(True),
+        )
+        .first()
+        is not None
+    )
+    if has_active_group:
+        return _effective_group_grant(db, user_id, column=column)
+
     perm = get_task_permission(db, user_id)
-    if perm is not None:
-        if column == "access":
-            return bool(perm.can_access_tasks)
-        # column == "assign"
-        if not perm.can_access_tasks:
-            return False
-        return bool(perm.can_assign_tasks)
-    return _effective_group_grant(db, user_id, column=column)
+    if perm is None:
+        return False
+    if column == "access":
+        return bool(perm.can_access_tasks)
+    # column == "assign"
+    if not perm.can_access_tasks:
+        return False
+    return bool(perm.can_assign_tasks)
 
 
 def can_access_tasks(db: Session, user: CurrentUser) -> bool:
