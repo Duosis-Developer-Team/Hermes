@@ -27,7 +27,7 @@ const DeleteModal = ({
     // Mode Logic
     const isDeactivateMode = isActive === true;
 
-    const title = isDeactivateMode ? 'Archivieren / Deactivate?' : 'Delete Permanently?';
+    const title = isDeactivateMode ? 'Archive / Deactivate?' : 'Delete Permanently?';
 
     // We use a more generic description if not provided, but let's hardcode the logic as requested
     const description = isDeactivateMode
