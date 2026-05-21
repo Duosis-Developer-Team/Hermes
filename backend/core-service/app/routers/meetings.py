@@ -27,7 +27,7 @@ from ..schemas.meeting import (
 )
 from ..services import meeting_service
 from ..services.graph_service import get_graph_client
-from shared.auth import CurrentUser, get_current_user
+from shared.auth import CurrentUser, get_current_user, require_admin
 
 
 logger = logging.getLogger(__name__)
@@ -101,58 +101,64 @@ class SyncMeRequest(BaseModel):
     end_date: Optional[date] = None
 
 
-@router.post("/sync-me", response_model=MeetingSyncResult)
-async def sync_my_meetings(
-    payload: SyncMeRequest,
-    current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Sync ONLY the calling user's own Microsoft Graph calendar for a
-    date range (defaults to the current ISO week).
+class SyncUserRequest(BaseModel):
+    """Admin payload to sync one specific user's calendar. The email
+    is supplied by the caller (the frontend already has it from the
+    user lookup), so this path never calls auth-service either."""
 
-    This is the auto-sync path the Meetings page fires on load, so a
-    user always sees fresh meetings without an admin pressing "Sync".
-    Unlike the admin endpoint it never calls auth-service: the
-    email -> Hermes-user-id map is built from the caller's own JWT
-    claims (id + email), so it keeps working even when the internal
-    auth-service hop is unavailable. Each user mapping themselves is
-    enough for their own meetings to become visible to them; other
-    attendees get mapped when they in turn sync their own calendar.
+    user_id: UUID
+    email: str
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
-    Fails gracefully (ok=False + error) when Graph is unconfigured;
-    the page just shows whatever is already in the database.
-    """
+
+def _resolve_week_range(
+    start_date: Optional[date], end_date: Optional[date]
+) -> tuple[date, date]:
+    """Default an unset range to the current ISO week (Mon–Sun)."""
     today = date.today()
-    default_start = today - timedelta(days=today.weekday())  # Monday
-    start = payload.start_date or default_start
-    end = payload.end_date or (start + timedelta(days=6))
+    start = start_date or (today - timedelta(days=today.weekday()))
+    end = end_date or (start + timedelta(days=6))
     if end < start:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="end_date must be on or after start_date.",
         )
+    return start, end
 
+
+async def _sync_one_calendar(
+    db: Session,
+    *,
+    email: str,
+    user_id: UUID,
+    start: date,
+    end: date,
+) -> MeetingSyncResult:
+    """Sync a single user's Graph calendar for a date range, mapping
+    that user's own email -> Hermes id so the meetings become visible
+    to them. No auth-service round trip — the (email, user_id) pair is
+    supplied by the caller (own JWT for /sync-me, request body for the
+    admin /sync-user). Fails gracefully when Graph is unconfigured."""
     client = get_graph_client()
     if not client.is_configured:
         return MeetingSyncResult(
             ok=False,
-            error=(
-                "Microsoft Graph is not configured on this deployment."
-            ),
+            error="Microsoft Graph is not configured on this deployment.",
             users_attempted=0,
             users_succeeded=0,
         )
 
-    email = (current_user.email or "").strip()
+    email = (email or "").strip()
     if not email:
         return MeetingSyncResult(
             ok=False,
-            error="Your account has no email on file to sync.",
+            error="No email on file to sync.",
             users_attempted=0,
             users_succeeded=0,
         )
 
-    user_map = {email.lower(): UUID(current_user.id)}
+    user_map = {email.lower(): user_id}
     summary = await meeting_service.sync_user_meetings(
         db,
         user_email=email,
@@ -169,6 +175,53 @@ async def sync_my_meetings(
         meetings_cancelled=summary["meetings_cancelled"],
         attendees_upserted=summary["attendees_upserted"],
         per_user=[summary],
+    )
+
+
+@router.post("/sync-me", response_model=MeetingSyncResult)
+async def sync_my_meetings(
+    payload: SyncMeRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Sync ONLY the calling user's own Microsoft Graph calendar for a
+    date range (defaults to the current ISO week).
+
+    This is the auto-sync path the Meetings page fires on load, so a
+    user always sees fresh meetings without an admin pressing "Sync".
+    The email -> Hermes-user-id map is built from the caller's own JWT
+    claims (id + email), so it keeps working even when the internal
+    auth-service hop is unavailable.
+    """
+    start, end = _resolve_week_range(payload.start_date, payload.end_date)
+    return await _sync_one_calendar(
+        db,
+        email=current_user.email,
+        user_id=UUID(current_user.id),
+        start=start,
+        end=end,
+    )
+
+
+@router.post("/sync-user", response_model=MeetingSyncResult)
+async def sync_user_meetings_admin(
+    payload: SyncUserRequest,
+    admin: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin only — sync ONE specific user's calendar (the user the
+    admin is viewing in the Meetings selector). The frontend passes the
+    target's id + email from the user lookup it already loaded, so this
+    path also avoids the core -> auth-service hop that breaks the legacy
+    company-wide sync. Lets an admin see a teammate's calendar without
+    waiting for that teammate to log in and self-sync."""
+    start, end = _resolve_week_range(payload.start_date, payload.end_date)
+    return await _sync_one_calendar(
+        db,
+        email=payload.email,
+        user_id=payload.user_id,
+        start=start,
+        end=end,
     )
 
 

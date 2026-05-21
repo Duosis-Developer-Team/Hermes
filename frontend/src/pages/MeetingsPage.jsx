@@ -128,32 +128,58 @@ function MeetingsPage() {
         return [me, ...others]
     }, [user, isAdmin, allActiveUsers])
 
-    // Auto-sync the caller's OWN calendar for the visible week. Runs
-    // silently on load and whenever the week changes, so meetings show
-    // up without anyone pressing "Sync Meetings". Only fires for
-    // self-view — sync-me is scoped to the calling user's token, so it
-    // can't pull another user's calendar (admins use the explicit Sync
-    // button for that). Failures are swallowed: the page still renders
-    // whatever is already in the database.
-    const viewingSelf = !isAdmin || !selectedUserId
+    // Email of the user the admin is currently viewing (null when
+    // viewing self or when not admin). Pulled from the already-loaded
+    // user lookup so the admin sync needs no auth-service round trip.
+    const selectedUserEmail = useMemo(() => {
+        if (!isAdmin || !selectedUserId) return null
+        return (
+            allActiveUsers.find((u) => u.id === selectedUserId)?.email || null
+        )
+    }, [isAdmin, selectedUserId, allActiveUsers])
+
+    // Auto-sync the visible calendar for the visible week — silently,
+    // on load and on week change, so meetings appear without anyone
+    // pressing a button. Self-view uses the token-scoped /sync-me; an
+    // admin viewing another user uses /sync-user with that user's
+    // id+email. Failures are swallowed: the page still renders whatever
+    // is already in the database.
     useEffect(() => {
-        if (!user?.id || !viewingSelf) return
+        if (!user?.id) return
         let cancelled = false
-        meetingService
-            .syncMe({ start_date: weekStartStr, end_date: weekEndStr })
-            .then((res) => {
-                if (!cancelled && res?.ok) {
-                    queryClient.invalidateQueries({ queryKey: ['meetings'] })
-                }
+        const onDone = (res) => {
+            if (!cancelled && res?.ok) {
+                queryClient.invalidateQueries({ queryKey: ['meetings'] })
+            }
+        }
+        const viewingSelf = !isAdmin || !selectedUserId
+        let request = null
+        if (viewingSelf) {
+            request = meetingService.syncMe({
+                start_date: weekStartStr,
+                end_date: weekEndStr,
             })
-            .catch(() => {
-                /* silent — show whatever is already synced */
+        } else if (selectedUserEmail) {
+            request = meetingService.syncUser({
+                user_id: selectedUserId,
+                email: selectedUserEmail,
+                start_date: weekStartStr,
+                end_date: weekEndStr,
             })
+        }
+        if (request) request.then(onDone).catch(() => {})
         return () => {
             cancelled = true
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.id, viewingSelf, weekStartStr, weekEndStr])
+    }, [
+        user?.id,
+        isAdmin,
+        selectedUserId,
+        selectedUserEmail,
+        weekStartStr,
+        weekEndStr,
+    ])
 
     const handleSelectMeeting = (meeting) => {
         setReviewMeeting(meeting)
@@ -292,11 +318,7 @@ function MeetingsPage() {
                     </div>
                 ) : meetings.length === 0 ? (
                     <Empty
-                        description={
-                            isAdmin
-                                ? 'No meetings synced for this week. Click "Sync Meetings" to pull from Microsoft Graph.'
-                                : 'No meetings for this week.'
-                        }
+                        description="No meetings for this week."
                         style={{ marginTop: 60 }}
                     />
                 ) : (

@@ -1065,6 +1065,20 @@ export const meetingService = {
         )
         return response.data
     },
+
+    /**
+     * Admin only — sync ONE specific user's calendar for a date range.
+     * Pass the target user's id + email (the Meetings selector already
+     * has both from the user lookup). No auth-service round trip; fails
+     * gracefully via result.ok / result.error.
+     */
+    syncUser: async ({ user_id, email, start_date, end_date } = {}) => {
+        const response = await coreApi.post(
+            '/api/v1/core/meetings/sync-user',
+            { user_id, email, start_date, end_date }
+        )
+        return response.data
+    },
 }
 
 export default {
