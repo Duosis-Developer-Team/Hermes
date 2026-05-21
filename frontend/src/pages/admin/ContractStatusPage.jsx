@@ -313,7 +313,7 @@ function ContractStatusPage() {
                 }
                 .ant-table {
                     background: transparent !important;
-                    color: white !important;
+                    color: var(--c-text-strong) !important;
                 }
                 .ant-table-thead > tr > th {
                     background: var(--c-surface) !important;

@@ -269,3 +269,14 @@
     color: var(--c-text);
     margin-top: 4px;
 }
+
+/* ── Light-mode legibility: the amber/cream due text was tuned for a
+   dark card. On a light card it washes out, so darken it. The dark
+   due-badge chips (red/orange/brown bg + light text) stay as-is. ── */
+:root[data-theme="light"] .task-card-due-hint,
+:root[data-theme="light"] .task-due-marker-label {
+    color: #92600a;
+}
+:root[data-theme="light"] .task-due-marker-title {
+    color: #7a4a05;
+}

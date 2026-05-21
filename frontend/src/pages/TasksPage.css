@@ -140,7 +140,7 @@
 }
 
 .tasks-page .tasks-views-pill-active {
-    color: #fff;
+    color: var(--c-text-strong);
     background: rgba(99, 102, 241, 0.18);
     border-color: rgba(99, 102, 241, 0.55);
     box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.15),
@@ -190,7 +190,7 @@
 }
 
 .tasks-page .tasks-quickfilter-chip-active {
-    color: #fff;
+    color: var(--c-text-strong);
     background: rgba(99, 102, 241, 0.16);
     border-color: rgba(99, 102, 241, 0.55);
     box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.18);

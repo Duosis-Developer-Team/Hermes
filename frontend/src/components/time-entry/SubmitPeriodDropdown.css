@@ -16,11 +16,13 @@
     background: #0747a6;
 }
 
-/* Main Button */
-.submit-period-main-btn {
+/* Main Button — selector scoped to the group so the white text wins
+   over index.css's `.ant-btn-default { color: var(--text-primary) }`
+   in light mode (the button sits on a fixed blue group bg). */
+.submit-period-group .submit-period-main-btn {
     background: transparent !important;
     border: none !important;
-    color: white !important;
+    color: #fff !important;
     font-weight: 500;
     font-size: 14px;
     padding: 0 12px !important;
@@ -30,10 +32,10 @@
 }
 
 /* Arrow Button */
-.submit-period-arrow-btn {
+.submit-period-group .submit-period-arrow-btn {
     background: transparent !important;
     border: none !important;
-    color: white !important;
+    color: #fff !important;
     padding: 0 8px !important;
     height: 100% !important;
     border-left: 1px solid rgba(var(--overlay-rgb), 0.2) !important;

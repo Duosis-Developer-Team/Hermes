@@ -9,7 +9,7 @@
 
 import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, Avatar, Dropdown, Space, Typography, Button, Switch, Tooltip } from 'antd'
+import { Layout, Menu, Avatar, Dropdown, Space, Typography, Button, Switch } from 'antd'
 import {
     DashboardOutlined,
     ClockCircleOutlined,
@@ -250,16 +250,14 @@ function MainLayout() {
                     <div style={{ flex: 1 }} />
 
                     {/* Light / Dark toggle — sliding switch, default dark */}
-                    <Tooltip title={isLight ? 'Switch to dark mode' : 'Switch to light mode'}>
-                        <Switch
-                            className="theme-switch"
-                            checked={isLight}
-                            onChange={toggleTheme}
-                            checkedChildren={<BulbFilled />}
-                            unCheckedChildren={<BulbOutlined />}
-                            aria-label="Toggle light and dark mode"
-                        />
-                    </Tooltip>
+                    <Switch
+                        className="theme-switch"
+                        checked={isLight}
+                        onChange={toggleTheme}
+                        checkedChildren={<BulbFilled />}
+                        unCheckedChildren={<BulbOutlined />}
+                        aria-label="Toggle light and dark mode"
+                    />
 
                     {/* User Dropdown */}
                     <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">

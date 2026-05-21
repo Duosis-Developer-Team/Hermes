@@ -166,8 +166,12 @@
 .action-buttons .ant-btn-primary {
     background: var(--c-line) !important;
     border: none !important;
+    /* The button sits on a neutral grey; use the theme's strong text
+       (white in dark, near-black in light) so the label stays legible. */
+    color: var(--c-text-strong) !important;
 }
 
 .action-buttons .ant-btn-primary:hover {
     background: var(--c-line) !important;
+    color: var(--c-text-strong) !important;
 }

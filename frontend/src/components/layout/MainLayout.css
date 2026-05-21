@@ -47,8 +47,12 @@
 }
 
 .sidebar-logo {
+    /* Fixed box + contain so the dark (.jpg) and light (.png) logos —
+       which have slightly different intrinsic aspect ratios — render at
+       the same size and centered position in both themes. */
     height: 72px;
-    width: auto;
+    width: 150px;
+    object-fit: contain;
     border-radius: var(--radius-sm);
 }
 

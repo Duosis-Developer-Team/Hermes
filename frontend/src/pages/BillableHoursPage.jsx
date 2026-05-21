@@ -454,7 +454,7 @@ function BillableHoursPage() {
                 }
                 .ant-table {
                     background: transparent !important;
-                    color: white !important;
+                    color: var(--c-text-strong) !important;
                 }
                 .ant-table-thead > tr > th {
                     background: var(--c-surface) !important;
@@ -487,7 +487,7 @@ function BillableHoursPage() {
                 .ant-select-selector {
                     background-color: var(--c-surface-2) !important;
                     border-color: var(--c-border) !important;
-                    color: white !important;
+                    color: var(--c-text-strong) !important;
                     border-radius: 12px !important;
                 }
                 .ant-select-arrow {
