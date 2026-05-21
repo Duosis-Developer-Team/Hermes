@@ -6,5 +6,5 @@
     color: #fff;
 }
 .meeting-review-modal .ant-modal-close {
-    color: #9b9b9b;
+    color: var(--c-text-muted);
 }

@@ -89,7 +89,7 @@ function ContractStatusPage() {
             key: 'customer_name',
             width: 200,
             render: (name) => (
-                <Text strong style={{ fontSize: '0.95rem', color: '#fff' }}>
+                <Text strong style={{ fontSize: '0.95rem', color: 'var(--c-text-strong)' }}>
                     {name || 'Internal Project'}
                 </Text>
             )
@@ -100,7 +100,7 @@ function ContractStatusPage() {
             key: 'name',
             width: 200,
             render: (text) => (
-                <Text style={{ fontSize: '0.95rem', color: '#ccc' }}>{text}</Text>
+                <Text style={{ fontSize: '0.95rem', color: 'var(--c-text)' }}>{text}</Text>
             )
         },
         {
@@ -121,7 +121,7 @@ function ContractStatusPage() {
             render: (_, record) => (
                 <div style={{ width: '100%' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <span style={{ color: '#888', fontSize: 11 }}>
+                        <span style={{ color: 'var(--c-text-muted)', fontSize: 11 }}>
                             {record.usedDays} days used
                         </span>
                         <span style={{ color: record.color, fontSize: 11, fontWeight: 600 }}>
@@ -132,7 +132,7 @@ function ContractStatusPage() {
                         percent={record.progressPercent}
                         showInfo={false}
                         strokeColor={record.color}
-                        trailColor="rgba(255,255,255,0.1)"
+                        trailColor="rgba(var(--overlay-rgb),0.1)"
                         strokeWidth={6}
                         size="small"
                     />
@@ -146,8 +146,8 @@ function ContractStatusPage() {
             width: 150,
             align: 'right',
             render: (date) => date
-                ? <Text style={{ color: '#ccc' }}>{dayjs(date).format('DD.MM.YYYY')}</Text>
-                : <Text style={{ color: '#555' }}>—</Text>
+                ? <Text style={{ color: 'var(--c-text)' }}>{dayjs(date).format('DD.MM.YYYY')}</Text>
+                : <Text style={{ color: 'var(--c-text-faint)' }}>—</Text>
         }
     ]
 
@@ -157,21 +157,21 @@ function ContractStatusPage() {
     const safeCount = processedData.filter(c => c.status === 'safe').length
 
     return (
-        <div className="contract-status-page fade-in" style={{ padding: '24px', maxWidth: 1400, margin: '0 auto', color: '#fff' }}>
+        <div className="contract-status-page fade-in" style={{ padding: '24px', maxWidth: 1400, margin: '0 auto', color: 'var(--c-text-strong)' }}>
             {/* Header Section */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
                 <div>
                     <h1 style={{
                         margin: 0,
                         fontSize: '2rem',
-                        background: 'linear-gradient(to right, #fff, #aaa)',
+                        background: 'linear-gradient(to right, var(--c-text-strong), var(--c-text-muted))',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         fontWeight: 800
                     }}>
                         Contract Status
                     </h1>
-                    <Text style={{ color: '#666', fontSize: '1rem' }}>
+                    <Text style={{ color: 'var(--c-text-faint)', fontSize: '1rem' }}>
                         Track project contract durations and renewals
                     </Text>
                 </div>
@@ -216,27 +216,27 @@ function ContractStatusPage() {
 
             {/* Filter Bar */}
             <div style={{
-                background: 'rgba(255, 255, 255, 0.03)',
+                background: 'rgba(var(--overlay-rgb), 0.03)',
                 backdropFilter: 'blur(10px)',
                 padding: '16px 24px',
                 borderRadius: 16,
                 marginBottom: 24,
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(var(--overlay-rgb), 0.08)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <SearchOutlined style={{ color: '#666', fontSize: 18 }} />
+                    <SearchOutlined style={{ color: 'var(--c-text-faint)', fontSize: 18 }} />
                     <Input
                         placeholder="Search by customer or project name..."
                         bordered={false}
                         onChange={e => setSearchText(e.target.value)}
-                        style={{ color: '#fff', fontSize: 16, width: 350 }}
+                        style={{ color: 'var(--c-text-strong)', fontSize: 16, width: 350 }}
                         className="modern-search-input"
                     />
                 </div>
-                <div style={{ color: '#666' }}>
+                <div style={{ color: 'var(--c-text-faint)' }}>
                     {filteredData.length} records found
                 </div>
             </div>
@@ -246,10 +246,10 @@ function ContractStatusPage() {
                 variant="borderless"
                 styles={{ body: { padding: 0 } }}
                 style={{
-                    background: '#1f1f1f',
+                    background: 'var(--c-surface-2)',
                     borderRadius: 16,
                     overflow: 'hidden',
-                    border: '1px solid #303030'
+                    border: '1px solid var(--c-border)'
                 }}
             >
                 <Table
@@ -259,14 +259,14 @@ function ContractStatusPage() {
                     loading={isLoading}
                     pagination={{ pageSize: 10 }}
                     rowClassName="modern-row"
-                    locale={{ emptyText: <div style={{ padding: 40, color: '#666' }}>No contract data found. Add contract duration to your projects.</div> }}
+                    locale={{ emptyText: <div style={{ padding: 40, color: 'var(--c-text-faint)' }}>No contract data found. Add contract duration to your projects.</div> }}
                 />
             </Card>
 
             <style>{`
                 .modern-stat-card {
-                    background: #141414;
-                    border: 1px solid #303030;
+                    background: var(--c-surface);
+                    border: 1px solid var(--c-border);
                     border-radius: 16px;
                     padding: 24px;
                     display: flex;
@@ -276,14 +276,14 @@ function ContractStatusPage() {
                 }
                 .modern-stat-card:hover {
                     transform: translateY(-2px);
-                    border-color: #444;
+                    border-color: var(--c-border-strong);
                 }
                 .modern-stat-card.critical { border-left: 4px solid #ef4444; }
                 .modern-stat-card.warning { border-left: 4px solid #f59e0b; }
                 .modern-stat-card.safe { border-left: 4px solid #4ade80; }
 
                 .stat-icon-wrapper {
-                    background: rgba(255,255,255,0.03);
+                    background: rgba(var(--overlay-rgb),0.03);
                     width: 50px;
                     height: 50px;
                     border-radius: 12px;
@@ -292,7 +292,7 @@ function ContractStatusPage() {
                     justify-content: center;
                 }
                 .stat-label {
-                    color: #888;
+                    color: var(--c-text-muted);
                     font-size: 0.9rem;
                     margin-bottom: 4px;
                 }
@@ -304,21 +304,21 @@ function ContractStatusPage() {
 
                 .modern-row td {
                     background: transparent !important;
-                    border-bottom: 1px solid #303030 !important;
+                    border-bottom: 1px solid var(--c-border) !important;
                     padding: 20px 24px !important;
-                    color: #ccc !important;
+                    color: var(--c-text) !important;
                 }
                 .modern-row:hover td {
-                    background-color: rgba(255,255,255,0.03) !important;
+                    background-color: rgba(var(--overlay-rgb),0.03) !important;
                 }
                 .ant-table {
                     background: transparent !important;
                     color: white !important;
                 }
                 .ant-table-thead > tr > th {
-                    background: #141414 !important;
-                    color: #666 !important;
-                    border-bottom: 1px solid #303030 !important;
+                    background: var(--c-surface) !important;
+                    color: var(--c-text-faint) !important;
+                    border-bottom: 1px solid var(--c-border) !important;
                     font-size: 11px;
                     text-transform: uppercase;
                     letter-spacing: 1px;
@@ -329,10 +329,10 @@ function ContractStatusPage() {
                 }
                 .ant-pagination-item {
                     background: transparent !important;
-                    border-color: #444 !important;
+                    border-color: var(--c-border-strong) !important;
                 }
                 .ant-pagination-item a {
-                    color: #888 !important;
+                    color: var(--c-text-muted) !important;
                 }
                 .ant-pagination-item-active {
                     border-color: #1677ff !important;
@@ -341,7 +341,7 @@ function ContractStatusPage() {
                     color: #1677ff !important;
                 }
                 .modern-search-input::placeholder {
-                    color: #555;
+                    color: var(--c-text-faint);
                 }
                 .modern-search-input:focus {
                      box-shadow: none !important;

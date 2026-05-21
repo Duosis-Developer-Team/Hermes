@@ -6,8 +6,8 @@
 }
 
 .tasks-board-column {
-    background: #161616;
-    border: 1px solid #303030;
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
     border-radius: 8px;
     display: flex;
     flex-direction: column;
@@ -21,21 +21,21 @@
     align-items: center;
     justify-content: space-between;
     padding: 10px 12px;
-    border-bottom: 1px solid #303030;
-    background: #1a1a1a;
+    border-bottom: 1px solid var(--c-border);
+    background: var(--c-surface-raised);
 }
 .tasks-board-column-label {
     font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #d4d4d4;
+    color: var(--c-text);
 }
 .tasks-board-column-count {
     font-size: 11px;
     font-weight: 700;
-    color: #9b9b9b;
-    background: #262626;
+    color: var(--c-text-muted);
+    background: var(--c-chip);
     border-radius: 10px;
     padding: 1px 8px;
 }
@@ -50,7 +50,7 @@
 }
 
 .tasks-board-column-empty {
-    color: #6b6b6b;
+    color: var(--c-text-faint);
     font-size: 12px;
     text-align: center;
     padding: 16px 8px;
@@ -59,7 +59,7 @@
 
 /* Column accents — mirror status pill colours so the surface has
    the same dark Hermes palette but each column is glance-able. */
-.tasks-board-column-pending     .tasks-board-column-header { border-bottom-color: #404040; }
+.tasks-board-column-pending     .tasks-board-column-header { border-bottom-color: var(--c-border-strong); }
 .tasks-board-column-in_progress .tasks-board-column-header { border-bottom-color: #1e3a8a; }
 .tasks-board-column-completed   .tasks-board-column-header { border-bottom-color: #166534; }
 .tasks-board-column-rejected    .tasks-board-column-header { border-bottom-color: #b91c1c; }

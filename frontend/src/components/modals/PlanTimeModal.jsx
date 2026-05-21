@@ -140,10 +140,10 @@ function PlanTimeModal({
             className="plan-time-modal"
             title={
                 <div style={{ padding: '4px 0' }}>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-strong)' }}>
                         {editingPlan ? 'Edit Plan Time' : 'Plan Time'}
                     </div>
-                    <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 2 }}>
                         {editingPlan ? 'Update meeting details' : 'Create a meeting invite and assign to team members'}
                     </div>
                 </div>

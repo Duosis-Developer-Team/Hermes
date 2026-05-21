@@ -9,7 +9,7 @@
  * Visuals are intentionally identical to the inline delete modals in
  * TimeEntryPage / TasksPage:
  *   - centered, 420px, no header chrome
- *   - dark panel #1e1e1e with subtle border
+ *   - dark panel var(--c-surface-2) with subtle border
  *   - red icon badge + bold title + small subtitle
  *   - optional item preview card (name + secondary text)
  *   - paragraph body
@@ -48,8 +48,8 @@ function DangerConfirmModal({
             destroyOnClose
             styles={{
                 content: {
-                    background: '#1e1e1e',
-                    border: '1px solid #303030',
+                    background: 'var(--c-surface-2)',
+                    border: '1px solid var(--c-border)',
                     borderRadius: 12,
                     padding: '28px 28px 24px',
                 },
@@ -74,11 +74,11 @@ function DangerConfirmModal({
                         />
                     </div>
                     <div>
-                        <div style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>
+                        <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--c-text-strong)' }}>
                             {title}
                         </div>
                         {subtitle && (
-                            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 2 }}>
                                 {subtitle}
                             </div>
                         )}
@@ -88,8 +88,8 @@ function DangerConfirmModal({
                 {(itemName || itemSubtitle) && (
                     <div
                         style={{
-                            background: '#2a2a2a',
-                            border: '1px solid #383838',
+                            background: 'var(--c-border)',
+                            border: '1px solid var(--c-border-strong)',
                             borderRadius: 8,
                             padding: '10px 14px',
                         }}
@@ -99,14 +99,14 @@ function DangerConfirmModal({
                                 style={{
                                     fontSize: 13,
                                     fontWeight: 600,
-                                    color: '#e0e0e0',
+                                    color: 'var(--c-text)',
                                 }}
                             >
                                 {itemName}
                             </div>
                         )}
                         {itemSubtitle && (
-                            <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>
+                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 3 }}>
                                 {itemSubtitle}
                             </div>
                         )}
@@ -114,7 +114,7 @@ function DangerConfirmModal({
                 )}
 
                 {body && (
-                    <p style={{ margin: 0, color: '#aaa', fontSize: 14, lineHeight: 1.6 }}>
+                    <p style={{ margin: 0, color: 'var(--c-text-muted)', fontSize: 14, lineHeight: 1.6 }}>
                         {body}
                     </p>
                 )}
@@ -131,8 +131,8 @@ function DangerConfirmModal({
                         onClick={onCancel}
                         style={{
                             background: 'transparent',
-                            borderColor: '#444',
-                            color: '#ccc',
+                            borderColor: 'var(--c-border-strong)',
+                            color: 'var(--c-text)',
                             borderRadius: 8,
                         }}
                     >

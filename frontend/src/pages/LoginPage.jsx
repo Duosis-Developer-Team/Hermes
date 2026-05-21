@@ -122,7 +122,7 @@ function LoginPage() {
                             </Button>
                         </Form.Item>
 
-                        <Divider plain style={{ color: '#ccc', borderColor: '#444' }}>or</Divider>
+                        <Divider plain style={{ color: 'var(--c-text)', borderColor: 'var(--c-border-strong)' }}>or</Divider>
 
                         <Button
                             block
@@ -131,7 +131,7 @@ function LoginPage() {
                             onClick={handleMicrosoftLogin}
                             style={{
                                 background: '#2f2f2f',
-                                borderColor: '#444',
+                                borderColor: 'var(--c-border-strong)',
                                 color: '#fff',
                                 height: 45,
                                 fontSize: 15

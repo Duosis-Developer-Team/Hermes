@@ -129,7 +129,7 @@ function GroupMemberOverridesPanel({ group, allUsersById }) {
         {
             title: 'Member Title',
             dataIndex: 'title',
-            render: (val) => val || <span style={{ color: '#888' }}>—</span>,
+            render: (val) => val || <span style={{ color: 'var(--c-text-muted)' }}>—</span>,
         },
         {
             title: 'Access Tasks',
@@ -171,7 +171,7 @@ function GroupMemberOverridesPanel({ group, allUsersById }) {
 
     return (
         <div style={{ padding: '8px 0' }}>
-            <div style={{ marginBottom: 8, color: '#9b9b9b', fontSize: 12 }}>
+            <div style={{ marginBottom: 8, color: 'var(--c-text-muted)', fontSize: 12 }}>
                 Members are managed in Users → Groups.
             </div>
             <Table
@@ -300,10 +300,10 @@ function AdditionalUsersSection({ users }) {
     return (
         <div style={{ marginTop: 32 }}>
             <div style={{ marginBottom: 8 }}>
-                <strong style={{ fontSize: 15, color: '#fff' }}>
+                <strong style={{ fontSize: 15, color: 'var(--c-text-strong)' }}>
                     Additional Users
                 </strong>
-                <div style={{ color: '#9b9b9b', fontSize: 12, marginTop: 2 }}>
+                <div style={{ color: 'var(--c-text-muted)', fontSize: 12, marginTop: 2 }}>
                     People with task permissions outside any group.
                 </div>
             </div>
@@ -444,7 +444,7 @@ function TaskAccessByGroupTab() {
         {
             title: 'Description',
             dataIndex: 'description',
-            render: (val) => val || <span style={{ color: '#888' }}>—</span>,
+            render: (val) => val || <span style={{ color: 'var(--c-text-muted)' }}>—</span>,
         },
         {
             title: 'Members',

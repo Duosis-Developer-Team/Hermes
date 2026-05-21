@@ -52,8 +52,8 @@ export default class AppErrorBoundary extends React.Component {
                     style={{
                         maxWidth: 520,
                         width: '100%',
-                        background: '#161616',
-                        border: '1px solid #303030',
+                        background: 'var(--c-surface)',
+                        border: '1px solid var(--c-border)',
                         borderRadius: 10,
                         padding: '24px 28px',
                         boxShadow: '0 10px 30px rgba(0,0,0,0.45)',
@@ -63,7 +63,7 @@ export default class AppErrorBoundary extends React.Component {
                         style={{
                             fontSize: 18,
                             fontWeight: 600,
-                            color: '#fff',
+                            color: 'var(--c-text-strong)',
                             marginBottom: 8,
                         }}
                     >
@@ -71,7 +71,7 @@ export default class AppErrorBoundary extends React.Component {
                     </div>
                     <div
                         style={{
-                            color: '#9b9b9b',
+                            color: 'var(--c-text-muted)',
                             fontSize: 13,
                             marginBottom: 16,
                             lineHeight: 1.5,
@@ -83,8 +83,8 @@ export default class AppErrorBoundary extends React.Component {
                     </div>
                     <pre
                         style={{
-                            background: '#1f1f1f',
-                            border: '1px solid #303030',
+                            background: 'var(--c-surface-2)',
+                            border: '1px solid var(--c-border)',
                             borderRadius: 6,
                             padding: 10,
                             color: '#fca5a5',
@@ -105,7 +105,7 @@ export default class AppErrorBoundary extends React.Component {
                             appearance: 'none',
                             border: 'none',
                             background: '#6366f1',
-                            color: '#fff',
+                            color: 'var(--c-text-strong)',
                             fontWeight: 600,
                             fontSize: 14,
                             padding: '8px 18px',

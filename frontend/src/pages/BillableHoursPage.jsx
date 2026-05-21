@@ -214,22 +214,22 @@ function BillableHoursPage() {
             render: (text) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{
-                        background: '#333',
+                        background: 'var(--c-chip)',
                         padding: '6px 10px',
                         borderRadius: 8,
                         textAlign: 'center',
                         minWidth: 50
                     }}>
-                        <div style={{ fontSize: 16, fontWeight: 'bold', color: '#fff', lineHeight: 1 }}>
+                        <div style={{ fontSize: 16, fontWeight: 'bold', color: 'var(--c-text-strong)', lineHeight: 1 }}>
                             {dayjs(text).format('DD')}
                         </div>
-                        <div style={{ fontSize: 11, color: '#aaa', textTransform: 'uppercase' }}>
+                        <div style={{ fontSize: 11, color: 'var(--c-text-muted)', textTransform: 'uppercase' }}>
                             {dayjs(text).format('MMM')}
                         </div>
                     </div>
                     <div>
-                        <Text style={{ color: '#ccc', display: 'block' }}>{dayjs(text).format('dddd')}</Text>
-                        <Text style={{ color: '#666', fontSize: 12 }}>{dayjs(text).format('YYYY')}</Text>
+                        <Text style={{ color: 'var(--c-text)', display: 'block' }}>{dayjs(text).format('dddd')}</Text>
+                        <Text style={{ color: 'var(--c-text-faint)', fontSize: 12 }}>{dayjs(text).format('YYYY')}</Text>
                     </div>
                 </div>
             )
@@ -239,7 +239,7 @@ function BillableHoursPage() {
             key: 'customer',
             width: 200,
             render: (_, record) => (
-                <Text strong style={{ color: '#fff', fontSize: '1rem' }}>
+                <Text strong style={{ color: 'var(--c-text-strong)', fontSize: '1rem' }}>
                     {record.customerName}
                 </Text>
             )
@@ -261,7 +261,7 @@ function BillableHoursPage() {
             ellipsis: true,
             render: (text) => (
                 <Tooltip title={text}>
-                    <span style={{ color: '#aaa', maxWidth: 400, display: 'inline-block' }}>
+                    <span style={{ color: 'var(--c-text-muted)', maxWidth: 400, display: 'inline-block' }}>
                         {text || '-'}
                     </span>
                 </Tooltip>
@@ -325,11 +325,11 @@ function BillableHoursPage() {
     // Render
     // ==========================================================================
     if (!user?.is_admin) {
-        return <div style={{ padding: 40, textAlign: 'center', color: '#fff' }}>Access Denied</div>
+        return <div style={{ padding: 40, textAlign: 'center', color: 'var(--c-text-strong)' }}>Access Denied</div>
     }
 
     return (
-        <div style={{ padding: '24px', maxWidth: 1400, margin: '0 auto', color: '#fff' }}>
+        <div style={{ padding: '24px', maxWidth: 1400, margin: '0 auto', color: 'var(--c-text-strong)' }}>
 
             {/* Header Section */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
@@ -337,21 +337,21 @@ function BillableHoursPage() {
                     <h1 style={{
                         margin: 0,
                         fontSize: '2rem',
-                        background: 'linear-gradient(to right, #fff, #aaa)',
+                        background: 'linear-gradient(to right, var(--c-text-strong), var(--c-text-muted))',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         fontWeight: 800
                     }}>
                         Billable Hours
                     </h1>
-                    <Text style={{ color: '#666', fontSize: '1rem' }}>
+                    <Text style={{ color: 'var(--c-text-faint)', fontSize: '1rem' }}>
                         Manage user billable time entries
                     </Text>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{ textAlign: 'right', paddingRight: 16, borderRight: '1px solid #333' }}>
-                        <div style={{ fontSize: 12, color: '#888', letterSpacing: 1 }}>TOTAL</div>
+                    <div style={{ textAlign: 'right', paddingRight: 16, borderRight: '1px solid var(--c-chip)' }}>
+                        <div style={{ fontSize: 12, color: 'var(--c-text-muted)', letterSpacing: 1 }}>TOTAL</div>
                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#4ade80' }}>
                             {formatDecimalToHM(totalHours)}
                         </div>
@@ -367,7 +367,7 @@ function BillableHoursPage() {
                         options={usersList.map(u => ({
                             label: (
                                 <Space>
-                                    <Avatar size="small" style={{ backgroundColor: '#333' }}>{u.full_name?.[0]}</Avatar>
+                                    <Avatar size="small" style={{ backgroundColor: 'var(--c-chip)' }}>{u.full_name?.[0]}</Avatar>
                                     {u.full_name}
                                 </Space>
                             ),
@@ -377,19 +377,19 @@ function BillableHoursPage() {
                         filterOption={(input, option) =>
                             option.label.props.children[1].toLowerCase().includes(input.toLowerCase())
                         }
-                        styles={{ popup: { backgroundColor: '#1f1f1f' } }}
+                        styles={{ popup: { backgroundColor: 'var(--c-surface-2)' } }}
                     />
                 </div>
             </div>
 
             {/* Toolbar / Filter Bar */}
             <div style={{
-                background: 'rgba(255, 255, 255, 0.03)',
+                background: 'rgba(var(--overlay-rgb), 0.03)',
                 backdropFilter: 'blur(10px)',
                 padding: '12px 20px',
                 borderRadius: 16,
                 marginBottom: 24,
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(var(--overlay-rgb), 0.08)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
@@ -399,11 +399,11 @@ function BillableHoursPage() {
                         type="text"
                         icon={<LeftOutlined />}
                         onClick={goToPreviousWeek}
-                        style={{ color: '#fff' }}
+                        style={{ color: 'var(--c-text-strong)' }}
                     />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <CalendarOutlined style={{ color: '#1677ff' }} />
-                        <span style={{ fontSize: 16, fontWeight: 500, color: '#fff' }}>
+                        <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--c-text-strong)' }}>
                             {weekLabel}
                         </span>
                     </div>
@@ -411,7 +411,7 @@ function BillableHoursPage() {
                         type="text"
                         icon={<RightOutlined />}
                         onClick={goToNextWeek}
-                        style={{ color: '#fff' }}
+                        style={{ color: 'var(--c-text-strong)' }}
                     />
                 </Space>
 
@@ -425,10 +425,10 @@ function BillableHoursPage() {
                 variant="borderless"
                 styles={{ body: { padding: 0 } }}
                 style={{
-                    background: '#1f1f1f',
+                    background: 'var(--c-surface-2)',
                     borderRadius: 16,
                     overflow: 'hidden',
-                    border: '1px solid #303030'
+                    border: '1px solid var(--c-border)'
                 }}
             >
                 <Table
@@ -439,27 +439,27 @@ function BillableHoursPage() {
                     pagination={false}
                     rowClassName="modern-row"
                     scroll={{ x: 800 }}
-                    locale={{ emptyText: <div style={{ padding: 40, color: '#666' }}>No entries found.</div> }}
+                    locale={{ emptyText: <div style={{ padding: 40, color: 'var(--c-text-faint)' }}>No entries found.</div> }}
                 />
             </Card>
 
             <style>{`
                 .modern-row td {
                     background: transparent !important;
-                    border-bottom: 1px solid #303030 !important;
+                    border-bottom: 1px solid var(--c-border) !important;
                     padding: 16px 24px !important;
                 }
                 .modern-row:hover td {
-                    background-color: rgba(255,255,255,0.03) !important;
+                    background-color: rgba(var(--overlay-rgb),0.03) !important;
                 }
                 .ant-table {
                     background: transparent !important;
                     color: white !important;
                 }
                 .ant-table-thead > tr > th {
-                    background: #141414 !important;
-                    color: #888 !important;
-                    border-bottom: 1px solid #303030 !important;
+                    background: var(--c-surface) !important;
+                    color: var(--c-text-muted) !important;
+                    border-bottom: 1px solid var(--c-border) !important;
                     font-size: 11px;
                     text-transform: uppercase;
                     letter-spacing: 1px;
@@ -485,13 +485,13 @@ function BillableHoursPage() {
                     transform: scale(1.05);
                 }
                 .ant-select-selector {
-                    background-color: #1f1f1f !important;
-                    border-color: #303030 !important;
+                    background-color: var(--c-surface-2) !important;
+                    border-color: var(--c-border) !important;
                     color: white !important;
                     border-radius: 12px !important;
                 }
                 .ant-select-arrow {
-                    color: #888 !important;
+                    color: var(--c-text-muted) !important;
                 }
             `}</style>
         </div>

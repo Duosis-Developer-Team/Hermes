@@ -113,10 +113,10 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, 
             {/* Başlık satırı */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, minWidth: 0, paddingRight: canManage ? 52 : 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 12, color: '#fff', lineHeight: 1.3, marginBottom: 2 }}>
+                    <div style={{ fontWeight: 600, fontSize: 12, color: 'var(--c-text-strong)', lineHeight: 1.3, marginBottom: 2 }}>
                         {project_name || 'Plan Time'}
                     </div>
-                    <div style={{ fontSize: 11, color: '#aaa' }}>
+                    <div style={{ fontSize: 11, color: 'var(--c-text-muted)' }}>
                         {customer_name}
                     </div>
                 </div>
@@ -135,7 +135,7 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, 
             </div>
 
             {/* Zaman */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5, color: '#888', fontSize: 11 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5, color: 'var(--c-text-muted)', fontSize: 11 }}>
                 <ClockCircleOutlined style={{ fontSize: 10 }} />
                 <span>{timeLabel}{recurrenceLabel}</span>
             </div>

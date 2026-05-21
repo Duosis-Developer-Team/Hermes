@@ -329,7 +329,7 @@ function MeetingsPage() {
                         />
                         <span
                             style={{
-                                color: '#fff',
+                                color: 'var(--c-text-strong)',
                                 fontWeight: 500,
                                 marginLeft: 4,
                             }}

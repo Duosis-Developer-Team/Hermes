@@ -17,6 +17,9 @@ import 'dayjs/locale/en'
 
 import App from './App'
 import AppErrorBoundary from './components/common/AppErrorBoundary'
+// Side-effect import: applies the saved data-theme to <html> before the
+// first paint so there's no dark→light flash on light-mode reloads.
+import './stores/themeStore'
 import './index.css'
 
 dayjs.locale('en')

@@ -102,13 +102,13 @@ function DashboardPage() {
             return (
                 <div style={{
                     backgroundColor: '#1C2127',
-                    border: '1px solid #30363D',
+                    border: '1px solid var(--c-border)',
                     borderRadius: '4px',
                     padding: '8px 12px',
-                    color: '#C9D1D9',
+                    color: 'var(--c-text)',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
                 }}>
-                    <p style={{ margin: 0, fontWeight: 600, color: '#FFFFFF' }}>{label}</p>
+                    <p style={{ margin: 0, fontWeight: 600, color: 'var(--c-text-strong)' }}>{label}</p>
                     <p style={{ margin: 0 }}>{`${payload[0].value} h`}</p>
                 </div>
             )
@@ -134,14 +134,14 @@ function DashboardPage() {
                         <p>Team performance and time distribution</p>
                     </Col>
                     <Col>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#1c2128', padding: '4px 8px', borderRadius: 6, border: '1px solid #30363d' }}>
-                            <Button type="text" icon={<LeftOutlined />} onClick={goToPreviousMonth} style={{ color: '#c9d1d9' }} />
-                            <span style={{ color: '#c9d1d9', fontWeight: 500, minWidth: 160, textAlign: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--c-chip)', padding: '4px 8px', borderRadius: 6, border: '1px solid var(--c-border)' }}>
+                            <Button type="text" icon={<LeftOutlined />} onClick={goToPreviousMonth} style={{ color: 'var(--c-text)' }} />
+                            <span style={{ color: 'var(--c-text)', fontWeight: 500, minWidth: 160, textAlign: 'center' }}>
                                 {dateRange[0].format('DD MMM')} - {dateRange[1].format('DD MMM, YYYY')}
                             </span>
-                            <Button type="text" icon={<RightOutlined />} onClick={goToNextMonth} style={{ color: '#c9d1d9' }} />
-                            <div style={{ width: 1, height: 20, background: '#30363d', margin: '0 4px' }} />
-                            <Button type="text" onClick={goToThisMonth} style={{ color: '#c9d1d9' }}>Today</Button>
+                            <Button type="text" icon={<RightOutlined />} onClick={goToNextMonth} style={{ color: 'var(--c-text)' }} />
+                            <div style={{ width: 1, height: 20, background: 'var(--c-border)', margin: '0 4px' }} />
+                            <Button type="text" onClick={goToThisMonth} style={{ color: 'var(--c-text)' }}>Today</Button>
                         </div>
                     </Col>
                 </Row>

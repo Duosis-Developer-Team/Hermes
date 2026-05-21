@@ -162,17 +162,17 @@ function ProjectsPage() {
             width: 220,
             sorter: (a, b) => (a.contract_duration_days || 0) - (b.contract_duration_days || 0),
             render: (_, record) => {
-                if (!record.contract_duration_days) return <span style={{ color: 'rgba(255, 255, 255, 0.3)' }}>-</span>
+                if (!record.contract_duration_days) return <span style={{ color: 'rgba(var(--overlay-rgb), 0.3)' }}>-</span>
 
                 const totalBillableHours = billableSummary[record.id] || 0
                 const usedDays = Math.floor(totalBillableHours / HOURS_PER_DAY)
                 const remainingDays = Math.max(0, record.contract_duration_days - usedDays)
                 const pct = Math.min(100, (usedDays / record.contract_duration_days) * 100)
-                const color = pct >= 100 ? '#ff4d4f' : pct >= 80 ? '#ff4d4f' : pct >= 50 ? '#faad14' : 'rgba(255, 255, 255, 0.45)'
+                const color = pct >= 100 ? '#ff4d4f' : pct >= 80 ? '#ff4d4f' : pct >= 50 ? '#faad14' : 'rgba(var(--overlay-rgb), 0.45)'
 
                 return (
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '14px' }}>
+                        <span style={{ color: 'rgba(var(--overlay-rgb), 0.85)', fontSize: '14px' }}>
                             {record.contract_duration_days} Days Total
                         </span>
                         <span style={{ color, fontSize: '12px' }}>
@@ -187,7 +187,7 @@ function ProjectsPage() {
             key: 'contract_status',
             width: 160,
             render: (_, record) => {
-                if (!record.contract_duration_days) return <span style={{ color: 'rgba(255, 255, 255, 0.3)' }}>-</span>
+                if (!record.contract_duration_days) return <span style={{ color: 'rgba(var(--overlay-rgb), 0.3)' }}>-</span>
 
                 const totalBillableHours = billableSummary[record.id] || 0
                 const usedDays = Math.floor(totalBillableHours / HOURS_PER_DAY)
@@ -272,7 +272,7 @@ function ProjectsPage() {
 
                     <style>{`
                         .contrast-placeholder input::placeholder {
-                            color: rgba(255, 255, 255, 0.35) !important;
+                            color: rgba(var(--overlay-rgb), 0.35) !important;
                         }
                     `}</style>
                     <Form.Item>

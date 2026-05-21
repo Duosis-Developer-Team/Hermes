@@ -91,10 +91,10 @@ function AssignerCard({
                 }}
             >
                 <div>
-                    <div style={{ color: '#fff', fontWeight: 600 }}>
+                    <div style={{ color: 'var(--c-text-strong)', fontWeight: 600 }}>
                         {userLabel(assigner)}
                     </div>
-                    <div style={{ color: '#9b9b9b', fontSize: 12 }}>
+                    <div style={{ color: 'var(--c-text-muted)', fontSize: 12 }}>
                         {assigner.email || ''}
                     </div>
                 </div>
@@ -123,7 +123,7 @@ function AssignerCard({
                 <div
                     style={{
                         padding: '0 16px 16px',
-                        borderTop: '1px solid #303030',
+                        borderTop: '1px solid var(--c-border)',
                     }}
                 >
                     {/* Groups section */}
@@ -131,7 +131,7 @@ function AssignerCard({
                         <div
                             style={{
                                 fontSize: 11,
-                                color: '#9b9b9b',
+                                color: 'var(--c-text-muted)',
                                 letterSpacing: 0.4,
                                 textTransform: 'uppercase',
                                 marginBottom: 6,
@@ -142,7 +142,7 @@ function AssignerCard({
                         {groupRelations.length === 0 ? (
                             <div
                                 style={{
-                                    color: '#5a5a5a',
+                                    color: 'var(--c-text-faint)',
                                     fontSize: 12,
                                     fontStyle: 'italic',
                                 }}
@@ -162,17 +162,17 @@ function AssignerCard({
                                             justifyContent: 'space-between',
                                             alignItems: 'center',
                                             padding: '6px 0',
-                                            borderBottom: '1px solid #2a2a2a',
+                                            borderBottom: '1px solid var(--c-border)',
                                         }}
                                     >
                                         <div>
                                             <TeamOutlined
                                                 style={{ marginRight: 6, color: '#a78bfa' }}
                                             />
-                                            <span style={{ color: '#fff' }}>
+                                            <span style={{ color: 'var(--c-text-strong)' }}>
                                                 {g?.name || rel.assignee_group_id}
                                             </span>
-                                            <span style={{ color: '#9b9b9b', marginLeft: 8 }}>
+                                            <span style={{ color: 'var(--c-text-muted)', marginLeft: 8 }}>
                                                 {count} member{count === 1 ? '' : 's'}
                                             </span>
                                         </div>
@@ -195,7 +195,7 @@ function AssignerCard({
                         <div
                             style={{
                                 fontSize: 11,
-                                color: '#9b9b9b',
+                                color: 'var(--c-text-muted)',
                                 letterSpacing: 0.4,
                                 textTransform: 'uppercase',
                                 marginBottom: 6,
@@ -206,7 +206,7 @@ function AssignerCard({
                         {userRelations.length === 0 ? (
                             <div
                                 style={{
-                                    color: '#5a5a5a',
+                                    color: 'var(--c-text-faint)',
                                     fontSize: 12,
                                     fontStyle: 'italic',
                                 }}
@@ -224,20 +224,20 @@ function AssignerCard({
                                             justifyContent: 'space-between',
                                             alignItems: 'center',
                                             padding: '6px 0',
-                                            borderBottom: '1px solid #2a2a2a',
+                                            borderBottom: '1px solid var(--c-border)',
                                         }}
                                     >
                                         <div>
                                             <UserOutlined
                                                 style={{ marginRight: 6, color: '#60a5fa' }}
                                             />
-                                            <span style={{ color: '#fff' }}>
+                                            <span style={{ color: 'var(--c-text-strong)' }}>
                                                 {userLabel(u)}
                                             </span>
                                             {u?.email && (
                                                 <span
                                                     style={{
-                                                        color: '#9b9b9b',
+                                                        color: 'var(--c-text-muted)',
                                                         marginLeft: 8,
                                                         fontSize: 12,
                                                     }}

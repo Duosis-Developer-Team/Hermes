@@ -108,7 +108,7 @@
     align-items: stretch;
     gap: 2px;
     padding: 3px;
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(var(--overlay-rgb), 0.03);
     border: 1px solid var(--border-default);
     border-radius: 8px;
 }
@@ -131,7 +131,7 @@
 
 .tasks-page .tasks-views-pill:hover {
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(var(--overlay-rgb), 0.04);
 }
 
 .tasks-page .tasks-views-pill:focus-visible {
@@ -180,8 +180,8 @@
 
 .tasks-page .tasks-quickfilter-chip:hover {
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.03);
-    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(var(--overlay-rgb), 0.03);
+    border-color: rgba(var(--overlay-rgb), 0.12);
 }
 
 .tasks-page .tasks-quickfilter-chip:focus-visible {
@@ -228,8 +228,8 @@
 
 .tasks-page .tasks-quickfilter-clear:hover {
     color: var(--text-primary);
-    border-color: rgba(255, 255, 255, 0.18);
-    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(var(--overlay-rgb), 0.18);
+    background: rgba(var(--overlay-rgb), 0.04);
 }
 
 .tasks-page .tasks-quickfilter-clear:focus-visible {

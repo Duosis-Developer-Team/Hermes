@@ -363,7 +363,7 @@ function TaskManagementPage() {
             <Card
                 title="Task Management"
                 className="task-mgmt-card"
-                style={{ background: '#161616', borderColor: '#303030' }}
+                style={{ background: 'var(--c-surface)', borderColor: 'var(--c-border)' }}
             >
                 <Tabs
                     className="task-mgmt-tabs"

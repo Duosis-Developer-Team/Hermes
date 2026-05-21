@@ -964,7 +964,7 @@ function TasksPage() {
                                 setWeekStart((prev) => prev.add(1, 'week'))
                             }
                         />
-                        <span style={{ color: '#fff', fontWeight: 500 }}>
+                        <span style={{ color: 'var(--c-text-strong)', fontWeight: 500 }}>
                             {weekStart.format('DD MMM')} –{' '}
                             {weekEnd.format('DD MMM, YYYY')}
                         </span>
@@ -977,10 +977,10 @@ function TasksPage() {
             {/* Filters */}
             <Card
                 size="small"
-                style={{ marginBottom: 16, background: '#1a1a1a', borderColor: '#303030' }}
+                style={{ marginBottom: 16, background: 'var(--c-surface-raised)', borderColor: 'var(--c-border)' }}
             >
                 <Space wrap>
-                    <FilterOutlined style={{ color: '#9b9b9b' }} />
+                    <FilterOutlined style={{ color: 'var(--c-text-muted)' }} />
                     <Select
                         allowClear
                         placeholder="Status"
@@ -1159,8 +1159,8 @@ function TasksPage() {
                 closable={false}
                 styles={{
                     content: {
-                        background: '#1e1e1e',
-                        border: '1px solid #303030',
+                        background: 'var(--c-surface-2)',
+                        border: '1px solid var(--c-border)',
                         borderRadius: 12,
                         padding: '28px 28px 24px',
                     },
@@ -1185,10 +1185,10 @@ function TasksPage() {
                             />
                         </div>
                         <div>
-                            <div style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>
+                            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--c-text-strong)' }}>
                                 Delete Task
                             </div>
-                            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 2 }}>
                                 The task will be archived and removed from the calendar.
                             </div>
                         </div>
@@ -1197,16 +1197,16 @@ function TasksPage() {
                     {deletingTask && (
                         <div
                             style={{
-                                background: '#2a2a2a',
-                                border: '1px solid #383838',
+                                background: 'var(--c-border)',
+                                border: '1px solid var(--c-border-strong)',
                                 borderRadius: 8,
                                 padding: '10px 14px',
                             }}
                         >
-                            <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e0e0' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text)' }}>
                                 {deletingTask.title}
                             </div>
-                            <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>
+                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 3 }}>
                                 {deletingTask.customer_name || '—'}
                                 {deletingTask.project_name
                                     ? ` · ${deletingTask.project_name}`
@@ -1215,7 +1215,7 @@ function TasksPage() {
                         </div>
                     )}
 
-                    <p style={{ margin: 0, color: '#aaa', fontSize: 14, lineHeight: 1.6 }}>
+                    <p style={{ margin: 0, color: 'var(--c-text-muted)', fontSize: 14, lineHeight: 1.6 }}>
                         Are you sure you want to delete this task?
                     </p>
 
@@ -1224,8 +1224,8 @@ function TasksPage() {
                             onClick={() => setDeletingTask(null)}
                             style={{
                                 background: 'transparent',
-                                borderColor: '#444',
-                                color: '#ccc',
+                                borderColor: 'var(--c-border-strong)',
+                                color: 'var(--c-text)',
                                 borderRadius: 8,
                             }}
                         >

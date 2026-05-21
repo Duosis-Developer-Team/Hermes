@@ -14,7 +14,7 @@
 }
 
 .task-comments-empty {
-    color: #9b9b9b;
+    color: var(--c-text-muted);
     font-size: 12px;
     text-align: center;
     padding: 16px 8px;
@@ -22,8 +22,8 @@
 }
 
 .task-comment {
-    background: #1a1a1a;
-    border: 1px solid #303030;
+    background: var(--c-surface-raised);
+    border: 1px solid var(--c-border);
     border-radius: 6px;
     padding: 8px 10px;
 }
@@ -33,15 +33,15 @@
     align-items: center;
     gap: 8px;
     font-size: 12px;
-    color: #9b9b9b;
+    color: var(--c-text-muted);
     margin-bottom: 4px;
 }
 .task-comment-author {
-    color: #fff;
+    color: var(--c-text-strong);
     font-weight: 600;
 }
 .task-comment-time {
-    color: #9b9b9b;
+    color: var(--c-text-muted);
 }
 .task-comment-actions {
     margin-left: auto;
@@ -55,7 +55,7 @@
 }
 
 .task-comment-body {
-    color: #d4d4d4;
+    color: var(--c-text);
     font-size: 13px;
     line-height: 1.45;
     white-space: pre-wrap;

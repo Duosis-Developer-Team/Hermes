@@ -82,7 +82,7 @@ function TasksSearchBar({ userMap = {}, onSelect, style }) {
             <Input
                 size="small"
                 allowClear
-                prefix={<SearchOutlined style={{ color: '#9b9b9b' }} />}
+                prefix={<SearchOutlined style={{ color: 'var(--c-text-muted)' }} />}
                 placeholder="Search tasks..."
                 value={text}
                 onFocus={() => setOpen(true)}

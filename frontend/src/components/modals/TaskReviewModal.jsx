@@ -148,7 +148,7 @@ function ActivityTimeline({ taskId, userMap }) {
     }
     if (events.length === 0) {
         return (
-            <div style={{ color: '#9b9b9b', fontSize: 12, padding: '4px 0' }}>
+            <div style={{ color: 'var(--c-text-muted)', fontSize: 12, padding: '4px 0' }}>
                 No activity yet.
             </div>
         )
@@ -185,8 +185,8 @@ function ActivityTimeline({ taskId, userMap }) {
 function Row({ label, children }) {
     return (
         <div style={{ display: 'flex', gap: 12, padding: '6px 0' }}>
-            <Text style={{ width: 130, color: '#9b9b9b' }}>{label}</Text>
-            <div style={{ flex: 1, color: '#fff' }}>{children}</div>
+            <Text style={{ width: 130, color: 'var(--c-text-muted)' }}>{label}</Text>
+            <div style={{ flex: 1, color: 'var(--c-text-strong)' }}>{children}</div>
         </div>
     )
 }
@@ -342,15 +342,15 @@ function TaskReviewModal({
                                         </Row>
                                         {task.description && (
                                             <div style={{ marginTop: 10 }}>
-                                                <Text style={{ color: '#9b9b9b' }}>
+                                                <Text style={{ color: 'var(--c-text-muted)' }}>
                                                     Description
                                                 </Text>
                                                 <Paragraph
                                                     style={{
-                                                        color: '#fff',
-                                                        background: '#1a1a1a',
+                                                        color: 'var(--c-text-strong)',
+                                                        background: 'var(--c-surface-raised)',
                                                         border:
-                                                            '1px solid #303030',
+                                                            '1px solid var(--c-border)',
                                                         borderRadius: 6,
                                                         padding: 10,
                                                         marginTop: 4,

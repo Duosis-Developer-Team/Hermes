@@ -95,13 +95,13 @@ function VirtualMembersTable({ users }) {
         {
             title: 'Member Title',
             key: 'title',
-            render: () => <span style={{ color: '#888' }}>—</span>,
+            render: () => <span style={{ color: 'var(--c-text-muted)' }}>—</span>,
         },
     ]
 
     return (
         <div style={{ padding: '8px 0' }}>
-            <div style={{ marginBottom: 8, color: '#9b9b9b' }}>
+            <div style={{ marginBottom: 8, color: 'var(--c-text-muted)' }}>
                 {users.length} member{users.length === 1 ? '' : 's'} ·{' '}
                 membership is automatic — managed via user role.
             </div>
@@ -253,7 +253,7 @@ function RealMembersTable({ group, allUsersById, users }) {
         {
             title: 'Member Title',
             dataIndex: 'title',
-            render: (val) => val || <span style={{ color: '#888' }}>—</span>,
+            render: (val) => val || <span style={{ color: 'var(--c-text-muted)' }}>—</span>,
         },
         {
             title: 'Actions',
@@ -293,7 +293,7 @@ function RealMembersTable({ group, allUsersById, users }) {
                     marginBottom: 8,
                 }}
             >
-                <span style={{ color: '#9b9b9b' }}>
+                <span style={{ color: 'var(--c-text-muted)' }}>
                     {members.length} member{members.length === 1 ? '' : 's'}
                 </span>
                 <Button
@@ -461,7 +461,7 @@ function UserGroupsTab() {
         {
             title: 'Description',
             dataIndex: 'description',
-            render: (val) => val || <span style={{ color: '#888' }}>—</span>,
+            render: (val) => val || <span style={{ color: 'var(--c-text-muted)' }}>—</span>,
         },
         {
             title: 'Members',
@@ -475,7 +475,7 @@ function UserGroupsTab() {
             width: 200,
             render: (_, record) =>
                 record.virtual ? (
-                    <span style={{ color: '#888' }}>—</span>
+                    <span style={{ color: 'var(--c-text-muted)' }}>—</span>
                 ) : (
                     <Space onClick={(e) => e.stopPropagation()}>
                         <Tooltip title="Edit Group">

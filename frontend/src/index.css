@@ -71,6 +71,37 @@
   --color-warning: var(--Yellow400);
   --color-error: var(--Red400);
 
+  /* ------------------------------------------------------------------
+     Component neutral palette (theme-aware)
+     ------------------------------------------------------------------
+     The feature components (Tasks, Meetings, Time Entry cards, modals)
+     use a darker custom grey palette than the Atlassian aliases above.
+     These tokens carry the DARK values here and are flipped to light
+     under [data-theme="light"] below. Roles, not raw hexes, so light
+     mode inverts cleanly (white in dark -> near-black in light, etc.)
+     while brand accents (cyan/indigo/green/red) stay as-is.
+     ------------------------------------------------------------------ */
+  --c-surface: #161616;        /* cards, columns */
+  --c-surface-raised: #1c1c1c; /* hover / raised */
+  --c-surface-2: #1e1e1e;      /* raised panels, dropdowns */
+  --c-surface-sunken: #131313; /* deepest (weekend cols, wells) */
+  --c-chip: #262626;           /* chips / badges / inset */
+  --c-border: #2a2a2a;         /* default hairline border */
+  --c-border-strong: #3a3a3a;  /* hover / stronger border */
+  --c-line: #505050;           /* strongest divider / muted line */
+  --c-text-strong: #ffffff;    /* primary heading text */
+  --c-text: #cbd5e1;           /* body / secondary text */
+  --c-text-muted: #9b9b9b;     /* muted text */
+  --c-text-faint: #6b6b6b;     /* faint / placeholder text */
+  /* RGB channels for translucent overlays (white-on-dark highlights).
+     Flip to black in light mode so the same rgba(var(--overlay-rgb), a)
+     reads as a subtle dark tint instead of an invisible white one. */
+  --overlay-rgb: 255, 255, 255;
+
+  /* Sidebar (dark indigo in dark mode) */
+  --sider-bg: #1e1b4b;
+  --sider-text: var(--text-secondary);
+
   /* Shadows - Minimal */
   --shadow-sm: 0 1px 1px rgba(0, 0, 0, 0.25);
   --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -85,6 +116,60 @@
   /* Transitions */
   --transition-fast: 0.1s ease;
   --transition-normal: 0.2s ease;
+}
+
+/* ==========================================================================
+   LIGHT THEME OVERRIDES
+   ==========================================================================
+   Activated by data-theme="light" on <html>. Only colors flip — every
+   surface that was dark becomes light and every text/icon that was
+   light becomes dark, so contrast (and therefore visibility) is
+   preserved. Brand accents (Blue/Green/Red/Yellow/cyan/indigo) are
+   intentionally NOT inverted; they read on both backgrounds.
+   ========================================================================== */
+:root[data-theme="light"] {
+  /* Atlassian aliases — flipped to a light neutral ramp */
+  --bg-primary: #f4f5f7;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #ebecf0;
+  --bg-hover: #dfe1e6;
+
+  --text-primary: #172b4d;
+  --text-secondary: #44546f;
+  --text-muted: #626f86;
+
+  --border-default: #dfe1e6;
+  --border-subtle: rgba(0, 0, 0, 0.08);
+
+  /* N-scale entries used directly in CSS (sider, scrollbar, hovers) */
+  --N800: #ffffff;
+  --N700: #ebecf0;
+  --N600: #c1c7d0;
+  --N500: #a5adba;
+
+  /* Component neutral palette — inverted by role */
+  --c-surface: #ffffff;
+  --c-surface-raised: #f4f5f7;
+  --c-surface-2: #eceef1;
+  --c-surface-sunken: #f1f2f4;
+  --c-chip: #e9ebef;
+  --c-border: #dfe1e6;
+  --c-border-strong: #c1c7d0;
+  --c-line: #a5adba;
+  --c-text-strong: #172b4d;
+  --c-text: #42526e;
+  --c-text-muted: #626f86;
+  --c-text-faint: #8993a5;
+  --overlay-rgb: 0, 0, 0;
+
+  /* Sidebar becomes a clean light surface */
+  --sider-bg: #ffffff;
+  --sider-text: var(--text-secondary);
+
+  /* Softer shadows on light surfaces */
+  --shadow-sm: 0 1px 2px rgba(9, 30, 66, 0.08);
+  --shadow-md: 0 2px 6px rgba(9, 30, 66, 0.12);
+  --shadow-lg: 0 8px 20px rgba(9, 30, 66, 0.16);
 }
 
 /* ==========================================================================
@@ -382,11 +467,11 @@ body {
   background: var(--bg-secondary) !important;
   border: 1px solid var(--border-default) !important;
   box-shadow: var(--shadow-lg) !important;
-  color: #ffffff !important;
+  color: var(--text-primary) !important;
 }
 
 .ant-message-custom-content {
-  color: #ffffff !important;
+  color: var(--text-primary) !important;
 }
 
 .ant-message-custom-content>.anticon {
@@ -625,12 +710,12 @@ body {
 .ant-select-dropdown .ant-empty,
 .ant-select-dropdown .ant-empty-description,
 .ant-select-empty {
-  color: rgba(255, 255, 255, 0.85) !important;
+  color: var(--text-secondary) !important;
 }
 
 /* notFoundContent passed as plain text/node — render parent area readable */
 .ant-select-dropdown .rc-virtual-list-holder-inner > div:not(.ant-select-item) {
-  color: rgba(255, 255, 255, 0.85) !important;
+  color: var(--text-secondary) !important;
 }
 
 /* ==========================================================================
@@ -642,13 +727,13 @@ body {
    ========================================================================== */
 
 .ant-modal-body .ant-form-item-label > label {
-  color: rgba(255, 255, 255, 0.88) !important;
+  color: var(--text-primary) !important;
 }
 
 .ant-modal-body .ant-form-item-extra,
 .ant-modal-body .ant-form-item-explain,
 .ant-modal-body .ant-form-item-explain-error {
-  color: rgba(255, 255, 255, 0.55) !important;
+  color: var(--text-muted) !important;
 }
 
 .ant-modal-body .ant-form-item-explain-error {
@@ -659,14 +744,14 @@ body {
 .ant-modal-body .ant-input-number-input::placeholder,
 .ant-modal-body .ant-select-selection-placeholder,
 .ant-modal-body .ant-picker-input > input::placeholder {
-  color: rgba(255, 255, 255, 0.45) !important;
+  color: var(--text-muted) !important;
 }
 
 /* Descriptions inside modals (used by Task Detail) */
 .ant-modal-body .ant-descriptions-item-label {
-  color: rgba(255, 255, 255, 0.7) !important;
+  color: var(--text-secondary) !important;
 }
 
 .ant-modal-body .ant-descriptions-item-content {
-  color: rgba(255, 255, 255, 0.92) !important;
+  color: var(--text-primary) !important;
 }

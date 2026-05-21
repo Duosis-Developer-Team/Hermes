@@ -16,12 +16,12 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #9b9b9b;
+    color: var(--c-text-muted);
     font-size: 13px;
     padding: 0 4px;
 }
 .meetings-weekly-summary strong {
-    color: #fff;
+    color: var(--c-text-strong);
 }
 
 .meetings-weekly-columns {
@@ -32,8 +32,8 @@
 }
 
 .meeting-day-column {
-    background: #161616;
-    border: 1px solid #2a2a2a;
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
     border-radius: 8px;
     display: flex;
     flex-direction: column;
@@ -42,7 +42,7 @@
     overflow: hidden;
 }
 .meeting-day-column-weekend {
-    background: #131313;
+    background: var(--c-surface-sunken);
 }
 .meeting-day-column-today {
     border-color: rgba(34, 211, 238, 0.45);
@@ -54,26 +54,26 @@
     align-items: baseline;
     gap: 8px;
     padding: 10px 12px;
-    border-bottom: 1px solid #232323;
-    background: #1a1a1a;
+    border-bottom: 1px solid var(--c-border);
+    background: var(--c-surface-raised);
 }
 .meeting-day-name {
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #9b9b9b;
+    color: var(--c-text-muted);
 }
 .meeting-day-number {
     font-size: 16px;
     font-weight: 600;
-    color: #fff;
+    color: var(--c-text-strong);
 }
 .meeting-day-count {
     margin-left: auto;
     font-size: 11px;
     font-weight: 600;
-    color: #9b9b9b;
-    background: #262626;
+    color: var(--c-text-muted);
+    background: var(--c-chip);
     border-radius: 10px;
     padding: 1px 8px;
 }
@@ -91,7 +91,7 @@
 }
 
 .meeting-day-column-empty {
-    color: #5b5b5b;
+    color: var(--c-text-faint);
     font-size: 12px;
     text-align: center;
     padding: 12px 6px;

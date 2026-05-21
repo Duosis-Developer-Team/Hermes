@@ -78,7 +78,7 @@ function MeetingCard({
                     {isPrivate ? (
                         <Tooltip title="Private meeting — details are not stored">
                             <LockOutlined
-                                style={{ marginRight: 6, color: '#9b9b9b' }}
+                                style={{ marginRight: 6, color: 'var(--c-text-muted)' }}
                             />
                         </Tooltip>
                     ) : null}

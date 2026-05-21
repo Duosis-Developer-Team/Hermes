@@ -9,7 +9,7 @@
 
 import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, Avatar, Dropdown, Space, Typography, Button } from 'antd'
+import { Layout, Menu, Avatar, Dropdown, Space, Typography, Button, Switch, Tooltip } from 'antd'
 import {
     DashboardOutlined,
     ClockCircleOutlined,
@@ -25,12 +25,15 @@ import {
     SettingOutlined,
     CheckSquareOutlined,
     CalendarOutlined,
+    BulbFilled,
+    BulbOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
+import { useThemeStore } from '../../stores/themeStore'
 import { authService } from '../../services/api'
 import { useTaskPermissions } from '../../hooks/useTaskPermissions'
-import logoFull from '../../assets/logos/logo-full-dark.jpg'
-import logoText from '../../assets/logos/logo-text-dark.jpg'
+import logoFullDark from '../../assets/logos/logo-full-dark.jpg'
+import logoFullLight from '../../assets/logos/logo-full-light.png'
 import './MainLayout.css'
 
 const { Header, Sider, Content } = Layout
@@ -49,6 +52,8 @@ function MainLayout() {
     const navigate = useNavigate()
     const location = useLocation()
     const { user, logout } = useAuthStore()
+    const { theme: themeMode, toggleTheme } = useThemeStore()
+    const isLight = themeMode === 'light'
 
     const isAdmin = user?.is_admin === true
     const { canAccessTasks } = useTaskPermissions()
@@ -202,7 +207,7 @@ function MainLayout() {
                 {/* Logo - Tıklandığında anasayfaya yönlendirir */}
                 <div className="logo-container" onClick={() => navigate('/time-entry')}>
                     <img
-                        src={logoFull}
+                        src={isLight ? logoFullLight : logoFullDark}
                         alt="Hermes"
                         className="sidebar-logo"
                     />
@@ -210,7 +215,7 @@ function MainLayout() {
 
                 {/* Navigation Menu */}
                 <Menu
-                    theme="dark"
+                    theme={isLight ? 'light' : 'dark'}
                     mode="inline"
                     selectedKeys={[location.pathname]}
                     items={menuItems}
@@ -243,6 +248,18 @@ function MainLayout() {
 
                     {/* Spacer */}
                     <div style={{ flex: 1 }} />
+
+                    {/* Light / Dark toggle — sliding switch, default dark */}
+                    <Tooltip title={isLight ? 'Switch to dark mode' : 'Switch to light mode'}>
+                        <Switch
+                            className="theme-switch"
+                            checked={isLight}
+                            onChange={toggleTheme}
+                            checkedChildren={<BulbFilled />}
+                            unCheckedChildren={<BulbOutlined />}
+                            aria-label="Toggle light and dark mode"
+                        />
+                    </Tooltip>
 
                     {/* User Dropdown */}
                     <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">

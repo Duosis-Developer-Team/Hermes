@@ -31,8 +31,8 @@ const { Text, Paragraph } = Typography
 function Row({ label, children }) {
     return (
         <div style={{ display: 'flex', gap: 12, padding: '6px 0' }}>
-            <Text style={{ width: 110, color: '#9b9b9b' }}>{label}</Text>
-            <div style={{ flex: 1, color: '#fff' }}>{children}</div>
+            <Text style={{ width: 110, color: 'var(--c-text-muted)' }}>{label}</Text>
+            <div style={{ flex: 1, color: 'var(--c-text-strong)' }}>{children}</div>
         </div>
     )
 }
@@ -86,7 +86,7 @@ function MeetingReviewModal({
             title={
                 <span>
                     {isPrivate ? (
-                        <LockOutlined style={{ marginRight: 8, color: '#9b9b9b' }} />
+                        <LockOutlined style={{ marginRight: 8, color: 'var(--c-text-muted)' }} />
                     ) : (
                         <CalendarOutlined
                             style={{ marginRight: 8, color: '#22d3ee' }}
@@ -139,7 +139,7 @@ function MeetingReviewModal({
                         {organizer}
                         {meeting.organizer_email &&
                         meeting.organizer_name ? (
-                            <span style={{ color: '#9b9b9b', marginLeft: 8 }}>
+                            <span style={{ color: 'var(--c-text-muted)', marginLeft: 8 }}>
                                 {meeting.organizer_email}
                             </span>
                         ) : null}
@@ -147,7 +147,7 @@ function MeetingReviewModal({
                     <Row label="Attendees">
                         <span>
                             <UsergroupAddOutlined
-                                style={{ marginRight: 6, color: '#9b9b9b' }}
+                                style={{ marginRight: 6, color: 'var(--c-text-muted)' }}
                             />
                             {attendees.length}
                         </span>
@@ -163,12 +163,12 @@ function MeetingReviewModal({
 
                 {meeting.body_preview && !isPrivate && (
                     <div>
-                        <Text style={{ color: '#9b9b9b' }}>Description</Text>
+                        <Text style={{ color: 'var(--c-text-muted)' }}>Description</Text>
                         <Paragraph
                             style={{
-                                color: '#fff',
-                                background: '#1a1a1a',
-                                border: '1px solid #303030',
+                                color: 'var(--c-text-strong)',
+                                background: 'var(--c-surface-raised)',
+                                border: '1px solid var(--c-border)',
                                 borderRadius: 6,
                                 padding: 10,
                                 marginTop: 4,
@@ -184,12 +184,12 @@ function MeetingReviewModal({
 
                 {attendees.length > 0 && (
                     <div>
-                        <Text style={{ color: '#9b9b9b' }}>Invited</Text>
+                        <Text style={{ color: 'var(--c-text-muted)' }}>Invited</Text>
                         <div
                             style={{
                                 marginTop: 6,
-                                background: '#1a1a1a',
-                                border: '1px solid #303030',
+                                background: 'var(--c-surface-raised)',
+                                border: '1px solid var(--c-border)',
                                 borderRadius: 6,
                                 padding: 8,
                                 maxHeight: 140,
@@ -209,14 +209,14 @@ function MeetingReviewModal({
                                         gap: 8,
                                     }}
                                 >
-                                    <span style={{ color: '#cbd5e1' }}>
+                                    <span style={{ color: 'var(--c-text)' }}>
                                         {a.display_name || a.email}
                                     </span>
                                     <span
                                         style={{
                                             color: a.hermes_user_id
                                                 ? '#22d3ee'
-                                                : '#6b6b6b',
+                                                : 'var(--c-text-faint)',
                                             fontSize: 10,
                                             fontWeight: 600,
                                             textTransform: 'uppercase',

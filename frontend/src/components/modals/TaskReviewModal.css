@@ -13,11 +13,11 @@
     margin-bottom: 8px;
 }
 .task-review-modal .ant-tabs-tab {
-    color: #cbd5e1;
+    color: var(--c-text);
     transition: color 140ms ease;
 }
 .task-review-modal .ant-tabs-tab:hover {
-    color: #fff;
+    color: var(--c-text-strong);
 }
 .task-review-modal .ant-tabs-tab:focus-visible {
     outline: none;
@@ -32,7 +32,7 @@
     background: #6366f1;
 }
 .task-review-modal .ant-tabs-nav::before {
-    border-bottom-color: #303030;
+    border-bottom-color: var(--c-border);
 }
 
 .task-activity-timeline {
@@ -67,19 +67,19 @@
 .task-activity-line {
     font-size: 13px;
     line-height: 1.4;
-    color: #d4d4d4;
+    color: var(--c-text);
 }
 
 .task-activity-actor {
-    color: #fff;
+    color: var(--c-text-strong);
     font-weight: 600;
 }
 
 .task-activity-text {
-    color: #cbd5e1;
+    color: var(--c-text);
 }
 
 .task-activity-time {
     font-size: 11px;
-    color: #9b9b9b;
+    color: var(--c-text-muted);
 }

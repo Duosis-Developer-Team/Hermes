@@ -134,7 +134,7 @@ function TasksListView({
             render: (val) => (
                 <span
                     style={{
-                        color: '#9b9b9b',
+                        color: 'var(--c-text-muted)',
                         fontWeight: 600,
                         fontSize: 12,
                         letterSpacing: '0.04em',
@@ -151,8 +151,8 @@ function TasksListView({
             sorter: (a, b) => (a.title || '').localeCompare(b.title || ''),
             render: (val, row) => (
                 <div>
-                    <div style={{ color: '#fff', fontWeight: 600 }}>{val}</div>
-                    <div style={{ color: '#9b9b9b', fontSize: 12, marginTop: 2 }}>
+                    <div style={{ color: 'var(--c-text-strong)', fontWeight: 600 }}>{val}</div>
+                    <div style={{ color: 'var(--c-text-muted)', fontSize: 12, marginTop: 2 }}>
                         {row.customer_name || '—'}
                         {row.project_name ? ` · ${row.project_name}` : ''}
                         {row.sub_project_name ? ` · ${row.sub_project_name}` : ''}
@@ -217,7 +217,7 @@ function TasksListView({
                         <TaskDueBadge task={record} />
                     </Space>
                 ) : (
-                    <span style={{ color: '#888' }}>—</span>
+                    <span style={{ color: 'var(--c-text-muted)' }}>—</span>
                 ),
         },
         {

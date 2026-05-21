@@ -117,7 +117,7 @@
 /* Sidebar Footer */
 .sidebar-footer {
     padding: 16px 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--border-default);
     text-align: center;
     background: var(--N800);
 }
@@ -149,6 +149,11 @@
     position: sticky;
     top: 0;
     z-index: 99;
+}
+
+/* Light/Dark toggle in the header */
+.theme-switch {
+    margin-right: 14px;
 }
 
 .collapse-btn {

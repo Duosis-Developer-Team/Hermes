@@ -707,8 +707,8 @@ function TimeEntryPage() {
                 closable={false}
                 styles={{
                     content: {
-                        background: '#1e1e1e',
-                        border: '1px solid #303030',
+                        background: 'var(--c-surface-2)',
+                        border: '1px solid var(--c-border)',
                         borderRadius: 12,
                         padding: '28px 28px 24px',
                     }
@@ -725,35 +725,35 @@ function TimeEntryPage() {
                             <ExclamationCircleOutlined style={{ color: '#ef4444', fontSize: 20 }} />
                         </div>
                         <div>
-                            <div style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>Delete Plan</div>
-                            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>All assignments will be removed</div>
+                            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--c-text-strong)' }}>Delete Plan</div>
+                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 2 }}>All assignments will be removed</div>
                         </div>
                     </div>
 
                     {deletingPlan && (
                         <div style={{
-                            background: '#2a2a2a',
-                            border: '1px solid #383838',
+                            background: 'var(--c-border)',
+                            border: '1px solid var(--c-border-strong)',
                             borderRadius: 8,
                             padding: '10px 14px',
                         }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e0e0' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text)' }}>
                                 {deletingPlan.project_name || 'Plan Time'}
                             </div>
-                            <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>
+                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 3 }}>
                                 {deletingPlan.customer_name}
                             </div>
                         </div>
                     )}
 
-                    <p style={{ margin: 0, color: '#aaa', fontSize: 14, lineHeight: 1.6 }}>
+                    <p style={{ margin: 0, color: 'var(--c-text-muted)', fontSize: 14, lineHeight: 1.6 }}>
                         Are you sure you want to delete this plan?
                     </p>
 
                     <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
                         <Button
                             onClick={() => setDeletingPlan(null)}
-                            style={{ background: 'transparent', borderColor: '#444', color: '#ccc', borderRadius: 8 }}
+                            style={{ background: 'transparent', borderColor: 'var(--c-border-strong)', color: 'var(--c-text)', borderRadius: 8 }}
                         >
                             Cancel
                         </Button>
@@ -781,8 +781,8 @@ function TimeEntryPage() {
                 closable={false}
                 styles={{
                     content: {
-                        background: '#1e1e1e',
-                        border: '1px solid #303030',
+                        background: 'var(--c-surface-2)',
+                        border: '1px solid var(--c-border)',
                         borderRadius: 12,
                         padding: '28px 28px 24px',
                     }
@@ -800,10 +800,10 @@ function TimeEntryPage() {
                             <ExclamationCircleOutlined style={{ color: '#ef4444', fontSize: 20 }} />
                         </div>
                         <div>
-                            <div style={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>
+                            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--c-text-strong)' }}>
                                 Confirm Deletion
                             </div>
-                            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 2 }}>
                                 This action cannot be undone
                             </div>
                         </div>
@@ -812,16 +812,16 @@ function TimeEntryPage() {
                     {/* Log preview */}
                     {deletingLog && (
                         <div style={{
-                            background: '#2a2a2a',
-                            border: '1px solid #383838',
+                            background: 'var(--c-border)',
+                            border: '1px solid var(--c-border-strong)',
                             borderRadius: 8,
                             padding: '10px 14px',
                         }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: '#e0e0e0' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text)' }}>
                                 {deletingLog.project_name || 'Log Entry'}
                             </div>
                             {deletingLog.description && (
-                                <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>
+                                <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 3 }}>
                                     {deletingLog.description.length > 60
                                         ? deletingLog.description.substring(0, 60) + '…'
                                         : deletingLog.description}
@@ -831,7 +831,7 @@ function TimeEntryPage() {
                     )}
 
                     {/* Message */}
-                    <p style={{ margin: 0, color: '#aaa', fontSize: 14, lineHeight: 1.6 }}>
+                    <p style={{ margin: 0, color: 'var(--c-text-muted)', fontSize: 14, lineHeight: 1.6 }}>
                         Are you sure you want to delete this time log?
                     </p>
 
@@ -841,8 +841,8 @@ function TimeEntryPage() {
                             onClick={handleDeleteCancel}
                             style={{
                                 background: 'transparent',
-                                borderColor: '#444',
-                                color: '#ccc',
+                                borderColor: 'var(--c-border-strong)',
+                                color: 'var(--c-text)',
                                 borderRadius: 8,
                             }}
                         >

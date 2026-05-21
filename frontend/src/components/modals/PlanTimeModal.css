@@ -3,7 +3,7 @@
  */
 
 .plan-time-modal .ant-modal-content {
-    background: #1e1e1e;
+    background: var(--c-surface-2);
     border: 1px solid var(--border-default);
     border-radius: 8px;
     padding: 0;
@@ -35,21 +35,21 @@
 .plan-time-form .ant-select-selector,
 .plan-time-form .ant-picker,
 .plan-time-form .ant-input-number {
-    background: #2d2d2d !important;
-    border-color: #4a4a4a !important;
+    background: var(--c-chip) !important;
+    border-color: var(--c-border-strong) !important;
     color: var(--text-primary) !important;
 }
 
 .plan-time-form .ant-picker input {
-    color: #e0e0e0 !important;
+    color: var(--c-text) !important;
 }
 
 .plan-time-form .ant-picker input::placeholder {
-    color: #666 !important;
+    color: var(--c-text-faint) !important;
 }
 
 .plan-time-form .ant-picker .ant-picker-suffix {
-    color: #666 !important;
+    color: var(--c-text-faint) !important;
 }
 
 /* ==========================================================================
@@ -61,8 +61,8 @@
 }
 
 .plan-time-modal .issue-search-input {
-    background: #2d2d2d !important;
-    border-color: #4a4a4a !important;
+    background: var(--c-chip) !important;
+    border-color: var(--c-border-strong) !important;
 }
 
 .plan-time-modal .issue-search-input .ant-input {
@@ -139,20 +139,20 @@
    ========================================================================== */
 
 .plan-time-picker-popup .ant-picker-panel {
-    background: #1e1e1e !important;
-    border: 1px solid #3a3a3a !important;
+    background: var(--c-surface-2) !important;
+    border: 1px solid var(--c-border-strong) !important;
 }
 
 .plan-time-picker-popup .ant-picker-panel-layout {
-    background: #1e1e1e !important;
+    background: var(--c-surface-2) !important;
 }
 
 .plan-time-picker-popup .ant-picker-time-panel {
-    background: #1e1e1e !important;
+    background: var(--c-surface-2) !important;
 }
 
 .plan-time-picker-popup .ant-picker-time-panel-column {
-    border-inline-start-color: #3a3a3a !important;
+    border-inline-start-color: var(--c-border-strong) !important;
 }
 
 .plan-time-picker-popup .ant-picker-time-panel-column::-webkit-scrollbar {
@@ -160,23 +160,23 @@
 }
 
 .plan-time-picker-popup .ant-picker-time-panel-column::-webkit-scrollbar-track {
-    background: #2d2d2d;
+    background: var(--c-chip);
 }
 
 .plan-time-picker-popup .ant-picker-time-panel-column::-webkit-scrollbar-thumb {
-    background: #4a4a4a;
+    background: var(--c-border-strong);
     border-radius: 2px;
 }
 
 .plan-time-picker-popup .ant-picker-time-panel-cell-inner {
-    color: #e0e0e0 !important;
+    color: var(--c-text) !important;
     background: transparent !important;
     border-radius: 4px !important;
 }
 
 .plan-time-picker-popup .ant-picker-time-panel-cell:hover .ant-picker-time-panel-cell-inner {
-    background: #2d2d2d !important;
-    color: #fff !important;
+    background: var(--c-chip) !important;
+    color: var(--c-text-strong) !important;
 }
 
 .plan-time-picker-popup .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner {
@@ -186,12 +186,12 @@
 }
 
 .plan-time-picker-popup .ant-picker-footer {
-    background: #1e1e1e !important;
-    border-top: 1px solid #3a3a3a !important;
+    background: var(--c-surface-2) !important;
+    border-top: 1px solid var(--c-border-strong) !important;
 }
 
 .plan-time-picker-popup .ant-picker-ranges {
-    background: #1e1e1e !important;
+    background: var(--c-surface-2) !important;
 }
 
 .plan-time-picker-popup .ant-picker-now-btn {

@@ -303,7 +303,7 @@ function FilterBlock({ label, icon, count, children }) {
                 {count > 0 && (
                     <span style={{
                         background: 'var(--Blue400)',
-                        color: '#fff',
+                        color: 'var(--c-text-strong)',
                         borderRadius: 10,
                         padding: '1px 7px',
                         fontSize: 10,

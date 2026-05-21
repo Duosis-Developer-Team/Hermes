@@ -26,10 +26,10 @@
 .hmp-btn {
     width: 26px;
     height: 26px;
-    border: 1px solid #4a4a4a;
+    border: 1px solid var(--c-border-strong);
     border-radius: 4px;
-    background: #3a3a3a;
-    color: #ccc;
+    background: var(--c-border-strong);
+    color: var(--c-text);
     font-size: 14px;
     line-height: 1;
     cursor: pointer;
@@ -57,10 +57,10 @@
 .hmp-input {
     width: 44px;
     text-align: center;
-    background: #2d2d2d;
-    border: 1px solid #4a4a4a;
+    background: var(--c-chip);
+    border: 1px solid var(--c-border-strong);
     border-radius: 4px;
-    color: #fff;
+    color: var(--c-text-strong);
     font-size: 14px;
     font-weight: 600;
     height: 32px;
@@ -87,7 +87,7 @@
 /* Unit label (h / m) */
 .hmp-unit {
     font-size: 13px;
-    color: #888;
+    color: var(--c-text-muted);
     flex-shrink: 0;
     min-width: 10px;
 }

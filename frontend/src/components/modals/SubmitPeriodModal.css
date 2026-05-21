@@ -3,8 +3,8 @@
  */
 
 .submit-period-modal .ant-modal-content {
-    background: #2d2d2d;
-    border: 1px solid #4a4a4a;
+    background: var(--c-chip);
+    border: 1px solid var(--c-border-strong);
     border-radius: 8px;
     padding: 0;
 }
@@ -35,7 +35,7 @@
 
 .submit-modal-divider {
     height: 1px;
-    background: #4a4a4a;
+    background: var(--c-border-strong);
     margin-bottom: 24px;
 }
 
@@ -61,7 +61,7 @@
 
 .period-date-range {
     font-size: 13px;
-    color: #8b8b8b;
+    color: var(--c-text-muted);
 }
 
 .period-status-tag {
@@ -86,7 +86,7 @@
 
 .hours-label {
     font-size: 13px;
-    color: #8b8b8b;
+    color: var(--c-text-muted);
     width: 120px;
 }
 
@@ -121,25 +121,25 @@
 }
 
 .reviewer-select .ant-select-selector {
-    background: #3d3d3d !important;
-    border-color: #4a4a4a !important;
+    background: var(--c-border-strong) !important;
+    border-color: var(--c-border-strong) !important;
     color: white !important;
 }
 
 .reviewer-select .ant-select-selection-placeholder {
-    color: #8b8b8b !important;
+    color: var(--c-text-muted) !important;
 }
 
 /* Note */
 .reviewer-note {
-    background: #1e1e1e !important;
-    border: 1px solid #4a4a4a !important;
+    background: var(--c-surface-2) !important;
+    border: 1px solid var(--c-border-strong) !important;
     color: white !important;
     margin-bottom: 24px;
 }
 
 .reviewer-note::placeholder {
-    color: #8b8b8b !important;
+    color: var(--c-text-muted) !important;
 }
 
 /* Actions */
@@ -164,10 +164,10 @@
 }
 
 .action-buttons .ant-btn-primary {
-    background: #505050 !important;
+    background: var(--c-line) !important;
     border: none !important;
 }
 
 .action-buttons .ant-btn-primary:hover {
-    background: #606060 !important;
+    background: var(--c-line) !important;
 }
