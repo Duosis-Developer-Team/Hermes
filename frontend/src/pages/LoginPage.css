@@ -60,6 +60,68 @@
     margin: 0;
 }
 
+/* Primary Microsoft button — the default sign-in path */
+.ms-login-btn.ant-btn {
+    height: 52px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    background: #2f2f2f !important;
+    border: 1px solid #2f2f2f !important;
+    color: #fff !important;
+    border-radius: var(--radius-md) !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-shadow: var(--shadow-md);
+}
+
+.ms-login-btn.ant-btn:hover,
+.ms-login-btn.ant-btn:focus {
+    background: #1f1f1f !important;
+    border-color: #1f1f1f !important;
+    color: #fff !important;
+}
+
+.ms-login-btn .anticon {
+    font-size: 18px;
+}
+
+/* Collapsible email/password toggle */
+.login-email-toggle {
+    width: 100%;
+    margin-top: 16px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: var(--radius-md);
+    transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.login-email-toggle:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+}
+
+.login-email-toggle .anticon {
+    font-size: 11px;
+}
+
+/* Revealed email section */
+.login-email-section {
+    margin-top: 16px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-default);
+}
+
 /* Form Styling */
 .login-form .ant-form-item {
     margin-bottom: 20px;

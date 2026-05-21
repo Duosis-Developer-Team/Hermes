@@ -8,8 +8,14 @@
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Form, Input, Button, message, Divider } from 'antd'
-import { UserOutlined, LockOutlined, WindowsOutlined } from '@ant-design/icons'
+import { Form, Input, Button, message } from 'antd'
+import {
+    UserOutlined,
+    LockOutlined,
+    WindowsOutlined,
+    DownOutlined,
+    UpOutlined,
+} from '@ant-design/icons'
 import { useAuthStore } from '../stores/authStore'
 import { authService } from '../services/api'
 import logoIcon from '../assets/logos/logo-icon-dark.jpg'
@@ -23,6 +29,10 @@ import './LoginPage.css'
  */
 function LoginPage() {
     const [loading, setLoading] = useState(false)
+    // Microsoft sign-in is the primary path for almost everyone; the
+    // email/password form is collapsed by default and mainly used for
+    // admin / service accounts.
+    const [showEmail, setShowEmail] = useState(false)
     const navigate = useNavigate()
     const { login } = useAuthStore()
 
@@ -71,75 +81,80 @@ function LoginPage() {
                 {/* Login Card */}
                 <div className="login-card">
                     <div className="login-header">
-                        <h2>Sign in to your account</h2>
-                        <p>Enter your credentials to continue</p>
+                        <h2>Sign in to Hermes</h2>
+                        <p>Use your Microsoft work account to continue</p>
                     </div>
 
-                    <Form
-                        name="login"
-                        className="login-form"
-                        onFinish={handleSubmit}
-                        layout="vertical"
-                        requiredMark={false}
+                    {/* Primary: Microsoft SSO */}
+                    <Button
+                        block
+                        icon={<WindowsOutlined />}
+                        onClick={handleMicrosoftLogin}
+                        className="ms-login-btn"
                     >
-                        <Form.Item
-                            name="email"
-                            label="Email"
-                            rules={[
-                                { required: true, message: 'Please enter your email' },
-                                { type: 'email', message: 'Please enter a valid email address' }
-                            ]}
-                        >
-                            <Input
-                                prefix={<UserOutlined />}
-                                placeholder="you@company.com"
-                                size="large"
-                            />
-                        </Form.Item>
+                        Sign in with Microsoft
+                    </Button>
 
-                        <Form.Item
-                            name="password"
-                            label="Password"
-                            rules={[
-                                { required: true, message: 'Please enter your password' }
-                            ]}
-                        >
-                            <Input.Password
-                                prefix={<LockOutlined />}
-                                placeholder="Enter your password"
-                                size="large"
-                            />
-                        </Form.Item>
+                    {/* Secondary: collapsible email/password (admins, service accounts) */}
+                    <button
+                        type="button"
+                        className="login-email-toggle"
+                        aria-expanded={showEmail}
+                        onClick={() => setShowEmail((v) => !v)}
+                    >
+                        <span>Sign in with email &amp; password</span>
+                        {showEmail ? <UpOutlined /> : <DownOutlined />}
+                    </button>
 
-                        <Form.Item>
-                            <Button
-                                type="primary"
-                                htmlType="submit"
-                                loading={loading}
-                                className="login-submit-btn"
+                    {showEmail && (
+                        <Form
+                            name="login"
+                            className="login-form login-email-section fade-in"
+                            onFinish={handleSubmit}
+                            layout="vertical"
+                            requiredMark={false}
+                        >
+                            <Form.Item
+                                name="email"
+                                label="Email"
+                                rules={[
+                                    { required: true, message: 'Please enter your email' },
+                                    { type: 'email', message: 'Please enter a valid email address' }
+                                ]}
                             >
-                                Sign In
-                            </Button>
-                        </Form.Item>
+                                <Input
+                                    prefix={<UserOutlined />}
+                                    placeholder="you@company.com"
+                                    size="large"
+                                />
+                            </Form.Item>
 
-                        <Divider plain style={{ color: 'var(--c-text)', borderColor: 'var(--c-border-strong)' }}>or</Divider>
+                            <Form.Item
+                                name="password"
+                                label="Password"
+                                rules={[
+                                    { required: true, message: 'Please enter your password' }
+                                ]}
+                            >
+                                <Input.Password
+                                    prefix={<LockOutlined />}
+                                    placeholder="Enter your password"
+                                    size="large"
+                                />
+                            </Form.Item>
 
-                        <Button
-                            block
-                            size="large"
-                            icon={<WindowsOutlined />}
-                            onClick={handleMicrosoftLogin}
-                            style={{
-                                background: '#2f2f2f',
-                                borderColor: 'var(--c-border-strong)',
-                                color: '#fff',
-                                height: 45,
-                                fontSize: 15
-                            }}
-                        >
-                            Sign in with Microsoft
-                        </Button>
-                    </Form>
+                            <Form.Item style={{ marginBottom: 0 }}>
+                                <Button
+                                    type="primary"
+                                    htmlType="submit"
+                                    loading={loading}
+                                    className="login-submit-btn"
+                                >
+                                    Sign In
+                                </Button>
+                            </Form.Item>
+                        </Form>
+                    )}
                 </div>
 
                 {/* Footer */}
