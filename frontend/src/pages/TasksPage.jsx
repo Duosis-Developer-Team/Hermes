@@ -32,6 +32,9 @@ import {
     DeleteOutlined,
     UserOutlined,
     CloseOutlined,
+    PlayCircleOutlined,
+    CheckCircleOutlined,
+    UndoOutlined,
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -54,6 +57,7 @@ import TasksSearchBar from '../components/tasks/TasksSearchBar'
 import CreateTaskModal from '../components/modals/CreateTaskModal'
 import TaskReviewModal from '../components/modals/TaskReviewModal'
 import LogTimeModal from '../components/modals/LogTimeModal'
+import DangerConfirmModal from '../components/common/DangerConfirmModal'
 import './TasksPage.css'
 
 dayjs.extend(isoWeek)
@@ -111,6 +115,9 @@ function TasksPage() {
     const [editingTask, setEditingTask] = useState(null)
     const [initialDate, setInitialDate] = useState(null)
     const [deletingTask, setDeletingTask] = useState(null)
+    // Pending checkbox-driven status change awaiting confirmation:
+    // { task, nextCompleted } | null.
+    const [pendingToggle, setPendingToggle] = useState(null)
     const [reviewTask, setReviewTask] = useState(null)
     // Task to prefill the Log Time modal with. Set on first completion
     // and on the explicit "Log Time" action; never set on reopen.
@@ -492,7 +499,10 @@ function TasksPage() {
         await createMutation.mutateAsync(payload)
     }
 
-    const handleToggleCompletion = async (task, nextCompleted) => {
+    // Runs the actual status change. Callers must confirm first (the
+    // card checkbox routes through a confirm modal; the review modal
+    // has its own confirmation).
+    const executeToggle = async (task, nextCompleted) => {
         // Workflow gate: a pending task can't be completed directly.
         // The first "complete" action accepts it (→ In Progress); the
         // assignee completes it on the next action.
@@ -514,6 +524,19 @@ function TasksPage() {
             setReviewTask(null)
             setLogTimeTask(task)
         }
+    }
+
+    // Card/list checkbox entry point — opens a confirmation first so an
+    // accidental click can't change the task's state.
+    const handleToggleCompletion = (task, nextCompleted) => {
+        setPendingToggle({ task, nextCompleted })
+    }
+
+    const handleConfirmToggle = async () => {
+        if (!pendingToggle) return
+        const { task, nextCompleted } = pendingToggle
+        await executeToggle(task, nextCompleted)
+        setPendingToggle(null)
     }
 
     const handleAcceptTask = async (task) => {
@@ -539,10 +562,10 @@ function TasksPage() {
     }
 
     const handleReviewMarkCompleted = async (task) => {
-        // Closes review, flips status, and the existing toggle handler
-        // auto-opens the Log Time modal on success.
+        // Already confirmed inside the review modal — run directly.
+        // Closes review, flips status, and auto-opens Log Time on success.
         setReviewTask(null)
-        await handleToggleCompletion(task, true)
+        await executeToggle(task, true)
     }
 
     const handleReviewReject = async (task) => {
@@ -550,7 +573,18 @@ function TasksPage() {
     }
 
     const handleReviewReopen = async (task) => {
-        await reopenMutation.mutateAsync(task.id)
+        if (task.status === 'completed') {
+            // Undo an accidental completion → back to In Progress
+            // (no need to re-accept your own work).
+            const updated = await completionMutation.mutateAsync({
+                id: task.id,
+                completed: false,
+            })
+            if (updated?.id) setReviewTask(updated)
+        } else {
+            // Rejected → back to Pending (must be re-accepted).
+            await reopenMutation.mutateAsync(task.id)
+        }
     }
 
     const handleClearFilters = () => {
@@ -1177,6 +1211,58 @@ function TasksPage() {
                 currentUserId={user?.id}
                 isAdmin={isTaskAdmin}
             />
+
+            {/* Confirmation for checkbox-driven status changes (accept /
+                complete / reopen) — same dialog pattern as delete so an
+                accidental click can't silently change a task's state. */}
+            {(() => {
+                if (!pendingToggle) return null
+                const { task, nextCompleted } = pendingToggle
+                const isAccept = nextCompleted && task.status === 'pending'
+                const cfg = isAccept
+                    ? {
+                          title: 'Accept this task?',
+                          body: 'The task will move to In Progress so you can start working on it.',
+                          confirmLabel: 'Accept Task',
+                          icon: <PlayCircleOutlined />,
+                      }
+                    : nextCompleted
+                    ? {
+                          title: 'Mark task as completed?',
+                          body: 'This marks the task as completed. You can reopen it afterwards if needed.',
+                          confirmLabel: 'Mark as Completed',
+                          icon: <CheckCircleOutlined />,
+                      }
+                    : {
+                          title: 'Reopen this task?',
+                          body: 'The task will move back to In Progress so it can be worked on again.',
+                          confirmLabel: 'Reopen',
+                          icon: <UndoOutlined />,
+                      }
+                return (
+                    <DangerConfirmModal
+                        open={!!pendingToggle}
+                        tone="primary"
+                        badgeIcon={cfg.icon}
+                        confirmIcon={cfg.icon}
+                        title={cfg.title}
+                        body={cfg.body}
+                        itemName={task.title}
+                        itemSubtitle={
+                            [task.customer_name, task.project_name]
+                                .filter(Boolean)
+                                .join(' · ') || undefined
+                        }
+                        confirmLabel={cfg.confirmLabel}
+                        onCancel={() => setPendingToggle(null)}
+                        onConfirm={handleConfirmToggle}
+                        loading={
+                            completionMutation.isPending ||
+                            acceptMutation.isPending
+                        }
+                    />
+                )
+            })()}
 
             {/* Delete confirmation — mirrors Time Entry's delete modal */}
             <Modal

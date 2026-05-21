@@ -36,7 +36,16 @@ function DangerConfirmModal({
     onConfirm,
     onCancel,
     loading = false,
+    // 'danger' (red, destructive) or 'primary' (indigo, affirmative).
+    tone = 'danger',
+    // Icon shown in the badge; defaults to the warning glyph.
+    badgeIcon = <ExclamationCircleOutlined />,
 }) {
+    const isDanger = tone === 'danger'
+    const accent = isDanger ? '#ef4444' : 'var(--color-primary)'
+    const accentBadgeBg = isDanger
+        ? 'rgba(239,68,68,0.15)'
+        : 'rgba(99,102,241,0.15)'
     return (
         <Modal
             open={open}
@@ -62,16 +71,16 @@ function DangerConfirmModal({
                             width: 40,
                             height: 40,
                             borderRadius: 10,
-                            background: 'rgba(239,68,68,0.15)',
+                            background: accentBadgeBg,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0,
+                            color: accent,
+                            fontSize: 20,
                         }}
                     >
-                        <ExclamationCircleOutlined
-                            style={{ color: '#ef4444', fontSize: 20 }}
-                        />
+                        {badgeIcon}
                     </div>
                     <div>
                         <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--c-text-strong)' }}>
@@ -140,7 +149,7 @@ function DangerConfirmModal({
                     </Button>
                     <Button
                         type="primary"
-                        danger
+                        danger={isDanger}
                         icon={confirmIcon}
                         onClick={onConfirm}
                         loading={loading}

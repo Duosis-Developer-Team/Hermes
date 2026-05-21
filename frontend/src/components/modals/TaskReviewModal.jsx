@@ -26,6 +26,7 @@ import {
     CloseCircleOutlined,
     UndoOutlined,
     PlayCircleOutlined,
+    ExclamationCircleOutlined,
 } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -206,7 +207,10 @@ function TaskReviewModal({
     currentUserId,
     isAdmin = false,
 }) {
-    const [confirmRejectOpen, setConfirmRejectOpen] = useState(false)
+    // Which action is awaiting confirmation: 'accept' | 'complete' |
+    // 'reject' | 'reopen' | null. Every state-changing action routes
+    // through a confirmation dialog (same pattern as delete).
+    const [confirmType, setConfirmType] = useState(null)
 
     if (!task) return null
 
@@ -217,21 +221,52 @@ function TaskReviewModal({
     const isInProgress = status === 'in_progress'
     const isOpenStatus = isPending || isInProgress
 
-    const handleAccept = () => {
-        onAccept?.(task)
+    const CONFIRM = {
+        accept: {
+            tone: 'primary',
+            badgeIcon: <PlayCircleOutlined />,
+            confirmIcon: <PlayCircleOutlined />,
+            title: 'Accept this task?',
+            body: 'The task will move to In Progress so you can start working on it.',
+            confirmLabel: 'Accept Task',
+            action: onAccept,
+        },
+        complete: {
+            tone: 'primary',
+            badgeIcon: <CheckCircleOutlined />,
+            confirmIcon: <CheckCircleOutlined />,
+            title: 'Mark task as completed?',
+            body: 'This marks the task as completed. You can reopen it afterwards if needed.',
+            confirmLabel: 'Mark as Completed',
+            action: onMarkCompleted,
+        },
+        reject: {
+            tone: 'danger',
+            badgeIcon: <ExclamationCircleOutlined />,
+            confirmIcon: <CloseCircleOutlined />,
+            title: 'Reject task?',
+            body: 'This will mark the task as not completed. Are you sure you want to continue?',
+            confirmLabel: 'Reject Task',
+            action: onReject,
+        },
+        reopen: {
+            tone: 'primary',
+            badgeIcon: <UndoOutlined />,
+            confirmIcon: <UndoOutlined />,
+            title: 'Reopen this task?',
+            body: isCompleted
+                ? 'The task will move back to In Progress so it can be worked on again.'
+                : 'The task will move back to Pending so it can be re-accepted.',
+            confirmLabel: 'Reopen',
+            action: onReopen,
+        },
     }
+    const activeConfirm = confirmType ? CONFIRM[confirmType] : null
 
-    const handleMarkCompleted = () => {
-        onMarkCompleted?.(task)
-    }
-
-    const handleConfirmReject = async () => {
-        await onReject?.(task)
-        setConfirmRejectOpen(false)
-    }
-
-    const handleReopen = () => {
-        onReopen?.(task)
+    const handleConfirm = async () => {
+        const cfg = CONFIRM[confirmType]
+        if (cfg?.action) await cfg.action(task)
+        setConfirmType(null)
     }
 
     return (
@@ -417,8 +452,8 @@ function TaskReviewModal({
                                         <Button
                                             type="primary"
                                             icon={<PlayCircleOutlined />}
-                                            loading={actionLoading}
-                                            onClick={handleAccept}
+                                            disabled={actionLoading}
+                                            onClick={() => setConfirmType('accept')}
                                         >
                                             Accept Task
                                         </Button>
@@ -426,8 +461,8 @@ function TaskReviewModal({
                                         <Button
                                             type="primary"
                                             icon={<CheckCircleOutlined />}
-                                            loading={actionLoading}
-                                            onClick={handleMarkCompleted}
+                                            disabled={actionLoading}
+                                            onClick={() => setConfirmType('complete')}
                                         >
                                             Mark as Completed
                                         </Button>
@@ -436,17 +471,17 @@ function TaskReviewModal({
                                         danger
                                         icon={<CloseCircleOutlined />}
                                         disabled={actionLoading}
-                                        onClick={() => setConfirmRejectOpen(true)}
+                                        onClick={() => setConfirmType('reject')}
                                     >
                                         Reject Task
                                     </Button>
                                 </>
                             )}
-                            {canAct && isRejected && onReopen && (
+                            {canAct && (isRejected || isCompleted) && onReopen && (
                                 <Button
                                     icon={<UndoOutlined />}
-                                    loading={actionLoading}
-                                    onClick={handleReopen}
+                                    disabled={actionLoading}
+                                    onClick={() => setConfirmType('reopen')}
                                 >
                                     Reopen
                                 </Button>
@@ -458,13 +493,21 @@ function TaskReviewModal({
             </Modal>
 
             <DangerConfirmModal
-                open={confirmRejectOpen}
-                title="Reject task?"
-                body="This will mark the task as not completed. Are you sure you want to continue?"
+                open={!!activeConfirm}
+                tone={activeConfirm?.tone}
+                badgeIcon={activeConfirm?.badgeIcon}
+                confirmIcon={activeConfirm?.confirmIcon}
+                title={activeConfirm?.title}
+                body={activeConfirm?.body}
                 itemName={task.title}
-                confirmLabel="Reject Task"
-                onCancel={() => setConfirmRejectOpen(false)}
-                onConfirm={handleConfirmReject}
+                itemSubtitle={
+                    [task.customer_name, task.project_name]
+                        .filter(Boolean)
+                        .join(' · ') || undefined
+                }
+                confirmLabel={activeConfirm?.confirmLabel}
+                onCancel={() => setConfirmType(null)}
+                onConfirm={handleConfirm}
                 loading={actionLoading}
             />
         </>
