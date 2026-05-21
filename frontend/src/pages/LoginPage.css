@@ -28,8 +28,12 @@
 }
 
 .login-logo-image {
+    /* Fixed box + contain so the dark (.jpg) and light (.png) boot icons,
+       which have different intrinsic aspect ratios, render at the same
+       size and position in both themes. */
     width: 240px;
-    height: auto;
+    height: 120px;
+    object-fit: contain;
     border-radius: 12px;
 }
 

@@ -17,8 +17,10 @@ import {
     UpOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../stores/authStore'
+import { useThemeStore } from '../stores/themeStore'
 import { authService } from '../services/api'
-import logoIcon from '../assets/logos/logo-icon-dark.jpg'
+import logoIconDark from '../assets/logos/logo-icon-dark.jpg'
+import logoIconLight from '../assets/logos/logo-icon-light.png'
 import './LoginPage.css'
 
 /**
@@ -35,6 +37,10 @@ function LoginPage() {
     const [showEmail, setShowEmail] = useState(false)
     const navigate = useNavigate()
     const { login } = useAuthStore()
+    // Light mode needs the dark-colored boot icon (logo-icon-light.png);
+    // the white boot (logo-icon-dark.jpg) disappears on the light card.
+    const isLight = useThemeStore((s) => s.theme === 'light')
+    const logoIcon = isLight ? logoIconLight : logoIconDark
 
     const handleSubmit = async (values) => {
         setLoading(true)
