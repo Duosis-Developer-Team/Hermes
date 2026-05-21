@@ -363,11 +363,44 @@ def _migrate_tasks_assignment_batch_id() -> None:
         db.close()
 
 
+def _ensure_prerequisite_objects() -> None:
+    """
+    create_all()'dan ÖNCE çalışması gereken, tablo dışı şema nesnelerini
+    garanti eder.
+
+    tasks.task_number kolonunun server_default'u nextval('task_number_seq')
+    olduğu için, BOŞ bir veritabanında create_all() "tasks" tablosunu kurmaya
+    çalışırken sequence henüz yoksa
+    `UndefinedTable: relation "task_number_seq" does not exist` ile patlar.
+    (Mevcut DB'lerde tablo zaten var; create_all onu atlar, bu yüzden sorun
+    yalnızca taze/backup kurulumlarında görülür.)
+
+    Sequence'i tablo kurulumundan önce yaratarak bu yumurta-tavuk problemini
+    çözüyoruz. CREATE SEQUENCE IF NOT EXISTS sayesinde her startup'ta güvenle
+    yeniden çalışır; sıra/değer asla sıfırlanmaz. Backfill ve SET DEFAULT
+    gibi mevcut-DB mantığı _migrate_tasks_task_number()'da kalır.
+    """
+    from sqlalchemy import text
+
+    db = SessionLocal()
+    try:
+        db.execute(text("CREATE SEQUENCE IF NOT EXISTS task_number_seq"))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️  task_number_seq ön-hazırlık hatası: {e}")
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Uygulama yaşam döngüsü yönetimi."""
     settings = get_settings()
     print(f"🚀 {settings.SERVICE_NAME} v{settings.SERVICE_VERSION} başlatılıyor...")
+    # create_all()'dan önce: tasks tablosunun default'unun bağlı olduğu
+    # sequence'i garanti et (taze/backup DB'de create_all aksi halde patlar).
+    _ensure_prerequisite_objects()
     init_db()
     print("✅ Veritabanı tabloları hazır")
     _migrate_billable_hours()
