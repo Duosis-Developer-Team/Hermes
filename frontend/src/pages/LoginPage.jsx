@@ -8,13 +8,15 @@
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Form, Input, Button, message } from 'antd'
+import { Form, Input, Button, message, Switch } from 'antd'
 import {
     UserOutlined,
     LockOutlined,
     WindowsOutlined,
     DownOutlined,
     UpOutlined,
+    BulbFilled,
+    BulbOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../stores/authStore'
 import { useThemeStore } from '../stores/themeStore'
@@ -40,6 +42,7 @@ function LoginPage() {
     // Light mode needs the dark-colored boot icon (logo-icon-light.png);
     // the white boot (logo-icon-dark.jpg) disappears on the light card.
     const isLight = useThemeStore((s) => s.theme === 'light')
+    const toggleTheme = useThemeStore((s) => s.toggleTheme)
     const logoIcon = isLight ? logoIconLight : logoIconDark
 
     const handleSubmit = async (values) => {
@@ -78,6 +81,16 @@ function LoginPage() {
 
     return (
         <div className="login-page">
+            {/* Light / Dark toggle — top-right, same control as the app header */}
+            <Switch
+                className="theme-switch login-theme-switch"
+                checked={isLight}
+                onChange={toggleTheme}
+                checkedChildren={<BulbFilled />}
+                unCheckedChildren={<BulbOutlined />}
+                aria-label="Toggle light and dark mode"
+            />
+
             <div className="login-container">
                 {/* Logo Section - Sadece çizme ikonu */}
                 <div className="login-logo">

@@ -15,6 +15,14 @@
     padding: 20px;
 }
 
+/* Theme toggle — fixed top-right, mirrors the app header position */
+.login-theme-switch {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    z-index: 10;
+}
+
 /* Login Container */
 .login-container {
     width: 100%;
