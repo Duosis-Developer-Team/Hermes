@@ -116,6 +116,12 @@
     color: #c7d2fe;
     border: 1px solid rgba(98, 100, 167, 0.4);
 }
+/* Light mode: the pale indigo text washes out on the light tint —
+   use a dark indigo so the Teams badge stays readable. */
+:root[data-theme="light"] .meeting-card-teams {
+    color: #312e81;
+    border-color: rgba(98, 100, 167, 0.5);
+}
 
 .meeting-card-cancelled-pill {
     background: rgba(185, 28, 28, 0.22);
