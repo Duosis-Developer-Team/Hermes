@@ -153,14 +153,20 @@ def _migrate_tasks_task_number() -> None:
             "ALTER COLUMN task_number SET DEFAULT nextval('task_number_seq')"
         ))
         # Push the sequence past the highest existing value so new
-        # inserts can't collide with a backfilled row.
-        db.execute(text(
-            "SELECT setval("
-            "  'task_number_seq', "
-            "  COALESCE((SELECT MAX(task_number) FROM tasks), 0), "
-            "  true"
-            ")"
-        ))
+        # inserts can't collide with a backfilled row. Guard the
+        # empty-table case: setval(seq, 0, true) is out of range because
+        # the sequence minimum is 1, which previously made this whole
+        # migration roll back on a fresh DB (no tasks yet). When there
+        # are no rows, leave the sequence at its fresh state so the
+        # first task gets task_number = 1.
+        max_task_number = db.execute(text(
+            "SELECT COALESCE(MAX(task_number), 0) FROM tasks"
+        )).scalar() or 0
+        if int(max_task_number) > 0:
+            db.execute(
+                text("SELECT setval('task_number_seq', :v, true)"),
+                {"v": int(max_task_number)},
+            )
         # Only flip to NOT NULL if every row is filled — defensive.
         null_count = db.execute(text(
             "SELECT COUNT(*) FROM tasks WHERE task_number IS NULL"
