@@ -33,6 +33,41 @@ import './LogTimeModal.css'
 
 const { TextArea } = Input
 
+/**
+ * Strip the auto-generated Microsoft Teams boilerplate from a meeting
+ * body preview, leaving only the human-written description. Teams
+ * appends a long underscore separator followed by the join block
+ * ("Microsoft Teams meeting" / Join / Meeting ID / Passcode) and
+ * sometimes forwarded-mail headers — none of which belong in a time
+ * log. We cut at the first such marker and return the trimmed
+ * remainder.
+ */
+function cleanMeetingBody(raw) {
+    if (!raw) return ''
+    let text = String(raw).replace(/\r\n/g, '\n')
+
+    // 1) Teams' underscore separator that precedes the join block.
+    const underscore = text.search(/_{5,}/)
+    if (underscore !== -1) text = text.slice(0, underscore)
+
+    // 2) Fallback markers if the separator was stripped by Graph's
+    //    bodyPreview truncation (localized variants included).
+    const markers = [
+        /Microsoft Teams meeting/i,
+        /Microsoft Teams Toplant/i,
+        /Join the meeting now/i,
+        /Toplant[ıi]ya kat[ıi]l/i,
+        /Meeting ID:/i,
+        /Toplant[ıi] kimli[ğg]i:/i,
+    ]
+    for (const m of markers) {
+        const idx = text.search(m)
+        if (idx !== -1) text = text.slice(0, idx)
+    }
+
+    return text.trim()
+}
+
 function LogTimeModal({
     open,
     onClose,
@@ -192,10 +227,10 @@ function LogTimeModal({
                 : prefillMeeting.subject || '(Untitled meeting)'
             const body = isPrivate
                 ? ''
-                : (prefillMeeting.body_preview || '').trim()
-            const description = body
-                ? `Meeting: ${subject}\n\n${body}`
-                : `Meeting: ${subject}`
+                : cleanMeetingBody(prefillMeeting.body_preview)
+            // Title first, then the human description (if any). No
+            // "Meeting:" prefix and no Teams join/forward boilerplate.
+            const description = body ? `${subject}\n\n${body}` : subject
             const dateValue = prefillMeeting.start_datetime
                 ? dayjs(prefillMeeting.start_datetime)
                 : initialDate
