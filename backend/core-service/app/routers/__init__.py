@@ -20,7 +20,6 @@ from .tasks import router as tasks_router
 from .task_admin import router as task_admin_router
 from .user_group_admin import router as user_group_admin_router
 from .meetings import router as meetings_router
-from .meeting_admin import router as meeting_admin_router
 
 __all__ = [
     "customers_router",
@@ -40,5 +39,4 @@ __all__ = [
     "task_admin_router",
     "user_group_admin_router",
     "meetings_router",
-    "meeting_admin_router",
 ]

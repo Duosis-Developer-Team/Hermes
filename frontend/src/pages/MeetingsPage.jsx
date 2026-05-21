@@ -17,13 +17,11 @@ import {
     Select,
     Space,
     Spin,
-    Tooltip,
     message,
 } from 'antd'
 import {
     LeftOutlined,
     RightOutlined,
-    SyncOutlined,
     UserOutlined,
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -157,40 +155,6 @@ function MeetingsPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id, viewingSelf, weekStartStr, weekEndStr])
 
-    // Admin-only — Graph sync trigger. Fails gracefully when Graph is
-    // not configured; the backend already short-circuits to a clean
-    // { ok: false, error } payload.
-    const syncMutation = useMutation({
-        mutationFn: () =>
-            meetingService.sync({
-                start_date: weekStartStr,
-                end_date: weekEndStr,
-                user_id: isAdmin ? selectedUserId || null : null,
-            }),
-        onSuccess: (result) => {
-            if (result?.ok) {
-                message.success(
-                    `Synced ${result.meetings_upserted} meeting${
-                        result.meetings_upserted === 1 ? '' : 's'
-                    } across ${result.users_succeeded}/${
-                        result.users_attempted
-                    } users.`
-                )
-            } else {
-                message.error(
-                    result?.error ||
-                        'Sync completed but no user succeeded.'
-                )
-            }
-            queryClient.invalidateQueries({ queryKey: ['meetings'] })
-        },
-        onError: (err) => {
-            message.error(
-                err?.response?.data?.detail || 'Failed to sync meetings.'
-            )
-        },
-    })
-
     const handleSelectMeeting = (meeting) => {
         setReviewMeeting(meeting)
     }
@@ -318,17 +282,6 @@ function MeetingsPage() {
                             {weekEnd.format('DD MMM, YYYY')}
                         </span>
                     </Space>
-                    {isAdmin && (
-                        <Tooltip title="Pull this week's meetings from Microsoft Graph">
-                            <Button
-                                icon={<SyncOutlined spin={syncMutation.isPending} />}
-                                loading={syncMutation.isPending}
-                                onClick={() => syncMutation.mutate()}
-                            >
-                                Sync Meetings
-                            </Button>
-                        </Tooltip>
-                    )}
                 </div>
             </div>
 

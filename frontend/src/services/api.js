@@ -1052,33 +1052,6 @@ export const meetingService = {
         return response.data
     },
 
-    /** Admin only — current Graph config + last sync snapshot. */
-    getSyncStatus: async () => {
-        const response = await coreApi.get(
-            '/api/v1/core/admin/meetings/sync-status'
-        )
-        return response.data
-    },
-
-    /**
-     * Admin only — trigger a Microsoft Graph sync for a date range.
-     * Resolves with the full MeetingSyncResult (includes per-user
-     * breakdown). The endpoint fails gracefully if Graph isn't
-     * configured; check `result.ok` and `result.error` for the
-     * user-facing message.
-     */
-    sync: async ({ start_date, end_date, user_id = null } = {}) => {
-        const response = await coreApi.post(
-            '/api/v1/core/admin/meetings/sync',
-            {
-                start_date,
-                end_date,
-                user_id: user_id || null,
-            }
-        )
-        return response.data
-    },
-
     /**
      * Any authenticated user — sync the caller's OWN calendar for a
      * date range. No admin rights and no auth-service round trip; the

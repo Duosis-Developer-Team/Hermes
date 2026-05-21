@@ -41,7 +41,6 @@ from app.routers import (
     task_admin_router,
     user_group_admin_router,
     meetings_router,
-    meeting_admin_router,
 )
 from shared.exceptions import HermesException
 
@@ -453,7 +452,6 @@ app.include_router(tasks_router, prefix=API_PREFIX)
 app.include_router(task_admin_router, prefix=API_PREFIX)
 app.include_router(user_group_admin_router, prefix=API_PREFIX)
 app.include_router(meetings_router, prefix=API_PREFIX)
-app.include_router(meeting_admin_router, prefix=API_PREFIX)
 
 
 @app.get("/health", tags=["Health"])
