@@ -25,6 +25,7 @@ import {
     CheckCircleOutlined,
     CloseCircleOutlined,
     UndoOutlined,
+    PlayCircleOutlined,
 } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -197,6 +198,7 @@ function TaskReviewModal({
     userMap = {},
     onClose,
     canAct = false,
+    onAccept,
     onMarkCompleted,
     onReject,
     onReopen,
@@ -211,7 +213,13 @@ function TaskReviewModal({
     const status = task.status
     const isCompleted = status === 'completed'
     const isRejected = status === 'rejected'
-    const isOpenStatus = status === 'pending' || status === 'in_progress'
+    const isPending = status === 'pending'
+    const isInProgress = status === 'in_progress'
+    const isOpenStatus = isPending || isInProgress
+
+    const handleAccept = () => {
+        onAccept?.(task)
+    }
 
     const handleMarkCompleted = () => {
         onMarkCompleted?.(task)
@@ -405,14 +413,25 @@ function TaskReviewModal({
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             {canAct && isOpenStatus && (
                                 <>
-                                    <Button
-                                        type="primary"
-                                        icon={<CheckCircleOutlined />}
-                                        loading={actionLoading}
-                                        onClick={handleMarkCompleted}
-                                    >
-                                        Mark as Completed
-                                    </Button>
+                                    {isPending ? (
+                                        <Button
+                                            type="primary"
+                                            icon={<PlayCircleOutlined />}
+                                            loading={actionLoading}
+                                            onClick={handleAccept}
+                                        >
+                                            Accept Task
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            type="primary"
+                                            icon={<CheckCircleOutlined />}
+                                            loading={actionLoading}
+                                            onClick={handleMarkCompleted}
+                                        >
+                                            Mark as Completed
+                                        </Button>
+                                    )}
                                     <Button
                                         danger
                                         icon={<CloseCircleOutlined />}

@@ -438,6 +438,22 @@ function TasksPage() {
         },
     })
 
+    // Accept a pending task — moves it into In Progress. This is the
+    // first step of the assignee workflow: pending → (accept) →
+    // in_progress → (complete) → completed.
+    const acceptMutation = useMutation({
+        mutationFn: (taskId) => taskService.updateStatus(taskId, 'in_progress'),
+        onSuccess: (updated) => {
+            message.success('Task accepted — moved to In Progress.')
+            queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
+            if (reviewTask && reviewTask.id === updated.id) setReviewTask(updated)
+        },
+        onError: (err) => {
+            message.error(err?.response?.data?.detail || 'Failed to accept task.')
+        },
+    })
+
     // ── Paste mutation — separate from createMutation so it doesn't show
     // the generic "Task created successfully" toast (paste has its own).
     const pasteMutation = useMutation({
@@ -477,6 +493,13 @@ function TasksPage() {
     }
 
     const handleToggleCompletion = async (task, nextCompleted) => {
+        // Workflow gate: a pending task can't be completed directly.
+        // The first "complete" action accepts it (→ In Progress); the
+        // assignee completes it on the next action.
+        if (nextCompleted && task.status === 'pending') {
+            await acceptMutation.mutateAsync(task.id)
+            return
+        }
         try {
             await completionMutation.mutateAsync({
                 id: task.id,
@@ -491,6 +514,10 @@ function TasksPage() {
             setReviewTask(null)
             setLogTimeTask(task)
         }
+    }
+
+    const handleAcceptTask = async (task) => {
+        await acceptMutation.mutateAsync(task.id)
     }
 
     const handleOpenLogTime = (task) => {
@@ -1137,13 +1164,15 @@ function TasksPage() {
                         reviewTask.assignee_user_id === user?.id ||
                         reviewTask.assigner_user_id === user?.id)
                 }
+                onAccept={handleAcceptTask}
                 onMarkCompleted={handleReviewMarkCompleted}
                 onReject={handleReviewReject}
                 onReopen={handleReviewReopen}
                 actionLoading={
                     rejectMutation.isPending ||
                     reopenMutation.isPending ||
-                    completionMutation.isPending
+                    completionMutation.isPending ||
+                    acceptMutation.isPending
                 }
                 currentUserId={user?.id}
                 isAdmin={isTaskAdmin}

@@ -1685,6 +1685,18 @@ def update_task_completion(
             detail="You are not allowed to change this task completion state.",
         )
     if completed:
+        # Workflow guard: a task must be accepted (moved to In Progress)
+        # before it can be completed. This blocks a direct
+        # pending -> completed jump; the assignee accepts first, then
+        # completes. Already-completed is a no-op (handled below).
+        if task.status not in ("in_progress", "completed"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Task must be accepted (In Progress) before it can be "
+                    "completed."
+                ),
+            )
         _apply_status_change(db, task, user, "completed")
     else:
         # Reopen — pick in_progress unless task was pending originally.
