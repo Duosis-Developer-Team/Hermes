@@ -434,18 +434,19 @@ def list_meetings_for_user(
     *,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    target_user_id: Optional[UUID] = None,
+    target_user_ids: Optional[Sequence[UUID]] = None,
     include_cancelled: bool = False,
 ) -> List[Meeting]:
-    """Return meetings visible to `user`, optionally narrowed to a
-    target user (admin only) and/or a date window.
+    """Return meetings visible to `user`, optionally narrowed to one or
+    more target users (admin only) and/or a date window.
 
     Visibility:
-      - admin: every meeting; if target_user_id is set, restricted to
-        meetings where that user is a mapped attendee.
+      - admin: every meeting; if target_user_ids is a non-empty set,
+        restricted to meetings where ANY of those users is a mapped
+        attendee (union — drives the multi-user calendar).
       - non-admin: meetings where the CURRENT user is a mapped
-        attendee. target_user_id from a non-admin is coerced to
-        their own id (defense-in-depth, matches tasks).
+        attendee. target_user_ids from a non-admin is ignored
+        (defense-in-depth, matches tasks).
     """
     # Attendee membership is expressed as an EXISTS subquery
     # (Meeting.attendees.any(...)) rather than a JOIN. A JOIN would
@@ -458,10 +459,10 @@ def list_meetings_for_user(
     query = db.query(Meeting)
 
     if user.is_admin:
-        if target_user_id is not None:
+        if target_user_ids:
             query = query.filter(
                 Meeting.attendees.any(
-                    MeetingAttendee.hermes_user_id == target_user_id
+                    MeetingAttendee.hermes_user_id.in_(list(target_user_ids))
                 )
             )
     else:

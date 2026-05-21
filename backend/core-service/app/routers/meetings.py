@@ -73,24 +73,41 @@ def _serialize_meeting(m: Meeting) -> MeetingResponse:
 async def list_meetings(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
-    user_id: Optional[UUID] = Query(
+    user_ids: Optional[str] = Query(
         None,
         description=(
-            "Admin only: view another user's meetings. Non-admin "
-            "callers always see their own — this param is silently "
-            "ignored for them."
+            "Admin only: comma-separated Hermes user IDs to view. The "
+            "result is the UNION of those users' meetings. Empty/omitted "
+            "= every meeting. Non-admin callers always see their own — "
+            "this param is silently ignored for them."
         ),
     ),
     include_cancelled: bool = Query(False),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    target_user_ids: Optional[List[UUID]] = None
+    if user_ids:
+        parsed: List[UUID] = []
+        for chunk in user_ids.split(","):
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            try:
+                parsed.append(UUID(chunk))
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid user id in user_ids: {chunk}",
+                )
+        target_user_ids = parsed or None
+
     meetings = meeting_service.list_meetings_for_user(
         db,
         current_user,
         start_date=start_date,
         end_date=end_date,
-        target_user_id=user_id,
+        target_user_ids=target_user_ids,
         include_cancelled=include_cancelled,
     )
     return [_serialize_meeting(m) for m in meetings]

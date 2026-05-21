@@ -54,10 +54,23 @@ function MeetingsPage() {
     const weekStartStr = weekStart.format('YYYY-MM-DD')
     const weekEndStr = weekEnd.format('YYYY-MM-DD')
 
-    // Admin-only user selector — same pattern as Time Entry / Tasks.
-    // Non-admin always sees their own meetings; backend coerces too.
-    const [selectedUserId, setSelectedUserId] = useState(null)
-    const viewedUserId = isAdmin ? selectedUserId || user?.id : user?.id
+    // Admin-only user selector — now MULTI-select. Each id added shows
+    // that user's calendar; the week view is the union of all selected
+    // users' meetings. Empty selection = every meeting in the system
+    // (the admin's existing "see everyone" default). Non-admin never
+    // sees the selector and is always scoped to themselves server-side.
+    const [selectedUserIds, setSelectedUserIds] = useState([])
+    // Stable key for the meetings query — order-independent so the same
+    // set of users doesn't refetch just because tag order changed.
+    const selectedKey = isAdmin
+        ? selectedUserIds.slice().sort().join(',')
+        : 'self'
+    // When exactly one user is selected (or non-admin self), single-user
+    // features stay meaningful: the green "Logged" pills and the
+    // Log-Time-on-behalf target follow that user. With zero (everyone)
+    // or multiple selected, those fall back to the admin's own context.
+    const singleSelectedUserId =
+        isAdmin && selectedUserIds.length === 1 ? selectedUserIds[0] : null
 
     const [reviewMeeting, setReviewMeeting] = useState(null)
     // Meeting to prefill the Log Time modal with. Independent of
@@ -65,20 +78,20 @@ function MeetingsPage() {
     // still see the review modal underneath.
     const [logTimeMeeting, setLogTimeMeeting] = useState(null)
 
-    // Pull the meetings for the visible week. Admin passes user_id to
-    // peek at someone else's calendar; non-admin's user_id is silently
-    // ignored server-side.
+    // Pull the meetings for the visible week. Admin passes a comma-
+    // separated user_ids list to union several calendars; empty list
+    // falls through to "all meetings". Non-admin's filter is ignored
+    // server-side (always scoped to self).
     const { data: meetings = [], isLoading } = useQuery({
-        queryKey: [
-            'meetings',
-            weekStartStr,
-            viewedUserId,
-        ],
+        queryKey: ['meetings', weekStartStr, selectedKey],
         queryFn: () =>
             meetingService.list({
                 start_date: weekStartStr,
                 end_date: weekEndStr,
-                user_id: isAdmin ? selectedUserId || undefined : undefined,
+                user_ids:
+                    isAdmin && selectedUserIds.length
+                        ? selectedUserIds.join(',')
+                        : undefined,
             }),
         enabled: !!user?.id,
     })
@@ -93,21 +106,27 @@ function MeetingsPage() {
     })
 
     // Logged-meeting set — drives the green "Logged" pill on
-    // MeetingCard. Pulls the viewed user's work_logs for the visible
-    // week and keeps the ones that link back to a meeting. Admin
-    // viewing another user via the user selector sees that user's
-    // logs (workLogService.getMyLogs forwards user_id; the backend
-    // enforces the admin-only override).
+    // MeetingCard. Only meaningful for a single viewed user, so it's
+    // fetched for non-admins (self) and for admins who have narrowed to
+    // exactly one user. With everyone / multiple selected we skip it.
     const { data: weekWorkLogsResponse } = useQuery({
-        queryKey: ['workLogs', weekStartStr, viewedUserId],
+        queryKey: [
+            'workLogs',
+            weekStartStr,
+            isAdmin ? singleSelectedUserId : user?.id,
+        ],
         queryFn: () =>
             workLogService.getMyLogs({
                 start_date: weekStartStr,
                 end_date: weekEndStr,
                 limit: 500,
-                user_id: isAdmin ? selectedUserId || undefined : undefined,
+                user_id:
+                    singleSelectedUserId && singleSelectedUserId !== user?.id
+                        ? singleSelectedUserId
+                        : undefined,
             }),
-        enabled: !!user?.id,
+        enabled:
+            !!user?.id && (!isAdmin || singleSelectedUserId !== null),
     })
     const loggedMeetingIds = useMemo(() => {
         const set = new Set()
@@ -128,46 +147,57 @@ function MeetingsPage() {
         return [me, ...others]
     }, [user, isAdmin, allActiveUsers])
 
-    // Email of the user the admin is currently viewing (null when
-    // viewing self or when not admin). Pulled from the already-loaded
-    // user lookup so the admin sync needs no auth-service round trip.
-    const selectedUserEmail = useMemo(() => {
-        if (!isAdmin || !selectedUserId) return null
-        return (
-            allActiveUsers.find((u) => u.id === selectedUserId)?.email || null
-        )
-    }, [isAdmin, selectedUserId, allActiveUsers])
-
-    // Auto-sync the visible calendar for the visible week — silently,
-    // on load and on week change, so meetings appear without anyone
-    // pressing a button. Self-view uses the token-scoped /sync-me; an
-    // admin viewing another user uses /sync-user with that user's
-    // id+email. Failures are swallowed: the page still renders whatever
-    // is already in the database.
+    // Auto-sync the visible calendar(s) for the visible week —
+    // silently, on load / week change / selection change, so meetings
+    // appear without pressing a button. Self uses the token-scoped
+    // /sync-me; each other selected user uses /sync-user with their
+    // id+email (from the loaded lookup). Admin with an empty selection
+    // ("everyone") syncs nothing — there's no per-user list to pull —
+    // and just shows whatever is already in the DB. Failures swallowed.
     useEffect(() => {
         if (!user?.id) return
         let cancelled = false
-        const onDone = (res) => {
-            if (!cancelled && res?.ok) {
-                queryClient.invalidateQueries({ queryKey: ['meetings'] })
+
+        // Build the set of (id, email|self) targets to sync.
+        const targets = []
+        if (!isAdmin) {
+            targets.push({ id: user.id, self: true })
+        } else {
+            for (const id of selectedUserIds) {
+                if (id === user.id) {
+                    targets.push({ id, self: true })
+                } else {
+                    const email = allActiveUsers.find(
+                        (u) => u.id === id
+                    )?.email
+                    if (email) targets.push({ id, email, self: false })
+                }
             }
         }
-        const viewingSelf = !isAdmin || !selectedUserId
-        let request = null
-        if (viewingSelf) {
-            request = meetingService.syncMe({
-                start_date: weekStartStr,
-                end_date: weekEndStr,
-            })
-        } else if (selectedUserEmail) {
-            request = meetingService.syncUser({
-                user_id: selectedUserId,
-                email: selectedUserEmail,
-                start_date: weekStartStr,
-                end_date: weekEndStr,
-            })
-        }
-        if (request) request.then(onDone).catch(() => {})
+        if (targets.length === 0) return // "everyone" view: nothing to pull
+
+        const requests = targets.map((t) =>
+            t.self
+                ? meetingService.syncMe({
+                      start_date: weekStartStr,
+                      end_date: weekEndStr,
+                  })
+                : meetingService.syncUser({
+                      user_id: t.id,
+                      email: t.email,
+                      start_date: weekStartStr,
+                      end_date: weekEndStr,
+                  })
+        )
+        Promise.allSettled(requests).then((results) => {
+            if (cancelled) return
+            const anyOk = results.some(
+                (r) => r.status === 'fulfilled' && r.value?.ok
+            )
+            if (anyOk) {
+                queryClient.invalidateQueries({ queryKey: ['meetings'] })
+            }
+        })
         return () => {
             cancelled = true
         }
@@ -175,8 +205,8 @@ function MeetingsPage() {
     }, [
         user?.id,
         isAdmin,
-        selectedUserId,
-        selectedUserEmail,
+        selectedKey,
+        allActiveUsers,
         weekStartStr,
         weekEndStr,
     ])
@@ -186,14 +216,17 @@ function MeetingsPage() {
     }
 
     // Work log mutation — used by the Meeting → Log Time flow. Same
-    // service Time Entry uses; admin acting on behalf of the selected
-    // user honours target_user_id via the second arg (backend gates
-    // on is_admin).
+    // service Time Entry uses; when the admin has narrowed to exactly
+    // one user, the log is created on that user's behalf (second arg,
+    // backend gates on is_admin). With everyone / multiple selected it
+    // logs as the admin themselves.
     const workLogMutation = useMutation({
         mutationFn: (data) =>
             workLogService.create(
                 data,
-                isAdmin ? selectedUserId || null : null,
+                singleSelectedUserId && singleSelectedUserId !== user?.id
+                    ? singleSelectedUserId
+                    : null,
             ),
         onSuccess: (_created, variables) => {
             const dateStr = variables?.date_worked
@@ -250,16 +283,13 @@ function MeetingsPage() {
                     />
                     {isAdmin ? (
                         <Select
-                            value={viewedUserId}
-                            onChange={(v) =>
-                                setSelectedUserId(v === user?.id ? null : v)
-                            }
-                            style={{
-                                width: 220,
-                                fontSize: '1.2rem',
-                                fontWeight: 600,
-                            }}
-                            bordered={false}
+                            mode="multiple"
+                            value={selectedUserIds}
+                            onChange={setSelectedUserIds}
+                            placeholder="All users"
+                            allowClear
+                            maxTagCount="responsive"
+                            style={{ minWidth: 260, maxWidth: 520 }}
                             loading={!allActiveUsers.length}
                             options={userSelectorOptions}
                             showSearch
