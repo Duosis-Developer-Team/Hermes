@@ -447,14 +447,28 @@ def list_meetings_for_user(
         attendee. target_user_id from a non-admin is coerced to
         their own id (defense-in-depth, matches tasks).
     """
-    query = db.query(Meeting).join(MeetingAttendee, MeetingAttendee.meeting_id == Meeting.id)
+    # Attendee membership is expressed as an EXISTS subquery
+    # (Meeting.attendees.any(...)) rather than a JOIN. A JOIN would
+    # multiply Meeting rows per matching attendee, which previously
+    # forced a DISTINCT ON (meetings.id); that in turn collided with
+    # ORDER BY start_datetime under Postgres ("SELECT DISTINCT ON
+    # expressions must match initial ORDER BY expressions") and made
+    # every list request 500. EXISTS keeps one row per meeting, so we
+    # can order by start_datetime directly with no DISTINCT.
+    query = db.query(Meeting)
 
     if user.is_admin:
         if target_user_id is not None:
-            query = query.filter(MeetingAttendee.hermes_user_id == target_user_id)
+            query = query.filter(
+                Meeting.attendees.any(
+                    MeetingAttendee.hermes_user_id == target_user_id
+                )
+            )
     else:
         viewer = UUID(user.id)
-        query = query.filter(MeetingAttendee.hermes_user_id == viewer)
+        query = query.filter(
+            Meeting.attendees.any(MeetingAttendee.hermes_user_id == viewer)
+        )
 
     if not include_cancelled:
         query = query.filter(Meeting.is_cancelled.is_(False))
@@ -470,14 +484,7 @@ def list_meetings_for_user(
             <= datetime.combine(end_date, time.max, tzinfo=timezone.utc)
         )
 
-    # DISTINCT on Meeting.id — the join above can multiply rows if a
-    # meeting has several attendee rows for the same user (it
-    # shouldn't, but defend anyway).
-    return (
-        query.order_by(Meeting.start_datetime.asc())
-        .distinct(Meeting.id)
-        .all()
-    )
+    return query.order_by(Meeting.start_datetime.asc()).all()
 
 
 def get_meeting_for_user(

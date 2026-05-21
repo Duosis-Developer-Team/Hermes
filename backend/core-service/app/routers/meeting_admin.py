@@ -79,10 +79,14 @@ def _extract_token(request: Request) -> Optional[str]:
     return None
 
 
-async def _fetch_active_users(token: str) -> list[dict]:
-    """Pull every active Hermes user from auth-service. Returns a list
-    of {id, email, full_name, is_active} dicts. Empty list on failure
-    (the sync runner will then report 'no users' instead of crashing).
+async def _fetch_active_users(token: str) -> tuple[list[dict], Optional[str]]:
+    """Pull every active Hermes user from auth-service.
+
+    Returns ``(users, error)``. On success ``error`` is ``None`` and
+    ``users`` is a list of {id, email, full_name, is_active} dicts.
+    On failure ``users`` is empty and ``error`` describes what went
+    wrong (HTTP status or connection problem) so the sync endpoint can
+    surface it instead of the misleading "No active Hermes users".
     """
     settings = get_settings()
     base = settings.AUTH_SERVICE_URL.rstrip("/")
@@ -99,14 +103,17 @@ async def _fetch_active_users(token: str) -> list[dict]:
             logger.warning(
                 "auth-service /users/lookup failed status=%s", resp.status_code
             )
-            return []
+            return [], (
+                f"Could not load the Hermes user list from auth-service "
+                f"(HTTP {resp.status_code})."
+            )
         data = resp.json()
         if not isinstance(data, list):
-            return []
-        return data
+            return [], "auth-service returned an unexpected user payload."
+        return data, None
     except Exception as e:
         logger.warning("auth-service /users/lookup error: %s", e)
-        return []
+        return [], f"Could not reach auth-service for the user list: {e}"
 
 
 # ---------------------------------------------------------------------------
@@ -164,7 +171,14 @@ async def sync_meetings(
             detail="Authentication token missing.",
         )
 
-    users = await _fetch_active_users(token)
+    users, lookup_error = await _fetch_active_users(token)
+    if lookup_error:
+        return MeetingSyncResult(
+            ok=False,
+            error=lookup_error,
+            users_attempted=0,
+            users_succeeded=0,
+        )
     # Build the email → Hermes user UUID dict the service expects.
     user_map: dict[str, UUID] = {}
     email_to_id_for_lookup: dict[str, UUID] = {}
