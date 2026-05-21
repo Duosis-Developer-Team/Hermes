@@ -1078,6 +1078,20 @@ export const meetingService = {
         )
         return response.data
     },
+
+    /**
+     * Any authenticated user — sync the caller's OWN calendar for a
+     * date range. No admin rights and no auth-service round trip; the
+     * Meetings page fires this on load so meetings appear without a
+     * manual admin sync. Fails gracefully (result.ok / result.error).
+     */
+    syncMe: async ({ start_date, end_date } = {}) => {
+        const response = await coreApi.post(
+            '/api/v1/core/meetings/sync-me',
+            { start_date, end_date }
+        )
+        return response.data
+    },
 }
 
 export default {

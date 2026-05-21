@@ -9,19 +9,28 @@
 # denials return 404, not 403).
 # =============================================================================
 
-from datetime import date
+import logging
+from datetime import date, timedelta
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.meeting import Meeting, MeetingAttendee
-from ..schemas.meeting import MeetingAttendeeResponse, MeetingResponse
+from ..schemas.meeting import (
+    MeetingAttendeeResponse,
+    MeetingResponse,
+    MeetingSyncResult,
+)
 from ..services import meeting_service
+from ..services.graph_service import get_graph_client
 from shared.auth import CurrentUser, get_current_user
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/meetings", tags=["Meetings"])
 
@@ -85,6 +94,82 @@ async def list_meetings(
         include_cancelled=include_cancelled,
     )
     return [_serialize_meeting(m) for m in meetings]
+
+
+class SyncMeRequest(BaseModel):
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+
+
+@router.post("/sync-me", response_model=MeetingSyncResult)
+async def sync_my_meetings(
+    payload: SyncMeRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Sync ONLY the calling user's own Microsoft Graph calendar for a
+    date range (defaults to the current ISO week).
+
+    This is the auto-sync path the Meetings page fires on load, so a
+    user always sees fresh meetings without an admin pressing "Sync".
+    Unlike the admin endpoint it never calls auth-service: the
+    email -> Hermes-user-id map is built from the caller's own JWT
+    claims (id + email), so it keeps working even when the internal
+    auth-service hop is unavailable. Each user mapping themselves is
+    enough for their own meetings to become visible to them; other
+    attendees get mapped when they in turn sync their own calendar.
+
+    Fails gracefully (ok=False + error) when Graph is unconfigured;
+    the page just shows whatever is already in the database.
+    """
+    today = date.today()
+    default_start = today - timedelta(days=today.weekday())  # Monday
+    start = payload.start_date or default_start
+    end = payload.end_date or (start + timedelta(days=6))
+    if end < start:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="end_date must be on or after start_date.",
+        )
+
+    client = get_graph_client()
+    if not client.is_configured:
+        return MeetingSyncResult(
+            ok=False,
+            error=(
+                "Microsoft Graph is not configured on this deployment."
+            ),
+            users_attempted=0,
+            users_succeeded=0,
+        )
+
+    email = (current_user.email or "").strip()
+    if not email:
+        return MeetingSyncResult(
+            ok=False,
+            error="Your account has no email on file to sync.",
+            users_attempted=0,
+            users_succeeded=0,
+        )
+
+    user_map = {email.lower(): UUID(current_user.id)}
+    summary = await meeting_service.sync_user_meetings(
+        db,
+        user_email=email,
+        start_date=start,
+        end_date=end,
+        user_map=user_map,
+    )
+    return MeetingSyncResult(
+        ok=bool(summary["ok"]),
+        error=summary.get("error"),
+        users_attempted=1,
+        users_succeeded=1 if summary["ok"] else 0,
+        meetings_upserted=summary["meetings_upserted"],
+        meetings_cancelled=summary["meetings_cancelled"],
+        attendees_upserted=summary["attendees_upserted"],
+        per_user=[summary],
+    )
 
 
 @router.get("/{meeting_id}", response_model=MeetingResponse)

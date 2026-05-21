@@ -130,6 +130,33 @@ function MeetingsPage() {
         return [me, ...others]
     }, [user, isAdmin, allActiveUsers])
 
+    // Auto-sync the caller's OWN calendar for the visible week. Runs
+    // silently on load and whenever the week changes, so meetings show
+    // up without anyone pressing "Sync Meetings". Only fires for
+    // self-view — sync-me is scoped to the calling user's token, so it
+    // can't pull another user's calendar (admins use the explicit Sync
+    // button for that). Failures are swallowed: the page still renders
+    // whatever is already in the database.
+    const viewingSelf = !isAdmin || !selectedUserId
+    useEffect(() => {
+        if (!user?.id || !viewingSelf) return
+        let cancelled = false
+        meetingService
+            .syncMe({ start_date: weekStartStr, end_date: weekEndStr })
+            .then((res) => {
+                if (!cancelled && res?.ok) {
+                    queryClient.invalidateQueries({ queryKey: ['meetings'] })
+                }
+            })
+            .catch(() => {
+                /* silent — show whatever is already synced */
+            })
+        return () => {
+            cancelled = true
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.id, viewingSelf, weekStartStr, weekEndStr])
+
     // Admin-only — Graph sync trigger. Fails gracefully when Graph is
     // not configured; the backend already short-circuits to a clean
     // { ok: false, error } payload.
