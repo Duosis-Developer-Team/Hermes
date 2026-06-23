@@ -219,12 +219,13 @@ function CreateTaskModal({
             })
         } else {
             form.resetFields()
-            const baseValues = { priority: 'medium' }
-            if (initialDate) {
-                form.setFieldsValue({ ...baseValues, scheduled_date: dayjs(initialDate) })
-            } else {
-                form.setFieldsValue(baseValues)
-            }
+            // Scheduled date defaults to the given day, or today when the
+            // modal is opened without one (the board "+ New Task" button).
+            // Due date stays empty for the user to choose.
+            form.setFieldsValue({
+                priority: 'medium',
+                scheduled_date: initialDate ? dayjs(initialDate) : dayjs(),
+            })
         }
     }, [open, editingTask, initialDate, form])
 
@@ -449,11 +450,6 @@ function CreateTaskModal({
                             message: 'Pick at least one assignee.',
                         },
                     ]}
-                    extra={
-                        isEditing
-                            ? undefined
-                            : 'Pick one or more users and/or groups — one task is created per person (a group expands to its active members).'
-                    }
                 >
                     <Select
                         mode={isEditing ? undefined : 'multiple'}

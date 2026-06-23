@@ -319,6 +319,24 @@
 .tdp-tabs {
     padding: 0 16px 14px;
 }
+/* Tab labels follow the theme so they stay readable in dark mode (AntD's
+   default tab colour is too dark on the dark panel). */
+.tdp-tabs .ant-tabs-tab .ant-tabs-tab-btn {
+    color: var(--c-text-muted);
+}
+.tdp-tabs .ant-tabs-tab:hover .ant-tabs-tab-btn {
+    color: var(--c-text-strong);
+}
+.tdp-tabs .ant-tabs-tab-active .ant-tabs-tab-btn,
+.tdp-tabs .ant-tabs-tab-active:hover .ant-tabs-tab-btn {
+    color: var(--c-text-strong);
+}
+.tdp-tabs .ant-tabs-ink-bar {
+    background: var(--color-primary);
+}
+.tdp-tabs .ant-tabs-nav::before {
+    border-bottom-color: var(--c-border);
+}
 .tdp-tab-body {
     padding-top: 6px;
 }
