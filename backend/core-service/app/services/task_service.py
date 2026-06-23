@@ -872,7 +872,15 @@ def update_sub_project(
 
 
 def delete_sub_project(db: Session, sub_project_id: UUID) -> None:
-    """Hard delete a sub project. Refuses if any task still references it."""
+    """Hard delete a sub project.
+
+    Only ACTIVE (non-archived) tasks block deletion — archived tasks are
+    soft-deleted and invisible everywhere, so they shouldn't keep a sub
+    project alive. Because the FK is ON DELETE RESTRICT, archived tasks
+    still referencing this sub project would otherwise block the delete at
+    the DB level, so we first detach them (sub_project_id → NULL). This
+    only touches archived rows, which never appear in any list/report.
+    """
     sub = (
         db.query(TaskSubProject)
         .filter(TaskSubProject.id == sub_project_id)
@@ -884,16 +892,25 @@ def delete_sub_project(db: Session, sub_project_id: UUID) -> None:
             detail="Sub project not found.",
         )
 
-    in_use = (
+    active_in_use = (
         db.query(Task.id)
-        .filter(Task.sub_project_id == sub_project_id)
+        .filter(
+            Task.sub_project_id == sub_project_id,
+            Task.archived_at.is_(None),
+        )
         .first()
     )
-    if in_use:
+    if active_in_use:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="This sub project is used in existing tasks and cannot be deleted.",
+            detail="This sub project is used by active tasks and cannot be deleted.",
         )
+
+    # Detach archived tasks so the FK (ON DELETE RESTRICT) doesn't block us.
+    db.query(Task).filter(
+        Task.sub_project_id == sub_project_id,
+        Task.archived_at.isnot(None),
+    ).update({Task.sub_project_id: None}, synchronize_session=False)
 
     db.delete(sub)
     db.commit()
