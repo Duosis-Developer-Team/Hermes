@@ -775,30 +775,50 @@ function TasksPage() {
                         </span>
                     </div>
                     {/* Per-assignee swimlanes — only meaningful when
-                        monitoring multiple assignees (Assigned by Me). */}
-                    {viewLayout === 'board' && taskScope === 'assigned-by-me' && (
-                        <>
-                            <div className="tasks-tabs-divider" />
-                            <label
+                        monitoring multiple assignees (Assigned by Me).
+                        The slot is ALWAYS rendered (hidden via visibility
+                        when not applicable) so switching Board/List or
+                        scope never shifts the search box and tab links. */}
+                    {(() => {
+                        const showGroupBy =
+                            viewLayout === 'board' &&
+                            taskScope === 'assigned-by-me'
+                        return (
+                            <div
+                                className="tasks-groupby-slot"
+                                aria-hidden={!showGroupBy}
                                 style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: 8,
-                                    cursor: 'pointer',
-                                    color: 'var(--c-text-muted)',
-                                    fontSize: 13,
-                                    whiteSpace: 'nowrap',
+                                    gap: 24,
+                                    visibility: showGroupBy
+                                        ? 'visible'
+                                        : 'hidden',
                                 }}
                             >
-                                <Switch
-                                    size="small"
-                                    checked={groupByAssignee}
-                                    onChange={setGroupByAssignee}
-                                />
-                                Group by assignee
-                            </label>
-                        </>
-                    )}
+                                <div className="tasks-tabs-divider" />
+                                <label
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        cursor: 'pointer',
+                                        color: 'var(--c-text-muted)',
+                                        fontSize: 13,
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    <Switch
+                                        size="small"
+                                        checked={groupByAssignee}
+                                        onChange={setGroupByAssignee}
+                                        disabled={!showGroupBy}
+                                    />
+                                    Group by assignee
+                                </label>
+                            </div>
+                        )
+                    })()}
                     {/* Create lives inside the Board view toolbar
                         ("+ New Task"), wired to handleCreate. */}
                 </div>
