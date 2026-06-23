@@ -80,3 +80,105 @@
 .tasks-board-column-in_progress .tasks-board-column-header { border-bottom-color: #1e3a8a; }
 .tasks-board-column-completed   .tasks-board-column-header { border-bottom-color: #166534; }
 .tasks-board-column-rejected    .tasks-board-column-header { border-bottom-color: #b91c1c; }
+
+/* ── Drag & drop ──────────────────────────────────────────────────── */
+.tasks-board-draggable {
+    cursor: grab;
+    touch-action: none;
+}
+.tasks-board-draggable:active {
+    cursor: grabbing;
+}
+.tasks-board-draggable.is-dragging {
+    opacity: 0.4;
+}
+.tasks-board-draggable.is-locked {
+    cursor: default;
+}
+
+/* Drop target highlight on the column body being hovered. */
+.tasks-board-column-body.is-over {
+    background: var(--c-chip);
+    outline: 2px dashed var(--c-border-strong);
+    outline-offset: -2px;
+    border-radius: 6px;
+}
+
+/* Elevated preview while dragging. */
+.tasks-board-drag-overlay {
+    width: 260px;
+    cursor: grabbing;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+    border-radius: 8px;
+    transform: rotate(1.5deg);
+}
+
+/* ── Inline quick reassign ────────────────────────────────────────── */
+.tasks-board-reassign {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+    padding: 2px 4px;
+}
+.tasks-board-reassign-icon {
+    color: var(--c-text-muted);
+    font-size: 12px;
+    flex-shrink: 0;
+}
+.tasks-board-reassign-select {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* ── Swimlanes (Group by assignee) ────────────────────────────────── */
+.tasks-board-swimlanes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-x: auto;
+}
+.tasks-board-swimlane-cols-head,
+.tasks-board-swimlane {
+    display: grid;
+    grid-template-columns: 180px repeat(4, minmax(220px, 1fr));
+    gap: 10px;
+    align-items: start;
+}
+.tasks-board-swimlane-colhead {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--c-text);
+    padding: 8px 10px;
+    text-align: center;
+    background: var(--c-surface-raised);
+    border: 1px solid var(--c-border);
+    border-radius: 6px;
+}
+.tasks-board-swimlane-rowhead {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 8px;
+    position: sticky;
+    left: 0;
+    background: var(--c-bg);
+    z-index: 1;
+}
+.tasks-board-swimlane-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--c-text);
+    word-break: break-word;
+}
+/* Swimlane cells reuse .tasks-board-column for the surface, but reset the
+   tall flat-board sizing so each row stays compact and grows with content. */
+.tasks-board-swimlane-cell {
+    min-height: 72px;
+    max-height: none;
+}
+.tasks-board-cell-empty {
+    min-height: 48px;
+}

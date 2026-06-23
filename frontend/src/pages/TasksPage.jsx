@@ -21,6 +21,7 @@ import {
     Select,
     Space,
     Spin,
+    Switch,
     Tooltip,
     message,
 } from 'antd'
@@ -129,6 +130,9 @@ function TasksPage() {
     // surface; the old Calendar (weekly) layout was removed as it was
     // not usable for task management.
     const [viewLayout, setViewLayout] = useState('board')
+    // Board-only: lay tasks out in per-assignee swimlanes so dragging a
+    // card to another row reassigns it. Off by default.
+    const [groupByAssignee, setGroupByAssignee] = useState(false)
     const [taskScope, setTaskScope] = useState('my-tasks')
     const [taskQuickFilter, setTaskQuickFilter] = useState(null)
     // Admin-only user selector (Time Entry parity). null → current user.
@@ -291,15 +295,54 @@ function TasksPage() {
         staleTime: 60 * 1000,
     })
 
+    // Reassign targets for non-admin assigners: resolve names for the
+    // user IDs they're allowed to assign to. Admins use allActiveUsers.
+    const { data: assignableUsersLookup = [] } = useQuery({
+        queryKey: ['auth-users-lookup', { scope: 'assignable', ids: assignableUserIds }],
+        queryFn: () => authService.lookupUsers({ ids: assignableUserIds }),
+        enabled:
+            canAccessTasks && !isTaskAdmin && assignableUserIds.length > 0,
+        staleTime: 60 * 1000,
+    })
+
     const userMap = useMemo(() => {
         const map = {}
-        // Combine the two lookup result sets so both selector + cards see
-        // the same names — admins always have allActiveUsers; non-admins
-        // get the small set referenced by visible tasks.
+        // Combine the lookup result sets so selector + cards + swimlanes
+        // see the same names — admins always have allActiveUsers; non-
+        // admins get the set referenced by visible tasks plus the users
+        // they can reassign to.
         for (const u of allActiveUsers) map[u.id] = u
+        for (const u of assignableUsersLookup) map[u.id] = u
         for (const u of usersForTasks) map[u.id] = u
         return map
-    }, [usersForTasks, allActiveUsers])
+    }, [usersForTasks, allActiveUsers, assignableUsersLookup])
+
+    // Options for the board's inline quick-reassign dropdown.
+    const assigneeOptions = useMemo(() => {
+        const src = isTaskAdmin ? allActiveUsers : assignableUsersLookup
+        return src.map((u) => ({
+            value: u.id,
+            label: u.full_name || u.email,
+        }))
+    }, [isTaskAdmin, allActiveUsers, assignableUsersLookup])
+
+    // ── Optimistic cache helpers for drag/drop status + reassign ──────────
+    // Patch every active ['tasks', ...] query so the card moves the instant
+    // it is dropped; rollback restores the snapshot if the server rejects.
+    const optimisticPatchTask = async (taskId, patch) => {
+        await queryClient.cancelQueries({ queryKey: ['tasks'] })
+        const prev = queryClient.getQueriesData({ queryKey: ['tasks'] })
+        queryClient.setQueriesData({ queryKey: ['tasks'] }, (old) =>
+            Array.isArray(old)
+                ? old.map((t) => (t.id === taskId ? { ...t, ...patch } : t))
+                : old
+        )
+        return prev
+    }
+    const rollbackTasks = (prev) => {
+        if (!prev) return
+        for (const [key, data] of prev) queryClient.setQueryData(key, data)
+    }
 
     // Mutations
     const createMutation = useMutation({
@@ -446,6 +489,159 @@ function TasksPage() {
             message.error(err?.response?.data?.detail || 'Failed to accept task.')
         },
     })
+
+    // ── Drag-and-drop status change (board) — optimistic. Uses the raw
+    // status endpoint (no accept-first guard): a drag is explicit intent,
+    // and _apply_status_change keeps completion fields consistent.
+    const dndStatusMutation = useMutation({
+        mutationFn: ({ id, status }) => taskService.updateStatus(id, status),
+        onMutate: async ({ id, status }) => {
+            const prev = await optimisticPatchTask(id, { status })
+            return { prev }
+        },
+        onError: (err, _vars, ctx) => {
+            rollbackTasks(ctx?.prev)
+            message.error(
+                err?.response?.data?.detail || 'Failed to update status.'
+            )
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
+        },
+    })
+
+    // ── Reassign a task (board) — optimistic. Backend (PUT /{id})
+    // validates the assigner→assignee permission + that the target has
+    // task access; only admin or the task's assigner may do it. An
+    // optional `status` is applied in the SAME request so a swimlane drop
+    // that changes both assignee and status is a single atomic update —
+    // this avoids a reassign→status race where the first invalidate's
+    // refetch could clobber the second optimistic patch.
+    const reassignMutation = useMutation({
+        mutationFn: ({ id, assigneeUserId, status }) =>
+            taskService.update(id, {
+                assignee_user_id: assigneeUserId,
+                ...(status ? { status } : {}),
+            }),
+        onMutate: async ({ id, assigneeUserId, status }) => {
+            const prev = await optimisticPatchTask(id, {
+                assignee_user_id: assigneeUserId,
+                ...(status ? { status } : {}),
+            })
+            return { prev }
+        },
+        onSuccess: (_data, vars) => {
+            message.success(vars?.status ? 'Task updated.' : 'Task reassigned.')
+        },
+        onError: (err, _vars, ctx) => {
+            rollbackTasks(ctx?.prev)
+            message.error(
+                err?.response?.data?.detail || 'Failed to reassign task.'
+            )
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
+        },
+    })
+
+    // Defense-in-depth: a non-admin may only target users in their
+    // assignable set (the dropdown already filters to these, but a
+    // swimlane drop or a stale option could try an out-of-scope user).
+    const canAssignTarget = (assigneeUserId) =>
+        isTaskAdmin || assignableUserIds.includes(assigneeUserId)
+
+    // Board card dropped onto a (status, [assignee]) cell. When the drop
+    // changes the assignee we send one combined PUT (assignee + status);
+    // a status-only drop uses the lighter PATCH /status endpoint (which
+    // assignees are allowed to call). Permissions are re-checked here as
+    // defense-in-depth even though the board already gates the UI.
+    const handleCardDrop = async (task, { newStatus, newAssignee }) => {
+        const canStatus =
+            isTaskAdmin ||
+            task.assignee_user_id === user?.id ||
+            task.assigner_user_id === user?.id
+        const canReassign =
+            isTaskAdmin || task.assigner_user_id === user?.id
+
+        // Resolve whether the reassign part is allowed; if not, we still
+        // honour a legitimate status change (drop landed in another lane
+        // but the user can only move status, not reassign).
+        const reassignOk =
+            !!newAssignee && canReassign && canAssignTarget(newAssignee)
+        if (newAssignee && !reassignOk) {
+            message.info(
+                !canReassign
+                    ? 'Only the task assigner can reassign it.'
+                    : 'You are not allowed to assign tasks to this user.'
+            )
+        }
+
+        // Path 1 — reassign (optionally with a status change) in one PUT.
+        if (reassignOk) {
+            const applyStatus = newStatus && canStatus ? newStatus : undefined
+            try {
+                const updated = await reassignMutation.mutateAsync({
+                    id: task.id,
+                    assigneeUserId: newAssignee,
+                    status: applyStatus,
+                })
+                if (applyStatus === 'completed') {
+                    setLogTimeTask(
+                        updated || {
+                            ...task,
+                            assignee_user_id: newAssignee,
+                            status: 'completed',
+                        }
+                    )
+                }
+            } catch {
+                // toast already shown
+            }
+            return
+        }
+
+        // Path 2 — status-only change (reassign absent or not permitted).
+        if (newStatus) {
+            if (!canStatus) {
+                message.info('You are not allowed to change this task status.')
+                return
+            }
+            try {
+                await dndStatusMutation.mutateAsync({
+                    id: task.id,
+                    status: newStatus,
+                })
+                // Preserve the Log Time prompt the checkbox flow gives on
+                // completion.
+                if (newStatus === 'completed') setLogTimeTask(task)
+            } catch {
+                // toast already shown by the mutation
+            }
+        }
+    }
+
+    // Inline quick-reassign dropdown on a board card.
+    const handleReassign = async (task, assigneeUserId) => {
+        const canReassign = isTaskAdmin || task.assigner_user_id === user?.id
+        if (!canReassign) {
+            message.info('You are not allowed to reassign this task.')
+            return
+        }
+        if (!canAssignTarget(assigneeUserId)) {
+            message.info('You are not allowed to assign tasks to this user.')
+            return
+        }
+        try {
+            await reassignMutation.mutateAsync({
+                id: task.id,
+                assigneeUserId,
+            })
+        } catch {
+            // toast already shown
+        }
+    }
 
     const handleCreate = (date) => {
         setEditingTask(null)
@@ -705,6 +901,31 @@ function TasksPage() {
                             List
                         </span>
                     </div>
+                    {/* Board-only: per-assignee swimlanes for dynamic
+                        (drag-to-reassign) assignment. */}
+                    {viewLayout === 'board' && (
+                        <>
+                            <div className="tasks-tabs-divider" />
+                            <label
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    cursor: 'pointer',
+                                    color: 'var(--c-text-muted)',
+                                    fontSize: 13,
+                                    whiteSpace: 'nowrap',
+                                }}
+                            >
+                                <Switch
+                                    size="small"
+                                    checked={groupByAssignee}
+                                    onChange={setGroupByAssignee}
+                                />
+                                Group by assignee
+                            </label>
+                        </>
+                    )}
                     {/* Create lives inside the Board view toolbar
                         ("+ New Task"), wired to handleCreate. */}
                 </div>
@@ -916,6 +1137,10 @@ function TasksPage() {
                     completionLoading={completionMutation.isPending}
                     onCreate={handleCreate}
                     canCreate={canCreateTask}
+                    groupByAssignee={groupByAssignee}
+                    assigneeOptions={assigneeOptions}
+                    onCardDrop={handleCardDrop}
+                    onReassign={handleReassign}
                 />
             )}
 
