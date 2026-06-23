@@ -32,6 +32,7 @@ from ..schemas.task import (
     TaskCommentUpdate,
     TaskCompleteUpdate,
     TaskCreate,
+    TaskCreateBulk,
     TaskCreateForGroup,
     TaskGroupCreateResponse,
     TaskNoteUpdate,
@@ -399,6 +400,48 @@ async def create_tasks_for_group(
         assignee_group_id=payload.assignee_group_id,
         tasks=serialized,
     )
+
+
+@router.post(
+    "/bulk",
+    response_model=List[TaskResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_tasks_bulk(
+    payload: TaskCreateBulk,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create the same task for multiple assignees (users and/or groups) in
+    one action. Returns the created task rows; fires a single notification
+    batch (each assignee an individual e-mail, the assigner one summary)."""
+    task_service.require_task_access(db, current_user)
+    task_service.require_task_assigner(db, current_user)
+    _batch_id, tasks = task_service.create_tasks_bulk(
+        db,
+        current_user,
+        customer_id=payload.customer_id,
+        project_id=payload.project_id,
+        sub_project_id=payload.sub_project_id,
+        assignee_user_ids=payload.assignee_user_ids,
+        assignee_group_ids=payload.assignee_group_ids,
+        title=payload.title,
+        description=payload.description,
+        scheduled_date=payload.scheduled_date,
+        due_date=payload.due_date,
+        estimated_duration_minutes=payload.estimated_duration_minutes,
+        priority=payload.priority,
+    )
+    serialized = [_serialize_task(t) for t in tasks]
+    background_tasks.add_task(
+        send_assignment_notifications,
+        token=request.headers.get("authorization") or "",
+        tasks=[_notif_payload(s) for s in serialized],
+        assigner_user_id=str(current_user.id),
+    )
+    return serialized
 
 
 # NOTE: /search MUST be declared before /{task_id} below — FastAPI

@@ -145,6 +145,32 @@ class TaskCreate(BaseModel):
         return v
 
 
+class TaskCreateBulk(BaseModel):
+    """Create the same task for multiple assignees at once. Targets may be
+    individual users and/or whole groups; the backend expands groups to
+    active members, unions everything, dedups, and excludes the assigner.
+    All created rows share one assignment_batch_id."""
+
+    customer_id: UUID
+    project_id: UUID
+    sub_project_id: Optional[UUID] = None
+    assignee_user_ids: List[UUID] = Field(default_factory=list)
+    assignee_group_ids: List[UUID] = Field(default_factory=list)
+    title: str = Field(..., min_length=1, max_length=255)
+    description: str = Field(..., min_length=1)
+    scheduled_date: date
+    due_date: Optional[date] = None
+    estimated_duration_minutes: Optional[int] = Field(None, gt=0)
+    priority: PriorityLiteral = "medium"
+
+    @field_validator("description")
+    @classmethod
+    def _description_not_blank(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Description is required.")
+        return v
+
+
 class TaskUpdate(BaseModel):
     customer_id: Optional[UUID] = None
     project_id: Optional[UUID] = None

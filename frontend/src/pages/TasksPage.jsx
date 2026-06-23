@@ -371,6 +371,26 @@ function TasksPage() {
         },
     })
 
+    // Multi-assignee create — one task per selected user / group member.
+    const createBulkMutation = useMutation({
+        mutationFn: (data) => taskService.createBulk(data),
+        onSuccess: (tasks) => {
+            const count = Array.isArray(tasks) ? tasks.length : 0
+            message.success(
+                `${count} task${count === 1 ? '' : 's'} created.`
+            )
+            queryClient.invalidateQueries({ queryKey: ['tasks'] })
+            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
+            setCreateOpen(false)
+            setEditingTask(null)
+        },
+        onError: (err) => {
+            message.error(
+                err?.response?.data?.detail || 'Failed to create tasks.'
+            )
+        },
+    })
+
     const completionMutation = useMutation({
         mutationFn: ({ id, completed }) => taskService.setCompleted(id, completed),
         onSuccess: () => {
@@ -529,9 +549,14 @@ function TasksPage() {
     }
 
     const handleSubmitTask = async (payload, meta = {}) => {
-        // meta = { taskId? , isGroup? } — modal decides which one.
+        // meta = { taskId? , isBulk? , isGroup? } — modal decides which.
         if (meta.taskId) {
             await updateMutation.mutateAsync({ id: meta.taskId, data: payload })
+            return
+        }
+        if (meta.isBulk) {
+            // Multi-select create (users and/or groups) → bulk endpoint.
+            await createBulkMutation.mutateAsync(payload)
             return
         }
         if (meta.isGroup) {
@@ -1066,7 +1091,8 @@ function TasksPage() {
                 loading={
                     createMutation.isPending ||
                     updateMutation.isPending ||
-                    createGroupMutation.isPending
+                    createGroupMutation.isPending ||
+                    createBulkMutation.isPending
                 }
             />
 

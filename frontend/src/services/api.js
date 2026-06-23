@@ -926,6 +926,16 @@ export const taskService = {
     },
 
     /**
+     * Create the same task for multiple assignees (users and/or groups)
+     * in one request. data: { ...taskFields, assignee_user_ids: [],
+     * assignee_group_ids: [] }. Returns the created task rows.
+     */
+    createBulk: async (data) => {
+        const response = await coreApi.post('/api/v1/core/tasks/bulk', data)
+        return response.data
+    },
+
+    /**
      * Fan a single create-task action out to every active member of a
      * group. Returns { assignment_batch_id, assignee_group_id, tasks }.
      */

@@ -256,11 +256,6 @@ function CreateTaskModal({
             ])
             return
         }
-        const assigneeRaw = values.assignee || ''
-        const [assigneeKind, assigneeId] = assigneeRaw.includes(':')
-            ? assigneeRaw.split(':')
-            : ['user', assigneeRaw]
-
         const basePayload = {
             customer_id: values.customer_id,
             project_id: values.project_id,
@@ -272,22 +267,46 @@ function CreateTaskModal({
             priority: values.priority || 'medium',
         }
 
-        if (assigneeKind === 'group' && !isEditing) {
-            // Group assignee: backend fans the task out to one row per
-            // active member via POST /tasks/group.
+        // Edit mode: a single task row, single-select assignee (string).
+        if (isEditing) {
+            const raw = values.assignee || ''
+            const assigneeId = raw.includes(':') ? raw.split(':')[1] : raw
             await onSubmit(
-                { ...basePayload, assignee_group_id: assigneeId },
-                { isGroup: true }
+                {
+                    ...basePayload,
+                    assignee_user_id: assigneeId,
+                    clear_sub_project:
+                        !!editingTask.sub_project_id && !subProjectId,
+                },
+                { taskId: editingTask.id }
             )
             return
         }
 
-        const payload = { ...basePayload, assignee_user_id: assigneeId }
-        if (isEditing) {
-            payload.clear_sub_project =
-                !!editingTask.sub_project_id && !subProjectId
+        // Create mode: multi-select — assignee is an array of
+        // "user:<id>" / "group:<id>" tokens. Split them and let the bulk
+        // endpoint create one task per person (groups expanded to members,
+        // assigner excluded, duplicates collapsed).
+        const selected = Array.isArray(values.assignee)
+            ? values.assignee
+            : values.assignee
+            ? [values.assignee]
+            : []
+        const assigneeUserIds = []
+        const assigneeGroupIds = []
+        for (const v of selected) {
+            const [kind, id] = v.includes(':') ? v.split(':') : ['user', v]
+            if (kind === 'group') assigneeGroupIds.push(id)
+            else assigneeUserIds.push(id)
         }
-        await onSubmit(payload, { taskId: editingTask?.id })
+        await onSubmit(
+            {
+                ...basePayload,
+                assignee_user_ids: assigneeUserIds,
+                assignee_group_ids: assigneeGroupIds,
+            },
+            { isBulk: true }
+        )
     }
 
     // Assignee dropdown is empty when there are no users AND no groups
@@ -422,21 +441,31 @@ function CreateTaskModal({
                 </Form.Item>
 
                 <Form.Item
-                    label="Assignee"
+                    label={isEditing ? 'Assignee' : 'Assignees'}
                     name="assignee"
-                    rules={[{ required: true, message: 'Assignee is required.' }]}
+                    rules={[
+                        {
+                            required: true,
+                            message: 'Pick at least one assignee.',
+                        },
+                    ]}
                     extra={
-                        !isEditing && assignableGroups.length > 0
-                            ? 'Picking a group creates one task per active group member.'
-                            : undefined
+                        isEditing
+                            ? undefined
+                            : 'Pick one or more users and/or groups — one task is created per person (a group expands to its active members).'
                     }
                 >
                     <Select
+                        mode={isEditing ? undefined : 'multiple'}
                         showSearch
+                        allowClear={!isEditing}
+                        maxTagCount="responsive"
                         placeholder={
                             noAssignableUsers
                                 ? 'No assignable users'
-                                : 'Select user or group'
+                                : isEditing
+                                ? 'Select user'
+                                : 'Select users or groups'
                         }
                         disabled={noAssignableUsers}
                         optionFilterProp="label"

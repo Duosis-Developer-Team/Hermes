@@ -1407,6 +1407,141 @@ def create_tasks_for_group(
     return batch_id, created
 
 
+def create_tasks_bulk(
+    db: Session,
+    user: CurrentUser,
+    *,
+    customer_id: UUID,
+    project_id: UUID,
+    sub_project_id: Optional[UUID],
+    assignee_user_ids: Sequence[UUID],
+    assignee_group_ids: Sequence[UUID],
+    title: str,
+    description: str,
+    scheduled_date: date,
+    due_date: Optional[date],
+    estimated_duration_minutes: Optional[int],
+    priority: str,
+) -> tuple[UUID, List[Task]]:
+    """Create the same task for many assignees in one shot.
+
+    Targets = explicit users ∪ active members of each selected group, with
+    the assigner removed (you never assign to yourself) and duplicates
+    collapsed. Ineligible targets are skipped (a user the assigner may not
+    assign to, or who has no task access); if NOTHING is eligible the call
+    fails with 400 so nothing is created. All rows share one batch_id.
+    """
+    _ensure_customer(db, customer_id)
+    _ensure_project(db, project_id, customer_id)
+    _ensure_sub_project_for_create(db, sub_project_id, customer_id, project_id)
+
+    description = (description or "").strip()
+    if not description:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Description is required.",
+        )
+    if due_date and due_date < scheduled_date:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Due date cannot be before the scheduled date.",
+        )
+
+    assigner_uuid = UUID(user.id)
+    admin = is_task_admin(user)
+    eff_data = list_effective_perm_data(db)
+
+    def _has_access(uid: UUID) -> bool:
+        d = eff_data.get(str(uid), {})
+        return bool(
+            d.get("direct_can_access_tasks") or d.get("group_grants_access")
+        )
+
+    eligible: list[UUID] = []
+    seen: set[UUID] = set()
+
+    def _add(uid: UUID) -> None:
+        if uid == assigner_uuid or uid in seen:
+            return
+        if not _has_access(uid):
+            return
+        seen.add(uid)
+        eligible.append(uid)
+
+    # Explicit users — must be assignable by this user (admins bypass).
+    for uid in assignee_user_ids:
+        if not admin and not can_assign_to(db, user, uid):
+            continue
+        _add(uid)
+
+    # Groups — validate the assigner→group mapping, then fan out to members.
+    for gid in assignee_group_ids:
+        group = db.query(UserGroup).filter(UserGroup.id == gid).first()
+        if not group or not group.is_active:
+            continue
+        if not can_assign_to_group(db, user, gid):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not allowed to assign tasks to this group.",
+            )
+        for member_id in get_active_group_member_ids(db, gid):
+            _add(member_id)
+
+    if not eligible:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "No eligible assignee. Targets need Task Access enabled, "
+                "and the task is never assigned back to you."
+            ),
+        )
+
+    import uuid as _uuid
+
+    batch_id = _uuid.uuid4()
+    title_clean = title.strip()
+    created: List[Task] = []
+    for assignee_id in eligible:
+        row = Task(
+            customer_id=customer_id,
+            project_id=project_id,
+            sub_project_id=sub_project_id,
+            title=title_clean,
+            description=description,
+            assignee_user_id=assignee_id,
+            assigner_user_id=assigner_uuid,
+            scheduled_date=scheduled_date,
+            due_date=due_date,
+            estimated_duration_minutes=estimated_duration_minutes,
+            priority=priority,
+            status="pending",
+            assignment_batch_id=batch_id,
+        )
+        db.add(row)
+        created.append(row)
+    db.flush()
+    for row in created:
+        _record_task_event(
+            db,
+            task_id=row.id,
+            actor_user_id=assigner_uuid,
+            event_type="task_created",
+            event_data={
+                "title": row.title,
+                "assignee_user_id": str(row.assignee_user_id),
+                "scheduled_date": row.scheduled_date.isoformat()
+                if row.scheduled_date else None,
+                "due_date": row.due_date.isoformat() if row.due_date else None,
+                "priority": row.priority,
+                "assignment_batch_id": str(batch_id),
+            },
+        )
+    db.commit()
+    for row in created:
+        db.refresh(row)
+    return batch_id, created
+
+
 def update_task(
     db: Session,
     user: CurrentUser,

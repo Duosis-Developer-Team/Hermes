@@ -180,7 +180,7 @@ function TaskCard({
                             : task.status === 'pending'
                                 ? 'Accept task (move to In Progress)'
                                 : 'Mark as completed'
-                        : 'Only the assignee, assigner, or admin can change completion'
+                        : 'Only the assignee can change task status — from their My Tasks view'
                 }
             >
                 <Checkbox
