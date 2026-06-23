@@ -1136,7 +1136,11 @@ function TasksPage() {
                     onToggleCompletion={handleToggleCompletion}
                     completionLoading={completionMutation.isPending}
                     onCreate={handleCreate}
-                    canCreate={canCreateTask}
+                    /* Creating a task = assigning it to someone, which only
+                       makes sense in the "Assigned by Me" scope. In "My
+                       Tasks" you view work assigned TO you, so the create
+                       button is hidden there. */
+                    canCreate={canCreateTask && taskScope === 'assigned-by-me'}
                     groupByAssignee={groupByAssignee}
                     assigneeOptions={assigneeOptions}
                     onCardDrop={handleCardDrop}
