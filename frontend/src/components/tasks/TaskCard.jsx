@@ -76,38 +76,6 @@ export function TaskDueBadge({ task, compact = false }) {
     )
 }
 
-/**
- * Compact due-date marker variant — used on a different day column than
- * the scheduled card. Click opens the same edit flow on the parent page.
- */
-export function TaskDueMarker({ task, userMap = {}, currentUserId, onClick }) {
-    const showAssignee = currentUserId && task.assigner_user_id === currentUserId
-    return (
-        <div
-            className="task-due-marker"
-            role="button"
-            tabIndex={0}
-            onClick={(e) => {
-                e.stopPropagation()
-                onClick?.(task)
-            }}
-            onKeyDown={(e) => {
-                if (e.key === 'Enter') onClick?.(task)
-            }}
-        >
-            <span className="task-due-marker-label">Due</span>
-            <div className="task-due-marker-title">{task.title}</div>
-            <div className="task-due-marker-meta">
-                {task.customer_name || '—'}
-                {task.project_name ? ` · ${task.project_name}` : ''}
-                {showAssignee
-                    ? ` · ${userLabel(task.assignee_user_id, userMap)}`
-                    : ''}
-            </div>
-        </div>
-    )
-}
-
 function TaskCard({
     task,
     userMap = {},

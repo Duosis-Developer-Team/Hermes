@@ -11,7 +11,7 @@
  * =============================================================================
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
     Avatar,
     Button,
@@ -50,7 +50,6 @@ import {
 } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
-import TasksWeeklyView from '../components/tasks/TasksWeeklyView'
 import TasksListView from '../components/tasks/TasksListView'
 import TasksBoardView from '../components/tasks/TasksBoardView'
 import TasksSearchBar from '../components/tasks/TasksSearchBar'
@@ -125,9 +124,11 @@ function TasksPage() {
 
     // ── View switches ──────────────────────────────────────────────────────
     // Scope (primary) and Quick Filter (secondary, optional) are two
-    // independent controls now. Layout (Calendar/List/Board) is a
-    // third independent axis — none of these auto-flip each other.
-    const [viewLayout, setViewLayout] = useState('calendar')
+    // independent controls. Layout (List/Board) is a third independent
+    // axis — none of these auto-flip each other. Board is the default
+    // surface; the old Calendar (weekly) layout was removed as it was
+    // not usable for task management.
+    const [viewLayout, setViewLayout] = useState('board')
     const [taskScope, setTaskScope] = useState('my-tasks')
     const [taskQuickFilter, setTaskQuickFilter] = useState(null)
     // Admin-only user selector (Time Entry parity). null → current user.
@@ -144,11 +145,6 @@ function TasksPage() {
     // Effective viewed user. Non-admin path always resolves to current user
     // regardless of the selector — backend also coerces, defense in depth.
     const viewedUserId = isTaskAdmin ? selectedUserId || user?.id : user?.id
-
-    // ── Copy/paste state — Time Entry parity ──────────────────────────────
-    const [selectedTaskId, setSelectedTaskId] = useState(null)
-    const [copiedTask, setCopiedTask] = useState(null)
-    const [targetDate, setTargetDate] = useState(null)
 
     const weekEnd = weekStart.endOf('isoWeek')
 
@@ -237,11 +233,6 @@ function TasksPage() {
             customerFilter,
             projectFilter,
             subProjectFilter,
-            // Calendar widens the date window with an OR on due_date so
-            // due markers render even when the task is scheduled in a
-            // different week. List/Board keep the strict scheduled-date
-            // semantics. Key on viewLayout so we don't share cache.
-            viewLayout,
             todayStr,
         ],
         queryFn: () => {
@@ -263,16 +254,11 @@ function TasksPage() {
                     ...quickFilterParams,
                 })
             }
-            // No quick filter — page by current week. Calendar asks
-            // the backend to also include tasks whose due_date falls
-            // in [weekStart, weekEnd] so the due-marker column lights
-            // up for tasks scheduled in a different week.
+            // No quick filter — page by current week window.
             return taskService.list({
                 ...base,
                 start_date: weekStartStr,
                 end_date: weekEndStr,
-                include_due_in_range:
-                    viewLayout === 'calendar' ? true : undefined,
             })
         },
         enabled: canAccessTasks,
@@ -461,19 +447,6 @@ function TasksPage() {
         },
     })
 
-    // ── Paste mutation — separate from createMutation so it doesn't show
-    // the generic "Task created successfully" toast (paste has its own).
-    const pasteMutation = useMutation({
-        mutationFn: (data) => taskService.create(data),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['tasks'] })
-            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
-        },
-        onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Paste failed.')
-        },
-    })
-
     const handleCreate = (date) => {
         setEditingTask(null)
         setInitialDate(date ? date.format('YYYY-MM-DD') : null)
@@ -595,191 +568,6 @@ function TasksPage() {
         setSubProjectFilter(null)
     }
 
-    // ── Copy/paste handlers — Time Entry parity ────────────────────────────
-    // The "completed tasks can't be copied" rule is enforced at three
-    // points only:
-    //   1. TaskCard body click → never routes to onSelect when completed.
-    //   2. Ctrl+C handler below — refuses if the selected task is completed.
-    //   3. Ctrl+V handler below — refuses if the copied task is completed.
-    // We deliberately do NOT auto-clear copiedTask from a tasks-query
-    // effect: an over-aggressive auto-clear was racing the paste flow
-    // and silently dropping the clipboard.
-
-    const handleSelectTask = (taskId) => {
-        setSelectedTaskId((prev) => (prev === taskId ? null : taskId))
-        // Starting a new selection clears any pending paste target.
-        setTargetDate(null)
-    }
-
-    const handleSelectDay = (dateStr) => {
-        setTargetDate((prev) => (prev === dateStr ? null : dateStr))
-    }
-
-    const handleClearClipboard = () => {
-        setSelectedTaskId(null)
-        setCopiedTask(null)
-        setTargetDate(null)
-    }
-
-    // Keyboard shortcuts — Ctrl/Cmd + C/V/Escape (Time Entry parity)
-    useEffect(() => {
-        const handleKeyDown = async (e) => {
-            // Don't intercept while typing in a form field.
-            const tag = document.activeElement?.tagName?.toUpperCase()
-            const isEditable =
-                tag === 'INPUT' ||
-                tag === 'TEXTAREA' ||
-                tag === 'SELECT' ||
-                document.activeElement?.isContentEditable === true
-            if (isEditable) return
-
-            const isMod = e.ctrlKey || e.metaKey
-
-            // ── Ctrl/Cmd+C — copy selected task ─────────────────────────────
-            // Store a *frozen snapshot* of the task instead of the live
-            // object reference. tasks-query invalidation after create /
-            // paste / edit replaces the array contents; if we held the
-            // live reference, later renders could mutate it (status,
-            // dates) and break paste. The snapshot is everything we
-            // need to rebuild a create payload.
-            if (isMod && e.key === 'c') {
-                if (selectedTaskId) {
-                    const task = tasks.find((t) => t.id === selectedTaskId)
-                    if (task) {
-                        // Copy is the first step of an assign action;
-                        // a user without Assign Tasks would only hit
-                        // a 403 at paste time anyway, so refuse at
-                        // copy time with a clear toast.
-                        if (!isTaskAdmin && !canAssignTasks) {
-                            message.info(
-                                'You do not have permission to assign tasks.'
-                            )
-                            e.preventDefault()
-                            return
-                        }
-                        if (task.status === 'completed') {
-                            message.info('Completed tasks cannot be copied.')
-                            e.preventDefault()
-                            return
-                        }
-                        const snapshot = {
-                            id: task.id,
-                            customer_id: task.customer_id,
-                            project_id: task.project_id,
-                            sub_project_id: task.sub_project_id || null,
-                            assignee_user_id: task.assignee_user_id,
-                            title: task.title || 'Task',
-                            description: task.description || '',
-                            original_scheduled_date: task.scheduled_date,
-                            original_due_date: task.due_date || null,
-                            priority: task.priority || 'medium',
-                        }
-                        setCopiedTask(snapshot)
-                        message.info(
-                            `"${snapshot.title}" copied — select a target day, then Ctrl+V`
-                        )
-                        e.preventDefault()
-                    }
-                }
-                return
-            }
-
-            // ── Ctrl/Cmd+V — paste to target day ────────────────────────────
-            if (isMod && e.key === 'v') {
-                if (!copiedTask) return // nothing in clipboard, let browser handle
-                e.preventDefault()
-
-                // Defense-in-depth — backend already rejects without
-                // assign permission. Surface a friendly toast instead
-                // of a generic "Paste failed" if permissions were
-                // revoked between Ctrl+C and Ctrl+V.
-                if (!isTaskAdmin && !canAssignTasks) {
-                    message.info(
-                        'You do not have permission to assign tasks.'
-                    )
-                    setCopiedTask(null)
-                    setTargetDate(null)
-                    return
-                }
-
-                if (!targetDate) {
-                    message.warning('Select a target day first, then paste')
-                    return
-                }
-                if (pasteMutation.isPending) return // debounce double-paste
-
-                // Preserve the original due-date offset relative to the
-                // original scheduled date; both fields live on the
-                // snapshot the Ctrl+C handler captured.
-                let newDueDate = null
-                if (
-                    copiedTask.original_due_date &&
-                    copiedTask.original_scheduled_date
-                ) {
-                    const offsetDays = dayjs(copiedTask.original_due_date).diff(
-                        dayjs(copiedTask.original_scheduled_date),
-                        'day'
-                    )
-                    newDueDate = dayjs(targetDate)
-                        .add(offsetDays, 'day')
-                        .format('YYYY-MM-DD')
-                }
-
-                // Description is required by the backend (min_length=1).
-                // The snapshot may have an empty description for legacy
-                // tasks; fall back to the title.
-                const safeDescription =
-                    (copiedTask.description && copiedTask.description.trim()) ||
-                    copiedTask.title ||
-                    'Task'
-                const payload = {
-                    customer_id: copiedTask.customer_id,
-                    project_id: copiedTask.project_id,
-                    sub_project_id: copiedTask.sub_project_id || null,
-                    assignee_user_id: copiedTask.assignee_user_id,
-                    title: copiedTask.title,
-                    description: safeDescription,
-                    scheduled_date: targetDate,
-                    due_date: newDueDate,
-                    priority: copiedTask.priority || 'medium',
-                    // status, assignee_note, completed_* intentionally omitted —
-                    // backend defaults handle them (status=pending, others null).
-                }
-
-                try {
-                    await pasteMutation.mutateAsync(payload)
-                    const formattedDate = dayjs(targetDate).format('DD MMM')
-                    message.success(
-                        `"${copiedTask.title}" pasted to ${formattedDate} ✓`
-                    )
-                    // Clear target only — keep copiedTask for repeated pastes.
-                    setTargetDate(null)
-                } catch {
-                    // pasteMutation.onError already showed an error toast.
-                }
-                return
-            }
-
-            // ── Escape — clear clipboard & selection ────────────────────────
-            if (e.key === 'Escape') {
-                setSelectedTaskId(null)
-                setCopiedTask(null)
-                setTargetDate(null)
-            }
-        }
-
-        window.addEventListener('keydown', handleKeyDown)
-        return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [
-        selectedTaskId,
-        copiedTask,
-        targetDate,
-        tasks,
-        pasteMutation,
-        canAssignTasks,
-        isTaskAdmin,
-    ])
-
     // Create requires assign permission AND at least one assignable
     // target (user OR group). Previously this only counted
     // assignableUserIds, which hid Create from users who could only
@@ -897,15 +685,16 @@ function TasksPage() {
                         })}
                     </div>
                     <div className="tasks-tabs-divider" />
-                    {/* Layout tabs */}
+                    {/* Layout tabs — Board (default) and List. The
+                        Calendar (weekly) layout was removed. */}
                     <div className="tasks-tabs">
                         <span
                             className={`tasks-tab-link ${
-                                viewLayout === 'calendar' ? 'active' : ''
+                                viewLayout === 'board' ? 'active' : ''
                             }`}
-                            onClick={() => setViewLayout('calendar')}
+                            onClick={() => setViewLayout('board')}
                         >
-                            Calendar
+                            Board
                         </span>
                         <span
                             className={`tasks-tab-link ${
@@ -915,18 +704,9 @@ function TasksPage() {
                         >
                             List
                         </span>
-                        <span
-                            className={`tasks-tab-link ${
-                                viewLayout === 'board' ? 'active' : ''
-                            }`}
-                            onClick={() => setViewLayout('board')}
-                        >
-                            Board
-                        </span>
                     </div>
-                    {/* Task creation lives on the day-column "+" buttons
-                        in Calendar, mirroring Time Entry. No large
-                        always-on Create button here. */}
+                    {/* Create lives inside the Board view toolbar
+                        ("+ New Task"), wired to handleCreate. */}
                 </div>
             </div>
 
@@ -988,11 +768,11 @@ function TasksPage() {
                 )}
             </div>
 
-            {/* Week navigation row — only for calendar layout. Tight
-                vertical padding so the grid sits close to the header,
-                matching Time Entry's visual rhythm now that the large
-                Create button has been removed from the header. */}
-            {viewLayout === 'calendar' && (
+            {/* Week navigation row — applies to both Board and List.
+                Without a quick filter active, the views page by this
+                week window, so the pager lets users reach other weeks
+                (the old Calendar layout used to own this control). */}
+            {!taskQuickFilter && (
                 <div
                     className="tasks-body"
                     style={{
@@ -1122,7 +902,7 @@ function TasksPage() {
                     completionLoading={completionMutation.isPending}
                     onOpenLogTime={handleOpenLogTime}
                 />
-            ) : viewLayout === 'board' ? (
+            ) : (
                 <TasksBoardView
                     tasks={tasks}
                     userMap={userMap}
@@ -1134,31 +914,8 @@ function TasksPage() {
                     onOpenLogTime={handleOpenLogTime}
                     onToggleCompletion={handleToggleCompletion}
                     completionLoading={completionMutation.isPending}
-                />
-            ) : (
-                <TasksWeeklyView
-                    weekStart={weekStart}
-                    tasks={tasks}
-                    userMap={userMap}
-                    currentUserId={user?.id}
-                    isAdmin={isTaskAdmin}
-                    /* In Assigned by Me mode each day shows tasks grouped
-                       by assignee — admins/assigners scan teams quickly. */
-                    groupByAssignee={taskScope === 'assigned-by-me'}
-                    onEditTask={handleEdit}
-                    onDeleteTask={(t) => setDeletingTask(t)}
-                    onOpenReview={handleOpenReview}
-                    onToggleCompletion={handleToggleCompletion}
-                    onOpenLogTime={handleOpenLogTime}
                     onCreate={handleCreate}
                     canCreate={canCreateTask}
-                    completionLoading={completionMutation.isPending}
-                    selectedTaskId={selectedTaskId}
-                    copiedTask={copiedTask}
-                    targetDate={targetDate}
-                    onSelectTask={handleSelectTask}
-                    onSelectDay={handleSelectDay}
-                    onClearClipboard={handleClearClipboard}
                 />
             )}
 

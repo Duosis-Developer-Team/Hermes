@@ -20,6 +20,8 @@
  */
 
 import { useMemo } from 'react'
+import { Button } from 'antd'
+import { PlusOutlined } from '@ant-design/icons'
 import TaskCard from './TaskCard'
 import './TasksBoardView.css'
 
@@ -41,6 +43,8 @@ function TasksBoardView({
     onOpenLogTime,
     onToggleCompletion,
     completionLoading = false,
+    onCreate,
+    canCreate = false,
 }) {
     const buckets = useMemo(() => {
         const map = { pending: [], in_progress: [], completed: [], rejected: [] }
@@ -51,7 +55,25 @@ function TasksBoardView({
     }, [tasks])
 
     return (
-        <div className="tasks-board">
+        <div className="tasks-board-wrap">
+            {/* Board toolbar — hosts the primary create action. With the
+                Calendar view removed, the per-day "+" buttons are gone, so
+                this is now the main entry point for creating a task. Gated
+                by the same canCreate permission the page computes. */}
+            {canCreate && (
+                <div className="tasks-board-toolbar">
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        className="tasks-board-new-btn"
+                        onClick={() => onCreate?.()}
+                    >
+                        New Task
+                    </Button>
+                </div>
+            )}
+
+            <div className="tasks-board">
             {COLUMNS.map(({ status, label }) => {
                 const list = buckets[status] || []
                 return (
@@ -107,6 +129,7 @@ function TasksBoardView({
                     </div>
                 )
             })}
+            </div>
         </div>
     )
 }

@@ -228,55 +228,9 @@
     background: rgba(22, 101, 52, 0.26) !important;
 }
 
-/* ── Due marker (shown on the due-date column when ≠ scheduled) ─ */
-.task-due-marker {
-    background: rgba(251, 191, 36, 0.12);
-    border: 1px dashed rgba(251, 191, 36, 0.45);
-    border-radius: 6px;
-    padding: 8px 10px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: background var(--transition-fast);
-}
-
-.task-due-marker:hover {
-    background: rgba(251, 191, 36, 0.18);
-}
-
-.task-due-marker-label {
-    display: inline-block;
-    font-size: 10px;
-    font-weight: 700;
-    color: #fbbf24;
-    background: rgba(251, 191, 36, 0.18);
-    padding: 1px 6px;
-    border-radius: 3px;
-    margin-bottom: 4px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-}
-
-.task-due-marker-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #fef3c7;
-    line-height: 1.3;
-    word-break: break-word;
-}
-
-.task-due-marker-meta {
-    font-size: 11px;
-    color: var(--c-text);
-    margin-top: 4px;
-}
-
 /* ── Light-mode legibility: the amber/cream due text was tuned for a
    dark card. On a light card it washes out, so darken it. The dark
    due-badge chips (red/orange/brown bg + light text) stay as-is. ── */
-:root[data-theme="light"] .task-card-due-hint,
-:root[data-theme="light"] .task-due-marker-label {
+:root[data-theme="light"] .task-card-due-hint {
     color: #92600a;
-}
-:root[data-theme="light"] .task-due-marker-title {
-    color: #7a4a05;
 }
