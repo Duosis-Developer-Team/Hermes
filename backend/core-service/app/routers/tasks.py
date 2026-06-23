@@ -20,7 +20,7 @@ from datetime import date
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -43,7 +43,29 @@ from ..schemas.task import (
     TaskUpdate,
 )
 from ..services import task_service
+from ..services.task_notifications import send_assignment_notifications
 from shared.auth import CurrentUser, get_current_user
+
+
+def _notif_payload(resp) -> dict:
+    """Flatten a serialized task into the small, session-free dict the
+    e-mail templates consume (dates → DD.MM.YYYY strings)."""
+
+    def _d(value):
+        return value.strftime("%d.%m.%Y") if value else None
+
+    return {
+        "task_code": resp.task_code,
+        "title": resp.title,
+        "description": resp.description,
+        "customer_name": resp.customer_name,
+        "project_name": resp.project_name,
+        "sub_project_name": resp.sub_project_name,
+        "priority": resp.priority,
+        "scheduled_date": _d(resp.scheduled_date),
+        "due_date": _d(resp.due_date),
+        "assignee_user_id": str(resp.assignee_user_id),
+    }
 
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
@@ -311,13 +333,24 @@ async def list_tasks(
 @router.post("", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 async def create_task(
     payload: TaskCreate,
+    background_tasks: BackgroundTasks,
+    request: Request,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     task_service.require_task_access(db, current_user)
     task_service.require_task_assigner(db, current_user)
     task = task_service.create_task(db, current_user, payload)
-    return _serialize_task(task)
+    serialized = _serialize_task(task)
+    # Fire-and-forget e-mail notification (assignee + assigner). Runs
+    # after the response; failures are logged, never surfaced.
+    background_tasks.add_task(
+        send_assignment_notifications,
+        token=request.headers.get("authorization") or "",
+        tasks=[_notif_payload(serialized)],
+        assigner_user_id=str(current_user.id),
+    )
+    return serialized
 
 
 @router.post(
@@ -327,6 +360,8 @@ async def create_task(
 )
 async def create_tasks_for_group(
     payload: TaskCreateForGroup,
+    background_tasks: BackgroundTasks,
+    request: Request,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -350,10 +385,19 @@ async def create_tasks_for_group(
         estimated_duration_minutes=payload.estimated_duration_minutes,
         priority=payload.priority,
     )
+    serialized = [_serialize_task(t) for t in tasks]
+    # One notification batch: each member gets an assignee e-mail and the
+    # assigner gets a single group summary (see task_notifications).
+    background_tasks.add_task(
+        send_assignment_notifications,
+        token=request.headers.get("authorization") or "",
+        tasks=[_notif_payload(s) for s in serialized],
+        assigner_user_id=str(current_user.id),
+    )
     return TaskGroupCreateResponse(
         assignment_batch_id=batch_id,
         assignee_group_id=payload.assignee_group_id,
-        tasks=[_serialize_task(t) for t in tasks],
+        tasks=serialized,
     )
 
 

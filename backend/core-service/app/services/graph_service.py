@@ -231,6 +231,75 @@ class MicrosoftGraphClient:
                 params = None
 
 
+    # --------------------------------------------------------------
+    # Mail — app-only sendMail
+    # --------------------------------------------------------------
+
+    async def send_mail(
+        self,
+        *,
+        sender: str,
+        to_email: str,
+        subject: str,
+        html_body: str,
+    ) -> None:
+        """Send an HTML e-mail *as* `sender` to a single recipient via
+        Graph `POST /users/{sender}/sendMail`.
+
+        Requires the Mail.Send application permission (admin-consented)
+        on the Azure app. Raises GraphConfigError when Graph isn't
+        configured and GraphRequestError on a non-2xx response. Callers
+        that must never fail the surrounding request should wrap this in
+        try/except (see task_notifications)."""
+        self._ensure_configured()
+        token = await self._get_token()
+
+        url = f"{self._base_url}/users/{sender}/sendMail"
+        payload = {
+            "message": {
+                "subject": subject,
+                "body": {"contentType": "HTML", "content": html_body},
+                "toRecipients": [
+                    {"emailAddress": {"address": to_email}}
+                ],
+            },
+            "saveToSentItems": True,
+        }
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+        timeout = httpx.Timeout(30.0, connect=15.0)
+
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            if resp.status_code == 401:
+                # Token expired between acquisition and use — refresh once.
+                self._token = None
+                self._token_expires_at = 0.0
+                token = await self._get_token()
+                headers["Authorization"] = f"Bearer {token}"
+                resp = await client.post(url, json=payload, headers=headers)
+
+        # sendMail returns 202 Accepted with an empty body on success.
+        if resp.status_code not in (200, 202):
+            detail = _short_text(resp.text)
+            logger.warning(
+                "Graph sendMail failed sender=%s to=%s status=%s detail=%s",
+                _mask_email(sender),
+                _mask_email(to_email),
+                resp.status_code,
+                detail,
+            )
+            raise GraphRequestError(resp.status_code, detail)
+
+        logger.info(
+            "Graph sendMail ok sender=%s to=%s",
+            _mask_email(sender),
+            _mask_email(to_email),
+        )
+
+
 # --------------------------------------------------------------
 # Module singleton
 # --------------------------------------------------------------

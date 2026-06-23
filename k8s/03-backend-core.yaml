@@ -94,6 +94,32 @@ spec:
               key: AZURE_CLIENT_SECRET
               optional: true
 
+        # Task assignment e-mail notifications (Microsoft Graph)
+        - name: NOTIFICATIONS_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: NOTIFICATIONS_ENABLED
+              optional: true
+        - name: NOTIF_MAIL_SENDER
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: NOTIF_MAIL_SENDER
+              optional: true
+        - name: NOTIF_NOTIFY_ASSIGNER
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: NOTIF_NOTIFY_ASSIGNER
+              optional: true
+        - name: APP_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: APP_BASE_URL
+              optional: true
+
         livenessProbe:
           httpGet:
             path: /health

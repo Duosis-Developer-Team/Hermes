@@ -27,3 +27,12 @@ data:
   # Azure AD Config
   AZURE_CLIENT_ID: "77dc01d8-6383-46ce-bc63-6da9ab8f3614"
   AZURE_TENANT_ID: "6d7f5e10-f771-470c-b372-5ddab61689cf"
+
+  # Task assignment e-mail notifications (sent via Microsoft Graph using the
+  # Azure app above — needs Mail.Send application permission + admin consent).
+  # Kept OFF in test/prod until validated on dev; flip to "true" to enable.
+  NOTIFICATIONS_ENABLED: "false"
+  NOTIF_MAIL_SENDER: "hermes@duosis.com"
+  NOTIF_NOTIFY_ASSIGNER: "true"
+  # Public app URL for the "View task" button; leave empty to omit the link.
+  APP_BASE_URL: ""

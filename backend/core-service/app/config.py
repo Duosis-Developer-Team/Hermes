@@ -85,7 +85,25 @@ class Settings(BaseSettings):
     GRAPH_AUTHORITY: str = "https://login.microsoftonline.com"
     GRAPH_BASE_URL: str = "https://graph.microsoft.com/v1.0"
     GRAPH_SCOPE: str = "https://graph.microsoft.com/.default"
-    
+
+    # ==========================================================================
+    # Task assignment e-mail notifications
+    # ==========================================================================
+    # Sent via Microsoft Graph (reuses the AZURE_*/GRAPH_* app credentials
+    # above — no separate mailbox password). When NOTIFICATIONS_ENABLED is
+    # false, or Graph isn't configured, notifications are skipped silently;
+    # task creation never fails because of e-mail.
+    NOTIFICATIONS_ENABLED: bool = False
+    # Mailbox the notification is sent *as* (must be a real mailbox the
+    # Azure app is allowed to send from — Mail.Send application permission).
+    NOTIF_MAIL_SENDER: str = "hermes@duosis.com"
+    # Also e-mail the assigner ("you assigned a task to X"). The assignee
+    # is always notified when notifications are enabled.
+    NOTIF_NOTIFY_ASSIGNER: bool = True
+    # Public app URL used to build a "View task" link in the e-mail. When
+    # empty the e-mail simply omits the button.
+    APP_BASE_URL: str = ""
+
     # ==========================================================================
     # CORS Configuration
     # ==========================================================================

@@ -675,6 +675,26 @@ Edit `01-configmap.yaml` to customize:
 | `REPORTING_SERVICE_URL` | Internal reporting service URL | `http://reporting-service/api/v1` |
 | `ENVIRONMENT` | Environment name | `production` |
 | `LOG_LEVEL` | Logging level | `INFO` |
+| `NOTIFICATIONS_ENABLED` | Send task-assignment e-mails (`true`/`false`) | `false` (test), `true` (dev) |
+| `NOTIF_MAIL_SENDER` | Mailbox e-mails are sent *as* | `hermes@duosis.com` |
+| `NOTIF_NOTIFY_ASSIGNER` | Also e-mail the assigner (`true`/`false`) | `true` |
+| `APP_BASE_URL` | Public app URL for the "View task" button (empty = no button) | `""` |
+
+### Task Assignment E-mail Notifications (Microsoft Graph)
+
+When `NOTIFICATIONS_ENABLED=true`, core-service e-mails the assignee (and,
+when `NOTIF_NOTIFY_ASSIGNER=true`, the assigner) on task creation. Mail is
+sent via **Microsoft Graph** using the existing `AZURE_CLIENT_ID` /
+`AZURE_TENANT_ID` / `AZURE_CLIENT_SECRET` app credentials — no separate SMTP
+mailbox password.
+
+**Operational prerequisite:** the Azure app (`AZURE_CLIENT_ID`) must be granted
+the **`Mail.Send` application permission** with **admin consent** in the Azure
+Portal, and be allowed to send *as* `NOTIF_MAIL_SENDER`. Until then, `sendMail`
+returns 403 and notifications are skipped — **task creation never fails** because
+of e-mail (every send is best-effort, run in a background task, and swallowed +
+logged on error). To enable in test/prod, set `NOTIFICATIONS_ENABLED="true"` in
+the ConfigMap and restart core-service (`kubectl rollout restart deployment/core-service -n <ns>`).
 
 ### Secret Values
 
