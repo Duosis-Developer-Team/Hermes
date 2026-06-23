@@ -128,6 +128,9 @@ function TasksBoardView({
     groupByAssignee = false,
     allowStatusDrag = false,
     onCardDrop,
+    // Card body click → open the docked detail panel. The Review (eye)
+    // hover button still opens the full modal via onOpenReview.
+    onOpenPanel,
 }) {
     const sensors = useSensors(
         // 6px activation distance so a plain click still opens the Review
@@ -222,7 +225,7 @@ function TasksBoardView({
                     userMap={userMap}
                     currentUserId={currentUserId}
                     isAdmin={isAdmin}
-                    onSelect={() => onOpenReview?.(t)}
+                    onSelect={() => onOpenPanel?.(t)}
                     onEdit={onEditTask}
                     onDelete={onDeleteTask}
                     onOpenReview={onOpenReview}

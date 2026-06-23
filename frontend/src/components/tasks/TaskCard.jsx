@@ -118,10 +118,8 @@ function TaskCard({
 
     const handleBodyClick = (event) => {
         event.stopPropagation()
-        if (isCompleted && onOpenLogTime) {
-            onOpenLogTime(task)
-            return
-        }
+        // Clicking the card always opens the detail panel. Log Time for a
+        // completed task is reachable via its hover action button.
         onSelect?.(task.id)
     }
 
@@ -165,10 +163,6 @@ function TaskCard({
             onClick={handleBodyClick}
             onKeyDown={(e) => {
                 if (e.key !== 'Enter') return
-                if (isCompleted && onOpenLogTime) {
-                    onOpenLogTime(task)
-                    return
-                }
                 onSelect?.(task.id)
             }}
         >

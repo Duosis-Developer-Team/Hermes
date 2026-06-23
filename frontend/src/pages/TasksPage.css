@@ -241,3 +241,134 @@
 .tasks-page .tasks-body {
     padding: 16px 24px 24px;
 }
+
+/* ── View + docked detail panel (side by side) ────────────────────────── */
+.tasks-page .tasks-view-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+.tasks-page .tasks-view-main {
+    flex: 1 1 auto;
+    min-width: 0; /* let the board shrink so the panel fits beside it */
+    overflow-x: auto; /* board scrolls horizontally if cramped */
+}
+
+.task-detail-panel {
+    flex: 0 0 380px;
+    width: 380px;
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+}
+.tdp-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 14px 16px;
+    background: var(--c-surface);
+    border-bottom: 1px solid var(--c-border);
+}
+.tdp-head-titles {
+    min-width: 0;
+}
+.tdp-code {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--color-primary);
+}
+.tdp-title {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--c-text-strong);
+    word-break: break-word;
+}
+.tdp-head-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.tdp-icon-btn {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--c-text-muted);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.tdp-icon-btn:hover {
+    background: var(--c-surface-raised);
+    color: var(--c-text-strong);
+}
+.tdp-tabs {
+    padding: 0 16px 14px;
+}
+.tdp-tab-body {
+    padding-top: 6px;
+}
+.tdp-row {
+    display: flex;
+    gap: 10px;
+    padding: 5px 0;
+    font-size: 13px;
+}
+.tdp-row-label {
+    width: 96px;
+    flex-shrink: 0;
+    color: var(--c-text-muted);
+}
+.tdp-row-value {
+    flex: 1;
+    min-width: 0;
+    color: var(--c-text-strong);
+}
+.tdp-desc {
+    margin-top: 10px;
+}
+.tdp-desc-label {
+    font-size: 12px;
+    color: var(--c-text-muted);
+    margin-bottom: 4px;
+}
+.tdp-desc-body {
+    background: var(--c-surface-raised);
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    padding: 10px;
+    white-space: pre-wrap;
+    color: var(--c-text-strong);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* Narrow screens: dock the panel as a fixed right drawer so it never
+   crushes the board. */
+@media (max-width: 1024px) {
+    .task-detail-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 360px;
+        max-width: 90vw;
+        max-height: none;
+        border-radius: 0;
+        z-index: 1000;
+    }
+}

@@ -133,7 +133,7 @@ function describeActivityEvent(event) {
     }
 }
 
-function ActivityTimeline({ taskId, userMap }) {
+export function ActivityTimeline({ taskId, userMap }) {
     const { data: events = [], isLoading } = useQuery({
         queryKey: ['task-activity', taskId],
         queryFn: () => taskService.listActivity(taskId),

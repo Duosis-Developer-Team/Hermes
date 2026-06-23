@@ -53,6 +53,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
 import TasksListView from '../components/tasks/TasksListView'
 import TasksBoardView from '../components/tasks/TasksBoardView'
+import TaskDetailPanel from '../components/tasks/TaskDetailPanel'
 import TasksSearchBar from '../components/tasks/TasksSearchBar'
 import CreateTaskModal from '../components/modals/CreateTaskModal'
 import TaskReviewModal from '../components/modals/TaskReviewModal'
@@ -119,6 +120,10 @@ function TasksPage() {
     // { task, nextCompleted } | null.
     const [pendingToggle, setPendingToggle] = useState(null)
     const [reviewTask, setReviewTask] = useState(null)
+    // Task whose inline detail panel is docked beside the board/list.
+    // Opened by clicking a card body; the card's "Review" eye button still
+    // opens the full modal (reviewTask).
+    const [panelTask, setPanelTask] = useState(null)
     // Task to prefill the Log Time modal with. Set on first completion
     // and on the explicit "Log Time" action; never set on reopen.
     const [logTimeTask, setLogTimeTask] = useState(null)
@@ -1023,7 +1028,10 @@ function TasksPage() {
                 </Space>
             </Card>
 
-            {/* Calendar — always visible (full weekly grid even when empty) */}
+            {/* View + docked detail panel sit side by side. Clicking a card
+                opens the panel on the right; the board/list area shrinks. */}
+            <div className="tasks-view-row">
+            <div className="tasks-view-main">
             {isLoading ? (
                 <div style={{ textAlign: 'center', padding: 48 }}>
                     <Spin />
@@ -1071,8 +1079,24 @@ function TasksPage() {
                        My Tasks view. Assigned by Me is read-only monitoring. */
                     allowStatusDrag={taskScope === 'my-tasks'}
                     onCardDrop={handleCardDrop}
+                    onOpenPanel={(t) => setPanelTask(t)}
                 />
             )}
+            </div>
+            {panelTask && (
+                <TaskDetailPanel
+                    task={panelTask}
+                    userMap={userMap}
+                    currentUserId={user?.id}
+                    isAdmin={isTaskAdmin}
+                    onClose={() => setPanelTask(null)}
+                    onOpenReview={(t) => {
+                        setPanelTask(null)
+                        handleOpenReview(t)
+                    }}
+                />
+            )}
+            </div>
 
             </div>
 
