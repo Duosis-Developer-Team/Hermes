@@ -33,5 +33,5 @@ data:
   NOTIFICATIONS_ENABLED: "true"
   NOTIF_MAIL_SENDER: "hermes@duosis.com"
   NOTIF_NOTIFY_ASSIGNER: "true"
-  # Public app URL for the "View task" button; leave empty to omit the link.
-  APP_BASE_URL: ""
+  # Public app URL for the "View task" button in notification e-mails.
+  APP_BASE_URL: "https://hermes.duosis.com"
