@@ -120,7 +120,7 @@ function TaskCard({
         event.stopPropagation()
         // Clicking the card always opens the detail panel. Log Time for a
         // completed task is reachable via its hover action button.
-        onSelect?.(task.id)
+        onSelect?.(task)
     }
 
     const handleLogTimeClick = (event) => {
@@ -163,7 +163,7 @@ function TaskCard({
             onClick={handleBodyClick}
             onKeyDown={(e) => {
                 if (e.key !== 'Enter') return
-                onSelect?.(task.id)
+                onSelect?.(task)
             }}
         >
             <Tooltip

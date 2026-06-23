@@ -10,7 +10,13 @@ from datetime import date, datetime
 from typing import List, Optional, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 
 PriorityLiteral = Literal["low", "medium", "high", "urgent"]
@@ -169,6 +175,12 @@ class TaskCreateBulk(BaseModel):
         if not v or not v.strip():
             raise ValueError("Description is required.")
         return v
+
+    @model_validator(mode="after")
+    def _at_least_one_target(self):
+        if not self.assignee_user_ids and not self.assignee_group_ids:
+            raise ValueError("At least one assignee user or group is required.")
+        return self
 
 
 class TaskUpdate(BaseModel):

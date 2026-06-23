@@ -1048,6 +1048,7 @@ function TasksPage() {
                     onToggleCompletion={handleToggleCompletion}
                     completionLoading={completionMutation.isPending}
                     onOpenLogTime={handleOpenLogTime}
+                    onOpenPanel={(t) => setPanelTask(t)}
                     /* Status changes only in My Tasks (the assignee acts);
                        Assigned by Me is read-only monitoring. */
                     allowStatusChange={taskScope === 'my-tasks'}

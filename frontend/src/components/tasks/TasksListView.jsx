@@ -69,6 +69,8 @@ function TasksListView({
     onToggleCompletion,
     completionLoading = false,
     onOpenLogTime,
+    // Open the docked detail panel (parity with the board card click).
+    onOpenPanel,
     // Status changes belong to the assignee in their own My Tasks view;
     // the assigner's "Assigned by Me" list is read-only monitoring.
     allowStatusChange = true,
@@ -156,7 +158,16 @@ function TasksListView({
             key: 'title',
             sorter: (a, b) => (a.title || '').localeCompare(b.title || ''),
             render: (val, row) => (
-                <div>
+                <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onOpenPanel?.(row)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') onOpenPanel?.(row)
+                    }}
+                    style={{ cursor: onOpenPanel ? 'pointer' : 'default' }}
+                    title="View details"
+                >
                     <div style={{ color: 'var(--c-text-strong)', fontWeight: 600 }}>{val}</div>
                     <div style={{ color: 'var(--c-text-muted)', fontSize: 12, marginTop: 2 }}>
                         {row.customer_name || '—'}
