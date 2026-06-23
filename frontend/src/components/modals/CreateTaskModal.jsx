@@ -13,7 +13,7 @@
  * =============================================================================
  */
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
     Modal,
     Form,
@@ -22,8 +22,12 @@ import {
     DatePicker,
     Alert,
     Space,
+    Button,
+    Divider,
+    message,
 } from 'antd'
-import { useQuery } from '@tanstack/react-query'
+import { PlusOutlined } from '@ant-design/icons'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 
 import {
@@ -56,7 +60,13 @@ function CreateTaskModal({
     //   "group:<uuid>" → fan-out per active group member (only on create)
     // Edit mode is single-user only (each task row is per assignee).
     const [form] = Form.useForm()
+    const queryClient = useQueryClient()
     const isEditing = !!editingTask
+
+    // Inline "create sub project" — name typed inside the Sub Project
+    // dropdown footer. Lets an assigner add a missing sub project without
+    // an admin round-trip; the customer/project are taken from the form.
+    const [newSubName, setNewSubName] = useState('')
 
     const customerId = Form.useWatch('customer_id', form)
     const projectId = Form.useWatch('project_id', form)
@@ -87,6 +97,50 @@ function CreateTaskModal({
             }),
         enabled: open && !!customerId && !!projectId,
     })
+
+    const createSubMutation = useMutation({
+        mutationFn: (name) =>
+            taskSubProjectService.createInline({
+                customer_id: customerId,
+                project_id: projectId,
+                name,
+            }),
+        onSuccess: (created) => {
+            message.success('Sub project created.')
+            setNewSubName('')
+            // Synchronously add it to THIS query's cache so the option
+            // exists immediately — otherwise the auto-select below points
+            // at an id not yet in the (stale) options list until a refetch.
+            if (created?.id) {
+                queryClient.setQueryData(
+                    ['task-sub-projects', customerId, projectId],
+                    (old) =>
+                        Array.isArray(old) ? [...old, created] : [created]
+                )
+            }
+            // Keep other consumers (admin list) fresh.
+            queryClient.invalidateQueries({
+                queryKey: ['admin-task-sub-projects'],
+            })
+            // Auto-select the freshly created sub project on the task.
+            if (created?.id) {
+                form.setFieldsValue({ sub_project_id: created.id })
+            }
+        },
+        onError: (err) => {
+            message.error(
+                err?.response?.data?.detail || 'Failed to create sub project.'
+            )
+        },
+    })
+
+    const handleAddSubProject = () => {
+        const name = newSubName.trim()
+        if (!name || !customerId || !projectId || createSubMutation.isPending) {
+            return
+        }
+        createSubMutation.mutate(name)
+    }
 
     // Resolve assignee user list:
     // - Admin: fetch all active users directly from auth-service.
@@ -145,6 +199,9 @@ function CreateTaskModal({
     }, [isAdmin, allActiveUsers, mappedUsers, assignableGroups, editingTask])
 
     useEffect(() => {
+        // Clear the inline "new sub project" draft whenever the modal
+        // opens/closes so it never leaks across tasks.
+        setNewSubName('')
         if (!open) return
         if (editingTask) {
             form.setFieldsValue({
@@ -321,6 +378,46 @@ function CreateTaskModal({
                         loading={subProjectsLoading}
                         optionFilterProp="label"
                         options={subProjects.map((s) => ({ value: s.id, label: s.name }))}
+                        dropdownRender={(menu) => (
+                            <>
+                                {menu}
+                                <Divider style={{ margin: '8px 0' }} />
+                                <Space.Compact
+                                    style={{ display: 'flex', padding: '0 8px 4px' }}
+                                >
+                                    <Input
+                                        size="small"
+                                        placeholder="New sub project name"
+                                        value={newSubName}
+                                        maxLength={255}
+                                        onChange={(e) => setNewSubName(e.target.value)}
+                                        // Keep keystrokes (incl. Enter/space) from
+                                        // reaching the Select's own search/keyboard
+                                        // handling while typing the new name.
+                                        onKeyDown={(e) => {
+                                            e.stopPropagation()
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault()
+                                                handleAddSubProject()
+                                            }
+                                        }}
+                                    />
+                                    <Button
+                                        size="small"
+                                        type="primary"
+                                        icon={<PlusOutlined />}
+                                        loading={createSubMutation.isPending}
+                                        disabled={
+                                            !newSubName.trim() ||
+                                            createSubMutation.isPending
+                                        }
+                                        onClick={handleAddSubProject}
+                                    >
+                                        Add
+                                    </Button>
+                                </Space.Compact>
+                            </>
+                        )}
                     />
                 </Form.Item>
 

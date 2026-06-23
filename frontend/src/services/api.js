@@ -775,6 +775,16 @@ export const taskSubProjectService = {
         return response.data
     },
 
+    /**
+     * Assigner: create a sub project inline at task-assignment time.
+     * Same permission gate as Create Task (Task Access + Assign Tasks);
+     * no admin required. Used by the Create Task modal's "+ New" control.
+     */
+    createInline: async (data) => {
+        const response = await coreApi.post('/api/v1/core/tasks/sub-projects', data)
+        return response.data
+    },
+
     /** Admin: update a sub project. */
     update: async (subProjectId, data) => {
         const response = await coreApi.put(

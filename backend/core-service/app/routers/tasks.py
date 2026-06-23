@@ -38,6 +38,7 @@ from ..schemas.task import (
     TaskPermissionMeResponse,
     TaskResponse,
     TaskStatusUpdate,
+    TaskSubProjectCreate,
     TaskSubProjectResponse,
     TaskUpdate,
 )
@@ -225,6 +226,28 @@ async def list_sub_projects(
         include_inactive=effective_include_inactive,
     )
     return [_serialize_sub_project(s) for s in subs]
+
+
+@router.post(
+    "/sub-projects",
+    response_model=TaskSubProjectResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_sub_project_as_assigner(
+    data: TaskSubProjectCreate,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create a sub project at task-assignment time.
+
+    Mirrors the Create Task permission gate (Task Access + Assign Tasks)
+    so a non-admin assigner can add a missing sub project inline from the
+    Create Task modal without an admin round-trip. Editing/deleting sub
+    projects stays admin-only (admin/tasks/sub-projects)."""
+    task_service.require_task_access(db, current_user)
+    task_service.require_task_assigner(db, current_user)
+    sub = task_service.create_sub_project(db, data, UUID(current_user.id))
+    return _serialize_sub_project(sub)
 
 
 # =============================================================================

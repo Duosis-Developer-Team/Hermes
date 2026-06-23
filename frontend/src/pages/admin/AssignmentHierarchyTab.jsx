@@ -19,8 +19,8 @@ import {
     Card,
     Empty,
     Form,
+    Input,
     Modal,
-    Radio,
     Select,
     Space,
     Tag,
@@ -276,11 +276,10 @@ function AddRuleModal({
     loading = false,
 }) {
     const [form] = Form.useForm()
-    const targetType = Form.useWatch('target_type', form) || 'user'
 
     return (
         <Modal
-            title="Add Assignment Rule"
+            title="Add Assignment Rules"
             open={open}
             onCancel={onClose}
             onOk={() => form.submit()}
@@ -294,7 +293,6 @@ function AddRuleModal({
                 layout="vertical"
                 initialValues={{
                     assigner_user_id: initialAssignerId || undefined,
-                    target_type: 'user',
                 }}
                 onFinish={onSubmit}
             >
@@ -319,60 +317,77 @@ function AddRuleModal({
                     />
                 </Form.Item>
 
-                <Form.Item label="Target Type" name="target_type">
-                    <Radio.Group>
-                        <Radio.Button value="user">User</Radio.Button>
-                        <Radio.Button value="group">Group</Radio.Button>
-                    </Radio.Group>
+                {/* Bulk targets — pick any number of users AND/OR groups in
+                    a single save. At least one is required (validated on
+                    submit since the rule spans two fields). */}
+                <Form.Item
+                    label="Assignee Users"
+                    name="assignee_user_ids"
+                    extra="Pick one or more users this assigner may assign to."
+                    dependencies={['assignee_group_ids']}
+                    rules={[
+                        {
+                            validator: async (_, value) => {
+                                const groupIds =
+                                    form.getFieldValue('assignee_group_ids') ||
+                                    []
+                                if (
+                                    (!value || value.length === 0) &&
+                                    groupIds.length === 0
+                                ) {
+                                    return Promise.reject(
+                                        new Error(
+                                            'Select at least one user or group.'
+                                        )
+                                    )
+                                }
+                                return Promise.resolve()
+                            },
+                        },
+                    ]}
+                >
+                    <Select
+                        mode="multiple"
+                        allowClear
+                        showSearch
+                        placeholder="Select users"
+                        optionFilterProp="label"
+                        maxTagCount="responsive"
+                        options={eligibleAssignees.map((u) => ({
+                            value: u.id,
+                            label: userLabel(u),
+                        }))}
+                        notFoundContent={
+                            eligibleAssignees.length === 0
+                                ? 'No active users found.'
+                                : undefined
+                        }
+                    />
                 </Form.Item>
 
-                {targetType === 'user' ? (
-                    <Form.Item
-                        label="Assignee User"
-                        name="assignee_user_id"
-                        rules={[
-                            { required: true, message: 'Pick an assignee user.' },
-                        ]}
-                    >
-                        <Select
-                            showSearch
-                            placeholder="Select user"
-                            optionFilterProp="label"
-                            options={eligibleAssignees.map((u) => ({
-                                value: u.id,
-                                label: userLabel(u),
-                            }))}
-                            notFoundContent={
-                                eligibleAssignees.length === 0
-                                    ? 'No active users found.'
-                                    : undefined
-                            }
-                        />
-                    </Form.Item>
-                ) : (
-                    <Form.Item
-                        label="Assignee Group"
-                        name="assignee_group_id"
-                        rules={[
-                            { required: true, message: 'Pick an assignee group.' },
-                        ]}
-                    >
-                        <Select
-                            showSearch
-                            placeholder="Select group"
-                            optionFilterProp="label"
-                            options={eligibleGroups.map((g) => ({
-                                value: g.id,
-                                label: g.name,
-                            }))}
-                            notFoundContent={
-                                eligibleGroups.length === 0
-                                    ? 'No active groups. Create one in Users → Groups first.'
-                                    : undefined
-                            }
-                        />
-                    </Form.Item>
-                )}
+                <Form.Item
+                    label="Assignee Groups"
+                    name="assignee_group_ids"
+                    extra="Optionally assign whole groups (fans out per active member at task time)."
+                >
+                    <Select
+                        mode="multiple"
+                        allowClear
+                        showSearch
+                        placeholder="Select groups"
+                        optionFilterProp="label"
+                        maxTagCount="responsive"
+                        options={eligibleGroups.map((g) => ({
+                            value: g.id,
+                            label: g.name,
+                        }))}
+                        notFoundContent={
+                            eligibleGroups.length === 0
+                                ? 'No active groups. Create one in Users → Groups first.'
+                                : undefined
+                        }
+                    />
+                </Form.Item>
             </Form>
         </Modal>
     )
@@ -385,6 +400,7 @@ function AssignmentHierarchyTab() {
     const [presetAssignerId, setPresetAssignerId] = useState(null)
     const [removingUserRelation, setRemovingUserRelation] = useState(null)
     const [removingGroupRelation, setRemovingGroupRelation] = useState(null)
+    const [assignerSearch, setAssignerSearch] = useState('')
 
     const { data: users = [] } = useQuery({
         queryKey: ['auth-users-lookup', { include_inactive: true }],
@@ -463,47 +479,76 @@ function AssignmentHierarchyTab() {
 
     const sortedAssignerCards = useMemo(() => {
         const ids = Array.from(cardsByAssigner.keys())
+        const term = assignerSearch.trim().toLowerCase()
         return ids
             .map((id) => ({
                 assigner: usersById[id] || { id, full_name: id },
                 userRelations: cardsByAssigner.get(id).user,
                 groupRelations: cardsByAssigner.get(id).group,
             }))
+            .filter(({ assigner }) => {
+                if (!term) return true
+                return (
+                    userLabel(assigner).toLowerCase().includes(term) ||
+                    (assigner.email || '').toLowerCase().includes(term)
+                )
+            })
             .sort((a, b) =>
                 userLabel(a.assigner).localeCompare(userLabel(b.assigner))
             )
-    }, [cardsByAssigner, usersById])
+    }, [cardsByAssigner, usersById, assignerSearch])
 
-    // Mutations
-    const createUserMutation = useMutation({
-        mutationFn: (data) => taskAssignmentService.create(data),
+    // Mutations — one bulk add covers any mix of users + groups in a
+    // single submit. User relations go in one array call (backend skips
+    // duplicates); each group is its own relation row, created in
+    // parallel and tolerant of already-existing ones.
+    const addRulesMutation = useMutation({
+        mutationFn: async ({ assigner, userIds, groupIds }) => {
+            if (userIds.length) {
+                await taskAssignmentService.create({
+                    assigner_user_id: assigner,
+                    assignee_user_ids: userIds,
+                })
+            }
+            if (groupIds.length) {
+                const results = await Promise.allSettled(
+                    groupIds.map((gid) =>
+                        taskAssignmentGroupService.create({
+                            assigner_user_id: assigner,
+                            assignee_group_id: gid,
+                        })
+                    )
+                )
+                // 409 = "already mapped" — tolerated as a no-op. Any other
+                // rejection is a genuine failure and must surface (even if
+                // user relations and other groups succeeded — onSettled
+                // refetch still reflects the parts that went through).
+                const realFailures = results.filter(
+                    (r) =>
+                        r.status === 'rejected' &&
+                        r.reason?.response?.status !== 409
+                )
+                if (realFailures.length > 0) {
+                    throw realFailures[0].reason
+                }
+            }
+        },
         onSuccess: () => {
-            message.success('User assignment rule added.')
+            message.success('Assignment rules added.')
             setAddModalOpen(false)
+        },
+        onError: (err) => {
+            message.error(
+                err?.response?.data?.detail || 'Failed to add assignment rules.'
+            )
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({
                 queryKey: ['admin-task-assignment-relations'],
             })
-        },
-        onError: (err) => {
-            message.error(
-                err?.response?.data?.detail || 'Failed to add user rule.'
-            )
-        },
-    })
-
-    const createGroupMutation = useMutation({
-        mutationFn: (data) => taskAssignmentGroupService.create(data),
-        onSuccess: () => {
-            message.success('Group assignment rule added.')
-            setAddModalOpen(false)
             queryClient.invalidateQueries({
                 queryKey: ['admin-task-assignment-group-relations'],
             })
-        },
-        onError: (err) => {
-            message.error(
-                err?.response?.data?.detail || 'Failed to add group rule.'
-            )
         },
     })
 
@@ -538,17 +583,17 @@ function AssignmentHierarchyTab() {
     })
 
     const handleAdd = (values) => {
-        if (values.target_type === 'user') {
-            createUserMutation.mutate({
-                assigner_user_id: values.assigner_user_id,
-                assignee_user_ids: [values.assignee_user_id],
-            })
-        } else {
-            createGroupMutation.mutate({
-                assigner_user_id: values.assigner_user_id,
-                assignee_group_id: values.assignee_group_id,
-            })
+        const userIds = values.assignee_user_ids || []
+        const groupIds = values.assignee_group_ids || []
+        if (userIds.length === 0 && groupIds.length === 0) {
+            message.warning('Select at least one user or group.')
+            return
         }
+        addRulesMutation.mutate({
+            assigner: values.assigner_user_id,
+            userIds,
+            groupIds,
+        })
     }
 
     const isLoading = userRelLoading || groupRelLoading
@@ -563,10 +608,20 @@ function AssignmentHierarchyTab() {
             <div
                 style={{
                     display: 'flex',
-                    justifyContent: 'flex-end',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 8,
+                    flexWrap: 'wrap',
                     marginBottom: 12,
                 }}
             >
+                <Input.Search
+                    allowClear
+                    placeholder="Search assigner by name or email"
+                    value={assignerSearch}
+                    onChange={(e) => setAssignerSearch(e.target.value)}
+                    style={{ maxWidth: 320 }}
+                />
                 <Button
                     type="primary"
                     icon={<PlusOutlined />}
@@ -584,6 +639,8 @@ function AssignmentHierarchyTab() {
                     description={
                         isLoading
                             ? 'Loading…'
+                            : assignerSearch.trim()
+                            ? 'No assigner matches your search.'
                             : 'No assignment rules yet — click Add Assignment Rule.'
                     }
                 />
@@ -613,15 +670,16 @@ function AssignmentHierarchyTab() {
 
             <AddRuleModal
                 open={addModalOpen}
-                onClose={() => setAddModalOpen(false)}
+                onClose={() => {
+                    setAddModalOpen(false)
+                    setPresetAssignerId(null)
+                }}
                 onSubmit={handleAdd}
                 eligibleAssigners={eligibleAssigners}
                 eligibleAssignees={eligibleAssignees}
                 eligibleGroups={groups}
                 initialAssignerId={presetAssignerId}
-                loading={
-                    createUserMutation.isPending || createGroupMutation.isPending
-                }
+                loading={addRulesMutation.isPending}
             />
 
             <DangerConfirmModal
