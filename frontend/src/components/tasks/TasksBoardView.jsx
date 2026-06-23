@@ -25,8 +25,8 @@
  */
 
 import { useMemo, useState } from 'react'
-import { Avatar, Button, Select } from 'antd'
-import { PlusOutlined, UserOutlined, SwapOutlined } from '@ant-design/icons'
+import { Avatar, Button } from 'antd'
+import { PlusOutlined, UserOutlined } from '@ant-design/icons'
 import {
     DndContext,
     DragOverlay,
@@ -121,12 +121,13 @@ function TasksBoardView({
     completionLoading = false,
     onCreate,
     canCreate = false,
-    // Dynamic assignment wiring (all optional — board degrades to a
-    // read-only kanban if the parent doesn't pass them).
+    // Swimlanes (group by assignee) are a read-only monitoring layout used
+    // in "Assigned by Me". allowStatusDrag enables drag-to-change-status —
+    // only the assignee's own "My Tasks" view sets it true; the assigner's
+    // monitoring view leaves it false (read-only).
     groupByAssignee = false,
-    assigneeOptions = [],
+    allowStatusDrag = false,
     onCardDrop,
-    onReassign,
 }) {
     const sensors = useSensors(
         // 6px activation distance so a plain click still opens the Review
@@ -143,12 +144,13 @@ function TasksBoardView({
         return m
     }, [tasks])
 
-    const canChangeStatus = (t) =>
-        isAdmin ||
-        t.assignee_user_id === currentUserId ||
-        t.assigner_user_id === currentUserId
-    const canReassignTask = (t) =>
-        isAdmin || t.assigner_user_id === currentUserId
+    // A card is drag-movable only when status drag is allowed for this
+    // view AND the viewer may change this task's status.
+    const canDragStatus = (t) =>
+        allowStatusDrag &&
+        (isAdmin ||
+            t.assignee_user_id === currentUserId ||
+            t.assigner_user_id === currentUserId)
 
     // Status buckets (flat board).
     const buckets = useMemo(() => {
@@ -202,21 +204,17 @@ function TasksBoardView({
         // mutation layer — only the four known columns are valid targets.
         if (target.status && !VALID_STATUSES.has(target.status)) return
 
+        // Status-change only — moving a card between columns sets status.
+        // (Assignee is fixed at creation; there is no drag-to-reassign.)
         const statusChanged =
             target.status && target.status !== task.status
-        const assigneeChanged =
-            target.assigneeId && target.assigneeId !== task.assignee_user_id
-        if (!statusChanged && !assigneeChanged) return
+        if (!statusChanged) return
 
-        onCardDrop?.(task, {
-            newStatus: statusChanged ? target.status : null,
-            newAssignee: assigneeChanged ? target.assigneeId : null,
-        })
+        onCardDrop?.(task, { newStatus: target.status })
     }
 
     const renderCard = (t) => {
-        const canToggle = canChangeStatus(t)
-        const reassignable = canReassignTask(t) && assigneeOptions.length > 0
+        const canToggle = canDragStatus(t)
         return (
             <DraggableCard key={t.id} id={t.id} disabled={!canToggle}>
                 <TaskCard
@@ -233,32 +231,6 @@ function TasksBoardView({
                     canToggleCompletion={canToggle}
                     completionLoading={completionLoading}
                 />
-                {reassignable && (
-                    // Stop pointer/click propagation so interacting with the
-                    // dropdown never starts a drag or opens the Review modal.
-                    <div
-                        className="tasks-board-reassign"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <SwapOutlined className="tasks-board-reassign-icon" />
-                        <Select
-                            size="small"
-                            variant="borderless"
-                            className="tasks-board-reassign-select"
-                            value={t.assignee_user_id}
-                            options={assigneeOptions}
-                            showSearch
-                            optionFilterProp="label"
-                            popupMatchSelectWidth={220}
-                            onChange={(val) => {
-                                if (val && val !== t.assignee_user_id) {
-                                    onReassign?.(t, val)
-                                }
-                            }}
-                        />
-                    </div>
-                )}
             </DraggableCard>
         )
     }

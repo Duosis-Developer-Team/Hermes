@@ -181,24 +181,6 @@
     transform: rotate(1.5deg);
 }
 
-/* ── Inline quick reassign ────────────────────────────────────────── */
-.tasks-board-reassign {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-top: 4px;
-    padding: 2px 4px;
-}
-.tasks-board-reassign-icon {
-    color: var(--c-text-muted);
-    font-size: 12px;
-    flex-shrink: 0;
-}
-.tasks-board-reassign-select {
-    flex: 1 1 auto;
-    min-width: 0;
-}
-
 /* ── Swimlanes (Group by assignee) ────────────────────────────────── */
 .tasks-board-swimlanes {
     display: flex;

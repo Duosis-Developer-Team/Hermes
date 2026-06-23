@@ -1321,11 +1321,15 @@ def create_tasks_for_group(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="The group has no active members.",
         )
+    # Never fan a group task out to the assigner themselves — assigning a
+    # task to a group you belong to should reach the OTHER members only.
+    assigner_uuid = UUID(user.id)
     eff_data = list_effective_perm_data(db)
     eligible_ids = [
         uid
         for uid in candidate_ids
-        if (
+        if uid != assigner_uuid
+        and (
             eff_data.get(str(uid), {}).get("direct_can_access_tasks")
             or eff_data.get(str(uid), {}).get("group_grants_access")
         )
@@ -1334,16 +1338,15 @@ def create_tasks_for_group(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                "No active member of this group has task access enabled. "
-                "Grant Access Tasks for the group, or for the individual "
-                "user, in Task Management → Task Access."
+                "No eligible group member to assign to. Members need "
+                "Access Tasks enabled (Task Management → Task Access), and "
+                "the task is never assigned back to you."
             ),
         )
 
     import uuid as _uuid
 
     batch_id = _uuid.uuid4()
-    assigner_uuid = UUID(user.id)
     title_clean = title.strip()
     created: List[Task] = []
     for assignee_id in eligible_ids:

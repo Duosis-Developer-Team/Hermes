@@ -69,6 +69,9 @@ function TasksListView({
     onToggleCompletion,
     completionLoading = false,
     onOpenLogTime,
+    // Status changes belong to the assignee in their own My Tasks view;
+    // the assigner's "Assigned by Me" list is read-only monitoring.
+    allowStatusChange = true,
 }) {
     const assigneeFilters = useMemo(() => {
         const seen = new Set()
@@ -101,9 +104,10 @@ function TasksListView({
             render: (_, record) => {
                 const isCompleted = record.status === 'completed'
                 const canToggle =
-                    isAdmin ||
-                    record.assignee_user_id === currentUserId ||
-                    record.assigner_user_id === currentUserId
+                    allowStatusChange &&
+                    (isAdmin ||
+                        record.assignee_user_id === currentUserId ||
+                        record.assigner_user_id === currentUserId)
                 return (
                     <Tooltip
                         title={

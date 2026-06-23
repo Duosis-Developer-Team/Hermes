@@ -33,7 +33,9 @@ import './TaskCard.css'
 function userLabel(id, userMap) {
     if (!id) return '—'
     const u = userMap?.[id]
-    return u?.full_name || u?.email || id
+    // Never leak a raw UUID into the UI — fall back to a neutral dash if
+    // the name hasn't resolved yet / the user isn't in the lookup set.
+    return u?.full_name || u?.email || '—'
 }
 
 /**
