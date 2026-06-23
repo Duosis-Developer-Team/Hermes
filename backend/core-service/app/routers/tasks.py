@@ -48,6 +48,23 @@ from ..services.task_notifications import send_assignment_notifications
 from shared.auth import CurrentUser, get_current_user
 
 
+def _extract_token(request: Request) -> str:
+    """Pull the caller's JWT for the notification's service-to-service
+    auth lookup. The frontend authenticates via an `access_token` cookie
+    (the Authorization header is usually absent), so check the cookie
+    first, then fall back to the bearer header. Returns the RAW token
+    (no 'Bearer ' prefix)."""
+    cookie = request.cookies.get("access_token")
+    if cookie:
+        return cookie
+    auth = request.headers.get("authorization") or request.headers.get(
+        "Authorization"
+    )
+    if auth:
+        return auth.replace("Bearer ", "").strip()
+    return ""
+
+
 def _notif_payload(resp) -> dict:
     """Flatten a serialized task into the small, session-free dict the
     e-mail templates consume (dates → DD.MM.YYYY strings)."""
@@ -347,7 +364,7 @@ async def create_task(
     # after the response; failures are logged, never surfaced.
     background_tasks.add_task(
         send_assignment_notifications,
-        token=request.headers.get("authorization") or "",
+        token=_extract_token(request),
         tasks=[_notif_payload(serialized)],
         assigner_user_id=str(current_user.id),
     )
@@ -391,7 +408,7 @@ async def create_tasks_for_group(
     # assigner gets a single group summary (see task_notifications).
     background_tasks.add_task(
         send_assignment_notifications,
-        token=request.headers.get("authorization") or "",
+        token=_extract_token(request),
         tasks=[_notif_payload(s) for s in serialized],
         assigner_user_id=str(current_user.id),
     )
@@ -437,7 +454,7 @@ async def create_tasks_bulk(
     serialized = [_serialize_task(t) for t in tasks]
     background_tasks.add_task(
         send_assignment_notifications,
-        token=request.headers.get("authorization") or "",
+        token=_extract_token(request),
         tasks=[_notif_payload(s) for s in serialized],
         assigner_user_id=str(current_user.id),
     )

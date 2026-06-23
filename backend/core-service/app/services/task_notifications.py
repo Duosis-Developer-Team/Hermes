@@ -74,7 +74,8 @@ async def _resolve_users(
         )
         return {}
     url = f"{_auth_base_url()}/api/v1/auth/users/lookup"
-    headers = {"Authorization": token}
+    # token is the RAW JWT (no prefix); auth-service reads a bearer header.
+    headers = {"Authorization": f"Bearer {token}"}
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
