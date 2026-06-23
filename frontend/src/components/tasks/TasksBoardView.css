@@ -193,7 +193,15 @@
     display: grid;
     grid-template-columns: 180px repeat(4, minmax(220px, 1fr));
     gap: 10px;
-    align-items: start;
+}
+.tasks-board-swimlane-cols-head {
+    align-items: center;
+}
+/* Stretch so every status cell in a row shares the height of the tallest
+   one — empty In Progress/Completed/Rejected cells match the cell that
+   holds a card instead of collapsing to a short box. */
+.tasks-board-swimlane {
+    align-items: stretch;
 }
 .tasks-board-swimlane-colhead {
     font-size: 12px;
@@ -209,7 +217,7 @@
 }
 .tasks-board-swimlane-rowhead {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     padding: 10px 8px;
     position: sticky;
