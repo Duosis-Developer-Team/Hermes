@@ -68,6 +68,10 @@ async def _resolve_users(
     treat a missing e-mail as "skip that recipient"."""
     unique = [str(i) for i in {str(x) for x in ids} if i]
     if not unique or not token:
+        print(
+            f"[notif] lookup skipped ids={len(unique)} token={'yes' if token else 'no'}",
+            flush=True,
+        )
         return {}
     url = f"{_auth_base_url()}/api/v1/auth/users/lookup"
     headers = {"Authorization": token}
@@ -77,6 +81,10 @@ async def _resolve_users(
                 url, params={"ids": unique}, headers=headers
             )
         if resp.status_code != 200:
+            print(
+                f"[notif] lookup HTTP {resp.status_code} url={url}",
+                flush=True,
+            )
             logger.warning(
                 "notif user lookup failed status=%s", resp.status_code
             )
@@ -91,6 +99,7 @@ async def _resolve_users(
                 }
         return out
     except Exception as exc:  # noqa: BLE001 — never break the caller
+        print(f"[notif] lookup ERROR: {exc!r}", flush=True)
         logger.warning("notif user lookup error: %s", exc)
         return {}
 
@@ -290,9 +299,12 @@ async def _send(sender: str, to_email: Optional[str], subject: str, html_body: s
             subject=subject,
             html_body=html_body,
         )
+        print(f"[notif] sendMail OK -> {to_email}", flush=True)
     except (GraphConfigError, GraphRequestError) as exc:
+        print(f"[notif] sendMail FAILED -> {to_email}: {exc}", flush=True)
         logger.warning("task notification not sent: %s", exc)
     except Exception as exc:  # noqa: BLE001 — never break the BackgroundTask
+        print(f"[notif] sendMail ERROR -> {to_email}: {exc!r}", flush=True)
         logger.warning("task notification unexpected error: %s", exc)
 
 
@@ -315,11 +327,17 @@ async def send_assignment_notifications(
     """
     try:
         settings = get_settings()
+        print(
+            f"[notif] start enabled={settings.NOTIFICATIONS_ENABLED} "
+            f"tasks={len(tasks)} token={'yes' if token else 'no'}",
+            flush=True,
+        )
         if not settings.NOTIFICATIONS_ENABLED:
             return
         if not tasks:
             return
         client = get_graph_client()
+        print(f"[notif] graph_configured={client.is_configured}", flush=True)
         if not client.is_configured:
             logger.info(
                 "notifications enabled but Graph not configured — skipping"
@@ -338,6 +356,11 @@ async def send_assignment_notifications(
         wanted = set(assignee_ids)
         wanted.add(str(assigner_user_id))
         users = await _resolve_users(token, list(wanted))
+        print(
+            f"[notif] wanted={len(wanted)} resolved={len(users)} "
+            f"with_email={sum(1 for u in users.values() if u.get('email'))}",
+            flush=True,
+        )
 
         assigner = users.get(str(assigner_user_id), {})
         assigner_name = assigner.get("full_name") or "Bir kullanıcı"
@@ -386,4 +409,5 @@ async def send_assignment_notifications(
                     _assigner_group_email_html(tasks[0], assignee_names, app_url),
                 )
     except Exception as exc:  # noqa: BLE001 — must never escape the BackgroundTask
+        print(f"[notif] EXCEPTION: {exc!r}", flush=True)
         logger.warning("send_assignment_notifications failed: %s", exc)
