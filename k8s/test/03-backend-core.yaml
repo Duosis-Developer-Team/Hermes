@@ -65,6 +65,13 @@ spec:
             secretKeyRef:
               name: hermes-secrets
               key: JWT_SECRET_KEY
+        - name: JWT_PUBLIC_KEY
+          valueFrom:
+            secretKeyRef:
+              name: hermes-jwt-auth
+              key: JWT_PUBLIC_KEY
+        - name: CORS_ORIGINS
+          value: '["http://localhost:3000", "http://localhost:5173", "https://84.247.180.172:30772", "http://84.247.180.172:30772", "https://84.247.180.172:30443", "http://84.247.180.172:30443", "https://hermes.duosis.com"]'
 
         # Microsoft Graph app credentials (optional — used by Meetings sync
         # and task e-mail notifications). optional:true so a missing secret
@@ -88,31 +95,18 @@ spec:
               key: AZURE_CLIENT_SECRET
               optional: true
 
-        # Task assignment e-mail notifications (Microsoft Graph)
+        # Task assignment e-mail notifications (Microsoft Graph). Set as
+        # literals to mirror the live deployment (applied via `kubectl set
+        # env`), so re-applying this manifest keeps mail on and matches the
+        # cluster exactly. Flip NOTIFICATIONS_ENABLED to "false" to silence.
         - name: NOTIFICATIONS_ENABLED
-          valueFrom:
-            configMapKeyRef:
-              name: hermes-config
-              key: NOTIFICATIONS_ENABLED
-              optional: true
+          value: "true"
         - name: NOTIF_MAIL_SENDER
-          valueFrom:
-            configMapKeyRef:
-              name: hermes-config
-              key: NOTIF_MAIL_SENDER
-              optional: true
+          value: hermes@duosis.com
         - name: NOTIF_NOTIFY_ASSIGNER
-          valueFrom:
-            configMapKeyRef:
-              name: hermes-config
-              key: NOTIF_NOTIFY_ASSIGNER
-              optional: true
+          value: "true"
         - name: APP_BASE_URL
-          valueFrom:
-            configMapKeyRef:
-              name: hermes-config
-              key: APP_BASE_URL
-              optional: true
+          value: ""
 
         livenessProbe:
           httpGet:
