@@ -13,8 +13,6 @@
 
 import { useMemo, useState } from 'react'
 import {
-    Card,
-    Tabs,
     Table,
     Button,
     Modal,
@@ -29,6 +27,12 @@ import {
     PlusOutlined,
     EditOutlined,
     DeleteOutlined,
+    DownOutlined,
+    SafetyCertificateOutlined,
+    ApartmentOutlined,
+    FolderOpenOutlined,
+    TeamOutlined,
+    KeyOutlined,
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -36,6 +40,10 @@ import {
     customerService,
     projectService,
     taskSubProjectService,
+    userGroupService,
+    taskAssignmentService,
+    taskAssignmentGroupService,
+    taskPermissionService,
 } from '../../services/api'
 import './TaskManagementPage.css'
 import TaskAccessByGroupTab from './TaskAccessByGroupTab'
@@ -354,38 +362,170 @@ function SubProjectsTab() {
 }
 
 // =============================================================================
+// Dashboard primitives
+// =============================================================================
+
+function StatCard({ icon, label, value, accent }) {
+    return (
+        <div className="tm-stat" style={{ '--tm-accent': accent }}>
+            <div className="tm-stat-icon">{icon}</div>
+            <div className="tm-stat-body">
+                <div className="tm-stat-value">
+                    {value === null || value === undefined ? '—' : value}
+                </div>
+                <div className="tm-stat-label">{label}</div>
+            </div>
+        </div>
+    )
+}
+
+function Section({ icon, title, subtitle, count, accent, open, onToggle, children }) {
+    return (
+        <section className={`tm-section${open ? ' is-open' : ''}`} style={{ '--tm-accent': accent }}>
+            <button
+                type="button"
+                className="tm-section-head"
+                onClick={onToggle}
+                aria-expanded={open}
+            >
+                <span className="tm-section-icon">{icon}</span>
+                <span className="tm-section-titles">
+                    <span className="tm-section-title">{title}</span>
+                    {subtitle && (
+                        <span className="tm-section-sub">{subtitle}</span>
+                    )}
+                </span>
+                {typeof count === 'number' && (
+                    <span className="tm-section-count">{count}</span>
+                )}
+                <DownOutlined className="tm-section-chevron" />
+            </button>
+            <div className="tm-section-body-wrap">
+                <div className="tm-section-body">{children}</div>
+            </div>
+        </section>
+    )
+}
+
+// =============================================================================
 // Page
 // =============================================================================
 
 function TaskManagementPage() {
+    // Multiple sections can be open at once (accordion felt restrictive).
+    const [open, setOpen] = useState({
+        access: true,
+        hierarchy: false,
+        sub: false,
+    })
+    const toggle = (key) => setOpen((o) => ({ ...o, [key]: !o[key] }))
+
+    // Summary stats — reuse the exact query keys the sections use, so React
+    // Query serves them from one shared cache (no duplicate network calls).
+    const { data: groups = [] } = useQuery({
+        queryKey: ['admin-user-groups'],
+        queryFn: () => userGroupService.list(),
+    })
+    const { data: userRelations = [] } = useQuery({
+        queryKey: ['admin-task-assignment-relations'],
+        queryFn: () => taskAssignmentService.list(),
+    })
+    const { data: groupRelations = [] } = useQuery({
+        queryKey: ['admin-task-assignment-group-relations'],
+        queryFn: () => taskAssignmentGroupService.list(),
+    })
+    const { data: subProjects = [] } = useQuery({
+        queryKey: ['admin-task-sub-projects', null, null],
+        queryFn: () => taskSubProjectService.list({}),
+    })
+    const { data: effective = [] } = useQuery({
+        queryKey: ['admin-task-permissions-effective'],
+        queryFn: () => taskPermissionService.listEffective(),
+    })
+
+    const usersWithAccess = useMemo(
+        () =>
+            effective.filter(
+                (r) =>
+                    r.direct_can_access_tasks ||
+                    (Array.isArray(r.group_grants_access) &&
+                        r.group_grants_access.length > 0)
+            ).length,
+        [effective]
+    )
+    const rulesCount = userRelations.length + groupRelations.length
+
     return (
-        <div style={{ padding: 24 }}>
-            <Card
-                title="Task Management"
-                className="task-mgmt-card"
-                style={{ background: 'var(--c-surface)', borderColor: 'var(--c-border)' }}
-            >
-                <Tabs
-                    className="task-mgmt-tabs"
-                    items={[
-                        {
-                            key: 'access-by-group',
-                            label: 'Task Access',
-                            children: <TaskAccessByGroupTab />,
-                        },
-                        {
-                            key: 'hierarchy',
-                            label: 'Assignment Hierarchy',
-                            children: <AssignmentHierarchyTab />,
-                        },
-                        {
-                            key: 'sub-projects',
-                            label: 'Sub Projects',
-                            children: <SubProjectsTab />,
-                        },
-                    ]}
+        <div className="tm-page">
+            <header className="tm-header">
+                <h1 className="tm-title">Task Management</h1>
+                <p className="tm-subtitle">
+                    Görev erişimi, atama hiyerarşisi ve alt projeleri tek yerden yönetin.
+                </p>
+            </header>
+
+            <div className="tm-stats">
+                <StatCard
+                    icon={<TeamOutlined />}
+                    label="Groups"
+                    value={groups.length}
+                    accent="#388bff"
                 />
-            </Card>
+                <StatCard
+                    icon={<KeyOutlined />}
+                    label="Users with access"
+                    value={usersWithAccess}
+                    accent="#6366f1"
+                />
+                <StatCard
+                    icon={<ApartmentOutlined />}
+                    label="Assignment rules"
+                    value={rulesCount}
+                    accent="#7c5cff"
+                />
+                <StatCard
+                    icon={<FolderOpenOutlined />}
+                    label="Sub-projects"
+                    value={subProjects.length}
+                    accent="#22a06b"
+                />
+            </div>
+
+            <Section
+                icon={<SafetyCertificateOutlined />}
+                title="Task Access"
+                subtitle="Gruplar ve grup-dışı kullanıcılar için erişim/atama izinleri"
+                count={groups.length}
+                accent="#388bff"
+                open={open.access}
+                onToggle={() => toggle('access')}
+            >
+                <TaskAccessByGroupTab />
+            </Section>
+
+            <Section
+                icon={<ApartmentOutlined />}
+                title="Assignment Hierarchy"
+                subtitle="Kim kime / hangi gruba görev atayabilir"
+                count={rulesCount}
+                accent="#7c5cff"
+                open={open.hierarchy}
+                onToggle={() => toggle('hierarchy')}
+            >
+                <AssignmentHierarchyTab />
+            </Section>
+
+            <Section
+                icon={<FolderOpenOutlined />}
+                title="Sub Projects"
+                subtitle="Müşteri/proje altındaki göreve özel alt projeler"
+                count={subProjects.length}
+                accent="#22a06b"
+                open={open.sub}
+                onToggle={() => toggle('sub')}
+            >
+                <SubProjectsTab />
+            </Section>
         </div>
     )
 }
