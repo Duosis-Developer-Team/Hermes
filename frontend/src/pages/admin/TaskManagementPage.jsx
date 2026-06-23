@@ -401,7 +401,9 @@ function Section({ icon, title, subtitle, count, accent, open, onToggle, childre
                 <DownOutlined className="tm-section-chevron" />
             </button>
             <div className="tm-section-body-wrap">
-                <div className="tm-section-body">{children}</div>
+                <div className="tm-section-body">
+                    <div className="tm-section-inner">{children}</div>
+                </div>
             </div>
         </section>
     )
@@ -460,7 +462,8 @@ function TaskManagementPage() {
             <header className="tm-header">
                 <h1 className="tm-title">Task Management</h1>
                 <p className="tm-subtitle">
-                    Görev erişimi, atama hiyerarşisi ve alt projeleri tek yerden yönetin.
+                    Manage task access, the assignment hierarchy, and
+                    sub-projects in one place.
                 </p>
             </header>
 
@@ -494,7 +497,7 @@ function TaskManagementPage() {
             <Section
                 icon={<SafetyCertificateOutlined />}
                 title="Task Access"
-                subtitle="Gruplar ve grup-dışı kullanıcılar için erişim/atama izinleri"
+                subtitle="Access & assign permissions for groups and ungrouped users"
                 count={groups.length}
                 accent="#388bff"
                 open={open.access}
@@ -506,7 +509,7 @@ function TaskManagementPage() {
             <Section
                 icon={<ApartmentOutlined />}
                 title="Assignment Hierarchy"
-                subtitle="Kim kime / hangi gruba görev atayabilir"
+                subtitle="Who can assign tasks to which users or groups"
                 count={rulesCount}
                 accent="#7c5cff"
                 open={open.hierarchy}
@@ -518,7 +521,7 @@ function TaskManagementPage() {
             <Section
                 icon={<FolderOpenOutlined />}
                 title="Sub Projects"
-                subtitle="Müşteri/proje altındaki göreve özel alt projeler"
+                subtitle="Task-only sub-projects under a customer/project"
                 count={subProjects.length}
                 accent="#22a06b"
                 open={open.sub}

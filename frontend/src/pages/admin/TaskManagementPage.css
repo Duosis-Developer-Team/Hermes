@@ -192,12 +192,14 @@
 .tm-section.is-open .tm-section-body-wrap {
     grid-template-rows: 1fr;
 }
+/* Grid item must be a BARE overflow:hidden box for the 0fr collapse to
+   clip cleanly — any padding/border here would peek through when closed.
+   The actual padding/border lives on the inner wrapper below. */
 .tm-section-body {
     overflow: hidden;
     min-height: 0;
-    /* Padding/border live here always; the 0fr grid row + overflow clip
-       them to zero when collapsed, so the open↔closed animation stays
-       smooth (no instant jump). */
+}
+.tm-section-inner {
     padding: 4px 20px 20px;
     border-top: 1px solid var(--c-border);
 }

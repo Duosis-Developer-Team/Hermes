@@ -34,10 +34,10 @@ from .graph_service import (
 logger = logging.getLogger(__name__)
 
 _PRIORITY_LABELS = {
-    "low": "Düşük",
-    "medium": "Orta",
-    "high": "Yüksek",
-    "urgent": "Acil",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "urgent": "Urgent",
 }
 _PRIORITY_COLORS = {
     "low": "#6b7280",
@@ -118,7 +118,7 @@ def _detail_row(label: str, value: Optional[str]) -> str:
 
 def _task_card_html(task: dict) -> str:
     code = _esc(task.get("task_code") or "")
-    title = _esc(task.get("title") or "Görev")
+    title = _esc(task.get("title") or "Task")
     priority = (task.get("priority") or "medium").lower()
     p_label = _PRIORITY_LABELS.get(priority, priority)
     p_color = _PRIORITY_COLORS.get(priority, "#2563eb")
@@ -141,9 +141,9 @@ def _task_card_html(task: dict) -> str:
 
     rows = "".join(
         [
-            _detail_row("Kapsam", scope or None),
-            _detail_row("Planlanan", task.get("scheduled_date")),
-            _detail_row("Termin", task.get("due_date")),
+            _detail_row("Scope", scope or None),
+            _detail_row("Scheduled", task.get("scheduled_date")),
+            _detail_row("Due", task.get("due_date")),
         ]
     )
 
@@ -187,7 +187,7 @@ def _cta_button(app_base_url: str) -> str:
         '<a href="' + _esc(link) + '" '
         'style="display:inline-block;background:#4f46e5;color:#ffffff;'
         'text-decoration:none;font-weight:600;font-size:14px;'
-        'padding:11px 28px;border-radius:10px;">Görevi Görüntüle</a>'
+        'padding:11px 28px;border-radius:10px;">View Task</a>'
         '</div>'
     )
 
@@ -218,7 +218,7 @@ def _shell(title_line: str, intro_html: str, body_html: str, app_base_url: str) 
         # Footer
         '<div style="padding:16px 28px;background:#f9fafb;border-top:'
         '1px solid #eef0f3;color:#9ca3af;font-size:12px;text-align:center;">'
-        'Bu otomatik bir bildirimdir · Hermes Görev Yönetimi'
+        'This is an automated notification · Hermes Task Management'
         '</div>'
         '</div></div>'
     )
@@ -233,11 +233,11 @@ def _intro(text_html: str) -> str:
 
 def _assignee_email_html(task: dict, assigner_name: str, app_base_url: str) -> str:
     intro = _intro(
-        '<strong>' + _esc(assigner_name) + '</strong> size yeni bir görev '
-        'atadı. Detaylar aşağıda:'
+        '<strong>' + _esc(assigner_name) + '</strong> assigned you a new '
+        'task. Details below:'
     )
     return _shell(
-        "Size yeni bir görev atandı",
+        "You've been assigned a new task",
         intro,
         _task_card_html(task),
         app_base_url,
@@ -248,11 +248,11 @@ def _assigner_single_email_html(
     task: dict, assignee_name: str, app_base_url: str
 ) -> str:
     intro = _intro(
-        '<strong>' + _esc(assignee_name) + '</strong> kişisine yeni bir görev '
-        'atadınız. Atadığınız görevin özeti:'
+        'You assigned a new task to <strong>' + _esc(assignee_name)
+        + '</strong>. Here is a summary:'
     )
     return _shell(
-        "Bir görev atadınız",
+        "You assigned a task",
         intro,
         _task_card_html(task),
         app_base_url,
@@ -265,11 +265,11 @@ def _assigner_group_email_html(
     names = ", ".join(_esc(n) for n in assignee_names if n)
     count = len([n for n in assignee_names if n])
     intro = _intro(
-        '<strong>' + str(count) + ' kişiye</strong> aynı görevi atadınız: '
-        + names
+        'You assigned the same task to <strong>' + str(count)
+        + ' people</strong>: ' + names
     )
     return _shell(
-        "Bir gruba görev atadınız",
+        "You assigned a task to a group",
         intro,
         _task_card_html(sample_task),
         app_base_url,
@@ -340,7 +340,7 @@ async def send_assignment_notifications(
         users = await _resolve_users(token, list(wanted))
 
         assigner = users.get(str(assigner_user_id), {})
-        assigner_name = assigner.get("full_name") or "Bir kullanıcı"
+        assigner_name = assigner.get("full_name") or "A user"
 
         # 1) Notify each assignee.
         for t in tasks:
@@ -348,11 +348,11 @@ async def send_assignment_notifications(
             info = users.get(aid)
             if not info or not info.get("email"):
                 continue
-            title = t.get("title") or "Görev"
+            title = t.get("title") or "Task"
             await _send(
                 sender,
                 info["email"],
-                f"Yeni görev: {title}",
+                f"New task: {title}",
                 _assignee_email_html(t, assigner_name, app_url),
             )
 
@@ -363,12 +363,12 @@ async def send_assignment_notifications(
                 aid = str(t.get("assignee_user_id") or "")
                 assignee_name = (
                     (users.get(aid, {}) or {}).get("full_name")
-                    or "bir kullanıcı"
+                    or "a user"
                 )
                 await _send(
                     sender,
                     assigner["email"],
-                    f"Görev atadınız: {t.get('title') or 'Görev'}",
+                    f"You assigned a task: {t.get('title') or 'Task'}",
                     _assigner_single_email_html(t, assignee_name, app_url),
                 )
             else:
@@ -382,7 +382,7 @@ async def send_assignment_notifications(
                 await _send(
                     sender,
                     assigner["email"],
-                    f"Gruba görev atadınız: {tasks[0].get('title') or 'Görev'}",
+                    f"You assigned a task to a group: {tasks[0].get('title') or 'Task'}",
                     _assigner_group_email_html(tasks[0], assignee_names, app_url),
                 )
     except Exception as exc:  # noqa: BLE001 — must never escape the BackgroundTask
