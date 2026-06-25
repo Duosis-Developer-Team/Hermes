@@ -234,3 +234,15 @@
 :root[data-theme="light"] .task-card-due-hint {
     color: #92600a;
 }
+
+/* ── Work item type accent — coloured left border per kind so Tasks,
+   Issues and Suggestions are glanceable. ── */
+.task-card.task-card-type-task {
+    border-left: 3px solid #388bff;
+}
+.task-card.task-card-type-issue {
+    border-left: 3px solid #f97316;
+}
+.task-card.task-card-type-suggestion {
+    border-left: 3px solid #a855f7;
+}

@@ -242,6 +242,40 @@
     padding: 16px 24px 24px;
 }
 
+/* ── Work item type pills (Tasks / Issues / Suggestions) ──────────────── */
+.tasks-page .tasks-types {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.tasks-page .tasks-type-pill {
+    padding: 5px 13px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.tasks-page .tasks-type-pill:hover {
+    color: var(--text-primary);
+}
+.tasks-page .tasks-type-pill-active {
+    color: var(--type-color);
+    border-color: var(--type-color);
+    /* transparent fallback (border + coloured text stay readable), then a
+       subtle tint where color-mix() is supported. */
+    background: transparent;
+    background: color-mix(in srgb, var(--type-color) 14%, transparent);
+}
+.tasks-page .tasks-type-pill:focus-visible {
+    outline: 2px solid var(--type-color, #388bff);
+    outline-offset: 1px;
+}
+
 /* ── View + docked detail panel (side by side) ────────────────────────── */
 .tasks-page .tasks-view-row {
     display: flex;

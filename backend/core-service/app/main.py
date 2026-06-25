@@ -369,6 +369,38 @@ def _migrate_tasks_assignment_batch_id() -> None:
         db.close()
 
 
+def _migrate_tasks_task_type() -> None:
+    """
+    Idempotent additive migration: adds tasks.task_type (task | issue |
+    suggestion), defaulting existing + new rows to 'task'. Safe to re-run.
+    """
+    from sqlalchemy import text
+
+    db = SessionLocal()
+    try:
+        db.execute(text(
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS "
+            "task_type VARCHAR(20) NOT NULL DEFAULT 'task'"
+        ))
+        db.execute(text(
+            "ALTER TABLE tasks DROP CONSTRAINT IF EXISTS chk_tasks_task_type"
+        ))
+        db.execute(text(
+            "ALTER TABLE tasks ADD CONSTRAINT chk_tasks_task_type "
+            "CHECK (task_type IN ('task', 'issue', 'suggestion'))"
+        ))
+        db.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_tasks_task_type "
+            "ON tasks(task_type)"
+        ))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️  tasks.task_type migration hatası: {e}")
+    finally:
+        db.close()
+
+
 def _migrate_tasks_status_event_timestamps() -> None:
     """
     Idempotent additive migration: adds tasks.first_accepted_at and
@@ -460,6 +492,7 @@ async def lifespan(app: FastAPI):
     # work_logs.meeting_id link column.
     _migrate_meetings_schema()
     _migrate_tasks_status_event_timestamps()
+    _migrate_tasks_task_type()
     yield
     print(f"👋 {settings.SERVICE_NAME} kapatılıyor...")
 

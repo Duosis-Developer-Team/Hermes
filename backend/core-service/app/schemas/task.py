@@ -21,6 +21,7 @@ from pydantic import (
 
 PriorityLiteral = Literal["low", "medium", "high", "urgent"]
 StatusLiteral = Literal["pending", "in_progress", "completed", "cancelled", "rejected"]
+TaskTypeLiteral = Literal["task", "issue", "suggestion"]
 
 
 # =============================================================================
@@ -142,6 +143,7 @@ class TaskCreate(BaseModel):
     due_date: Optional[date] = None
     estimated_duration_minutes: Optional[int] = Field(None, gt=0)
     priority: PriorityLiteral = "medium"
+    task_type: TaskTypeLiteral = "task"
 
     @field_validator("description")
     @classmethod
@@ -168,6 +170,7 @@ class TaskCreateBulk(BaseModel):
     due_date: Optional[date] = None
     estimated_duration_minutes: Optional[int] = Field(None, gt=0)
     priority: PriorityLiteral = "medium"
+    task_type: TaskTypeLiteral = "task"
 
     @field_validator("description")
     @classmethod
@@ -197,6 +200,7 @@ class TaskUpdate(BaseModel):
     estimated_duration_minutes: Optional[int] = Field(None, gt=0)
     priority: Optional[PriorityLiteral] = None
     status: Optional[StatusLiteral] = None
+    task_type: Optional[TaskTypeLiteral] = None
 
 
 class TaskNoteUpdate(BaseModel):
@@ -321,6 +325,7 @@ class TaskResponse(BaseModel):
     estimated_duration_minutes: Optional[int] = None
     priority: str
     status: str
+    task_type: str = "task"
     assignee_note: Optional[str] = None
     completed_at: Optional[datetime] = None
     completed_by_user_id: Optional[UUID] = None
@@ -345,6 +350,7 @@ class TaskCreateForGroup(BaseModel):
     due_date: Optional[date] = None
     estimated_duration_minutes: Optional[int] = Field(None, gt=0)
     priority: PriorityLiteral = "medium"
+    task_type: TaskTypeLiteral = "task"
 
     @field_validator("description")
     @classmethod

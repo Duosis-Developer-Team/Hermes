@@ -240,6 +240,17 @@ class Task(Base):
     due_date = Column(Date, nullable=True)
     estimated_duration_minutes = Column(Integer, nullable=True)
 
+    # Work item kind — same lifecycle/board/comments for all three; the
+    # UI filters and colour-codes by this. 'task' is the default so legacy
+    # rows and untyped creates keep behaving exactly as before.
+    task_type = Column(
+        String(20),
+        nullable=False,
+        default="task",
+        server_default=text("'task'"),
+        index=True,
+    )
+
     priority = Column(String(20), nullable=False, default="medium", index=True)
     status = Column(String(20), nullable=False, default="pending", index=True)
 
@@ -286,6 +297,10 @@ class Task(Base):
         CheckConstraint(
             "priority IN ('low', 'medium', 'high', 'urgent')",
             name="chk_tasks_priority",
+        ),
+        CheckConstraint(
+            "task_type IN ('task', 'issue', 'suggestion')",
+            name="chk_tasks_task_type",
         ),
         CheckConstraint(
             "status IN ('pending', 'in_progress', 'completed', 'cancelled', 'rejected')",

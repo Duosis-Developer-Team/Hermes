@@ -79,6 +79,19 @@ const TASK_SCOPES = [
     { value: 'assigned-by-me', label: 'Assigned by Me', assignerOnly: true },
 ]
 
+// Work item kinds — same board/list/comments/notifications; just a filter
+// + colour cue. Colours mirror the per-card border accents (TaskCard.css).
+const TASK_TYPES = [
+    { value: 'task', label: 'Tasks', singular: 'Task', color: '#388bff' },
+    { value: 'issue', label: 'Issues', singular: 'Issue', color: '#f97316' },
+    {
+        value: 'suggestion',
+        label: 'Suggestions',
+        singular: 'Suggestion',
+        color: '#a855f7',
+    },
+]
+
 // Quick filters (secondary) — optional single-select chip on top of
 // the scope. Clicking the active chip clears it.
 const TASK_QUICK_FILTERS = [
@@ -139,6 +152,11 @@ function TasksPage() {
     // card to another row reassigns it. Off by default.
     const [groupByAssignee, setGroupByAssignee] = useState(false)
     const [taskScope, setTaskScope] = useState('my-tasks')
+    // Work item kind currently viewed: task | issue | suggestion. Same
+    // board/list/comments/notifications — just a filter + colour cue.
+    const [taskType, setTaskType] = useState('task')
+    // Kind chosen via the "+" menu for the create modal.
+    const [createType, setCreateType] = useState('task')
     const [taskQuickFilter, setTaskQuickFilter] = useState(null)
     // Admin-only user selector (Time Entry parity). null → current user.
     const [selectedUserId, setSelectedUserId] = useState(null)
@@ -234,6 +252,7 @@ function TasksPage() {
         queryKey: [
             'tasks',
             taskScope,
+            taskType,
             taskQuickFilter,
             viewedUserId,
             weekStartStr,
@@ -248,6 +267,7 @@ function TasksPage() {
             const base = {
                 status: statusFilter || undefined,
                 priority: priorityFilter || undefined,
+                task_type: taskType,
                 customer_id: customerFilter || undefined,
                 project_id: projectFilter || undefined,
                 sub_project_id: subProjectFilter || undefined,
@@ -541,14 +561,18 @@ function TasksPage() {
         }
     }
 
-    const handleCreate = (date) => {
+    const handleCreate = (type) => {
         setEditingTask(null)
-        setInitialDate(date ? date.format('YYYY-MM-DD') : null)
+        // The "+" menu passes the kind to create; fall back to the kind
+        // currently being viewed.
+        setCreateType(type || taskType)
+        setInitialDate(null)
         setCreateOpen(true)
     }
 
     const handleEdit = (task) => {
         setEditingTask(task)
+        setCreateType(task.task_type || 'task')
         setInitialDate(task.scheduled_date)
         setCreateOpen(true)
     }
@@ -739,11 +763,43 @@ function TasksPage() {
                 </div>
 
                 <div className="tasks-user-header-right">
-                    {/* Scope tabs */}
+                    {/* Work item type — Tasks / Issues / Suggestions.
+                        Primary, colour-coded mode switch. Same board/list
+                        below; only the filter + accent colour change. */}
+                    <div
+                        className="tasks-types"
+                        role="tablist"
+                        aria-label="Work item type"
+                    >
+                        {TASK_TYPES.map((t) => {
+                            const isActive = taskType === t.value
+                            return (
+                                <button
+                                    key={t.value}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={isActive}
+                                    style={{ '--type-color': t.color }}
+                                    className={`tasks-type-pill${
+                                        isActive
+                                            ? ' tasks-type-pill-active'
+                                            : ''
+                                    }`}
+                                    onClick={() => {
+                                        if (!isActive) setTaskType(t.value)
+                                    }}
+                                >
+                                    {t.label}
+                                </button>
+                            )
+                        })}
+                    </div>
+                    <div className="tasks-tabs-divider" />
                     {/* Free-text task search — visibility enforced server-side */}
                     <TasksSearchBar
                         userMap={userMap}
                         onSelect={handleOpenReview}
+                        taskType={taskType}
                     />
                     <div className="tasks-tabs-divider" />
                     {/* Views — sole scope+filter controller. The
@@ -1111,6 +1167,7 @@ function TasksPage() {
                 onSubmit={handleSubmitTask}
                 initialDate={initialDate}
                 editingTask={editingTask}
+                taskType={createType}
                 assignableUserIds={assignableUserIds}
                 isAdmin={isTaskAdmin}
                 loading={

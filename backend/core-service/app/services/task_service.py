@@ -986,6 +986,7 @@ def list_tasks_for_user(
     statuses: Optional[List[str]] = None,
     status_exclude: Optional[List[str]] = None,
     priority: Optional[str] = None,
+    task_type: Optional[str] = None,
     customer_id: Optional[UUID] = None,
     project_id: Optional[UUID] = None,
     sub_project_id: Optional[UUID] = None,
@@ -1056,6 +1057,8 @@ def list_tasks_for_user(
         query = query.filter(~Task.status.in_(status_exclude))
     if priority:
         query = query.filter(Task.priority == priority)
+    if task_type:
+        query = query.filter(Task.task_type == task_type)
     if customer_id:
         query = query.filter(Task.customer_id == customer_id)
     if project_id:
@@ -1088,6 +1091,7 @@ def search_tasks_for_user(
     q: Optional[str],
     task_status: Optional[str] = None,
     priority: Optional[str] = None,
+    task_type: Optional[str] = None,
     customer_id: Optional[UUID] = None,
     project_id: Optional[UUID] = None,
     assignee_user_id: Optional[UUID] = None,
@@ -1150,6 +1154,8 @@ def search_tasks_for_user(
         query = query.filter(Task.status == task_status)
     if priority:
         query = query.filter(Task.priority == priority)
+    if task_type:
+        query = query.filter(Task.task_type == task_type)
     if customer_id:
         query = query.filter(Task.customer_id == customer_id)
     if project_id:
@@ -1234,6 +1240,7 @@ def create_task(
         due_date=data.due_date,
         estimated_duration_minutes=data.estimated_duration_minutes,
         priority=data.priority,
+        task_type=data.task_type,
         status="pending",
     )
     db.add(task)
@@ -1271,6 +1278,7 @@ def create_tasks_for_group(
     due_date: Optional[date],
     estimated_duration_minutes: Optional[int],
     priority: str,
+    task_type: str = "task",
 ) -> tuple[UUID, List[Task]]:
     """Fan a single Create-Task-for-Group action out into one Task row per
     active group member. Returns (assignment_batch_id, created_tasks).
@@ -1379,6 +1387,7 @@ def create_tasks_for_group(
             due_date=due_date,
             estimated_duration_minutes=estimated_duration_minutes,
             priority=priority,
+            task_type=task_type,
             status="pending",
             assignment_batch_id=batch_id,
         )
@@ -1422,6 +1431,7 @@ def create_tasks_bulk(
     due_date: Optional[date],
     estimated_duration_minutes: Optional[int],
     priority: str,
+    task_type: str = "task",
 ) -> tuple[UUID, List[Task]]:
     """Create the same task for many assignees in one shot.
 
@@ -1514,6 +1524,7 @@ def create_tasks_bulk(
             due_date=due_date,
             estimated_duration_minutes=estimated_duration_minutes,
             priority=priority,
+            task_type=task_type,
             status="pending",
             assignment_batch_id=batch_id,
         )
@@ -1566,6 +1577,7 @@ def update_task(
         return {
             "title": t.title,
             "description": t.description,
+            "task_type": t.task_type,
             "assignee_user_id": str(t.assignee_user_id)
             if t.assignee_user_id else None,
             "scheduled_date": t.scheduled_date.isoformat()
@@ -1674,6 +1686,8 @@ def update_task(
         task.estimated_duration_minutes = data.estimated_duration_minutes
     if data.priority is not None:
         task.priority = data.priority
+    if data.task_type is not None:
+        task.task_type = data.task_type
 
     status_notif = None
     if data.status is not None:

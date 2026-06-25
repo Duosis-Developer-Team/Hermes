@@ -27,7 +27,7 @@ function userLabel(id, userMap) {
     return u?.full_name || u?.email || ''
 }
 
-function TasksSearchBar({ userMap = {}, onSelect, style }) {
+function TasksSearchBar({ userMap = {}, onSelect, style, taskType = 'task' }) {
     const [text, setText] = useState('')
     const [debounced, setDebounced] = useState('')
     const [open, setOpen] = useState(false)
@@ -39,9 +39,15 @@ function TasksSearchBar({ userMap = {}, onSelect, style }) {
     }, [text])
 
     const { data: results = [], isFetching } = useQuery({
-        queryKey: ['task-search', debounced],
+        // Scope search to the active work-item type so results match the
+        // board/list filter (searching Issues won't surface Tasks).
+        queryKey: ['task-search', debounced, taskType],
         queryFn: () =>
-            taskService.search({ q: debounced || undefined, limit: 20 }),
+            taskService.search({
+                q: debounced || undefined,
+                task_type: taskType,
+                limit: 20,
+            }),
         enabled: debounced.length >= 1,
         staleTime: 10 * 1000,
     })

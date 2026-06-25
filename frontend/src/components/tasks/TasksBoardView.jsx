@@ -25,8 +25,8 @@
  */
 
 import { useMemo, useState } from 'react'
-import { Avatar, Button } from 'antd'
-import { PlusOutlined, UserOutlined } from '@ant-design/icons'
+import { Avatar, Button, Dropdown } from 'antd'
+import { PlusOutlined, UserOutlined, DownOutlined } from '@ant-design/icons'
 import {
     DndContext,
     DragOverlay,
@@ -249,14 +249,28 @@ function TasksBoardView({
         <div className="tasks-board-wrap">
             {canCreate && (
                 <div className="tasks-board-toolbar">
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        className="tasks-board-new-btn"
-                        onClick={() => onCreate?.()}
+                    <Dropdown
+                        trigger={['click']}
+                        menu={{
+                            items: [
+                                { key: 'task', label: 'New Task' },
+                                { key: 'issue', label: 'New Issue' },
+                                {
+                                    key: 'suggestion',
+                                    label: 'New Suggestion',
+                                },
+                            ],
+                            onClick: ({ key }) => onCreate?.(key),
+                        }}
                     >
-                        New Task
-                    </Button>
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            className="tasks-board-new-btn"
+                        >
+                            New <DownOutlined />
+                        </Button>
+                    </Dropdown>
                 </div>
             )}
 

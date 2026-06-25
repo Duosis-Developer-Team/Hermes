@@ -51,10 +51,15 @@ function CreateTaskModal({
     onSubmit,
     initialDate,
     editingTask = null,
+    // Work item kind being created: task | issue | suggestion. Same form
+    // for all three — only the title label + stored type differ.
+    taskType = 'task',
     assignableUserIds = [],
     isAdmin = false,
     loading = false,
 }) {
+    const TYPE_LABEL = { task: 'Task', issue: 'Issue', suggestion: 'Suggestion' }
+    const typeLabel = TYPE_LABEL[taskType] || 'Task'
     // Form value for assignee is a prefixed string:
     //   "user:<uuid>"  → single-user task
     //   "group:<uuid>" → fan-out per active group member (only on create)
@@ -266,6 +271,7 @@ function CreateTaskModal({
             scheduled_date: scheduled,
             due_date: due,
             priority: values.priority || 'medium',
+            task_type: taskType,
         }
 
         // Edit mode: a single task row, single-select assignee (string).
@@ -321,10 +327,10 @@ function CreateTaskModal({
 
     return (
         <Modal
-            title={isEditing ? 'Edit Task' : 'Create Task'}
+            title={isEditing ? `Edit ${typeLabel}` : `Create ${typeLabel}`}
             open={open}
             onCancel={onClose}
-            okText={isEditing ? 'Save Changes' : 'Create Task'}
+            okText={isEditing ? 'Save Changes' : `Create ${typeLabel}`}
             cancelText="Cancel"
             confirmLoading={loading}
             onOk={() => form.submit()}

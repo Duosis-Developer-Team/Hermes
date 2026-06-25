@@ -152,6 +152,7 @@ function TaskCard({
     const showAsSelected = isSelected && !isCompleted
     const className =
         'task-card' +
+        ` task-card-type-${task.task_type || 'task'}` +
         (isCompleted ? ' task-card-completed' : '') +
         (showAsSelected ? ' task-card-selected' : '')
 

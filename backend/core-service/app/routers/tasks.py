@@ -152,6 +152,7 @@ def _serialize_task(task: Task) -> TaskResponse:
         estimated_duration_minutes=task.estimated_duration_minutes,
         priority=task.priority,
         status=task.status,
+        task_type=task.task_type,
         assignee_note=task.assignee_note,
         completed_at=task.completed_at,
         completed_by_user_id=task.completed_by_user_id,
@@ -323,6 +324,7 @@ async def list_tasks(
     statuses: Optional[List[str]] = Query(None, alias="statuses"),
     status_exclude: Optional[List[str]] = Query(None, alias="status_exclude"),
     priority: Optional[str] = Query(None),
+    task_type: Optional[str] = Query(None),
     customer_id: Optional[UUID] = Query(None),
     project_id: Optional[UUID] = Query(None),
     sub_project_id: Optional[UUID] = Query(None),
@@ -354,6 +356,7 @@ async def list_tasks(
         statuses=statuses,
         status_exclude=status_exclude,
         priority=priority,
+        task_type=task_type,
         customer_id=customer_id,
         project_id=project_id,
         sub_project_id=sub_project_id,
@@ -421,6 +424,7 @@ async def create_tasks_for_group(
         due_date=payload.due_date,
         estimated_duration_minutes=payload.estimated_duration_minutes,
         priority=payload.priority,
+        task_type=payload.task_type,
     )
     serialized = [_serialize_task(t) for t in tasks]
     # One notification batch: each member gets an assignee e-mail and the
@@ -469,6 +473,7 @@ async def create_tasks_bulk(
         due_date=payload.due_date,
         estimated_duration_minutes=payload.estimated_duration_minutes,
         priority=payload.priority,
+        task_type=payload.task_type,
     )
     serialized = [_serialize_task(t) for t in tasks]
     background_tasks.add_task(
@@ -488,6 +493,7 @@ async def search_tasks(
     q: Optional[str] = Query(None, description="Free-text search."),
     task_status: Optional[str] = Query(None, alias="status"),
     priority: Optional[str] = Query(None),
+    task_type: Optional[str] = Query(None),
     customer_id: Optional[UUID] = Query(None),
     project_id: Optional[UUID] = Query(None),
     assignee_user_id: Optional[UUID] = Query(None),
@@ -510,6 +516,7 @@ async def search_tasks(
         q=q,
         task_status=task_status,
         priority=priority,
+        task_type=task_type,
         customer_id=customer_id,
         project_id=project_id,
         assignee_user_id=assignee_user_id,
