@@ -356,9 +356,9 @@ def _intro(text_html: str) -> str:
 # Type-aware Turkish nouns so issues + suggestions get their own copy
 # instead of "görev". Three grammatical forms are kept because the e-mail
 # titles need the nominative, accusative and 2nd-person possessive.
-_TYPE_NOUN = {"task": "görev", "issue": "issue", "suggestion": "öneri"}
-_TYPE_ACC = {"task": "görevi", "issue": "issue'yi", "suggestion": "öneriyi"}
-_TYPE_POSS = {"task": "göreviniz", "issue": "issue'niz", "suggestion": "öneriniz"}
+_TYPE_NOUN = {"task": "görev", "issue": "sorun", "suggestion": "öneri"}
+_TYPE_ACC = {"task": "görevi", "issue": "sorunu", "suggestion": "öneriyi"}
+_TYPE_POSS = {"task": "göreviniz", "issue": "sorununuz", "suggestion": "öneriniz"}
 
 
 def _ttype(task: dict) -> str:
