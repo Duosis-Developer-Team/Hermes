@@ -90,7 +90,7 @@ jobs:
           kubectl -n "${NAMESPACE}" rollout restart deployment/frontend
 
           # 3. Wait for rollout completion
-          kubectl -n "${NAMESPACE}" rollout status deployment/auth-service --timeout=180s
-          kubectl -n "${NAMESPACE}" rollout status deployment/core-service --timeout=180s
-          kubectl -n "${NAMESPACE}" rollout status deployment/reporting-service --timeout=180s
-          kubectl -n "${NAMESPACE}" rollout status deployment/frontend --timeout=180s
+          kubectl -n "${NAMESPACE}" rollout status deployment/auth-service --timeout=300s
+          kubectl -n "${NAMESPACE}" rollout status deployment/core-service --timeout=300s
+          kubectl -n "${NAMESPACE}" rollout status deployment/reporting-service --timeout=300s
+          kubectl -n "${NAMESPACE}" rollout status deployment/frontend --timeout=300s
