@@ -369,6 +369,45 @@ def _migrate_tasks_assignment_batch_id() -> None:
         db.close()
 
 
+def _migrate_tasks_status_event_timestamps() -> None:
+    """
+    Idempotent additive migration: adds tasks.first_accepted_at and
+    tasks.first_completed_at (nullable timestamptz) that drive the
+    one-time accept/complete e-mail notifications. Safe to re-run.
+    """
+    from sqlalchemy import text
+
+    db = SessionLocal()
+    try:
+        db.execute(text(
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS "
+            "first_accepted_at TIMESTAMPTZ"
+        ))
+        db.execute(text(
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS "
+            "first_completed_at TIMESTAMPTZ"
+        ))
+        # Backfill existing rows so tasks already accepted/completed before
+        # this feature don't fire a spurious "first time" e-mail when they
+        # are next touched. Idempotent — only fills NULLs.
+        db.execute(text(
+            "UPDATE tasks SET first_completed_at = completed_at "
+            "WHERE first_completed_at IS NULL AND completed_at IS NOT NULL"
+        ))
+        db.execute(text(
+            "UPDATE tasks SET first_accepted_at = "
+            "COALESCE(completed_at, updated_at, created_at) "
+            "WHERE first_accepted_at IS NULL "
+            "AND status IN ('in_progress', 'completed')"
+        ))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️  tasks status-event timestamps migration hatası: {e}")
+    finally:
+        db.close()
+
+
 def _ensure_prerequisite_objects() -> None:
     """
     create_all()'dan ÖNCE çalışması gereken, tablo dışı şema nesnelerini
@@ -420,6 +459,7 @@ async def lifespan(app: FastAPI):
     # models/__init__.py); this helper adds the helpful index +
     # work_logs.meeting_id link column.
     _migrate_meetings_schema()
+    _migrate_tasks_status_event_timestamps()
     yield
     print(f"👋 {settings.SERVICE_NAME} kapatılıyor...")
 

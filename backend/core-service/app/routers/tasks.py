@@ -44,8 +44,26 @@ from ..schemas.task import (
     TaskUpdate,
 )
 from ..services import task_service
-from ..services.task_notifications import send_assignment_notifications
+from ..services.task_notifications import (
+    send_assignment_notifications,
+    send_status_notifications,
+)
 from shared.auth import CurrentUser, get_current_user
+
+
+def _maybe_status_notify(task, serialized, background_tasks, request) -> None:
+    """If the status change was the FIRST accept/complete (service set the
+    transient _status_notif flag), schedule the one-time e-mail to the
+    assignee + assigner. No-op otherwise."""
+    event = getattr(task, "_status_notif", None)
+    if event in ("accept", "complete"):
+        background_tasks.add_task(
+            send_status_notifications,
+            token=_extract_token(request),
+            task=_notif_payload(serialized),
+            assigner_user_id=str(serialized.assigner_user_id),
+            event=event,
+        )
 
 
 def _extract_token(request: Request) -> str:
@@ -83,6 +101,7 @@ def _notif_payload(resp) -> dict:
         "scheduled_date": _d(resp.scheduled_date),
         "due_date": _d(resp.due_date),
         "assignee_user_id": str(resp.assignee_user_id),
+        "assigner_user_id": str(resp.assigner_user_id),
     }
 
 
@@ -517,12 +536,16 @@ async def get_task(
 async def update_task(
     task_id: UUID,
     payload: TaskUpdate,
+    background_tasks: BackgroundTasks,
+    request: Request,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     task_service.require_task_access(db, current_user)
     task = task_service.update_task(db, current_user, task_id, payload)
-    return _serialize_task(task)
+    serialized = _serialize_task(task)
+    _maybe_status_notify(task, serialized, background_tasks, request)
+    return serialized
 
 
 @router.patch("/{task_id}/note", response_model=TaskResponse)
@@ -541,18 +564,24 @@ async def update_task_note(
 async def update_task_status(
     task_id: UUID,
     payload: TaskStatusUpdate,
+    background_tasks: BackgroundTasks,
+    request: Request,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     task_service.require_task_access(db, current_user)
     task = task_service.update_task_status(db, current_user, task_id, payload.status)
-    return _serialize_task(task)
+    serialized = _serialize_task(task)
+    _maybe_status_notify(task, serialized, background_tasks, request)
+    return serialized
 
 
 @router.patch("/{task_id}/complete", response_model=TaskResponse)
 async def complete_task(
     task_id: UUID,
     payload: TaskCompleteUpdate,
+    background_tasks: BackgroundTasks,
+    request: Request,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -560,7 +589,9 @@ async def complete_task(
     task = task_service.update_task_completion(
         db, current_user, task_id, payload.completed
     )
-    return _serialize_task(task)
+    serialized = _serialize_task(task)
+    _maybe_status_notify(task, serialized, background_tasks, request)
+    return serialized
 
 
 @router.patch("/{task_id}/reject", response_model=TaskResponse)

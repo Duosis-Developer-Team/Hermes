@@ -1675,8 +1675,9 @@ def update_task(
     if data.priority is not None:
         task.priority = data.priority
 
+    status_notif = None
     if data.status is not None:
-        _apply_status_change(db, task, user, data.status)
+        status_notif = _apply_status_change(db, task, user, data.status)
 
     # Emit a single task_updated event for non-status field changes.
     after_snapshot = _snapshot(task)
@@ -1696,6 +1697,7 @@ def update_task(
 
     db.commit()
     db.refresh(task)
+    task._status_notif = status_notif
     return task
 
 
@@ -1724,17 +1726,28 @@ def _apply_status_change(
     task: Task,
     user: CurrentUser,
     new_status: str,
-) -> None:
-    """Set status + completion bookkeeping AND emit the matching
-    activity event (task_completed / task_rejected / task_reopened)."""
+) -> Optional[str]:
+    """Set status + completion bookkeeping AND emit the matching activity
+    event (task_completed / task_rejected / task_reopened).
+
+    Returns a one-time notification signal: "accept" the FIRST time the
+    task enters in_progress, "complete" the FIRST time it is completed,
+    else None. Re-accepting/re-completing after a reopen returns None
+    (the first_*_at timestamps stay populated), so each e-mail fires once.
+    """
     if new_status == task.status:
-        return
+        return None
     old_status = task.status
     actor = UUID(user.id)
+    notif: Optional[str] = None
+    now = datetime.now(timezone.utc)
     if new_status == "completed":
         task.status = "completed"
-        task.completed_at = datetime.now(timezone.utc)
+        task.completed_at = now
         task.completed_by_user_id = actor
+        if task.first_completed_at is None:
+            task.first_completed_at = now
+            notif = "complete"
         _record_task_event(
             db,
             task_id=task.id,
@@ -1757,6 +1770,9 @@ def _apply_status_change(
         task.status = new_status
         task.completed_at = None
         task.completed_by_user_id = None
+        if new_status == "in_progress" and task.first_accepted_at is None:
+            task.first_accepted_at = now
+            notif = "accept"
         # Treat any move out of completed/rejected as a reopen so the
         # timeline tells a clean recovery story.
         event_type = (
@@ -1771,6 +1787,7 @@ def _apply_status_change(
             event_type=event_type,
             event_data={"from": old_status, "to": new_status},
         )
+    return notif
 
 
 def update_task_status(
@@ -1790,9 +1807,13 @@ def update_task_status(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not allowed to update this task status.",
         )
-    _apply_status_change(db, task, user, new_status)
+    notif = _apply_status_change(db, task, user, new_status)
     db.commit()
     db.refresh(task)
+    # Transient flag (not a column) for the router to decide whether to
+    # fire a one-time accept/complete e-mail. Set after refresh so it
+    # survives the reload.
+    task._status_notif = notif
     return task
 
 
@@ -1852,13 +1873,15 @@ def update_task_completion(
                     "completed."
                 ),
             )
-        _apply_status_change(db, task, user, "completed")
+        notif = _apply_status_change(db, task, user, "completed")
     else:
         # Reopen — pick in_progress unless task was pending originally.
+        notif = None
         if task.status == "completed":
-            _apply_status_change(db, task, user, "in_progress")
+            notif = _apply_status_change(db, task, user, "in_progress")
     db.commit()
     db.refresh(task)
+    task._status_notif = notif
     return task
 
 

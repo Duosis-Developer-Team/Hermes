@@ -269,6 +269,42 @@ def _assigner_single_email_html(
     )
 
 
+def _status_assignee_email_html(task: dict, event: str, app_base_url: str) -> str:
+    """E-mail to the assignee (the actor) when they accept/complete."""
+    if event == "accept":
+        title_line = "Görevi kabul ettiniz"
+        intro = _intro(
+            "Aşağıdaki görevi kabul ettiniz ve üzerinde çalışmaya "
+            "başladınız:"
+        )
+    else:  # complete
+        title_line = "Görevi tamamladınız"
+        intro = _intro(
+            "Aşağıdaki görevi <strong>başarıyla tamamladınız</strong>:"
+        )
+    return _shell(title_line, intro, _task_card_html(task), app_base_url)
+
+
+def _status_assigner_email_html(
+    task: dict, assignee_name: str, event: str, app_base_url: str
+) -> str:
+    """E-mail to the assigner when their assigned task is accepted/done."""
+    who = "<strong>" + _esc(assignee_name) + "</strong>"
+    if event == "accept":
+        title_line = "Göreviniz kabul edildi"
+        intro = _intro(
+            who + ", verdiğiniz aşağıdaki görevi <strong>kabul etti</strong> "
+            "ve tamamlanma sürecine aldı:"
+        )
+    else:  # complete
+        title_line = "Göreviniz tamamlandı"
+        intro = _intro(
+            who + ", verdiğiniz aşağıdaki görevi "
+            "<strong>başarıyla tamamladı</strong>:"
+        )
+    return _shell(title_line, intro, _task_card_html(task), app_base_url)
+
+
 def _assigner_group_email_html(
     sample_task: dict, assignee_names: List[str], app_base_url: str
 ) -> str:
@@ -412,3 +448,78 @@ async def send_assignment_notifications(
     except Exception as exc:  # noqa: BLE001 — must never escape the BackgroundTask
         print(f"[notif] EXCEPTION: {exc!r}", flush=True)
         logger.warning("send_assignment_notifications failed: %s", exc)
+
+
+async def send_status_notifications(
+    *,
+    token: str,
+    task: dict,
+    assigner_user_id: str,
+    event: str,
+) -> None:
+    """One-time accept/complete notification. `event` is "accept" or
+    "complete". E-mails the assignee (the actor) and — when enabled — the
+    assigner. Fired by the router only on the FIRST transition, so it never
+    repeats on re-accept/re-complete. Never raises into the BackgroundTask.
+    """
+    try:
+        settings = get_settings()
+        print(
+            f"[notif-status] start event={event} "
+            f"enabled={settings.NOTIFICATIONS_ENABLED} "
+            f"token={'yes' if token else 'no'}",
+            flush=True,
+        )
+        if not settings.NOTIFICATIONS_ENABLED:
+            return
+        if event not in ("accept", "complete"):
+            return
+        client = get_graph_client()
+        if not client.is_configured:
+            return
+
+        sender = settings.NOTIF_MAIL_SENDER
+        app_url = settings.APP_BASE_URL
+        title = task.get("title") or "Görev"
+
+        assignee_id = str(task.get("assignee_user_id") or "")
+        wanted = {assignee_id, str(assigner_user_id)}
+        users = await _resolve_users(token, list(wanted))
+        print(f"[notif-status] resolved={len(users)}", flush=True)
+
+        assignee = users.get(assignee_id, {})
+        assigner = users.get(str(assigner_user_id), {})
+        assignee_name = assignee.get("full_name") or "Bir kullanıcı"
+
+        # 1) The assignee (actor) — "you accepted/completed this task".
+        if assignee.get("email"):
+            subject = (
+                f"Görevi kabul ettiniz: {title}"
+                if event == "accept"
+                else f"Görevi tamamladınız: {title}"
+            )
+            await _send(
+                sender,
+                assignee["email"],
+                subject,
+                _status_assignee_email_html(task, event, app_url),
+            )
+
+        # 2) The assigner — "your assigned task was accepted/completed".
+        if settings.NOTIF_NOTIFY_ASSIGNER and assigner.get("email"):
+            subject = (
+                f"Göreviniz kabul edildi: {title}"
+                if event == "accept"
+                else f"Göreviniz tamamlandı: {title}"
+            )
+            await _send(
+                sender,
+                assigner["email"],
+                subject,
+                _status_assigner_email_html(
+                    task, assignee_name, event, app_url
+                ),
+            )
+    except Exception as exc:  # noqa: BLE001 — must never escape the BackgroundTask
+        print(f"[notif-status] EXCEPTION: {exc!r}", flush=True)
+        logger.warning("send_status_notifications failed: %s", exc)

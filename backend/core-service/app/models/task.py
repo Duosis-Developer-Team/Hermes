@@ -248,6 +248,13 @@ class Task(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
     completed_by_user_id = Column(UUID(as_uuid=True), nullable=True)
 
+    # First-transition timestamps — set ONCE, the first time the task is
+    # accepted (→ in_progress) and completed (→ completed). Drive the
+    # one-time accept/complete e-mail notifications; re-accepting after a
+    # reopen never re-sends because these stay populated.
+    first_accepted_at = Column(DateTime(timezone=True), nullable=True)
+    first_completed_at = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
