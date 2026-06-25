@@ -1,6 +1,10 @@
 .tasks-search-wrapper {
     position: relative;
     width: 260px;
+    /* Let the search box absorb tight space so the header stays on one
+       line (it shrinks before any control wraps). */
+    flex: 0 1 260px;
+    min-width: 150px;
 }
 
 .tasks-search-panel {

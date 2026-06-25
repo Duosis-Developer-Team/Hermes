@@ -52,7 +52,12 @@
     display: flex;
     align-items: center;
     gap: 24px;
-    flex-wrap: wrap;
+    /* Single line, identical across Tasks / Issues / Suggestions — the
+       wider "My Suggestions" scope label used to wrap "Group by assignee"
+       onto its own row. Keep it inline on the right; the search box
+       shrinks first if space gets tight. */
+    flex-wrap: nowrap;
+    min-width: 0;
 }
 
 /* ── Underline tab links (Time Entry parity) ──────────────────────────── */
