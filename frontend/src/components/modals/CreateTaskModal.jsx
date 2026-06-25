@@ -353,7 +353,7 @@ function CreateTaskModal({
                 {!isEditing && noAssignableUsers && (
                     <Alert
                         type="warning"
-                        message={`No assignable targets for ${typeLabel.toLowerCase()}s. Add them to your assignment hierarchy in Task Management (or ask an administrator).`}
+                        message={`No assignable targets for ${typeLabel.toLowerCase()}s. Add them to your assignment hierarchy in PM Configurations (or ask an administrator).`}
                         showIcon
                         style={{ marginBottom: 16 }}
                     />

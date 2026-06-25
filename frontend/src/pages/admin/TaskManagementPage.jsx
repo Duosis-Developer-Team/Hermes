@@ -471,10 +471,10 @@ function TaskManagementPage() {
     return (
         <div className="tm-page">
             <header className="tm-header">
-                <h1 className="tm-title">Task Management</h1>
+                <h1 className="tm-title">PM Configurations</h1>
                 <p className="tm-subtitle">
-                    Manage task access, the assignment hierarchy, and
-                    sub-projects in one place.
+                    Manage access, assignment hierarchies, and sub-projects
+                    for tasks, issues &amp; suggestions in one place.
                 </p>
             </header>
 

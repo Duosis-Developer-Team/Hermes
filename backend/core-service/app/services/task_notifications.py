@@ -324,7 +324,7 @@ def _shell(title_line: str, intro_html: str, body_html: str, app_base_url: str) 
         '<tr><td style="padding:18px 28px;background:' + _SURFACE_DEEP + ';'
         'border-top:1px solid ' + _BORDER_SOFT + ';color:' + _TEXT_FAINT + ';'
         'font-size:12px;text-align:center;">'
-        'Bu otomatik bir bildirimdir · Hermes Görev Yönetimi'
+        'Bu otomatik bir bildirimdir · Hermes Proje Yönetimi'
         '</td></tr>'
         '</table></td></tr></table></div>'
     )
@@ -337,13 +337,27 @@ def _intro(text_html: str) -> str:
     )
 
 
+# Type-aware Turkish nouns so issues + suggestions get their own copy
+# instead of "görev". Three grammatical forms are kept because the e-mail
+# titles need the nominative, accusative and 2nd-person possessive.
+_TYPE_NOUN = {"task": "görev", "issue": "issue", "suggestion": "öneri"}
+_TYPE_ACC = {"task": "görevi", "issue": "issue'yi", "suggestion": "öneriyi"}
+_TYPE_POSS = {"task": "göreviniz", "issue": "issue'niz", "suggestion": "öneriniz"}
+
+
+def _ttype(task: dict) -> str:
+    t = task.get("task_type") or "task"
+    return t if t in _TYPE_NOUN else "task"
+
+
 def _assignee_email_html(task: dict, assigner_name: str, app_base_url: str) -> str:
+    noun = _TYPE_NOUN[_ttype(task)]
     intro = _intro(
-        '<strong>' + _esc(assigner_name) + '</strong> size yeni bir görev '
-        'atadı. Detaylar aşağıda:'
+        '<strong>' + _esc(assigner_name) + '</strong> size yeni bir ' + noun
+        + ' atadı. Detaylar aşağıda:'
     )
     return _shell(
-        "Size yeni bir görev atandı",
+        "Size yeni bir " + noun + " atandı",
         intro,
         _task_card_html(task),
         app_base_url,
@@ -353,12 +367,13 @@ def _assignee_email_html(task: dict, assigner_name: str, app_base_url: str) -> s
 def _assigner_single_email_html(
     task: dict, assignee_name: str, app_base_url: str
 ) -> str:
+    noun = _TYPE_NOUN[_ttype(task)]
     intro = _intro(
-        '<strong>' + _esc(assignee_name) + '</strong> kişisine yeni bir görev '
-        'atadınız. Atadığınız görevin özeti:'
+        '<strong>' + _esc(assignee_name) + '</strong> kişisine yeni bir '
+        + noun + ' atadınız. Özet aşağıda:'
     )
     return _shell(
-        "Bir görev atadınız",
+        "Bir " + noun + " atadınız",
         intro,
         _task_card_html(task),
         app_base_url,
@@ -367,16 +382,17 @@ def _assigner_single_email_html(
 
 def _status_assignee_email_html(task: dict, event: str, app_base_url: str) -> str:
     """E-mail to the assignee (the actor) when they accept/complete."""
+    acc = _TYPE_ACC[_ttype(task)]
     if event == "accept":
-        title_line = "Görevi kabul ettiniz"
+        title_line = acc.capitalize() + " kabul ettiniz"
         intro = _intro(
-            "Aşağıdaki görevi kabul ettiniz ve üzerinde çalışmaya "
+            "Aşağıdaki " + acc + " kabul ettiniz ve üzerinde çalışmaya "
             "başladınız:"
         )
     else:  # complete
-        title_line = "Görevi tamamladınız"
+        title_line = acc.capitalize() + " tamamladınız"
         intro = _intro(
-            "Aşağıdaki görevi <strong>başarıyla tamamladınız</strong>:"
+            "Aşağıdaki " + acc + " <strong>başarıyla tamamladınız</strong>:"
         )
     return _shell(title_line, intro, _task_card_html(task), app_base_url)
 
@@ -384,18 +400,21 @@ def _status_assignee_email_html(task: dict, event: str, app_base_url: str) -> st
 def _status_assigner_email_html(
     task: dict, assignee_name: str, event: str, app_base_url: str
 ) -> str:
-    """E-mail to the assigner when their assigned task is accepted/done."""
+    """E-mail to the assigner when their assigned item is accepted/done."""
+    t = _ttype(task)
+    acc = _TYPE_ACC[t]
+    poss = _TYPE_POSS[t]
     who = "<strong>" + _esc(assignee_name) + "</strong>"
     if event == "accept":
-        title_line = "Göreviniz kabul edildi"
+        title_line = poss.capitalize() + " kabul edildi"
         intro = _intro(
-            who + ", verdiğiniz aşağıdaki görevi <strong>kabul etti</strong> "
-            "ve tamamlanma sürecine aldı:"
+            who + ", verdiğiniz aşağıdaki " + acc + " <strong>kabul etti"
+            "</strong> ve tamamlanma sürecine aldı:"
         )
     else:  # complete
-        title_line = "Göreviniz tamamlandı"
+        title_line = poss.capitalize() + " tamamlandı"
         intro = _intro(
-            who + ", verdiğiniz aşağıdaki görevi "
+            who + ", verdiğiniz aşağıdaki " + acc + " "
             "<strong>başarıyla tamamladı</strong>:"
         )
     return _shell(title_line, intro, _task_card_html(task), app_base_url)
@@ -404,14 +423,17 @@ def _status_assigner_email_html(
 def _assigner_group_email_html(
     sample_task: dict, assignee_names: List[str], app_base_url: str
 ) -> str:
+    t = _ttype(sample_task)
+    noun = _TYPE_NOUN[t]
+    acc = _TYPE_ACC[t]
     names = ", ".join(_esc(n) for n in assignee_names if n)
     count = len([n for n in assignee_names if n])
     intro = _intro(
-        '<strong>' + str(count) + ' kişiye</strong> aynı görevi atadınız: '
-        + names
+        '<strong>' + str(count) + ' kişiye</strong> aynı ' + acc
+        + ' atadınız: ' + names
     )
     return _shell(
-        "Bir gruba görev atadınız",
+        "Bir gruba " + noun + " atadınız",
         intro,
         _task_card_html(sample_task),
         app_base_url,
@@ -506,10 +528,11 @@ async def send_assignment_notifications(
             if not info or not info.get("email"):
                 continue
             title = t.get("title") or "Görev"
+            noun = _TYPE_NOUN[_ttype(t)]
             await _send(
                 sender,
                 info["email"],
-                f"Yeni görev: {title}",
+                f"Yeni {noun}: {title}",
                 _assignee_email_html(t, assigner_name, app_url),
             )
 
@@ -522,10 +545,11 @@ async def send_assignment_notifications(
                     (users.get(aid, {}) or {}).get("full_name")
                     or "bir kullanıcı"
                 )
+                noun = _TYPE_NOUN[_ttype(t)]
                 await _send(
                     sender,
                     assigner["email"],
-                    f"Görev atadınız: {t.get('title') or 'Görev'}",
+                    f"{noun.capitalize()} atadınız: {t.get('title') or 'Görev'}",
                     _assigner_single_email_html(t, assignee_name, app_url),
                 )
             else:
@@ -536,10 +560,11 @@ async def send_assignment_notifications(
                     or ""
                     for t in tasks
                 ]
+                noun = _TYPE_NOUN[_ttype(tasks[0])]
                 await _send(
                     sender,
                     assigner["email"],
-                    f"Gruba görev atadınız: {tasks[0].get('title') or 'Görev'}",
+                    f"Gruba {noun} atadınız: {tasks[0].get('title') or 'Görev'}",
                     _assigner_group_email_html(tasks[0], assignee_names, app_url),
                 )
     except Exception as exc:  # noqa: BLE001 — must never escape the BackgroundTask
@@ -587,13 +612,16 @@ async def send_status_notifications(
         assignee = users.get(assignee_id, {})
         assigner = users.get(str(assigner_user_id), {})
         assignee_name = assignee.get("full_name") or "Bir kullanıcı"
+        ttype = _ttype(task)
+        acc_cap = _TYPE_ACC[ttype].capitalize()
+        poss_cap = _TYPE_POSS[ttype].capitalize()
 
-        # 1) The assignee (actor) — "you accepted/completed this task".
+        # 1) The assignee (actor) — "you accepted/completed this item".
         if assignee.get("email"):
             subject = (
-                f"Görevi kabul ettiniz: {title}"
+                f"{acc_cap} kabul ettiniz: {title}"
                 if event == "accept"
-                else f"Görevi tamamladınız: {title}"
+                else f"{acc_cap} tamamladınız: {title}"
             )
             await _send(
                 sender,
@@ -602,12 +630,12 @@ async def send_status_notifications(
                 _status_assignee_email_html(task, event, app_url),
             )
 
-        # 2) The assigner — "your assigned task was accepted/completed".
+        # 2) The assigner — "your assigned item was accepted/completed".
         if settings.NOTIF_NOTIFY_ASSIGNER and assigner.get("email"):
             subject = (
-                f"Göreviniz kabul edildi: {title}"
+                f"{poss_cap} kabul edildi: {title}"
                 if event == "accept"
-                else f"Göreviniz tamamlandı: {title}"
+                else f"{poss_cap} tamamlandı: {title}"
             )
             await _send(
                 sender,

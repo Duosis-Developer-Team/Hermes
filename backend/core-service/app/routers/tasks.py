@@ -93,6 +93,7 @@ def _notif_payload(resp) -> dict:
 
     return {
         "task_code": resp.task_code,
+        "task_type": resp.task_type,
         "title": resp.title,
         "description": resp.description,
         "customer_name": resp.customer_name,
@@ -130,9 +131,15 @@ def _serialize_sub_project(sub: TaskSubProject) -> TaskSubProjectResponse:
     )
 
 
+_CODE_PREFIX = {"task": "TASK", "issue": "ISSUE", "suggestion": "SUGGESTION"}
+
+
 def _serialize_task(task: Task) -> TaskResponse:
+    prefix = _CODE_PREFIX.get(task.task_type or "task", "TASK")
     task_code = (
-        f"TASK-{task.task_number}" if task.task_number is not None else None
+        f"{prefix}-{task.task_number}"
+        if task.task_number is not None
+        else None
     )
     return TaskResponse(
         id=task.id,

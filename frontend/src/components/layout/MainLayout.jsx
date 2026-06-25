@@ -72,7 +72,7 @@ function MainLayout() {
             {
                 key: '/tasks',
                 icon: <CheckSquareOutlined />,
-                label: 'Tasks',
+                label: 'Project Management',
             },
         ] : []),
 
@@ -118,7 +118,7 @@ function MainLayout() {
                     {
                         key: '/task-management',
                         icon: <CheckSquareOutlined />,
-                        label: 'Task Management',
+                        label: 'PM Configurations',
                     },
                 ],
             },
