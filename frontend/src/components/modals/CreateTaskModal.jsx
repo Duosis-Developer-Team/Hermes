@@ -478,14 +478,20 @@ function CreateTaskModal({
                 </Form.Item>
 
                 <Form.Item
-                    label="Task Title"
+                    label={`${typeLabel} Title`}
                     name="title"
                     rules={[
-                        { required: true, message: 'Task title is required.' },
+                        {
+                            required: true,
+                            message: `${typeLabel} title is required.`,
+                        },
                         { max: 255, message: 'Max 255 characters.' },
                     ]}
                 >
-                    <Input maxLength={255} placeholder="Short, action-oriented task title" />
+                    <Input
+                        maxLength={255}
+                        placeholder={`Short, action-oriented ${typeLabel.toLowerCase()} title`}
+                    />
                 </Form.Item>
 
                 <Form.Item
