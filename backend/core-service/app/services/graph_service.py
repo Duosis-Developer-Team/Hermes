@@ -20,7 +20,7 @@
 import asyncio
 import logging
 import time
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator, List, Optional
 
 import httpx
 
@@ -242,9 +242,17 @@ class MicrosoftGraphClient:
         to_email: str,
         subject: str,
         html_body: str,
+        inline_images: Optional[List[dict]] = None,
     ) -> None:
         """Send an HTML e-mail *as* `sender` to a single recipient via
         Graph `POST /users/{sender}/sendMail`.
+
+        `inline_images` (optional) embeds images referenced by the HTML as
+        `cid:<content_id>` (e.g. a brand logo). Each item is a dict:
+            {"content_id": str, "content_b64": str, "content_type": str,
+             "name": str (optional)}
+        They are attached as inline fileAttachments so they render inside
+        the message body rather than as download attachments.
 
         Requires the Mail.Send application permission (admin-consented)
         on the Azure app. Raises GraphConfigError when Graph isn't
@@ -255,14 +263,28 @@ class MicrosoftGraphClient:
         token = await self._get_token()
 
         url = f"{self._base_url}/users/{sender}/sendMail"
+        message: dict = {
+            "subject": subject,
+            "body": {"contentType": "HTML", "content": html_body},
+            "toRecipients": [
+                {"emailAddress": {"address": to_email}}
+            ],
+        }
+        if inline_images:
+            message["attachments"] = [
+                {
+                    "@odata.type": "#microsoft.graph.fileAttachment",
+                    "name": img.get("name") or f"{img['content_id']}.png",
+                    "contentId": img["content_id"],
+                    "isInline": True,
+                    "contentType": img.get("content_type", "image/png"),
+                    "contentBytes": img["content_b64"],
+                }
+                for img in inline_images
+                if img.get("content_id") and img.get("content_b64")
+            ]
         payload = {
-            "message": {
-                "subject": subject,
-                "body": {"contentType": "HTML", "content": html_body},
-                "toRecipients": [
-                    {"emailAddress": {"address": to_email}}
-                ],
-            },
+            "message": message,
             "saveToSentItems": True,
         }
         headers = {

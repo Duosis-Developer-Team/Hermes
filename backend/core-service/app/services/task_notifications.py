@@ -17,8 +17,10 @@
 #     the assigner's bearer token, captured at request time.
 # =============================================================================
 
+import base64
 import html
 import logging
+import os
 from typing import Dict, List, Optional, Sequence
 from urllib.parse import urlparse
 
@@ -41,10 +43,75 @@ _PRIORITY_LABELS = {
 }
 _PRIORITY_COLORS = {
     "low": "#6b7280",
-    "medium": "#2563eb",
+    "medium": "#3b82f6",
     "high": "#d97706",
     "urgent": "#dc2626",
 }
+
+# --------------------------------------------------------------
+# Branding — Hermes dark-mode e-mail palette + inline logo
+# --------------------------------------------------------------
+# Mirrors the app's dark theme tokens so the e-mail reads as a first-class
+# Hermes surface rather than a generic notification.
+_BG = "#15181b"            # outer e-mail background
+_CARD = "#1a1d21"          # main container surface
+_HEADER = "#1e2227"        # header band (holds the logo)
+_SURFACE = "#202327"       # inner work-item card
+_SURFACE_DEEP = "#16191c"  # description block / footer
+_BORDER = "#2c3137"        # card borders
+_BORDER_SOFT = "#262b30"   # container hairline
+_TEXT = "#e6e8ea"          # body text
+_TEXT_STRONG = "#ffffff"   # headings
+_TEXT_MUTED = "#9498a0"    # labels / muted
+_TEXT_FAINT = "#6b7280"    # footer
+_BLUE = "#388bff"          # brand accent
+_BLUE_LT = "#579dff"       # brand accent (lighter, for the code chip)
+
+# The logo is a white wordmark on transparent — embedded once per message as
+# an inline (cid) attachment so it survives every mail client. Loaded once at
+# import; a missing file degrades to a text wordmark, never an error.
+_LOGO_CID = "hermes-logo"
+_LOGO_PATH = os.path.join(os.path.dirname(__file__), "..", "assets", "hermes-logo.png")
+
+
+def _load_logo_b64() -> Optional[str]:
+    try:
+        with open(_LOGO_PATH, "rb") as fh:
+            return base64.b64encode(fh.read()).decode("ascii")
+    except Exception as exc:  # noqa: BLE001 — branding is best-effort
+        logger.warning("hermes e-mail logo not loaded: %s", exc)
+        return None
+
+
+_LOGO_B64 = _load_logo_b64()
+
+
+def _logo_inline_images() -> Optional[List[dict]]:
+    """Inline-attachment payload for the logo, or None when unavailable."""
+    if not _LOGO_B64:
+        return None
+    return [
+        {
+            "content_id": _LOGO_CID,
+            "content_b64": _LOGO_B64,
+            "content_type": "image/png",
+            "name": "hermes-logo.png",
+        }
+    ]
+
+
+def _logo_img_html() -> str:
+    if _LOGO_B64:
+        return (
+            '<img src="cid:' + _LOGO_CID + '" alt="HERMES" width="158" '
+            'style="display:block;border:0;outline:none;text-decoration:none;'
+            'height:auto;max-width:158px;">'
+        )
+    # Fallback wordmark if the asset is missing at runtime.
+    return (
+        '<div style="color:#ffffff;font-size:18px;font-weight:800;'
+        'letter-spacing:0.16em;">HERMES</div>'
+    )
 
 
 # --------------------------------------------------------------
@@ -118,9 +185,9 @@ def _detail_row(label: str, value: Optional[str]) -> str:
         return ""
     return (
         '<tr>'
-        '<td style="padding:4px 0;color:#6b7280;font-size:13px;'
-        'width:140px;vertical-align:top;">' + _esc(label) + '</td>'
-        '<td style="padding:4px 0;color:#111827;font-size:13px;'
+        '<td style="padding:5px 0;color:' + _TEXT_MUTED + ';font-size:13px;'
+        'width:120px;vertical-align:top;">' + _esc(label) + '</td>'
+        '<td style="padding:5px 0;color:' + _TEXT + ';font-size:13px;'
         'font-weight:600;">' + _esc(value) + '</td>'
         '</tr>'
     )
@@ -131,7 +198,7 @@ def _task_card_html(task: dict) -> str:
     title = _esc(task.get("title") or "Görev")
     priority = (task.get("priority") or "medium").lower()
     p_label = _PRIORITY_LABELS.get(priority, priority)
-    p_color = _PRIORITY_COLORS.get(priority, "#2563eb")
+    p_color = _PRIORITY_COLORS.get(priority, _BLUE)
 
     customer = task.get("customer_name")
     project = task.get("project_name")
@@ -142,9 +209,10 @@ def _task_card_html(task: dict) -> str:
     desc_block = ""
     if description:
         desc_block = (
-            '<div style="margin-top:12px;padding:12px 14px;background:#f9fafb;'
-            'border:1px solid #eef0f3;border-radius:8px;color:#374151;'
-            'font-size:13px;line-height:1.6;white-space:pre-wrap;">'
+            '<div style="margin-top:14px;padding:12px 14px;background:'
+            + _SURFACE_DEEP + ';border:1px solid ' + _BORDER + ';'
+            'border-radius:8px;color:' + _TEXT + ';font-size:13px;'
+            'line-height:1.6;white-space:pre-wrap;">'
             + _esc(description)
             + '</div>'
         )
@@ -157,25 +225,39 @@ def _task_card_html(task: dict) -> str:
         ]
     )
 
+    code_html = (
+        '<span style="font-size:12px;font-weight:700;color:' + _BLUE_LT + ';'
+        'letter-spacing:0.04em;">' + code + '</span>'
+        if code
+        else "&nbsp;"
+    )
+    badge_html = (
+        '<span style="display:inline-block;font-size:11px;font-weight:700;'
+        'color:#ffffff;background:' + p_color + ';padding:3px 11px;'
+        'border-radius:999px;">' + _esc(p_label) + '</span>'
+    )
+
+    # Table-based header (code left / priority right) so it aligns in Outlook
+    # too — flexbox + margin-left:auto don't render there.
+    header = (
+        '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" '
+        'style="margin-bottom:10px;"><tr>'
+        '<td align="left" style="vertical-align:middle;">' + code_html + '</td>'
+        '<td align="right" style="vertical-align:middle;">' + badge_html + '</td>'
+        '</tr></table>'
+    )
+
     return (
-        '<div style="border:1px solid #e5e7eb;border-radius:12px;'
-        'padding:18px 20px;background:#ffffff;">'
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
-        + (
-            '<span style="font-size:12px;font-weight:700;color:#4f46e5;'
-            'letter-spacing:0.03em;">' + code + '</span>'
-            if code
-            else ""
-        )
-        + '<span style="display:inline-block;margin-left:auto;font-size:11px;'
-        'font-weight:700;color:#ffffff;background:' + p_color + ';'
-        'padding:2px 10px;border-radius:999px;">' + _esc(p_label) + '</span>'
-        '</div>'
-        '<div style="font-size:17px;font-weight:700;color:#111827;'
-        'line-height:1.35;margin-bottom:10px;">' + title + '</div>'
-        '<table style="width:100%;border-collapse:collapse;">' + rows + '</table>'
+        '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" '
+        'style="background:' + _SURFACE + ';border:1px solid ' + _BORDER + ';'
+        'border-radius:12px;"><tr><td style="padding:18px 20px;">'
+        + header
+        + '<div style="font-size:17px;font-weight:700;color:' + _TEXT_STRONG + ';'
+        'line-height:1.35;margin-bottom:12px;">' + title + '</div>'
+        '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" '
+        'style="border-collapse:collapse;">' + rows + '</table>'
         + desc_block
-        + '</div>'
+        + '</td></tr></table>'
     )
 
 
@@ -193,50 +275,64 @@ def _cta_button(app_base_url: str) -> str:
         return ""
     link = f"{base}/tasks"
     return (
-        '<div style="text-align:center;margin:24px 0 4px;">'
+        '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" '
+        'style="margin:24px 0 4px;"><tr><td align="center">'
         '<a href="' + _esc(link) + '" '
-        'style="display:inline-block;background:#4f46e5;color:#ffffff;'
+        'style="display:inline-block;background:' + _BLUE + ';color:#ffffff;'
         'text-decoration:none;font-weight:600;font-size:14px;'
-        'padding:11px 28px;border-radius:10px;">Görevi Görüntüle</a>'
-        '</div>'
+        'padding:12px 30px;border-radius:10px;">Görevi Görüntüle</a>'
+        '</td></tr></table>'
     )
 
 
 def _shell(title_line: str, intro_html: str, body_html: str, app_base_url: str) -> str:
-    """Wrap content in the branded e-mail shell (light theme — safe in
-    every mail client)."""
+    """Wrap content in the branded Hermes dark-mode e-mail shell.
+
+    Table-based + fully inline-styled so it renders consistently across mail
+    clients (Outlook included). The logo is referenced as a cid: inline image
+    embedded by the sender (see _logo_inline_images)."""
     return (
-        '<div style="margin:0;padding:24px;background:#f3f4f6;'
-        'font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">'
-        '<div style="max-width:560px;margin:0 auto;background:#ffffff;'
-        'border-radius:16px;overflow:hidden;'
-        'box-shadow:0 6px 24px rgba(17,24,39,0.08);">'
-        # Header band — brand gradient
-        '<div style="background:linear-gradient(135deg,#388bff 0%,#6366f1 55%,'
-        '#7c5cff 100%);padding:22px 28px;">'
-        '<div style="color:#ffffff;font-size:13px;font-weight:700;'
-        'letter-spacing:0.14em;opacity:0.9;">HERMES</div>'
-        '<div style="color:#ffffff;font-size:20px;font-weight:700;'
-        'margin-top:2px;">' + _esc(title_line) + '</div>'
-        '</div>'
+        '<div style="margin:0;padding:0;background:' + _BG + ';">'
+        '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" '
+        'style="background:' + _BG + ';font-family:-apple-system,Segoe UI,'
+        'Roboto,Helvetica,Arial,sans-serif;"><tr>'
+        '<td align="center" style="padding:28px 16px;">'
+        '<table width="600" cellpadding="0" cellspacing="0" role="presentation" '
+        'style="width:600px;max-width:600px;background:' + _CARD + ';'
+        'border:1px solid ' + _BORDER_SOFT + ';border-radius:16px;'
+        'overflow:hidden;">'
+        # Top accent bar — brand gradient (solid blue fallback for Outlook)
+        '<tr><td style="height:4px;line-height:4px;font-size:0;'
+        'background:#388bff;'
+        'background:linear-gradient(90deg,#388bff 0%,#6366f1 55%,#7c5cff 100%);'
+        '">&nbsp;</td></tr>'
+        # Header band — logo top-left + the headline beneath it
+        '<tr><td style="background:' + _HEADER + ';padding:24px 28px 22px;'
+        'border-bottom:1px solid ' + _BORDER_SOFT + ';">'
+        + _logo_img_html()
+        + '<div style="color:' + _TEXT_STRONG + ';font-size:19px;'
+        'font-weight:700;margin-top:18px;line-height:1.3;">'
+        + _esc(title_line) + '</div>'
+        '</td></tr>'
         # Body
-        '<div style="padding:26px 28px 30px;">'
+        '<tr><td style="background:' + _CARD + ';padding:26px 28px 28px;">'
         + intro_html
         + body_html
         + _cta_button(app_base_url)
-        + '</div>'
+        + '</td></tr>'
         # Footer
-        '<div style="padding:16px 28px;background:#f9fafb;border-top:'
-        '1px solid #eef0f3;color:#9ca3af;font-size:12px;text-align:center;">'
+        '<tr><td style="padding:18px 28px;background:' + _SURFACE_DEEP + ';'
+        'border-top:1px solid ' + _BORDER_SOFT + ';color:' + _TEXT_FAINT + ';'
+        'font-size:12px;text-align:center;">'
         'Bu otomatik bir bildirimdir · Hermes Görev Yönetimi'
-        '</div>'
-        '</div></div>'
+        '</td></tr>'
+        '</table></td></tr></table></div>'
     )
 
 
 def _intro(text_html: str) -> str:
     return (
-        '<p style="margin:0 0 18px;color:#374151;font-size:15px;'
+        '<p style="margin:0 0 18px;color:' + _TEXT + ';font-size:15px;'
         'line-height:1.6;">' + text_html + '</p>'
     )
 
@@ -335,6 +431,7 @@ async def _send(sender: str, to_email: Optional[str], subject: str, html_body: s
             to_email=to_email,
             subject=subject,
             html_body=html_body,
+            inline_images=_logo_inline_images(),
         )
         print(f"[notif] sendMail OK -> {to_email}", flush=True)
     except (GraphConfigError, GraphRequestError) as exc:
