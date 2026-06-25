@@ -274,14 +274,17 @@ def _cta_button(task: dict, app_base_url: str) -> str:
     except Exception:  # noqa: BLE001
         return ""
     ttype = _ttype(task)
+    plural = _TYPE_PLURAL.get(ttype, "tasks")
     item_id = task.get("id")
-    # Deep link straight to the item; the Tasks page opens it on arrival.
+    # Deep link straight to the item; the Project Management page opens it on
+    # arrival. The type lives in the path (/project-management/issues).
     if item_id:
         link = (
-            f"{base}/tasks?item={quote(str(item_id))}&type={quote(ttype)}"
+            f"{base}/project-management/{plural}"
+            f"?item={quote(str(item_id))}"
         )
     else:
-        link = f"{base}/tasks?type={quote(ttype)}"
+        link = f"{base}/project-management/{plural}"
     label = _TYPE_ACC[ttype].capitalize() + " Görüntüle"
     return (
         '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" '
@@ -365,6 +368,8 @@ _TYPE_POSS = {
     "issue": "Issue'nuz",
     "suggestion": "Suggestion'ınız",
 }
+# Plural slug for the deep-link path (/project-management/<plural>).
+_TYPE_PLURAL = {"task": "tasks", "issue": "issues", "suggestion": "suggestions"}
 
 
 def _ttype(task: dict) -> str:

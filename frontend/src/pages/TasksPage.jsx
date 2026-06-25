@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
     Avatar,
     Button,
@@ -94,6 +94,12 @@ const TASK_TYPES = [
     },
 ]
 
+// URL <-> state: the route segment is the plural ("/project-management/issues"),
+// the internal taskType is the singular ("issue").
+const TYPE_TO_PLURAL = { task: 'tasks', issue: 'issues', suggestion: 'suggestions' }
+const PLURAL_TO_TYPE = { tasks: 'task', issues: 'issue', suggestions: 'suggestion' }
+const PM_BASE = '/project-management'
+
 // Quick filters (secondary) — optional single-select chip on top of
 // the scope. Clicking the active chip clears it.
 const TASK_QUICK_FILTERS = [
@@ -157,18 +163,27 @@ function TasksPage() {
     // Admin-only user selector (Time Entry parity). null → current user.
     const [selectedUserId, setSelectedUserId] = useState(null)
 
-    // Deep link from notification e-mails: /tasks?item=<id>&type=<type>.
-    // Switch to the item's type tab and open its Review modal, then strip
-    // the params so a refresh doesn't re-open it.
+    // The active type follows the URL segment (/project-management/:type).
+    const { type: typeParam } = useParams()
+    const navigate = useNavigate()
+    useEffect(() => {
+        const t = PLURAL_TO_TYPE[typeParam]
+        if (t) setTaskType(t)
+    }, [typeParam])
+
+    // Deep link from notification e-mails: the type is in the path
+    // (/project-management/issues), the item id in the query (?item=<id>).
+    // Open the item's Review modal, then strip the param so a refresh
+    // doesn't re-open it. (?type= is still honoured for legacy links.)
     const [searchParams, setSearchParams] = useSearchParams()
     useEffect(() => {
         const itemId = searchParams.get('item')
-        const itemType = searchParams.get('type')
+        const legacyType = searchParams.get('type')
         if (
-            itemType &&
-            ['task', 'issue', 'suggestion'].includes(itemType)
+            legacyType &&
+            ['task', 'issue', 'suggestion'].includes(legacyType)
         ) {
-            setTaskType(itemType)
+            setTaskType(legacyType)
         }
         if (itemId) {
             taskService
@@ -847,7 +862,10 @@ function TasksPage() {
                                             : ''
                                     }`}
                                     onClick={() => {
-                                        if (!isActive) setTaskType(t.value)
+                                        if (!isActive)
+                                            navigate(
+                                                `${PM_BASE}/${TYPE_TO_PLURAL[t.value]}`
+                                            )
                                     }}
                                 >
                                     {t.label}

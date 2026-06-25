@@ -70,7 +70,7 @@ function MainLayout() {
 
         ...(showTasksItem ? [
             {
-                key: '/tasks',
+                key: '/project-management',
                 icon: <CheckSquareOutlined />,
                 label: 'Project Management',
             },
@@ -116,7 +116,7 @@ function MainLayout() {
                         label: 'Contract Status',
                     },
                     {
-                        key: '/task-management',
+                        key: '/pm-configurations',
                         icon: <CheckSquareOutlined />,
                         label: 'PM Configurations',
                     },
@@ -194,6 +194,25 @@ function MainLayout() {
         }
     }
 
+    // Highlight the menu item whose key is the longest prefix of the current
+    // path, so sub-routes (e.g. /project-management/issues) keep the parent
+    // item active.
+    const flatKeys = []
+    const collectKeys = (items) =>
+        items.forEach((it) => {
+            if (it?.key?.startsWith('/')) flatKeys.push(it.key)
+            if (it?.children) collectKeys(it.children)
+        })
+    collectKeys(menuItems)
+    const selectedKey =
+        flatKeys
+            .filter(
+                (k) =>
+                    location.pathname === k ||
+                    location.pathname.startsWith(k + '/')
+            )
+            .sort((a, b) => b.length - a.length)[0] || location.pathname
+
     return (
         <Layout className="main-layout">
             {/* Sidebar */}
@@ -217,7 +236,7 @@ function MainLayout() {
                 <Menu
                     theme={isLight ? 'light' : 'dark'}
                     mode="inline"
-                    selectedKeys={[location.pathname]}
+                    selectedKeys={[selectedKey]}
                     items={menuItems}
                     onClick={handleMenuClick}
                     className="main-menu"

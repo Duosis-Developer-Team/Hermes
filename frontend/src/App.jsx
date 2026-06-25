@@ -162,9 +162,12 @@ function App() {
                 {/* Standard User Pages */}
                 <Route path="time-entry" element={<TimeEntryPage />} />
 
-                {/* Tasks — admin or users with can_access_tasks */}
+                {/* Project Management — Tasks / Issues / Suggestions (admin
+                    or users with access). The optional :type segment
+                    (tasks | issues | suggestions) reflects the active tab in
+                    the URL. */}
                 <Route
-                    path="tasks"
+                    path="project-management"
                     element={
                         <TaskProtectedRoute>
                             <TasksPage />
@@ -172,12 +175,35 @@ function App() {
                     }
                 />
                 <Route
-                    path="task-management"
+                    path="project-management/:type"
+                    element={
+                        <TaskProtectedRoute>
+                            <TasksPage />
+                        </TaskProtectedRoute>
+                    }
+                />
+                {/* Back-compat: old /tasks links (e.g. earlier e-mails). */}
+                <Route
+                    path="tasks"
+                    element={<Navigate to="/project-management" replace />}
+                />
+                <Route
+                    path="tasks/:type"
+                    element={<Navigate to="/project-management" replace />}
+                />
+
+                {/* PM Configurations (was Task Management) */}
+                <Route
+                    path="pm-configurations"
                     element={
                         <ProtectedRoute adminOnly>
                             <TaskManagementPage />
                         </ProtectedRoute>
                     }
+                />
+                <Route
+                    path="task-management"
+                    element={<Navigate to="/pm-configurations" replace />}
                 />
 
                 {/* Meetings — every authenticated user; backend
