@@ -22,6 +22,8 @@ from pydantic import (
 PriorityLiteral = Literal["low", "medium", "high", "urgent"]
 StatusLiteral = Literal["pending", "in_progress", "completed", "cancelled", "rejected"]
 TaskTypeLiteral = Literal["task", "issue", "suggestion"]
+# Permission/assignment scope: issues and suggestions share 'issue'.
+ScopeLiteral = Literal["task", "issue"]
 
 
 # =============================================================================
@@ -31,6 +33,9 @@ TaskTypeLiteral = Literal["task", "issue", "suggestion"]
 class TaskPermissionUpdate(BaseModel):
     can_access_tasks: bool
     can_assign_tasks: bool
+    # Parallel issue/suggestion scope (default off for back-compat clients).
+    can_access_issues: bool = False
+    can_assign_issues: bool = False
 
 
 class TaskPermissionRow(BaseModel):
@@ -38,18 +43,30 @@ class TaskPermissionRow(BaseModel):
     user_id: UUID
     can_access_tasks: bool = False
     can_assign_tasks: bool = False
+    can_access_issues: bool = False
+    can_assign_issues: bool = False
     updated_at: Optional[datetime] = None
 
 
-class TaskPermissionMeResponse(BaseModel):
-    can_access_tasks: bool
-    can_assign_tasks: bool
-    is_admin: bool
+class TaskScopePermissions(BaseModel):
+    """Effective capability for the calling user in one permission scope."""
+    can_access: bool = False
+    can_assign: bool = False
     # IDs only — frontend resolves names via auth-service /users/lookup.
     assignable_user_ids: List[UUID] = Field(default_factory=list)
-    # Group-assignee target IDs (admins → all active groups; non-admin
-    # assigners → groups with a direct task_assignment_group_relation).
     assignable_group_ids: List[UUID] = Field(default_factory=list)
+
+
+class TaskPermissionMeResponse(BaseModel):
+    is_admin: bool
+    # Back-compat task-scope fields (kept so old clients keep working).
+    can_access_tasks: bool
+    can_assign_tasks: bool
+    assignable_user_ids: List[UUID] = Field(default_factory=list)
+    assignable_group_ids: List[UUID] = Field(default_factory=list)
+    # Per-scope capabilities — the frontend picks the active scope.
+    task: TaskScopePermissions = Field(default_factory=TaskScopePermissions)
+    issue: TaskScopePermissions = Field(default_factory=TaskScopePermissions)
 
 
 # =============================================================================
@@ -59,6 +76,7 @@ class TaskPermissionMeResponse(BaseModel):
 class TaskAssignmentRelationCreate(BaseModel):
     assigner_user_id: UUID
     assignee_user_ids: List[UUID]
+    scope: ScopeLiteral = "task"
 
     @field_validator("assignee_user_ids")
     @classmethod
@@ -72,6 +90,7 @@ class TaskAssignmentRelationResponse(BaseModel):
     id: UUID
     assigner_user_id: UUID
     assignee_user_id: UUID
+    scope: str = "task"
     created_at: datetime
     updated_at: datetime
 
@@ -83,12 +102,14 @@ class TaskAssignmentRelationResponse(BaseModel):
 class TaskAssignmentGroupRelationCreate(BaseModel):
     assigner_user_id: UUID
     assignee_group_id: UUID
+    scope: ScopeLiteral = "task"
 
 
 class TaskAssignmentGroupRelationResponse(BaseModel):
     id: UUID
     assigner_user_id: UUID
     assignee_group_id: UUID
+    scope: str = "task"
     created_at: datetime
     updated_at: datetime
 
@@ -222,12 +243,17 @@ class TaskCompleteUpdate(BaseModel):
 class TaskGroupPermissionUpdate(BaseModel):
     can_access_tasks_default: bool
     can_assign_tasks_default: bool
+    # Issue scope — None means "leave this scope as-is" (back-compat).
+    can_access_issues_default: Optional[bool] = None
+    can_assign_issues_default: Optional[bool] = None
 
 
 class TaskGroupPermissionResponse(BaseModel):
     group_id: UUID
     can_access_tasks_default: bool
     can_assign_tasks_default: bool
+    can_access_issues_default: bool = False
+    can_assign_issues_default: bool = False
     updated_at: Optional[datetime] = None
 
 
@@ -246,6 +272,11 @@ class TaskGroupMemberOverrideUpdate(BaseModel):
     clear_access_override: Optional[bool] = None
     can_assign_tasks_override: Optional[bool] = None
     clear_assign_override: Optional[bool] = None
+    # Parallel issue-scope override fields (same tri-state semantics).
+    can_access_issues_override: Optional[bool] = None
+    clear_access_issues_override: Optional[bool] = None
+    can_assign_issues_override: Optional[bool] = None
+    clear_assign_issues_override: Optional[bool] = None
 
 
 class TaskGroupMemberOverrideResponse(BaseModel):
@@ -253,10 +284,14 @@ class TaskGroupMemberOverrideResponse(BaseModel):
     user_id: UUID
     can_access_tasks_override: Optional[bool] = None
     can_assign_tasks_override: Optional[bool] = None
+    can_access_issues_override: Optional[bool] = None
+    can_assign_issues_override: Optional[bool] = None
     # Group's effective contribution for this member (computed):
-    # access override if set, else group default; same for assign.
+    # override if set, else group default — per scope.
     effective_access_in_group: bool
     effective_assign_in_group: bool
+    effective_access_issues_in_group: bool = False
+    effective_assign_issues_in_group: bool = False
     updated_at: Optional[datetime] = None
 
 

@@ -56,6 +56,58 @@ def is_task_admin(user: CurrentUser) -> bool:
     return bool(user.is_admin)
 
 
+# =============================================================================
+# Permission scope ('task' vs 'issue')
+# =============================================================================
+# Tasks and issues/suggestions have entirely separate access/assign
+# permissions and assignment hierarchies. A work item's task_type maps to a
+# permission scope: 'task' → task scope; 'issue'/'suggestion' → the shared
+# 'issue' scope. Every permission + assignment helper below takes a `scope`
+# argument (defaulting to 'task' so legacy callers stay unchanged).
+
+VALID_SCOPES = ("task", "issue")
+
+
+def perm_scope_for_type(task_type: Optional[str]) -> str:
+    """Map a work-item type to its permission/assignment scope.
+
+    Issues and suggestions share the 'issue' scope; everything else is
+    'task'. Unknown/None defaults to 'task'.
+    """
+    return "issue" if task_type in ("issue", "suggestion") else "task"
+
+
+def _group_perm_cols(scope: str, column: str):
+    """Return (override_col, default_col) on the group permission/override
+    models for the given (scope, column)."""
+    if scope == "issue":
+        if column == "access":
+            return (
+                TaskGroupMemberOverride.can_access_issues_override,
+                TaskGroupPermission.can_access_issues_default,
+            )
+        return (
+            TaskGroupMemberOverride.can_assign_issues_override,
+            TaskGroupPermission.can_assign_issues_default,
+        )
+    if column == "access":
+        return (
+            TaskGroupMemberOverride.can_access_tasks_override,
+            TaskGroupPermission.can_access_tasks_default,
+        )
+    return (
+        TaskGroupMemberOverride.can_assign_tasks_override,
+        TaskGroupPermission.can_assign_tasks_default,
+    )
+
+
+def _direct_perm_attr(scope: str, column: str) -> str:
+    """Attribute name on TaskUserPermission for the (scope, column) flag."""
+    if scope == "issue":
+        return "can_access_issues" if column == "access" else "can_assign_issues"
+    return "can_access_tasks" if column == "access" else "can_assign_tasks"
+
+
 def get_task_permission(db: Session, user_id: UUID) -> Optional[TaskUserPermission]:
     return (
         db.query(TaskUserPermission)
@@ -69,6 +121,7 @@ def _effective_group_grant(
     user_id: UUID,
     *,
     column: str,
+    scope: str = "task",
 ) -> bool:
     """Returns True if any active group membership grants the given column.
 
@@ -89,14 +142,9 @@ def _effective_group_grant(
                 task_group_permissions  (required — if missing, group does not contribute)
         LEFT JOIN task_group_member_overrides (per user × group)
     """
-    if column == "access":
-        override_col = TaskGroupMemberOverride.can_access_tasks_override
-        default_col = TaskGroupPermission.can_access_tasks_default
-    elif column == "assign":
-        override_col = TaskGroupMemberOverride.can_assign_tasks_override
-        default_col = TaskGroupPermission.can_assign_tasks_default
-    else:
+    if column not in ("access", "assign"):
         raise ValueError("column must be 'access' or 'assign'")
+    override_col, default_col = _group_perm_cols(scope, column)
 
     rows = (
         db.query(override_col, default_col)
@@ -133,6 +181,7 @@ def _resolve_effective_for_user(
     user_id: UUID,
     *,
     column: str,
+    scope: str = "task",
 ) -> bool:
     """Single source of truth for effective Task Access / Assign Tasks
     permission resolution. Both column="access" and column="assign"
@@ -184,63 +233,83 @@ def _resolve_effective_for_user(
         is not None
     )
     if has_active_group:
-        return _effective_group_grant(db, user_id, column=column)
+        return _effective_group_grant(db, user_id, column=column, scope=scope)
 
     perm = get_task_permission(db, user_id)
     if perm is None:
         return False
+    access_attr = _direct_perm_attr(scope, "access")
     if column == "access":
-        return bool(perm.can_access_tasks)
-    # column == "assign"
-    if not perm.can_access_tasks:
+        return bool(getattr(perm, access_attr))
+    # column == "assign": you can never "assign" without "access"
+    if not bool(getattr(perm, access_attr)):
         return False
-    return bool(perm.can_assign_tasks)
+    return bool(getattr(perm, _direct_perm_attr(scope, "assign")))
+
+
+def can_access(db: Session, user: CurrentUser, scope: str = "task") -> bool:
+    """Effective access permission for the calling user in `scope`.
+    Admin role wins globally; otherwise the per-user resolver decides."""
+    if is_task_admin(user):
+        return True
+    return _resolve_effective_for_user(
+        db, UUID(user.id), column="access", scope=scope
+    )
+
+
+def can_assign(db: Session, user: CurrentUser, scope: str = "task") -> bool:
+    """Effective assign permission for the calling user in `scope`.
+
+    Note: granting assign only means "the user can create items in this
+    scope"; the assignment hierarchy still controls WHO they can assign
+    to. The hierarchy alone never grants assign permission.
+    """
+    if is_task_admin(user):
+        return True
+    return _resolve_effective_for_user(
+        db, UUID(user.id), column="assign", scope=scope
+    )
 
 
 def can_access_tasks(db: Session, user: CurrentUser) -> bool:
-    """Effective permission for the calling user. Admin role wins
-    globally; otherwise the per-user resolver decides."""
-    if is_task_admin(user):
-        return True
-    return _resolve_effective_for_user(
-        db, UUID(user.id), column="access"
-    )
+    """Task-scope wrapper (back-compat)."""
+    return can_access(db, user, "task")
 
 
 def can_assign_tasks(db: Session, user: CurrentUser) -> bool:
-    """Effective assign permission for the calling user.
+    """Task-scope wrapper (back-compat)."""
+    return can_assign(db, user, "task")
 
-    Note: granting `can_assign_tasks` only means "the user can create
-    tasks"; the assignment hierarchy (task_assignment_relations)
-    still controls WHO they can assign to. The hierarchy alone never
-    grants assign permission.
+
+def user_has_access(db: Session, user_id: UUID, scope: str = "task") -> bool:
+    """Effective access resolver for a raw UUID in `scope`. Used by the
+    assignee-side validation (group fan-out filter, assignee eligibility).
+    The admin-role shortcut isn't available here (no CurrentUser); admins
+    still resolve True via their bootstrapped direct row.
     """
-    if is_task_admin(user):
-        return True
-    return _resolve_effective_for_user(
-        db, UUID(user.id), column="assign"
-    )
+    return _resolve_effective_for_user(db, user_id, column="access", scope=scope)
+
+
+def user_has_assign(db: Session, user_id: UUID, scope: str = "task") -> bool:
+    """Effective assign resolver for an arbitrary user_id in `scope`."""
+    return _resolve_effective_for_user(db, user_id, column="assign", scope=scope)
 
 
 def user_has_task_access(db: Session, user_id: UUID) -> bool:
-    """Same effective resolver as can_access_tasks, but accepts a
-    raw UUID. Used by the assignee-side validation (e.g. paste
-    target, group fan-out filter). The admin-role shortcut isn't
-    available here because we don't have a CurrentUser — admins
-    still resolve True via their bootstrapped direct row.
-    """
-    return _resolve_effective_for_user(db, user_id, column="access")
+    """Task-scope wrapper (back-compat)."""
+    return user_has_access(db, user_id, "task")
 
 
 def user_has_task_assign(db: Session, user_id: UUID) -> bool:
-    """Same effective resolver as can_assign_tasks but for an
-    arbitrary user_id. Used by the admin Assignment Hierarchy
-    endpoint that links assigner → assignee pairs."""
-    return _resolve_effective_for_user(db, user_id, column="assign")
+    """Task-scope wrapper (back-compat)."""
+    return user_has_assign(db, user_id, "task")
 
 
-def get_assignable_user_ids(db: Session, user: CurrentUser) -> List[UUID]:
-    """Return assignee IDs reachable directly via task_assignment_relations.
+def get_assignable_user_ids(
+    db: Session, user: CurrentUser, scope: str = "task"
+) -> List[UUID]:
+    """Return assignee IDs reachable directly via task_assignment_relations
+    in `scope`.
 
     Group-based reach is handled separately in get_assignable_group_ids and
     in can_assign_to — this helper purposely stays scoped to direct
@@ -249,17 +318,25 @@ def get_assignable_user_ids(db: Session, user: CurrentUser) -> List[UUID]:
     """
     rows = (
         db.query(TaskAssignmentRelation.assignee_user_id)
-        .filter(TaskAssignmentRelation.assigner_user_id == UUID(user.id))
+        .filter(
+            TaskAssignmentRelation.assigner_user_id == UUID(user.id),
+            TaskAssignmentRelation.scope == scope,
+        )
         .all()
     )
     return [r[0] for r in rows]
 
 
-def get_assignable_group_ids(db: Session, user: CurrentUser) -> List[UUID]:
-    """Return group IDs the assigner may target via Create-Task-for-Group."""
+def get_assignable_group_ids(
+    db: Session, user: CurrentUser, scope: str = "task"
+) -> List[UUID]:
+    """Return group IDs the assigner may target via Create-for-Group in `scope`."""
     rows = (
         db.query(TaskAssignmentGroupRelation.assignee_group_id)
-        .filter(TaskAssignmentGroupRelation.assigner_user_id == UUID(user.id))
+        .filter(
+            TaskAssignmentGroupRelation.assigner_user_id == UUID(user.id),
+            TaskAssignmentGroupRelation.scope == scope,
+        )
         .all()
     )
     return [r[0] for r in rows]
@@ -289,9 +366,10 @@ def _is_target_reachable_via_group(
     db: Session,
     assigner_user_id: UUID,
     assignee_user_id: UUID,
+    scope: str = "task",
 ) -> bool:
-    """True if any group mapped to the assigner has the assignee as an
-    active member of an active group.
+    """True if any group mapped to the assigner in `scope` has the assignee
+    as an active member of an active group.
     """
     return (
         db.query(TaskAssignmentGroupRelation.id)
@@ -302,6 +380,7 @@ def _is_target_reachable_via_group(
         .join(UserGroupMember, UserGroupMember.group_id == UserGroup.id)
         .filter(
             TaskAssignmentGroupRelation.assigner_user_id == assigner_user_id,
+            TaskAssignmentGroupRelation.scope == scope,
             UserGroup.is_active.is_(True),
             UserGroupMember.user_id == assignee_user_id,
             UserGroupMember.is_active.is_(True),
@@ -311,18 +390,20 @@ def _is_target_reachable_via_group(
     )
 
 
-def can_assign_to(db: Session, user: CurrentUser, assignee_user_id: UUID) -> bool:
-    """True if `user` can assign tasks to `assignee_user_id`.
+def can_assign_to(
+    db: Session, user: CurrentUser, assignee_user_id: UUID, scope: str = "task"
+) -> bool:
+    """True if `user` can assign items in `scope` to `assignee_user_id`.
 
     Allowed when:
       - admin, OR
-      - direct user→user relation exists, OR
-      - any group mapped to the assigner contains the target as an
-        active member.
+      - direct user→user relation exists in this scope, OR
+      - any group mapped to the assigner in this scope contains the target
+        as an active member.
     """
     if is_task_admin(user):
         return True
-    if not can_assign_tasks(db, user):
+    if not can_assign(db, user, scope):
         return False
     user_uuid = UUID(user.id)
     direct = (
@@ -330,44 +411,55 @@ def can_assign_to(db: Session, user: CurrentUser, assignee_user_id: UUID) -> boo
         .filter(
             TaskAssignmentRelation.assigner_user_id == user_uuid,
             TaskAssignmentRelation.assignee_user_id == assignee_user_id,
+            TaskAssignmentRelation.scope == scope,
         )
         .first()
     )
     if direct is not None:
         return True
-    return _is_target_reachable_via_group(db, user_uuid, assignee_user_id)
+    return _is_target_reachable_via_group(db, user_uuid, assignee_user_id, scope)
 
 
-def can_assign_to_group(db: Session, user: CurrentUser, group_id: UUID) -> bool:
-    """Admin OR direct group relation."""
+def can_assign_to_group(
+    db: Session, user: CurrentUser, group_id: UUID, scope: str = "task"
+) -> bool:
+    """Admin OR direct group relation in `scope`."""
     if is_task_admin(user):
         return True
-    if not can_assign_tasks(db, user):
+    if not can_assign(db, user, scope):
         return False
     rel = (
         db.query(TaskAssignmentGroupRelation.id)
         .filter(
             TaskAssignmentGroupRelation.assigner_user_id == UUID(user.id),
             TaskAssignmentGroupRelation.assignee_group_id == group_id,
+            TaskAssignmentGroupRelation.scope == scope,
         )
         .first()
     )
     return rel is not None
 
 
-def require_task_access(db: Session, user: CurrentUser) -> None:
-    if not can_access_tasks(db, user):
+_SCOPE_LABEL = {"task": "Tasks", "issue": "Issues/Suggestions"}
+
+
+def require_task_access(
+    db: Session, user: CurrentUser, scope: str = "task"
+) -> None:
+    if not can_access(db, user, scope):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tasks module access is required.",
+            detail=f"{_SCOPE_LABEL.get(scope, 'Tasks')} module access is required.",
         )
 
 
-def require_task_assigner(db: Session, user: CurrentUser) -> None:
-    if not can_assign_tasks(db, user):
+def require_task_assigner(
+    db: Session, user: CurrentUser, scope: str = "task"
+) -> None:
+    if not can_assign(db, user, scope):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Task assignment permission is required.",
+            detail=f"{_SCOPE_LABEL.get(scope, 'Task')} assignment permission is required.",
         )
 
 
@@ -380,41 +472,56 @@ def upsert_task_permission(
     user_id: UUID,
     data: TaskPermissionUpdate,
 ) -> TaskUserPermission:
-    can_access = bool(data.can_access_tasks)
-    can_assign = bool(data.can_assign_tasks)
+    def _invariant(access: bool, assign: bool) -> tuple[bool, bool]:
+        # - Disabling access also disables assignment
+        # - Granting assignment requires access
+        access, assign = bool(access), bool(assign)
+        if not access:
+            assign = False
+        if assign:
+            access = True
+        return access, assign
 
-    # Auto-correct invariants:
-    # - Disabling access also disables assignment
-    # - Granting assignment requires access
-    if not can_access:
-        can_assign = False
-    if can_assign:
-        can_access = True
+    t_access, t_assign = _invariant(data.can_access_tasks, data.can_assign_tasks)
+    i_access, i_assign = _invariant(
+        getattr(data, "can_access_issues", False),
+        getattr(data, "can_assign_issues", False),
+    )
 
     perm = get_task_permission(db, user_id)
     if perm is None:
         perm = TaskUserPermission(
             user_id=user_id,
-            can_access_tasks=can_access,
-            can_assign_tasks=can_assign,
+            can_access_tasks=t_access,
+            can_assign_tasks=t_assign,
+            can_access_issues=i_access,
+            can_assign_issues=i_assign,
         )
         db.add(perm)
     else:
-        perm.can_access_tasks = can_access
-        perm.can_assign_tasks = can_assign
+        perm.can_access_tasks = t_access
+        perm.can_assign_tasks = t_assign
+        perm.can_access_issues = i_access
+        perm.can_assign_issues = i_assign
 
-    if not can_assign:
-        # Drop assignment relations where this user is the assigner — they no
-        # longer have the capability so existing mappings are invalidated.
-        db.query(TaskAssignmentRelation).filter(
-            TaskAssignmentRelation.assigner_user_id == user_id
-        ).delete(synchronize_session=False)
-
-    if not can_access:
-        # Also drop relations where this user is the assignee.
-        db.query(TaskAssignmentRelation).filter(
-            TaskAssignmentRelation.assignee_user_id == user_id
-        ).delete(synchronize_session=False)
+    # Per-scope relation cleanup — revoking assign drops this user's
+    # assigner-side user→user mappings in that scope; revoking access drops
+    # assignee-side mappings. Group relations are left in place (they are
+    # configuration, gated at runtime by can_assign_to_group).
+    for scope, access_on, assign_on in (
+        ("task", t_access, t_assign),
+        ("issue", i_access, i_assign),
+    ):
+        if not assign_on:
+            db.query(TaskAssignmentRelation).filter(
+                TaskAssignmentRelation.assigner_user_id == user_id,
+                TaskAssignmentRelation.scope == scope,
+            ).delete(synchronize_session=False)
+        if not access_on:
+            db.query(TaskAssignmentRelation).filter(
+                TaskAssignmentRelation.assignee_user_id == user_id,
+                TaskAssignmentRelation.scope == scope,
+            ).delete(synchronize_session=False)
 
     db.commit()
     db.refresh(perm)
@@ -445,17 +552,29 @@ def list_effective_perm_data(db: Session) -> dict:
     so the frontend can render the "Additional Users" bucket as
     "everyone who is in no group at all".
     """
+    def _blank() -> dict:
+        return {
+            "direct_can_access_tasks": False,
+            "direct_can_assign_tasks": False,
+            "direct_can_access_issues": False,
+            "direct_can_assign_issues": False,
+            "group_grants_access": [],
+            "group_grants_assign": [],
+            "group_grants_access_issues": [],
+            "group_grants_assign_issues": [],
+            "is_group_member": False,
+        }
+
     out: dict = {}
 
     # Direct overrides (one row per user, sparse).
     for p in db.query(TaskUserPermission).all():
-        out[str(p.user_id)] = {
-            "direct_can_access_tasks": bool(p.can_access_tasks),
-            "direct_can_assign_tasks": bool(p.can_assign_tasks),
-            "group_grants_access": [],
-            "group_grants_assign": [],
-            "is_group_member": False,
-        }
+        row = _blank()
+        row["direct_can_access_tasks"] = bool(p.can_access_tasks)
+        row["direct_can_assign_tasks"] = bool(p.can_assign_tasks)
+        row["direct_can_access_issues"] = bool(p.can_access_issues)
+        row["direct_can_assign_issues"] = bool(p.can_assign_issues)
+        out[str(p.user_id)] = row
 
     # Active memberships in active groups. LEFT JOIN to TaskGroupPermission
     # so users in groups that have no permission row yet still register as
@@ -466,8 +585,12 @@ def list_effective_perm_data(db: Session) -> dict:
             UserGroup.id.label("group_id"),
             TaskGroupPermission.can_access_tasks_default,
             TaskGroupPermission.can_assign_tasks_default,
+            TaskGroupPermission.can_access_issues_default,
+            TaskGroupPermission.can_assign_issues_default,
             TaskGroupMemberOverride.can_access_tasks_override,
             TaskGroupMemberOverride.can_assign_tasks_override,
+            TaskGroupMemberOverride.can_access_issues_override,
+            TaskGroupMemberOverride.can_assign_issues_override,
         )
         .select_from(UserGroupMember)
         .join(UserGroup, UserGroup.id == UserGroupMember.group_id)
@@ -489,23 +612,24 @@ def list_effective_perm_data(db: Session) -> dict:
         .all()
     )
 
-    for user_id, group_id, def_a, def_aa, ov_a, ov_aa in rows:
+    for (
+        user_id, group_id,
+        def_a, def_aa, def_ia, def_iaa,
+        ov_a, ov_aa, ov_ia, ov_iaa,
+    ) in rows:
         u = str(user_id)
         if u not in out:
-            out[u] = {
-                "direct_can_access_tasks": False,
-                "direct_can_assign_tasks": False,
-                "group_grants_access": [],
-                "group_grants_assign": [],
-                "is_group_member": False,
-            }
+            out[u] = _blank()
         out[u]["is_group_member"] = True
-        access_grant = ov_a if ov_a is not None else bool(def_a)
-        if access_grant:
-            out[u]["group_grants_access"].append(str(group_id))
-        assign_grant = ov_aa if ov_aa is not None else bool(def_aa)
-        if assign_grant:
-            out[u]["group_grants_assign"].append(str(group_id))
+        g = str(group_id)
+        if (ov_a if ov_a is not None else bool(def_a)):
+            out[u]["group_grants_access"].append(g)
+        if (ov_aa if ov_aa is not None else bool(def_aa)):
+            out[u]["group_grants_assign"].append(g)
+        if (ov_ia if ov_ia is not None else bool(def_ia)):
+            out[u]["group_grants_access_issues"].append(g)
+        if (ov_iaa if ov_iaa is not None else bool(def_iaa)):
+            out[u]["group_grants_assign_issues"].append(g)
 
     return out
 
@@ -514,9 +638,12 @@ def list_effective_perm_data(db: Session) -> dict:
 # Assignment Relations
 # =============================================================================
 
-def list_assignment_relations(db: Session) -> List[TaskAssignmentRelation]:
+def list_assignment_relations(
+    db: Session, scope: str = "task"
+) -> List[TaskAssignmentRelation]:
     return (
         db.query(TaskAssignmentRelation)
+        .filter(TaskAssignmentRelation.scope == scope)
         .order_by(TaskAssignmentRelation.created_at.desc())
         .all()
     )
@@ -526,6 +653,7 @@ def create_assignment_relations(
     db: Session,
     assigner_user_id: UUID,
     assignee_user_ids: Sequence[UUID],
+    scope: str = "task",
 ) -> List[TaskAssignmentRelation]:
     """Idempotently create assigner -> assignee mappings.
 
@@ -558,6 +686,7 @@ def create_assignment_relations(
             .filter(
                 TaskAssignmentRelation.assigner_user_id == assigner_user_id,
                 TaskAssignmentRelation.assignee_user_id == assignee_id,
+                TaskAssignmentRelation.scope == scope,
             )
             .first()
         )
@@ -567,6 +696,7 @@ def create_assignment_relations(
         relation = TaskAssignmentRelation(
             assigner_user_id=assigner_user_id,
             assignee_user_id=assignee_id,
+            scope=scope,
         )
         db.add(relation)
         try:
@@ -578,6 +708,7 @@ def create_assignment_relations(
                 .filter(
                     TaskAssignmentRelation.assigner_user_id == assigner_user_id,
                     TaskAssignmentRelation.assignee_user_id == assignee_id,
+                    TaskAssignmentRelation.scope == scope,
                 )
                 .first()
             )
@@ -612,10 +743,11 @@ def delete_assignment_relation(db: Session, relation_id: UUID) -> None:
 # =============================================================================
 
 def list_assignment_group_relations(
-    db: Session,
+    db: Session, scope: str = "task"
 ) -> List[TaskAssignmentGroupRelation]:
     return (
         db.query(TaskAssignmentGroupRelation)
+        .filter(TaskAssignmentGroupRelation.scope == scope)
         .order_by(TaskAssignmentGroupRelation.created_at.desc())
         .all()
     )
@@ -625,6 +757,7 @@ def create_assignment_group_relation(
     db: Session,
     assigner_user_id: UUID,
     assignee_group_id: UUID,
+    scope: str = "task",
 ) -> TaskAssignmentGroupRelation:
     """Idempotent — returns the existing row when the pair already maps.
 
@@ -653,6 +786,7 @@ def create_assignment_group_relation(
         .filter(
             TaskAssignmentGroupRelation.assigner_user_id == assigner_user_id,
             TaskAssignmentGroupRelation.assignee_group_id == assignee_group_id,
+            TaskAssignmentGroupRelation.scope == scope,
         )
         .first()
     )
@@ -662,6 +796,7 @@ def create_assignment_group_relation(
     relation = TaskAssignmentGroupRelation(
         assigner_user_id=assigner_user_id,
         assignee_group_id=assignee_group_id,
+        scope=scope,
     )
     db.add(relation)
     db.commit()
@@ -924,27 +1059,31 @@ def _validate_assignment(
     db: Session,
     user: CurrentUser,
     assignee_user_id: UUID,
+    scope: str = "task",
 ) -> None:
-    """Common assignment validation used on create / reassign / paste.
+    """Common assignment validation used on create / reassign / paste, in
+    the given permission `scope` ('task' or 'issue').
 
     Two distinct checks — never collapsed into one error:
       1) The CURRENT user (assigner) is authorised to assign to this
-         target (admin OR reachable through assignment hierarchy /
-         group mapping).
-      2) The TARGET (assignee) has effective Task Access — directly,
-         through group default, or through a per-member override.
-         Assign Tasks is NOT required to receive a task; only access.
+         target in this scope (admin OR reachable through the scope's
+         assignment hierarchy / group mapping).
+      2) The TARGET (assignee) has effective access in this scope —
+         directly, through group default, or through a per-member
+         override. Assign is NOT required to receive an item; only access.
     """
-    if not is_task_admin(user) and not can_assign_to(db, user, assignee_user_id):
+    if not is_task_admin(user) and not can_assign_to(
+        db, user, assignee_user_id, scope
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to assign tasks to this user.",
+            detail="You are not allowed to assign to this user.",
         )
 
-    if not user_has_task_access(db, assignee_user_id):
+    if not user_has_access(db, assignee_user_id, scope):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Selected assignee does not have task access.",
+            detail="Selected assignee does not have access to this work item type.",
         )
 
 
@@ -1213,7 +1352,9 @@ def create_task(
     _ensure_sub_project_for_create(
         db, data.sub_project_id, data.customer_id, data.project_id
     )
-    _validate_assignment(db, user, data.assignee_user_id)
+    _validate_assignment(
+        db, user, data.assignee_user_id, perm_scope_for_type(data.task_type)
+    )
 
     if data.due_date and data.due_date < data.scheduled_date:
         raise HTTPException(
@@ -1283,14 +1424,15 @@ def create_tasks_for_group(
     """Fan a single Create-Task-for-Group action out into one Task row per
     active group member. Returns (assignment_batch_id, created_tasks).
 
-    Scope rules:
+    Scope rules (the permission scope is derived from task_type:
+    issue/suggestion → 'issue', else 'task'):
       - Admin: always allowed.
       - Non-admin: must have a direct task_assignment_group_relation to the
-        target group.
-      - Members must have task access (TaskUserPermission.can_access_tasks).
-        Members without it are skipped (warning only). If the eligible set
-        is empty after filtering, the call fails with 400 so nothing is
-        created.
+        target group IN THIS SCOPE.
+      - Members must have effective access in this scope (direct flag or
+        group default/override). Members without it are skipped (warning
+        only). If the eligible set is empty after filtering, the call fails
+        with 400 so nothing is created.
 
     All rows share the same assignment_batch_id so the assigner can later
     track the batch as one logical action.
@@ -1321,11 +1463,13 @@ def create_tasks_for_group(
             detail="Group is inactive and cannot receive new tasks.",
         )
 
-    # Permission: admin or direct group mapping.
-    if not can_assign_to_group(db, user, assignee_group_id):
+    scope = perm_scope_for_type(task_type)
+
+    # Permission: admin or direct group mapping in this scope.
+    if not can_assign_to_group(db, user, assignee_group_id, scope):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to assign tasks to this group.",
+            detail="You are not allowed to assign to this group.",
         )
 
     if due_date and due_date < scheduled_date:
@@ -1350,22 +1494,31 @@ def create_tasks_for_group(
     # task to a group you belong to should reach the OTHER members only.
     assigner_uuid = UUID(user.id)
     eff_data = list_effective_perm_data(db)
+    direct_key = (
+        "direct_can_access_issues" if scope == "issue"
+        else "direct_can_access_tasks"
+    )
+    group_key = (
+        "group_grants_access_issues" if scope == "issue"
+        else "group_grants_access"
+    )
     eligible_ids = [
         uid
         for uid in candidate_ids
         if uid != assigner_uuid
         and (
-            eff_data.get(str(uid), {}).get("direct_can_access_tasks")
-            or eff_data.get(str(uid), {}).get("group_grants_access")
+            eff_data.get(str(uid), {}).get(direct_key)
+            or eff_data.get(str(uid), {}).get(group_key)
         )
     ]
     if not eligible_ids:
+        access_label = "Access Issues" if scope == "issue" else "Access Tasks"
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
                 "No eligible group member to assign to. Members need "
-                "Access Tasks enabled (Task Management → Task Access), and "
-                "the task is never assigned back to you."
+                f"{access_label} enabled (Task Management → Task Access), and "
+                "it is never assigned back to you."
             ),
         )
 
@@ -1457,15 +1610,22 @@ def create_tasks_bulk(
             detail="Due date cannot be before the scheduled date.",
         )
 
+    scope = perm_scope_for_type(task_type)
     assigner_uuid = UUID(user.id)
     admin = is_task_admin(user)
     eff_data = list_effective_perm_data(db)
+    direct_key = (
+        "direct_can_access_issues" if scope == "issue"
+        else "direct_can_access_tasks"
+    )
+    group_key = (
+        "group_grants_access_issues" if scope == "issue"
+        else "group_grants_access"
+    )
 
     def _has_access(uid: UUID) -> bool:
         d = eff_data.get(str(uid), {})
-        return bool(
-            d.get("direct_can_access_tasks") or d.get("group_grants_access")
-        )
+        return bool(d.get(direct_key) or d.get(group_key))
 
     eligible: list[UUID] = []
     seen: set[UUID] = set()
@@ -1478,9 +1638,9 @@ def create_tasks_bulk(
         seen.add(uid)
         eligible.append(uid)
 
-    # Explicit users — must be assignable by this user (admins bypass).
+    # Explicit users — must be assignable by this user in scope (admins bypass).
     for uid in assignee_user_ids:
-        if not admin and not can_assign_to(db, user, uid):
+        if not admin and not can_assign_to(db, user, uid, scope):
             continue
         _add(uid)
 
@@ -1489,10 +1649,10 @@ def create_tasks_bulk(
         group = db.query(UserGroup).filter(UserGroup.id == gid).first()
         if not group or not group.is_active:
             continue
-        if not can_assign_to_group(db, user, gid):
+        if not can_assign_to_group(db, user, gid, scope):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to assign tasks to this group.",
+                detail="You are not allowed to assign to this group.",
             )
         for member_id in get_active_group_member_ids(db, gid):
             _add(member_id)
@@ -1501,8 +1661,8 @@ def create_tasks_bulk(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                "No eligible assignee. Targets need Task Access enabled, "
-                "and the task is never assigned back to you."
+                "No eligible assignee. Targets need access to this work item "
+                "type enabled, and it is never assigned back to you."
             ),
         )
 
@@ -1643,7 +1803,10 @@ def update_task(
                 )
 
     if data.assignee_user_id is not None and data.assignee_user_id != task.assignee_user_id:
-        _validate_assignment(db, user, data.assignee_user_id)
+        _validate_assignment(
+            db, user, data.assignee_user_id,
+            perm_scope_for_type(task.task_type),
+        )
         task.assignee_user_id = data.assignee_user_id
 
     new_scheduled = data.scheduled_date or task.scheduled_date
@@ -1686,7 +1849,28 @@ def update_task(
         task.estimated_duration_minutes = data.estimated_duration_minutes
     if data.priority is not None:
         task.priority = data.priority
-    if data.task_type is not None:
+    if data.task_type is not None and data.task_type != task.task_type:
+        # Changing the work-item kind can cross permission scopes
+        # (task ↔ issue). Re-validate so the edit can't smuggle an item
+        # into a scope the assigner can't assign in, or leave it with an
+        # assignee who has no access to the new scope. (The UI never
+        # changes type on edit; this is defense-in-depth for the API.)
+        new_scope = perm_scope_for_type(data.task_type)
+        old_scope = perm_scope_for_type(task.task_type)
+        if new_scope != old_scope:
+            if not is_task_admin(user) and not can_assign(db, user, new_scope):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You are not allowed to assign in the new work item scope.",
+                )
+            target_assignee = data.assignee_user_id or task.assignee_user_id
+            if target_assignee and not user_has_access(
+                db, target_assignee, new_scope
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Assignee does not have access to the new work item scope.",
+                )
         task.task_type = data.task_type
 
     status_notif = None

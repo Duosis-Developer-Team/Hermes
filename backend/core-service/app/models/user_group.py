@@ -18,6 +18,7 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -129,6 +130,13 @@ class TaskGroupPermission(Base):
     )
     can_access_tasks_default = Column(Boolean, nullable=False, default=False)
     can_assign_tasks_default = Column(Boolean, nullable=False, default=False)
+    # Parallel defaults for the issue/suggestion scope.
+    can_access_issues_default = Column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    can_assign_issues_default = Column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -173,6 +181,9 @@ class TaskGroupMemberOverride(Base):
     user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     can_access_tasks_override = Column(Boolean, nullable=True)
     can_assign_tasks_override = Column(Boolean, nullable=True)
+    # Parallel tri-state overrides for the issue/suggestion scope.
+    can_access_issues_override = Column(Boolean, nullable=True)
+    can_assign_issues_override = Column(Boolean, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

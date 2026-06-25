@@ -401,6 +401,86 @@ def _migrate_tasks_task_type() -> None:
         db.close()
 
 
+def _migrate_issue_scope_permissions() -> None:
+    """
+    Idempotent additive migration for the issue/suggestion permission scope:
+      - task_user_permissions: + can_access_issues / can_assign_issues
+      - task_group_permissions: + can_access_issues_default / *_assign_*
+      - task_group_member_overrides: + can_access_issues_override / *_assign_*
+      - task_assignment_relations / *_group_relations: + scope ('task'|'issue'),
+        with the uniqueness key widened to include scope.
+    All existing rows resolve to the 'task' scope, so task behaviour is
+    unchanged. Safe to re-run.
+    """
+    from sqlalchemy import text
+
+    stmts = [
+        # --- per-user direct flags ---
+        "ALTER TABLE task_user_permissions ADD COLUMN IF NOT EXISTS "
+        "can_access_issues BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE task_user_permissions ADD COLUMN IF NOT EXISTS "
+        "can_assign_issues BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE task_user_permissions DROP CONSTRAINT IF EXISTS "
+        "chk_issue_assign_requires_access",
+        "ALTER TABLE task_user_permissions ADD CONSTRAINT "
+        "chk_issue_assign_requires_access CHECK "
+        "(can_access_issues = TRUE OR can_assign_issues = FALSE)",
+        # --- per-group defaults ---
+        "ALTER TABLE task_group_permissions ADD COLUMN IF NOT EXISTS "
+        "can_access_issues_default BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE task_group_permissions ADD COLUMN IF NOT EXISTS "
+        "can_assign_issues_default BOOLEAN NOT NULL DEFAULT false",
+        # --- per-member tri-state overrides (nullable) ---
+        "ALTER TABLE task_group_member_overrides ADD COLUMN IF NOT EXISTS "
+        "can_access_issues_override BOOLEAN",
+        "ALTER TABLE task_group_member_overrides ADD COLUMN IF NOT EXISTS "
+        "can_assign_issues_override BOOLEAN",
+        # --- assignment relations: scope discriminator ---
+        "ALTER TABLE task_assignment_relations ADD COLUMN IF NOT EXISTS "
+        "scope VARCHAR(10) NOT NULL DEFAULT 'task'",
+        "ALTER TABLE task_assignment_relations DROP CONSTRAINT IF EXISTS "
+        "chk_task_assignment_scope",
+        "ALTER TABLE task_assignment_relations ADD CONSTRAINT "
+        "chk_task_assignment_scope CHECK (scope IN ('task', 'issue'))",
+        "ALTER TABLE task_assignment_relations DROP CONSTRAINT IF EXISTS "
+        "uq_task_assignment_relation",
+        "ALTER TABLE task_assignment_relations DROP CONSTRAINT IF EXISTS "
+        "uq_task_assignment_relation_scope",
+        "ALTER TABLE task_assignment_relations ADD CONSTRAINT "
+        "uq_task_assignment_relation_scope UNIQUE "
+        "(assigner_user_id, assignee_user_id, scope)",
+        "CREATE INDEX IF NOT EXISTS idx_task_assignment_relations_scope "
+        "ON task_assignment_relations(scope)",
+        # --- assignment GROUP relations: scope discriminator ---
+        "ALTER TABLE task_assignment_group_relations ADD COLUMN IF NOT EXISTS "
+        "scope VARCHAR(10) NOT NULL DEFAULT 'task'",
+        "ALTER TABLE task_assignment_group_relations DROP CONSTRAINT IF EXISTS "
+        "chk_task_assignment_group_scope",
+        "ALTER TABLE task_assignment_group_relations ADD CONSTRAINT "
+        "chk_task_assignment_group_scope CHECK (scope IN ('task', 'issue'))",
+        "ALTER TABLE task_assignment_group_relations DROP CONSTRAINT IF EXISTS "
+        "uq_task_assignment_group_relation",
+        "ALTER TABLE task_assignment_group_relations DROP CONSTRAINT IF EXISTS "
+        "uq_task_assignment_group_relation_scope",
+        "ALTER TABLE task_assignment_group_relations ADD CONSTRAINT "
+        "uq_task_assignment_group_relation_scope UNIQUE "
+        "(assigner_user_id, assignee_group_id, scope)",
+        "CREATE INDEX IF NOT EXISTS idx_task_assignment_group_relations_scope "
+        "ON task_assignment_group_relations(scope)",
+    ]
+
+    db = SessionLocal()
+    try:
+        for stmt in stmts:
+            db.execute(text(stmt))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️  issue-scope permissions migration hatası: {e}")
+    finally:
+        db.close()
+
+
 def _migrate_tasks_status_event_timestamps() -> None:
     """
     Idempotent additive migration: adds tasks.first_accepted_at and
@@ -493,6 +573,7 @@ async def lifespan(app: FastAPI):
     _migrate_meetings_schema()
     _migrate_tasks_status_event_timestamps()
     _migrate_tasks_task_type()
+    _migrate_issue_scope_permissions()
     yield
     print(f"👋 {settings.SERVICE_NAME} kapatılıyor...")
 

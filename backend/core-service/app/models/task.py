@@ -42,6 +42,14 @@ class TaskUserPermission(Base):
     user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     can_access_tasks = Column(Boolean, nullable=False, default=False)
     can_assign_tasks = Column(Boolean, nullable=False, default=False)
+    # Parallel flags for the issue/suggestion scope (issues + suggestions
+    # share one permission scope, separate from tasks).
+    can_access_issues = Column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    can_assign_issues = Column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -60,6 +68,10 @@ class TaskUserPermission(Base):
             "can_access_tasks = TRUE OR can_assign_tasks = FALSE",
             name="chk_task_assign_requires_access",
         ),
+        CheckConstraint(
+            "can_access_issues = TRUE OR can_assign_issues = FALSE",
+            name="chk_issue_assign_requires_access",
+        ),
     )
 
 
@@ -75,6 +87,16 @@ class TaskAssignmentRelation(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     assigner_user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     assignee_user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    # Which hierarchy this mapping belongs to: 'task' or 'issue' (issue
+    # covers issues + suggestions). The same assigner can map to different
+    # assignees per scope, so scope is part of the uniqueness key.
+    scope = Column(
+        String(10),
+        nullable=False,
+        default="task",
+        server_default=text("'task'"),
+        index=True,
+    )
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -91,11 +113,16 @@ class TaskAssignmentRelation(Base):
         UniqueConstraint(
             "assigner_user_id",
             "assignee_user_id",
-            name="uq_task_assignment_relation",
+            "scope",
+            name="uq_task_assignment_relation_scope",
         ),
         CheckConstraint(
             "assigner_user_id <> assignee_user_id",
             name="chk_task_assignment_not_self",
+        ),
+        CheckConstraint(
+            "scope IN ('task', 'issue')",
+            name="chk_task_assignment_scope",
         ),
     )
 
@@ -119,6 +146,15 @@ class TaskAssignmentGroupRelation(Base):
         nullable=False,
         index=True,
     )
+    # 'task' or 'issue' (issue covers issues + suggestions). Part of the
+    # uniqueness key so the same assigner can map to a group per scope.
+    scope = Column(
+        String(10),
+        nullable=False,
+        default="task",
+        server_default=text("'task'"),
+        index=True,
+    )
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -135,7 +171,12 @@ class TaskAssignmentGroupRelation(Base):
         UniqueConstraint(
             "assigner_user_id",
             "assignee_group_id",
-            name="uq_task_assignment_group_relation",
+            "scope",
+            name="uq_task_assignment_group_relation_scope",
+        ),
+        CheckConstraint(
+            "scope IN ('task', 'issue')",
+            name="chk_task_assignment_group_scope",
         ),
     )
 

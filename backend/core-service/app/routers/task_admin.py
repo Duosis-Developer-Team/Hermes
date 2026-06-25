@@ -18,7 +18,7 @@
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -70,6 +70,8 @@ async def list_task_permission_rows(
             user_id=p.user_id,
             can_access_tasks=bool(p.can_access_tasks),
             can_assign_tasks=bool(p.can_assign_tasks),
+            can_access_issues=bool(p.can_access_issues),
+            can_assign_issues=bool(p.can_assign_issues),
             updated_at=p.updated_at,
         )
         for p in perms
@@ -91,6 +93,8 @@ async def update_task_permission(
         user_id=user_id,
         can_access_tasks=bool(perm.can_access_tasks),
         can_assign_tasks=bool(perm.can_assign_tasks),
+        can_access_issues=bool(perm.can_access_issues),
+        can_assign_issues=bool(perm.can_assign_issues),
         updated_at=perm.updated_at,
     )
 
@@ -128,15 +132,17 @@ async def list_effective_permissions(
     response_model=List[TaskAssignmentRelationResponse],
 )
 async def list_assignment_relations(
+    scope: str = Query("task"),
     admin: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    relations = task_service.list_assignment_relations(db)
+    relations = task_service.list_assignment_relations(db, scope)
     return [
         TaskAssignmentRelationResponse(
             id=r.id,
             assigner_user_id=r.assigner_user_id,
             assignee_user_id=r.assignee_user_id,
+            scope=r.scope,
             created_at=r.created_at,
             updated_at=r.updated_at,
         )
@@ -158,12 +164,14 @@ async def create_assignment_relations(
         db,
         data.assigner_user_id,
         data.assignee_user_ids,
+        data.scope,
     )
     return [
         TaskAssignmentRelationResponse(
             id=r.id,
             assigner_user_id=r.assigner_user_id,
             assignee_user_id=r.assignee_user_id,
+            scope=r.scope,
             created_at=r.created_at,
             updated_at=r.updated_at,
         )
@@ -193,15 +201,17 @@ async def delete_assignment_relation(
     response_model=List[TaskAssignmentGroupRelationResponse],
 )
 async def list_assignment_group_relations(
+    scope: str = Query("task"),
     admin: CurrentUser = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    relations = task_service.list_assignment_group_relations(db)
+    relations = task_service.list_assignment_group_relations(db, scope)
     return [
         TaskAssignmentGroupRelationResponse(
             id=r.id,
             assigner_user_id=r.assigner_user_id,
             assignee_group_id=r.assignee_group_id,
+            scope=r.scope,
             created_at=r.created_at,
             updated_at=r.updated_at,
         )
@@ -220,12 +230,13 @@ async def create_assignment_group_relation(
     db: Session = Depends(get_db),
 ):
     relation = task_service.create_assignment_group_relation(
-        db, data.assigner_user_id, data.assignee_group_id
+        db, data.assigner_user_id, data.assignee_group_id, data.scope
     )
     return TaskAssignmentGroupRelationResponse(
         id=relation.id,
         assigner_user_id=relation.assigner_user_id,
         assignee_group_id=relation.assignee_group_id,
+        scope=relation.scope,
         created_at=relation.created_at,
         updated_at=relation.updated_at,
     )
@@ -316,6 +327,8 @@ async def list_task_group_permissions(
             group_id=r.group_id,
             can_access_tasks_default=bool(r.can_access_tasks_default),
             can_assign_tasks_default=bool(r.can_assign_tasks_default),
+            can_access_issues_default=bool(r.can_access_issues_default),
+            can_assign_issues_default=bool(r.can_assign_issues_default),
             updated_at=r.updated_at,
         )
         for r in rows
@@ -337,11 +350,15 @@ async def upsert_task_group_permission(
         group_id,
         can_access_tasks_default=data.can_access_tasks_default,
         can_assign_tasks_default=data.can_assign_tasks_default,
+        can_access_issues_default=data.can_access_issues_default,
+        can_assign_issues_default=data.can_assign_issues_default,
     )
     return TaskGroupPermissionResponse(
         group_id=perm.group_id,
         can_access_tasks_default=bool(perm.can_access_tasks_default),
         can_assign_tasks_default=bool(perm.can_assign_tasks_default),
+        can_access_issues_default=bool(perm.can_access_issues_default),
+        can_assign_issues_default=bool(perm.can_assign_issues_default),
         updated_at=perm.updated_at,
     )
 
@@ -360,6 +377,12 @@ def _serialize_override(
     access, assign = user_group_service.effective_member_contribution(
         override=override,
         permission=permission,
+        scope="task",
+    )
+    i_access, i_assign = user_group_service.effective_member_contribution(
+        override=override,
+        permission=permission,
+        scope="issue",
     )
     return TaskGroupMemberOverrideResponse(
         group_id=group_id,
@@ -370,8 +393,16 @@ def _serialize_override(
         can_assign_tasks_override=(
             override.can_assign_tasks_override if override else None
         ),
+        can_access_issues_override=(
+            override.can_access_issues_override if override else None
+        ),
+        can_assign_issues_override=(
+            override.can_assign_issues_override if override else None
+        ),
         effective_access_in_group=access,
         effective_assign_in_group=assign,
+        effective_access_issues_in_group=i_access,
+        effective_assign_issues_in_group=i_assign,
         updated_at=override.updated_at if override else None,
     )
 
@@ -418,6 +449,10 @@ async def upsert_task_group_member_override(
         clear_access=bool(data.clear_access_override),
         assign_value=data.can_assign_tasks_override,
         clear_assign=bool(data.clear_assign_override),
+        access_issues_value=data.can_access_issues_override,
+        clear_access_issues=bool(data.clear_access_issues_override),
+        assign_issues_value=data.can_assign_issues_override,
+        clear_assign_issues=bool(data.clear_assign_issues_override),
     )
     permission = user_group_service.get_task_group_permission(db, group_id)
     return _serialize_override(

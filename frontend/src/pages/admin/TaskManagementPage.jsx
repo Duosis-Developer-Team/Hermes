@@ -418,6 +418,7 @@ function TaskManagementPage() {
     const [open, setOpen] = useState({
         access: true,
         hierarchy: false,
+        issueHierarchy: false,
         sub: false,
     })
     const toggle = (key) => setOpen((o) => ({ ...o, [key]: !o[key] }))
@@ -429,12 +430,20 @@ function TaskManagementPage() {
         queryFn: () => userGroupService.list(),
     })
     const { data: userRelations = [] } = useQuery({
-        queryKey: ['admin-task-assignment-relations'],
-        queryFn: () => taskAssignmentService.list(),
+        queryKey: ['admin-task-assignment-relations', 'task'],
+        queryFn: () => taskAssignmentService.list('task'),
     })
     const { data: groupRelations = [] } = useQuery({
-        queryKey: ['admin-task-assignment-group-relations'],
-        queryFn: () => taskAssignmentGroupService.list(),
+        queryKey: ['admin-task-assignment-group-relations', 'task'],
+        queryFn: () => taskAssignmentGroupService.list('task'),
+    })
+    const { data: issueUserRelations = [] } = useQuery({
+        queryKey: ['admin-task-assignment-relations', 'issue'],
+        queryFn: () => taskAssignmentService.list('issue'),
+    })
+    const { data: issueGroupRelations = [] } = useQuery({
+        queryKey: ['admin-task-assignment-group-relations', 'issue'],
+        queryFn: () => taskAssignmentGroupService.list('issue'),
     })
     const { data: subProjects = [] } = useQuery({
         queryKey: ['admin-task-sub-projects', null, null],
@@ -456,6 +465,8 @@ function TaskManagementPage() {
         [effective]
     )
     const rulesCount = userRelations.length + groupRelations.length
+    const issueRulesCount =
+        issueUserRelations.length + issueGroupRelations.length
 
     return (
         <div className="tm-page">
@@ -508,14 +519,26 @@ function TaskManagementPage() {
 
             <Section
                 icon={<ApartmentOutlined />}
-                title="Assignment Hierarchy"
+                title="Task Hierarchy"
                 subtitle="Who can assign tasks to which users or groups"
                 count={rulesCount}
                 accent="#7c5cff"
                 open={open.hierarchy}
                 onToggle={() => toggle('hierarchy')}
             >
-                <AssignmentHierarchyTab />
+                <AssignmentHierarchyTab scope="task" />
+            </Section>
+
+            <Section
+                icon={<ApartmentOutlined />}
+                title="Issue / Suggestion Hierarchy"
+                subtitle="Who can assign issues & suggestions to which users or groups"
+                count={issueRulesCount}
+                accent="#7c5cff"
+                open={open.issueHierarchy}
+                onToggle={() => toggle('issueHierarchy')}
+            >
+                <AssignmentHierarchyTab scope="issue" />
             </Section>
 
             <Section

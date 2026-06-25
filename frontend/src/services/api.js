@@ -704,9 +704,12 @@ export const taskPermissionService = {
 }
 
 export const taskAssignmentService = {
-    /** Admin: list all assigner -> assignee mappings. */
-    list: async () => {
-        const response = await coreApi.get('/api/v1/core/admin/task-assignment-relations')
+    /** Admin: list all assigner -> assignee mappings for a scope (task|issue). */
+    list: async (scope = 'task') => {
+        const response = await coreApi.get(
+            '/api/v1/core/admin/task-assignment-relations',
+            { params: { scope } }
+        )
         return response.data
     },
 
@@ -733,10 +736,11 @@ export const taskAssignmentService = {
 // =============================================================================
 
 export const taskAssignmentGroupService = {
-    /** Admin: list all assigner -> group mappings. */
-    list: async () => {
+    /** Admin: list all assigner -> group mappings for a scope (task|issue). */
+    list: async (scope = 'task') => {
         const response = await coreApi.get(
-            '/api/v1/core/admin/task-assignment-group-relations'
+            '/api/v1/core/admin/task-assignment-group-relations',
+            { params: { scope } }
         )
         return response.data
     },
@@ -948,8 +952,10 @@ export const taskService = {
      * Minimal info for groups the current user may target with
      * Create-Task-for-Group. Returns [{id, name, member_count}].
      */
-    listAssignableGroups: async () => {
-        const response = await coreApi.get('/api/v1/core/tasks/assignable-groups')
+    listAssignableGroups: async (scope = 'task') => {
+        const response = await coreApi.get('/api/v1/core/tasks/assignable-groups', {
+            params: { scope },
+        })
         return response.data
     },
 

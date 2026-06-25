@@ -81,7 +81,7 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
  */
 const TaskProtectedRoute = ({ children }) => {
     const { isAuthenticated, user } = useAuthStore()
-    const { isLoading, canAccessTasks, isTaskAdmin } = useTaskPermissions()
+    const { isLoading, canAccessAny, isTaskAdmin } = useTaskPermissions()
 
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />
@@ -94,7 +94,7 @@ const TaskProtectedRoute = ({ children }) => {
         // fetch doesn't read as a "stuck on gray" failure to the user.
         return <CenteredLoader />
     }
-    if (!canAccessTasks && !isTaskAdmin) {
+    if (!canAccessAny && !isTaskAdmin) {
         return <Navigate to="/time-entry" replace />
     }
     return children

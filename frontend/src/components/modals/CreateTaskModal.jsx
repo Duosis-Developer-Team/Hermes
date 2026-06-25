@@ -164,9 +164,11 @@ function CreateTaskModal({
         staleTime: 60 * 1000,
     })
 
+    // Issues + suggestions share the 'issue' assignment scope.
+    const permScope = taskType === 'task' ? 'task' : 'issue'
     const { data: assignableGroups = [] } = useQuery({
-        queryKey: ['tasks-assignable-groups'],
-        queryFn: () => taskService.listAssignableGroups(),
+        queryKey: ['tasks-assignable-groups', permScope],
+        queryFn: () => taskService.listAssignableGroups(permScope),
         enabled: open,
         staleTime: 60 * 1000,
     })

@@ -56,8 +56,8 @@ function MainLayout() {
     const isLight = themeMode === 'light'
 
     const isAdmin = user?.is_admin === true
-    const { canAccessTasks } = useTaskPermissions()
-    const showTasksItem = isAdmin || canAccessTasks
+    const { canAccessAny } = useTaskPermissions()
+    const showTasksItem = isAdmin || canAccessAny
 
     // Menu items
     const menuItems = [

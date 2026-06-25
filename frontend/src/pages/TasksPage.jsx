@@ -110,13 +110,7 @@ const PRIORITY_OPTIONS = [
 function TasksPage() {
     const { user } = useAuthStore()
     const queryClient = useQueryClient()
-    const {
-        canAccessTasks,
-        canAssignTasks,
-        isTaskAdmin,
-        assignableUserIds,
-        assignableGroupIds,
-    } = useTaskPermissions()
+    const { isTaskAdmin, canAccessAny, scopes } = useTaskPermissions()
 
     const [weekStart, setWeekStart] = useState(() => dayjs().startOf('isoWeek'))
     const [statusFilter, setStatusFilter] = useState(null)
@@ -161,8 +155,24 @@ function TasksPage() {
     // Admin-only user selector (Time Entry parity). null → current user.
     const [selectedUserId, setSelectedUserId] = useState(null)
 
-    // "Assigned by Me" requires task-assign permission or admin.
-    const canViewAssignedByMe = isTaskAdmin || canAssignTasks
+    // Permission scope follows the active work-item type: issues +
+    // suggestions share the 'issue' scope, separate from tasks.
+    const permScope = taskType === 'task' ? 'task' : 'issue'
+    const activePerms = scopes?.[permScope] || scopes?.task || {}
+    const canAccessScope = !!activePerms.canAccess
+    const canAssignScope = !!activePerms.canAssign
+    const assignableUserIds = activePerms.assignableUserIds || []
+    const assignableGroupIds = activePerms.assignableGroupIds || []
+
+    // Scope-pill labels follow the active kind: "My Tasks" / "My Issues" /
+    // "My Suggestions". "Assigned by Me" is the same for all kinds.
+    const activeTypeMeta =
+        TASK_TYPES.find((t) => t.value === taskType) || TASK_TYPES[0]
+    const scopeLabel = (s) =>
+        s.value === 'my-tasks' ? `My ${activeTypeMeta.label}` : s.label
+
+    // "Assigned by Me" requires assign permission (in the active scope) or admin.
+    const canViewAssignedByMe = isTaskAdmin || canAssignScope
     // If permission is revoked while the page is open and the user is on
     // the Assigned-by-Me scope, fall back to My Tasks.
     if (taskScope === 'assigned-by-me' && !canViewAssignedByMe) {
@@ -179,12 +189,12 @@ function TasksPage() {
     const { data: customers = [] } = useQuery({
         queryKey: ['customers'],
         queryFn: () => customerService.getAll(),
-        enabled: canAccessTasks,
+        enabled: canAccessAny,
     })
     const { data: projects = [] } = useQuery({
         queryKey: ['projects'],
         queryFn: () => projectService.getAll(),
-        enabled: canAccessTasks,
+        enabled: canAccessAny,
     })
     const filteredProjects = useMemo(() => {
         if (!customerFilter) return projects
@@ -198,7 +208,7 @@ function TasksPage() {
                 customer_id: customerFilter || undefined,
                 project_id: projectFilter || undefined,
             }),
-        enabled: canAccessTasks,
+        enabled: canAccessAny,
     })
 
     // Translate the active view into list-endpoint params. Every view
@@ -290,7 +300,8 @@ function TasksPage() {
                 end_date: weekEndStr,
             })
         },
-        enabled: canAccessTasks,
+        // Only fetch the active scope's items when the user can access it.
+        enabled: canAccessScope,
     })
 
     // Collect every user id referenced by the current task list and resolve
@@ -308,7 +319,7 @@ function TasksPage() {
     const { data: usersForTasks = [] } = useQuery({
         queryKey: ['auth-users-lookup', { ids: referencedUserIds }],
         queryFn: () => authService.lookupUsers({ ids: referencedUserIds }),
-        enabled: canAccessTasks && referencedUserIds.length > 0,
+        enabled: canAccessAny && referencedUserIds.length > 0,
         staleTime: 60 * 1000,
     })
 
@@ -316,7 +327,7 @@ function TasksPage() {
     const { data: allActiveUsers = [] } = useQuery({
         queryKey: ['auth-users-lookup', { include_inactive: false }],
         queryFn: () => authService.lookupUsers(),
-        enabled: canAccessTasks && isTaskAdmin,
+        enabled: canAccessAny && isTaskAdmin,
         staleTime: 60 * 1000,
     })
 
@@ -699,7 +710,7 @@ function TasksPage() {
     // permission OFF cascade.
     const canCreateTask =
         isTaskAdmin ||
-        (canAssignTasks &&
+        (canAssignScope &&
             (assignableUserIds.length > 0 || assignableGroupIds.length > 0))
 
     // Compute BEFORE the no-access early return below — useMemo is a
@@ -717,7 +728,7 @@ function TasksPage() {
         return [me, ...others]
     }, [user, isTaskAdmin, allActiveUsers])
 
-    if (!canAccessTasks) {
+    if (!canAccessAny) {
         return (
             <div style={{ padding: 24 }}>
                 <Empty description="You do not have access to the Tasks module." />
@@ -834,7 +845,7 @@ function TasksPage() {
                                         setTaskScope(s.value)
                                     }}
                                 >
-                                    {s.label}
+                                    {scopeLabel(s)}
                                 </button>
                             )
                         })}

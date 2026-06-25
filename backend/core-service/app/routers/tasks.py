@@ -37,6 +37,7 @@ from ..schemas.task import (
     TaskGroupCreateResponse,
     TaskNoteUpdate,
     TaskPermissionMeResponse,
+    TaskScopePermissions,
     TaskResponse,
     TaskStatusUpdate,
     TaskSubProjectCreate,
@@ -177,26 +178,40 @@ async def get_my_task_permissions(
     The frontend resolves names by calling auth-service /users/lookup directly.
     """
     is_admin = task_service.is_task_admin(current_user)
-    can_access = task_service.can_access_tasks(db, current_user)
-    can_assign = task_service.can_assign_tasks(db, current_user)
 
-    assignable_user_ids: List[UUID] = []
-    assignable_group_ids: List[UUID] = []
-    if can_assign and not is_admin:
-        # Admins can target anyone — frontend fetches all active users
-        # / groups directly. Non-admins are scoped to their explicit
-        # mappings.
-        assignable_user_ids = task_service.get_assignable_user_ids(db, current_user)
-        assignable_group_ids = task_service.get_assignable_group_ids(
-            db, current_user
+    def _scope(scope: str) -> TaskScopePermissions:
+        access = task_service.can_access(db, current_user, scope)
+        assign = task_service.can_assign(db, current_user, scope)
+        user_ids: List[UUID] = []
+        group_ids: List[UUID] = []
+        # Admins target anyone — the frontend fetches all active users /
+        # groups directly. Non-admins are scoped to their explicit mappings.
+        if assign and not is_admin:
+            user_ids = task_service.get_assignable_user_ids(
+                db, current_user, scope
+            )
+            group_ids = task_service.get_assignable_group_ids(
+                db, current_user, scope
+            )
+        return TaskScopePermissions(
+            can_access=access,
+            can_assign=assign,
+            assignable_user_ids=user_ids,
+            assignable_group_ids=group_ids,
         )
 
+    task_perms = _scope("task")
+    issue_perms = _scope("issue")
+
     return TaskPermissionMeResponse(
-        can_access_tasks=can_access,
-        can_assign_tasks=can_assign,
         is_admin=is_admin,
-        assignable_user_ids=assignable_user_ids,
-        assignable_group_ids=assignable_group_ids,
+        # Back-compat task-scope top-level fields.
+        can_access_tasks=task_perms.can_access,
+        can_assign_tasks=task_perms.can_assign,
+        assignable_user_ids=task_perms.assignable_user_ids,
+        assignable_group_ids=task_perms.assignable_group_ids,
+        task=task_perms,
+        issue=issue_perms,
     )
 
 
@@ -206,6 +221,7 @@ async def get_my_task_permissions(
 
 @router.get("/assignable-groups")
 async def list_assignable_groups(
+    scope: str = Query("task"),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -219,7 +235,8 @@ async def list_assignable_groups(
     non-admins can see group names without needing the /admin/user-groups
     endpoint.
     """
-    task_service.require_task_access(db, current_user)
+    scope = scope if scope in task_service.VALID_SCOPES else "task"
+    task_service.require_task_access(db, current_user, scope)
 
     from ..models.user_group import UserGroup
 
@@ -231,9 +248,9 @@ async def list_assignable_groups(
             .all()
         )
     else:
-        if not task_service.can_assign_tasks(db, current_user):
+        if not task_service.can_assign(db, current_user, scope):
             return []
-        ids = task_service.get_assignable_group_ids(db, current_user)
+        ids = task_service.get_assignable_group_ids(db, current_user, scope)
         if not ids:
             return []
         groups = (
@@ -277,7 +294,16 @@ async def list_sub_projects(
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    task_service.require_task_access(db, current_user)
+    # Sub projects are shared by all work-item types; access in either
+    # the task or the issue scope is enough to list them.
+    if not (
+        task_service.can_access(db, current_user, "task")
+        or task_service.can_access(db, current_user, "issue")
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tasks module access is required.",
+        )
     effective_include_inactive = bool(include_inactive) and current_user.is_admin
     subs = task_service.list_sub_projects(
         db,
@@ -304,8 +330,15 @@ async def create_sub_project_as_assigner(
     so a non-admin assigner can add a missing sub project inline from the
     Create Task modal without an admin round-trip. Editing/deleting sub
     projects stays admin-only (admin/tasks/sub-projects)."""
-    task_service.require_task_access(db, current_user)
-    task_service.require_task_assigner(db, current_user)
+    # Assigner in either scope may add a sub project inline (shared resource).
+    if not (
+        task_service.can_assign(db, current_user, "task")
+        or task_service.can_assign(db, current_user, "issue")
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Assignment permission is required.",
+        )
     sub = task_service.create_sub_project(db, data, UUID(current_user.id))
     return _serialize_sub_project(sub)
 
@@ -343,7 +376,9 @@ async def list_tasks(
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    task_service.require_task_access(db, current_user)
+    task_service.require_task_access(
+        db, current_user, task_service.perm_scope_for_type(task_type)
+    )
     effective_include_archived = bool(include_archived) and current_user.is_admin
     tasks = task_service.list_tasks_for_user(
         db,
@@ -378,8 +413,9 @@ async def create_task(
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    task_service.require_task_access(db, current_user)
-    task_service.require_task_assigner(db, current_user)
+    scope = task_service.perm_scope_for_type(payload.task_type)
+    task_service.require_task_access(db, current_user, scope)
+    task_service.require_task_assigner(db, current_user, scope)
     task = task_service.create_task(db, current_user, payload)
     serialized = _serialize_task(task)
     # Fire-and-forget e-mail notification (assignee + assigner). Runs
@@ -409,8 +445,9 @@ async def create_tasks_for_group(
     group. One Task row per member; all rows share the same
     assignment_batch_id so the assigner can track them as one batch.
     """
-    task_service.require_task_access(db, current_user)
-    task_service.require_task_assigner(db, current_user)
+    scope = task_service.perm_scope_for_type(payload.task_type)
+    task_service.require_task_access(db, current_user, scope)
+    task_service.require_task_assigner(db, current_user, scope)
     batch_id, tasks = task_service.create_tasks_for_group(
         db,
         current_user,
@@ -457,8 +494,9 @@ async def create_tasks_bulk(
     """Create the same task for multiple assignees (users and/or groups) in
     one action. Returns the created task rows; fires a single notification
     batch (each assignee an individual e-mail, the assigner one summary)."""
-    task_service.require_task_access(db, current_user)
-    task_service.require_task_assigner(db, current_user)
+    scope = task_service.perm_scope_for_type(payload.task_type)
+    task_service.require_task_access(db, current_user, scope)
+    task_service.require_task_assigner(db, current_user, scope)
     _batch_id, tasks = task_service.create_tasks_bulk(
         db,
         current_user,

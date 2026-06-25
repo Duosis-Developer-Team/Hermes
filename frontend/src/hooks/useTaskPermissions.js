@@ -26,6 +26,37 @@ const DEFAULT_PERMISSIONS = {
     is_admin: false,
     assignable_user_ids: [],
     assignable_group_ids: [],
+    task: {},
+    issue: {},
+}
+
+const arr = (v) => (Array.isArray(v) ? v : [])
+
+/**
+ * Resolve the {canAccess, canAssign, assignableUserIds, assignableGroupIds}
+ * view for one permission scope ('task' | 'issue'), falling back to the
+ * back-compat top-level task fields when the nested objects are absent.
+ */
+function scopeView(data, scope) {
+    const s = (scope === 'issue' ? data.issue : data.task) || {}
+    if (scope === 'issue') {
+        return {
+            canAccess: !!s.can_access,
+            canAssign: !!s.can_assign,
+            assignableUserIds: arr(s.assignable_user_ids),
+            assignableGroupIds: arr(s.assignable_group_ids),
+        }
+    }
+    return {
+        canAccess: !!(s.can_access ?? data.can_access_tasks),
+        canAssign: !!(s.can_assign ?? data.can_assign_tasks),
+        assignableUserIds: arr(s.assignable_user_ids).length
+            ? arr(s.assignable_user_ids)
+            : arr(data.assignable_user_ids),
+        assignableGroupIds: arr(s.assignable_group_ids).length
+            ? arr(s.assignable_group_ids)
+            : arr(data.assignable_group_ids),
+    }
 }
 
 export function useTaskPermissions() {
@@ -40,18 +71,22 @@ export function useTaskPermissions() {
     })
 
     const data = query.data || DEFAULT_PERMISSIONS
+    const isAdmin = !!data.is_admin
+    const taskScope = scopeView(data, 'task')
+    const issueScope = scopeView(data, 'issue')
 
     return {
         ...query,
-        canAccessTasks: !!data.can_access_tasks,
-        canAssignTasks: !!data.can_assign_tasks,
-        isTaskAdmin: !!data.is_admin,
-        assignableUserIds: Array.isArray(data.assignable_user_ids)
-            ? data.assignable_user_ids
-            : [],
-        assignableGroupIds: Array.isArray(data.assignable_group_ids)
-            ? data.assignable_group_ids
-            : [],
+        isTaskAdmin: isAdmin,
+        // Back-compat: task-scope flags (existing callers).
+        canAccessTasks: taskScope.canAccess,
+        canAssignTasks: taskScope.canAssign,
+        assignableUserIds: taskScope.assignableUserIds,
+        assignableGroupIds: taskScope.assignableGroupIds,
+        // Sidebar / route guard: access to the Tasks area via ANY scope.
+        canAccessAny: isAdmin || taskScope.canAccess || issueScope.canAccess,
+        // Per-scope views — TasksPage selects by the active work-item type.
+        scopes: { task: taskScope, issue: issueScope },
         permissions: data,
     }
 }

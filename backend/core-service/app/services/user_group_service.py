@@ -281,61 +281,73 @@ def upsert_task_group_permission(
     *,
     can_access_tasks_default: bool,
     can_assign_tasks_default: bool,
+    can_access_issues_default: Optional[bool] = None,
+    can_assign_issues_default: Optional[bool] = None,
 ) -> TaskGroupPermission:
-    """Upsert per-group defaults AND cascade the change to existing
-    member overrides for any column that actually flipped.
+    """Upsert per-group defaults (task + issue scopes) AND cascade each
+    change to existing member overrides for any column that actually
+    flipped.
 
     Rationale (UI requirement):
-        Toggling a group's "Access Tasks" OFF should make every member
-        row visually OFF as well — no admin should ever see "group OFF
-        + member ON" at the same time. The cascade rewrites existing
-        override rows on the changed column only; the other column
-        stays untouched. Members without an override row already
-        follow the new group default, so no extra work is needed for
-        them.
+        Toggling a group's "Access" OFF should make every member row
+        visually OFF as well — no admin should ever see "group OFF +
+        member ON" at the same time. The cascade rewrites existing
+        override rows on the changed column only.
+
+    The issue-scope params default to None ("not part of this request,
+    leave as-is"); the task params are required for back-compat.
     """
     get_user_group(db, group_id)  # ensure group exists
 
-    new_access = bool(can_access_tasks_default)
-    new_assign = bool(can_assign_tasks_default)
-    # Invariant — assign requires access. If the group's access
-    # default is being turned OFF, force assign default OFF in the
-    # same write so the resolver never sees a contradiction.
-    if not new_access:
-        new_assign = False
-
     perm = get_task_group_permission(db, group_id)
-    if perm is None:
-        old_access = None
-        old_assign = None
+    creating = perm is None
+    if creating:
         perm = TaskGroupPermission(
             group_id=group_id,
-            can_access_tasks_default=new_access,
-            can_assign_tasks_default=new_assign,
+            can_access_tasks_default=False,
+            can_assign_tasks_default=False,
+            can_access_issues_default=False,
+            can_assign_issues_default=False,
         )
         db.add(perm)
-    else:
-        old_access = bool(perm.can_access_tasks_default)
-        old_assign = bool(perm.can_assign_tasks_default)
-        perm.can_access_tasks_default = new_access
-        perm.can_assign_tasks_default = new_assign
 
-    # Cascade only the columns that actually changed, so flipping
-    # access doesn't accidentally rewrite assign overrides.
-    if old_access is None or old_access != new_access:
-        db.query(TaskGroupMemberOverride).filter(
-            TaskGroupMemberOverride.group_id == group_id
-        ).update(
-            {TaskGroupMemberOverride.can_access_tasks_override: new_access},
-            synchronize_session=False,
-        )
-    if old_assign is None or old_assign != new_assign:
-        db.query(TaskGroupMemberOverride).filter(
-            TaskGroupMemberOverride.group_id == group_id
-        ).update(
-            {TaskGroupMemberOverride.can_assign_tasks_override: new_assign},
-            synchronize_session=False,
-        )
+    # One spec per scope: (access_in, assign_in, perm_access_attr,
+    # perm_assign_attr, override_access_col, override_assign_col).
+    specs = [
+        (
+            can_access_tasks_default, can_assign_tasks_default,
+            "can_access_tasks_default", "can_assign_tasks_default",
+            TaskGroupMemberOverride.can_access_tasks_override,
+            TaskGroupMemberOverride.can_assign_tasks_override,
+        ),
+        (
+            can_access_issues_default, can_assign_issues_default,
+            "can_access_issues_default", "can_assign_issues_default",
+            TaskGroupMemberOverride.can_access_issues_override,
+            TaskGroupMemberOverride.can_assign_issues_override,
+        ),
+    ]
+    for access_in, assign_in, pa_attr, pas_attr, ov_a_col, ov_as_col in specs:
+        if access_in is None and assign_in is None:
+            continue  # scope omitted from this request
+        new_access = bool(access_in)
+        new_assign = bool(assign_in)
+        # Invariant — assign requires access.
+        if not new_access:
+            new_assign = False
+        old_access = None if creating else bool(getattr(perm, pa_attr))
+        old_assign = None if creating else bool(getattr(perm, pas_attr))
+        setattr(perm, pa_attr, new_access)
+        setattr(perm, pas_attr, new_assign)
+        # Cascade only the columns that actually changed.
+        if old_access is None or old_access != new_access:
+            db.query(TaskGroupMemberOverride).filter(
+                TaskGroupMemberOverride.group_id == group_id
+            ).update({ov_a_col: new_access}, synchronize_session=False)
+        if old_assign is None or old_assign != new_assign:
+            db.query(TaskGroupMemberOverride).filter(
+                TaskGroupMemberOverride.group_id == group_id
+            ).update({ov_as_col: new_assign}, synchronize_session=False)
 
     db.commit()
     db.refresh(perm)
@@ -377,6 +389,10 @@ def upsert_task_group_member_override(
     clear_access: bool,
     assign_value: Optional[bool],
     clear_assign: bool,
+    access_issues_value: Optional[bool] = None,
+    clear_access_issues: bool = False,
+    assign_issues_value: Optional[bool] = None,
+    clear_assign_issues: bool = False,
 ) -> TaskGroupMemberOverride:
     """Persist a per-member override for a single group.
 
@@ -407,48 +423,60 @@ def upsert_task_group_member_override(
             user_id=user_id,
             can_access_tasks_override=None,
             can_assign_tasks_override=None,
+            can_access_issues_override=None,
+            can_assign_issues_override=None,
         )
         db.add(override)
 
-    # Invariant: explicit access=False forces assign=False in the
-    # same payload (caller doesn't need to remember to send both).
-    if access_value is False:
-        assign_value = False
-        clear_assign = False
-
-    if clear_access:
-        override.can_access_tasks_override = None
-    elif access_value is not None:
-        override.can_access_tasks_override = bool(access_value)
-
-    if clear_assign:
-        override.can_assign_tasks_override = None
-    elif assign_value is not None:
-        override.can_assign_tasks_override = bool(assign_value)
-
-    # Denial cascade onto the direct row (only when explicitly
-    # turning OFF; ON is additive and stays scoped to this group).
-    # We intentionally do NOT delete task_assignment_relations
-    # rows here. The previous cascade did, which made permission
-    # restoration destructive: turning Assign OFF wiped the
-    # assigner's hierarchy mappings, and turning Assign back ON
-    # left them with can_assign_tasks=true but zero assignable
-    # targets — so the Create button stayed hidden on the
-    # frontend (canCreateTask requires at least one assignable
-    # user/group). The resolver already gates assignment by
-    # can_assign_tasks; hierarchy rows are inert while denied
-    # and become live again when permission is restored.
     direct = (
         db.query(TaskUserPermission)
         .filter(TaskUserPermission.user_id == user_id)
         .first()
     )
-    if direct is not None:
-        if access_value is False:
-            direct.can_access_tasks = False
-            direct.can_assign_tasks = False
-        elif assign_value is False:
-            direct.can_assign_tasks = False
+
+    # One spec per scope: (access_value, clear_access, assign_value,
+    # clear_assign, override_access_attr, override_assign_attr,
+    # direct_access_attr, direct_assign_attr).
+    specs = [
+        (
+            access_value, clear_access, assign_value, clear_assign,
+            "can_access_tasks_override", "can_assign_tasks_override",
+            "can_access_tasks", "can_assign_tasks",
+        ),
+        (
+            access_issues_value, clear_access_issues,
+            assign_issues_value, clear_assign_issues,
+            "can_access_issues_override", "can_assign_issues_override",
+            "can_access_issues", "can_assign_issues",
+        ),
+    ]
+    for (
+        av, clr_a, asv, clr_as, ov_a_attr, ov_as_attr, dir_a, dir_as,
+    ) in specs:
+        # Invariant: explicit access=False forces assign=False.
+        if av is False:
+            asv = False
+            clr_as = False
+
+        if clr_a:
+            setattr(override, ov_a_attr, None)
+        elif av is not None:
+            setattr(override, ov_a_attr, bool(av))
+
+        if clr_as:
+            setattr(override, ov_as_attr, None)
+        elif asv is not None:
+            setattr(override, ov_as_attr, bool(asv))
+
+        # Denial cascade onto the direct row (only when explicitly turning
+        # OFF; ON is additive and stays scoped to this group). Assignment
+        # relations are intentionally left intact (configuration, not grant).
+        if direct is not None:
+            if av is False:
+                setattr(direct, dir_a, False)
+                setattr(direct, dir_as, False)
+            elif asv is False:
+                setattr(direct, dir_as, False)
 
     db.commit()
     db.refresh(override)
@@ -459,18 +487,30 @@ def effective_member_contribution(
     *,
     override: Optional[TaskGroupMemberOverride],
     permission: Optional[TaskGroupPermission],
+    scope: str = "task",
 ) -> tuple[bool, bool]:
     """Compute (effective_access_in_group, effective_assign_in_group)
-    for a single membership — used purely for display/serialization.
+    for a single membership in `scope` — used purely for display.
     """
-    access_default = bool(permission.can_access_tasks_default) if permission else False
-    assign_default = bool(permission.can_assign_tasks_default) if permission else False
-    if override and override.can_access_tasks_override is not None:
-        access = bool(override.can_access_tasks_override)
+    if scope == "issue":
+        access_attr, assign_attr = (
+            "can_access_issues_default", "can_assign_issues_default"
+        )
+        ov_access_attr, ov_assign_attr = (
+            "can_access_issues_override", "can_assign_issues_override"
+        )
     else:
-        access = access_default
-    if override and override.can_assign_tasks_override is not None:
-        assign = bool(override.can_assign_tasks_override)
-    else:
-        assign = assign_default
+        access_attr, assign_attr = (
+            "can_access_tasks_default", "can_assign_tasks_default"
+        )
+        ov_access_attr, ov_assign_attr = (
+            "can_access_tasks_override", "can_assign_tasks_override"
+        )
+
+    access_default = bool(getattr(permission, access_attr)) if permission else False
+    assign_default = bool(getattr(permission, assign_attr)) if permission else False
+    ov_access = getattr(override, ov_access_attr) if override else None
+    ov_assign = getattr(override, ov_assign_attr) if override else None
+    access = bool(ov_access) if ov_access is not None else access_default
+    assign = bool(ov_assign) if ov_assign is not None else assign_default
     return access, assign

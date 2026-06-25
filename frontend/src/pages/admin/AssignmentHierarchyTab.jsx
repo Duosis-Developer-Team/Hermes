@@ -393,8 +393,9 @@ function AddRuleModal({
     )
 }
 
-function AssignmentHierarchyTab() {
+function AssignmentHierarchyTab({ scope = 'task' }) {
     const queryClient = useQueryClient()
+    const scopeNoun = scope === 'issue' ? 'issues/suggestions' : 'tasks'
 
     const [addModalOpen, setAddModalOpen] = useState(false)
     const [presetAssignerId, setPresetAssignerId] = useState(null)
@@ -455,12 +456,12 @@ function AssignmentHierarchyTab() {
     }, [groups])
 
     const { data: userRelations = [], isLoading: userRelLoading } = useQuery({
-        queryKey: ['admin-task-assignment-relations'],
-        queryFn: () => taskAssignmentService.list(),
+        queryKey: ['admin-task-assignment-relations', scope],
+        queryFn: () => taskAssignmentService.list(scope),
     })
     const { data: groupRelations = [], isLoading: groupRelLoading } = useQuery({
-        queryKey: ['admin-task-assignment-group-relations'],
-        queryFn: () => taskAssignmentGroupService.list(),
+        queryKey: ['admin-task-assignment-group-relations', scope],
+        queryFn: () => taskAssignmentGroupService.list(scope),
     })
 
     // Group rules per assigner so we can render one card per assigner.
@@ -508,6 +509,7 @@ function AssignmentHierarchyTab() {
                 await taskAssignmentService.create({
                     assigner_user_id: assigner,
                     assignee_user_ids: userIds,
+                    scope,
                 })
             }
             if (groupIds.length) {
@@ -516,6 +518,7 @@ function AssignmentHierarchyTab() {
                         taskAssignmentGroupService.create({
                             assigner_user_id: assigner,
                             assignee_group_id: gid,
+                            scope,
                         })
                     )
                 )
@@ -544,10 +547,10 @@ function AssignmentHierarchyTab() {
         },
         onSettled: () => {
             queryClient.invalidateQueries({
-                queryKey: ['admin-task-assignment-relations'],
+                queryKey: ['admin-task-assignment-relations', scope],
             })
             queryClient.invalidateQueries({
-                queryKey: ['admin-task-assignment-group-relations'],
+                queryKey: ['admin-task-assignment-group-relations', scope],
             })
         },
     })
@@ -558,7 +561,7 @@ function AssignmentHierarchyTab() {
             message.success('User rule removed.')
             setRemovingUserRelation(null)
             queryClient.invalidateQueries({
-                queryKey: ['admin-task-assignment-relations'],
+                queryKey: ['admin-task-assignment-relations', scope],
             })
         },
         onError: (err) => {
@@ -573,7 +576,7 @@ function AssignmentHierarchyTab() {
             message.success('Group rule removed.')
             setRemovingGroupRelation(null)
             queryClient.invalidateQueries({
-                queryKey: ['admin-task-assignment-group-relations'],
+                queryKey: ['admin-task-assignment-group-relations', scope],
             })
         },
         onError: (err) => {
@@ -641,7 +644,7 @@ function AssignmentHierarchyTab() {
                             ? 'Loading…'
                             : assignerSearch.trim()
                             ? 'No assigner matches your search.'
-                            : 'No assignment rules yet — click Add Assignment Rule.'
+                            : `No assignment rules yet — click Add Assignment Rule to let assigners assign ${scopeNoun}.`
                     }
                 />
             ) : (

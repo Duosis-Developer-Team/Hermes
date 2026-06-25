@@ -88,10 +88,13 @@ function GroupMemberOverridesPanel({ group, allUsersById }) {
     // for a cleaner UX; the underlying nullable column is preserved on
     // the backend so old NULL rows still resolve to the group default.
     const handleMemberToggle = (member, kind, checked) => {
-        const fieldName =
-            kind === 'access'
-                ? 'can_access_tasks_override'
-                : 'can_assign_tasks_override'
+        const fieldByKind = {
+            access: 'can_access_tasks_override',
+            assign: 'can_assign_tasks_override',
+            access_issues: 'can_access_issues_override',
+            assign_issues: 'can_assign_issues_override',
+        }
+        const fieldName = fieldByKind[kind]
         upsertMutation.mutate({
             userId: member.user_id,
             data: { [fieldName]: !!checked },
@@ -108,6 +111,10 @@ function GroupMemberOverridesPanel({ group, allUsersById }) {
                     ...m,
                     effective_access_in_group: !!o?.effective_access_in_group,
                     effective_assign_in_group: !!o?.effective_assign_in_group,
+                    effective_access_issues_in_group:
+                        !!o?.effective_access_issues_in_group,
+                    effective_assign_issues_in_group:
+                        !!o?.effective_assign_issues_in_group,
                 }
             }),
         [members, overrideByUserId]
@@ -164,6 +171,42 @@ function GroupMemberOverridesPanel({ group, allUsersById }) {
                         onClick={(_, e) => e?.stopPropagation?.()}
                         onChange={(checked) =>
                             handleMemberToggle(record, 'assign', checked)
+                        }
+                    />
+                )
+            },
+        },
+        {
+            title: 'Access Issues',
+            dataIndex: 'effective_access_issues_in_group',
+            width: 140,
+            render: (val, record) => (
+                <Switch
+                    checked={!!val}
+                    disabled={upsertMutation.isPending}
+                    onClick={(_, e) => e?.stopPropagation?.()}
+                    onChange={(checked) =>
+                        handleMemberToggle(record, 'access_issues', checked)
+                    }
+                />
+            ),
+        },
+        {
+            title: 'Assign Issues',
+            dataIndex: 'effective_assign_issues_in_group',
+            width: 140,
+            render: (val, record) => {
+                // Invariant — assign requires access. If access is OFF
+                // for this member, the Assign toggle is forced off and
+                // disabled. Backend enforces the same invariant.
+                const accessOff = !record.effective_access_issues_in_group
+                return (
+                    <Switch
+                        checked={!accessOff && !!val}
+                        disabled={accessOff || upsertMutation.isPending}
+                        onClick={(_, e) => e?.stopPropagation?.()}
+                        onChange={(checked) =>
+                            handleMemberToggle(record, 'assign_issues', checked)
                         }
                     />
                 )
@@ -241,6 +284,8 @@ function AdditionalUsersSection({ users }) {
                     is_active: !!u.is_active,
                     can_access_tasks: !!perm?.can_access_tasks,
                     can_assign_tasks: !!perm?.can_assign_tasks,
+                    can_access_issues: !!perm?.can_access_issues,
+                    can_assign_issues: !!perm?.can_assign_issues,
                 }
             }),
         [users, permByUserId]
@@ -272,9 +317,15 @@ function AdditionalUsersSection({ users }) {
                 field === 'can_access_tasks' ? value : !!row.can_access_tasks,
             can_assign_tasks:
                 field === 'can_assign_tasks' ? value : !!row.can_assign_tasks,
+            can_access_issues:
+                field === 'can_access_issues' ? value : !!row.can_access_issues,
+            can_assign_issues:
+                field === 'can_assign_issues' ? value : !!row.can_assign_issues,
         }
         if (field === 'can_access_tasks' && !value) next.can_assign_tasks = false
         if (field === 'can_assign_tasks' && value) next.can_access_tasks = true
+        if (field === 'can_access_issues' && !value) next.can_assign_issues = false
+        if (field === 'can_assign_issues' && value) next.can_access_issues = true
         updateMutation.mutate({ userId: row.user_id, data: next })
     }
 
@@ -315,6 +366,41 @@ function AdditionalUsersSection({ users }) {
                         }
                         onChange={(checked) =>
                             handleToggle(row, 'can_assign_tasks', checked)
+                        }
+                    />
+                )
+            },
+        },
+        {
+            title: 'Access Issues',
+            dataIndex: 'can_access_issues',
+            width: 140,
+            render: (val, row) => (
+                <Switch
+                    checked={!!val}
+                    disabled={!row.is_active || updateMutation.isPending}
+                    onChange={(checked) =>
+                        handleToggle(row, 'can_access_issues', checked)
+                    }
+                />
+            ),
+        },
+        {
+            title: 'Assign Issues',
+            dataIndex: 'can_assign_issues',
+            width: 140,
+            render: (val, row) => {
+                const accessOff = !row.can_access_issues
+                return (
+                    <Switch
+                        checked={!accessOff && !!val}
+                        disabled={
+                            !row.is_active ||
+                            accessOff ||
+                            updateMutation.isPending
+                        }
+                        onChange={(checked) =>
+                            handleToggle(row, 'can_assign_issues', checked)
                         }
                     />
                 )
@@ -473,12 +559,23 @@ function TaskAccessByGroupTab() {
                 kind === 'access' ? checked : !!current?.can_access_tasks_default,
             can_assign_tasks_default:
                 kind === 'assign' ? checked : !!current?.can_assign_tasks_default,
+            can_access_issues_default:
+                kind === 'access_issues'
+                    ? checked
+                    : !!current?.can_access_issues_default,
+            can_assign_issues_default:
+                kind === 'assign_issues'
+                    ? checked
+                    : !!current?.can_assign_issues_default,
         }
         // Invariant — assign requires access. Mirror what the
         // backend enforces so the client-side toast feels accurate
-        // before the refetch lands.
+        // before the refetch lands. Applied independently per scope.
         if (!data.can_access_tasks_default) {
             data.can_assign_tasks_default = false
+        }
+        if (!data.can_access_issues_default) {
+            data.can_assign_issues_default = false
         }
         upsertPermMutation.mutate({ groupId: group.id, data })
     }
@@ -491,6 +588,10 @@ function TaskAccessByGroupTab() {
                     ...g,
                     can_access_tasks_default: !!perm?.can_access_tasks_default,
                     can_assign_tasks_default: !!perm?.can_assign_tasks_default,
+                    can_access_issues_default:
+                        !!perm?.can_access_issues_default,
+                    can_assign_issues_default:
+                        !!perm?.can_assign_issues_default,
                 }
             }),
         [groups, permByGroupId]
@@ -541,6 +642,39 @@ function TaskAccessByGroupTab() {
                         onClick={(_, e) => e?.stopPropagation?.()}
                         onChange={(checked) =>
                             handleDefaultToggle(row, 'assign', checked)
+                        }
+                    />
+                )
+            },
+        },
+        {
+            title: 'Access Issues',
+            dataIndex: 'can_access_issues_default',
+            width: 140,
+            render: (val, row) => (
+                <Switch
+                    checked={!!val}
+                    disabled={upsertPermMutation.isPending}
+                    onClick={(_, e) => e?.stopPropagation?.()}
+                    onChange={(checked) =>
+                        handleDefaultToggle(row, 'access_issues', checked)
+                    }
+                />
+            ),
+        },
+        {
+            title: 'Assign Issues',
+            dataIndex: 'can_assign_issues_default',
+            width: 140,
+            render: (val, row) => {
+                const accessOff = !row.can_access_issues_default
+                return (
+                    <Switch
+                        checked={!accessOff && !!val}
+                        disabled={accessOff || upsertPermMutation.isPending}
+                        onClick={(_, e) => e?.stopPropagation?.()}
+                        onChange={(checked) =>
+                            handleDefaultToggle(row, 'assign_issues', checked)
                         }
                     />
                 )
