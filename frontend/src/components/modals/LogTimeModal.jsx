@@ -21,6 +21,7 @@ import {
 import HoursMinutesPicker from '../common/HoursMinutesPicker'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
+import { typeMeta } from '../../utils/workItemType'
 import {
     customerService,
     projectService,
@@ -195,9 +196,10 @@ function LogTimeModal({
             setStep(2)
             const title = prefillTask.title || ''
             const body = prefillTask.description || ''
+            const tLabel = typeMeta(prefillTask.task_type).singular
             const description = body
-                ? `Task: ${title}\n\n${body}`
-                : `Task: ${title}`
+                ? `${tLabel}: ${title}\n\n${body}`
+                : `${tLabel}: ${title}`
             const dateValue = prefillTask.scheduled_date
                 ? dayjs(prefillTask.scheduled_date)
                 : initialDate

@@ -11,7 +11,8 @@
  * =============================================================================
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
     Avatar,
     Button,
@@ -155,6 +156,35 @@ function TasksPage() {
     const [taskQuickFilter, setTaskQuickFilter] = useState(null)
     // Admin-only user selector (Time Entry parity). null → current user.
     const [selectedUserId, setSelectedUserId] = useState(null)
+
+    // Deep link from notification e-mails: /tasks?item=<id>&type=<type>.
+    // Switch to the item's type tab and open its Review modal, then strip
+    // the params so a refresh doesn't re-open it.
+    const [searchParams, setSearchParams] = useSearchParams()
+    useEffect(() => {
+        const itemId = searchParams.get('item')
+        const itemType = searchParams.get('type')
+        if (
+            itemType &&
+            ['task', 'issue', 'suggestion'].includes(itemType)
+        ) {
+            setTaskType(itemType)
+        }
+        if (itemId) {
+            taskService
+                .getById(itemId)
+                .then((t) => {
+                    if (t) setReviewTask(t)
+                })
+                .catch(() => {})
+            const next = new URLSearchParams(searchParams)
+            next.delete('item')
+            next.delete('type')
+            setSearchParams(next, { replace: true })
+        }
+        // Run once on mount.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     // Permission scope follows the active work-item type: issues +
     // suggestions share the 'issue' scope, separate from tasks.

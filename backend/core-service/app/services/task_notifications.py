@@ -22,7 +22,7 @@ import html
 import logging
 import os
 from typing import Dict, List, Optional, Sequence
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import httpx
 
@@ -261,7 +261,7 @@ def _task_card_html(task: dict) -> str:
     )
 
 
-def _cta_button(app_base_url: str) -> str:
+def _cta_button(task: dict, app_base_url: str) -> str:
     base = (app_base_url or "").rstrip("/")
     if not base:
         return ""
@@ -273,24 +273,40 @@ def _cta_button(app_base_url: str) -> str:
             return ""
     except Exception:  # noqa: BLE001
         return ""
-    link = f"{base}/tasks"
+    ttype = _ttype(task)
+    item_id = task.get("id")
+    # Deep link straight to the item; the Tasks page opens it on arrival.
+    if item_id:
+        link = (
+            f"{base}/tasks?item={quote(str(item_id))}&type={quote(ttype)}"
+        )
+    else:
+        link = f"{base}/tasks?type={quote(ttype)}"
+    label = _TYPE_ACC[ttype].capitalize() + " Görüntüle"
     return (
         '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" '
         'style="margin:24px 0 4px;"><tr><td align="center">'
         '<a href="' + _esc(link) + '" '
         'style="display:inline-block;background:' + _BLUE + ';color:#ffffff;'
         'text-decoration:none;font-weight:600;font-size:14px;'
-        'padding:12px 30px;border-radius:10px;">Görevi Görüntüle</a>'
+        'padding:12px 30px;border-radius:10px;">' + _esc(label) + '</a>'
         '</td></tr></table>'
     )
 
 
-def _shell(title_line: str, intro_html: str, body_html: str, app_base_url: str) -> str:
+def _shell(
+    title_line: str,
+    intro_html: str,
+    body_html: str,
+    app_base_url: str,
+    task: Optional[dict] = None,
+) -> str:
     """Wrap content in the branded Hermes dark-mode e-mail shell.
 
     Table-based + fully inline-styled so it renders consistently across mail
     clients (Outlook included). The logo is referenced as a cid: inline image
-    embedded by the sender (see _logo_inline_images)."""
+    embedded by the sender (see _logo_inline_images). `task` drives the CTA's
+    type-aware label + deep link."""
     return (
         '<div style="margin:0;padding:0;background:' + _BG + ';">'
         '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" '
@@ -318,7 +334,7 @@ def _shell(title_line: str, intro_html: str, body_html: str, app_base_url: str) 
         '<tr><td style="background:' + _CARD + ';padding:26px 28px 28px;">'
         + intro_html
         + body_html
-        + _cta_button(app_base_url)
+        + _cta_button(task or {}, app_base_url)
         + '</td></tr>'
         # Footer
         '<tr><td style="padding:18px 28px;background:' + _SURFACE_DEEP + ';'
@@ -361,6 +377,7 @@ def _assignee_email_html(task: dict, assigner_name: str, app_base_url: str) -> s
         intro,
         _task_card_html(task),
         app_base_url,
+        task,
     )
 
 
@@ -377,6 +394,7 @@ def _assigner_single_email_html(
         intro,
         _task_card_html(task),
         app_base_url,
+        task,
     )
 
 
@@ -394,7 +412,7 @@ def _status_assignee_email_html(task: dict, event: str, app_base_url: str) -> st
         intro = _intro(
             "Aşağıdaki " + acc + " <strong>başarıyla tamamladınız</strong>:"
         )
-    return _shell(title_line, intro, _task_card_html(task), app_base_url)
+    return _shell(title_line, intro, _task_card_html(task), app_base_url, task)
 
 
 def _status_assigner_email_html(
@@ -417,7 +435,7 @@ def _status_assigner_email_html(
             who + ", verdiğiniz aşağıdaki " + acc + " "
             "<strong>başarıyla tamamladı</strong>:"
         )
-    return _shell(title_line, intro, _task_card_html(task), app_base_url)
+    return _shell(title_line, intro, _task_card_html(task), app_base_url, task)
 
 
 def _assigner_group_email_html(
@@ -437,6 +455,7 @@ def _assigner_group_email_html(
         intro,
         _task_card_html(sample_task),
         app_base_url,
+        sample_task,
     )
 
 

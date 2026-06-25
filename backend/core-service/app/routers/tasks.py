@@ -92,6 +92,7 @@ def _notif_payload(resp) -> dict:
         return value.strftime("%d.%m.%Y") if value else None
 
     return {
+        "id": str(resp.id),
         "task_code": resp.task_code,
         "task_type": resp.task_type,
         "title": resp.title,

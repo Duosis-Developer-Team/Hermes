@@ -463,7 +463,7 @@ function TaskReviewModal({
                                             disabled={actionLoading}
                                             onClick={() => setConfirmType('accept')}
                                         >
-                                            Accept Task
+                                            Accept {N}
                                         </Button>
                                     ) : (
                                         <Button
@@ -481,7 +481,7 @@ function TaskReviewModal({
                                         disabled={actionLoading}
                                         onClick={() => setConfirmType('reject')}
                                     >
-                                        Reject Task
+                                        Reject {N}
                                     </Button>
                                 </>
                             )}
