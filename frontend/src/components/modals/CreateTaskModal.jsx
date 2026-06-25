@@ -396,7 +396,7 @@ function CreateTaskModal({
                 <Form.Item
                     label="Sub Project"
                     name="sub_project_id"
-                    extra="Optional — leave empty to create the task directly under the project."
+                    extra={`Optional — leave empty to create the ${typeLabel.toLowerCase()} directly under the project.`}
                 >
                     <Select
                         allowClear
@@ -515,7 +515,7 @@ function CreateTaskModal({
                 >
                     <Input.TextArea
                         rows={4}
-                        placeholder="Task instructions and context for the assignee"
+                        placeholder={`${typeLabel} instructions and context for the assignee`}
                     />
                 </Form.Item>
 

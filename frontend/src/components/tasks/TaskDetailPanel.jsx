@@ -153,6 +153,7 @@ function TaskDetailPanel({
                             <div className="tdp-tab-body">
                                 <ActivityTimeline
                                     taskId={task.id}
+                                    taskType={task.task_type}
                                     userMap={userMap}
                                 />
                             </div>

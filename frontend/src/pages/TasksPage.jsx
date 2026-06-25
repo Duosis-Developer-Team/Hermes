@@ -51,6 +51,7 @@ import {
 } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
+import { typeMeta } from '../utils/workItemType'
 import TasksListView from '../components/tasks/TasksListView'
 import TasksBoardView from '../components/tasks/TasksBoardView'
 import TaskDetailPanel from '../components/tasks/TaskDetailPanel'
@@ -370,28 +371,34 @@ function TasksPage() {
     const createMutation = useMutation({
         mutationFn: (data) => taskService.create(data),
         onSuccess: () => {
-            message.success('Task created successfully.')
+            message.success(`${typeMeta(createType).singular} created successfully.`)
             queryClient.invalidateQueries({ queryKey: ['tasks'] })
             queryClient.invalidateQueries({ queryKey: ['task-activity'] })
             setCreateOpen(false)
             setEditingTask(null)
         },
         onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to create task.')
+            message.error(
+                err?.response?.data?.detail ||
+                    `Failed to create ${typeMeta(createType).lower}.`
+            )
         },
     })
 
     const updateMutation = useMutation({
         mutationFn: ({ id, data }) => taskService.update(id, data),
         onSuccess: () => {
-            message.success('Task updated.')
+            message.success(`${typeMeta(createType).singular} updated.`)
             queryClient.invalidateQueries({ queryKey: ['tasks'] })
             queryClient.invalidateQueries({ queryKey: ['task-activity'] })
             setCreateOpen(false)
             setEditingTask(null)
         },
         onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to update task.')
+            message.error(
+                err?.response?.data?.detail ||
+                    `Failed to update ${typeMeta(createType).lower}.`
+            )
         },
     })
 
@@ -399,9 +406,11 @@ function TasksPage() {
         mutationFn: (data) => taskService.createForGroup(data),
         onSuccess: (res) => {
             const count = Array.isArray(res?.tasks) ? res.tasks.length : 0
-            message.success(
-                `${count} task${count === 1 ? '' : 's'} created for the group.`
-            )
+            const noun =
+                count === 1
+                    ? typeMeta(createType).lower
+                    : typeMeta(createType).lowerPlural
+            message.success(`${count} ${noun} created for the group.`)
             queryClient.invalidateQueries({ queryKey: ['tasks'] })
             queryClient.invalidateQueries({ queryKey: ['task-activity'] })
             setCreateOpen(false)
@@ -409,19 +418,22 @@ function TasksPage() {
         },
         onError: (err) => {
             message.error(
-                err?.response?.data?.detail || 'Failed to create group tasks.'
+                err?.response?.data?.detail ||
+                    `Failed to create group ${typeMeta(createType).lowerPlural}.`
             )
         },
     })
 
-    // Multi-assignee create — one task per selected user / group member.
+    // Multi-assignee create — one item per selected user / group member.
     const createBulkMutation = useMutation({
         mutationFn: (data) => taskService.createBulk(data),
         onSuccess: (tasks) => {
             const count = Array.isArray(tasks) ? tasks.length : 0
-            message.success(
-                `${count} task${count === 1 ? '' : 's'} created.`
-            )
+            const noun =
+                count === 1
+                    ? typeMeta(createType).lower
+                    : typeMeta(createType).lowerPlural
+            message.success(`${count} ${noun} created.`)
             queryClient.invalidateQueries({ queryKey: ['tasks'] })
             queryClient.invalidateQueries({ queryKey: ['task-activity'] })
             setCreateOpen(false)
@@ -429,7 +441,8 @@ function TasksPage() {
         },
         onError: (err) => {
             message.error(
-                err?.response?.data?.detail || 'Failed to create tasks.'
+                err?.response?.data?.detail ||
+                    `Failed to create ${typeMeta(createType).lowerPlural}.`
             )
         },
     })
@@ -1116,6 +1129,7 @@ function TasksPage() {
                     userMap={userMap}
                     currentUserId={user?.id}
                     isAdmin={isTaskAdmin}
+                    taskType={taskType}
                     onEditTask={handleEdit}
                     onDeleteTask={(t) => setDeletingTask(t)}
                     onOpenReview={handleOpenReview}
@@ -1133,6 +1147,7 @@ function TasksPage() {
                     userMap={userMap}
                     currentUserId={user?.id}
                     isAdmin={isTaskAdmin}
+                    taskType={taskType}
                     onEditTask={handleEdit}
                     onDeleteTask={(t) => setDeletingTask(t)}
                     onOpenReview={handleOpenReview}
@@ -1318,10 +1333,10 @@ function TasksPage() {
                         </div>
                         <div>
                             <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--c-text-strong)' }}>
-                                Delete Task
+                                Delete {typeMeta(deletingTask?.task_type).singular}
                             </div>
                             <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 2 }}>
-                                The task will be archived and removed from the calendar.
+                                The {typeMeta(deletingTask?.task_type).lower} will be archived and removed from the board.
                             </div>
                         </div>
                     </div>

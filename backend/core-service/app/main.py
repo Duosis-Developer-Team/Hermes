@@ -401,6 +401,102 @@ def _migrate_tasks_task_type() -> None:
         db.close()
 
 
+def _migrate_tasks_type_number() -> None:
+    """
+    Per-type sequential numbering: each work-item type gets its OWN counter
+    (TASK-1, ISSUE-1, SUGGESTION-1 …), independent of the global task_number.
+
+    - adds tasks.type_number
+    - one sequence per type
+    - a BEFORE INSERT trigger fills type_number from the right sequence based
+      on task_type, so every insert path stays collision-free
+    - one-time backfill of existing rows (per type, by creation order) +
+      sequence alignment; the backfill is skipped once the trigger exists, so
+      re-runs never renumber or move a sequence backward.
+    Safe to re-run.
+    """
+    from sqlalchemy import text
+
+    seqs = {
+        "task": "tasks_type_seq_task",
+        "issue": "tasks_type_seq_issue",
+        "suggestion": "tasks_type_seq_suggestion",
+    }
+
+    db = SessionLocal()
+    try:
+        db.execute(text(
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS type_number BIGINT"
+        ))
+        for seq in seqs.values():
+            db.execute(text(f"CREATE SEQUENCE IF NOT EXISTS {seq}"))
+        db.execute(text(
+            "CREATE INDEX IF NOT EXISTS idx_tasks_type_number "
+            "ON tasks(type_number)"
+        ))
+
+        trigger_exists = db.execute(text(
+            "SELECT 1 FROM pg_trigger WHERE tgname = 'trg_assign_type_number'"
+        )).first() is not None
+
+        if not trigger_exists:
+            # One-time backfill: number existing rows per type by creation
+            # order, then align each sequence so the next insert continues.
+            db.execute(text(
+                "WITH numbered AS ("
+                "  SELECT id, row_number() OVER ("
+                "    PARTITION BY task_type ORDER BY task_number, created_at, id"
+                "  ) AS rn FROM tasks"
+                ") UPDATE tasks t SET type_number = n.rn "
+                "FROM numbered n WHERE t.id = n.id AND t.type_number IS NULL"
+            ))
+            for typ, seq in seqs.items():
+                mx = int(db.execute(
+                    text(
+                        "SELECT COALESCE(MAX(type_number), 0) FROM tasks "
+                        "WHERE task_type = :t"
+                    ),
+                    {"t": typ},
+                ).scalar() or 0)
+                if mx > 0:
+                    # next nextval → mx + 1
+                    db.execute(
+                        text(f"SELECT setval('{seq}', :v, true)"), {"v": mx}
+                    )
+                else:
+                    # no rows yet → first nextval returns 1
+                    db.execute(text(f"SELECT setval('{seq}', 1, false)"))
+
+        db.execute(text(
+            "CREATE OR REPLACE FUNCTION assign_task_type_number() "
+            "RETURNS trigger AS $$ BEGIN "
+            "  IF NEW.type_number IS NULL THEN "
+            "    IF NEW.task_type = 'issue' THEN "
+            "      NEW.type_number := nextval('tasks_type_seq_issue'); "
+            "    ELSIF NEW.task_type = 'suggestion' THEN "
+            "      NEW.type_number := nextval('tasks_type_seq_suggestion'); "
+            "    ELSE "
+            "      NEW.type_number := nextval('tasks_type_seq_task'); "
+            "    END IF; "
+            "  END IF; "
+            "  RETURN NEW; "
+            "END; $$ LANGUAGE plpgsql"
+        ))
+        db.execute(text(
+            "DROP TRIGGER IF EXISTS trg_assign_type_number ON tasks"
+        ))
+        db.execute(text(
+            "CREATE TRIGGER trg_assign_type_number BEFORE INSERT ON tasks "
+            "FOR EACH ROW EXECUTE PROCEDURE assign_task_type_number()"
+        ))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"⚠️  tasks.type_number migration hatası: {e}")
+    finally:
+        db.close()
+
+
 def _migrate_issue_scope_permissions() -> None:
     """
     Idempotent additive migration for the issue/suggestion permission scope:
@@ -573,6 +669,7 @@ async def lifespan(app: FastAPI):
     _migrate_meetings_schema()
     _migrate_tasks_status_event_timestamps()
     _migrate_tasks_task_type()
+    _migrate_tasks_type_number()
     _migrate_issue_scope_permissions()
     yield
     print(f"👋 {settings.SERVICE_NAME} kapatılıyor...")

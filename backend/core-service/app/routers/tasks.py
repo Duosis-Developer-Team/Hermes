@@ -136,11 +136,10 @@ _CODE_PREFIX = {"task": "TASK", "issue": "ISSUE", "suggestion": "SUGGESTION"}
 
 def _serialize_task(task: Task) -> TaskResponse:
     prefix = _CODE_PREFIX.get(task.task_type or "task", "TASK")
-    task_code = (
-        f"{prefix}-{task.task_number}"
-        if task.task_number is not None
-        else None
-    )
+    # Per-type number drives the visible code (ISSUE-1, SUGGESTION-1 …);
+    # fall back to the global task_number only if a row predates the backfill.
+    number = task.type_number if task.type_number is not None else task.task_number
+    task_code = f"{prefix}-{number}" if number is not None else None
     return TaskResponse(
         id=task.id,
         task_number=task.task_number,

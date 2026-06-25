@@ -40,6 +40,7 @@ import {
 } from '@dnd-kit/core'
 
 import TaskCard from './TaskCard'
+import { typeMeta } from '../../utils/workItemType'
 import './TasksBoardView.css'
 
 const COLUMNS = [
@@ -113,6 +114,7 @@ function TasksBoardView({
     userMap = {},
     currentUserId,
     isAdmin = false,
+    taskType = 'task',
     onEditTask,
     onDeleteTask,
     onOpenReview,
@@ -285,7 +287,7 @@ function TasksBoardView({
                     <div className="tasks-board-swimlanes" role="table">
                         {swimlanes.length === 0 ? (
                             <div className="tasks-board-column-empty">
-                                No tasks
+                                No {typeMeta(taskType).lowerPlural}
                             </div>
                         ) : (
                             <>
@@ -364,7 +366,7 @@ function TasksBoardView({
                                     <DroppableColumn id={status}>
                                         {list.length === 0 ? (
                                             <div className="tasks-board-column-empty">
-                                                No tasks
+                                                No {typeMeta(taskType).lowerPlural}
                                             </div>
                                         ) : (
                                             list.map(renderCard)

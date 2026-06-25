@@ -1319,7 +1319,11 @@ def search_tasks_for_user(
         digits = "".join(ch for ch in needle if ch.isdigit())
         if digits:
             try:
-                text_clauses.append(Task.task_number == int(digits))
+                n = int(digits)
+                # Match either the visible per-type number (ISSUE-1) or the
+                # legacy global number.
+                text_clauses.append(Task.type_number == n)
+                text_clauses.append(Task.task_number == n)
             except ValueError:
                 pass
         query = query.filter(or_(*text_clauses))

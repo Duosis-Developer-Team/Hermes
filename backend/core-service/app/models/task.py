@@ -252,6 +252,13 @@ class Task(Base):
         index=True,
     )
 
+    # Per-type sequential number (TASK-1, ISSUE-1, SUGGESTION-1 …). Each
+    # work-item type has its OWN counter, independent of task_number above
+    # (which stays a global id). Filled by a BEFORE INSERT trigger keyed on
+    # task_type (see _migrate_tasks_type_number) so every insert path —
+    # single, group fan-out, bulk — gets a collision-free per-type number.
+    type_number = Column(BigInteger, nullable=True, index=True)
+
     customer_id = Column(
         UUID(as_uuid=True),
         ForeignKey("customers.id", ondelete="RESTRICT"),

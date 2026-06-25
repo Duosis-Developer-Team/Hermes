@@ -26,6 +26,7 @@ import {
 } from '@ant-design/icons'
 
 import { TaskDueBadge } from './TaskCard'
+import { typeMeta } from '../../utils/workItemType'
 
 const PRIORITY_RANK = { low: 0, medium: 1, high: 2, urgent: 3 }
 
@@ -63,6 +64,7 @@ function TasksListView({
     userMap = {},
     currentUserId,
     isAdmin = false,
+    taskType = 'task',
     onEditTask,
     onDeleteTask,
     onOpenReview,
@@ -115,11 +117,11 @@ function TasksListView({
                         title={
                             canToggle
                                 ? isCompleted
-                                    ? 'Reopen task'
+                                    ? `Reopen ${typeMeta(record.task_type).lower}`
                                     : record.status === 'pending'
-                                        ? 'Accept task (move to In Progress)'
+                                        ? `Accept ${typeMeta(record.task_type).lower} (move to In Progress)`
                                         : 'Mark as completed'
-                                : 'Only the assignee can change task status — from their My Tasks view'
+                                : `Only the assignee can change ${typeMeta(record.task_type).lower} status — from their My ${typeMeta(record.task_type).plural} view`
                         }
                     >
                         <Checkbox
@@ -256,7 +258,7 @@ function TasksListView({
                                 />
                             </Tooltip>
                         )}
-                        <Tooltip title="Review Task">
+                        <Tooltip title={`Review ${typeMeta(record.task_type).singular}`}>
                             <Button
                                 size="small"
                                 icon={<EyeOutlined />}
@@ -297,7 +299,9 @@ function TasksListView({
                 record.status === 'completed' ? 'task-row-completed' : ''
             }
             pagination={{ pageSize: 20 }}
-            locale={{ emptyText: 'No tasks for the selected filters.' }}
+            locale={{
+                emptyText: `No ${typeMeta(taskType).lowerPlural} for the selected filters.`,
+            }}
         />
     )
 }

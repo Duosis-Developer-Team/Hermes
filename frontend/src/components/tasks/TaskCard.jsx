@@ -28,6 +28,7 @@ import {
     FieldTimeOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import { typeMeta } from '../../utils/workItemType'
 import './TaskCard.css'
 
 function userLabel(id, userMap) {
@@ -171,11 +172,11 @@ function TaskCard({
                 title={
                     canToggleCompletion
                         ? isCompleted
-                            ? 'Reopen task'
+                            ? `Reopen ${typeMeta(task.task_type).lower}`
                             : task.status === 'pending'
-                                ? 'Accept task (move to In Progress)'
+                                ? `Accept ${typeMeta(task.task_type).lower} (move to In Progress)`
                                 : 'Mark as completed'
-                        : 'Only the assignee can change task status — from their My Tasks view'
+                        : `Only the assignee can change ${typeMeta(task.task_type).lower} status — from their My ${typeMeta(task.task_type).plural} view`
                 }
             >
                 <Checkbox
@@ -246,7 +247,7 @@ function TaskCard({
                         </button>
                     </Tooltip>
                 )}
-                <Tooltip title="Review Task">
+                <Tooltip title={`Review ${typeMeta(task.task_type).singular}`}>
                     <button
                         type="button"
                         className="task-card-action-btn"

@@ -19,6 +19,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { taskService } from '../../services/api'
 import { TaskDueBadge } from './TaskCard'
+import { typeMeta } from '../../utils/workItemType'
 import './TasksSearchBar.css'
 
 function userLabel(id, userMap) {
@@ -89,7 +90,7 @@ function TasksSearchBar({ userMap = {}, onSelect, style, taskType = 'task' }) {
                 size="small"
                 allowClear
                 prefix={<SearchOutlined style={{ color: 'var(--c-text-muted)' }} />}
-                placeholder="Search tasks..."
+                placeholder={`Search ${typeMeta(taskType).lowerPlural}...`}
                 value={text}
                 onFocus={() => setOpen(true)}
                 onChange={(e) => {

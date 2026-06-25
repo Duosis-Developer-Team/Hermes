@@ -33,6 +33,7 @@ import dayjs from 'dayjs'
 
 import DangerConfirmModal from '../common/DangerConfirmModal'
 import { taskService } from '../../services/api'
+import { typeMeta } from '../../utils/workItemType'
 import TaskCommentsThread from '../tasks/TaskCommentsThread'
 import './TaskReviewModal.css'
 
@@ -94,22 +95,22 @@ const STATUS_HUMAN = {
     cancelled: 'cancelled',
 }
 
-function describeActivityEvent(event) {
+function describeActivityEvent(event, noun = 'task') {
     const t = event?.event_type
     const d = event?.event_data || {}
     switch (t) {
         case 'task_created':
-            return 'created the task'
+            return `created the ${noun}`
         case 'task_updated':
-            return 'updated the task'
+            return `updated the ${noun}`
         case 'task_completed':
-            return 'marked the task as completed'
+            return `marked the ${noun} as completed`
         case 'task_rejected':
-            return 'rejected the task'
+            return `rejected the ${noun}`
         case 'task_reopened':
-            return 'reopened the task'
+            return `reopened the ${noun}`
         case 'task_deleted':
-            return 'deleted the task'
+            return `deleted the ${noun}`
         case 'task_status_changed':
             return `changed status to ${STATUS_HUMAN[d.to] || d.to || 'unknown'}`
         case 'comment_added':
@@ -133,7 +134,8 @@ function describeActivityEvent(event) {
     }
 }
 
-export function ActivityTimeline({ taskId, userMap }) {
+export function ActivityTimeline({ taskId, userMap, taskType = 'task' }) {
+    const noun = typeMeta(taskType).lower
     const { data: events = [], isLoading } = useQuery({
         queryKey: ['task-activity', taskId],
         queryFn: () => taskService.listActivity(taskId),
@@ -166,7 +168,7 @@ export function ActivityTimeline({ taskId, userMap }) {
                                 {userLabel(e.actor_user_id, userMap)}
                             </span>{' '}
                             <span className="task-activity-text">
-                                {describeActivityEvent(e)}
+                                {describeActivityEvent(e, noun)}
                             </span>
                         </div>
                         <div
@@ -214,6 +216,11 @@ function TaskReviewModal({
 
     if (!task) return null
 
+    // Type-aware nouns so copy reads "Issue"/"Suggestion" where relevant.
+    const tMeta = typeMeta(task.task_type)
+    const N = tMeta.singular // Task | Issue | Suggestion
+    const n = tMeta.lower // task | issue | suggestion
+
     const status = task.status
     const isCompleted = status === 'completed'
     const isRejected = status === 'rejected'
@@ -226,17 +233,17 @@ function TaskReviewModal({
             tone: 'primary',
             badgeIcon: <PlayCircleOutlined />,
             confirmIcon: <PlayCircleOutlined />,
-            title: 'Accept this task?',
-            body: 'The task will move to In Progress so you can start working on it.',
-            confirmLabel: 'Accept Task',
+            title: `Accept this ${n}?`,
+            body: `The ${n} will move to In Progress so you can start working on it.`,
+            confirmLabel: `Accept ${N}`,
             action: onAccept,
         },
         complete: {
             tone: 'primary',
             badgeIcon: <CheckCircleOutlined />,
             confirmIcon: <CheckCircleOutlined />,
-            title: 'Mark task as completed?',
-            body: 'This marks the task as completed. You can reopen it afterwards if needed.',
+            title: `Mark ${n} as completed?`,
+            body: `This marks the ${n} as completed. You can reopen it afterwards if needed.`,
             confirmLabel: 'Mark as Completed',
             action: onMarkCompleted,
         },
@@ -244,19 +251,19 @@ function TaskReviewModal({
             tone: 'danger',
             badgeIcon: <ExclamationCircleOutlined />,
             confirmIcon: <CloseCircleOutlined />,
-            title: 'Reject task?',
-            body: 'This will mark the task as not completed. Are you sure you want to continue?',
-            confirmLabel: 'Reject Task',
+            title: `Reject ${n}?`,
+            body: `This will mark the ${n} as not completed. Are you sure you want to continue?`,
+            confirmLabel: `Reject ${N}`,
             action: onReject,
         },
         reopen: {
             tone: 'primary',
             badgeIcon: <UndoOutlined />,
             confirmIcon: <UndoOutlined />,
-            title: 'Reopen this task?',
+            title: `Reopen this ${n}?`,
             body: isCompleted
-                ? 'The task will move back to In Progress so it can be worked on again.'
-                : 'The task will move back to Pending so it can be re-accepted.',
+                ? `The ${n} will move back to In Progress so it can be worked on again.`
+                : `The ${n} will move back to Pending so it can be re-accepted.`,
             confirmLabel: 'Reopen',
             action: onReopen,
         },
@@ -275,7 +282,7 @@ function TaskReviewModal({
                 title={
                     task.task_code
                         ? `${task.task_code} · ${task.title}`
-                        : `Review Task · ${task.title}`
+                        : `Review ${N} · ${task.title}`
                 }
                 open={open}
                 onCancel={onClose}
@@ -415,6 +422,7 @@ function TaskReviewModal({
                                         <ActivityTimeline
                                             taskId={task.id}
                                             userMap={userMap}
+                                            taskType={task.task_type}
                                         />
                                     </div>
                                 ),
