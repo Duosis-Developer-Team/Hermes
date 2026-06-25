@@ -184,9 +184,11 @@ async def get_my_task_permissions(
         assign = task_service.can_assign(db, current_user, scope)
         user_ids: List[UUID] = []
         group_ids: List[UUID] = []
-        # Admins target anyone — the frontend fetches all active users /
-        # groups directly. Non-admins are scoped to their explicit mappings.
-        if assign and not is_admin:
+        # The assignee picker is hierarchy-driven for EVERYONE (admins
+        # included): you can only assign to users/groups explicitly mapped
+        # to you in this scope. Admins are not exempt — they appear here
+        # with their own assignment-relation mappings, same as anyone else.
+        if assign:
             user_ids = task_service.get_assignable_user_ids(
                 db, current_user, scope
             )
@@ -240,25 +242,19 @@ async def list_assignable_groups(
 
     from ..models.user_group import UserGroup
 
-    if task_service.is_task_admin(current_user):
-        groups = (
-            db.query(UserGroup)
-            .filter(UserGroup.is_active.is_(True))
-            .order_by(UserGroup.name.asc())
-            .all()
-        )
-    else:
-        if not task_service.can_assign(db, current_user, scope):
-            return []
-        ids = task_service.get_assignable_group_ids(db, current_user, scope)
-        if not ids:
-            return []
-        groups = (
-            db.query(UserGroup)
-            .filter(UserGroup.id.in_(ids), UserGroup.is_active.is_(True))
-            .order_by(UserGroup.name.asc())
-            .all()
-        )
+    # Hierarchy-driven for everyone, admins included: only groups the caller
+    # is explicitly mapped to (assigner → group) in this scope.
+    if not task_service.can_assign(db, current_user, scope):
+        return []
+    ids = task_service.get_assignable_group_ids(db, current_user, scope)
+    if not ids:
+        return []
+    groups = (
+        db.query(UserGroup)
+        .filter(UserGroup.id.in_(ids), UserGroup.is_active.is_(True))
+        .order_by(UserGroup.name.asc())
+        .all()
+    )
 
     # Compute active member counts in a single grouped query.
     from sqlalchemy import func as _func

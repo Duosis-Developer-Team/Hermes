@@ -171,6 +171,13 @@ function TasksPage() {
     const scopeLabel = (s) =>
         s.value === 'my-tasks' ? `My ${activeTypeMeta.label}` : s.label
 
+    // The Create modal must use the scope of the kind BEING CREATED (the
+    // "+" menu choice), which can differ from the kind currently viewed —
+    // e.g. "+ New Issue" while on the Tasks tab. Assignee options are
+    // hierarchy-driven, so this must follow createType, not taskType.
+    const createScope = createType === 'task' ? 'task' : 'issue'
+    const createPerms = scopes?.[createScope] || {}
+
     // "Assigned by Me" requires assign permission (in the active scope) or admin.
     const canViewAssignedByMe = isTaskAdmin || canAssignScope
     // If permission is revoked while the page is open and the user is on
@@ -1179,7 +1186,7 @@ function TasksPage() {
                 initialDate={initialDate}
                 editingTask={editingTask}
                 taskType={createType}
-                assignableUserIds={assignableUserIds}
+                assignableUserIds={createPerms.assignableUserIds || []}
                 isAdmin={isTaskAdmin}
                 loading={
                     createMutation.isPending ||

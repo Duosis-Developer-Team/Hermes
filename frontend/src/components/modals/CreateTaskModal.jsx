@@ -150,17 +150,22 @@ function CreateTaskModal({
     // Resolve assignee user list:
     // - Admin: fetch all active users directly from auth-service.
     // - Non-admin: backend gave us assignable user IDs; resolve names via lookup.
-    const { data: allActiveUsers = [] } = useQuery({
-        queryKey: ['auth-users-lookup', { include_inactive: false }],
-        queryFn: () => authService.lookupUsers(),
-        enabled: open && isAdmin,
-        staleTime: 60 * 1000,
-    })
+    // Assignee options are hierarchy-driven for EVERYONE (admins included):
+    // resolve names for the user IDs mapped to the caller in this scope. In
+    // edit mode, also include the task's current assignee so its name shows
+    // even if it now sits outside the caller's mappings.
+    const lookupUserIds = useMemo(() => {
+        const ids = new Set((assignableUserIds || []).map(String))
+        if (editingTask?.assignee_user_id) {
+            ids.add(String(editingTask.assignee_user_id))
+        }
+        return Array.from(ids)
+    }, [assignableUserIds, editingTask])
 
     const { data: mappedUsers = [] } = useQuery({
-        queryKey: ['auth-users-lookup', { ids: assignableUserIds }],
-        queryFn: () => authService.lookupUsers({ ids: assignableUserIds }),
-        enabled: open && !isAdmin && assignableUserIds.length > 0,
+        queryKey: ['auth-users-lookup', { ids: lookupUserIds }],
+        queryFn: () => authService.lookupUsers({ ids: lookupUserIds }),
+        enabled: open && lookupUserIds.length > 0,
         staleTime: 60 * 1000,
     })
 
@@ -177,8 +182,7 @@ function CreateTaskModal({
     // - Edit mode: single-user only (no group rows).
     // - Create mode: Groups section (if any) + Users section.
     const assigneeOptions = useMemo(() => {
-        const userList = isAdmin ? allActiveUsers : mappedUsers
-        const userOptions = userList.map((u) => ({
+        const userOptions = mappedUsers.map((u) => ({
             value: `user:${u.id}`,
             label: u.full_name || u.email,
         }))
@@ -203,7 +207,7 @@ function CreateTaskModal({
                 options: userOptions,
             },
         ]
-    }, [isAdmin, allActiveUsers, mappedUsers, assignableGroups, editingTask])
+    }, [mappedUsers, assignableGroups, editingTask])
 
     useEffect(() => {
         // Clear the inline "new sub project" draft whenever the modal
@@ -346,10 +350,10 @@ function CreateTaskModal({
                 onFinish={handleFinish}
                 initialValues={{ priority: 'medium' }}
             >
-                {!isEditing && noAssignableUsers && !isAdmin && (
+                {!isEditing && noAssignableUsers && (
                     <Alert
                         type="warning"
-                        message="No assignable users are available. Please contact an administrator."
+                        message={`No assignable targets for ${typeLabel.toLowerCase()}s. Add them to your assignment hierarchy in Task Management (or ask an administrator).`}
                         showIcon
                         style={{ marginBottom: 16 }}
                     />
