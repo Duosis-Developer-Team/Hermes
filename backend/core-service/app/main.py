@@ -440,13 +440,21 @@ def _migrate_tasks_type_number() -> None:
         )).first() is not None
 
         if not trigger_exists:
-            # One-time backfill: number existing rows per type by creation
-            # order, then align each sequence so the next insert continues.
+            # One-time backfill. Existing tasks PRESERVE their current code:
+            # type_number = task_number, so TASK-56 stays TASK-56 (no churn
+            # for already-shared task codes). Issues + suggestions are brand
+            # new, so they get fresh per-type 1-based numbers by creation
+            # order. Sequences are aligned to each type's max below.
+            db.execute(text(
+                "UPDATE tasks SET type_number = task_number "
+                "WHERE task_type = 'task' AND type_number IS NULL"
+            ))
             db.execute(text(
                 "WITH numbered AS ("
                 "  SELECT id, row_number() OVER ("
                 "    PARTITION BY task_type ORDER BY task_number, created_at, id"
-                "  ) AS rn FROM tasks"
+                "  ) AS rn FROM tasks "
+                "  WHERE task_type IN ('issue', 'suggestion')"
                 ") UPDATE tasks t SET type_number = n.rn "
                 "FROM numbered n WHERE t.id = n.id AND t.type_number IS NULL"
             ))
