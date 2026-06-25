@@ -22,7 +22,6 @@ import { useMemo, useState } from 'react'
 import {
     Button,
     Input,
-    Segmented,
     Space,
     Switch,
     Table,
@@ -242,7 +241,6 @@ function AdditionalUsersSection({ users }) {
     const queryClient = useQueryClient()
     const [search, setSearch] = useState('')
     // all | access (has Access Tasks) | assign (has Assign Tasks)
-    const [accessFilter, setAccessFilter] = useState('all')
 
     const { data: permissionRows = [], isLoading: permsLoading } = useQuery({
         queryKey: ['admin-task-permissions'],
@@ -291,20 +289,18 @@ function AdditionalUsersSection({ users }) {
         [users, permByUserId]
     )
 
-    // Search + access filter so a 50-person org doesn't render as one
-    // long undifferentiated list. Combined with pagination below.
+    // Search so a 50-person org doesn't render as one long undifferentiated
+    // list. Combined with pagination below.
     const filteredRows = useMemo(() => {
         const term = search.trim().toLowerCase()
         return rows.filter((r) => {
-            if (accessFilter === 'access' && !r.can_access_tasks) return false
-            if (accessFilter === 'assign' && !r.can_assign_tasks) return false
             if (!term) return true
             return (
                 (r.full_name || '').toLowerCase().includes(term) ||
                 (r.email || '').toLowerCase().includes(term)
             )
         })
-    }, [rows, search, accessFilter])
+    }, [rows, search])
 
     const grantedCount = useMemo(
         () => rows.filter((r) => r.can_access_tasks).length,
@@ -416,13 +412,11 @@ function AdditionalUsersSection({ users }) {
                 </strong>
                 <div style={{ color: 'var(--c-text-muted)', fontSize: 12, marginTop: 2 }}>
                     People with task permissions outside any group.
-                    {grantedCount > 0 &&
-                        accessFilter === 'all' &&
-                        !search.trim() && (
-                            <span style={{ marginLeft: 6 }}>
-                                {grantedCount} currently granted.
-                            </span>
-                        )}
+                    {grantedCount > 0 && !search.trim() && (
+                        <span style={{ marginLeft: 6 }}>
+                            {grantedCount} currently granted.
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -441,15 +435,6 @@ function AdditionalUsersSection({ users }) {
                     onChange={(e) => setSearch(e.target.value)}
                     style={{ width: 300 }}
                 />
-                <Segmented
-                    value={accessFilter}
-                    onChange={setAccessFilter}
-                    options={[
-                        { label: 'All', value: 'all' },
-                        { label: 'With Access', value: 'access' },
-                        { label: 'Can Assign', value: 'assign' },
-                    ]}
-                />
             </Space>
 
             <Table
@@ -460,10 +445,9 @@ function AdditionalUsersSection({ users }) {
                 loading={permsLoading}
                 pagination={{ pageSize: 10, showSizeChanger: false, hideOnSinglePage: true }}
                 locale={{
-                    emptyText:
-                        search.trim() || accessFilter !== 'all'
-                            ? 'No users match the current search/filter.'
-                            : 'Everyone with access is already in a group.',
+                    emptyText: search.trim()
+                        ? 'No users match the current search.'
+                        : 'Everyone with access is already in a group.',
                 }}
             />
         </div>
