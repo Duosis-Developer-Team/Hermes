@@ -134,6 +134,40 @@
 }
 
 /* ==========================================================================
+   MOBILE RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 480px) {
+    .plan-time-modal .ant-modal-body {
+        padding: 14px !important;
+    }
+
+    /* Customer / Project side-by-side row stacks vertically
+       (Form.Item's own margin-bottom provides the vertical rhythm) */
+    .plan-time-form .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    /* Start/End Date + Start/End Time: 4 columns become a 2×2 grid —
+       two ~160px cells fit a 390px screen comfortably */
+    .plan-time-form .form-row.four-cols {
+        grid-template-columns: 1fr 1fr;
+        gap: 0 12px;
+    }
+
+    /* Footer buttons wrap and stretch instead of overflowing */
+    .plan-time-form .form-actions {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .plan-time-form .form-actions .ant-btn {
+        flex: 1 1 auto;
+    }
+}
+
+/* ==========================================================================
    TIME PICKER POPUP — Dark Theme
    Scoped via popupClassName="plan-time-picker-popup"
    ========================================================================== */

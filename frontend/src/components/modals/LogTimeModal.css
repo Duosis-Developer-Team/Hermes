@@ -228,6 +228,24 @@
         gap: 0;
     }
 
+    /* Stacked date/duration inputs span the full row
+       (DatePicker already carries inline width:100%; this is a guard) */
+    .form-row .ant-picker,
+    .form-row .ant-form-item {
+        width: 100%;
+    }
+
+    /* Long project names in the selected-issue header wrap instead of
+       pushing the modal wider */
+    .selected-issue-header {
+        flex-wrap: wrap;
+    }
+
+    .selected-issue-name {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
     /* Actions bar: stack checkbox above buttons */
     .form-actions {
         flex-direction: column;

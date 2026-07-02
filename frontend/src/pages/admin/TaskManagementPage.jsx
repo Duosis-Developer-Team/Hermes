@@ -221,7 +221,7 @@ function SubProjectsTab() {
                     gap: 8,
                 }}
             >
-                <Space wrap>
+                <Space wrap className="tm-sub-filters">
                     <Select
                         allowClear
                         showSearch
@@ -266,6 +266,7 @@ function SubProjectsTab() {
                 loading={isLoading}
                 locale={{ emptyText: 'No sub-projects found.' }}
                 pagination={{ pageSize: 20 }}
+                scroll={{ x: 'max-content' }}
             />
 
             <Modal

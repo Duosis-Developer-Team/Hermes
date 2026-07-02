@@ -83,3 +83,17 @@
     font-size: 11px;
     color: var(--c-text-muted);
 }
+
+/* ── Phones (≤480px) ─────────────────────────────────────────────────────
+   The decision footer (Accept / Mark as Completed / Reject / Reopen /
+   Close) already wraps via inline flex-wrap on its containers; these
+   rules make sure an individual button can never push past a 390px-wide
+   modal — long labels wrap inside the button instead of overflowing. */
+@media (max-width: 480px) {
+    .task-review-modal .ant-modal-body .ant-btn {
+        max-width: 100%;
+        white-space: normal;
+        height: auto;
+        min-height: 32px;
+    }
+}

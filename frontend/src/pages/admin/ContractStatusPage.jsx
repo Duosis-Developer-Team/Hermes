@@ -215,7 +215,7 @@ function ContractStatusPage() {
             </Row>
 
             {/* Filter Bar */}
-            <div style={{
+            <div className="contract-filter-bar" style={{
                 background: 'rgba(var(--overlay-rgb), 0.03)',
                 backdropFilter: 'blur(10px)',
                 padding: '16px 24px',
@@ -259,6 +259,7 @@ function ContractStatusPage() {
                     loading={isLoading}
                     pagination={{ pageSize: 10 }}
                     rowClassName="modern-row"
+                    scroll={{ x: 'max-content' }}
                     locale={{ emptyText: <div style={{ padding: 40, color: 'var(--c-text-faint)' }}>No contract data found. Add contract duration to your projects.</div> }}
                 />
             </Card>
@@ -345,6 +346,21 @@ function ContractStatusPage() {
                 }
                 .modern-search-input:focus {
                      box-shadow: none !important;
+                }
+
+                /* Mobile: filter bar stacks; the 350px search input
+                   flexes to the remaining row width instead. */
+                @media (max-width: 480px) {
+                    .contract-filter-bar {
+                        flex-direction: column;
+                        align-items: stretch;
+                        gap: 8px;
+                    }
+                    .contract-filter-bar .modern-search-input {
+                        width: auto !important;
+                        flex: 1 1 auto;
+                        min-width: 0;
+                    }
                 }
             `}</style>
         </div>

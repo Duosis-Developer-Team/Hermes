@@ -7,6 +7,15 @@
     min-width: 150px;
 }
 
+/* Phones: the header wraps (TasksPage.css ≤768px), so give the search
+   box its own full-width row instead of a squeezed 150px sliver. */
+@media (max-width: 480px) {
+    .tasks-search-wrapper {
+        width: 100%;
+        flex: 1 1 100%;
+    }
+}
+
 .tasks-search-panel {
     position: absolute;
     top: calc(100% + 4px);

@@ -332,7 +332,7 @@ function BillableHoursPage() {
         <div style={{ padding: '24px', maxWidth: 1400, margin: '0 auto', color: 'var(--c-text-strong)' }}>
 
             {/* Header Section */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
+            <div className="bh-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
                 <div>
                     <h1 style={{
                         margin: 0,
@@ -349,7 +349,7 @@ function BillableHoursPage() {
                     </Text>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div className="bh-header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <div style={{ textAlign: 'right', paddingRight: 16, borderRight: '1px solid var(--c-chip)' }}>
                         <div style={{ fontSize: 12, color: 'var(--c-text-muted)', letterSpacing: 1 }}>TOTAL</div>
                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#4ade80' }}>
@@ -359,6 +359,7 @@ function BillableHoursPage() {
 
                     {/* User Selector */}
                     <Select
+                        className="bh-user-select"
                         value={selectedUserId}
                         onChange={setSelectedUserId}
                         style={{ width: 280 }}
@@ -383,7 +384,7 @@ function BillableHoursPage() {
             </div>
 
             {/* Toolbar / Filter Bar */}
-            <div style={{
+            <div className="bh-toolbar" style={{
                 background: 'rgba(var(--overlay-rgb), 0.03)',
                 backdropFilter: 'blur(10px)',
                 padding: '12px 20px',
@@ -492,6 +493,30 @@ function BillableHoursPage() {
                 }
                 .ant-select-arrow {
                     color: var(--c-text-muted) !important;
+                }
+
+                /* Mobile: header + toolbar wrap; the fixed 280px user
+                   selector flexes to the full row width instead. */
+                @media (max-width: 768px) {
+                    .bh-header {
+                        flex-wrap: wrap;
+                        gap: 12px;
+                    }
+                    .bh-toolbar {
+                        flex-wrap: wrap;
+                        gap: 8px;
+                    }
+                }
+                @media (max-width: 480px) {
+                    .bh-header-right {
+                        width: 100%;
+                        flex-wrap: wrap;
+                    }
+                    .bh-user-select {
+                        width: auto !important;
+                        flex: 1 1 auto;
+                        min-width: 0;
+                    }
                 }
             `}</style>
         </div>

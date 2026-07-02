@@ -175,3 +175,51 @@
     background: var(--c-line) !important;
     color: var(--c-text-strong) !important;
 }
+
+/* ==========================================================================
+   MOBILE RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 480px) {
+    .submit-modal-content {
+        padding: 16px;
+    }
+
+    /* Period label + status tag wrap instead of overflowing */
+    .period-info-row {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    /* "Xh missing" chip may wrap under the value on narrow screens */
+    .hours-row {
+        flex-wrap: wrap;
+        gap: 4px 16px;
+    }
+
+    /* Reviewer label stacks above a full-width select */
+    .reviewer-section {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .reviewer-label {
+        width: auto;
+    }
+
+    /* Footer: link + buttons wrap; buttons stretch across the row */
+    .submit-modal-actions {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .submit-modal-actions .action-buttons {
+        flex: 1 1 auto;
+        justify-content: flex-end;
+    }
+
+    .submit-modal-actions .action-buttons .ant-btn {
+        flex: 1 1 auto;
+    }
+}

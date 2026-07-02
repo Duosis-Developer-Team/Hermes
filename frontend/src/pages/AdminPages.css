@@ -59,3 +59,40 @@
     border-color: var(--border-default) !important;
     color: var(--text-primary) !important;
 }
+
+/* =============================================================================
+   Mobile (≤480px) — admin list pages
+   Card headers ("📋 … List (n)" + New/Create button) wrap onto two rows
+   instead of truncating the title or pushing the button off-screen.
+   Scoped per page class so nothing outside these admin pages changes;
+   desktop (>480px) is untouched.
+   ============================================================================= */
+@media (max-width: 480px) {
+    .admin-page .ant-card-head-wrapper,
+    .users-page .ant-card-head-wrapper,
+    .customers-page .ant-card-head-wrapper,
+    .projects-page .ant-card-head-wrapper,
+    .work-types-page .ant-card-head-wrapper {
+        flex-wrap: wrap;
+    }
+
+    .admin-page .ant-card-head-title,
+    .users-page .ant-card-head-title,
+    .customers-page .ant-card-head-title,
+    .projects-page .ant-card-head-title,
+    .work-types-page .ant-card-head-title {
+        white-space: normal;
+        flex: 1 1 100%;
+        padding-bottom: 8px;
+    }
+
+    .admin-page .ant-card-extra,
+    .users-page .ant-card-extra,
+    .customers-page .ant-card-extra,
+    .projects-page .ant-card-extra,
+    .work-types-page .ant-card-extra {
+        margin-inline-start: 0;
+        padding-top: 0;
+        padding-bottom: 12px;
+    }
+}

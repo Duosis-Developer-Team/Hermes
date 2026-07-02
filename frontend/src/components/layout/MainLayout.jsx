@@ -7,9 +7,9 @@
  * =============================================================================
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, Avatar, Dropdown, Space, Typography, Button, Switch } from 'antd'
+import { Drawer, Layout, Menu, Avatar, Dropdown, Space, Typography, Button, Switch } from 'antd'
 import {
     DashboardOutlined,
     ClockCircleOutlined,
@@ -47,10 +47,29 @@ const { Text } = Typography
  * - Admin/User bazlı menü görünürlüğü
  * - User dropdown (profil, çıkış)
  */
+// Below this width the fixed Sider is hidden (see MainLayout.css) and
+// navigation moves into a slide-in Drawer.
+const MOBILE_QUERY = '(max-width: 768px)'
+
 function MainLayout() {
     const [collapsed, setCollapsed] = useState(false)
+    // Mobile navigation drawer (sidebar replacement under 768px).
+    const [mobileNavOpen, setMobileNavOpen] = useState(false)
+    const [isMobile, setIsMobile] = useState(
+        () => window.matchMedia(MOBILE_QUERY).matches
+    )
     const navigate = useNavigate()
     const location = useLocation()
+
+    useEffect(() => {
+        const mq = window.matchMedia(MOBILE_QUERY)
+        const onChange = (e) => {
+            setIsMobile(e.matches)
+            if (!e.matches) setMobileNavOpen(false)
+        }
+        mq.addEventListener('change', onChange)
+        return () => mq.removeEventListener('change', onChange)
+    }, [])
     const { user, logout } = useAuthStore()
     const { theme: themeMode, toggleTheme } = useThemeStore()
     const isLight = themeMode === 'light'
@@ -191,6 +210,7 @@ function MainLayout() {
     const handleMenuClick = ({ key }) => {
         if (key.startsWith('/')) {
             navigate(key)
+            setMobileNavOpen(false)
         }
     }
 
@@ -255,12 +275,18 @@ function MainLayout() {
             <Layout>
                 {/* Header */}
                 <Header className="main-header">
-                    {/* Collapse Button */}
+                    {/* Collapse Button — on mobile the Sider is hidden, so
+                        the same button opens the navigation drawer instead. */}
                     <Button
                         type="text"
                         icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                        onClick={() => setCollapsed(!collapsed)}
+                        onClick={() =>
+                            isMobile
+                                ? setMobileNavOpen(true)
+                                : setCollapsed(!collapsed)
+                        }
                         className="collapse-btn"
+                        aria-label="Toggle navigation"
                     />
 
 
@@ -300,6 +326,40 @@ function MainLayout() {
                     <Outlet />
                 </Content>
             </Layout>
+
+            {/* Mobile navigation drawer — replaces the hidden Sider under
+                768px. Same menu items; tapping a link navigates + closes. */}
+            <Drawer
+                open={isMobile && mobileNavOpen}
+                onClose={() => setMobileNavOpen(false)}
+                placement="left"
+                width={264}
+                closable={false}
+                className="mobile-nav-drawer"
+                styles={{ body: { padding: 0 } }}
+            >
+                <div
+                    className="logo-container"
+                    onClick={() => {
+                        navigate('/time-entry')
+                        setMobileNavOpen(false)
+                    }}
+                >
+                    <img
+                        src={isLight ? logoFullLight : logoFullDark}
+                        alt="Hermes"
+                        className="sidebar-logo"
+                    />
+                </div>
+                <Menu
+                    theme={isLight ? 'light' : 'dark'}
+                    mode="inline"
+                    selectedKeys={[selectedKey]}
+                    items={menuItems}
+                    onClick={handleMenuClick}
+                    className="main-menu"
+                />
+            </Drawer>
         </Layout>
     )
 }

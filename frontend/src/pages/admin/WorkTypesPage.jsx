@@ -114,7 +114,7 @@ function WorkTypesPage() {
                 <p>Manage work types</p>
             </div>
             <Card title={`📋 Work Type List (${workTypes.length})`} extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>New Work Type</Button>}>
-                <Table dataSource={workTypes} columns={columns} rowKey="id" loading={isLoading} pagination={{ pageSize: 10 }} />
+                <Table dataSource={workTypes} columns={columns} rowKey="id" loading={isLoading} pagination={{ pageSize: 10 }} scroll={{ x: 'max-content' }} />
             </Card>
             <Modal title={editingId ? '✏️ Edit Work Type' : '➕ New Work Type'} open={modalOpen} onCancel={handleCloseModal} footer={null}>
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>

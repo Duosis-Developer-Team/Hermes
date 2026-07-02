@@ -241,7 +241,7 @@
 @media (max-width: 768px) {
     .main-content {
         margin-left: 0;
-        padding: 16px;
+        padding: 12px;
     }
 
     .user-info {
@@ -251,4 +251,33 @@
     .main-sider {
         display: none;
     }
+
+    .main-header {
+        padding: 0 12px !important;
+        gap: 10px;
+    }
+}
+
+/* ==========================================================================
+   MOBILE NAVIGATION DRAWER (Sider replacement under 768px)
+   ========================================================================== */
+
+.mobile-nav-drawer .ant-drawer-body {
+    display: flex;
+    flex-direction: column;
+    background: var(--N800);
+}
+
+.mobile-nav-drawer .logo-container {
+    flex-shrink: 0;
+}
+
+.mobile-nav-drawer .main-menu {
+    /* Same look as the sidebar menu; taller rows for touch. */
+    padding: 8px;
+}
+
+.mobile-nav-drawer .main-menu .ant-menu-item {
+    height: 44px !important;
+    line-height: 44px !important;
 }

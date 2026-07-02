@@ -157,6 +157,9 @@
 
     .hmp-root:not(.hmp-small) .hmp-fields {
         gap: 10px;
+        /* Safety: on ultra-narrow containers the h/m groups wrap
+           instead of overflowing (normally ~300px, fits 390px screens) */
+        flex-wrap: wrap;
     }
 
     .hmp-root:not(.hmp-small) .hmp-group {

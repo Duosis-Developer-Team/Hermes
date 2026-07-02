@@ -298,6 +298,10 @@ function TasksListView({
             rowClassName={(record) =>
                 record.status === 'completed' ? 'task-row-completed' : ''
             }
+            /* Columns keep a sane minimum width and pan horizontally
+               inside the table on narrow screens (mobile); no visual
+               effect on desktop where the table is wider than 900px. */
+            scroll={{ x: 900 }}
             pagination={{ pageSize: 20 }}
             locale={{
                 emptyText: `No ${typeMeta(taskType).lowerPlural} for the selected filters.`,

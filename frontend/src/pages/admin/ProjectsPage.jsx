@@ -237,6 +237,7 @@ function ProjectsPage() {
                     loading={isLoading}
                     pagination={{ pageSize: 10 }}
                     showSorterTooltip={false}
+                    scroll={{ x: 'max-content' }}
                 />
             </Card>
 

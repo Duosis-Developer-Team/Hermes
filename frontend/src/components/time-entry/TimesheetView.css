@@ -246,3 +246,13 @@
         overflow-x: auto;
     }
 }
+
+/* Containment: the table pans internally (scroll={{ x: 900 }} +
+   .ant-table-content overflow-x). The view wrapper must never let that
+   width leak out and push the page sideways. */
+@media (max-width: 768px) {
+    .timesheet-view {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+}

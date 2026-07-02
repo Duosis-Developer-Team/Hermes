@@ -207,6 +207,72 @@
     .week-label {
         min-width: auto;
     }
+
+    /* User header: allow rows to wrap instead of overflowing the page.
+       At exactly 768px everything still fits on one line (no visual change);
+       wrapping only engages when the content no longer fits. */
+    .user-header {
+        flex-wrap: wrap;
+        row-gap: 10px;
+    }
+
+    .user-header-right {
+        flex-wrap: wrap;
+        gap: 12px 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Tighter horizontal padding to gain room at 390px */
+    .user-header {
+        padding: 12px 16px;
+    }
+
+    .user-header-left {
+        gap: 12px;
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    /* Admin user Select: shrink with the row instead of the fixed 200px.
+       !important is required to beat the inline style={{ width: 200 }};
+       desktop keeps the inline 200px untouched. */
+    .admin-user-selector {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .user-select-dropdown.ant-select {
+        width: 100% !important;
+        max-width: 200px;
+    }
+
+    /* Buttons row (Export CSV, Submit dropdown, List/Timesheet switcher):
+       full-width second row that wraps cleanly, no horizontal overflow. */
+    .user-header-right {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 10px 14px;
+        justify-content: flex-start;
+    }
+
+    .view-switchers {
+        gap: 16px;
+    }
+
+    /* Week navigation header: tighter padding, rows may wrap */
+    .time-entry-header {
+        padding: 10px 12px;
+    }
+
+    .header-left,
+    .header-right {
+        flex-wrap: wrap;
+    }
+
+    .week-label {
+        font-size: 13px;
+    }
 }
 
 /* Excel Export Button - Force Green */

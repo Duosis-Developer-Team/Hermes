@@ -240,3 +240,38 @@
 .tasks-board-cell-empty {
     min-height: 48px;
 }
+
+/* =============================================================================
+   Mobile / tablet (≤768px) — the board becomes a horizontally panning
+   strip INSIDE its own container; the page never scrolls sideways.
+   Desktop (>768px) keeps the 4-up grid untouched.
+   ============================================================================= */
+@media (max-width: 768px) {
+    .tasks-board {
+        display: flex;
+        overflow-x: auto;
+        gap: 10px;
+        padding-bottom: 6px;
+        -webkit-overflow-scrolling: touch;
+    }
+    /* Fixed-width columns so one column fits a 390px phone with a peek
+       of the next, signalling the strip pans. */
+    .tasks-board .tasks-board-column {
+        flex: 0 0 280px;
+        width: 280px;
+        /* Cap height so a long column scrolls internally (the column
+           body already has overflow-y:auto) instead of stretching the
+           page; desktop's 100vh-280px calc over-caps small screens. */
+        max-height: min(65vh, 520px);
+    }
+
+    /* Swimlane view — same panning pattern. The .tasks-board-swimlanes
+       wrapper already scrolls horizontally; pin the track widths so
+       rows pan predictably and the sticky row-head column doesn't eat
+       half the phone screen. Cells keep max-height:none from the
+       swimlane reset above (they are outside .tasks-board). */
+    .tasks-board-swimlane-cols-head,
+    .tasks-board-swimlane {
+        grid-template-columns: 120px repeat(4, 240px);
+    }
+}

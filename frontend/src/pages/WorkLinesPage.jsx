@@ -189,6 +189,7 @@ function WorkLinesPage() {
                     loading={isLoading}
                     pagination={false}
                     showSorterTooltip={false}
+                    scroll={{ x: 'max-content' }}
                 />
             </Card>
 

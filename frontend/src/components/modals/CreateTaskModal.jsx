@@ -519,7 +519,10 @@ function CreateTaskModal({
                     />
                 </Form.Item>
 
-                <Space size="middle" style={{ display: 'flex' }}>
+                {/* wrap: on narrow phones the two date pickers stack
+                    instead of overflowing; no effect on desktop where
+                    both fit side by side. */}
+                <Space size="middle" style={{ display: 'flex' }} wrap>
                     <Form.Item
                         label="Scheduled Date"
                         name="scheduled_date"

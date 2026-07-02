@@ -31,6 +31,18 @@
     align-items: start;
 }
 
+/* ── Mobile (≤768px) ─────────────────────────────────────────────────────
+   The 7-day grid keeps a sensible per-day width and pans horizontally
+   INSIDE this wrapper — the page itself never scrolls sideways. */
+@media (max-width: 768px) {
+    .meetings-weekly-columns {
+        grid-template-columns: repeat(7, minmax(200px, 1fr));
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+    }
+}
+
 .meeting-day-column {
     background: var(--c-surface);
     border: 1px solid var(--c-border);

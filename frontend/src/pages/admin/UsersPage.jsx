@@ -132,7 +132,7 @@ function UsersTab() {
     return (
         <>
             <Card title={`📋 User List (${users.length})`} extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>New User</Button>}>
-                <Table dataSource={users} columns={columns} rowKey="id" loading={isLoading} pagination={{ pageSize: 10 }} />
+                <Table dataSource={users} columns={columns} rowKey="id" loading={isLoading} pagination={{ pageSize: 10 }} scroll={{ x: 'max-content' }} />
             </Card>
             <Modal title={editingId ? '✏️ Edit User' : '➕ New User'} open={modalOpen} onCancel={handleCloseModal} footer={null}>
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>

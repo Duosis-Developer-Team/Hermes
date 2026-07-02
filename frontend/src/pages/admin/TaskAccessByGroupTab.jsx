@@ -226,6 +226,7 @@ function GroupMemberOverridesPanel({ group, allUsersById }) {
                 loading={membersLoading || overridesLoading}
                 pagination={false}
                 locale={{ emptyText: 'No members in this group.' }}
+                scroll={{ x: 'max-content' }}
             />
         </div>
     )
@@ -429,6 +430,7 @@ function AdditionalUsersSection({ users }) {
                 }}
             >
                 <Input.Search
+                    className="tm-additional-search"
                     allowClear
                     placeholder="Search by name or email"
                     value={search}
@@ -443,6 +445,7 @@ function AdditionalUsersSection({ users }) {
                 columns={columns}
                 dataSource={filteredRows}
                 loading={permsLoading}
+                scroll={{ x: 'max-content' }}
                 pagination={{ pageSize: 10, showSizeChanger: false, hideOnSinglePage: true }}
                 locale={{
                     emptyText: search.trim()
@@ -693,6 +696,7 @@ function TaskAccessByGroupTab() {
                 dataSource={rows}
                 loading={groupsLoading || permsLoading}
                 pagination={{ pageSize: 20 }}
+                scroll={{ x: 'max-content' }}
                 locale={{
                     emptyText:
                         'No groups yet. Create groups in Users → Groups, then come back here to set task permissions.',

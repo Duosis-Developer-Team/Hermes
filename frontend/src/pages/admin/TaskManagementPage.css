@@ -213,4 +213,21 @@
     .tm-stats {
         grid-template-columns: 1fr;
     }
+
+    /* Sub Projects filter selects (inline width:200) stack full-width. */
+    .tm-sub-filters {
+        width: 100%;
+    }
+    .tm-sub-filters .ant-space-item {
+        width: 100%;
+    }
+    .tm-sub-filters .ant-select {
+        width: 100% !important;
+    }
+
+    /* Additional Users search (inline width:300) fills the toolbar row. */
+    .tm-additional-search {
+        width: 100% !important;
+        max-width: 100%;
+    }
 }

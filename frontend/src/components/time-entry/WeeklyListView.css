@@ -38,10 +38,16 @@
     background: var(--bg-primary);
 }
 
-/* Responsive */
+/* Responsive
+   Containment: the scroll wrapper itself must never be forced wider than the
+   page (a min-width here pushes the whole page sideways). The day columns
+   keep their own min-width (160px × 7 = 1120px), so on narrow screens the
+   week strip pans inside this container via the overflow-x: auto above,
+   while the page itself never scrolls horizontally. */
 @media (max-width: 1200px) {
     .weekly-list-columns {
-        min-width: 1120px;
+        min-width: 0;
+        max-width: 100%;
     }
 }
 

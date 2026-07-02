@@ -8,3 +8,24 @@
 .meeting-review-modal .ant-modal-close {
     color: var(--c-text-muted);
 }
+
+/* ── Mobile (≤480px) ─────────────────────────────────────────────────────
+   Detail rows are inline-styled flex rows: <div><Text width:110/><div/>
+   </div>. Letting the row wrap + forcing the label to a full-width line
+   stacks "label over value" without touching the JSX. The same child
+   selector also lets the footer's right-hand button cluster (an inner
+   <Space>) wrap instead of pushing the modal wider than the phone. */
+@media (max-width: 480px) {
+    .meeting-review-modal .ant-modal-body .ant-space-item > div > div {
+        flex-wrap: wrap;
+    }
+    .meeting-review-modal
+        .ant-modal-body
+        .ant-space-item
+        > div
+        > div
+        > .ant-typography {
+        width: 100% !important;
+        flex: 0 0 100%;
+    }
+}

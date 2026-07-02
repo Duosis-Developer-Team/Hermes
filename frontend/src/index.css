@@ -658,6 +658,69 @@ body {
     width: 100%;
   }
 }
+
+/* ==========================================================================
+   MOBILE FOUNDATION (global, phone-first hardening)
+   - No page-level horizontal scrolling; wide content scrolls inside its own
+     container instead.
+   - Every AntD modal fits the viewport with an internally scrollable body.
+   - Dropdown/date-picker panels never exceed the screen.
+   - Hover-revealed actions become always-visible on touch devices.
+   ========================================================================== */
+
+/* Page-level horizontal overflow guard. Inner containers that need to pan
+   (tables, boards, week views) keep their own overflow-x: auto. */
+body {
+  overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  /* --- Modals: fit the screen, scroll inside --- */
+  .ant-modal {
+    max-width: calc(100vw - 16px) !important;
+    width: calc(100vw - 16px) !important;
+    top: 12px !important;
+    padding-bottom: 12px;
+    margin: 0 auto !important;
+  }
+
+  .ant-modal .ant-modal-body {
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* --- Dropdown panels never wider than the screen --- */
+  .ant-select-dropdown,
+  .ant-dropdown,
+  .ant-picker-dropdown {
+    max-width: calc(100vw - 16px);
+  }
+
+  /* Range pickers show two month panels side by side — stack them. */
+  .ant-picker-panels {
+    flex-wrap: wrap !important;
+  }
+
+  /* --- Tables: AntD table containers pan internally --- */
+  .ant-table {
+    font-size: 13px;
+  }
+  .ant-table-content {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Touch devices: hover-only affordances must be visible/tappable. */
+@media (hover: none) {
+  .task-card-actions,
+  .worklog-card-actions,
+  .plan-time-card-actions,
+  .task-comment-actions {
+    opacity: 1 !important;
+  }
+}
 /* ==========================================================================
    RANGE PICKER - Dark Theme In-Range Fix (global, persistent)
    ========================================================================== */

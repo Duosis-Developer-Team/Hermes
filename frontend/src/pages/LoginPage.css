@@ -18,8 +18,9 @@
 /* Theme toggle — fixed top-right, mirrors the app header position */
 .login-theme-switch {
     position: fixed;
-    top: 20px;
-    right: 24px;
+    /* Keep clear of phone notches / rounded corners. */
+    top: max(20px, env(safe-area-inset-top));
+    right: max(24px, env(safe-area-inset-right));
     z-index: 10;
 }
 

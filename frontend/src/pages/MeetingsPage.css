@@ -49,3 +49,30 @@
 .meetings-body {
     padding: 16px 24px 24px;
 }
+
+/* ── Mobile (≤768px) ─────────────────────────────────────────────────────
+   Header stacks: identity row (avatar + name/user-select) on top, week
+   nav below. The admin multi-user Select loses its fixed min/max width
+   (inline 260/520) and flexes to the remaining row width so 390px
+   phones never overflow horizontally. */
+@media (max-width: 768px) {
+    .meetings-user-header {
+        padding: 12px 16px;
+    }
+    .meetings-user-header-left {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+    .meetings-user-header-left .ant-select {
+        flex: 1 1 auto;
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+    .meetings-user-header-right {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+    .meetings-body {
+        padding: 12px 16px 16px;
+    }
+}
