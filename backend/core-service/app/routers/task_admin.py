@@ -23,6 +23,8 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..schemas.task import (
+    NotificationSettingRow,
+    NotificationSettingUpdate,
     TaskAssignmentGroupRelationCreate,
     TaskAssignmentGroupRelationResponse,
     TaskAssignmentRelationCreate,
@@ -460,4 +462,47 @@ async def upsert_task_group_member_override(
         user_id=user_id,
         override=override,
         permission=permission,
+    )
+
+
+# =============================================================================
+# Notification Settings  (admin-configurable e-mail rules)
+# =============================================================================
+
+@router.get(
+    "/notification-settings",
+    response_model=List[NotificationSettingRow],
+)
+async def list_notification_settings(
+    admin: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """One row per work-item type (task / issue / suggestion). Types that
+    were never configured come back with the defaults (everything ON)."""
+    data = task_service.get_notification_settings(db)
+    return [
+        NotificationSettingRow(task_type=t, **d) for t, d in data.items()
+    ]
+
+
+@router.put(
+    "/notification-settings/{task_type}",
+    response_model=NotificationSettingRow,
+)
+async def update_notification_setting(
+    task_type: str,
+    data: NotificationSettingUpdate,
+    admin: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    row = task_service.upsert_notification_setting(db, task_type, data)
+    return NotificationSettingRow(
+        task_type=row.task_type,
+        enabled=row.enabled,
+        notify_assignment=row.notify_assignment,
+        notify_accept=row.notify_accept,
+        notify_complete=row.notify_complete,
+        priorities=list(row.priorities or []),
+        due_date_rule=row.due_date_rule,
+        updated_at=row.updated_at,
     )

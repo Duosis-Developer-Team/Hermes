@@ -295,6 +295,30 @@ class TaskGroupMemberOverrideResponse(BaseModel):
     updated_at: Optional[datetime] = None
 
 
+# =============================================================================
+# Notification Settings  (admin-configurable e-mail rules, per work-item type)
+# =============================================================================
+
+DueDateRuleLiteral = Literal["any", "with_due", "without_due"]
+
+
+class NotificationSettingUpdate(BaseModel):
+    enabled: bool = True
+    notify_assignment: bool = True
+    notify_accept: bool = True
+    notify_complete: bool = True
+    # Only items whose priority is in this list notify. Empty → no e-mails.
+    priorities: List[PriorityLiteral] = Field(
+        default_factory=lambda: ["low", "medium", "high", "urgent"]
+    )
+    due_date_rule: DueDateRuleLiteral = "any"
+
+
+class NotificationSettingRow(NotificationSettingUpdate):
+    task_type: TaskTypeLiteral
+    updated_at: Optional[datetime] = None
+
+
 class TaskCommentCreate(BaseModel):
     body: str = Field(..., min_length=1, max_length=5000)
 

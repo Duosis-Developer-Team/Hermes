@@ -23,7 +23,7 @@ from sqlalchemy import (
     Index,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from ..database import Base
@@ -362,6 +362,60 @@ class Task(Base):
             "(status = 'completed' AND completed_at IS NOT NULL AND completed_by_user_id IS NOT NULL) "
             "OR (status <> 'completed' AND completed_at IS NULL AND completed_by_user_id IS NULL)",
             name="chk_tasks_completion_consistency",
+        ),
+    )
+
+
+# =============================================================================
+# task_notification_settings — admin-configurable e-mail rules
+# =============================================================================
+
+class TaskNotificationSetting(Base):
+    """Per work-item-type e-mail notification rules, edited from the admin
+    PM Configurations page.
+
+    Semantics (enforced in task_service.notification_allowed):
+      - No row for a type → defaults apply (everything ON) so behaviour is
+        unchanged until an admin configures it.
+      - enabled=False kills every e-mail for that type.
+      - notify_assignment / notify_accept / notify_complete gate the three
+        e-mail events individually.
+      - priorities: only items whose priority is in this list notify
+        (empty list → no e-mails for the type).
+      - due_date_rule: 'any' | 'with_due' (only items that have a due
+        date) | 'without_due' (only items without one).
+    """
+
+    __tablename__ = "task_notification_settings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    task_type = Column(String(20), nullable=False, index=True)
+    enabled = Column(Boolean, nullable=False, default=True)
+    notify_assignment = Column(Boolean, nullable=False, default=True)
+    notify_accept = Column(Boolean, nullable=False, default=True)
+    notify_complete = Column(Boolean, nullable=False, default=True)
+    priorities = Column(
+        JSONB,
+        nullable=False,
+        default=lambda: ["low", "medium", "high", "urgent"],
+    )
+    due_date_rule = Column(String(20), nullable=False, default="any")
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("task_type", name="uq_task_notification_settings_type"),
+        CheckConstraint(
+            "task_type IN ('task', 'issue', 'suggestion')",
+            name="chk_task_notification_settings_type",
+        ),
+        CheckConstraint(
+            "due_date_rule IN ('any', 'with_due', 'without_due')",
+            name="chk_task_notification_settings_due_rule",
         ),
     )
 

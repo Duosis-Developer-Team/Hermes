@@ -24,6 +24,7 @@ from ..models.task import (
     Task,
     TaskAssignmentGroupRelation,
     TaskAssignmentRelation,
+    TaskNotificationSetting,
     TaskSubProject,
     TaskUserPermission,
 )
@@ -36,6 +37,7 @@ from ..models.user_group import (
     UserGroupMember,
 )
 from ..schemas.task import (
+    NotificationSettingUpdate,
     TaskCreate,
     TaskNoteUpdate,
     TaskPermissionUpdate,
@@ -632,6 +634,120 @@ def list_effective_perm_data(db: Session) -> dict:
             out[u]["group_grants_assign_issues"].append(g)
 
     return out
+
+
+# =============================================================================
+# Notification settings (admin-configurable e-mail rules)
+# =============================================================================
+
+_NOTIFICATION_TYPES = ("task", "issue", "suggestion")
+_DEFAULT_NOTIFICATION_SETTING = {
+    "enabled": True,
+    "notify_assignment": True,
+    "notify_accept": True,
+    "notify_complete": True,
+    "priorities": ["low", "medium", "high", "urgent"],
+    "due_date_rule": "any",
+}
+
+
+def _notification_setting_dict(row: Optional[TaskNotificationSetting]) -> dict:
+    """Row → plain dict; a missing row yields the defaults (all ON) so
+    behaviour is unchanged until an admin configures the type."""
+    if row is None:
+        return dict(_DEFAULT_NOTIFICATION_SETTING)
+    return {
+        "enabled": bool(row.enabled),
+        "notify_assignment": bool(row.notify_assignment),
+        "notify_accept": bool(row.notify_accept),
+        "notify_complete": bool(row.notify_complete),
+        "priorities": list(row.priorities or []),
+        "due_date_rule": row.due_date_rule or "any",
+    }
+
+
+def get_notification_settings(db: Session) -> dict:
+    """{task_type: setting-dict} for all three types, defaults synthesized
+    for types that have no row yet. Also returns updated_at per type."""
+    rows = {r.task_type: r for r in db.query(TaskNotificationSetting).all()}
+    out = {}
+    for t in _NOTIFICATION_TYPES:
+        row = rows.get(t)
+        d = _notification_setting_dict(row)
+        d["updated_at"] = row.updated_at if row is not None else None
+        out[t] = d
+    return out
+
+
+def upsert_notification_setting(
+    db: Session,
+    task_type: str,
+    data: NotificationSettingUpdate,
+) -> TaskNotificationSetting:
+    if task_type not in _NOTIFICATION_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unknown work item type.",
+        )
+    row = (
+        db.query(TaskNotificationSetting)
+        .filter(TaskNotificationSetting.task_type == task_type)
+        .first()
+    )
+    if row is None:
+        row = TaskNotificationSetting(task_type=task_type)
+        db.add(row)
+    row.enabled = bool(data.enabled)
+    row.notify_assignment = bool(data.notify_assignment)
+    row.notify_accept = bool(data.notify_accept)
+    row.notify_complete = bool(data.notify_complete)
+    row.priorities = list(data.priorities)
+    row.due_date_rule = data.due_date_rule
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def notification_allowed(
+    db: Session,
+    *,
+    task_type: Optional[str],
+    priority: Optional[str],
+    due_date,
+    event: str,
+) -> bool:
+    """Gate for outgoing e-mails, evaluated in the request before the
+    background send is scheduled. `event` is 'assignment' | 'accept' |
+    'complete'. Fail-open on any unexpected error — a broken settings row
+    must never silence (or crash) task creation itself."""
+    try:
+        t = task_type if task_type in _NOTIFICATION_TYPES else "task"
+        row = (
+            db.query(TaskNotificationSetting)
+            .filter(TaskNotificationSetting.task_type == t)
+            .first()
+        )
+        s = _notification_setting_dict(row)
+        if not s["enabled"]:
+            return False
+        event_flag = {
+            "assignment": "notify_assignment",
+            "accept": "notify_accept",
+            "complete": "notify_complete",
+        }.get(event)
+        if event_flag and not s[event_flag]:
+            return False
+        if (priority or "medium") not in s["priorities"]:
+            return False
+        rule = s["due_date_rule"]
+        if rule == "with_due" and due_date is None:
+            return False
+        if rule == "without_due" and due_date is not None:
+            return False
+        return True
+    except Exception as exc:  # noqa: BLE001 — never break the request
+        logger.warning("notification_allowed failed (fail-open): %s", exc)
+        return True
 
 
 # =============================================================================

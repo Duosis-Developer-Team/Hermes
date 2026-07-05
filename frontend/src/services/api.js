@@ -703,6 +703,26 @@ export const taskPermissionService = {
     },
 }
 
+export const taskNotificationSettingsService = {
+    /** Admin: one row per work-item type (task/issue/suggestion) with the
+     * e-mail rules; unconfigured types come back with defaults (all ON). */
+    list: async () => {
+        const response = await coreApi.get(
+            '/api/v1/core/admin/notification-settings'
+        )
+        return response.data
+    },
+
+    /** Admin: upsert one type's e-mail rules. */
+    update: async (taskType, data) => {
+        const response = await coreApi.put(
+            `/api/v1/core/admin/notification-settings/${taskType}`,
+            data
+        )
+        return response.data
+    },
+}
+
 export const taskAssignmentService = {
     /** Admin: list all assigner -> assignee mappings for a scope (task|issue). */
     list: async (scope = 'task') => {
@@ -1119,6 +1139,7 @@ export default {
     timesheetService,
     reportsService,
     taskPermissionService,
+    taskNotificationSettingsService,
     taskAssignmentService,
     taskAssignmentGroupService,
     taskSubProjectService,

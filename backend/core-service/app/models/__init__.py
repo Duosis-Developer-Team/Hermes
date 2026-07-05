@@ -22,6 +22,7 @@ from .task import (
     TaskAssignmentGroupRelation,
     TaskSubProject,
     Task,
+    TaskNotificationSetting,
 )
 from .task_activity import TaskActivityEvent
 from .task_comment import TaskComment
@@ -58,6 +59,7 @@ __all__ = [
     "TaskAssignmentGroupRelation",
     "TaskSubProject",
     "Task",
+    "TaskNotificationSetting",
     "TaskActivityEvent",
     "TaskComment",
     "Meeting",

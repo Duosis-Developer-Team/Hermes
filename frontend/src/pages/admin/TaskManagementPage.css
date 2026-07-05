@@ -231,3 +231,96 @@
         max-width: 100%;
     }
 }
+
+/* ==========================================================================
+   MAIL NOTIFICATIONS (admin e-mail rules per work-item type)
+   ========================================================================== */
+
+.tm-notif-hint {
+    margin: 0 0 14px;
+    color: var(--c-text-muted);
+    font-size: 12.5px;
+    line-height: 1.6;
+}
+
+.tm-notif-row {
+    border: 1px solid var(--c-border);
+    border-left: 3px solid var(--notif-accent, var(--color-primary));
+    border-radius: 10px;
+    background: var(--c-surface);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    transition: opacity 0.15s ease;
+}
+
+.tm-notif-row.is-off .tm-notif-controls {
+    opacity: 0.45;
+}
+
+.tm-notif-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.tm-notif-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--notif-accent, var(--color-primary));
+    flex-shrink: 0;
+}
+
+.tm-notif-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--c-text-strong);
+    margin-right: auto;
+}
+
+.tm-notif-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 28px;
+    align-items: flex-start;
+}
+
+.tm-notif-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.tm-notif-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--c-text-muted);
+}
+
+.tm-notif-priorities {
+    min-width: 240px;
+}
+
+.tm-notif-due {
+    min-width: 200px;
+}
+
+/* Phones: each field takes its own full-width row. */
+@media (max-width: 480px) {
+    .tm-notif-controls {
+        flex-direction: column;
+        gap: 12px;
+    }
+    .tm-notif-field {
+        width: 100%;
+    }
+    .tm-notif-priorities,
+    .tm-notif-due {
+        width: 100%;
+        min-width: 0;
+    }
+}

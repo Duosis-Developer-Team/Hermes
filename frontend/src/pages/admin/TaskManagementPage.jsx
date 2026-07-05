@@ -15,11 +15,14 @@ import { useMemo, useState } from 'react'
 import {
     Table,
     Button,
+    Checkbox,
     Modal,
     Form,
     Select,
     Input,
     Space,
+    Spin,
+    Switch,
     message,
     Tooltip,
 } from 'antd'
@@ -28,6 +31,7 @@ import {
     EditOutlined,
     DeleteOutlined,
     DownOutlined,
+    MailOutlined,
     SafetyCertificateOutlined,
     ApartmentOutlined,
     FolderOpenOutlined,
@@ -44,6 +48,7 @@ import {
     taskAssignmentService,
     taskAssignmentGroupService,
     taskPermissionService,
+    taskNotificationSettingsService,
 } from '../../services/api'
 import './TaskManagementPage.css'
 import TaskAccessByGroupTab from './TaskAccessByGroupTab'
@@ -380,6 +385,181 @@ function StatCard({ icon, label, value, accent }) {
     )
 }
 
+// =============================================================================
+// Mail Notifications — admin-configurable e-mail rules per work-item type
+// =============================================================================
+
+const NOTIF_TYPES = [
+    { value: 'task', label: 'Tasks', color: '#388bff' },
+    { value: 'issue', label: 'Issues', color: '#f97316' },
+    { value: 'suggestion', label: 'Suggestions', color: '#a855f7' },
+]
+
+const NOTIF_PRIORITY_OPTIONS = [
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' },
+    { value: 'urgent', label: 'Urgent' },
+]
+
+const NOTIF_DUE_RULES = [
+    { value: 'any', label: 'All items' },
+    { value: 'with_due', label: 'Only with due date' },
+    { value: 'without_due', label: 'Only without due date' },
+]
+
+const NOTIF_EVENTS = [
+    { key: 'notify_assignment', label: 'Assigned' },
+    { key: 'notify_accept', label: 'Accepted' },
+    { key: 'notify_complete', label: 'Completed' },
+]
+
+function MailNotificationsTab() {
+    const queryClient = useQueryClient()
+
+    const { data: settings = [], isLoading } = useQuery({
+        queryKey: ['admin-notification-settings'],
+        queryFn: () => taskNotificationSettingsService.list(),
+    })
+    const byType = useMemo(() => {
+        const map = {}
+        for (const s of settings) map[s.task_type] = s
+        return map
+    }, [settings])
+
+    const saveMutation = useMutation({
+        mutationFn: ({ taskType, data }) =>
+            taskNotificationSettingsService.update(taskType, data),
+        onSuccess: () => {
+            message.success('Notification settings saved.')
+            queryClient.invalidateQueries({
+                queryKey: ['admin-notification-settings'],
+            })
+        },
+        onError: (err) => {
+            message.error(
+                err?.response?.data?.detail ||
+                    'Failed to save notification settings.'
+            )
+        },
+    })
+
+    // Every change sends the FULL row (current values + the patch) so the
+    // backend upsert stays a simple whole-row write.
+    const save = (row, patch) => {
+        saveMutation.mutate({
+            taskType: row.task_type,
+            data: {
+                enabled: row.enabled,
+                notify_assignment: row.notify_assignment,
+                notify_accept: row.notify_accept,
+                notify_complete: row.notify_complete,
+                priorities: row.priorities,
+                due_date_rule: row.due_date_rule,
+                ...patch,
+            },
+        })
+    }
+
+    if (isLoading) {
+        return (
+            <div style={{ textAlign: 'center', padding: 24 }}>
+                <Spin />
+            </div>
+        )
+    }
+
+    return (
+        <div className="tm-notif">
+            <p className="tm-notif-hint">
+                E-mails are sent only when ALL rules of the item's type
+                match: the type is enabled, the event is on, the item's
+                priority is selected, and the due-date rule fits. Types
+                never configured default to everything on.
+            </p>
+            {NOTIF_TYPES.map((t) => {
+                const row = byType[t.value]
+                if (!row) return null
+                const disabled = !row.enabled || saveMutation.isPending
+                return (
+                    <div
+                        key={t.value}
+                        className={`tm-notif-row${
+                            row.enabled ? '' : ' is-off'
+                        }`}
+                        style={{ '--notif-accent': t.color }}
+                    >
+                        <div className="tm-notif-head">
+                            <span className="tm-notif-dot" />
+                            <span className="tm-notif-name">{t.label}</span>
+                            <Switch
+                                checked={row.enabled}
+                                loading={saveMutation.isPending}
+                                onChange={(checked) =>
+                                    save(row, { enabled: checked })
+                                }
+                            />
+                        </div>
+                        <div className="tm-notif-controls">
+                            <div className="tm-notif-field">
+                                <span className="tm-notif-label">Events</span>
+                                <Space wrap size={12}>
+                                    {NOTIF_EVENTS.map((ev) => (
+                                        <Checkbox
+                                            key={ev.key}
+                                            checked={!!row[ev.key]}
+                                            disabled={disabled}
+                                            onChange={(e) =>
+                                                save(row, {
+                                                    [ev.key]:
+                                                        e.target.checked,
+                                                })
+                                            }
+                                        >
+                                            {ev.label}
+                                        </Checkbox>
+                                    ))}
+                                </Space>
+                            </div>
+                            <div className="tm-notif-field">
+                                <span className="tm-notif-label">
+                                    Priorities
+                                </span>
+                                <Select
+                                    mode="multiple"
+                                    className="tm-notif-priorities"
+                                    value={row.priorities}
+                                    options={NOTIF_PRIORITY_OPTIONS}
+                                    disabled={disabled}
+                                    maxTagCount="responsive"
+                                    placeholder="No priorities → no e-mails"
+                                    onChange={(vals) =>
+                                        save(row, { priorities: vals })
+                                    }
+                                />
+                            </div>
+                            <div className="tm-notif-field">
+                                <span className="tm-notif-label">
+                                    Due date
+                                </span>
+                                <Select
+                                    className="tm-notif-due"
+                                    value={row.due_date_rule}
+                                    options={NOTIF_DUE_RULES}
+                                    disabled={disabled}
+                                    onChange={(val) =>
+                                        save(row, { due_date_rule: val })
+                                    }
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )
+            })}
+        </div>
+    )
+}
+
 function Section({ icon, title, subtitle, count, accent, open, onToggle, children }) {
     return (
         <section className={`tm-section${open ? ' is-open' : ''}`} style={{ '--tm-accent': accent }}>
@@ -421,6 +601,7 @@ function TaskManagementPage() {
         hierarchy: false,
         issueHierarchy: false,
         sub: false,
+        mail: false,
     })
     const toggle = (key) => setOpen((o) => ({ ...o, [key]: !o[key] }))
 
@@ -552,6 +733,17 @@ function TaskManagementPage() {
                 onToggle={() => toggle('sub')}
             >
                 <SubProjectsTab />
+            </Section>
+
+            <Section
+                icon={<MailOutlined />}
+                title="Mail Notifications"
+                subtitle="Which e-mails go out, per type / event / priority / due date"
+                accent="#f97316"
+                open={open.mail}
+                onToggle={() => toggle('mail')}
+            >
+                <MailNotificationsTab />
             </Section>
         </div>
     )

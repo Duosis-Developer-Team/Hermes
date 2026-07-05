@@ -52,12 +52,21 @@ from ..services.task_notifications import (
 from shared.auth import CurrentUser, get_current_user
 
 
-def _maybe_status_notify(task, serialized, background_tasks, request) -> None:
+def _maybe_status_notify(task, serialized, background_tasks, request, db) -> None:
     """If the status change was the FIRST accept/complete (service set the
     transient _status_notif flag), schedule the one-time e-mail to the
-    assignee + assigner. No-op otherwise."""
+    assignee + assigner. No-op otherwise. Honours the admin-configured
+    notification rules (type / event / priority / due-date)."""
     event = getattr(task, "_status_notif", None)
     if event in ("accept", "complete"):
+        if not task_service.notification_allowed(
+            db,
+            task_type=serialized.task_type,
+            priority=serialized.priority,
+            due_date=serialized.due_date,
+            event=event,
+        ):
+            return
         background_tasks.add_task(
             send_status_notifications,
             token=_extract_token(request),
@@ -422,13 +431,21 @@ async def create_task(
     task = task_service.create_task(db, current_user, payload)
     serialized = _serialize_task(task)
     # Fire-and-forget e-mail notification (assignee + assigner). Runs
-    # after the response; failures are logged, never surfaced.
-    background_tasks.add_task(
-        send_assignment_notifications,
-        token=_extract_token(request),
-        tasks=[_notif_payload(serialized)],
-        assigner_user_id=str(current_user.id),
-    )
+    # after the response; failures are logged, never surfaced. Gated by
+    # the admin-configured notification rules.
+    if task_service.notification_allowed(
+        db,
+        task_type=serialized.task_type,
+        priority=serialized.priority,
+        due_date=serialized.due_date,
+        event="assignment",
+    ):
+        background_tasks.add_task(
+            send_assignment_notifications,
+            token=_extract_token(request),
+            tasks=[_notif_payload(serialized)],
+            assigner_user_id=str(current_user.id),
+        )
     return serialized
 
 
@@ -469,12 +486,20 @@ async def create_tasks_for_group(
     serialized = [_serialize_task(t) for t in tasks]
     # One notification batch: each member gets an assignee e-mail and the
     # assigner gets a single group summary (see task_notifications).
-    background_tasks.add_task(
-        send_assignment_notifications,
-        token=_extract_token(request),
-        tasks=[_notif_payload(s) for s in serialized],
-        assigner_user_id=str(current_user.id),
-    )
+    # All fan-out rows share type/priority/due, so one gate check suffices.
+    if serialized and task_service.notification_allowed(
+        db,
+        task_type=serialized[0].task_type,
+        priority=serialized[0].priority,
+        due_date=serialized[0].due_date,
+        event="assignment",
+    ):
+        background_tasks.add_task(
+            send_assignment_notifications,
+            token=_extract_token(request),
+            tasks=[_notif_payload(s) for s in serialized],
+            assigner_user_id=str(current_user.id),
+        )
     return TaskGroupCreateResponse(
         assignment_batch_id=batch_id,
         assignee_group_id=payload.assignee_group_id,
@@ -517,12 +542,20 @@ async def create_tasks_bulk(
         task_type=payload.task_type,
     )
     serialized = [_serialize_task(t) for t in tasks]
-    background_tasks.add_task(
-        send_assignment_notifications,
-        token=_extract_token(request),
-        tasks=[_notif_payload(s) for s in serialized],
-        assigner_user_id=str(current_user.id),
-    )
+    # All bulk rows share type/priority/due — one gate check suffices.
+    if serialized and task_service.notification_allowed(
+        db,
+        task_type=serialized[0].task_type,
+        priority=serialized[0].priority,
+        due_date=serialized[0].due_date,
+        event="assignment",
+    ):
+        background_tasks.add_task(
+            send_assignment_notifications,
+            token=_extract_token(request),
+            tasks=[_notif_payload(s) for s in serialized],
+            assigner_user_id=str(current_user.id),
+        )
     return serialized
 
 
@@ -592,7 +625,7 @@ async def update_task(
     task_service.require_task_access(db, current_user)
     task = task_service.update_task(db, current_user, task_id, payload)
     serialized = _serialize_task(task)
-    _maybe_status_notify(task, serialized, background_tasks, request)
+    _maybe_status_notify(task, serialized, background_tasks, request, db)
     return serialized
 
 
@@ -620,7 +653,7 @@ async def update_task_status(
     task_service.require_task_access(db, current_user)
     task = task_service.update_task_status(db, current_user, task_id, payload.status)
     serialized = _serialize_task(task)
-    _maybe_status_notify(task, serialized, background_tasks, request)
+    _maybe_status_notify(task, serialized, background_tasks, request, db)
     return serialized
 
 
@@ -638,7 +671,7 @@ async def complete_task(
         db, current_user, task_id, payload.completed
     )
     serialized = _serialize_task(task)
-    _maybe_status_notify(task, serialized, background_tasks, request)
+    _maybe_status_notify(task, serialized, background_tasks, request, db)
     return serialized
 
 
