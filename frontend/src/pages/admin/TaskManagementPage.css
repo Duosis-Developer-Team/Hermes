@@ -301,6 +301,15 @@
     color: var(--c-text-muted);
 }
 
+/* Checkbox labels follow the theme — AntD's default is near-black, which
+   is unreadable on the dark surface. The variable flips in light mode. */
+.tm-notif-row .ant-checkbox-wrapper {
+    color: var(--c-text-strong);
+}
+.tm-notif-row .ant-checkbox-wrapper-disabled {
+    color: var(--c-text-muted);
+}
+
 .tm-notif-priorities {
     min-width: 240px;
 }
