@@ -150,6 +150,11 @@ function TasksPage() {
     // surface; the old Calendar (weekly) layout was removed as it was
     // not usable for task management.
     const [viewLayout, setViewLayout] = useState('board')
+    // Time range mode — 'all' (default): date-independent kanban showing
+    // every visible item regardless of dates (management view: everything
+    // assigned & not yet done at a glance). 'week': the classic weekly
+    // window, but windowed by DUE DATE (termin), not scheduled date.
+    const [rangeMode, setRangeMode] = useState('all')
     // Board-only: lay tasks out in per-assignee swimlanes so dragging a
     // card to another row reassigns it. Off by default.
     const [groupByAssignee, setGroupByAssignee] = useState(false)
@@ -309,8 +314,6 @@ function TasksPage() {
         }
     }, [taskQuickFilter, weekStartStr, weekEndStr, yesterdayStr])
 
-    const viewIsDateRange = !!quickFilterParams
-
     const { data: tasks = [], isLoading } = useQuery({
         queryKey: [
             'tasks',
@@ -318,6 +321,7 @@ function TasksPage() {
             taskType,
             taskQuickFilter,
             viewedUserId,
+            rangeMode,
             weekStartStr,
             statusFilter,
             priorityFilter,
@@ -337,21 +341,27 @@ function TasksPage() {
                 ...effectiveScopeParams,
             }
             if (quickFilterParams) {
-                // Quick filter active — drop the scheduled-date window
-                // so "Overdue" reaches older weeks and "Completed This
-                // Week" finds rows scheduled outside this week. Works
-                // with either scope (My Tasks or Assigned by Me).
+                // Quick filter active — drop any date window so "Overdue"
+                // reaches older weeks and "Completed This Week" finds rows
+                // scheduled outside this week. Works with either scope.
                 return taskService.list({
                     ...base,
                     ...quickFilterParams,
                 })
             }
-            // No quick filter — page by current week window.
-            return taskService.list({
-                ...base,
-                start_date: weekStartStr,
-                end_date: weekEndStr,
-            })
+            if (rangeMode === 'week') {
+                // Weekly mode windows by DUE DATE (termin) — management
+                // asked to see what is due this week, not what was
+                // scheduled this week. Items without a due date only
+                // appear in the All view.
+                return taskService.list({
+                    ...base,
+                    due_from: weekStartStr,
+                    due_to: weekEndStr,
+                })
+            }
+            // 'all' — date-independent kanban: every visible item.
+            return taskService.list(base)
         },
         // Only fetch the active scope's items when the user can access it.
         enabled: canAccessScope,
@@ -1047,16 +1057,15 @@ function TasksPage() {
                 )}
             </div>
 
-            {/* Week navigation row — applies to both Board and List.
-                Without a quick filter active, the views page by this
-                week window, so the pager lets users reach other weeks
-                (the old Calendar layout used to own this control). */}
+            {/* Range row — All (date-independent kanban, default) vs
+                Weekly. Weekly windows by DUE DATE and re-enables the week
+                pager; All shows every visible item regardless of dates. */}
             {!taskQuickFilter && (
                 <div
                     className="tasks-body"
                     style={{
                         display: 'flex',
-                        justifyContent: 'space-between',
+                        justifyContent: 'flex-start',
                         alignItems: 'center',
                         flexWrap: 'wrap',
                         gap: 12,
@@ -1064,31 +1073,73 @@ function TasksPage() {
                         paddingBottom: 0,
                     }}
                 >
-                    <Space>
-                        <Button
-                            icon={<LeftOutlined />}
-                            onClick={() =>
-                                setWeekStart((prev) => prev.subtract(1, 'week'))
-                            }
-                        />
-                        <Button
-                            onClick={() =>
-                                setWeekStart(dayjs().startOf('isoWeek'))
-                            }
-                        >
-                            Today
-                        </Button>
-                        <Button
-                            icon={<RightOutlined />}
-                            onClick={() =>
-                                setWeekStart((prev) => prev.add(1, 'week'))
-                            }
-                        />
-                        <span style={{ color: 'var(--c-text-strong)', fontWeight: 500 }}>
-                            {weekStart.format('DD MMM')} –{' '}
-                            {weekEnd.format('DD MMM, YYYY')}
-                        </span>
-                    </Space>
+                    <div
+                        className="tasks-views"
+                        role="tablist"
+                        aria-label="Time range"
+                    >
+                        {[
+                            { value: 'all', label: 'All' },
+                            { value: 'week', label: 'Weekly' },
+                        ].map((m) => (
+                            <button
+                                key={m.value}
+                                type="button"
+                                role="tab"
+                                aria-selected={rangeMode === m.value}
+                                className={`tasks-views-pill${
+                                    rangeMode === m.value
+                                        ? ' tasks-views-pill-active'
+                                        : ''
+                                }`}
+                                onClick={() => setRangeMode(m.value)}
+                            >
+                                {m.label}
+                            </button>
+                        ))}
+                    </div>
+                    {rangeMode === 'week' && (
+                        <Space wrap>
+                            <Button
+                                icon={<LeftOutlined />}
+                                onClick={() =>
+                                    setWeekStart((prev) =>
+                                        prev.subtract(1, 'week')
+                                    )
+                                }
+                            />
+                            <Button
+                                onClick={() =>
+                                    setWeekStart(dayjs().startOf('isoWeek'))
+                                }
+                            >
+                                Today
+                            </Button>
+                            <Button
+                                icon={<RightOutlined />}
+                                onClick={() =>
+                                    setWeekStart((prev) => prev.add(1, 'week'))
+                                }
+                            />
+                            <span
+                                style={{
+                                    color: 'var(--c-text-strong)',
+                                    fontWeight: 500,
+                                }}
+                            >
+                                {weekStart.format('DD MMM')} –{' '}
+                                {weekEnd.format('DD MMM, YYYY')}
+                            </span>
+                            <span
+                                style={{
+                                    color: 'var(--c-text-muted)',
+                                    fontSize: 12,
+                                }}
+                            >
+                                by due date
+                            </span>
+                        </Space>
+                    )}
                 </div>
             )}
 
