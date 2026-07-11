@@ -204,6 +204,13 @@ metadata:
     app.kubernetes.io/instance: ingress-nginx-test
 spec:
   type: NodePort
+  # externalIPs: kube-proxy node IP'sinde 80/443'u dogrudan sahiplenir —
+  # Cloudflare origin'e standart 443'ten baglanir (hermes.duosis.com).
+  # Onceden elle eklenen (kalici olmayan) bir iptables 443->30443 kurali
+  # vardi; sunucu reboot'unda silinip Error 521'e yol acti (11.07.2026).
+  # Bu alan cluster API'de sakli oldugu icin reboot'a dayaniklidir.
+  externalIPs:
+  - 84.247.180.172
   ports:
   - name: http
     port: 80
