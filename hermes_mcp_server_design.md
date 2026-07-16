@@ -488,3 +488,72 @@ of the thin-layer design).
 - **D5-6 APPROVED** — restricted users:read/groups:read endpoints in
   Stage 5B with least-privilege directory visibility and minimal
   public schemas (see §19/5B).
+
+---
+
+# Stage 5B addendum — Directory (users/groups) blocker & S2S proposal
+**Status: DECISION REQUIRED before 5B-B/C/D/J can be built.**
+
+## Finding (verified in code)
+core-service has **no authoritative user directory**. Users live in
+auth-service (separate DB deployment: db-auth vs db-core). Every
+existing consumer resolves names the same way — by forwarding the
+CALLER's RS256 user JWT to auth-service `GET /users/lookup` (web
+frontend directly; reporting-service server-side with the caller's
+token). Public API tokens carry no JWT and fabricating/forwarding one
+is banned. Core-local fragments (meeting_attendees.display_name/email
+keyed by hermes_user_id) cover only meeting participants — not a
+production directory. Building /v1/users on that would ship a
+directory with missing/stale names; building it on a minted JWT would
+violate an explicit rule. Both rejected.
+
+## Proposal: dedicated S2S lookup credential (also fixes the e-mail
+## delivery limitation)
+1. **auth-service** (first change to it in this initiative): new
+   internal endpoint `GET /internal/users/lookup?ids=…` returning ONLY
+   `{id, full_name, email, is_active}` for active users (ids filter
+   required for non-paged calls; paged variant for global directory).
+   Guarded by a NEW static service credential `HERMES_S2S_TOKEN`
+   (>=256-bit random, hermes-secrets, constant-time compare, not a
+   JWT, no user-impersonation semantics, rotate = secret update +
+   restart). Never exposed to browsers/tokens/logs.
+2. **core-service**: thin `auth_directory` client (httpx,
+   AUTH_SERVICE_URL + S2S token from env, 60s TTL cache, fail-closed:
+   auth-service unreachable → public 500 internal_error with
+   retryable guidance — never a partial directory).
+3. **Public endpoints exactly per the approved 5B spec (B/C)**:
+   /v1/users, /v1/users/{id}, /v1/groups, /v1/groups/{id}.
+   Visibility algorithm:
+   - global binding → broad ACTIVE directory (paged from auth).
+   - else UNION of: explicitly bound user ids; active members of
+     explicitly bound groups; DERIVED identities from records already
+     visible to the token (task assignee/assigner + activity actors +
+     comment authors via task_filter; work-log owners via
+     work_log_filter; meeting organizer/attendee hermes_user_ids via
+     meeting_filter). User-bound ceiling holds automatically because
+     every derived set comes from already-scope-filtered queries.
+   - q search runs INSIDE the authorized id set (min len 2, max 100);
+     out-of-scope == nonexistent (same 404 envelope).
+   - groups: global → all active; explicit group bindings → those;
+     user-bound → plus groups the bound user is an active member of;
+     customer/project-only → none. Public schema: id, name,
+     description, is_active, active member_count (no member lists,
+     no permission/hierarchy internals).
+4. **E-mail limitation closure** (same credential, separate slice):
+   task_notifications recipient lookup switches from caller-JWT to the
+   S2S lookup — the documented "email delivery parity" limitation is
+   then eliminated for API-triggered events.
+5. **MCP tools (D)** ship only after endpoints + visibility tests:
+   hermes_list_users / hermes_get_user / hermes_list_groups /
+   hermes_get_group, minimal schemas only.
+6. **Work-log enrichment product rule (per CTO note)**: NO automatic
+   user_summary enrichment anywhere. Raw user_id stays; consumers with
+   users:read resolve via /v1/users/{id}. Scope separation stays
+   meaningful; no hidden cross-scope joins.
+
+## Decision options
+- (a) Approve → implemented as slice "5B-2" (auth-service router +
+  core directory service/endpoints + portal/capabilities updates +
+  MCP tools + full visibility test matrix).
+- (b) Defer directory post-MCP; proceed to 5C writes next.
+- (c) Different source of truth (please specify).

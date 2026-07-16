@@ -99,6 +99,23 @@ def _page_result(body: dict, items: list) -> dict:
     }
 
 
+# H: cikti boyu sinirlari — uzun serbest-metin alanlari ACIK "truncated"
+# gostergesiyle kirpilir; kimlik/status/tarih alanlari ASLA kirpilmaz.
+MAX_TEXT_FIELD = 4000
+
+
+def _bound_text_fields(obj: dict, fields: tuple) -> dict:
+    truncated = []
+    for f in fields:
+        v = obj.get(f)
+        if isinstance(v, str) and len(v) > MAX_TEXT_FIELD:
+            obj[f] = v[:MAX_TEXT_FIELD]
+            truncated.append(f)
+    if truncated:
+        obj["truncated"] = truncated
+    return obj
+
+
 async def _call(method: str, path: str, token: str, tool: str,
                 params: Optional[dict] = None) -> dict:
     status, body = await api_request(
@@ -159,12 +176,13 @@ async def _list_tasks(args: dict, token: str) -> dict:
 
 
 async def _get_task(args: dict, token: str) -> dict:
-    return await _call(
+    out = await _call(
         "GET",
         f"tasks/{seg(args['task_code'])}",
         token,
         "hermes_get_task",
     )
+    return _bound_text_fields(out, ("description",))
 
 
 async def _get_task_activity(args: dict, token: str) -> dict:
@@ -188,7 +206,131 @@ async def _list_task_comments(args: dict, token: str) -> dict:
         "hermes_list_task_comments",
         params,
     )
+    items = [
+        _bound_text_fields(c, ("body",)) for c in body.get("data") or []
+    ]
+    return _page_result(body, items)
+
+
+def _work_log_list_item(w: dict) -> dict:
+    return {
+        "id": w.get("id"),
+        "user_id": w.get("user_id"),
+        "date_worked": w.get("date_worked"),
+        "duration_hours": w.get("duration_hours"),
+        "customer": (w.get("customer") or {}).get("name"),
+        "project": (w.get("project") or {}).get("name"),
+        "task_code": w.get("task_code"),
+        "meeting_id": w.get("meeting_id"),
+    }
+
+
+def _meeting_list_item(m: dict) -> dict:
+    return {
+        "id": m.get("id"),
+        "subject": m.get("subject"),
+        "start_datetime": m.get("start_datetime"),
+        "duration_minutes": m.get("duration_minutes"),
+        "is_private": m.get("is_private"),
+        "is_cancelled": m.get("is_cancelled"),
+        "organizer": (m.get("organizer") or {}).get("name"),
+    }
+
+
+async def _list_customers(args: dict, token: str) -> dict:
+    params = _page_params(args)
+    if args.get("q"):
+        params["q"] = args["q"]
+    body = await _call(
+        "GET", "customers", token, "hermes_list_customers", params
+    )
     return _page_result(body, body.get("data") or [])
+
+
+async def _get_customer(args: dict, token: str) -> dict:
+    return await _call(
+        "GET",
+        f"customers/{seg(args['customer_id'])}",
+        token,
+        "hermes_get_customer",
+    )
+
+
+async def _list_projects(args: dict, token: str) -> dict:
+    params = _page_params(args)
+    for key in ("q", "customer_id"):
+        if args.get(key):
+            params[key] = args[key]
+    body = await _call(
+        "GET", "projects", token, "hermes_list_projects", params
+    )
+    return _page_result(body, body.get("data") or [])
+
+
+async def _get_project(args: dict, token: str) -> dict:
+    return await _call(
+        "GET",
+        f"projects/{seg(args['project_id'])}",
+        token,
+        "hermes_get_project",
+    )
+
+
+_WORK_LOG_FILTERS = (
+    "date_from",
+    "date_to",
+    "customer_id",
+    "project_id",
+    "user_id",
+    "task_code",
+    "meeting_id",
+    "sort",
+)
+
+
+async def _list_work_logs(args: dict, token: str) -> dict:
+    params = _page_params(args)
+    for key in _WORK_LOG_FILTERS:
+        if args.get(key) not in (None, ""):
+            params[key] = args[key]
+    body = await _call(
+        "GET", "work-logs", token, "hermes_list_work_logs", params
+    )
+    items = [_work_log_list_item(w) for w in body.get("data") or []]
+    return _page_result(body, items)
+
+
+async def _get_work_log(args: dict, token: str) -> dict:
+    out = await _call(
+        "GET",
+        f"work-logs/{seg(str(args['work_log_id']))}",
+        token,
+        "hermes_get_work_log",
+    )
+    return _bound_text_fields(out, ("description",))
+
+
+async def _list_meetings(args: dict, token: str) -> dict:
+    params = _page_params(args)
+    for key in ("start_from", "start_to", "sort"):
+        if args.get(key) not in (None, ""):
+            params[key] = args[key]
+    if args.get("include_cancelled"):
+        params["include_cancelled"] = "true"
+    body = await _call(
+        "GET", "meetings", token, "hermes_list_meetings", params
+    )
+    items = [_meeting_list_item(m) for m in body.get("data") or []]
+    return _page_result(body, items)
+
+
+async def _get_meeting(args: dict, token: str) -> dict:
+    return await _call(
+        "GET",
+        f"meetings/{seg(args['meeting_id'])}",
+        token,
+        "hermes_get_meeting",
+    )
 
 
 _TASK_CODE_PROP = {
@@ -314,6 +456,210 @@ REGISTRY: list[ToolSpec] = [
         | {"required": ["task_code"]},
         handler=_list_task_comments,
     ),
+    # ── Stage 5B: customers / projects / work logs / meetings ──────────
+    ToolSpec(
+        name="hermes_list_customers",
+        description=(
+            "Lists ACTIVE customers visible to this token (derived "
+            "least-privilege visibility — no company-wide enumeration). "
+            "Optional name search via q. " + UNTRUSTED_NOTE
+        ),
+        scope="customers:read",
+        input_schema=_page_args_schema(
+            {
+                "q": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 100,
+                    "description": "Name contains (case-insensitive).",
+                }
+            }
+        ),
+        handler=_list_customers,
+    ),
+    ToolSpec(
+        name="hermes_get_customer",
+        description=(
+            "Fetches one customer by id. 'Not found' may also mean 'not "
+            "visible to this token'. " + UNTRUSTED_NOTE
+        ),
+        scope="customers:read",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "customer_id": {"type": "string", "format": "uuid"}
+            },
+            "required": ["customer_id"],
+            "additionalProperties": False,
+        },
+        handler=_get_customer,
+    ),
+    ToolSpec(
+        name="hermes_list_projects",
+        description=(
+            "Lists ACTIVE projects visible to this token; filter by "
+            "customer_id, search by q. " + UNTRUSTED_NOTE
+        ),
+        scope="projects:read",
+        input_schema=_page_args_schema(
+            {
+                "customer_id": {"type": "string", "format": "uuid"},
+                "q": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 100,
+                    "description": "Name contains (case-insensitive).",
+                },
+            }
+        ),
+        handler=_list_projects,
+    ),
+    ToolSpec(
+        name="hermes_get_project",
+        description=(
+            "Fetches one project by id. 'Not found' may also mean 'not "
+            "visible to this token'. " + UNTRUSTED_NOTE
+        ),
+        scope="projects:read",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project_id": {"type": "string", "format": "uuid"}
+            },
+            "required": ["project_id"],
+            "additionalProperties": False,
+        },
+        handler=_get_project,
+    ),
+    ToolSpec(
+        name="hermes_list_work_logs",
+        description=(
+            "Lists time entries visible to this token as compact items "
+            "(no descriptions — use hermes_get_work_log for detail). "
+            "Filters: date range, customer/project/user, linked "
+            "task_code or meeting_id. " + UNTRUSTED_NOTE
+        ),
+        scope="work-logs:read",
+        input_schema=_page_args_schema(
+            {
+                "date_from": {"type": "string", "format": "date"},
+                "date_to": {"type": "string", "format": "date"},
+                "customer_id": {"type": "string", "format": "uuid"},
+                "project_id": {"type": "string", "format": "uuid"},
+                "user_id": {"type": "string", "format": "uuid"},
+                "task_code": {"type": "string", "maxLength": 32},
+                "meeting_id": {"type": "string", "format": "uuid"},
+                "sort": {
+                    "type": "string",
+                    "enum": [
+                        "date_worked",
+                        "-date_worked",
+                        "created_at",
+                        "-created_at",
+                    ],
+                    "default": "-date_worked",
+                },
+            }
+        ),
+        handler=_list_work_logs,
+    ),
+    ToolSpec(
+        name="hermes_get_work_log",
+        description=(
+            "Fetches one time entry by its numeric id with the full "
+            "public schema (long descriptions are truncated with an "
+            "explicit 'truncated' marker). " + UNTRUSTED_NOTE
+        ),
+        scope="work-logs:read",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "work_log_id": {"type": "integer", "minimum": 1}
+            },
+            "required": ["work_log_id"],
+            "additionalProperties": False,
+        },
+        handler=_get_work_log,
+    ),
+    ToolSpec(
+        name="hermes_list_meetings",
+        description=(
+            "Lists meetings where a user in this token's access is an "
+            "attendee, as compact items. Meeting bodies are never "
+            "available; private meetings keep a masked subject "
+            "(is_private=true). Cancelled meetings excluded unless "
+            "include_cancelled. " + UNTRUSTED_NOTE
+        ),
+        scope="meetings:read",
+        input_schema=_page_args_schema(
+            {
+                "start_from": {"type": "string", "format": "date-time"},
+                "start_to": {"type": "string", "format": "date-time"},
+                "include_cancelled": {
+                    "type": "boolean",
+                    "default": False,
+                },
+                "sort": {
+                    "type": "string",
+                    "enum": ["start_datetime", "-start_datetime"],
+                    "default": "-start_datetime",
+                },
+            }
+        ),
+        handler=_list_meetings,
+    ),
+    ToolSpec(
+        name="hermes_get_meeting",
+        description=(
+            "Fetches one meeting by id with the full public schema "
+            "(organizer, timing, join_url when the API exposes it — "
+            "never body content). 'Not found' may also mean 'not "
+            "visible to this token'. " + UNTRUSTED_NOTE
+        ),
+        scope="meetings:read",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "meeting_id": {"type": "string", "format": "uuid"}
+            },
+            "required": ["meeting_id"],
+            "additionalProperties": False,
+        },
+        handler=_get_meeting,
+    ),
 ]
 
 TOOLS_BY_NAME = {t.name: t for t in REGISTRY}
+
+# Full contract lock (5B-F) icin: tool → (HTTP method, OpenAPI path
+# sablonu, liste projeksiyon alanlari | None). Projeksiyon alanlari
+# public sema property'lerinin KESIN alt kumesi olmalidir (test kilidi).
+CONTRACT: dict = {
+    "hermes_whoami": ("GET", "/v1/me", None),
+    "hermes_list_tasks": ("GET", "/v1/tasks", tuple(
+        _task_list_item({}).keys()
+    )),
+    "hermes_get_task": ("GET", "/v1/tasks/{task_code}", None),
+    "hermes_get_task_activity": (
+        "GET", "/v1/tasks/{task_code}/activity", None,
+    ),
+    "hermes_list_task_comments": (
+        "GET", "/v1/tasks/{task_code}/comments", None,
+    ),
+    "hermes_list_customers": ("GET", "/v1/customers", None),
+    "hermes_get_customer": ("GET", "/v1/customers/{customer_id}", None),
+    "hermes_list_projects": ("GET", "/v1/projects", None),
+    "hermes_get_project": ("GET", "/v1/projects/{project_id}", None),
+    "hermes_list_work_logs": ("GET", "/v1/work-logs", tuple(
+        _work_log_list_item({}).keys()
+    )),
+    "hermes_get_work_log": ("GET", "/v1/work-logs/{log_id}", None),
+    "hermes_list_meetings": ("GET", "/v1/meetings", tuple(
+        _meeting_list_item({}).keys()
+    )),
+    "hermes_get_meeting": ("GET", "/v1/meetings/{meeting_id}", None),
+}
+
+# Tool argumani ↔ OpenAPI path parametresi ad eslemesi (contract-lock
+# testinin dogruladigi bilinçli takma adlar; model icin anlamli isim).
+PATH_PARAM_ALIASES = {"work_log_id": "log_id"}

@@ -153,8 +153,10 @@ def test_tools_list_scope_filtered(mcp_http, pg_session):
         "hermes_list_tasks",
         "hermes_whoami",
     ]
-    # tasks:read olmayan token task tool'larini GORMEZ bile.
-    narrow = u1_token(pg_session, scopes=["customers:read"])
+    # tasks:read olmayan token task tool'larini GORMEZ bile. (5B'den
+    # itibaren read scope'larin kendi tool'lari var; hicbir read tool'u
+    # olmayan bir scope'la dogrulanir.)
+    narrow = u1_token(pg_session, scopes=["tasks:comment"])
     assert _tool_names(rpc(mcp_http, "tools/list", token=narrow)) == [
         "hermes_whoami"
     ]
