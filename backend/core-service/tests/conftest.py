@@ -39,6 +39,66 @@ def fresh_rate_limiter():
     rate_limit.set_limiter(rate_limit.InMemoryRateLimiter())
 
 
+# Gercek-Postgres entegrasyon testleri (Stage 2D+). Lokalde:
+#   docker run -d --name hermes-test-pg -e POSTGRES_USER=hermes \
+#     -e POSTGRES_PASSWORD=hermes -e POSTGRES_DB=hermes_test \
+#     -p 55433:5432 postgres:15-alpine
+# CI ayni URL'i servis container'iyla saglar. DB yoksa bu fixture'i
+# kullanan testler SKIP edilir (foundation testleri etkilenmez).
+TEST_DB_URL = os.environ.get(
+    "HERMES_TEST_DATABASE_URL",
+    "postgresql://hermes:hermes@localhost:55433/hermes_test",
+)
+
+
+@pytest.fixture(scope="session")
+def pg_engine():
+    from sqlalchemy import create_engine
+
+    engine = create_engine(TEST_DB_URL, pool_pre_ping=True)
+    try:
+        with engine.connect():
+            pass
+    except Exception:
+        pytest.skip("test database unavailable (see conftest for setup)")
+    import app.models  # noqa: F401 — metadata kaydi
+
+    from app.database import Base
+    from sqlalchemy import text as sa_text
+
+    # create_all onkosulu: tasks.task_number server_default'u bu sequence'i
+    # kullanir (main.py _ensure_prerequisite_objects ile ayni gereklilik).
+    with engine.begin() as conn:
+        conn.execute(
+            sa_text("CREATE SEQUENCE IF NOT EXISTS task_number_seq")
+        )
+    Base.metadata.create_all(bind=engine)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture()
+def pg_session(pg_engine):
+    from sqlalchemy import text as sa_text
+    from sqlalchemy.orm import sessionmaker
+
+    Session = sessionmaker(
+        bind=pg_engine, autoflush=False, autocommit=False
+    )
+    s = Session()
+    # Test izolasyonu: yalnizca api_* tablolari temizlenir.
+    s.execute(
+        sa_text(
+            "TRUNCATE api_request_logs, api_client_access, api_tokens, "
+            "api_clients RESTART IDENTITY CASCADE"
+        )
+    )
+    s.commit()
+    yield s
+    s.rollback()
+    s.close()
+
+
 @pytest.fixture(autouse=True)
 def audit_records(monkeypatch):
     """Audit yazimini yakalar: testler gercek DB'ye yazmaz ve kayitlari

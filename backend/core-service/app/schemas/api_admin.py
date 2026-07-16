@@ -144,6 +144,12 @@ class ApiTokenCreate(BaseModel):
     expires_at: Optional[datetime] = None
 
 
+class ApiTokenExpiryUpdate(BaseModel):
+    """Aktif token'in omrunu gunceller; None = suresiz."""
+
+    expires_at: Optional[datetime] = None
+
+
 class ApiTokenResponse(BaseModel):
     id: UUID
     client_id: UUID
