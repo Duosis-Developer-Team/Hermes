@@ -1,0 +1,296 @@
+/* =============================================================================
+   Developer Portal (Stage 4A) — Hermes-native dark tasarim, responsive.
+   Renkler global --c-* token'larindan gelir (light/dark otomatik).
+   ============================================================================= */
+
+.dp-page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 8px 4px 48px;
+}
+
+.dp-header h1 {
+    margin: 0 0 4px;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--c-text-strong);
+}
+
+.dp-header p {
+    margin: 0 0 18px;
+    color: var(--c-text-muted);
+}
+
+.dp-body {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+/* ── Bolum navigasyonu ─────────────────────────────────────────────── */
+
+.dp-nav {
+    position: sticky;
+    top: 12px;
+    flex: 0 0 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dp-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--c-text);
+    font-size: 13.5px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.dp-nav-item:hover {
+    background: var(--c-surface-raised);
+}
+
+.dp-nav-item.is-active {
+    background: var(--c-surface-2);
+    border-color: var(--c-border-strong);
+    color: var(--c-text-strong);
+    font-weight: 600;
+}
+
+.dp-nav-soon {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px dashed var(--c-border);
+    border-radius: 10px;
+    color: var(--c-text-faint);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+/* ── Icerik ─────────────────────────────────────────────────────────── */
+
+.dp-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.dp-section h2 {
+    margin: 0 0 8px;
+    font-size: 20px;
+    color: var(--c-text-strong);
+}
+
+.dp-section h3 {
+    margin: 26px 0 8px;
+    font-size: 15px;
+    color: var(--c-text-strong);
+}
+
+.dp-lead {
+    color: var(--c-text);
+    font-size: 14px;
+    line-height: 1.65;
+    max-width: 72ch;
+}
+
+.dp-section p {
+    color: var(--c-text);
+    line-height: 1.65;
+    max-width: 72ch;
+}
+
+.dp-section code {
+    background: var(--c-chip);
+    border: 1px solid var(--c-border);
+    border-radius: 5px;
+    padding: 1px 5px;
+    font-size: 12.5px;
+}
+
+.dp-list {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    color: var(--c-text);
+    line-height: 1.6;
+    max-width: 78ch;
+}
+
+.dp-inline-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #7c9dff;
+    cursor: pointer;
+    font: inherit;
+    text-decoration: underline;
+}
+
+.dp-note {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-top: 22px;
+    padding: 12px 14px;
+    border: 1px solid var(--c-border);
+    border-radius: 10px;
+    background: var(--c-surface);
+    color: var(--c-text);
+    line-height: 1.6;
+}
+
+/* ── Overview kartlari ─────────────────────────────────────────────── */
+
+.dp-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 12px;
+    margin: 18px 0 6px;
+}
+
+.dp-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px;
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    background: var(--c-surface);
+    color: var(--c-text);
+    text-align: left;
+    cursor: pointer;
+    text-decoration: none;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.dp-card:hover {
+    border-color: var(--c-border-strong);
+    transform: translateY(-1px);
+}
+
+.dp-card-icon {
+    font-size: 18px;
+    color: #7c9dff;
+}
+
+.dp-card-title {
+    font-weight: 600;
+    color: var(--c-text-strong);
+}
+
+.dp-card-sub {
+    font-size: 12.5px;
+    color: var(--c-text-muted);
+    line-height: 1.5;
+}
+
+/* ── Onboarding adimlari ───────────────────────────────────────────── */
+
+.dp-steps {
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dp-steps > li {
+    padding: 16px 16px 18px;
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    background: var(--c-surface);
+}
+
+.dp-steps > li h3 {
+    margin: 0 0 8px;
+}
+
+/* ── Kod bloklari ──────────────────────────────────────────────────── */
+
+.dp-code {
+    margin: 10px 0;
+    border: 1px solid var(--c-border);
+    border-radius: 10px;
+    background: var(--c-surface-sunken);
+    overflow: hidden;
+}
+
+.dp-code-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 6px 4px 12px;
+    border-bottom: 1px solid var(--c-border);
+    color: var(--c-text-faint);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.dp-code-body {
+    margin: 0;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--c-text);
+}
+
+.dp-code-body code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+}
+
+.dp-table {
+    margin-top: 10px;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+    .dp-body {
+        flex-direction: column;
+    }
+
+    .dp-nav {
+        position: static;
+        flex: none;
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 6px;
+        gap: 6px;
+    }
+
+    .dp-nav-item {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .dp-nav-soon {
+        display: none;
+    }
+}
+
+@media (max-width: 560px) {
+    .dp-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .dp-page {
+        padding: 4px 0 40px;
+    }
+}

@@ -12,6 +12,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { Drawer, Layout, Menu, Avatar, Dropdown, Space, Typography, Button, Switch } from 'antd'
 import {
     ApiOutlined,
+    CodeOutlined,
     DashboardOutlined,
     ClockCircleOutlined,
     TeamOutlined,
@@ -103,6 +104,15 @@ function MainLayout() {
             key: '/meetings',
             icon: <CalendarOutlined />,
             label: 'Meetings',
+        },
+
+        // Developer Portal — Public API dokumantasyonu. D3: ust seviye
+        // giris, TUM oturum acmis kullanicilara acik (D1). Token/client
+        // YONETIMI API Management'ta admin-only kalir.
+        {
+            key: '/developer',
+            icon: <CodeOutlined />,
+            label: 'Developer',
         },
 
         // Admin Menüsü

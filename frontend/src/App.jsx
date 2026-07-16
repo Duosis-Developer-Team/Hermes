@@ -55,6 +55,7 @@ import ContractStatusPage from './pages/admin/ContractStatusPage'
 import TasksPage from './pages/TasksPage'
 import TaskManagementPage from './pages/admin/TaskManagementPage'
 import ApiManagementPage from './pages/admin/ApiManagementPage'
+import DeveloperPortalPage from './pages/developer/DeveloperPortalPage'
 import MeetingsPage from './pages/MeetingsPage'
 import { useTaskPermissions } from './hooks/useTaskPermissions'
 
@@ -220,6 +221,11 @@ function App() {
                 {/* Meetings — every authenticated user; backend
                     visibility narrows to their own attended events. */}
                 <Route path="meetings" element={<MeetingsPage />} />
+
+                {/* Developer Portal — Public API dokumantasyonu (D1:
+                    TUM oturum acmis kullanicilar; token yonetimi
+                    API Management'ta admin-only kalir). */}
+                <Route path="developer" element={<DeveloperPortalPage />} />
 
                 {/* Admin Pages */}
                 <Route
