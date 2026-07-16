@@ -7,10 +7,10 @@
 # =============================================================================
 
 from datetime import date, datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # ── Task ────────────────────────────────────────────────────────────────
 
@@ -312,3 +312,49 @@ def serialize_meeting(m) -> PublicMeeting:
         join_url=m.join_url,
         is_cancelled=bool(m.is_cancelled),
     )
+
+
+# ── Write request semalari (Stage 3C — user-bound clients only) ─────────
+
+
+class PublicTaskCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    title: str = Field(..., min_length=1, max_length=255)
+    description: str = Field(..., min_length=1, max_length=10000)
+    customer_id: UUID
+    project_id: UUID
+    sub_project_id: Optional[UUID] = None
+    assignee_user_id: UUID
+    scheduled_date: date
+    due_date: Optional[date] = None
+    priority: Literal["low", "medium", "high", "urgent"] = "medium"
+    task_type: Literal["task", "issue", "suggestion"] = "task"
+
+
+class PublicTaskUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    title: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = Field(None, min_length=1, max_length=10000)
+    priority: Optional[Literal["low", "medium", "high", "urgent"]] = None
+    scheduled_date: Optional[date] = None
+    due_date: Optional[date] = None
+    sub_project_id: Optional[UUID] = None
+    assignee_user_id: Optional[UUID] = None
+
+
+class PublicCommentCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    body: str = Field(..., min_length=1, max_length=5000)
+
+
+class PublicStatusAction(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    """accept → in_progress; reject → rejected; reopen → completed'dan
+    in_progress'e / rejected'dan pending'e (internal gecis kurallari
+    aynen uygulanir)."""
+
+    action: Literal["accept", "reject", "reopen"]

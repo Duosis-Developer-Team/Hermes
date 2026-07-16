@@ -25,6 +25,7 @@ from .task import (
     TaskNotificationSetting,
 )
 from .api_client import (
+    ApiIdempotencyKey,
     ApiClient,
     ApiToken,
     ApiClientAccess,
@@ -70,6 +71,7 @@ __all__ = [
     "ApiToken",
     "ApiClientAccess",
     "ApiRequestLog",
+    "ApiIdempotencyKey",
     "TaskActivityEvent",
     "TaskComment",
     "Meeting",

@@ -234,3 +234,47 @@ class ApiRequestLog(Base):
         Index("idx_api_request_logs_created", "created_at"),
         Index("idx_api_request_logs_client", "client_id", "created_at"),
     )
+
+
+class ApiIdempotencyKey(Base):
+    """Public API POST idempotency kaydi (rezervasyon deseni).
+
+    Akis: is mantigi CALISMADAN once (client_id, key) satiri INSERT edilir
+    (rezervasyon; response_status NULL). Ayni anahtarla yarisan ikinci
+    istek unique constraint'e takilir ve ya replay alir ya 409 doner —
+    ayni is kaydinin IKI kez olusmasi imkansizlasir. Is mantigi bitince
+    satir yanit anligiyla guncellenir; is mantigi patlarsa rezervasyon
+    silinir (anahtar yeniden kullanilabilir).
+
+    Saklanan yanit anligi YALNIZCA public sema govdesidir — Authorization,
+    cookie, token, hash veya internal hata detayi tasiyamaz (yazan taraf
+    public serializer ciktisidir). 24 saatlik TTL okuma aninda uygulanir;
+    fiziksel temizlik retention backlog'undadir.
+    """
+
+    __tablename__ = "api_idempotency_keys"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    client_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("api_clients.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    key = Column(String(128), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    # NULL → istek halen isleniyor (rezervasyon).
+    response_status = Column(Integer, nullable=True)
+    response_body = Column(JSONB, nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "client_id", "key", name="uq_api_idempotency_client_key"
+        ),
+    )
