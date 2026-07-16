@@ -49,9 +49,53 @@ jobs:
           JWT_PUBLIC_KEY: ci-test-only-not-a-real-key
         run: python -m pytest tests/ -q
 
+  # hermes-mcp testleri (Stage 5A) — MCP JSON-RPC → hermes_mcp →
+  # gercek core Public API → Postgres uctan uca zinciri dogrular.
+  mcp_tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: hermes
+          POSTGRES_PASSWORD: hermes
+          POSTGRES_DB: hermes_test
+        ports:
+          - 55433:5432
+        options: >-
+          --health-cmd "pg_isready -U hermes"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        # Test harness'i core Public API'yi in-process calistirir; runtime
+        # hermes_mcp core import ETMEZ (testler bunu dogrular).
+        run: |
+          pip install -r backend/core-service/requirements.txt
+          pip install -r backend/mcp-service/requirements.txt
+
+      - name: Run MCP test suite
+        working-directory: backend/mcp-service
+        env:
+          HERMES_TEST_DATABASE_URL: postgresql://hermes:hermes@localhost:55433/hermes_test
+          JWT_PUBLIC_KEY: ci-test-only-not-a-real-key
+        run: python -m pytest tests/ -q
+
   build_push_deploy:
     runs-on: ubuntu-latest
-    needs: backend_tests
+    needs: [backend_tests, mcp_tests]
 
     env:
       NAMESPACE: hermes-dev

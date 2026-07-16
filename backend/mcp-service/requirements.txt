@@ -1,0 +1,4 @@
+# hermes-mcp: BILINCLI olarak minimal — DB surucusu YOK, core import'u YOK.
+mcp>=1.28,<2
+httpx>=0.27
+uvicorn[standard]>=0.30
