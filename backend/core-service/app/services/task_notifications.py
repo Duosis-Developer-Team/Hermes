@@ -27,6 +27,7 @@ from urllib.parse import quote, urlparse
 import httpx
 
 from ..config import get_settings
+from .auth_upstream import auth_service_base_url
 from .graph_service import (
     GraphConfigError,
     GraphRequestError,
@@ -118,15 +119,6 @@ def _logo_img_html() -> str:
 # E-mail resolution (auth-service)
 # --------------------------------------------------------------
 
-def _auth_base_url() -> str:
-    """Normalise AUTH_SERVICE_URL so we can append our own path. The
-    configmap value may already end in /api/v1 (mirrors reports.py)."""
-    base = (get_settings().AUTH_SERVICE_URL or "").rstrip("/")
-    if base.endswith("/api/v1"):
-        base = base[: -len("/api/v1")]
-    return base
-
-
 async def _resolve_users(
     token: str, ids: Sequence[str]
 ) -> Dict[str, dict]:
@@ -145,7 +137,7 @@ async def _resolve_users(
 
     s2s = _gs().HERMES_S2S_TOKEN_CURRENT
     if s2s:
-        url = f"{_auth_base_url()}/internal/directory/users/resolve"
+        url = f"{auth_service_base_url()}/internal/directory/users/resolve"
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.post(
@@ -182,7 +174,7 @@ async def _resolve_users(
             flush=True,
         )
         return {}
-    url = f"{_auth_base_url()}/api/v1/auth/users/lookup"
+    url = f"{auth_service_base_url()}/api/v1/auth/users/lookup"
     # token is the RAW JWT (no prefix); auth-service reads a bearer header.
     headers = {"Authorization": f"Bearer {token}"}
     try:

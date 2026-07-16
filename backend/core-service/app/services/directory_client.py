@@ -11,6 +11,10 @@
 #     yukselir; public katman bunu sanitize internal_error'a cevirir.
 #   - Upstream adresi YALNIZCA settings.AUTH_SERVICE_URL — keyfi URL /
 #     SSRF yetenegi yok. Test kancasi: set_client_factory.
+#   - Adres turetimi auth_upstream.auth_service_base_url() ile TEK
+#     yerden yapilir: /internal/... yollari /api prefix'inin DISINDA
+#     oldugu icin configmap'teki /api/v1 soneki kirpilmalidir (bkz.
+#     auth_upstream basligindaki canli bug kaydi).
 # =============================================================================
 
 import logging
@@ -20,6 +24,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 import httpx
 
 from ..config import get_settings
+from .auth_upstream import auth_service_base_url
 
 logger = logging.getLogger("hermes.directory")
 
@@ -60,11 +65,10 @@ def _get_client() -> httpx.Client:
 
 
 def _base_and_token() -> Tuple[str, str]:
-    settings = get_settings()
-    token = settings.HERMES_S2S_TOKEN_CURRENT
+    token = get_settings().HERMES_S2S_TOKEN_CURRENT
     if not token:
         raise DirectoryUnavailable("S2S credential not configured")
-    return settings.AUTH_SERVICE_URL.rstrip("/"), token
+    return auth_service_base_url(), token
 
 
 def _remember(uid: str, profile: Optional[dict]) -> None:

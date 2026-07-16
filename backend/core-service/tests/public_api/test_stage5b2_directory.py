@@ -4,6 +4,17 @@
 # auth-service GERCEK degil: directory_client'a httpx.MockTransport
 # enjekte edilir (fake profiller + istek yakalama). Gorunurluk kumesi
 # core'da hesaplandigindan matris testleri gercek PG uzerinde kosulur.
+#
+# SAHTE TRANSPORT SOZLESMESI (2026-07-16 canli bug'indan sonra sertlesti):
+#   1. AUTH_SERVICE_URL fixture'da CANLI CONFIGMAP DEGERI ile kurulur
+#      ("http://auth-service/api/v1") — eskiden testler /api/v1 soneki
+#      OLMAYAN varsayilanla ("http://localhost:8000") kosuyordu, yani
+#      sonek kirpma hatasi hicbir zaman tetiklenmiyordu.
+#   2. Handler yolu TAM esler; endswith() ile eslesme YASAK — yanlis
+#      prefix'li adres (/api/v1/internal/...) de "/users/resolve" ile
+#      bittigi icin eski mock ona da 200 doner ve bug yesil CI'dan
+#      gecerdi (false green).
+#   3. Beklenmeyen her adres, gercek auth-service gibi 404 doner.
 # =============================================================================
 
 import json as _json
@@ -34,16 +45,28 @@ _NAMES = {
     str(U_STRANGER): "Stranger Danger",
 }
 
+# Canli configmap degeri BIREBIR (k8s/01-configmap.yaml ve
+# k8s/test/01-configmap.yaml: "http://auth-service/api/v1"). Testler
+# artik uretimle ayni sekle sahip; /api/v1 soneki gercekten devrede.
+AUTH_CONFIG_URL = "http://auth-service/api/v1"
 
-@pytest.fixture()
-def fake_auth(monkeypatch):
-    """directory_client'a sahte auth-service enjekte eder; yapilan
-    istekleri yakalar."""
-    calls = []
+# auth-service'in GERCEK ic yuzeyi: /internal/... /api prefix'inin
+# DISINDA kayitlidir (auth main.py: include_router(..., prefix yok)).
+AUTH_HOST = "auth-service"
+RESOLVE_PATH = "/internal/directory/users/resolve"
+LIST_PATH = "/internal/directory/users"
+
+
+def _directory_handler(calls):
+    """Gercek auth-service'i taklit eder: YALNIZCA tam eslesen adres
+    cevap verir, digerleri 404. endswith() ile eslesme YOK."""
 
     def handler(request: httpx.Request) -> httpx.Response:
         calls.append(request)
-        if request.url.path.endswith("/users/resolve"):
+        if request.url.host != AUTH_HOST:
+            return httpx.Response(404, json={"detail": "Not Found"})
+        path = request.url.path
+        if path == RESOLVE_PATH and request.method == "POST":
             ids = _json.loads(request.content)["user_ids"]
             users = [
                 {
@@ -56,23 +79,42 @@ def fake_auth(monkeypatch):
                 if i in _NAMES
             ]
             return httpx.Response(200, json={"users": users})
-        # global liste
-        users = [
-            {
-                "id": k,
-                "display_name": v,
-                "work_email": "g@x.com",
-                "is_active": True,
-            }
-            for k, v in sorted(_NAMES.items(), key=lambda kv: kv[1])
-        ]
-        return httpx.Response(200, json={"users": users,
-                                         "has_more": False})
+        if path == LIST_PATH and request.method == "GET":
+            users = [
+                {
+                    "id": k,
+                    "display_name": v,
+                    "work_email": "g@x.com",
+                    "is_active": True,
+                }
+                for k, v in sorted(_NAMES.items(), key=lambda kv: kv[1])
+            ]
+            return httpx.Response(
+                200, json={"users": users, "has_more": False}
+            )
+        # Yanlis prefix buraya duser — canli bug'in birebir davranisi.
+        return httpx.Response(404, json={"detail": "Not Found"})
+
+    return handler
+
+
+@pytest.fixture()
+def fake_auth(monkeypatch):
+    """directory_client'a sahte auth-service enjekte eder; yapilan
+    istekleri yakalar."""
+    calls = []
 
     directory_client.set_client_factory(
-        lambda: httpx.Client(transport=httpx.MockTransport(handler))
+        lambda: httpx.Client(
+            transport=httpx.MockTransport(_directory_handler(calls))
+        )
     )
     directory_client.clear_cache()
+    monkeypatch.setattr(
+        directory_client.get_settings(),
+        "AUTH_SERVICE_URL",
+        AUTH_CONFIG_URL,
+    )
     monkeypatch.setattr(
         directory_client.get_settings(),
         "HERMES_S2S_TOKEN_CURRENT",
@@ -288,11 +330,11 @@ def test_positive_cache_avoids_second_call(
     h = bound_headers(pg_session)
     public_http.get(f"{BASE}/users/{U_BOUND}", headers=h)
     resolves_before = sum(
-        1 for r in fake_auth if r.url.path.endswith("/resolve")
+        1 for r in fake_auth if r.url.path == RESOLVE_PATH
     )
     public_http.get(f"{BASE}/users/{U_BOUND}", headers=h)
     resolves_after = sum(
-        1 for r in fake_auth if r.url.path.endswith("/resolve")
+        1 for r in fake_auth if r.url.path == RESOLVE_PATH
     )
     assert resolves_after == resolves_before  # cache'ten geldi
 
@@ -302,11 +344,11 @@ def test_negative_cache_short_ttl(world, fake_auth, monkeypatch):
 
     out = dc.resolve_users([str(U_GHOST)])
     assert out == {}
-    n_before = sum(1 for r in fake_auth if r.url.path.endswith("/resolve"))
+    n_before = sum(1 for r in fake_auth if r.url.path == RESOLVE_PATH)
     out = dc.resolve_users([str(U_GHOST)])  # negatif cache'ten
     assert out == {}
     assert (
-        sum(1 for r in fake_auth if r.url.path.endswith("/resolve"))
+        sum(1 for r in fake_auth if r.url.path == RESOLVE_PATH)
         == n_before
     )
     # TTL dolunca yeniden sorulur.
@@ -315,7 +357,7 @@ def test_negative_cache_short_ttl(world, fake_auth, monkeypatch):
     dc._cache[key] = (0.0, val)
     dc.resolve_users([key])
     assert (
-        sum(1 for r in fake_auth if r.url.path.endswith("/resolve"))
+        sum(1 for r in fake_auth if r.url.path == RESOLVE_PATH)
         == n_before + 1
     )
 
@@ -402,11 +444,121 @@ def test_notification_lookup_uses_s2s_without_jwt(monkeypatch):
 
     monkeypatch.setattr(
         core_config.get_settings(),
+        "AUTH_SERVICE_URL",
+        AUTH_CONFIG_URL,
+    )
+    monkeypatch.setattr(
+        core_config.get_settings(),
         "HERMES_S2S_TOKEN_CURRENT",
         "s2s-test-" + "y" * 40,
     )
 
     out = anyio.run(tn._resolve_users, "", [str(U_BOUND)])
     assert out[str(U_BOUND)]["email"] == "bound@x.com"
-    assert "/internal/directory/users/resolve" in captured["url"]
+    # TAM adres: substring ("... in url") kontrolu yanlis prefix'li
+    # adresi de gecirirdi — dizin bug'iyle ayni kor nokta.
+    assert captured["url"] == f"http://{AUTH_HOST}{RESOLVE_PATH}"
     assert "s2s-test-" in captured["auth"]  # JWT degil, S2S
+
+
+# ── REGRESYON: canli URL turetme bug'i (2026-07-16, hermes-test) ───────
+
+
+def test_regression_directory_url_must_not_carry_api_v1_prefix(monkeypatch):
+    """CANLI BUG'IN BIREBIR TEKRARI.
+
+    Belirti: directory_client, AUTH_SERVICE_URL'deki ("http://
+    auth-service/api/v1") /api/v1 sonegini kirpmadan /internal/... ekliyor
+    →  http://auth-service/api/v1/internal/directory/users/resolve
+    →  auth-service'te /internal /api prefix'i DISINDA oldugu icin 404
+    →  DirectoryUnavailable  →  sanitize 500.
+    Sonuc: /v1/users ve /v1/groups dev ve test'te hic calismadi.
+
+    Bu test uretim configmap degerini birebir kurar ve istegin TAM
+    adresini dogrular. Duzeltme geri alinirsa sahte auth 404 doner,
+    resolve_users DirectoryUnavailable yukseltir ve test kirmizi olur.
+    """
+    calls = []
+    directory_client.set_client_factory(
+        lambda: httpx.Client(
+            transport=httpx.MockTransport(_directory_handler(calls))
+        )
+    )
+    directory_client.clear_cache()
+    monkeypatch.setattr(
+        directory_client.get_settings(),
+        "AUTH_SERVICE_URL",
+        AUTH_CONFIG_URL,
+    )
+    monkeypatch.setattr(
+        directory_client.get_settings(),
+        "HERMES_S2S_TOKEN_CURRENT",
+        "s2s-test-" + "z" * 40,
+    )
+    try:
+        out = directory_client.resolve_users([str(U_BOUND)])
+        assert out[str(U_BOUND)]["display_name"] == "Bound User"
+        assert len(calls) == 1
+        assert str(calls[0].url) == f"http://{AUTH_HOST}{RESOLVE_PATH}"
+        assert "/api/v1" not in str(calls[0].url)
+    finally:
+        directory_client.set_client_factory(lambda: httpx.Client(timeout=5))
+        directory_client.clear_cache()
+
+
+def test_regression_public_users_endpoint_survives_api_v1_config(
+    world, fake_auth, public_http, pg_session
+):
+    """Ayni bug'in KULLANICIYA GORUNEN yuzu: fake_auth artik uretim
+    configmap degerini kuruyor, yani bu cagri bug varken 500 donerdi.
+    200 = canli belirti gecti."""
+    h = bound_headers(pg_session)
+    r = public_http.get(f"{BASE}/users", headers=h)
+    assert r.status_code == 200
+    # Hangi ic yolun secildigi binding'e baglidir (user-bound → resolve,
+    # global → liste); bu testin kilitledigi sey yol SECIMI degil, ADRES
+    # TURETIMI: her cagri /internal/... koklu olmali, /api/v1 tasimamali.
+    assert fake_auth, "upstream dizin cagrisi hic yapilmadi"
+    for req in fake_auth:
+        assert req.url.path in (RESOLVE_PATH, LIST_PATH), req.url
+        assert "/api/v1" not in str(req.url), req.url
+        assert req.url.host == AUTH_HOST
+
+
+@pytest.mark.parametrize(
+    "configured,expected",
+    [
+        # Canli configmap sekli — bug'in tetikleyicisi.
+        ("http://auth-service/api/v1", "http://auth-service"),
+        ("http://auth-service/api/v1/", "http://auth-service"),
+        # Sonek yoksa dokunulmaz.
+        ("http://auth-service", "http://auth-service"),
+        ("http://auth-service/", "http://auth-service"),
+        # Yerel gelistirme varsayilani (config.py) — testlerin eskiden
+        # kostugu deger; sonek olmadigi icin bug'i hic tetiklemiyordu.
+        ("http://localhost:8000", "http://localhost:8000"),
+        # Yapilandirilmamis.
+        ("", ""),
+    ],
+)
+def test_auth_service_base_url_normalisation(monkeypatch, configured,
+                                             expected):
+    from app import config as core_config
+    from app.services.auth_upstream import auth_service_base_url
+
+    monkeypatch.setattr(
+        core_config.get_settings(), "AUTH_SERVICE_URL", configured
+    )
+    assert auth_service_base_url() == expected
+
+
+def test_both_consumers_use_the_single_shared_normaliser():
+    """Kok sebep eksik kirpma DEGIL, ayni turetimin IKI KOPYASIYDI
+    (biri dogru, biri hatali). Bu test kopyanin geri gelmesini engeller:
+    her iki tuketici de ayni fonksiyon nesnesini cagirmak zorunda."""
+    from app.services import directory_client as dc
+    from app.services import task_notifications as tn
+    from app.services.auth_upstream import auth_service_base_url
+
+    assert dc.auth_service_base_url is auth_service_base_url
+    assert tn.auth_service_base_url is auth_service_base_url
