@@ -25,6 +25,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      // Public API (external integrations) — served by core-service
+      '/api/public': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        secure: false,
+      },
     }
   }
 })

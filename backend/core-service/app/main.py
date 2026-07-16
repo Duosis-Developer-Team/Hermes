@@ -751,6 +751,15 @@ app.include_router(task_admin_router, prefix=API_PREFIX)
 app.include_router(user_group_admin_router, prefix=API_PREFIX)
 app.include_router(meetings_router, prefix=API_PREFIX)
 
+# =============================================================================
+# Public API (dis entegrasyonlar) — /api/public altina mount edilen IZOLE
+# alt-uygulama. Kendi OpenAPI'si, kendi middleware zinciri ve kendi hata
+# zarfi vardir; internal route/semalar oraya sizamaz. Bkz. app/public_api/.
+# =============================================================================
+from .public_api.app import create_public_app  # noqa: E402
+
+app.mount("/api/public", create_public_app())
+
 
 @app.get("/health", tags=["Health"])
 async def health_check():

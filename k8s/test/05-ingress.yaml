@@ -51,6 +51,17 @@ spec:
             port:
               number: 80
 
+      # Public API (external integrations) — core-service'teki izole
+      # /api/public alt-uygulamasina gider. NOT: dokumantasyon amacli;
+      # canliya yalnizca onayli promote surecinde uygulanir.
+      - path: /api/public
+        pathType: Prefix
+        backend:
+          service:
+            name: core-service
+            port:
+              number: 80
+
       # Frontend (Root)
       - path: /
         pathType: Prefix

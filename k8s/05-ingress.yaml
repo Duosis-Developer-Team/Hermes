@@ -50,6 +50,17 @@ spec:
             name: core-service
             port:
               number: 80
+
+      # Public API (external integrations) — core-service'teki izole
+      # /api/public alt-uygulamasina gider. Bu kural olmadan /api/public
+      # SPA catch-all'ina duser ve index.html doner.
+      - path: /api/public
+        pathType: Prefix
+        backend:
+          service:
+            name: core-service
+            port:
+              number: 80
               
       # Frontend (Root)
       - path: /
