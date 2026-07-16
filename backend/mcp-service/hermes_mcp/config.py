@@ -30,3 +30,18 @@ MAX_LIMIT = 50
 UPSTREAM_TIMEOUT_SECONDS = float(
     os.environ.get("MCP_UPSTREAM_TIMEOUT_SECONDS", "15")
 )
+
+# 5D sertlestirme: govde limiti + surec-ici eszamanlilik tavani.
+MAX_BODY_BYTES = int(os.environ.get("MCP_MAX_BODY_BYTES", "1000000"))
+MAX_CONCURRENT = int(os.environ.get("MCP_MAX_CONCURRENT", "32"))
+
+# OAuth kesif temeli (RFC 9728 Protected Resource Metadata). DURUST
+# durum: authorization server HENUZ YOK — dokuman authorization_servers
+# alanini bos birakir; external uyumluluk 'not ready' olarak kapilidir.
+# Bearer hms_ modu INTERNAL BETA kimligidir.
+RESOURCE_URL = os.environ.get(
+    "MCP_RESOURCE_URL", "https://hermes.example/mcp"
+)
+PORTAL_DOCS_URL = os.environ.get(
+    "MCP_DOCS_URL", "https://hermes.example/developer"
+)

@@ -106,9 +106,27 @@ jobs:
           JWT_PUBLIC_KEY: ci-test-only-not-a-real-key
         run: python -m pytest tests/ -q
 
+  # Frontend build gate (Stage 5D-C): deploy, UI derlenmeden kosamaz.
+  frontend_build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Setup Node
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npx vite build
+
   build_push_deploy:
     runs-on: ubuntu-latest
-    needs: [backend_tests, mcp_tests]
+    needs: [backend_tests, mcp_tests, frontend_build]
 
     env:
       NAMESPACE: hermes-dev
@@ -145,6 +163,9 @@ jobs:
           BACKUP_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-backup:${TAG}"
           BACKUP_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-backup:latest"
 
+          MCP_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-mcp:${TAG}"
+          MCP_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-mcp:latest"
+
           docker build -t "$AUTH_IMAGE_SHA" -t "$AUTH_IMAGE_LATEST" -f "backend/auth-service/Dockerfile" ./backend
           docker push "$AUTH_IMAGE_SHA"
           docker push "$AUTH_IMAGE_LATEST"
@@ -169,6 +190,10 @@ jobs:
           docker push "$BACKUP_IMAGE_SHA"
           docker push "$BACKUP_IMAGE_LATEST"
 
+          docker build -t "$MCP_IMAGE_SHA" -t "$MCP_IMAGE_LATEST" -f "backend/mcp-service/Dockerfile" ./backend
+          docker push "$MCP_IMAGE_SHA"
+          docker push "$MCP_IMAGE_LATEST"
+
       - name: Setup kubeconfig
         run: |
           mkdir -p ~/.kube
@@ -187,6 +212,15 @@ jobs:
           kubectl -n "${NAMESPACE}" rollout restart deployment/core-service
           kubectl -n "${NAMESPACE}" rollout restart deployment/reporting-service
           kubectl -n "${NAMESPACE}" rollout restart deployment/frontend
+
+          # hermes-mcp: ILK kurulum manuel `kubectl apply` ister; CD
+          # yalnizca deployment VARSA image gunceller (Stage 5D-C).
+          if kubectl -n "${NAMESPACE}" get deployment hermes-mcp >/dev/null 2>&1; then
+            kubectl -n "${NAMESPACE}" set image deployment/hermes-mcp hermes-mcp="${REGISTRY}/${OWNER}/hermes-mcp:${GITHUB_SHA}"
+            kubectl -n "${NAMESPACE}" rollout status deployment/hermes-mcp --timeout=300s
+          else
+            echo "hermes-mcp deployment not present yet — skipping (manual first apply required)"
+          fi
 
           # 3. Wait for rollout completion
           kubectl -n "${NAMESPACE}" rollout status deployment/auth-service --timeout=300s

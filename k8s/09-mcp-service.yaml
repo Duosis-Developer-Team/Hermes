@@ -1,0 +1,86 @@
+# =============================================================================
+# HERMES - MCP Service (Stage 5D, YALNIZCA hermes-dev)
+# =============================================================================
+# Ince katman guvenceleri deployment'a yansir: DB env'i YOK, PostgreSQL
+# secret'i YOK, auth-service URL'i YOK, S2S credential'i YOK. Tek
+# upstream: core-service Public API (Service port 80 dogrulanmis).
+# CD, deployment cluster'da VARSA image'i gunceller (guard'li) —
+# ILK kurulum manuel `kubectl apply` ister (deploy mekanigi geregi).
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hermes-mcp
+  namespace: hermes-dev
+  labels:
+    app: hermes-mcp
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: hermes-mcp
+  template:
+    metadata:
+      labels:
+        app: hermes-mcp
+    spec:
+      automountServiceAccountToken: false   # K8s API izni GEREKMEZ
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: hermes-mcp
+          image: ghcr.io/duosis-developer-team/hermes-mcp:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8010
+          env:
+            - name: HERMES_PUBLIC_API_BASE
+              value: "http://core-service/api/public/v1"
+            - name: MCP_RESOURCE_URL
+              value: "https://84.247.180.172/mcp"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8010
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8010
+            initialDelaySeconds: 3
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes-mcp
+  namespace: hermes-dev
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8010
+      protocol: TCP
+      name: http
+  selector:
+    app: hermes-mcp

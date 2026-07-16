@@ -1,0 +1,46 @@
+# =============================================================================
+# HERMES - MCP ingress route (Stage 5D, AYRI Ingress kaynagi)
+# =============================================================================
+# Paylasilan hermes-ingress'e DOKUNMAZ (canli drift foot-gun'i): /mcp ve
+# /.well-known/oauth-protected-resource yollari icin bagimsiz kaynak.
+# Ayni host + TLS secret'i. Streamable HTTP icin proxy buffering KAPALI
+# ve uzun read timeout (SSE/stream uyumu). CORS bilerek ACILMADI —
+# MCP client'lari tarayici degildir; gerekirse ayri karar.
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hermes-mcp-ingress
+  namespace: hermes-dev
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
+spec:
+  tls:
+  - hosts:
+    - 84.247.180.172
+    secretName: hermes-tls
+  ingressClassName: nginx
+  rules:
+  - host: 84.247.180.172
+    http:
+      paths:
+      - path: /mcp
+        pathType: Prefix
+        backend:
+          service:
+            name: hermes-mcp
+            port:
+              number: 80
+      - path: /.well-known/oauth-protected-resource
+        pathType: Prefix
+        backend:
+          service:
+            name: hermes-mcp
+            port:
+              number: 80

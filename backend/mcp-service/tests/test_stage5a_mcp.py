@@ -111,7 +111,8 @@ def test_health(mcp_http):
     assert body["status"] == "ok"
 
 
-def test_initialize_reports_server_identity(mcp_http):
+def test_initialize_reports_server_identity(mcp_http, pg_session):
+    token = u1_token(pg_session)
     r = rpc(
         mcp_http,
         "initialize",
@@ -120,6 +121,7 @@ def test_initialize_reports_server_identity(mcp_http):
             "capabilities": {},
             "clientInfo": {"name": "pytest", "version": "0"},
         },
+        token=token,
     )
     info = _result(r)["serverInfo"]
     assert info["name"] == "hermes-mcp"
@@ -130,10 +132,14 @@ def test_initialize_reports_server_identity(mcp_http):
 
 
 def test_tools_list_requires_token(mcp_http):
+    """5D: token'siz POST HTTP-katmaninda 401 + WWW-Authenticate
+    challenge alir (RFC 9728 PRM kesfi) — internal-beta bearer modu
+    yanitta acikca soylenir."""
     r = rpc(mcp_http, "tools/list")
-    err = r.json().get("error")
-    assert err is not None
-    assert "Authorization" in err["message"]
+    assert r.status_code == 401
+    www = r.headers.get("WWW-Authenticate", "")
+    assert "resource_metadata=" in www
+    assert "internal-beta" in r.json()["detail"]
 
 
 def test_tools_list_rejects_bad_token(mcp_http, pg_session):
