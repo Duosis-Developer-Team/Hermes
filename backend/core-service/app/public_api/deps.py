@@ -27,6 +27,7 @@ from ..database import get_db
 from ..models.api_client import ApiClient, ApiToken
 from ..services import api_client_service
 from .errors import PublicAPIError
+from .rate_limit import get_limiter, rate_limit_headers
 
 # last_used_at guncellemesi en fazla bu araliklarla yazilir (yazma
 # amplifikasyonunu onler; amendment'a uygun "throttled" metadata).
@@ -92,14 +93,44 @@ def _touch_last_used(db: Session, token: ApiToken, ip: Optional[str]) -> None:
         db.rollback()
 
 
+def _reject_auth(request: Request, ip: Optional[str], code: str, message: str):
+    """Basarisiz kimlik dogrulamayi IP bazinda sayar (amendment #7).
+    Denenen token DEGERI ne saklanir ne loglanir — anahtar yalnizca IP'dir.
+    Limit asilirsa 401 yerine 429 doner (brute-force yavaslatma).
+
+    Guven varsayimi: IP, Cloudflare → ingress-nginx zincirinden gelen
+    CF-Connecting-IP/X-Forwarded-For basliklarindan cozulur. Origin'e
+    DOGRUDAN erisen bir saldirgan bu basliklari sahteleyebilir — bilinen
+    sinirlama; kalici cozum firewall'da origin'i CF IP araliklarina
+    kisitlamaktir (rapor edildi)."""
+    settings = get_settings()
+    result = get_limiter().check(
+        f"authfail:{ip or 'unknown'}",
+        settings.PUBLIC_API_AUTH_FAIL_LIMIT_PER_MIN,
+        60,
+    )
+    if not result.allowed:
+        request.state.rate_limited = True
+        raise PublicAPIError(
+            "rate_limit_exceeded",
+            "Too many failed authentication attempts. Try again later.",
+            headers=rate_limit_headers(result),
+        )
+    raise PublicAPIError(code, message)
+
+
 async def get_api_context(
     request: Request,
     db: Session = Depends(get_db),
 ) -> ApiContext:
+    ip = client_ip(request)
+
     # 1) Bearer-only cikarim — cookie/query ASLA okunmaz.
     auth_header = request.headers.get("authorization", "")
     if not auth_header.startswith("Bearer "):
-        raise PublicAPIError(
+        _reject_auth(
+            request,
+            ip,
             "invalid_token",
             "Missing bearer token. Send 'Authorization: Bearer <token>'.",
         )
@@ -107,44 +138,64 @@ async def get_api_context(
 
     # 2) Format kontrolu — hash-as-token dahil bicimsiz girdiyi erken reddet.
     if not raw.startswith(_VALID_PREFIXES) or len(raw) < 20:
-        raise PublicAPIError("invalid_token", "Invalid API token.")
+        _reject_auth(request, ip, "invalid_token", "Invalid API token.")
 
     # 3) SHA-256 → indexed lookup → sabit-zamanli teyit.
     digest = api_client_service.hash_token(raw)
     token, client = _lookup_token(db, digest)
     if token is None or client is None:
-        raise PublicAPIError("invalid_token", "Invalid API token.")
+        _reject_auth(request, ip, "invalid_token", "Invalid API token.")
     if not api_client_service.hashes_equal(token.token_hash, digest):
-        raise PublicAPIError("invalid_token", "Invalid API token.")
+        _reject_auth(request, ip, "invalid_token", "Invalid API token.")
 
     # 4) Token durumu.
     if token.status == "revoked":
-        raise PublicAPIError("revoked_token", "This token has been revoked.")
+        _reject_auth(
+            request, ip, "revoked_token", "This token has been revoked."
+        )
     expires = token.expires_at
     if expires is not None:
         if expires.tzinfo is None:
             expires = expires.replace(tzinfo=timezone.utc)
         if expires <= datetime.now(timezone.utc):
-            raise PublicAPIError(
-                "expired_token", "This token has expired."
+            _reject_auth(
+                request, ip, "expired_token", "This token has expired."
             )
 
     # 5) Client durumu — disabled client'in TUM token'lari aninda gecersiz
     #    (amendment #3; token satirlarini tek tek degistirmek gerekmez).
     if client.status != "active":
-        raise PublicAPIError(
-            "invalid_token", "The API client for this token is disabled."
+        _reject_auth(
+            request,
+            ip,
+            "invalid_token",
+            "The API client for this token is disabled.",
         )
 
     # 6) Ortam eslesmesi — dev token'i live'da (ve tersi) calismaz.
-    if client.environment != get_settings().PUBLIC_API_ENV:
-        raise PublicAPIError(
+    settings = get_settings()
+    if client.environment != settings.PUBLIC_API_ENV:
+        _reject_auth(
+            request,
+            ip,
             "invalid_token",
             "This token's environment does not match this deployment.",
         )
 
-    # 7) Baglam + throttled last-used.
-    _touch_last_used(db, token, client_ip(request))
+    # 7) Token/client rate limiti (basarili kimlik dogrulama sonrasi).
+    limit = client.rate_limit_per_min or settings.PUBLIC_API_DEFAULT_RATE_LIMIT
+    rate_result = get_limiter().check(f"token:{token.id}", limit, 60)
+    request.state.rate_limit = rate_result
+    if not rate_result.allowed:
+        request.state.rate_limited = True
+        raise PublicAPIError(
+            "rate_limit_exceeded",
+            "Rate limit exceeded for this token.",
+            headers=rate_limit_headers(rate_result),
+        )
+
+    # 8) Baglam + throttled last-used.
+    _touch_last_used(db, token, ip)
 
     ctx = ApiContext(
         client=client,

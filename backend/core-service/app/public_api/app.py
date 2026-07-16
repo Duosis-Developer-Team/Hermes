@@ -20,6 +20,7 @@
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 
+from .audit import AuditMiddleware
 from .errors import register_error_handlers
 from .request_context import RequestIDMiddleware
 from .routers import me, meta
@@ -53,6 +54,10 @@ def create_public_app() -> FastAPI:
         openapi_url="/v1/openapi.json",
     )
 
+    # Middleware sirasi (son eklenen EN DISTA calisir):
+    #   RequestID (dis) → Audit (ic) — audit, request_id'yi gorur ve
+    #   rate-limit basliklarini yanita isler.
+    public_app.add_middleware(AuditMiddleware)
     public_app.add_middleware(RequestIDMiddleware)
     register_error_handlers(public_app)
     public_app.include_router(meta.router)

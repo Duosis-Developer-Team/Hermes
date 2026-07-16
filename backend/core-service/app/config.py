@@ -114,6 +114,9 @@ class Settings(BaseSettings):
     PUBLIC_API_ENV: str = "dev"
     # Client'ta rate_limit_per_min tanimli degilse kullanilacak varsayilan.
     PUBLIC_API_DEFAULT_RATE_LIMIT: int = 60
+    # Basarisiz kimlik dogrulama denemeleri icin IP basina dakikalik limit
+    # (amendment #7 — invalid-token brute force korumasi).
+    PUBLIC_API_AUTH_FAIL_LIMIT_PER_MIN: int = 30
 
     # ==========================================================================
     # CORS Configuration

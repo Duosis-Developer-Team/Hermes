@@ -24,3 +24,28 @@ for _p in (_ROOT, _BACKEND):
 # saklanir; testler JWT dogrulamasi yapmaz). DEBUG bilerek AYARLANMAZ —
 # default False, internal OpenAPI hardening'i bu modda test ediyoruz.
 os.environ.setdefault("JWT_PUBLIC_KEY", "test-only-not-a-real-key")
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def fresh_rate_limiter():
+    """Her test taze bir limiter'la baslar — global sayac durumu testler
+    arasinda tasinmaz."""
+    from app.public_api import rate_limit
+
+    rate_limit.set_limiter(rate_limit.InMemoryRateLimiter())
+    yield
+    rate_limit.set_limiter(rate_limit.InMemoryRateLimiter())
+
+
+@pytest.fixture(autouse=True)
+def audit_records(monkeypatch):
+    """Audit yazimini yakalar: testler gercek DB'ye yazmaz ve kayitlari
+    dogrulayabilir. _persist'i patchler; audit middleware'in 'asla istegi
+    bozma' garantisi ayri testte gercek hata enjekte edilerek sinanir."""
+    records = []
+    from app.public_api import audit
+
+    monkeypatch.setattr(audit, "_persist", records.append)
+    return records
