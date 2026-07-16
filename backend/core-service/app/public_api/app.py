@@ -18,10 +18,12 @@
 # =============================================================================
 
 from fastapi import FastAPI
+from fastapi.openapi.utils import get_openapi
 
 from .errors import register_error_handlers
 from .request_context import RequestIDMiddleware
 from .routers import meta
+from .scopes import SCOPES
 
 PUBLIC_API_DESCRIPTION = """
 The Hermes Public API lets external systems and AI agents work with Hermes
@@ -54,5 +56,63 @@ def create_public_app() -> FastAPI:
     public_app.add_middleware(RequestIDMiddleware)
     register_error_handlers(public_app)
     public_app.include_router(meta.router)
+
+    def custom_openapi():
+        """Public semayi zenginlestirir:
+        - HTTPBearer guvenlik semasi (ApiToken)
+        - `openapi_extra=scope_docs(...)` ile isaretlenen endpoint'lere
+          security gereksinimi + "Required scopes" aciklamasi
+        - Scope katalogu dokumantasyon aciklamasina eklenir
+        Internal uygulamadan hicbir sey iceremez (ayri app)."""
+        if public_app.openapi_schema:
+            return public_app.openapi_schema
+
+        schema = get_openapi(
+            title=public_app.title,
+            version=public_app.version,
+            description=public_app.description,
+            routes=public_app.routes,
+        )
+
+        schema.setdefault("components", {})["securitySchemes"] = {
+            "ApiToken": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "hms_dev_... / hms_live_...",
+                "description": (
+                    "Hermes API token created in Admin → API Management. "
+                    "Sent as `Authorization: Bearer <token>`. Tokens are "
+                    "never accepted via query parameters or cookies."
+                ),
+            }
+        }
+
+        # scope_docs() ile isaretlenen operasyonlara security + aciklama.
+        for path_item in schema.get("paths", {}).values():
+            for operation in path_item.values():
+                if not isinstance(operation, dict):
+                    continue
+                required = operation.get("x-required-scopes")
+                if not required:
+                    continue
+                operation["security"] = [{"ApiToken": []}]
+                scope_lines = "\n".join(f"- `{s}`" for s in required)
+                desc = operation.get("description") or ""
+                operation["description"] = (
+                    f"{desc}\n\n**Required scopes:**\n{scope_lines}"
+                ).strip()
+
+        # Scope katalogu — dokumantasyonun tek kaynagi scopes.SCOPES.
+        catalog = "\n".join(f"| `{s}` | {d} |" for s, d in SCOPES.items())
+        schema["info"]["description"] = (
+            f"{schema['info'].get('description', '')}\n\n"
+            "## Scopes\n\n| Scope | Description |\n|---|---|\n"
+            f"{catalog}"
+        )
+
+        public_app.openapi_schema = schema
+        return schema
+
+    public_app.openapi = custom_openapi
 
     return public_app

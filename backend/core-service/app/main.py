@@ -700,7 +700,11 @@ app = FastAPI(
     version=settings.SERVICE_VERSION,
     lifespan=lifespan,
     docs_url="/docs" if settings.DEBUG else None,
-    redoc_url="/redoc" if settings.DEBUG else None
+    redoc_url="/redoc" if settings.DEBUG else None,
+    # Hardening: internal OpenAPI semasi yalnizca DEBUG'da erisilir.
+    # (Public API'nin kendi semasi /api/public/v1/openapi.json'da AYRI
+    # uygulamada yasar ve bundan etkilenmez.)
+    openapi_url="/openapi.json" if settings.DEBUG else None,
 )
 
 # CORS

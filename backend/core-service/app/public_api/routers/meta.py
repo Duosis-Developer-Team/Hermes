@@ -8,6 +8,8 @@
 
 from fastapi import APIRouter
 
+from ..scopes import SCOPES
+
 router = APIRouter(prefix="/v1")
 
 
@@ -42,6 +44,12 @@ async def public_capabilities():
             "type": "bearer",
             "header": "Authorization",
             "token_prefixes": ["hms_dev_", "hms_live_"],
+        },
+        "scopes": SCOPES,
+        "pagination": {
+            "type": "offset",
+            "default_limit": 25,
+            "max_limit": 100,
         },
         "docs_url": "/api/public/v1/docs",
         "openapi_url": "/api/public/v1/openapi.json",
