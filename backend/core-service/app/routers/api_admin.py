@@ -359,7 +359,17 @@ def run_cleanup_now(
     db: Session = Depends(get_db),
 ):
     """Manuel temizlik tetigi (admin onay modali arkasinda). dry_run=true
-    hicbir sey silmez, aday sayilarini dondurur."""
+    hicbir sey silmez, aday sayilarini dondurur.
+
+    Yanit semantigi (onayli 3F follow-up): success / dry-run / skip /
+    disabled → 200; GERCEK calisma hatasi → 500 + sanitize govde
+    (yalnizca ok=false, status=failed, failure_class — SQL/mesaj/stack
+    yok). Her yanit makine-okur `ok` alani tasir."""
+    from fastapi.responses import JSONResponse
+
     from ..services import api_cleanup_service as cleanup
 
-    return cleanup.run_cleanup(db, dry_run=dry_run, trigger="manual")
+    result = cleanup.run_cleanup(db, dry_run=dry_run, trigger="manual")
+    if not result.get("ok", False):
+        return JSONResponse(status_code=500, content=result)
+    return result

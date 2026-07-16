@@ -26,6 +26,10 @@ spec:
       template:
         spec:
           restartPolicy: OnFailure
+          # Deployment'larla ayni GHCR pull secret'i (3F review bulgusu:
+          # bu olmadan image cekilemez).
+          imagePullSecrets:
+            - name: ghcr-secret
           containers:
             - name: api-cleanup
               image: ghcr.io/duosis-developer-team/hermes-core-service:latest

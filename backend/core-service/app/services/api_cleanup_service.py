@@ -112,7 +112,7 @@ def run_cleanup(
     now = datetime.now(timezone.utc)
 
     if not settings.enabled:
-        return {"status": "disabled", "dry_run": dry_run}
+        return {"ok": True, "status": "disabled", "dry_run": dry_run}
 
     # Batch commit'leri fixture/istek session'inin transaction'ina
     # karismasin diye AYRI baglanti kullanilir. Advisory lock bu
@@ -137,7 +137,11 @@ def run_cleanup(
             )
         if not locked:
             # Baska bir calisan var — o kaydeder, biz sessizce cekiliriz.
-            return {"status": "skipped_already_running", "dry_run": dry_run}
+            return {
+                "ok": True,
+                "status": "skipped_already_running",
+                "dry_run": dry_run,
+            }
 
         cutoffs = _cutoffs(settings, now)
         try:
@@ -177,6 +181,7 @@ def run_cleanup(
             failure_class=failure_class,
         )
         summary = {
+            "ok": status == "success",
             "status": status,
             "dry_run": dry_run,
             "started_at": now.isoformat(),
@@ -202,6 +207,7 @@ def run_cleanup(
     except Exception as exc:  # noqa: BLE001 — kilit/kayit hatasi dahil
         logger.error("api_cleanup aborted class=%s", type(exc).__name__)
         return {
+            "ok": False,
             "status": "failed",
             "dry_run": dry_run,
             "failure_class": type(exc).__name__,

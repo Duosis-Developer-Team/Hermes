@@ -868,8 +868,6 @@ function ApiManagementPage() {
                 message.warning('Cleanup is disabled by configuration.')
             } else if (res.status === 'skipped_already_running') {
                 message.warning('A cleanup run is already in progress.')
-            } else if (res.status === 'failed') {
-                message.error(`Cleanup failed (${res.failure_class}).`)
             } else if (res.dry_run) {
                 message.info(
                     `Dry run: ${res.request_logs_deleted} request logs and ` +
@@ -884,7 +882,15 @@ function ApiManagementPage() {
                 )
             }
         },
-        onError: () => message.error('Cleanup request failed.'),
+        onError: (err) => {
+            // Gercek calisma hatasi 500 + sanitize govdeyle gelir
+            // (yalnizca failure_class — SQL/stack yok).
+            const fc = err?.response?.data?.failure_class
+            message.error(
+                fc ? `Cleanup failed (${fc}).` : 'Cleanup request failed.'
+            )
+            queryClient.invalidateQueries({ queryKey: ['admin-api-cleanup'] })
+        },
     })
 
     const logColumns = [

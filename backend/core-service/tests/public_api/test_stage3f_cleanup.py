@@ -103,6 +103,7 @@ def test_cutoffs_delete_old_keep_recent(pg_session):
 
     result = cleanup.run_cleanup(s, SETTINGS)
 
+    assert result["ok"] is True
     assert result["status"] == "success"
     assert result["request_logs_deleted"] == 1
     assert result["idempotency_keys_deleted"] == 1
@@ -181,6 +182,7 @@ def test_advisory_lock_skips_concurrent_run(pg_session):
             {"k": cleanup.ADVISORY_LOCK_KEY},
         )
         result = cleanup.run_cleanup(s, SETTINGS)
+        assert result["ok"] is True  # hata degil — yarisi kaybetmek normal
         assert result["status"] == "skipped_already_running"
         assert _counts(s)[0] == 1  # hicbir sey silinmedi
         assert cleanup.last_run(s) is None  # kayit da atilmadi
@@ -209,6 +211,7 @@ def test_failure_is_isolated_and_sanitized(pg_session, monkeypatch):
     monkeypatch.setattr(cleanup, "_delete_batch", boom)
     result = cleanup.run_cleanup(s, SETTINGS)  # exception FIRLATMAZ
 
+    assert result["ok"] is False
     assert result["status"] == "failed"
     assert result["failure_class"] == "RuntimeError"
     assert "SECRET" not in str(result)  # detay sizmaz
@@ -331,6 +334,7 @@ def test_disabled_cleanup_is_noop(pg_session):
         batch_size=5000,
     )
     result = cleanup.run_cleanup(s, off)
+    assert result["ok"] is True  # calisma hatasi degil — bilincli kapali
     assert result["status"] == "disabled"
     assert _counts(s)[0] == 1
     assert cleanup.last_run(s) is None
@@ -392,3 +396,29 @@ def test_admin_cleanup_requires_admin(pg_session):
         assert http.post(f"{BASE}/api-cleanup/run").status_code in (401, 403)
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+def test_admin_manual_trigger_failure_returns_500_sanitized(
+    admin_http, pg_session, monkeypatch
+):
+    """Onayli follow-up: gercek calisma hatasi HTTP 500 + sanitize govde
+    (ok=false, failure_class — SQL/mesaj/stack yok)."""
+    _log(pg_session, age_days=100)
+    pg_session.commit()
+
+    def boom(conn, table, cutoff, limit):
+        raise RuntimeError("SECRET SQL DETAIL must never leak")
+
+    monkeypatch.setattr(cleanup, "_delete_batch", boom)
+    r = admin_http.post(f"{BASE}/api-cleanup/run")
+    assert r.status_code == 500
+    body = r.json()
+    assert body["ok"] is False
+    assert body["status"] == "failed"
+    assert body["failure_class"] == "RuntimeError"
+    assert "SECRET" not in r.text
+    # Basari yollari 200 kalir (ayni oturumda dogrula).
+    monkeypatch.undo()
+    ok = admin_http.post(f"{BASE}/api-cleanup/run?dry_run=true")
+    assert ok.status_code == 200
+    assert ok.json()["ok"] is True

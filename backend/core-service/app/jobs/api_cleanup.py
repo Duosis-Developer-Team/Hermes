@@ -25,7 +25,8 @@ def main() -> int:
     finally:
         db.close()
     print(json.dumps(summary, default=str))
-    return 1 if summary.get("status") == "failed" else 0
+    # ok=false (gercek calisma hatasi) → exit 1; success/skip/disabled → 0.
+    return 0 if summary.get("ok", False) else 1
 
 
 if __name__ == "__main__":
