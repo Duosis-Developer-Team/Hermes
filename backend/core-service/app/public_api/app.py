@@ -21,7 +21,7 @@ from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 
 from .audit import AuditMiddleware
-from .errors import register_error_handlers
+from .errors import ERROR_DOCS, ERROR_STATUS, register_error_handlers
 from .request_context import RequestIDMiddleware
 from .routers import me, meta
 from .routers import meetings as meetings_router
@@ -72,6 +72,14 @@ for **24 hours**):
   `409 idempotency_request_in_progress`. This is safe to retry: once the
   original request completes, the same key replays its stored response.
 - Without the header, retries are not protected against duplicates.
+
+## Rate limiting
+
+Requests are limited per token. Every authenticated response carries
+`X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`
+(epoch seconds); exceeding the limit returns `429 rate_limit_exceeded`
+with a `Retry-After` header. Higher limits are configured per client by
+a Hermes admin.
 """.strip()
 
 
@@ -118,6 +126,28 @@ def create_public_app() -> FastAPI:
             routes=public_app.routes,
         )
 
+        # Hata zarfi semasi — tum hata yanitlarinin tek sekli.
+        schema.setdefault("components", {}).setdefault("schemas", {})[
+            "ErrorEnvelope"
+        ] = {
+            "type": "object",
+            "required": ["error"],
+            "properties": {
+                "error": {
+                    "type": "object",
+                    "required": ["code", "message", "request_id"],
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "enum": sorted(ERROR_STATUS.keys()),
+                        },
+                        "message": {"type": "string"},
+                        "request_id": {"type": "string"},
+                    },
+                }
+            },
+        }
+
         schema.setdefault("components", {})["securitySchemes"] = {
             "ApiToken": {
                 "type": "http",
@@ -148,10 +178,19 @@ def create_public_app() -> FastAPI:
 
         # Scope katalogu — dokumantasyonun tek kaynagi scopes.SCOPES.
         catalog = "\n".join(f"| `{s}` | {d} |" for s, d in SCOPES.items())
+        # Hata kodu katalogu — tek kaynak errors.ERROR_STATUS/ERROR_DOCS.
+        errors_table = "\n".join(
+            f"| `{code}` | {status} | {ERROR_DOCS[code]} |"
+            for code, status in ERROR_STATUS.items()
+        )
         schema["info"]["description"] = (
             f"{schema['info'].get('description', '')}\n\n"
             "## Scopes\n\n| Scope | Description |\n|---|---|\n"
-            f"{catalog}"
+            f"{catalog}\n\n"
+            "## Error codes\n\nEvery error response is an `ErrorEnvelope` "
+            "(see schemas):\n\n"
+            "| Code | HTTP | Meaning |\n|---|---|---|\n"
+            f"{errors_table}"
         )
 
         public_app.openapi_schema = schema

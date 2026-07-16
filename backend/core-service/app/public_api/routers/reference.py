@@ -17,8 +17,13 @@ from ...database import get_db
 from ...services import api_access_service, public_resource_service as res
 from ..deps import ApiContext, require_scopes
 from ..errors import PublicAPIError
-from ..pagination import PageParams, page_params, paginated
-from ..schemas.resources import serialize_customer, serialize_project
+from ..pagination import Page, PageParams, page_params, paginated
+from ..schemas.resources import (
+    PublicCustomer,
+    PublicProject,
+    serialize_customer,
+    serialize_project,
+)
 from ..scopes import scope_docs
 
 router = APIRouter(prefix="/v1", tags=["Reference"])
@@ -26,6 +31,7 @@ router = APIRouter(prefix="/v1", tags=["Reference"])
 
 @router.get(
     "/customers",
+    response_model=Page[PublicCustomer],
     summary="List customers",
     description=(
         "Lists ACTIVE customers visible to the client. Visibility is "
@@ -51,7 +57,12 @@ async def list_customers(
 
 @router.get(
     "/customers/{customer_id}",
+    response_model=PublicCustomer,
     summary="Get customer",
+    description=(
+        "Fetches one customer by id. Customers outside the token's "
+        "visibility return the same 404 as nonexistent ids."
+    ),
     openapi_extra=scope_docs("customers:read"),
 )
 async def get_customer(
@@ -68,6 +79,7 @@ async def get_customer(
 
 @router.get(
     "/projects",
+    response_model=Page[PublicProject],
     summary="List projects",
     description=(
         "Lists ACTIVE projects visible to the client (same least-privilege "
@@ -97,7 +109,12 @@ async def list_projects(
 
 @router.get(
     "/projects/{project_id}",
+    response_model=PublicProject,
     summary="Get project",
+    description=(
+        "Fetches one project by id. Projects outside the token's "
+        "visibility return the same 404 as nonexistent ids."
+    ),
     openapi_extra=scope_docs("projects:read"),
 )
 async def get_project(

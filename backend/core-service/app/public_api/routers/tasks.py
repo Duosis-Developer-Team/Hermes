@@ -21,8 +21,11 @@ from ...database import get_db
 from ...services import api_access_service, public_resource_service as res
 from ..deps import ApiContext, require_scopes
 from ..errors import PublicAPIError
-from ..pagination import PageParams, page_params, paginated
+from ..pagination import Page, PageParams, page_params, paginated
 from ..schemas.resources import (
+    PublicComment,
+    PublicTask,
+    PublicTaskActivity,
     serialize_activity,
     serialize_comment,
     serialize_task,
@@ -62,6 +65,7 @@ def _get_visible_task_or_404(db, scope, task_code: str):
 
 @router.get(
     "/tasks",
+    response_model=Page[PublicTask],
     summary="List tasks",
     description=(
         "Lists tasks, issues and suggestions visible to the client's "
@@ -107,6 +111,7 @@ async def list_tasks(
 
 @router.get(
     "/tasks/{task_code}",
+    response_model=PublicTask,
     summary="Get task by code",
     description=(
         "Fetches one work item by its public code (e.g. TASK-12, ISSUE-3, "
@@ -127,6 +132,7 @@ async def get_task(
 
 @router.get(
     "/tasks/{task_code}/activity",
+    response_model=Page[PublicTaskActivity],
     summary="Task activity feed",
     description=(
         "Sanitized, newest-first activity feed. Raw event payloads are "
@@ -154,6 +160,7 @@ async def get_task_activity(
 
 @router.get(
     "/tasks/{task_code}/comments",
+    response_model=Page[PublicComment],
     summary="Task comments",
     description="Oldest-first conversation feed. Deleted comments are never returned.",
     openapi_extra=scope_docs("tasks:read"),

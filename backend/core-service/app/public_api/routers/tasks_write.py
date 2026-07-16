@@ -40,8 +40,10 @@ from ...services.task_notifications import (
 from ..deps import ApiContext, require_scopes
 from ..errors import PublicAPIError
 from ..schemas.resources import (
+    PublicComment,
     PublicCommentCreate,
     PublicStatusAction,
+    PublicTask,
     PublicTaskCreate,
     PublicTaskUpdate,
     serialize_comment,
@@ -96,6 +98,7 @@ def _maybe_status_side_effects(
 @router.post(
     "/tasks",
     status_code=201,
+    response_model=PublicTask,
     summary="Create task",
     description=(
         "Creates a work item as the bound Hermes user (user-bound clients "
@@ -153,6 +156,7 @@ async def create_task(
 
 @router.patch(
     "/tasks/{task_code}",
+    response_model=PublicTask,
     summary="Update task",
     description=(
         "Partial update of a visible work item as the bound user. Internal "
@@ -185,6 +189,7 @@ async def update_task(
 @router.post(
     "/tasks/{task_code}/comments",
     status_code=201,
+    response_model=PublicComment,
     summary="Add comment",
     description="Adds a comment as the bound user (task visibility required).",
     openapi_extra=scope_docs("tasks:comment"),
@@ -217,6 +222,7 @@ async def add_comment(
 
 @router.post(
     "/tasks/{task_code}/complete",
+    response_model=PublicTask,
     summary="Complete task",
     description=(
         "Marks a visible work item as completed as the bound user (the "
@@ -250,6 +256,7 @@ async def complete_task(
 
 @router.post(
     "/tasks/{task_code}/status",
+    response_model=PublicTask,
     summary="Change task status",
     description=(
         "accept → in progress; reject → rejected; reopen → back to in "

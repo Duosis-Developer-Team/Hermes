@@ -21,8 +21,17 @@ SCOPES: dict[str, str] = {
     "work-logs:read": "Read work logs visible to the client.",
     "work-logs:write": "Create work logs.",
     "meetings:read": "Read meetings visible to the client.",
-    "users:read": "Read basic user directory information.",
-    "groups:read": "Read user groups and memberships.",
+    # Asagidaki iki scope Stage 2'de onaylanan katalogda yer alir ancak
+    # v1'de HENUZ endpoint'leri yok — dokumantasyonda "reserved" olarak
+    # isaretlenir (3E review bulgusu; endpoint tasarimi ayri onay ister).
+    "users:read": (
+        "Reserved — read basic user directory information "
+        "(no endpoints in v1 yet)."
+    ),
+    "groups:read": (
+        "Reserved — read user groups and memberships "
+        "(no endpoints in v1 yet)."
+    ),
 }
 
 

@@ -318,16 +318,28 @@ def serialize_meeting(m) -> PublicMeeting:
 
 
 class PublicTaskCreate(BaseModel):
+    """Ornekler kurgusaldir — gercek musteri/kullanici verisi icermez."""
+
     model_config = {"extra": "forbid"}
 
-    title: str = Field(..., min_length=1, max_length=255)
-    description: str = Field(..., min_length=1, max_length=10000)
+    title: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        examples=["Renew TLS certificate"],
+    )
+    description: str = Field(
+        ...,
+        min_length=1,
+        max_length=10000,
+        examples=["Certificate expires at the end of the month."],
+    )
     customer_id: UUID
     project_id: UUID
     sub_project_id: Optional[UUID] = None
     assignee_user_id: UUID
-    scheduled_date: date
-    due_date: Optional[date] = None
+    scheduled_date: date = Field(..., examples=["2026-08-01"])
+    due_date: Optional[date] = Field(None, examples=["2026-08-15"])
     priority: Literal["low", "medium", "high", "urgent"] = "medium"
     task_type: Literal["task", "issue", "suggestion"] = "task"
 
@@ -347,7 +359,12 @@ class PublicTaskUpdate(BaseModel):
 class PublicCommentCreate(BaseModel):
     model_config = {"extra": "forbid"}
 
-    body: str = Field(..., min_length=1, max_length=5000)
+    body: str = Field(
+        ...,
+        min_length=1,
+        max_length=5000,
+        examples=["Deployed to staging, please verify."],
+    )
 
 
 class PublicStatusAction(BaseModel):
@@ -377,11 +394,13 @@ class PublicWorkLogCreate(BaseModel):
     customer_id: UUID
     project_id: UUID
     work_type_id: UUID
-    date_worked: date
+    date_worked: date = Field(..., examples=["2026-07-15"])
     duration_hours: float = Field(
         ..., ge=0.25, le=24, examples=[2.5, 4.0, 1.25]
     )
-    description: Optional[str] = Field(None, max_length=5000)
+    description: Optional[str] = Field(
+        None, max_length=5000, examples=["API integration support call."]
+    )
     activity_type_id: Optional[UUID] = None
     platform_id: Optional[UUID] = None
     work_line_id: Optional[UUID] = None

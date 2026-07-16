@@ -19,11 +19,31 @@
 # =============================================================================
 
 from dataclasses import dataclass
+from typing import Generic, List, TypeVar
 
 from fastapi import Query
+from pydantic import BaseModel
 
 DEFAULT_LIMIT = 25
 MAX_LIMIT = 100
+
+T = TypeVar("T")
+
+
+class PageMeta(BaseModel):
+    limit: int
+    offset: int
+    count: int
+    has_more: bool
+
+
+class Page(BaseModel, Generic[T]):
+    """Liste yanitlarinin OpenAPI'de gorunen tipli zarfi. `paginated()`
+    ayni sekli dict olarak uretir; response_model=Page[X] hem dokumante
+    eder hem dogrular."""
+
+    data: List[T]
+    pagination: PageMeta
 
 
 @dataclass

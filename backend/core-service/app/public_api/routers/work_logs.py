@@ -31,8 +31,12 @@ from ...services import api_access_service, public_resource_service as res
 from ...services.work_log_service import WorkLogService
 from ..deps import ApiContext, require_scopes
 from ..errors import PublicAPIError
-from ..pagination import PageParams, page_params, paginated
-from ..schemas.resources import PublicWorkLogCreate, serialize_work_log
+from ..pagination import Page, PageParams, page_params, paginated
+from ..schemas.resources import (
+    PublicWorkLog,
+    PublicWorkLogCreate,
+    serialize_work_log,
+)
 from ..scopes import scope_docs
 from ..writes import (
     IDEMPOTENCY_HEADER_PARAM,
@@ -75,6 +79,7 @@ WorkLogSortLiteral = Literal[
 
 @router.get(
     "/work-logs",
+    response_model=Page[PublicWorkLog],
     summary="List work logs",
     description=(
         "Lists work logs visible to the client's access bindings. A "
@@ -119,6 +124,7 @@ async def list_work_logs(
 
 @router.get(
     "/work-logs/{log_id}",
+    response_model=PublicWorkLog,
     summary="Get work log",
     description=(
         "Fetches one work log by its numeric id. Logs outside the token's "
@@ -142,6 +148,7 @@ async def get_work_log(
 @router.post(
     "/work-logs",
     status_code=201,
+    response_model=PublicWorkLog,
     summary="Create work log",
     description=(
         "Creates a time entry as the bound Hermes user (user-bound clients "

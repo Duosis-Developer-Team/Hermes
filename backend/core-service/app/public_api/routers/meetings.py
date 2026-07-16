@@ -20,8 +20,8 @@ from ...database import get_db
 from ...services import api_access_service, public_resource_service as res
 from ..deps import ApiContext, require_scopes
 from ..errors import PublicAPIError
-from ..pagination import PageParams, page_params, paginated
-from ..schemas.resources import serialize_meeting
+from ..pagination import Page, PageParams, page_params, paginated
+from ..schemas.resources import PublicMeeting, serialize_meeting
 from ..scopes import scope_docs
 
 router = APIRouter(prefix="/v1", tags=["Meetings"])
@@ -31,6 +31,7 @@ MeetingSortLiteral = Literal["start_datetime", "-start_datetime"]
 
 @router.get(
     "/meetings",
+    response_model=Page[PublicMeeting],
     summary="List meetings",
     description=(
         "Lists meetings where at least one user in the token's user/group "
@@ -66,6 +67,7 @@ async def list_meetings(
 
 @router.get(
     "/meetings/{meeting_id}",
+    response_model=PublicMeeting,
     summary="Get meeting",
     description=(
         "Fetches one meeting by id. Meetings outside the token's access "

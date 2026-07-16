@@ -40,6 +40,37 @@ ERROR_STATUS = {
     "internal_error": 500,
 }
 
+# Kod → dokumantasyon aciklamasi. OpenAPI "Error codes" tablosu buradan
+# uretilir (tek kaynak); ERROR_STATUS ile birebir ayni anahtarlar olmali
+# (test guvencesi altinda).
+ERROR_DOCS = {
+    "invalid_request": "Malformed request (bad header, unsupported value).",
+    "validation_error": "Request body or query failed validation.",
+    "invalid_token": "Missing, malformed or unknown API token.",
+    "expired_token": "The API token has expired.",
+    "revoked_token": "The API token or its client was revoked/disabled.",
+    "insufficient_scope": "Token lacks a scope required by the endpoint.",
+    "resource_access_denied": (
+        "The operation is not allowed for this client (e.g. writes from "
+        "a service client)."
+    ),
+    "resource_not_found": (
+        "Resource does not exist or is outside the token's data access "
+        "(indistinguishable by design)."
+    ),
+    "conflict": (
+        "Request conflicts with existing state (e.g. an Idempotency-Key "
+        "reused with a different payload)."
+    ),
+    "idempotency_request_in_progress": (
+        "Another request with the same Idempotency-Key is still being "
+        "processed. Safe to retry after it completes; the stored "
+        "response is then replayed."
+    ),
+    "rate_limit_exceeded": "Too many requests; honour Retry-After.",
+    "internal_error": "Unexpected server error; report the request_id.",
+}
+
 # Generic HTTPException status -> public kod eslemesi (dogrudan
 # PublicAPIError firlatilmayan durumlar icin guvenli varsayilanlar).
 _STATUS_TO_CODE = {
