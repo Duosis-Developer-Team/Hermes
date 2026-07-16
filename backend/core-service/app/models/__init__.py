@@ -24,6 +24,12 @@ from .task import (
     Task,
     TaskNotificationSetting,
 )
+from .api_client import (
+    ApiClient,
+    ApiToken,
+    ApiClientAccess,
+    ApiRequestLog,
+)
 from .task_activity import TaskActivityEvent
 from .task_comment import TaskComment
 from .meeting import Meeting, MeetingAttendee
@@ -60,6 +66,10 @@ __all__ = [
     "TaskSubProject",
     "Task",
     "TaskNotificationSetting",
+    "ApiClient",
+    "ApiToken",
+    "ApiClientAccess",
+    "ApiRequestLog",
     "TaskActivityEvent",
     "TaskComment",
     "Meeting",
