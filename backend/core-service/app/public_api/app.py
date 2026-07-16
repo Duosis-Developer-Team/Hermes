@@ -24,6 +24,7 @@ from .audit import AuditMiddleware
 from .errors import ERROR_DOCS, ERROR_STATUS, register_error_handlers
 from .request_context import RequestIDMiddleware
 from .routers import me, meta
+from .routers import directory as directory_router
 from .routers import meetings as meetings_router
 from .routers import reference as reference_router
 from .routers import tasks as tasks_router
@@ -109,6 +110,7 @@ def create_public_app() -> FastAPI:
     public_app.include_router(reference_router.router)
     public_app.include_router(work_logs_router.router)
     public_app.include_router(meetings_router.router)
+    public_app.include_router(directory_router.router)
 
     def custom_openapi():
         """Public semayi zenginlestirir:

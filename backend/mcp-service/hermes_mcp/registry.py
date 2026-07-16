@@ -333,6 +333,39 @@ async def _get_meeting(args: dict, token: str) -> dict:
     )
 
 
+async def _list_users(args: dict, token: str) -> dict:
+    params = _page_params(args)
+    if args.get("q"):
+        params["q"] = args["q"]
+    body = await _call("GET", "users", token, "hermes_list_users", params)
+    return _page_result(body, body.get("data") or [])
+
+
+async def _get_user(args: dict, token: str) -> dict:
+    return await _call(
+        "GET", f"users/{seg(args['user_id'])}", token, "hermes_get_user"
+    )
+
+
+async def _list_groups(args: dict, token: str) -> dict:
+    params = _page_params(args)
+    if args.get("q"):
+        params["q"] = args["q"]
+    body = await _call(
+        "GET", "groups", token, "hermes_list_groups", params
+    )
+    return _page_result(body, body.get("data") or [])
+
+
+async def _get_group(args: dict, token: str) -> dict:
+    return await _call(
+        "GET",
+        f"groups/{seg(args['group_id'])}",
+        token,
+        "hermes_get_group",
+    )
+
+
 _TASK_CODE_PROP = {
     "task_code": {
         "type": "string",
@@ -627,6 +660,85 @@ REGISTRY: list[ToolSpec] = [
         },
         handler=_get_meeting,
     ),
+    # ── Stage 5B-2: directory (least-privilege) ────────────────────────
+    ToolSpec(
+        name="hermes_list_users",
+        description=(
+            "Lists user directory entries visible to this token — NOT a "
+            "company-wide employee list: only identities encountered in "
+            "records this token can already access (or the broad active "
+            "directory for global-bound tokens). Use it to resolve "
+            "user_id values from tasks/work logs/meetings into names. "
+            + UNTRUSTED_NOTE
+        ),
+        scope="users:read",
+        input_schema=_page_args_schema(
+            {
+                "q": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 100,
+                    "description": (
+                        "Name/e-mail contains — searches ONLY inside "
+                        "the authorized identity set."
+                    ),
+                }
+            }
+        ),
+        handler=_list_users,
+    ),
+    ToolSpec(
+        name="hermes_get_user",
+        description=(
+            "Resolves one user id into a minimal directory entry (id, "
+            "display_name, work_email, is_active). 'Not found' may also "
+            "mean 'not visible to this token'. " + UNTRUSTED_NOTE
+        ),
+        scope="users:read",
+        input_schema={
+            "type": "object",
+            "properties": {"user_id": {"type": "string",
+                                       "format": "uuid"}},
+            "required": ["user_id"],
+            "additionalProperties": False,
+        },
+        handler=_get_user,
+    ),
+    ToolSpec(
+        name="hermes_list_groups",
+        description=(
+            "Lists ACTIVE user groups visible to this token (name, "
+            "description, active member count — never member lists). "
+            + UNTRUSTED_NOTE
+        ),
+        scope="groups:read",
+        input_schema=_page_args_schema(
+            {
+                "q": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 100,
+                }
+            }
+        ),
+        handler=_list_groups,
+    ),
+    ToolSpec(
+        name="hermes_get_group",
+        description=(
+            "Fetches one group by id. 'Not found' may also mean 'not "
+            "visible to this token'. " + UNTRUSTED_NOTE
+        ),
+        scope="groups:read",
+        input_schema={
+            "type": "object",
+            "properties": {"group_id": {"type": "string",
+                                        "format": "uuid"}},
+            "required": ["group_id"],
+            "additionalProperties": False,
+        },
+        handler=_get_group,
+    ),
 ]
 
 TOOLS_BY_NAME = {t.name: t for t in REGISTRY}
@@ -658,6 +770,10 @@ CONTRACT: dict = {
         _meeting_list_item({}).keys()
     )),
     "hermes_get_meeting": ("GET", "/v1/meetings/{meeting_id}", None),
+    "hermes_list_users": ("GET", "/v1/users", None),
+    "hermes_get_user": ("GET", "/v1/users/{user_id}", None),
+    "hermes_list_groups": ("GET", "/v1/groups", None),
+    "hermes_get_group": ("GET", "/v1/groups/{group_id}", None),
 }
 
 # Tool argumani ↔ OpenAPI path parametresi ad eslemesi (contract-lock

@@ -45,14 +45,20 @@ function KnownLimitationsSection() {
                     </div>
                 </li>
                 <li>
-                    <Tag>Reserved scopes</Tag>
+                    <Tag>Directory</Tag>
                     <div>
-                        <code>users:read</code> and <code>groups:read</code>{' '}
-                        exist in the scope catalog but have <b>no endpoints
-                        yet</b> — granting them gives no access today. Until
-                        a user directory endpoint ships, resource payloads
-                        expose raw <code>user_id</code> UUIDs that you
-                        cannot resolve to names via the Public API.
+                        <code>/v1/users</code> and <code>/v1/groups</code>{' '}
+                        resolve identities with <b>least-privilege
+                        visibility</b> — they are not a company directory
+                        for non-global tokens. The backend directory
+                        service requires an operations step (S2S
+                        credential) on each deployment; until it is
+                        enabled there, these endpoints return a temporary{' '}
+                        <code>internal_error</code>. Work-log and task
+                        payloads intentionally keep raw{' '}
+                        <code>user_id</code> values — resolve them via the
+                        directory when your token has{' '}
+                        <code>users:read</code>.
                     </div>
                 </li>
                 <li>

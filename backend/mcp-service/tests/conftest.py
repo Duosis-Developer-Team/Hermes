@@ -141,7 +141,49 @@ def _wire_core(pg_session, core_asgi_app, monkeypatch):
     from hermes_mcp.auth import clear_visibility_cache
 
     clear_visibility_cache()
+
+    # 5B-2: core'un directory client'ina sahte auth-service (her ID'yi
+    # "User <ilk4>" olarak cozer; gorunurluk kararini CORE verdigi icin
+    # echo guvenlidir).
+    import json as _json
+
+    from app.services import directory_client
+
+    def _fake_auth(request):
+        if request.url.path.endswith("/users/resolve"):
+            ids = _json.loads(request.content)["user_ids"]
+            return httpx.Response(
+                200,
+                json={
+                    "users": [
+                        {
+                            "id": i,
+                            "display_name": f"User {i[:4]}",
+                            "work_email": f"u{i[:4]}@example.com",
+                            "is_active": True,
+                        }
+                        for i in ids
+                    ]
+                },
+            )
+        return httpx.Response(
+            200, json={"users": [], "has_more": False}
+        )
+
+    directory_client.set_client_factory(
+        lambda: httpx.Client(transport=httpx.MockTransport(_fake_auth))
+    )
+    directory_client.clear_cache()
+    monkeypatch.setattr(
+        directory_client.get_settings(),
+        "HERMES_S2S_TOKEN_CURRENT",
+        "s2s-mcp-test-" + "z" * 32,
+    )
     yield
+    directory_client.set_client_factory(
+        lambda: httpx.Client(timeout=5)
+    )
+    directory_client.clear_cache()
     _db_holder["session"] = None
 
 

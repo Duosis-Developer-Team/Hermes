@@ -48,6 +48,17 @@ class Settings(BaseSettings):
     AUTH_DB_USER: str = "hermes"
     AUTH_DB_PASSWORD: str = "hermes_dev_password"
     AUTH_DB_NAME: str = "auth_db"
+
+    # ==========================================================================
+    # S2S internal directory credential (Stage 5B-2, onayli)
+    # ==========================================================================
+    # Kullanici JWT'si DEGIL; impersonation semantigi YOK. Yalnizca
+    # /internal/directory/... endpoint'lerinde gecerlidir; normal auth
+    # endpoint'leri bunu ASLA kabul etmez. Dual-key: rotasyonda NEXT'e
+    # yeni anahtar konur, istemciler gecince CURRENT'a tasinir. Bos ise
+    # internal directory KAPALIDIR (fail closed).
+    HERMES_S2S_TOKEN_CURRENT: str = ""
+    HERMES_S2S_TOKEN_NEXT: str = ""
     
     @property
     def database_url(self) -> str:

@@ -134,9 +134,51 @@ async def _resolve_users(
     auth-service /users/lookup. Returns {} on any failure — callers
     treat a missing e-mail as "skip that recipient"."""
     unique = [str(i) for i in {str(x) for x in ids} if i]
-    if not unique or not token:
+    if not unique:
+        return {}
+
+    # Stage 5B-2: S2S directory credential'i varsa alici cozumu ARTIK
+    # cagiran JWT'sine bagli degildir — API-token kaynakli olaylar da
+    # e-posta alicilarini cozebilir (parity). Basarisizlik fail-safe:
+    # {} doner, bildirim domain kayitlari ASLA geri alinmaz.
+    from ..config import get_settings as _gs
+
+    s2s = _gs().HERMES_S2S_TOKEN_CURRENT
+    if s2s:
+        url = f"{_auth_base_url()}/internal/directory/users/resolve"
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(
+                    url,
+                    json={"user_ids": unique},
+                    headers={"Authorization": f"Bearer {s2s}"},
+                )
+            if resp.status_code == 200:
+                out: Dict[str, dict] = {}
+                for u in resp.json().get("users") or []:
+                    out[str(u["id"])] = {
+                        "email": u.get("work_email"),
+                        "full_name": u.get("display_name")
+                        or u.get("work_email")
+                        or "",
+                    }
+                return out
+            logger.warning(
+                "notif s2s lookup failed status=%s", resp.status_code
+            )
+            return {}
+        except Exception as exc:  # noqa: BLE001 — asla cagirani bozma
+            logger.warning(
+                "notif s2s lookup error class=%s", type(exc).__name__
+            )
+            return {}
+
+    # Geriye donuk yol: S2S yapilandirilmamissa cagiran JWT'siyle eski
+    # lookup (API-token akislarinda token bos → e-posta no-op, bilinen
+    # eski sinirlama).
+    if not token:
         print(
-            f"[notif] lookup skipped ids={len(unique)} token={'yes' if token else 'no'}",
+            f"[notif] lookup skipped ids={len(unique)} token=no",
             flush=True,
         )
         return {}

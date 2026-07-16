@@ -153,6 +153,14 @@ app.include_router(auth_router, prefix=API_PREFIX)
 # User management endpoints
 app.include_router(users_router, prefix=f"{API_PREFIX}/auth")
 
+# Internal S2S directory (Stage 5B-2) — BILEREK API_PREFIX disinda:
+# ingress yalnizca /api/* yonlendirir, /internal/* cluster-ici kalir.
+# Kimlik: HERMES_S2S_TOKEN (dual-key) — kullanici JWT'si degildir ve
+# normal endpoint'lerde gecmez.
+from .routers.internal_directory import router as internal_directory_router  # noqa: E402
+
+app.include_router(internal_directory_router)
+
 
 # =============================================================================
 # Health Check Endpoint

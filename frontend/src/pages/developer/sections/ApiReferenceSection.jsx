@@ -259,6 +259,30 @@ function ApiReferenceSection({ goTo }) {
                 </Endpoint>
             </ul>
 
+            <h3>Directory (Users &amp; Groups)</h3>
+            <p>
+                Least-privilege identity resolution — <b>not</b> a
+                company-wide employee list. Non-global tokens resolve only
+                identities encountered in records they can already access.
+            </p>
+            <ul className="dp-endpoints">
+                <Endpoint m="GET" path="/users" scope="users:read">
+                    Visible directory entries (id, display_name,
+                    work_email, is_active); search via <code>q</code> runs
+                    inside the authorized set only.
+                </Endpoint>
+                <Endpoint m="GET" path="/users/{id}" scope="users:read">
+                    Resolve one user id into a minimal entry.
+                </Endpoint>
+                <Endpoint m="GET" path="/groups" scope="groups:read">
+                    Visible active groups (name, description, active
+                    member count — never member lists).
+                </Endpoint>
+                <Endpoint m="GET" path="/groups/{id}" scope="groups:read">
+                    One group.
+                </Endpoint>
+            </ul>
+
             <h3>Meetings</h3>
             <ul className="dp-endpoints">
                 <Endpoint m="GET" path="/meetings" scope="meetings:read">

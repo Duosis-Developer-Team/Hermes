@@ -314,6 +314,46 @@ def serialize_meeting(m) -> PublicMeeting:
     )
 
 
+# ── Directory (Stage 5B-2) ──────────────────────────────────────────────
+# MINIMAL semalar (onayli): rol/admin/permission/hierarchy/auth-provider
+# alanlari YAPISAL olarak yok. work_email yalnizca users:read + gorunur
+# kimlik kosulunda zaten donuyor (endpoint kapisi).
+
+
+class PublicUser(BaseModel):
+    id: UUID
+    display_name: str
+    work_email: Optional[str] = None
+    is_active: bool
+
+
+class PublicGroup(BaseModel):
+    id: UUID
+    name: str
+    description: Optional[str] = None
+    is_active: bool
+    member_count: int
+
+
+def serialize_user(profile: dict) -> PublicUser:
+    return PublicUser(
+        id=profile["id"],
+        display_name=profile.get("display_name") or "",
+        work_email=profile.get("work_email"),
+        is_active=bool(profile.get("is_active")),
+    )
+
+
+def serialize_group(g, member_count: int) -> PublicGroup:
+    return PublicGroup(
+        id=g.id,
+        name=g.name,
+        description=g.description,
+        is_active=bool(g.is_active),
+        member_count=member_count,
+    )
+
+
 # ── Write request semalari (Stage 3C — user-bound clients only) ─────────
 
 

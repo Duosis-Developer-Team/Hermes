@@ -61,6 +61,15 @@ class Settings(BaseSettings):
     # payi (TTL'i okuma aninda dolmus ama henuz silinmemis anahtar,
     # temizlikten ASLA once otoriter olamaz).
     API_CLEANUP_ENABLED: bool = True
+
+    # ==========================================================================
+    # S2S directory credential (Stage 5B-2, onayli)
+    # ==========================================================================
+    # auth-service /internal/directory/... cagrilari icin makine
+    # credential'i. Kullanici JWT'si DEGIL. Bos ise dizin ozellikleri
+    # KAPALIDIR (fail closed) ve e-posta lookup'i eski (JWT) yola duser.
+    HERMES_S2S_TOKEN_CURRENT: str = ""
+
     API_REQUEST_LOG_RETENTION_DAYS: int = 90
     API_IDEMPOTENCY_RETENTION_HOURS: int = 25
     API_CLEANUP_BATCH_SIZE: int = 5000

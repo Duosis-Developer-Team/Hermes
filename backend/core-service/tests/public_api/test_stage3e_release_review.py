@@ -50,14 +50,18 @@ SURFACE = {
     ("/v1/work-logs/{log_id}", "get"),
     ("/v1/meetings", "get"),
     ("/v1/meetings/{meeting_id}", "get"),
+    ("/v1/users", "get"),
+    ("/v1/users/{user_id}", "get"),
+    ("/v1/groups", "get"),
+    ("/v1/groups/{group_id}", "get"),
 }
 
 # Kimlik dogrulamasiz erisilebilen kesif endpoint'leri.
 PUBLIC_DISCOVERY = {("/v1/health", "get"), ("/v1/capabilities", "get")}
 # Auth isteyen ama scope istemeyen endpoint'ler.
 NO_SCOPE_REQUIRED = {("/v1/me", "get")}
-# Katalogda olup v1'de bilerek endpoint'i olmayan scope'lar.
-RESERVED_SCOPES = {"users:read", "groups:read"}
+# 5B-2 sonrasi reserved scope kalmadi (hepsi endpoint'li).
+RESERVED_SCOPES = set()
 
 _PATH_PARAM_SAMPLES = {
     "task_code": "TASK-1",
@@ -65,6 +69,8 @@ _PATH_PARAM_SAMPLES = {
     "project_id": str(uuid.uuid4()),
     "meeting_id": str(uuid.uuid4()),
     "log_id": "1",
+    "user_id": str(uuid.uuid4()),
+    "group_id": str(uuid.uuid4()),
 }
 
 # HTTP metodlari disindaki OpenAPI path-item anahtarlari.
@@ -167,8 +173,9 @@ def test_scope_catalog_fully_used_or_reserved(spec):
     for _, _, op in _operations(spec):
         used |= set(op.get("x-required-scopes", []))
     assert used == set(SCOPES) - RESERVED_SCOPES
-    for s in RESERVED_SCOPES:
-        assert SCOPES[s].startswith("Reserved"), s
+    # 5B-2: katalogda "Reserved" ifadesi kalmadi.
+    for desc in SCOPES.values():
+        assert not desc.startswith("Reserved")
 
 
 # ── 4. Hata zarfi / kod katalogu tutarliligi ───────────────────────────

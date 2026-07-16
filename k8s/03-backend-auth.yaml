@@ -81,6 +81,21 @@ spec:
             secretKeyRef:
               name: hermes-jwt-auth
               key: JWT_PUBLIC_KEY
+        # Stage 5B-2: internal directory S2S anahtarlari (dual-key
+        # rotasyon). Optional: secret eklenene kadar rollout bloklanmaz;
+        # bos = internal directory kapali (fail closed).
+        - name: HERMES_S2S_TOKEN_CURRENT
+          valueFrom:
+            secretKeyRef:
+              name: hermes-secrets
+              key: HERMES_S2S_TOKEN_CURRENT
+              optional: true
+        - name: HERMES_S2S_TOKEN_NEXT
+          valueFrom:
+            secretKeyRef:
+              name: hermes-secrets
+              key: HERMES_S2S_TOKEN_NEXT
+              optional: true
         - name: JWT_PRIVATE_KEY
           valueFrom:
             secretKeyRef:

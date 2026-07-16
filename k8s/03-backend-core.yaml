@@ -67,6 +67,15 @@ spec:
             secretKeyRef:
               name: hermes-jwt-auth
               key: JWT_PUBLIC_KEY
+        # Stage 5B-2: S2S directory credential (dizin + e-posta alici
+        # cozumu). Secret anahtari uygulanana kadar optional — pod
+        # rollout'u bloklamaz; bos deger = dizin kapali (fail closed).
+        - name: HERMES_S2S_TOKEN_CURRENT
+          valueFrom:
+            secretKeyRef:
+              name: hermes-secrets
+              key: HERMES_S2S_TOKEN_CURRENT
+              optional: true
         - name: CORS_ORIGINS
           value: '["http://localhost:3000", "http://localhost:5173", "https://84.247.180.172:30772", "http://84.247.180.172:30772", "https://84.247.180.172:30443", "http://84.247.180.172:30443", "https://hermes.duosis.com"]'
 

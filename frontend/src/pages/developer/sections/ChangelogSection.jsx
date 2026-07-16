@@ -9,6 +9,30 @@ import { Tag } from 'antd'
 
 const CHANGELOG = [
     {
+        version: 'v1.1.0',
+        date: 'July 2026',
+        title: 'Directory & MCP read foundation',
+        entries: [
+            {
+                tag: 'API',
+                text:
+                    'users:read and groups:read activated — GET /v1/users, ' +
+                    '/v1/users/{id}, /v1/groups, /v1/groups/{id} with ' +
+                    'least-privilege directory visibility (non-global ' +
+                    'tokens resolve only identities present in records ' +
+                    'they can already access).',
+            },
+            {
+                tag: 'Platform',
+                text:
+                    'Recipient e-mail resolution for notifications moved ' +
+                    'to a dedicated service-to-service credential — ' +
+                    'API-triggered events gain e-mail parity once the ' +
+                    'credential is activated per deployment.',
+            },
+        ],
+    },
+    {
         version: 'v1.0.0',
         date: 'July 2026',
         title: 'Initial public release',

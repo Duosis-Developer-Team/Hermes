@@ -82,10 +82,11 @@ function ScopesSection({ capabilities }) {
                 scroll={{ x: 'max-content' }}
             />
             <p>
-                <b>Reserved</b> scopes exist in the catalog but have no
-                endpoints yet — granting them today gives no additional
-                access. They will activate when their endpoints ship (with a
-                changelog entry).
+                <code>users:read</code> and <code>groups:read</code> grant
+                least-privilege <b>directory</b> visibility: non-global
+                tokens can only resolve identities they already encounter
+                in accessible business records — never enumerate the whole
+                company.
             </p>
 
             <h3>Data-access binding types</h3>

@@ -49,6 +49,15 @@ jobs:
           JWT_PUBLIC_KEY: ci-test-only-not-a-real-key
         run: python -m pytest tests/ -q
 
+      - name: Install auth-service dependencies
+        run: pip install -r backend/auth-service/requirements.txt
+
+      - name: Run auth-service test suite (S2S internal directory)
+        working-directory: backend/auth-service
+        env:
+          HERMES_TEST_DATABASE_URL: postgresql://hermes:hermes@localhost:55433/hermes_test
+        run: python -m pytest tests/ -q
+
   # hermes-mcp testleri (Stage 5A) — MCP JSON-RPC → hermes_mcp →
   # gercek core Public API → Postgres uctan uca zinciri dogrular.
   mcp_tests:

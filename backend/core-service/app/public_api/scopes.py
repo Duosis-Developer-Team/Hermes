@@ -21,16 +21,15 @@ SCOPES: dict[str, str] = {
     "work-logs:read": "Read work logs visible to the client.",
     "work-logs:write": "Create work logs.",
     "meetings:read": "Read meetings visible to the client.",
-    # Asagidaki iki scope Stage 2'de onaylanan katalogda yer alir ancak
-    # v1'de HENUZ endpoint'leri yok — dokumantasyonda "reserved" olarak
-    # isaretlenir (3E review bulgusu; endpoint tasarimi ayri onay ister).
+    # Stage 5B-2 ile aktif: least-privilege dizin gorunurlugu (genis
+    # calisan listesi DEGIL — yalnizca global binding genis dizin gorur).
     "users:read": (
-        "Reserved — no Public API endpoints in v1 yet. Grants no "
-        "additional access until user directory endpoints ship."
+        "Resolve user ids into minimal directory entries visible to "
+        "the client (least-privilege; not a company-wide list)."
     ),
     "groups:read": (
-        "Reserved — no Public API endpoints in v1 yet. Grants no "
-        "additional access until group endpoints ship."
+        "Read user groups visible to the client (name, description, "
+        "active member count — no member lists)."
     ),
 }
 
