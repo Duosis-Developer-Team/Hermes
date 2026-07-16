@@ -44,6 +44,34 @@ tasks, projects, customers, work logs and meetings in a secure, versioned way.
   `{"error": {"code", "message", "request_id"}}`.
 - **Request IDs**: each response carries `X-Request-ID`; include it when
   reporting problems.
+
+## Writes
+
+- Write endpoints require a **user-bound** API client; every write is
+  performed as the bound Hermes user under that user's existing
+  permissions. **Service clients are read-only** — a write scope on a
+  service client is still rejected with 403. Acting on behalf of another
+  user is not possible in v1.
+- **No destructive operations**: the public API exposes no delete
+  endpoints, and archived data cannot be modified through it.
+- In-app side effects (activity events, admin-configured notification
+  rules) match the internal app. **E-mail delivery for API-triggered
+  events is not yet enabled**; e-mails keep flowing for actions performed
+  in the Hermes web app.
+
+## Idempotency
+
+All POST endpoints accept an optional `Idempotency-Key` header
+(8-128 chars of `[A-Za-z0-9_-.]`, scoped to your API client, retained
+for **24 hours**):
+
+- Same key + same payload → the stored response is replayed with
+  `Idempotency-Replayed: true`.
+- Same key + different payload → `409 conflict`.
+- Same key while the original request is **still in flight** →
+  `409 idempotency_request_in_progress`. This is safe to retry: once the
+  original request completes, the same key replays its stored response.
+- Without the header, retries are not protected against duplicates.
 """.strip()
 
 

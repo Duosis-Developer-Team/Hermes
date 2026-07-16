@@ -5,7 +5,9 @@
 # Semantik (onayli):
 #   - ayni key + ayni kanonik govde  → saklanan yanit + Idempotency-Replayed: true
 #   - ayni key + FARKLI govde        → 409 conflict
-#   - islenmekte olan ayni key       → 409 conflict (yarisan istek)
+#   - islenmekte olan ayni key       → 409 idempotency_request_in_progress
+#     (yarisan istek; GUVENLE retry edilebilir — ilk istek tamamlaninca
+#     ayni anahtar saklanan yaniti replay eder)
 #   - 24 saat TTL: suresi dolan anahtar YENIDEN kullanilabilir (dokumante)
 #
 # Es-zamanlilik garantisi REZERVASYON deseniyle saglanir: is mantigi
@@ -33,6 +35,13 @@ from .errors import PublicAPIError
 IDEMPOTENCY_HEADER = "Idempotency-Key"
 TTL_HOURS = 24
 _KEY_RE = re.compile(r"^[A-Za-z0-9_\-\.]{8,128}$")
+
+# Yarisan istegin alacagi mesaj: retry'in guvenli oldugu ACIKCA soylenir.
+_IN_PROGRESS_MESSAGE = (
+    "A request with this Idempotency-Key is still being processed. "
+    "It is safe to retry with the same key after the original request "
+    "completes; the stored response will then be replayed."
+)
 
 
 def canonical_hash(client_id, method: str, path: str, payload: dict) -> str:
@@ -140,10 +149,10 @@ def begin_idempotency(
         except IntegrityError:
             db.rollback()
             row = _existing()  # yarisi kaybettik; mevcut satiri degerlendir
-            if row is None:  # cok dar bir yaris penceresi — conflict say
+            if row is None:  # cok dar bir yaris penceresi — in-progress say
                 raise PublicAPIError(
-                    "conflict",
-                    "A request with this Idempotency-Key is being processed.",
+                    "idempotency_request_in_progress",
+                    _IN_PROGRESS_MESSAGE,
                 )
 
     if row.request_hash != request_hash:
@@ -153,8 +162,8 @@ def begin_idempotency(
         )
     if row.response_status is None:
         raise PublicAPIError(
-            "conflict",
-            "A request with this Idempotency-Key is still being processed.",
+            "idempotency_request_in_progress",
+            _IN_PROGRESS_MESSAGE,
         )
     replay = JSONResponse(
         status_code=row.response_status,

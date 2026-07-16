@@ -32,6 +32,10 @@ ERROR_STATUS = {
     "resource_access_denied": 403,
     "resource_not_found": 404,
     "conflict": 409,
+    # Ayni Idempotency-Key ile yarisan istek HALEN islenirken doner.
+    # `conflict`ten farkli: guvenle RETRY edilebilir (ilk istek bitince
+    # ayni anahtar saklanan yaniti replay eder). Onayli 3C follow-up.
+    "idempotency_request_in_progress": 409,
     "rate_limit_exceeded": 429,
     "internal_error": 500,
 }

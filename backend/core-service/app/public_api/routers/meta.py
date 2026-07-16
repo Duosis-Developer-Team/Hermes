@@ -51,6 +51,18 @@ async def public_capabilities():
             "default_limit": 25,
             "max_limit": 100,
         },
+        "writes": {
+            # Onayli v1 kurallari: aktor her zaman bagli kullanicidir.
+            "client_types": ["user"],
+            "service_clients": "read-only",
+            "destructive_operations": "unavailable",
+            "idempotency": {
+                "header": "Idempotency-Key",
+                "retention_hours": 24,
+                "replay_header": "Idempotency-Replayed",
+                "in_progress_error_code": "idempotency_request_in_progress",
+            },
+        },
         "docs_url": "/api/public/v1/docs",
         "openapi_url": "/api/public/v1/openapi.json",
         "deprecations": [],

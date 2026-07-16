@@ -395,7 +395,8 @@ def test_invalid_key_format_rejected(world, public_http, pg_session):
 
 def test_in_flight_key_conflicts(world, public_http, pg_session):
     """Yarisan istek simulasyonu: rezervasyon satiri (response_status NULL)
-    varken ayni anahtar 409 doner → ayni is kaydi iki kez OLUSAMAZ."""
+    varken ayni anahtar 409 `idempotency_request_in_progress` doner (retry
+    guvenli — mesaj bunu acikca soyler) → ayni is kaydi iki kez OLUSAMAZ."""
     h = bound_client(pg_session, BU, name="inflight")
     from app.models.api_client import ApiClient
 
@@ -431,7 +432,11 @@ def test_in_flight_key_conflicts(world, public_http, pg_session):
         json=payload,
     )
     assert r.status_code == 409
-    assert "processed" in r.json()["error"]["message"]
+    err = r.json()["error"]
+    # Onayli 3C follow-up: stabil kod + acikca retry-edilebilir mesaj.
+    assert err["code"] == "idempotency_request_in_progress"
+    assert "safe to retry" in err["message"]
+    assert "replayed" in err["message"]
     assert _count_tasks(pg_session, "Race Task") == 0
 
 

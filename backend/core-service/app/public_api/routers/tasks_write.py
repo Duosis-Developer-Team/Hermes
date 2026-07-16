@@ -23,14 +23,10 @@
 # credential'i gerekir — raporlandi.
 # =============================================================================
 
-import json
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.orm import Session
-
-from shared.auth import CurrentUser
 
 from ...database import get_db
 from ...routers.tasks import _notif_payload, _serialize_task
@@ -43,11 +39,6 @@ from ...services.task_notifications import (
 )
 from ..deps import ApiContext, require_scopes
 from ..errors import PublicAPIError
-from ..idempotency import (
-    begin_idempotency,
-    canonical_hash,
-    validate_idempotency_key,
-)
 from ..schemas.resources import (
     PublicCommentCreate,
     PublicStatusAction,
@@ -57,37 +48,14 @@ from ..schemas.resources import (
     serialize_task,
 )
 from ..scopes import scope_docs
-
-router = APIRouter(prefix="/v1", tags=["Tasks"])
-
-IDEMPOTENCY_HEADER_PARAM = Header(
-    None,
-    alias="Idempotency-Key",
-    description=(
-        "Optional idempotency key (8-128 chars of [A-Za-z0-9_-.]), scoped "
-        "to your API client. Replaying the same key with the same payload "
-        "within 24h returns the original response with "
-        "`Idempotency-Replayed: true`; the same key with a different "
-        "payload returns 409. Without the header, retries are NOT "
-        "protected."
-    ),
+from ..writes import (
+    IDEMPOTENCY_HEADER_PARAM,
+    actor_of as _actor_of,
+    dump as _dump,
+    run_idempotent as _run_idempotent,
 )
 
-
-def _actor_of(ctx: ApiContext) -> CurrentUser:
-    """Bagli Hermes kullanicisini aktor yapar. E-posta alani service
-    fonksiyonlarinin sekil geregidir (hicbir is kuralinda kullanilmaz)."""
-    if ctx.client.client_type != "user" or ctx.client.bound_user_id is None:
-        raise PublicAPIError(
-            "resource_access_denied",
-            "Write operations require a user-bound API client. Service "
-            "clients are read-only in v1.",
-        )
-    return CurrentUser(
-        id=str(ctx.client.bound_user_id),
-        email=f"api-client-{ctx.client.id}@hermes.internal",
-        is_admin=False,
-    )
+router = APIRouter(prefix="/v1", tags=["Tasks"])
 
 
 def _visible_task_or_404(db: Session, ctx: ApiContext, task_code: str):
@@ -96,27 +64,6 @@ def _visible_task_or_404(db: Session, ctx: ApiContext, task_code: str):
     if task is None:
         raise PublicAPIError("resource_not_found", "Task not found.")
     return task
-
-
-def _dump(model) -> dict:
-    return json.loads(model.model_dump_json())
-
-
-def _run_idempotent(db, ctx, key, route, payload, run):
-    """POST akisinin ortak sarmali: rezervasyon → is mantigi → anlik.
-    `run()` (status_code, body_dict) dondurur."""
-    key = validate_idempotency_key(key)
-    req_hash = canonical_hash(ctx.client.id, "POST", route, payload)
-    guard = begin_idempotency(db, ctx.client.id, key, req_hash)
-    if guard.replay is not None:
-        return guard.replay
-    try:
-        status_code, body = run()
-    except Exception:
-        guard.release()
-        raise
-    guard.commit(status_code, body)
-    return JSONResponse(status_code=status_code, content=body)
 
 
 def _maybe_status_side_effects(

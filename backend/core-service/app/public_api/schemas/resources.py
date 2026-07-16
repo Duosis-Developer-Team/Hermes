@@ -10,7 +10,7 @@ from datetime import date, datetime
 from typing import List, Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # ── Task ────────────────────────────────────────────────────────────────
 
@@ -358,3 +358,42 @@ class PublicStatusAction(BaseModel):
     aynen uygulanir)."""
 
     action: Literal["accept", "reject", "reopen"]
+
+
+class PublicWorkLogCreate(BaseModel):
+    """Stage 3D — POST /v1/work-logs govdesi.
+
+    Internal WorkLogCreate ile ayni zorunluluk kurallari (musteri, proje,
+    is tipi, tarih, sure). YASAK alanlar semada YOK (extra=forbid ile
+    422): user_id/target_user_id (aktor HER ZAMAN bagli kullanicidir),
+    internal task UUID'si (yalnizca task_code kabul edilir), billable
+    alanlar, onay/arsiv/created_by metadata'si, issue_id/issue_key.
+
+    Baglanti kurali (onayli): task_code VEYA meeting_id — ikisi birden
+    422 (internal Log Time akislari da tek kaynaktan baglar)."""
+
+    model_config = {"extra": "forbid"}
+
+    customer_id: UUID
+    project_id: UUID
+    work_type_id: UUID
+    date_worked: date
+    duration_hours: float = Field(
+        ..., ge=0.25, le=24, examples=[2.5, 4.0, 1.25]
+    )
+    description: Optional[str] = Field(None, max_length=5000)
+    activity_type_id: Optional[UUID] = None
+    platform_id: Optional[UUID] = None
+    work_line_id: Optional[UUID] = None
+    task_code: Optional[str] = Field(
+        None, max_length=32, examples=["TASK-1", "ISSUE-7"]
+    )
+    meeting_id: Optional[UUID] = None
+
+    @model_validator(mode="after")
+    def _single_link(self):
+        if self.task_code is not None and self.meeting_id is not None:
+            raise ValueError(
+                "Provide task_code or meeting_id, not both."
+            )
+        return self
