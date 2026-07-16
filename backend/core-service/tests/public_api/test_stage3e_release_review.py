@@ -254,8 +254,14 @@ def test_description_documents_key_sections(spec):
     ):
         assert section in desc, section
     assert "idempotency_request_in_progress" in desc
-    # E-posta paritesi iddia edilmez (onayli sinirlama).
-    assert "not yet enabled" in desc
+    # E-posta paritesi iddia edilmez (onayli sinirlama — CTO'nun birebir
+    # cumlesi Stage 3F'te sabitlendi). Markdown satir kirilimlarina
+    # duyarsiz karsilastirma icin whitespace normalize edilir.
+    flat = " ".join(desc.replace("*", "").split())
+    assert (
+        "email delivery parity with browser-triggered actions "
+        "is not yet guaranteed" in flat
+    )
 
 
 def test_error_envelope_schema_in_components(spec):

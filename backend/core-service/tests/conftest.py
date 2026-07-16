@@ -129,7 +129,7 @@ def pg_session(pg_engine):
     s.execute(
         sa_text(
             "TRUNCATE api_request_logs, api_client_access, api_tokens, "
-            "api_clients RESTART IDENTITY CASCADE"
+            "api_clients, api_cleanup_runs RESTART IDENTITY CASCADE"
         )
     )
     s.commit()

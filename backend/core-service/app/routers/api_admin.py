@@ -303,3 +303,63 @@ async def list_api_request_logs(
         )
         for r in rows
     ]
+
+
+# ── Operasyonel temizlik (Stage 3F) ─────────────────────────────────────
+# Yalnizca api_request_logs + api_idempotency_keys yasam dongusu.
+# Servis katmani is verisine YAPISAL olarak dokunamaz (sabit tablo
+# katalogu); bkz. services/api_cleanup_service.py.
+
+
+@router.get("/api-cleanup")
+def cleanup_status(
+    admin: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Retention politikasi + son calisma ozeti (admin panel karti)."""
+    from ..services import api_cleanup_service as cleanup
+
+    settings = cleanup.CleanupSettings.from_app_settings()
+    run = cleanup.last_run(db)
+    return {
+        "policy": {
+            "enabled": settings.enabled,
+            "request_log_retention_days": (
+                settings.request_log_retention_days
+            ),
+            # 24 saatlik TTL + 1 saat guvenlik payi (dokumante kural).
+            "idempotency_retention_hours": (
+                settings.idempotency_retention_hours
+            ),
+            "batch_size": settings.batch_size,
+        },
+        # CronJob manifesti manuel apply gerektirir; core-service kendi
+        # zamanlayicisini TASIMAZ. Uygulanmissa gunluk 03:00 UTC.
+        "next_scheduled_run": None,
+        "last_run": None
+        if run is None
+        else {
+            "started_at": run.started_at,
+            "completed_at": run.completed_at,
+            "status": run.status,
+            "dry_run": run.dry_run,
+            "trigger": run.trigger,
+            "request_logs_deleted": run.request_logs_deleted,
+            "idempotency_keys_deleted": run.idempotency_keys_deleted,
+            "batches": run.batches,
+            "failure_class": run.failure_class,
+        },
+    }
+
+
+@router.post("/api-cleanup/run")
+def run_cleanup_now(
+    dry_run: bool = Query(False),
+    admin: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Manuel temizlik tetigi (admin onay modali arkasinda). dry_run=true
+    hicbir sey silmez, aday sayilarini dondurur."""
+    from ..services import api_cleanup_service as cleanup
+
+    return cleanup.run_cleanup(db, dry_run=dry_run, trigger="manual")

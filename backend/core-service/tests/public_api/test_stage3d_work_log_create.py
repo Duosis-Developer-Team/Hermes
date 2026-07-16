@@ -474,7 +474,13 @@ def test_openapi_documents_idempotency_and_write_limits(public_http):
     assert "idempotency_request_in_progress" in desc
     assert "Service clients are read-only" in desc
     # E-posta paritesi IDDIA EDILMEZ (onayli 3C follow-up).
-    assert "not yet enabled" in desc
+    # CTO'nun birebir cumlesi (3F'te sabitlendi); markdown kirilimina
+    # duyarsiz kontrol.
+    flat = " ".join(desc.replace("*", "").split())
+    assert (
+        "email delivery parity with browser-triggered actions "
+        "is not yet guaranteed" in flat
+    )
     post_op = spec["paths"]["/v1/work-logs"]["post"]
     assert "work-logs:write" in _json.dumps(post_op)
     # DELETE / PUT / PATCH public work-log yuzeyinde YOK.

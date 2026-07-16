@@ -278,3 +278,32 @@ class ApiIdempotencyKey(Base):
             "client_id", "key", name="uq_api_idempotency_client_key"
         ),
     )
+
+
+class ApiCleanupRun(Base):
+    """Stage 3F operasyonel temizlik kaydi. Admin panelinde "son temizlik"
+    gorunurlugu buradan okunur. SANITIZE edilmis: SQL detayi, satir
+    icerigi veya hata mesaji TASIMAZ — yalnizca sayilar + hata SINIFI."""
+
+    __tablename__ = "api_cleanup_runs"
+
+    id = Column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    started_at = Column(DateTime(timezone=True), nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    dry_run = Column(Boolean, nullable=False, default=False)
+    trigger = Column(String(16), nullable=False, default="manual")
+    # success | failed
+    status = Column(String(16), nullable=False)
+    request_logs_deleted = Column(Integer, nullable=False, default=0)
+    idempotency_keys_deleted = Column(Integer, nullable=False, default=0)
+    batches = Column(Integer, nullable=False, default=0)
+    # Yalnizca exception SINIF adi (orn. OperationalError) — detay yok.
+    failure_class = Column(String(64), nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )

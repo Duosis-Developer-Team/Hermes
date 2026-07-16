@@ -52,6 +52,18 @@ class Settings(BaseSettings):
             f"postgresql://{self.CORE_DB_USER}:{self.CORE_DB_PASSWORD}"
             f"@{self.CORE_DB_HOST}:{self.CORE_DB_PORT}/{self.CORE_DB_NAME}"
         )
+
+    # ==========================================================================
+    # Public API operational cleanup (Stage 3F)
+    # ==========================================================================
+    # Yalnizca api_request_logs + api_idempotency_keys yasam dongusu.
+    # Idempotency retention 25 saat = 24 saatlik TTL + 1 saat guvenlik
+    # payi (TTL'i okuma aninda dolmus ama henuz silinmemis anahtar,
+    # temizlikten ASLA once otoriter olamaz).
+    API_CLEANUP_ENABLED: bool = True
+    API_REQUEST_LOG_RETENTION_DAYS: int = 90
+    API_IDEMPOTENCY_RETENTION_HOURS: int = 25
+    API_CLEANUP_BATCH_SIZE: int = 5000
     
     # ==========================================================================
     # JWT Configuration — RS256 Asimetrik (KRİTİK-2)

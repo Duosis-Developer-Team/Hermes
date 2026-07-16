@@ -1,0 +1,76 @@
+# =============================================================================
+# HERMES - Public API retention cleanup (Stage 3F)
+# =============================================================================
+# Gunluk 03:00 UTC'de api_request_logs (90 gun) + api_idempotency_keys
+# (25 saat = 24h TTL + 1h pay) temizligi. Ayni core-service image'i,
+# ayni DB env'leri; is verisine yapisal olarak dokunamaz (sabit tablo
+# katalogu + pg_try_advisory_lock tek-calisan guard'i).
+#
+# NOT (deploy mekanigi): CD yalnizca set-image/restart yapar — bu
+# manifest sunucuda MANUEL `kubectl apply -f k8s/api-cleanup-cronjob.yaml`
+# ister. hermes-test'e AYRI karar olmadan uygulanmaz.
+# =============================================================================
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hermes-api-cleanup
+  namespace: hermes-dev
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: api-cleanup
+              image: ghcr.io/duosis-developer-team/hermes-core-service:latest
+              imagePullPolicy: Always
+              command: ["python", "-m", "app.jobs.api_cleanup"]
+              env:
+                - name: CORE_DB_HOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: DB_HOST_CORE
+                - name: CORE_DB_PORT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: DB_PORT
+                - name: CORE_DB_USER
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: POSTGRES_USER
+                - name: CORE_DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-secrets
+                      key: POSTGRES_PASSWORD
+                - name: CORE_DB_NAME
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: POSTGRES_DB_CORE
+                # shared/auth.py modul yuklemesi icin gerekli (dogrulama
+                # yapilmaz; job hicbir HTTP istegi almaz).
+                - name: JWT_PUBLIC_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-jwt-auth
+                      key: JWT_PUBLIC_KEY
+                # Retention ayarlari (safe defaults koddadir; burada
+                # acikca sabitlenir).
+                - name: API_CLEANUP_ENABLED
+                  value: "true"
+                - name: API_REQUEST_LOG_RETENTION_DAYS
+                  value: "90"
+                - name: API_IDEMPOTENCY_RETENTION_HOURS
+                  value: "25"
+                - name: API_CLEANUP_BATCH_SIZE
+                  value: "5000"

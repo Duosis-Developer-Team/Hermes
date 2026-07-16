@@ -54,10 +54,11 @@ tasks, projects, customers, work logs and meetings in a secure, versioned way.
   user is not possible in v1.
 - **No destructive operations**: the public API exposes no delete
   endpoints, and archived data cannot be modified through it.
-- In-app side effects (activity events, admin-configured notification
-  rules) match the internal app. **E-mail delivery for API-triggered
-  events is not yet enabled**; e-mails keep flowing for actions performed
-  in the Hermes web app.
+- **Known limitation**: API-triggered task lifecycle actions currently
+  preserve Hermes activity and notification records, but **email
+  delivery parity with browser-triggered actions is not yet
+  guaranteed**. E-mails keep flowing for actions performed in the
+  Hermes web app.
 
 ## Idempotency
 

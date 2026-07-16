@@ -25,12 +25,12 @@ SCOPES: dict[str, str] = {
     # v1'de HENUZ endpoint'leri yok — dokumantasyonda "reserved" olarak
     # isaretlenir (3E review bulgusu; endpoint tasarimi ayri onay ister).
     "users:read": (
-        "Reserved — read basic user directory information "
-        "(no endpoints in v1 yet)."
+        "Reserved — no Public API endpoints in v1 yet. Grants no "
+        "additional access until user directory endpoints ship."
     ),
     "groups:read": (
-        "Reserved — read user groups and memberships "
-        "(no endpoints in v1 yet)."
+        "Reserved — no Public API endpoints in v1 yet. Grants no "
+        "additional access until group endpoints ship."
     ),
 }
 

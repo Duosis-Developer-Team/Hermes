@@ -848,6 +848,45 @@ function ApiManagementPage() {
         keepPreviousData: true,
     })
 
+    // ── Retention / cleanup (Stage 3F) ──────────────────────────────────
+    // Yalnizca api_request_logs + api_idempotency_keys yasam dongusu;
+    // is verisine backend yapisal olarak dokunamaz.
+    const [cleanupConfirm, setCleanupConfirm] = useState(false)
+    const { data: cleanup } = useQuery({
+        queryKey: ['admin-api-cleanup'],
+        queryFn: () => apiManagementService.getCleanupStatus(),
+        enabled: open.logs,
+    })
+    const runCleanup = useMutation({
+        mutationFn: (dryRun) => apiManagementService.runCleanup(dryRun),
+        onSuccess: (res) => {
+            queryClient.invalidateQueries({ queryKey: ['admin-api-cleanup'] })
+            queryClient.invalidateQueries({
+                queryKey: ['admin-api-request-logs'],
+            })
+            if (res.status === 'disabled') {
+                message.warning('Cleanup is disabled by configuration.')
+            } else if (res.status === 'skipped_already_running') {
+                message.warning('A cleanup run is already in progress.')
+            } else if (res.status === 'failed') {
+                message.error(`Cleanup failed (${res.failure_class}).`)
+            } else if (res.dry_run) {
+                message.info(
+                    `Dry run: ${res.request_logs_deleted} request logs and ` +
+                        `${res.idempotency_keys_deleted} idempotency keys ` +
+                        'would be removed.'
+                )
+            } else {
+                message.success(
+                    `Cleanup done: ${res.request_logs_deleted} request logs ` +
+                        `and ${res.idempotency_keys_deleted} idempotency ` +
+                        'keys removed.'
+                )
+            }
+        },
+        onError: () => message.error('Cleanup request failed.'),
+    })
+
     const logColumns = [
         {
             title: 'Time',
@@ -1129,6 +1168,74 @@ function ApiManagementPage() {
                 open={open.logs}
                 onToggle={() => toggle('logs')}
             >
+                {cleanup && (
+                    <div className="am-cleanup-bar">
+                        <div className="am-cleanup-info">
+                            <span>
+                                Retention: request logs{' '}
+                                <b>
+                                    {
+                                        cleanup.policy
+                                            .request_log_retention_days
+                                    }{' '}
+                                    days
+                                </b>{' '}
+                                · idempotency keys{' '}
+                                <b>
+                                    {
+                                        cleanup.policy
+                                            .idempotency_retention_hours
+                                    }
+                                    h
+                                </b>{' '}
+                                (24h TTL + safety margin)
+                                {!cleanup.policy.enabled && (
+                                    <Tag
+                                        color="red"
+                                        style={{ marginLeft: 8 }}
+                                    >
+                                        cleanup disabled
+                                    </Tag>
+                                )}
+                            </span>
+                            <span className="am-cleanup-last">
+                                {cleanup.last_run
+                                    ? `Last cleanup ${fmtDateTime(
+                                          cleanup.last_run.started_at
+                                      )} — ${cleanup.last_run.status}` +
+                                      (cleanup.last_run.dry_run
+                                          ? ' (dry run)'
+                                          : '') +
+                                      ` · ${cleanup.last_run.request_logs_deleted} logs / ` +
+                                      `${cleanup.last_run.idempotency_keys_deleted} keys removed`
+                                    : 'No cleanup has run yet'}
+                                {' · '}
+                                {cleanup.next_scheduled_run
+                                    ? `Next run ${fmtDateTime(
+                                          cleanup.next_scheduled_run
+                                      )}`
+                                    : 'Daily 03:00 UTC via K8s CronJob (manual apply)'}
+                            </span>
+                        </div>
+                        <Space>
+                            <Button
+                                size="small"
+                                loading={runCleanup.isPending}
+                                onClick={() => runCleanup.mutate(true)}
+                            >
+                                Dry run
+                            </Button>
+                            <Button
+                                size="small"
+                                danger
+                                loading={runCleanup.isPending}
+                                onClick={() => setCleanupConfirm(true)}
+                            >
+                                Run Cleanup
+                            </Button>
+                        </Space>
+                    </div>
+                )}
                 <Space wrap className="am-log-filters">
                     <Select
                         allowClear
@@ -1302,6 +1409,25 @@ function ApiManagementPage() {
             )}
 
             <TokenOnceModal issued={issuedToken} onDone={closeIssued} />
+
+            <DangerConfirmModal
+                open={cleanupConfirm}
+                tone="danger"
+                title="Run retention cleanup now?"
+                subtitle={
+                    'Permanently removes API request logs older than the ' +
+                    'retention period and expired idempotency keys. ' +
+                    'Business data (tasks, work logs, meetings, customers, ' +
+                    'projects) is never touched.'
+                }
+                confirmLabel="Run Cleanup"
+                loading={runCleanup.isPending}
+                onConfirm={() => {
+                    setCleanupConfirm(false)
+                    runCleanup.mutate(false)
+                }}
+                onCancel={() => setCleanupConfirm(false)}
+            />
 
             <DangerConfirmModal
                 open={!!confirm}

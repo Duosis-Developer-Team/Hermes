@@ -786,6 +786,20 @@ export const apiManagementService = {
         const response = await coreApi.get('/api/public/v1/capabilities')
         return response.data
     },
+    /** Stage 3F: retention politikasi + son temizlik ozeti. */
+    getCleanupStatus: async () => {
+        const response = await coreApi.get('/api/v1/core/admin/api-cleanup')
+        return response.data
+    },
+    /** Stage 3F: manuel temizlik (dry_run=true hicbir sey silmez). */
+    runCleanup: async (dryRun = false) => {
+        const response = await coreApi.post(
+            '/api/v1/core/admin/api-cleanup/run',
+            null,
+            { params: { dry_run: dryRun } }
+        )
+        return response.data
+    },
 }
 
 export const taskNotificationSettingsService = {

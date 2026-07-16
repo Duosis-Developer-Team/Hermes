@@ -141,6 +141,32 @@
 
 /* ── Request logs ─────────────────────────────────────────────────────── */
 
+/* Stage 3F: retention/cleanup durum seridi */
+.am-cleanup-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--tm-border, rgba(124, 92, 255, 0.25));
+    border-radius: 10px;
+    background: var(--tm-card-bg, rgba(124, 92, 255, 0.06));
+    font-size: 12.5px;
+}
+
+.am-cleanup-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.am-cleanup-last {
+    opacity: 0.75;
+}
+
 .am-log-filters {
     margin-bottom: 12px;
 }
