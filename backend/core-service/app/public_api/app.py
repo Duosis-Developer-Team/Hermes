@@ -22,7 +22,7 @@ from fastapi.openapi.utils import get_openapi
 
 from .errors import register_error_handlers
 from .request_context import RequestIDMiddleware
-from .routers import meta
+from .routers import me, meta
 from .scopes import SCOPES
 
 PUBLIC_API_DESCRIPTION = """
@@ -56,6 +56,7 @@ def create_public_app() -> FastAPI:
     public_app.add_middleware(RequestIDMiddleware)
     register_error_handlers(public_app)
     public_app.include_router(meta.router)
+    public_app.include_router(me.router)
 
     def custom_openapi():
         """Public semayi zenginlestirir:

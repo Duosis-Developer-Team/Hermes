@@ -105,6 +105,17 @@ class Settings(BaseSettings):
     APP_BASE_URL: str = ""
 
     # ==========================================================================
+    # Public API (dis entegrasyonlar)
+    # ==========================================================================
+
+    # Bu deployment'in token ortami: 'dev' cluster'inda "dev",
+    # test/prod'da "live" (promote sirasinda kubectl set env ile — additive).
+    # Token'in environment'i bununla eslesmezse kimlik dogrulama reddedilir.
+    PUBLIC_API_ENV: str = "dev"
+    # Client'ta rate_limit_per_min tanimli degilse kullanilacak varsayilan.
+    PUBLIC_API_DEFAULT_RATE_LIMIT: int = 60
+
+    # ==========================================================================
     # CORS Configuration
     # ==========================================================================
     
