@@ -22,7 +22,7 @@ spec:
         - name: ghcr-secret
       containers:
       - name: frontend
-        image: ghcr.io/duosis-developer-team/hermes-frontend:latest
+        image: ghcr.io/duosis-developer-team/hermes-frontend:test
         imagePullPolicy: Always
         ports:
         - containerPort: 80

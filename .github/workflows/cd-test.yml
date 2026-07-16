@@ -1,3 +1,10 @@
+# =============================================================================
+# CD - Test: dev ile AYNI zorunlu gate'ler (backend+auth, mcp, frontend).
+# Tag ayrimi (promotion hardening): test YALNIZCA :test + immutable SHA
+# kullanir — dev'in yazdigi hicbir mutable tag'i ASLA cekmez. Deploy,
+# calisan Deployment'lari SHA'ya pinler. Manifest APPLY ETMEZ (mevcut
+# mekanik): config/kaynak degisiklikleri manuel kubectl ister.
+# =============================================================================
 name: CD - Test (Hermes)
 
 on:
@@ -9,8 +16,124 @@ permissions:
   packages: write
 
 jobs:
+  # Public API guvenlik/regresyon testleri — basarisiz olursa build/deploy
+  # ASLA calismaz (amendment #1: token/RBAC testleri manuel kalamaz).
+  backend_tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: hermes
+          POSTGRES_PASSWORD: hermes
+          POSTGRES_DB: hermes_test
+        ports:
+          - 55433:5432
+        options: >-
+          --health-cmd "pg_isready -U hermes"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r backend/core-service/requirements.txt
+
+      - name: Run backend test suite
+        working-directory: backend/core-service
+        env:
+          HERMES_TEST_DATABASE_URL: postgresql://hermes:hermes@localhost:55433/hermes_test
+          JWT_PUBLIC_KEY: ci-test-only-not-a-real-key
+        run: python -m pytest tests/ -q
+
+      - name: Install auth-service dependencies
+        run: pip install -r backend/auth-service/requirements.txt
+
+      - name: Run auth-service test suite (S2S internal directory)
+        working-directory: backend/auth-service
+        env:
+          HERMES_TEST_DATABASE_URL: postgresql://hermes:hermes@localhost:55433/hermes_test
+        run: python -m pytest tests/ -q
+
+  # hermes-mcp testleri (Stage 5A) — MCP JSON-RPC → hermes_mcp →
+  # gercek core Public API → Postgres uctan uca zinciri dogrular.
+  mcp_tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: hermes
+          POSTGRES_PASSWORD: hermes
+          POSTGRES_DB: hermes_test
+        ports:
+          - 55433:5432
+        options: >-
+          --health-cmd "pg_isready -U hermes"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        # Test harness'i core Public API'yi in-process calistirir; runtime
+        # hermes_mcp core import ETMEZ (testler bunu dogrular). IKINCI
+        # kurulum test overlay'idir: core pinleriyle mcp SDK'sinin httpx
+        # cakismasini, core kodunun dogrulanmis oldugu guncel fastapi/
+        # starlette/httpx ciftine yukselterek cozer (requirements-test.txt
+        # basligina bakin). Core'un kendi runtime pinlerine dokunulmaz.
+        run: |
+          pip install -r backend/core-service/requirements.txt
+          pip install -r backend/mcp-service/requirements-test.txt
+
+      - name: Run MCP test suite
+        working-directory: backend/mcp-service
+        env:
+          HERMES_TEST_DATABASE_URL: postgresql://hermes:hermes@localhost:55433/hermes_test
+          JWT_PUBLIC_KEY: ci-test-only-not-a-real-key
+        run: python -m pytest tests/ -q
+
+  # Frontend build gate (Stage 5D-C): deploy, UI derlenmeden kosamaz.
+  frontend_build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Setup Node
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npx vite build
+
   build_push_deploy:
     runs-on: ubuntu-latest
+    needs: [backend_tests, mcp_tests, frontend_build]
 
     env:
       NAMESPACE: hermes-test
@@ -33,63 +156,75 @@ jobs:
           TAG="${GITHUB_SHA}"
 
           AUTH_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-auth-service:${TAG}"
-          AUTH_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-auth-service:latest"
+          AUTH_IMAGE_TEST="${REGISTRY}/${OWNER}/hermes-auth-service:test"
           
           CORE_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-core-service:${TAG}"
-          CORE_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-core-service:latest"
+          CORE_IMAGE_TEST="${REGISTRY}/${OWNER}/hermes-core-service:test"
 
           REPORTING_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-reporting-service:${TAG}"
-          REPORTING_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-reporting-service:latest"
+          REPORTING_IMAGE_TEST="${REGISTRY}/${OWNER}/hermes-reporting-service:test"
 
           FRONTEND_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-frontend:${TAG}"
-          FRONTEND_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-frontend:latest"
+          FRONTEND_IMAGE_TEST="${REGISTRY}/${OWNER}/hermes-frontend:test"
 
           BACKUP_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-backup:${TAG}"
-          BACKUP_IMAGE_LATEST="${REGISTRY}/${OWNER}/hermes-backup:latest"
+          BACKUP_IMAGE_TEST="${REGISTRY}/${OWNER}/hermes-backup:test"
 
-          docker build -t "$AUTH_IMAGE_SHA" -t "$AUTH_IMAGE_LATEST" -f "backend/auth-service/Dockerfile" ./backend
+          MCP_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-mcp:${TAG}"
+          MCP_IMAGE_TEST="${REGISTRY}/${OWNER}/hermes-mcp:test"
+
+          docker build -t "$AUTH_IMAGE_SHA" -t "$AUTH_IMAGE_TEST" -f "backend/auth-service/Dockerfile" ./backend
           docker push "$AUTH_IMAGE_SHA"
-          docker push "$AUTH_IMAGE_LATEST"
+          docker push "$AUTH_IMAGE_TEST"
 
-          docker build -t "$CORE_IMAGE_SHA" -t "$CORE_IMAGE_LATEST" -f "backend/core-service/Dockerfile" ./backend
+          docker build -t "$CORE_IMAGE_SHA" -t "$CORE_IMAGE_TEST" -f "backend/core-service/Dockerfile" ./backend
           docker push "$CORE_IMAGE_SHA"
-          docker push "$CORE_IMAGE_LATEST"
+          docker push "$CORE_IMAGE_TEST"
 
-          docker build -t "$REPORTING_IMAGE_SHA" -t "$REPORTING_IMAGE_LATEST" -f "backend/reporting-service/Dockerfile" ./backend
+          docker build -t "$REPORTING_IMAGE_SHA" -t "$REPORTING_IMAGE_TEST" -f "backend/reporting-service/Dockerfile" ./backend
           docker push "$REPORTING_IMAGE_SHA"
-          docker push "$REPORTING_IMAGE_LATEST"
+          docker push "$REPORTING_IMAGE_TEST"
 
-          docker build -t "$FRONTEND_IMAGE_SHA" -t "$FRONTEND_IMAGE_LATEST" \
+          docker build \
             --build-arg VITE_AZURE_CLIENT_ID="${{ secrets.VITE_AZURE_CLIENT_ID }}" \
             --build-arg VITE_AZURE_TENANT_ID="${{ secrets.VITE_AZURE_TENANT_ID }}" \
+            -t "$FRONTEND_IMAGE_SHA" -t "$FRONTEND_IMAGE_TEST" \
             ./frontend
           docker push "$FRONTEND_IMAGE_SHA"
-          docker push "$FRONTEND_IMAGE_LATEST"
+          docker push "$FRONTEND_IMAGE_TEST"
 
-          docker build -t "$BACKUP_IMAGE_SHA" -t "$BACKUP_IMAGE_LATEST" ./backup
+          docker build -t "$BACKUP_IMAGE_SHA" -t "$BACKUP_IMAGE_TEST" ./backup
           docker push "$BACKUP_IMAGE_SHA"
-          docker push "$BACKUP_IMAGE_LATEST"
+          docker push "$BACKUP_IMAGE_TEST"
+
+          docker build -t "$MCP_IMAGE_SHA" -t "$MCP_IMAGE_TEST" -f "backend/mcp-service/Dockerfile" ./backend
+          docker push "$MCP_IMAGE_SHA"
+          docker push "$MCP_IMAGE_TEST"
 
       - name: Setup kubeconfig
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBE_CONFIG_B64 }}" | base64 -d > ~/.kube/config
 
-      - name: Deploy (Force Latest and Restart)
+      - name: Deploy (immutable SHA — tag separation hardening)
         run: |
-          # 1. Force the cluster deployments to point to :latest (unpins from any manual SHA)
-          kubectl -n "${NAMESPACE}" set image deployment/auth-service auth-service="${REGISTRY}/${OWNER}/hermes-auth-service:latest"
-          kubectl -n "${NAMESPACE}" set image deployment/core-service core-service="${REGISTRY}/${OWNER}/hermes-core-service:latest"
-          kubectl -n "${NAMESPACE}" set image deployment/reporting-service reporting-service="${REGISTRY}/${OWNER}/hermes-reporting-service:latest"
-          kubectl -n "${NAMESPACE}" set image deployment/frontend frontend="${REGISTRY}/${OWNER}/hermes-frontend:latest"
+          # IMMUTABLE SHA pinleme: calisan Deployment asla mutable tag
+          # tasimaz; :test tag'i yalnizca insan/ilk-kurulum kolayligidir.
+          TAG="${GITHUB_SHA}"
+          kubectl -n "${NAMESPACE}" set image deployment/auth-service auth-service="${REGISTRY}/${OWNER}/hermes-auth-service:${TAG}"
+          kubectl -n "${NAMESPACE}" set image deployment/core-service core-service="${REGISTRY}/${OWNER}/hermes-core-service:${TAG}"
+          kubectl -n "${NAMESPACE}" set image deployment/reporting-service reporting-service="${REGISTRY}/${OWNER}/hermes-reporting-service:${TAG}"
+          kubectl -n "${NAMESPACE}" set image deployment/frontend frontend="${REGISTRY}/${OWNER}/hermes-frontend:${TAG}"
 
-          # 2. Trigger rollout to pull newly pushed images (cache bust)
-          kubectl -n "${NAMESPACE}" rollout restart deployment/auth-service
-          kubectl -n "${NAMESPACE}" rollout restart deployment/core-service
-          kubectl -n "${NAMESPACE}" rollout restart deployment/reporting-service
-          kubectl -n "${NAMESPACE}" rollout restart deployment/frontend
+          # hermes-mcp: ILK kurulum manuel `kubectl apply` ister; CD
+          # yalnizca deployment VARSA image gunceller.
+          if kubectl -n "${NAMESPACE}" get deployment hermes-mcp >/dev/null 2>&1; then
+            kubectl -n "${NAMESPACE}" set image deployment/hermes-mcp hermes-mcp="${REGISTRY}/${OWNER}/hermes-mcp:${TAG}"
+            kubectl -n "${NAMESPACE}" rollout status deployment/hermes-mcp --timeout=300s
+          else
+            echo "hermes-mcp deployment not present yet — skipping (manual first apply required)"
+          fi
 
-          # 3. Wait for rollout completion
           kubectl -n "${NAMESPACE}" rollout status deployment/auth-service --timeout=300s
           kubectl -n "${NAMESPACE}" rollout status deployment/core-service --timeout=300s
           kubectl -n "${NAMESPACE}" rollout status deployment/reporting-service --timeout=300s

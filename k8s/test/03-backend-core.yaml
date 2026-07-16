@@ -22,11 +22,22 @@ spec:
         - name: ghcr-secret
       containers:
       - name: core-service
-        image: ghcr.io/duosis-developer-team/hermes-core-service:latest
+        image: ghcr.io/duosis-developer-team/hermes-core-service:test
         imagePullPolicy: Always
         ports:
         - containerPort: 8001
         env:
+        # Stage 5 promotion: PUBLIC_API_ENV=live → test YALNIZCA
+        # hms_live_ token kabul eder (dev token'lari yapisal red).
+        # S2S: test'e OZEL hermes-s2s Secret'i (dev degerleri ASLA).
+        - name: PUBLIC_API_ENV
+          value: "live"
+        - name: HERMES_S2S_TOKEN_CURRENT
+          valueFrom:
+            secretKeyRef:
+              name: hermes-s2s
+              key: HERMES_S2S_TOKEN_CURRENT
+              optional: true
         # Database
         - name: CORE_DB_HOST
           valueFrom:

@@ -16,7 +16,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: backup
-              image: ghcr.io/duosis-developer-team/hermes-backup:latest
+              image: ghcr.io/duosis-developer-team/hermes-backup:test
               imagePullPolicy: Always
               env:
                 # Azure AD / OneDrive

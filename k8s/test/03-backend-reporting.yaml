@@ -22,7 +22,7 @@ spec:
         - name: ghcr-secret
       containers:
       - name: reporting-service
-        image: ghcr.io/duosis-developer-team/hermes-reporting-service:latest
+        image: ghcr.io/duosis-developer-team/hermes-reporting-service:test
         imagePullPolicy: Always
         ports:
         - containerPort: 8002

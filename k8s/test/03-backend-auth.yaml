@@ -22,11 +22,24 @@ spec:
         - name: ghcr-secret
       containers:
       - name: auth-service
-        image: ghcr.io/duosis-developer-team/hermes-auth-service:latest
+        image: ghcr.io/duosis-developer-team/hermes-auth-service:test
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
         env:
+        # Stage 5 promotion: internal directory S2S (test'e OZEL secret).
+        - name: HERMES_S2S_TOKEN_CURRENT
+          valueFrom:
+            secretKeyRef:
+              name: hermes-s2s
+              key: HERMES_S2S_TOKEN_CURRENT
+              optional: true
+        - name: HERMES_S2S_TOKEN_NEXT
+          valueFrom:
+            secretKeyRef:
+              name: hermes-s2s
+              key: HERMES_S2S_TOKEN_NEXT
+              optional: true
         # Database Connection
         - name: AUTH_DB_HOST
           valueFrom:

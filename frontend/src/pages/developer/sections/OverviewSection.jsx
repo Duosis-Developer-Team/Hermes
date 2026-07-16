@@ -174,13 +174,20 @@ function OverviewSection({ capabilities, goTo, health, specInfo }) {
             </ul>
 
             <div className="dp-note">
-                <Tag color="purple">Coming later</Tag>
+                <Tag color="gold">Internal beta</Tag>
                 <span>
-                    A Hermes <b>MCP server</b> will let AI tools (Claude,
-                    IDE agents and others) talk to Hermes natively. It will
-                    reuse exactly this API's token, scope and data-access
-                    model — nothing you build against the Public API is
-                    throwaway.
+                    The Hermes <b>MCP server</b> lets AI tools (Claude, IDE
+                    agents and others) talk to Hermes natively — reusing
+                    exactly this API's token, scope and data-access model.
+                    See the{' '}
+                    <button
+                        type="button"
+                        className="dp-inline-link"
+                        onClick={() => goTo('mcp')}
+                    >
+                        MCP Server
+                    </button>{' '}
+                    section for setup and honest compatibility status.
                 </span>
             </div>
         </div>

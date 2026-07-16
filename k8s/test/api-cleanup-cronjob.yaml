@@ -14,7 +14,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: hermes-api-cleanup
-  namespace: hermes-dev
+  namespace: hermes-test
 spec:
   schedule: "0 3 * * *"
   concurrencyPolicy: Forbid
@@ -32,7 +32,7 @@ spec:
             - name: ghcr-secret
           containers:
             - name: api-cleanup
-              image: ghcr.io/duosis-developer-team/hermes-core-service:dev
+              image: ghcr.io/duosis-developer-team/hermes-core-service:test
               imagePullPolicy: Always
               command: ["python", "-m", "app.jobs.api_cleanup"]
               env:

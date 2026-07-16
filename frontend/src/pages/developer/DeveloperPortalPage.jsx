@@ -182,7 +182,7 @@ const SECTIONS = [
     },
     {
         key: 'mcp',
-        label: 'MCP Preparation',
+        label: 'MCP Server',
         icon: <RobotOutlined />,
         component: McpSection,
         keywords:

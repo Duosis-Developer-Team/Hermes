@@ -557,3 +557,52 @@ violate an explicit rule. Both rejected.
   MCP tools + full visibility test matrix).
 - (b) Defer directory post-MCP; proceed to 5C writes next.
 - (c) Different source of truth (please specify).
+
+---
+
+# OAuth / external compatibility readiness assessment (5D Part E closure)
+
+Honest status at internal-beta time:
+- IMPLEMENTED (test-locked): HTTP 401 + WWW-Authenticate challenge on
+  unauthenticated /mcp requests pointing at RFC 9728 Protected Resource
+  Metadata; PRM served at /.well-known/oauth-protected-resource[/mcp]
+  with `authorization_servers: []` and an explicit machine-readable
+  statement that bearer mode is internal-beta and external MCP client
+  compatibility is NOT claimed.
+- NOT implemented (deliberately): an OAuth 2.1 authorization server.
+  Building one is the single remaining piece for spec-complete remote
+  MCP authorization. Design constraints remain as approved: tokens
+  minted by such an AS must resolve to the SAME Hermes API client,
+  scopes, bindings, environment, expiry/revocation and audit identity;
+  no second RBAC; no fabricated user JWTs; no scope elevation.
+- Readiness verdict: **external release = NOT READY** (gated). Internal
+  beta with bearer headers is fully supported and honestly labeled at
+  every surface (401 body, PRM, portal). The per-client reality of
+  header-based remote MCP support is recorded in the portal matrix
+  only after real tests — no client is claimed supported untested.
+- Recommended path when external release is prioritized: a minimal AS
+  issuing short-lived opaque access tokens that are exchanged
+  server-side for/validated against existing API-token records
+  (credential transport changes; authorization model does not).
+
+---
+
+# Stage 5 internal-beta status record (final commit documentation)
+
+- Shipped in the consolidated Stage 5 commit: Developer Portal MCP
+  internal-beta guide (verified facts only; client matrix says "not yet
+  tested" until real client runs), OAuth readiness assessment (above),
+  promotion hardening (cd-test gains the same four mandatory gates as
+  dev; dev→`:dev`+SHA, test→`:test`+SHA tag separation — running
+  Deployments are pinned to immutable SHAs; the shared-`:latest`
+  cross-environment foot-gun is eliminated), and test-namespace
+  manifests (PUBLIC_API_ENV=live, test-only hermes-s2s references,
+  hermes.duosis.com MCP ingress, hermes-test cleanup CronJob).
+- Live-dev validation, real-client compatibility tests and the
+  test-environment rollout execute via the operator runbook (kubectl on
+  the server); their results are recorded in the working report and the
+  portal client matrix is updated ONLY from real outcomes.
+- Data safety: all schema evolution remains additive create_all (7 new
+  platform tables); no destructive statement exists anywhere in the
+  promotion path; cleanup remains structurally locked to the two
+  operational api_* tables.
