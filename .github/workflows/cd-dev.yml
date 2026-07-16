@@ -81,10 +81,14 @@ jobs:
 
       - name: Install dependencies
         # Test harness'i core Public API'yi in-process calistirir; runtime
-        # hermes_mcp core import ETMEZ (testler bunu dogrular).
+        # hermes_mcp core import ETMEZ (testler bunu dogrular). IKINCI
+        # kurulum test overlay'idir: core pinleriyle mcp SDK'sinin httpx
+        # cakismasini, core kodunun dogrulanmis oldugu guncel fastapi/
+        # starlette/httpx ciftine yukselterek cozer (requirements-test.txt
+        # basligina bakin). Core'un kendi runtime pinlerine dokunulmaz.
         run: |
           pip install -r backend/core-service/requirements.txt
-          pip install -r backend/mcp-service/requirements.txt
+          pip install -r backend/mcp-service/requirements-test.txt
 
       - name: Run MCP test suite
         working-directory: backend/mcp-service

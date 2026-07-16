@@ -1,0 +1,15 @@
+# =============================================================================
+# hermes-mcp TEST ortami overlay'i (CI mcp_tests job'i + lokal)
+# =============================================================================
+# Test harness'i core-service Public API'sini AYNI processte calistirir.
+# Core'un runtime pinleri (fastapi==0.109 / httpx==0.26) mcp SDK'sinin
+# httpx>=0.27 gereksinimiyle cakisir; sirali kurulum starlette'i
+# yukseltip eski FastAPI'yi kirar (CI'da gorulen Router on_startup
+# TypeError'i). Cozum: test ortami, core KODUNUN dogrulanmis oldugu
+# guncel ciftle kosar (core suite bu pinlerle 202/202 yesil). Core'un
+# KENDI runtime pinleri degismez — backend_tests job'i onlarla kosar.
+# =============================================================================
+-r requirements.txt
+fastapi==0.139.0
+starlette==1.3.1
+httpx==0.28.1
