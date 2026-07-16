@@ -24,6 +24,7 @@ from .audit import AuditMiddleware
 from .errors import register_error_handlers
 from .request_context import RequestIDMiddleware
 from .routers import me, meta
+from .routers import tasks as tasks_router
 from .scopes import SCOPES
 
 PUBLIC_API_DESCRIPTION = """
@@ -62,6 +63,7 @@ def create_public_app() -> FastAPI:
     register_error_handlers(public_app)
     public_app.include_router(meta.router)
     public_app.include_router(me.router)
+    public_app.include_router(tasks_router.router)
 
     def custom_openapi():
         """Public semayi zenginlestirir:
