@@ -304,6 +304,16 @@ def test_list_endpoints_document_page_envelope(spec):
 def test_capabilities_matches_code_catalogs(public_http):
     caps = public_http.get(f"{BASE}/v1/capabilities").json()
     assert caps["scopes"] == SCOPES
+    # Onayli D2: capabilities hata katalogu kod kataloglariyla KALICI
+    # olarak hizali (Developer Portal'in tek kaynagi). Guvenli aciklama
+    # garantisi: internal istisna/SQL/stack terimi icermez.
+    errs = caps["errors"]
+    assert [e["code"] for e in errs] == list(ERROR_STATUS.keys())
+    for e in errs:
+        assert e["status"] == ERROR_STATUS[e["code"]]
+        assert e["description"] == ERROR_DOCS[e["code"]]
+        for banned in ("Traceback", "SQL", "Exception", "sqlalchemy"):
+            assert banned not in e["description"], e["code"]
     assert caps["api_version"] == "v1"
     assert caps["versions"] == ["v1"]
     assert caps["authentication"]["token_prefixes"] == [

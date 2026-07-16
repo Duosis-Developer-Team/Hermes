@@ -16,9 +16,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
+    CompassOutlined,
+    ControlOutlined,
+    KeyOutlined,
+    OrderedListOutlined,
+    ReadOutlined,
+    ReloadOutlined,
     RocketOutlined,
     SafetyCertificateOutlined,
-    ReadOutlined,
+    ThunderboltOutlined,
+    WarningOutlined,
 } from '@ant-design/icons'
 
 import { apiManagementService } from '../../services/api'
@@ -26,6 +33,13 @@ import { useAuthStore } from '../../stores/authStore'
 import OverviewSection from './sections/OverviewSection'
 import GettingStartedSection from './sections/GettingStartedSection'
 import AuthenticationSection from './sections/AuthenticationSection'
+import ApiExplorerSection from './sections/ApiExplorerSection'
+import ScopesSection from './sections/ScopesSection'
+import ApiReferenceSection from './sections/ApiReferenceSection'
+import PaginationSection from './sections/PaginationSection'
+import IdempotencySection from './sections/IdempotencySection'
+import ErrorsSection from './sections/ErrorsSection'
+import RateLimitsSection from './sections/RateLimitsSection'
 import './DeveloperPortalPage.css'
 
 const SECTIONS = [
@@ -46,6 +60,48 @@ const SECTIONS = [
         label: 'Authentication',
         icon: <SafetyCertificateOutlined />,
         component: AuthenticationSection,
+    },
+    {
+        key: 'api-explorer',
+        label: 'API Explorer',
+        icon: <CompassOutlined />,
+        component: ApiExplorerSection,
+    },
+    {
+        key: 'scopes',
+        label: 'Scopes & Data Access',
+        icon: <KeyOutlined />,
+        component: ScopesSection,
+    },
+    {
+        key: 'api-reference',
+        label: 'API Reference',
+        icon: <ControlOutlined />,
+        component: ApiReferenceSection,
+    },
+    {
+        key: 'pagination',
+        label: 'Pagination & Filtering',
+        icon: <OrderedListOutlined />,
+        component: PaginationSection,
+    },
+    {
+        key: 'idempotency',
+        label: 'Idempotency',
+        icon: <ReloadOutlined />,
+        component: IdempotencySection,
+    },
+    {
+        key: 'errors',
+        label: 'Errors',
+        icon: <WarningOutlined />,
+        component: ErrorsSection,
+    },
+    {
+        key: 'rate-limits',
+        label: 'Rate Limits',
+        icon: <ThunderboltOutlined />,
+        component: RateLimitsSection,
     },
 ]
 
@@ -122,9 +178,8 @@ function DeveloperPortalPage() {
                         </button>
                     ))}
                     <div className="dp-nav-soon">
-                        Scopes &amp; Data Access, API Reference, Idempotency,
-                        Errors, Rate Limits, Code Examples, Changelog and MCP
-                        arrive with the next portal updates.
+                        Code Examples, Changelog, Known Limitations and the
+                        MCP section arrive with the next portal update.
                     </div>
                 </nav>
 

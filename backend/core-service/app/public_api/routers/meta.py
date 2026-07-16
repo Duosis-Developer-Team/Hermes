@@ -8,6 +8,7 @@
 
 from fastapi import APIRouter
 
+from ..errors import ERROR_DOCS, ERROR_STATUS
 from ..scopes import SCOPES
 
 router = APIRouter(prefix="/v1")
@@ -46,6 +47,18 @@ async def public_capabilities():
             "token_prefixes": ["hms_dev_", "hms_live_"],
         },
         "scopes": SCOPES,
+        # Onayli D2 (Stage 4B, ADDITIVE): hata katalogu — Developer
+        # Portal'in tek kaynagi. Icerik errors.ERROR_STATUS/ERROR_DOCS'tan
+        # gelir (guvenli public aciklamalar; internal detay/istisna adi
+        # YOK). Kalici hizalama testleri: test_stage3e_release_review.
+        "errors": [
+            {
+                "code": code,
+                "status": status,
+                "description": ERROR_DOCS[code],
+            }
+            for code, status in ERROR_STATUS.items()
+        ],
         "pagination": {
             "type": "offset",
             "default_limit": 25,

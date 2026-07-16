@@ -294,3 +294,176 @@
         padding: 4px 0 40px;
     }
 }
+
+/* ── 1-Minute Quick Start (Stage 4B) ───────────────────────────────── */
+
+.dp-quickstart {
+    margin: 16px 0 4px;
+    padding: 14px 16px;
+    border: 1px solid var(--c-border-strong);
+    border-radius: 12px;
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, #7c9dff 9%, var(--c-surface)),
+        var(--c-surface)
+    );
+}
+
+.dp-quickstart-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.dp-quickstart-title {
+    font-weight: 700;
+    color: var(--c-text-strong);
+    letter-spacing: 0.01em;
+}
+
+.dp-quickstart-flow {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    counter-reset: dp-qs;
+}
+
+.dp-quickstart-flow li {
+    counter-increment: dp-qs;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border: 1px solid var(--c-border);
+    border-radius: 999px;
+    background: var(--c-surface-2);
+    color: var(--c-text);
+    font-size: 12.5px;
+    white-space: nowrap;
+}
+
+.dp-quickstart-flow li::before {
+    content: counter(dp-qs);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #7c9dff;
+    color: #0b1021;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.dp-quickstart-flow li:not(:last-child)::after {
+    content: '→';
+    margin-left: 4px;
+    color: var(--c-text-faint);
+}
+
+.dp-quickstart-flow li.is-done {
+    border-color: #22a06b;
+    color: var(--c-text-strong);
+}
+
+.dp-quickstart-flow li.is-done::before {
+    content: '✓';
+    background: #22a06b;
+    color: #fff;
+}
+
+/* ── API Explorer kartlari ─────────────────────────────────────────── */
+
+.dp-explorer {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.dp-explorer-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 16px;
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    background: var(--c-surface);
+    text-decoration: none;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.dp-explorer-card:hover {
+    border-color: #7c9dff;
+    transform: translateY(-1px);
+}
+
+/* ── API Reference endpoint listeleri ──────────────────────────────── */
+
+.dp-endpoints {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--c-border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.dp-endpoint {
+    display: flex;
+    gap: 14px;
+    align-items: baseline;
+    padding: 9px 12px;
+    background: var(--c-surface);
+}
+
+.dp-endpoint + .dp-endpoint {
+    border-top: 1px solid var(--c-border);
+}
+
+.dp-endpoint-sig {
+    flex: 0 0 300px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.dp-endpoint-sig code {
+    overflow-wrap: anywhere;
+}
+
+.dp-method {
+    min-width: 52px;
+    text-align: center;
+    margin: 0;
+}
+
+.dp-endpoint-desc {
+    color: var(--c-text-muted);
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+@media (max-width: 700px) {
+    .dp-endpoint {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .dp-endpoint-sig {
+        flex: none;
+    }
+
+    .dp-quickstart-flow li {
+        white-space: normal;
+    }
+}

@@ -23,6 +23,34 @@ function OverviewSection({ capabilities, goTo }) {
                 scoped API tokens — never with your Hermes login session.
             </p>
 
+            {/* Onayli UX istegi: 1 dakikalik quick start — detayli
+                Getting Started'in YERINE degil, yanina. */}
+            <div className="dp-quickstart">
+                <div className="dp-quickstart-head">
+                    <span className="dp-quickstart-title">
+                        1-Minute Quick Start
+                    </span>
+                    <button
+                        type="button"
+                        className="dp-inline-link"
+                        onClick={() => goTo('getting-started')}
+                    >
+                        Full guide →
+                    </button>
+                </div>
+                <ol className="dp-quickstart-flow">
+                    <li>Obtain a user-bound API client</li>
+                    <li>Generate a token</li>
+                    <li>
+                        Call <code>GET /v1/me</code>
+                    </li>
+                    <li>
+                        Call <code>GET /v1/tasks</code>
+                    </li>
+                    <li className="is-done">Integration complete</li>
+                </ol>
+            </div>
+
             <div className="dp-cards">
                 <button
                     type="button"
