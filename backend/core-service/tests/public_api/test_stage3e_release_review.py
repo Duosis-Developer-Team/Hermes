@@ -264,6 +264,16 @@ def test_description_documents_key_sections(spec):
     )
 
 
+def test_openapi_carries_generation_timestamp(spec):
+    """Portal banner'inin 'Last generated' alani (additive x-generated-at,
+    ISO-8601 UTC)."""
+    from datetime import datetime
+
+    stamp = spec["info"]["x-generated-at"]
+    datetime.fromisoformat(stamp)  # parse edilebilir olmali
+    assert "+00:00" in stamp or stamp.endswith("Z")
+
+
 def test_error_envelope_schema_in_components(spec):
     env = spec["components"]["schemas"]["ErrorEnvelope"]
     codes = env["properties"]["error"]["properties"]["code"]["enum"]

@@ -791,6 +791,11 @@ export const apiManagementService = {
         const response = await coreApi.get('/api/public/v1/openapi.json')
         return response.data?.info || {}
     },
+    /** Portal "API Status" karti — canli health (auth gerekmez). */
+    getPublicHealth: async () => {
+        const response = await coreApi.get('/api/public/v1/health')
+        return response.data
+    },
     /** Stage 3F: retention politikasi + son temizlik ozeti. */
     getCleanupStatus: async () => {
         const response = await coreApi.get('/api/v1/core/admin/api-cleanup')

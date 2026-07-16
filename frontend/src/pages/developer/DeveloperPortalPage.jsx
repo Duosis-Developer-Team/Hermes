@@ -46,6 +46,8 @@ import IdempotencySection from './sections/IdempotencySection'
 import ErrorsSection from './sections/ErrorsSection'
 import RateLimitsSection from './sections/RateLimitsSection'
 import CodeExamplesSection from './sections/CodeExamplesSection'
+import CompatibilityPolicySection from './sections/CompatibilityPolicySection'
+import SdksSection from './sections/SdksSection'
 import ChangelogSection from './sections/ChangelogSection'
 import KnownLimitationsSection from './sections/KnownLimitationsSection'
 import McpSection from './sections/McpSection'
@@ -136,6 +138,24 @@ const SECTIONS = [
         keywords: 'rate limits throttle 429 retry-after backoff headers',
     },
     {
+        key: 'compatibility',
+        label: 'Compatibility Policy',
+        icon: <SafetyCertificateOutlined />,
+        component: CompatibilityPolicySection,
+        keywords:
+            'compatibility deprecation policy breaking changes versioning ' +
+            'v2 stable support 90 days',
+    },
+    {
+        key: 'sdks',
+        label: 'SDKs',
+        icon: <ControlOutlined />,
+        component: SdksSection,
+        keywords:
+            'sdk sdks client libraries python typescript csharp go java ' +
+            'coming soon generator',
+    },
+    {
         key: 'code-examples',
         label: 'Code Examples',
         icon: <ControlOutlined />,
@@ -199,6 +219,16 @@ function DeveloperPortalPage() {
         queryFn: () => apiManagementService.getPublicOpenApiInfo(),
         staleTime: 10 * 60 * 1000,
     })
+    const { data: health } = useQuery({
+        queryKey: ['public-health'],
+        queryFn: () => apiManagementService.getPublicHealth(),
+        staleTime: 60 * 1000,
+        retry: 1,
+    })
+
+    const generatedAt = specInfo?.['x-generated-at']
+        ? new Date(specInfo['x-generated-at']).toLocaleString()
+        : null
 
     const q = query.trim().toLowerCase()
     const visibleSections = q
@@ -247,6 +277,30 @@ function DeveloperPortalPage() {
                 </div>
             </div>
 
+            {/* API Version Banner (onayli Stage 4 final polish) */}
+            <div className="dp-banner" role="note">
+                <span className="dp-banner-item">
+                    <span className="dp-banner-k">Version</span>
+                    <b>{capabilities?.api_version || 'v1'}</b>
+                </span>
+                <span className="dp-banner-item">
+                    <span className="dp-banner-k">Status</span>
+                    <b className="is-stable">Stable</b>
+                </span>
+                <span className="dp-banner-item">
+                    <span className="dp-banner-k">Compatibility</span>
+                    <b>Backward compatible</b>
+                </span>
+                <span className="dp-banner-item">
+                    <span className="dp-banner-k">Last generated</span>
+                    <b>{generatedAt || 'live'}</b>
+                </span>
+                <span className="dp-banner-item">
+                    <span className="dp-banner-k">Next planned</span>
+                    <b>v2 (future)</b>
+                </span>
+            </div>
+
             <div className="dp-body">
                 <nav className="dp-nav" aria-label="Documentation sections">
                     <Input
@@ -285,6 +339,8 @@ function DeveloperPortalPage() {
                         capabilities={capabilities}
                         isAdmin={isAdmin}
                         goTo={goTo}
+                        health={health}
+                        specInfo={specInfo}
                     />
                 </main>
             </div>

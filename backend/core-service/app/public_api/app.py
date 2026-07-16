@@ -127,6 +127,15 @@ def create_public_app() -> FastAPI:
             routes=public_app.routes,
         )
 
+        # Uretim zamani (additive) — sema deploy sonrasi ILK istekte
+        # uretilir ve cache'lenir; portal banner'i "Last generated"
+        # alanini buradan okur.
+        from datetime import datetime, timezone
+
+        schema["info"]["x-generated-at"] = datetime.now(
+            timezone.utc
+        ).isoformat()
+
         # Hata zarfi semasi — tum hata yanitlarinin tek sekli.
         schema.setdefault("components", {}).setdefault("schemas", {})[
             "ErrorEnvelope"

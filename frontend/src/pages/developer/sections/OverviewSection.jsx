@@ -10,8 +10,21 @@ import {
     ThunderboltOutlined,
 } from '@ant-design/icons'
 
-function OverviewSection({ capabilities, goTo }) {
+function StatusDot({ ok }) {
+    return (
+        <span
+            className={`dp-status-dot ${ok ? 'is-ok' : 'is-unknown'}`}
+            aria-hidden="true"
+        />
+    )
+}
+
+function OverviewSection({ capabilities, goTo, health, specInfo }) {
     const version = capabilities?.api_version || 'v1'
+    // Canli durum: Public API health'ten, Swagger/OpenAPI spec info'nun
+    // yuklenebilmis olmasindan; portal zaten goruntuleniyor.
+    const apiOk = health?.status === 'ok'
+    const specOk = Boolean(specInfo?.version)
     return (
         <div className="dp-section">
             <h2>Hermes Public API</h2>
@@ -49,6 +62,26 @@ function OverviewSection({ capabilities, goTo }) {
                     </li>
                     <li className="is-done">Integration complete</li>
                 </ol>
+            </div>
+
+            {/* API Status karti (onayli Stage 4 final polish) — canli
+                /v1/health + openapi info'dan beslenir. */}
+            <div className="dp-status" role="status">
+                <span className="dp-status-title">
+                    API Status:{' '}
+                    <b className={apiOk ? 'is-ok-text' : ''}>
+                        {apiOk ? 'Operational' : 'Checking…'}
+                    </b>
+                </span>
+                <span className="dp-status-item">
+                    <StatusDot ok={apiOk} /> Public API
+                </span>
+                <span className="dp-status-item">
+                    <StatusDot ok /> Developer Portal
+                </span>
+                <span className="dp-status-item">
+                    <StatusDot ok={specOk} /> Swagger / OpenAPI
+                </span>
             </div>
 
             <div className="dp-cards">
