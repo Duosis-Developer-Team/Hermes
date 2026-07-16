@@ -134,3 +134,261 @@ def list_comments_scoped(db: Session, task: Task) -> List[TaskComment]:
         .order_by(TaskComment.created_at.asc())
         .all()
     )
+
+
+# =============================================================================
+# Stage 3B — Customers / Projects (turetilmis referans gorunurlugu)
+# =============================================================================
+# Onayli least-privilege kurali:
+#   - global → tum AKTIF musteriler/projeler
+#   - acik customer/project binding → yalnizca baglananlar (+ proje
+#     binding'inin ust musterisi, customer binding'inin projeleri)
+#   - user/group binding → YALNIZCA token'in zaten erisebildigi is
+#     kayitlarinda (task + work log) gecen musteri/projeler
+#   - binding yok → bos (fail closed)
+# Referans endpoint'leri sirket envanterini ENUMERE EDEMEZ.
+
+from sqlalchemy import false as sa_false
+
+from ..models.customer import Customer
+from ..models.meeting import Meeting
+from ..models.project import Project
+from ..models.work_log import WorkLog
+from .api_access_service import meeting_filter, work_log_filter
+
+
+def visible_reference_ids(db: Session, scope: AccessScope):
+    """Non-global scope icin (customer_ids, project_ids) gorunur kumesi.
+    Turetilmis kisim erisilebilir task + work-log kayitlarindan gelir."""
+    cust = set(scope.customer_ids)
+    proj = set(scope.project_ids)
+    if scope.user_ids:
+        for c_id, p_id in (
+            db.query(Task.customer_id, Task.project_id)
+            .filter(Task.archived_at.is_(None), task_filter(scope))
+            .distinct()
+        ):
+            cust.add(c_id)
+            proj.add(p_id)
+        for c_id, p_id in (
+            db.query(WorkLog.customer_id, WorkLog.project_id)
+            .filter(work_log_filter(scope))
+            .distinct()
+        ):
+            cust.add(c_id)
+            proj.add(p_id)
+    # Acik proje binding'lerinin ust musterileri de gorunur.
+    if scope.project_ids:
+        for (c_id,) in db.query(Project.customer_id).filter(
+            Project.id.in_(list(scope.project_ids))
+        ):
+            cust.add(c_id)
+    return cust, proj
+
+
+def _customer_query(db: Session, scope: AccessScope):
+    q = db.query(Customer).filter(Customer.is_active.is_(True))
+    if scope.is_global:
+        return q
+    cust, _ = visible_reference_ids(db, scope)
+    if not cust:
+        return q.filter(sa_false())
+    return q.filter(Customer.id.in_(list(cust)))
+
+
+def list_customers_scoped(
+    db: Session,
+    scope: AccessScope,
+    *,
+    q_text: Optional[str] = None,
+    fetch_limit: int = 26,
+    offset: int = 0,
+) -> List[Customer]:
+    q = _customer_query(db, scope)
+    if q_text:
+        q = q.filter(Customer.name.ilike(f"%{q_text.strip()}%"))
+    return (
+        q.order_by(Customer.name.asc()).offset(offset).limit(fetch_limit).all()
+    )
+
+
+def get_customer_scoped(db: Session, scope: AccessScope, customer_id):
+    return (
+        _customer_query(db, scope)
+        .filter(Customer.id == customer_id)
+        .first()
+    )
+
+
+def _project_query(db: Session, scope: AccessScope):
+    q = db.query(Project).filter(Project.is_active.is_(True))
+    if scope.is_global:
+        return q
+    cust_bound = list(scope.customer_ids)
+    _, proj = visible_reference_ids(db, scope)
+    conds = []
+    if proj:
+        conds.append(Project.id.in_(list(proj)))
+    if cust_bound:
+        # Acik musteri binding'i o musterinin TUM projelerini gorunur kilar.
+        conds.append(Project.customer_id.in_(cust_bound))
+    if not conds:
+        return q.filter(sa_false())
+    from sqlalchemy import or_ as sa_or
+
+    return q.filter(sa_or(*conds))
+
+
+def list_projects_scoped(
+    db: Session,
+    scope: AccessScope,
+    *,
+    customer_id=None,
+    q_text: Optional[str] = None,
+    fetch_limit: int = 26,
+    offset: int = 0,
+) -> List[Project]:
+    q = _project_query(db, scope)
+    if customer_id is not None:
+        q = q.filter(Project.customer_id == customer_id)
+    if q_text:
+        q = q.filter(Project.name.ilike(f"%{q_text.strip()}%"))
+    return (
+        q.order_by(Project.name.asc()).offset(offset).limit(fetch_limit).all()
+    )
+
+
+def get_project_scoped(db: Session, scope: AccessScope, project_id):
+    return (
+        _project_query(db, scope).filter(Project.id == project_id).first()
+    )
+
+
+# =============================================================================
+# Stage 3B — Work logs
+# =============================================================================
+
+WORK_LOG_SORTS = {
+    "date_worked": WorkLog.date_worked.asc(),
+    "-date_worked": WorkLog.date_worked.desc(),
+    "created_at": WorkLog.created_at.asc(),
+    "-created_at": WorkLog.created_at.desc(),
+}
+
+
+def _work_log_query(db: Session, scope: AccessScope):
+    return (
+        db.query(WorkLog)
+        .options(joinedload(WorkLog.customer), joinedload(WorkLog.project))
+        .filter(work_log_filter(scope))
+    )
+
+
+def list_work_logs_scoped(
+    db: Session,
+    scope: AccessScope,
+    *,
+    date_from=None,
+    date_to=None,
+    customer_id=None,
+    project_id=None,
+    user_id=None,
+    task_code: Optional[str] = None,
+    meeting_id=None,
+    sort: str = "-date_worked",
+    fetch_limit: int = 26,
+    offset: int = 0,
+) -> List[WorkLog]:
+    q = _work_log_query(db, scope)
+    if date_from is not None:
+        q = q.filter(WorkLog.date_worked >= date_from)
+    if date_to is not None:
+        q = q.filter(WorkLog.date_worked <= date_to)
+    if customer_id is not None:
+        q = q.filter(WorkLog.customer_id == customer_id)
+    if project_id is not None:
+        q = q.filter(WorkLog.project_id == project_id)
+    if user_id is not None:
+        q = q.filter(WorkLog.user_id == user_id)
+    if task_code:
+        parsed = parse_task_code(task_code)
+        if parsed is None:
+            return []
+        t_type, number = parsed
+        task_row = (
+            db.query(Task.id)
+            .filter(Task.task_type == t_type, Task.type_number == number)
+            .first()
+        )
+        if task_row is None:
+            return []
+        q = q.filter(WorkLog.task_id == task_row.id)
+    if meeting_id is not None:
+        q = q.filter(WorkLog.meeting_id == meeting_id)
+    order = WORK_LOG_SORTS.get(sort, WORK_LOG_SORTS["-date_worked"])
+    return q.order_by(order).offset(offset).limit(fetch_limit).all()
+
+
+def get_work_log_scoped(db: Session, scope: AccessScope, log_id: int):
+    return _work_log_query(db, scope).filter(WorkLog.id == log_id).first()
+
+
+def task_codes_for(db: Session, task_ids) -> dict:
+    """{task_id: 'TASK-12'} — work-log yanitlarindaki baglanti kodlari."""
+    ids = [t for t in task_ids if t is not None]
+    if not ids:
+        return {}
+    rows = (
+        db.query(Task.id, Task.task_type, Task.type_number, Task.task_number)
+        .filter(Task.id.in_(ids))
+        .all()
+    )
+    prefix = {"task": "TASK", "issue": "ISSUE", "suggestion": "SUGGESTION"}
+    out = {}
+    for tid, ttype, tnum, gnum in rows:
+        number = tnum if tnum is not None else gnum
+        out[tid] = f"{prefix.get(ttype or 'task', 'TASK')}-{number}"
+    return out
+
+
+# =============================================================================
+# Stage 3B — Meetings
+# =============================================================================
+
+MEETING_SORTS_KEYS = ("start_datetime", "-start_datetime")
+
+
+def _meeting_query(db: Session, scope: AccessScope):
+    return db.query(Meeting).filter(meeting_filter(scope))
+
+
+def list_meetings_scoped(
+    db: Session,
+    scope: AccessScope,
+    *,
+    start_from=None,
+    start_to=None,
+    include_cancelled: bool = False,
+    sort: str = "-start_datetime",
+    fetch_limit: int = 26,
+    offset: int = 0,
+) -> List[Meeting]:
+    q = _meeting_query(db, scope)
+    if not include_cancelled:
+        q = q.filter(Meeting.is_cancelled.is_(False))
+    if start_from is not None:
+        q = q.filter(Meeting.start_datetime >= start_from)
+    if start_to is not None:
+        q = q.filter(Meeting.start_datetime <= start_to)
+    order = (
+        Meeting.start_datetime.asc()
+        if sort == "start_datetime"
+        else Meeting.start_datetime.desc()
+    )
+    return q.order_by(order).offset(offset).limit(fetch_limit).all()
+
+
+def get_meeting_scoped(db: Session, scope: AccessScope, meeting_id):
+    return (
+        _meeting_query(db, scope).filter(Meeting.id == meeting_id).first()
+    )

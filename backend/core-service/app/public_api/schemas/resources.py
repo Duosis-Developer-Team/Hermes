@@ -202,3 +202,113 @@ def serialize_comment(comment) -> PublicComment:
         created_at=comment.created_at,
         updated_at=comment.updated_at,
     )
+
+
+# ── Customers / Projects (Stage 3B) ─────────────────────────────────────
+
+
+class PublicCustomer(BaseModel):
+    id: UUID
+    name: str
+    is_active: bool
+
+
+class PublicProject(BaseModel):
+    id: UUID
+    customer_id: UUID
+    name: str
+    is_active: bool
+
+
+def serialize_customer(c) -> PublicCustomer:
+    return PublicCustomer(id=c.id, name=c.name, is_active=c.is_active)
+
+
+def serialize_project(p) -> PublicProject:
+    return PublicProject(
+        id=p.id, customer_id=p.customer_id, name=p.name, is_active=p.is_active
+    )
+
+
+# ── Work logs (Stage 3B) ────────────────────────────────────────────────
+# Public kimlik: numerik id (WorkLog PK BigInteger'dir — stabil ve sirali;
+# dokumantasyonda acikca belirtilir). Internal-only alanlar (billable
+# tutarlari, is tipi/platform/hat detaylari) DISARI VERILMEZ.
+
+
+class PublicWorkLog(BaseModel):
+    id: int
+    user_id: UUID
+    date_worked: date
+    duration_hours: float
+    description: Optional[str] = None
+    customer: PublicRef
+    project: PublicRef
+    task_code: Optional[str] = None
+    meeting_id: Optional[UUID] = None
+    created_at: datetime
+
+
+def serialize_work_log(log, task_code: Optional[str]) -> PublicWorkLog:
+    return PublicWorkLog(
+        id=log.id,
+        user_id=log.user_id,
+        date_worked=log.date_worked,
+        duration_hours=float(log.duration_hours),
+        description=log.description,
+        customer=PublicRef(id=log.customer_id, name=log.customer.name),
+        project=PublicRef(id=log.project_id, name=log.project.name),
+        task_code=task_code,
+        meeting_id=log.meeting_id,
+        created_at=log.created_at,
+    )
+
+
+# ── Meetings (Stage 3B) ─────────────────────────────────────────────────
+# Icerik minimizasyonu: body_preview / govde alanlari public semada YOK.
+# Private/confidential toplantilar zaten YAZIM aninda maskelenir (subject
+# = "Private Meeting", body silinir); is_private bayragi tuketicilere
+# durumu acikca soyler. join_url yalnizca gorunurluk kapisini gecen
+# token'lara doner (liste/detay zaten scope-filtreli). Katilimci
+# detaylari v1'de YOK (ayri onayli sema gerektirir).
+
+
+class PublicMeetingOrganizer(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+
+
+class PublicMeeting(BaseModel):
+    id: UUID
+    subject: str
+    is_private: bool
+    organizer: PublicMeetingOrganizer
+    start_datetime: datetime
+    end_datetime: datetime
+    timezone: Optional[str] = None
+    duration_minutes: Optional[int] = None
+    is_online_meeting: bool
+    join_url: Optional[str] = None
+    is_cancelled: bool
+
+
+_PRIVATE_SENSITIVITIES = {"private", "confidential"}
+
+
+def serialize_meeting(m) -> PublicMeeting:
+    is_private = (m.sensitivity or "normal").lower() in _PRIVATE_SENSITIVITIES
+    return PublicMeeting(
+        id=m.id,
+        subject=m.subject,  # private toplantida yazim aninda maskelenmis
+        is_private=is_private,
+        organizer=PublicMeetingOrganizer(
+            name=m.organizer_name, email=m.organizer_email
+        ),
+        start_datetime=m.start_datetime,
+        end_datetime=m.end_datetime,
+        timezone=m.timezone,
+        duration_minutes=m.duration_minutes,
+        is_online_meeting=bool(m.is_online_meeting),
+        join_url=m.join_url,
+        is_cancelled=bool(m.is_cancelled),
+    )

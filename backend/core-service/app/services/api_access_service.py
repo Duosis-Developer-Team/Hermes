@@ -189,3 +189,30 @@ def work_log_filter(scope: AccessScope, combine: str = "union"):
             cond = cond & p
         return cond
     return or_(*parts)
+
+
+def meeting_filter(scope: AccessScope):
+    """Meeting satirlari icin WHERE kosulu. Meetings'in musteri/proje
+    iliskisi YOKTUR (katilimci-tabanli):
+      - global           → TRUE
+      - user/group       → scope.user_ids'ten en az biri katilimci
+                           (hermes_user_id eslesmesi — internal
+                           _user_can_view_meeting kuralinin scope hali)
+      - yalniz customer/ → FALSE (iliskisizlik geregi hic veri)
+        project binding
+      - bos              → FALSE (fail closed)
+    """
+    from sqlalchemy import and_, exists
+
+    from ..models.meeting import Meeting, MeetingAttendee
+
+    if scope.is_global:
+        return sa_true()
+    if not scope.user_ids:
+        return sa_false()
+    return exists().where(
+        and_(
+            MeetingAttendee.meeting_id == Meeting.id,
+            MeetingAttendee.hermes_user_id.in_(list(scope.user_ids)),
+        )
+    )
