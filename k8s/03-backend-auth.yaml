@@ -87,13 +87,13 @@ spec:
         - name: HERMES_S2S_TOKEN_CURRENT
           valueFrom:
             secretKeyRef:
-              name: hermes-secrets
+              name: hermes-s2s
               key: HERMES_S2S_TOKEN_CURRENT
               optional: true
         - name: HERMES_S2S_TOKEN_NEXT
           valueFrom:
             secretKeyRef:
-              name: hermes-secrets
+              name: hermes-s2s
               key: HERMES_S2S_TOKEN_NEXT
               optional: true
         - name: JWT_PRIVATE_KEY
