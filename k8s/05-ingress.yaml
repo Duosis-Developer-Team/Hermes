@@ -1,3 +1,11 @@
+# INGRESS SAHIPLIK MODELI (Stage 5, CTO karari):
+#   BU kaynak → uygulama route'lari: / · /api/v1/auth · /api/v1/users ·
+#   /api/v1/reports · /api/v1 · /api/public
+#   MCP route'lari (/mcp, /.well-known/oauth-protected-resource) BU
+#   DOSYADA YER ALMAZ — onlar 09-mcp-ingress'e aittir. ingress-nginx
+#   ayni host'un iki Ingress'ini tek server blogunda birlestirir; sart:
+#   ayni (host,path) iki kaynakta olmayacak + ayni ingressClass + ayni
+#   TLS secret. Kilit: mcp-service/tests/test_stage5d_ingress_ownership.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

@@ -91,3 +91,117 @@ def test_concurrency_cap_returns_503(mcp_http, pg_session, monkeypatch):
 
 def test_health_ok_without_auth(mcp_http):
     assert mcp_http.get("/health").status_code == 200
+
+
+# ── PRM/challenge URL turetimi (canli 5D bug regresyonu) ───────────────
+# BUG: config.RESOURCE_URL.rstrip("/mcp") KARAKTER KUMESI siliyordu →
+# "https://hermes.duosis.com/mcp/" icin challenge
+# "https://hermes.duosis.co/..." (yanlis domain!) uretiyordu. Artik URL'ler
+# yalnizca urllib.parse ile ayristirilir.
+
+import pytest
+
+from hermes_mcp.discovery import origin_of, prm_url, www_authenticate
+
+PRM = "/.well-known/oauth-protected-resource"
+
+
+@pytest.mark.parametrize(
+    "resource,expected_origin,expected_prm",
+    [
+        # .com — bug'in tam vakasi: sondaki 'm' ASLA yenmez.
+        (
+            "https://hermes.duosis.com/mcp/",
+            "https://hermes.duosis.com",
+            f"https://hermes.duosis.com{PRM}/mcp",
+        ),
+        # .coop — rstrip("/mcp") burada 'p','o','o','c' silerdi.
+        (
+            "https://hermes.example.coop/mcp/",
+            "https://hermes.example.coop",
+            f"https://hermes.example.coop{PRM}/mcp",
+        ),
+        # localhost + acik port (dev/lokal calistirma).
+        (
+            "http://localhost:8010/mcp",
+            "http://localhost:8010",
+            f"http://localhost:8010{PRM}/mcp",
+        ),
+        # ACIK :443 — port aynen KORUNUR (workaround gerekmez, ama
+        # verilirse bozulmaz).
+        (
+            "https://hermes.duosis.com:443/mcp/",
+            "https://hermes.duosis.com:443",
+            f"https://hermes.duosis.com:443{PRM}/mcp",
+        ),
+        # Path'siz kaynak → yalnizca well-known prefix'i.
+        (
+            "https://hermes.duosis.com/",
+            "https://hermes.duosis.com",
+            f"https://hermes.duosis.com{PRM}",
+        ),
+    ],
+)
+def test_discovery_urls_exact(resource, expected_origin, expected_prm):
+    assert origin_of(resource) == expected_origin
+    assert prm_url(resource) == expected_prm
+    assert www_authenticate(resource) == (
+        f'Bearer resource_metadata="{expected_prm}"'
+    )
+
+
+def test_com_suffix_never_truncated():
+    """Bug'in kalici regresyon kilidi: hicbir uretimde '.co' ile biten
+    bozuk host olusamaz."""
+    for url in (
+        "https://hermes.duosis.com/mcp/",
+        "https://hermes.duosis.com/mcp",
+        "https://hermes.duosis.com:443/mcp/",
+    ):
+        out = prm_url(url)
+        assert "duosis.co/" not in out and not out.startswith(
+            "https://hermes.duosis.co/"
+        ), out
+        assert out.startswith("https://hermes.duosis.com"), out
+
+
+def test_relative_or_invalid_resource_rejected():
+    for bad in ("/mcp", "hermes.duosis.com/mcp", ""):
+        with pytest.raises(ValueError):
+            prm_url(bad)
+
+
+def test_live_challenge_and_prm_match_configured_resource(
+    mcp_http, monkeypatch
+):
+    """Uctan uca: hem 401 challenge basligi hem PRM JSON, yapilandirilan
+    kaynakla birebir tutarli (test ortaminin gercek degeri ile)."""
+    from hermes_mcp import config
+
+    monkeypatch.setattr(
+        config, "RESOURCE_URL", "https://hermes.duosis.com/mcp/"
+    )
+
+    r = rpc(mcp_http, "tools/list")
+    assert r.status_code == 401
+    assert r.headers["WWW-Authenticate"] == (
+        'Bearer resource_metadata="https://hermes.duosis.com'
+        '/.well-known/oauth-protected-resource/mcp"'
+    )
+
+    doc = mcp_http.get("/.well-known/oauth-protected-resource/mcp").json()
+    # PRM 'resource' kaynagin KENDISIDIR (sondaki '/' korunur).
+    assert doc["resource"] == "https://hermes.duosis.com/mcp/"
+    assert doc["authorization_servers"] == []
+
+
+def test_sources_never_rstrip_urls():
+    """Kalici kural: hermes_mcp kaynaklarinda `.rstrip(` cagrisi YOK —
+    URL sonek silme yanilsamasi bir daha girmesin."""
+    import pathlib
+
+    pkg = pathlib.Path(__file__).parent.parent / "hermes_mcp"
+    for f in pkg.glob("*.py"):
+        for i, line in enumerate(f.read_text().splitlines(), 1):
+            code = line.split("#")[0]
+            assert ".rstrip(" not in code, f"{f.name}:{i}: {line.strip()}"

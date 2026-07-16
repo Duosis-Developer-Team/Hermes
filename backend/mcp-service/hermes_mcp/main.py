@@ -20,6 +20,7 @@ from starlette.routing import Mount, Route
 
 from . import config
 from .auth import current_token, token_from_headers
+from .discovery import www_authenticate
 from .server import server
 from .upstream import close_client
 
@@ -65,12 +66,10 @@ async def _plain_response(send, status: int, body: dict,
 
 
 def _www_authenticate() -> str:
-    # MCP auth spec: 401 challenge, PRM dokumanina isaret eder (RFC 9728).
-    meta = config.RESOURCE_URL.rstrip("/mcp").rstrip("/")
-    return (
-        f'Bearer resource_metadata='
-        f'"{meta}/.well-known/oauth-protected-resource/mcp"'
-    )
+    """MCP auth spec: 401 challenge, PRM dokumanina isaret eder (RFC 9728).
+    URL turetimi discovery modulunde — urllib.parse ile (rstrip ASLA:
+    karakter-kumesi kirpmasi '.com'un 'm'sini yiyordu, canli 5D bulgusu)."""
+    return www_authenticate(config.RESOURCE_URL)
 
 
 async def mcp_endpoint(scope, receive, send):

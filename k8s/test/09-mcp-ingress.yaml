@@ -7,6 +7,11 @@
 # ve uzun read timeout (SSE/stream uyumu). CORS bilerek ACILMADI —
 # MCP client'lari tarayici degildir; gerekirse ayri karar.
 # =============================================================================
+# INGRESS SAHIPLIK MODELI (Stage 5, CTO karari):
+#   BU kaynak YALNIZCA /mcp + /.well-known/oauth-protected-resource
+#   sahibidir. Uygulama route'lari (/, /api/*) 05-ingress'e aittir ve
+#   buraya ASLA eklenmez (cift sahiplik = belirsiz birlesme).
+#   Kilit: mcp-service/tests/test_stage5d_ingress_ownership.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

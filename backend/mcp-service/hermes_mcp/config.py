@@ -13,9 +13,21 @@ from . import __version__
 SERVER_NAME = "hermes-mcp"
 SERVER_VERSION = __version__
 
-PUBLIC_API_BASE = os.environ.get(
-    "HERMES_PUBLIC_API_BASE", "http://core-service/api/public/v1"
-).rstrip("/")
+def _without_trailing_slash(url: str) -> str:
+    """Sondaki '/' karakterlerini kaldirir. Bu kod tabaninda URL
+    turetiminde `rstrip` YASAKTIR: karakter-kumesi kirpmasi sonek silmez
+    ('.com' -> '.co' bug'i, canli 5D bulgusu). Test kilidi:
+    test_stage5d_hardening::test_sources_never_rstrip_urls."""
+    while url.endswith("/"):
+        url = url[:-1]
+    return url
+
+
+PUBLIC_API_BASE = _without_trailing_slash(
+    os.environ.get(
+        "HERMES_PUBLIC_API_BASE", "http://core-service/api/public/v1"
+    )
+)
 
 # tools/list gorunurluk cache'i (ASLA yetkilendirme degil — onayli kural:
 # kisa tutulur, gercek yetki HER cagrida Public API'de dogrulanir).

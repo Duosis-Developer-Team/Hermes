@@ -41,6 +41,10 @@ spec:
           env:
             - name: HERMES_PUBLIC_API_BASE
               value: "http://core-service/api/public/v1"
+            # KAYNAK KIMLIGI (RFC 9728) — PRM 'resource' alani birebir
+            # bu degerdir. ':443' WORKAROUND'U GEREKMEZ: challenge URL'i
+            # artik urllib.parse ile turetiliyor (eski rstrip bug'i
+            # domaini 'duosis.co' yapiyordu; hermes_mcp/discovery.py).
             - name: MCP_RESOURCE_URL
               value: "https://hermes.duosis.com/mcp/"
             - name: MCP_DOCS_URL

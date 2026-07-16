@@ -73,6 +73,20 @@ spec:
             secretKeyRef:
               name: hermes-secrets
               key: JWT_SECRET_KEY
+        # RS256 asimetrik JWT (Stage 5 promotion — canli rollout bulgusu):
+        # bu ref'ler manifestte YOKTU ve apply, calisan pod'daki env'leri
+        # silip auth-service'i kirabiliyordu. Kalici olarak eklendi;
+        # dev manifestiyle (k8s/03-backend-auth.yaml) birebir ayni.
+        - name: JWT_PRIVATE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: hermes-jwt-auth
+              key: JWT_PRIVATE_KEY
+        - name: JWT_PUBLIC_KEY
+          valueFrom:
+            secretKeyRef:
+              name: hermes-jwt-auth
+              key: JWT_PUBLIC_KEY
         - name: AZURE_CLIENT_ID
           valueFrom:
             configMapKeyRef:
