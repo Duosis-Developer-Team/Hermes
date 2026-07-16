@@ -703,6 +703,91 @@ export const taskPermissionService = {
     },
 }
 
+// =============================================================================
+// CORE SERVICE - API Management (Admin → API Management)
+// =============================================================================
+// Dis entegrasyon client'lari + token yasam dongusu + request loglari.
+// Token plaintext'i YALNIZCA create/rotate yanitinda gelir ve hicbir yerde
+// cache'lenmez/saklanmaz (modal state'i kapaninca temizlenir).
+
+export const apiManagementService = {
+    listClients: async () => {
+        const response = await coreApi.get('/api/v1/core/admin/api-clients')
+        return response.data
+    },
+    createClient: async (data) => {
+        const response = await coreApi.post(
+            '/api/v1/core/admin/api-clients',
+            data
+        )
+        return response.data
+    },
+    updateClient: async (clientId, data) => {
+        const response = await coreApi.patch(
+            `/api/v1/core/admin/api-clients/${clientId}`,
+            data
+        )
+        return response.data
+    },
+    disableClient: async (clientId) => {
+        const response = await coreApi.delete(
+            `/api/v1/core/admin/api-clients/${clientId}`
+        )
+        return response.data
+    },
+    replaceBindings: async (clientId, access) => {
+        const response = await coreApi.put(
+            `/api/v1/core/admin/api-clients/${clientId}/bindings`,
+            { access }
+        )
+        return response.data
+    },
+    createToken: async (clientId, data = {}) => {
+        const response = await coreApi.post(
+            `/api/v1/core/admin/api-clients/${clientId}/tokens`,
+            data
+        )
+        return response.data
+    },
+    listTokens: async (clientId) => {
+        const response = await coreApi.get('/api/v1/core/admin/api-tokens', {
+            params: clientId ? { client_id: clientId } : {},
+        })
+        return response.data
+    },
+    revokeToken: async (tokenId) => {
+        const response = await coreApi.post(
+            `/api/v1/core/admin/api-tokens/${tokenId}/revoke`
+        )
+        return response.data
+    },
+    rotateToken: async (tokenId) => {
+        const response = await coreApi.post(
+            `/api/v1/core/admin/api-tokens/${tokenId}/rotate`
+        )
+        return response.data
+    },
+    updateTokenExpiry: async (tokenId, expiresAt) => {
+        const response = await coreApi.patch(
+            `/api/v1/core/admin/api-tokens/${tokenId}`,
+            { expires_at: expiresAt }
+        )
+        return response.data
+    },
+    listRequestLogs: async (params = {}) => {
+        const response = await coreApi.get(
+            '/api/v1/core/admin/api-request-logs',
+            { params }
+        )
+        return response.data
+    },
+    /** Public capabilities — scope katalogu icin (auth gerekmez). */
+    getPublicCapabilities: async () => {
+        const response = await coreApi.get('/api/public/v1/capabilities')
+        return response.data
+    },
+}
+
 export const taskNotificationSettingsService = {
     /** Admin: one row per work-item type (task/issue/suggestion) with the
      * e-mail rules; unconfigured types come back with defaults (all ON). */

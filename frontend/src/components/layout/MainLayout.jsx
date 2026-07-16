@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { Drawer, Layout, Menu, Avatar, Dropdown, Space, Typography, Button, Switch } from 'antd'
 import {
+    ApiOutlined,
     DashboardOutlined,
     ClockCircleOutlined,
     TeamOutlined,
@@ -138,6 +139,11 @@ function MainLayout() {
                         key: '/pm-configurations',
                         icon: <CheckSquareOutlined />,
                         label: 'PM Configurations',
+                    },
+                    {
+                        key: '/api-management',
+                        icon: <ApiOutlined />,
+                        label: 'API Management',
                     },
                 ],
             },

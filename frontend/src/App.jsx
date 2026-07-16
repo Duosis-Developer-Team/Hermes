@@ -54,6 +54,7 @@ import ReportsPage from './pages/ReportsPage'
 import ContractStatusPage from './pages/admin/ContractStatusPage'
 import TasksPage from './pages/TasksPage'
 import TaskManagementPage from './pages/admin/TaskManagementPage'
+import ApiManagementPage from './pages/admin/ApiManagementPage'
 import MeetingsPage from './pages/MeetingsPage'
 import { useTaskPermissions } from './hooks/useTaskPermissions'
 
@@ -198,6 +199,16 @@ function App() {
                     element={
                         <ProtectedRoute adminOnly>
                             <TaskManagementPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* API Management — Public API clients/tokens/logs/docs */}
+                <Route
+                    path="api-management"
+                    element={
+                        <ProtectedRoute adminOnly>
+                            <ApiManagementPage />
                         </ProtectedRoute>
                     }
                 />

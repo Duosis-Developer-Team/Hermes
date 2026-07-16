@@ -1,0 +1,230 @@
+/**
+ * =============================================================================
+ * HERMES - API Management (Admin) — page-specific styles
+ * =============================================================================
+ * Genel iskelet (header/stats/sections) TaskManagementPage.css'teki tm-*
+ * kaliplarindan gelir; burada yalnizca API Management'a ozgu parcalar var.
+ * =============================================================================
+ */
+
+/* ── Client kartlari ──────────────────────────────────────────────────── */
+
+.am-clients-toolbar {
+    margin-bottom: 14px;
+}
+
+.am-client {
+    border: 1px solid var(--c-border);
+    border-radius: 10px;
+    background: var(--c-surface);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+}
+
+.am-client.is-disabled {
+    opacity: 0.6;
+}
+
+.am-client-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.am-client-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--c-text-strong);
+}
+
+.am-client-spacer {
+    flex: 1;
+}
+
+.am-client-desc {
+    margin-top: 6px;
+    color: var(--c-text-muted);
+    font-size: 12.5px;
+}
+
+.am-client-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 28px;
+    margin-top: 12px;
+}
+
+.am-meta-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--c-text);
+    min-width: 0;
+}
+
+.am-meta-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--c-text-muted);
+}
+
+.am-empty {
+    color: var(--c-text-muted);
+    padding: 16px 0;
+}
+
+/* ── Token-once modal ─────────────────────────────────────────────────── */
+
+.am-token-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--c-surface-raised);
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.am-token-value {
+    flex: 1;
+    font-size: 13px;
+    word-break: break-all;
+    color: var(--c-text-strong);
+    user-select: all;
+}
+
+.am-token-hint {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--c-text-muted);
+}
+
+.am-prefix {
+    font-size: 12px;
+    color: var(--c-text-strong);
+}
+
+/* ── Client modal: yanyana alanlar + binding satirlari ───────────────── */
+
+.am-form-row {
+    display: flex;
+    gap: 14px;
+}
+.am-form-row .ant-form-item {
+    flex: 1;
+    min-width: 0;
+}
+
+.am-bindings-label {
+    font-weight: 600;
+    color: var(--c-text-strong);
+    margin-bottom: 6px;
+}
+.am-bindings-hint {
+    display: block;
+    font-weight: 400;
+    font-size: 12px;
+    color: var(--c-text-muted);
+}
+
+.am-binding-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+/* ── Request logs ─────────────────────────────────────────────────────── */
+
+.am-log-filters {
+    margin-bottom: 12px;
+}
+
+.am-log-pager {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+/* ── Documentation kartlari ───────────────────────────────────────────── */
+
+.am-docs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+}
+
+.am-doc-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border: 1px solid var(--c-border);
+    border-radius: 10px;
+    background: var(--c-surface);
+    padding: 14px 16px;
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+a.am-doc-card:hover {
+    border-color: var(--color-primary);
+    background: var(--c-surface-raised);
+}
+
+.am-doc-card.is-coming {
+    opacity: 0.75;
+}
+
+.am-doc-title {
+    font-weight: 700;
+    color: var(--c-text-strong);
+    font-size: 13.5px;
+}
+
+.am-doc-sub {
+    font-size: 12.5px;
+    color: var(--c-text-muted);
+    line-height: 1.5;
+}
+
+/* ── Mobile ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    .am-client-meta {
+        gap: 10px 18px;
+    }
+}
+
+@media (max-width: 480px) {
+    .am-form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+    .am-binding-row .ant-select {
+        width: 100% !important;
+    }
+    .am-binding-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .am-log-filters .ant-select,
+    .am-log-filters .ant-picker,
+    .am-log-filters .ant-input-search {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    .am-log-filters .ant-space-item {
+        width: 100%;
+    }
+    .am-token-box {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
