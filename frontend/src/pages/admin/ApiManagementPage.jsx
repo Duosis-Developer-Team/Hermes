@@ -590,28 +590,51 @@ function ApiManagementPage() {
 
     const [clientModal, setClientModal] = useState(null) // {editing|null}
     const saveClient = useMutation({
-        mutationFn: ({ editing, data }) =>
-            editing
-                ? apiManagementService
-                      .updateClient(editing.id, {
-                          name: data.name,
-                          description: data.description,
-                          scopes: data.scopes,
-                          rate_limit_per_min: data.rate_limit_per_min,
-                      })
-                      .then(() =>
-                          apiManagementService.replaceBindings(
-                              editing.id,
-                              data.access
-                          )
-                      )
-                : apiManagementService.createClient(data),
+        // Edit iki istektir (update + bindings replace). Ilk adim basarili
+        // ama ikincisi basarisizsa bu KISMI guncellemedir — asla tam basari
+        // gibi raporlanmaz: acik uyari verilir ve sunucu durumu refetch
+        // edilir (eski binding'ler transactional replace sayesinde aynen
+        // yururluktedir).
+        mutationFn: async ({ editing, data }) => {
+            if (!editing) return apiManagementService.createClient(data)
+            await apiManagementService.updateClient(editing.id, {
+                name: data.name,
+                description: data.description,
+                scopes: data.scopes,
+                rate_limit_per_min: data.rate_limit_per_min,
+            })
+            try {
+                await apiManagementService.replaceBindings(
+                    editing.id,
+                    data.access
+                )
+            } catch (err) {
+                const detail =
+                    err?.response?.data?.detail ||
+                    'Access bindings could not be updated.'
+                const partial = new Error(detail)
+                partial.isPartial = true
+                throw partial
+            }
+        },
         onSuccess: () => {
             message.success('API client saved.')
             setClientModal(null)
             invalidate()
         },
-        onError: onErr,
+        onError: (err) => {
+            if (err?.isPartial) {
+                message.warning(
+                    `Client settings were saved, but access bindings were NOT updated: ${err.message} ` +
+                        'The previous bindings are still in effect.',
+                    8
+                )
+                setClientModal(null)
+                invalidate() // sunucu gercegini yeniden cek
+                return
+            }
+            onErr(err)
+        },
     })
 
     const toggleClientStatus = useMutation({
