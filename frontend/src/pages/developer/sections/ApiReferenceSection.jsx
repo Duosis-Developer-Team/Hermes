@@ -1,9 +1,13 @@
 /**
- * Developer Portal — API Reference (Stage 4B).
- * Kaynak bazli rehber; tam semalar Swagger/OpenAPI'de. Ornek kodlar
- * kurgusaldir.
+ * Developer Portal — API Reference (Stage 4B; 4C: badge'ler + kopya).
+ *
+ * Her endpoint satiri taranabilir rozetler tasir (onayli 4C-3):
+ *   Read / Write · User-bound only / Service supported · Idempotent ·
+ *   scope adi. Kopya butonu yalnizca "METHOD /tam/yol" metnini kopyalar.
  */
-import { Tag } from 'antd'
+import { useState } from 'react'
+import { Tag, Tooltip } from 'antd'
+import { CheckOutlined, CopyOutlined } from '@ant-design/icons'
 
 function Method({ m }) {
     const color = { GET: 'green', POST: 'blue', PATCH: 'gold' }[m]
@@ -14,13 +18,67 @@ function Method({ m }) {
     )
 }
 
-function Endpoint({ m, path, children }) {
+function Endpoint({ m, path, scope, write = false, idempotent = false,
+                    noAuth = false, children }) {
+    const [copied, setCopied] = useState(false)
+    const full = `${m} /api/public/v1${path}`
+
+    const copy = async () => {
+        try {
+            await navigator.clipboard.writeText(full)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 1500)
+        } catch {
+            /* pano engellendiyse sessiz kal */
+        }
+    }
+
     return (
         <li className="dp-endpoint">
-            <span className="dp-endpoint-sig">
-                <Method m={m} />
-                <code>{path}</code>
-            </span>
+            <div className="dp-endpoint-main">
+                <span className="dp-endpoint-sig">
+                    <Method m={m} />
+                    <code>{path}</code>
+                    <Tooltip title={copied ? 'Copied' : `Copy "${full}"`}>
+                        <button
+                            type="button"
+                            className="dp-endpoint-copy"
+                            aria-label={`Copy ${full}`}
+                            onClick={copy}
+                        >
+                            {copied ? <CheckOutlined /> : <CopyOutlined />}
+                        </button>
+                    </Tooltip>
+                </span>
+                <span className="dp-badges">
+                    {write ? (
+                        <>
+                            <span className="dp-badge is-write">Write</span>
+                            <span className="dp-badge is-userbound">
+                                User-bound only
+                            </span>
+                        </>
+                    ) : (
+                        <>
+                            <span className="dp-badge is-read">Read</span>
+                            <span className="dp-badge is-service">
+                                Service supported
+                            </span>
+                        </>
+                    )}
+                    {idempotent && (
+                        <span className="dp-badge is-idem">Idempotent</span>
+                    )}
+                    {noAuth && (
+                        <span className="dp-badge">No auth</span>
+                    )}
+                    {scope && (
+                        <span className="dp-badge is-scope">
+                            <code>{scope}</code>
+                        </span>
+                    )}
+                </span>
+            </div>
             <span className="dp-endpoint-desc">{children}</span>
         </li>
     )
@@ -41,15 +99,17 @@ function ApiReferenceSection({ goTo }) {
                 >
                     API Explorer
                 </button>
-                . All endpoints are under <code>/api/public/v1</code>.
+                . All endpoints are under <code>/api/public/v1</code>.{' '}
+                <b>Idempotent</b> marks POST endpoints that accept the
+                optional <code>Idempotency-Key</code> header.
             </p>
 
             <h3>Meta &amp; identity</h3>
             <ul className="dp-endpoints">
-                <Endpoint m="GET" path="/health">
+                <Endpoint m="GET" path="/health" noAuth>
                     Liveness — no auth.
                 </Endpoint>
-                <Endpoint m="GET" path="/capabilities">
+                <Endpoint m="GET" path="/capabilities" noAuth>
                     Machine-readable surface description: scopes, error
                     catalog, pagination limits, write/idempotency policy — no
                     auth.
@@ -67,36 +127,73 @@ function ApiReferenceSection({ goTo }) {
                 <code>SUGGESTION-7</code> — case-insensitive in URLs.
             </p>
             <ul className="dp-endpoints">
-                <Endpoint m="GET" path="/tasks">
+                <Endpoint m="GET" path="/tasks" scope="tasks:read">
                     List with status/priority/type/customer/project/assignee
                     filters, due-date range and <code>updated_after</code>{' '}
                     delta sync.
                 </Endpoint>
-                <Endpoint m="GET" path="/tasks/{'{code}'}">
+                <Endpoint m="GET" path="/tasks/{code}" scope="tasks:read">
                     One item by code.
                 </Endpoint>
-                <Endpoint m="GET" path="/tasks/{'{code}'}/activity">
+                <Endpoint
+                    m="GET"
+                    path="/tasks/{code}/activity"
+                    scope="tasks:read"
+                >
                     Sanitized newest-first activity feed (event type, human
                     summary, actor — never raw event payloads).
                 </Endpoint>
-                <Endpoint m="GET" path="/tasks/{'{code}'}/comments">
+                <Endpoint
+                    m="GET"
+                    path="/tasks/{code}/comments"
+                    scope="tasks:read"
+                >
                     Oldest-first conversation; deleted comments never appear.
                 </Endpoint>
-                <Endpoint m="POST" path="/tasks">
+                <Endpoint
+                    m="POST"
+                    path="/tasks"
+                    scope="tasks:write"
+                    write
+                    idempotent
+                >
                     Create as the bound user — all internal assignment rules
                     (permission, hierarchy, assignee access) apply unchanged.
                 </Endpoint>
-                <Endpoint m="PATCH" path="/tasks/{'{code}'}">
+                <Endpoint
+                    m="PATCH"
+                    path="/tasks/{code}"
+                    scope="tasks:write"
+                    write
+                >
                     Partial update; codes, internal ids, completion metadata
                     and archive state cannot be mutated.
                 </Endpoint>
-                <Endpoint m="POST" path="/tasks/{'{code}'}/comments">
+                <Endpoint
+                    m="POST"
+                    path="/tasks/{code}/comments"
+                    scope="tasks:comment"
+                    write
+                    idempotent
+                >
                     Add a comment.
                 </Endpoint>
-                <Endpoint m="POST" path="/tasks/{'{code}'}/complete">
+                <Endpoint
+                    m="POST"
+                    path="/tasks/{code}/complete"
+                    scope="tasks:complete"
+                    write
+                    idempotent
+                >
                     Complete (assignee-only rule applies).
                 </Endpoint>
-                <Endpoint m="POST" path="/tasks/{'{code}'}/status">
+                <Endpoint
+                    m="POST"
+                    path="/tasks/{code}/status"
+                    scope="tasks:complete"
+                    write
+                    idempotent
+                >
                     <code>accept</code> / <code>reject</code> /{' '}
                     <code>reopen</code> with internal transition rules.
                 </Endpoint>
@@ -108,33 +205,51 @@ function ApiReferenceSection({ goTo }) {
 
             <h3>Customers &amp; Projects</h3>
             <ul className="dp-endpoints">
-                <Endpoint m="GET" path="/customers">
+                <Endpoint m="GET" path="/customers" scope="customers:read">
                     Active customers visible to the token (derived
                     visibility — see Scopes &amp; Data Access); name search
                     via <code>q</code>.
                 </Endpoint>
-                <Endpoint m="GET" path="/customers/{'{id}'}">
+                <Endpoint
+                    m="GET"
+                    path="/customers/{id}"
+                    scope="customers:read"
+                >
                     One customer.
                 </Endpoint>
-                <Endpoint m="GET" path="/projects">
+                <Endpoint m="GET" path="/projects" scope="projects:read">
                     Active projects; filter by <code>customer_id</code>,
                     search via <code>q</code>.
                 </Endpoint>
-                <Endpoint m="GET" path="/projects/{'{id}'}">
+                <Endpoint
+                    m="GET"
+                    path="/projects/{id}"
+                    scope="projects:read"
+                >
                     One project.
                 </Endpoint>
             </ul>
 
             <h3>Work Logs</h3>
             <ul className="dp-endpoints">
-                <Endpoint m="GET" path="/work-logs">
+                <Endpoint m="GET" path="/work-logs" scope="work-logs:read">
                     List with date range, customer/project/user filters and
                     task/meeting link filters. Numeric ids.
                 </Endpoint>
-                <Endpoint m="GET" path="/work-logs/{'{id}'}">
+                <Endpoint
+                    m="GET"
+                    path="/work-logs/{id}"
+                    scope="work-logs:read"
+                >
                     One entry.
                 </Endpoint>
-                <Endpoint m="POST" path="/work-logs">
+                <Endpoint
+                    m="POST"
+                    path="/work-logs"
+                    scope="work-logs:write"
+                    write
+                    idempotent
+                >
                     Create a time entry — always recorded for the bound user
                     (no on-behalf-of). Required: customer, project, work
                     type, date, duration (0.25–24h). Optionally link{' '}
@@ -146,11 +261,15 @@ function ApiReferenceSection({ goTo }) {
 
             <h3>Meetings</h3>
             <ul className="dp-endpoints">
-                <Endpoint m="GET" path="/meetings">
+                <Endpoint m="GET" path="/meetings" scope="meetings:read">
                     Meetings where a user in your access is an attendee;
                     time-range filter, cancelled excluded by default.
                 </Endpoint>
-                <Endpoint m="GET" path="/meetings/{'{id}'}">
+                <Endpoint
+                    m="GET"
+                    path="/meetings/{id}"
+                    scope="meetings:read"
+                >
                     One meeting.
                 </Endpoint>
             </ul>

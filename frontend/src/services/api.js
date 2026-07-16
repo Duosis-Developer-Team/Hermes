@@ -786,6 +786,11 @@ export const apiManagementService = {
         const response = await coreApi.get('/api/public/v1/capabilities')
         return response.data
     },
+    /** Portal header'i icin OpenAPI info blogu (surum rozeti). */
+    getPublicOpenApiInfo: async () => {
+        const response = await coreApi.get('/api/public/v1/openapi.json')
+        return response.data?.info || {}
+    },
     /** Stage 3F: retention politikasi + son temizlik ozeti. */
     getCleanupStatus: async () => {
         const response = await coreApi.get('/api/v1/core/admin/api-cleanup')
