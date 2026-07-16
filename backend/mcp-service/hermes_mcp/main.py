@@ -144,6 +144,24 @@ async def protected_resource_metadata(_request):
     )
 
 
+class _RawAsgiEndpoint:
+    """Starlette Route'u FONKSIYON endpoint'leri request/response olarak
+    sarar; ham ASGI callable'i sinif ornegi olarak vermek gerekir.
+    Amac: `/mcp` (slash'siz) icin Mount'un 307 redirect'inden kacinmak —
+    canli bulgu: redirect Location'i http:// uretiyordu ve cogu HTTP
+    client'i sema degisiminde Authorization header'ini DUSURUYOR
+    (= MCP client'lari baglanamiyor)."""
+
+    def __init__(self, app):
+        self._app = app
+
+    async def __call__(self, scope, receive, send):
+        await self._app(scope, receive, send)
+
+
+_mcp_asgi = _RawAsgiEndpoint(mcp_endpoint)
+
+
 @contextlib.asynccontextmanager
 async def lifespan(app):
     async with session_manager.run():
@@ -165,7 +183,14 @@ app = Starlette(
             protected_resource_metadata,
             methods=["GET"],
         ),
-        Mount("/mcp", app=mcp_endpoint),
+        # ONCE tam eslesme (/mcp) — redirect'siz; SONRA /mcp/ ve alt
+        # yollar icin mount. Ikisi de ayni ASGI uygulamasina gider.
+        Route(
+            "/mcp",
+            _mcp_asgi,
+            methods=["GET", "POST", "DELETE", "OPTIONS"],
+        ),
+        Mount("/mcp", app=_mcp_asgi),
     ],
     lifespan=lifespan,
 )

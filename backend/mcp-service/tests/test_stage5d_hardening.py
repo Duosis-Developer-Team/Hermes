@@ -205,3 +205,50 @@ def test_sources_never_rstrip_urls():
         for i, line in enumerate(f.read_text().splitlines(), 1):
             code = line.split("#")[0]
             assert ".rstrip(" not in code, f"{f.name}:{i}: {line.strip()}"
+
+
+# ── /mcp slash-redirect regresyonu (canli bulgu) ───────────────────────
+# BUG: Mount("/mcp") tek basina "/mcp" tam yolunu ESLESTIRMEZ → Starlette
+# 307 ile "/mcp/"e yonlendiriyordu; ingress arkasinda Location `http://`
+# olarak uretiliyor ve HTTP client'lari sema degisiminde Authorization
+# header'ini dusurdugu icin MCP client'lari baglanamiyordu. Artik her iki
+# yol da DOGRUDAN servis edilir.
+
+
+@pytest.mark.parametrize("path", ["/mcp", "/mcp/"])
+def test_both_mcp_paths_served_without_redirect(mcp_http, path):
+    r = mcp_http.post(
+        path,
+        json={"jsonrpc": "2.0", "id": 1, "method": "tools/list",
+              "params": {}},
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        },
+        follow_redirects=False,
+    )
+    # Redirect YOK: token'siz istek dogrudan 401 challenge alir.
+    assert r.status_code == 401, f"{path} -> {r.status_code}"
+    assert "resource_metadata=" in r.headers.get("WWW-Authenticate", "")
+
+
+@pytest.mark.parametrize("path", ["/mcp", "/mcp/"])
+def test_both_mcp_paths_work_authenticated(mcp_http, pg_session, path):
+    token = make_api_client(
+        pg_session, f"slash-{uuid.uuid4().hex[:6]}", [("user", U1)],
+        scopes=["tasks:read"],
+    )
+    r = mcp_http.post(
+        path,
+        json={"jsonrpc": "2.0", "id": 2, "method": "tools/list",
+              "params": {}},
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+            "Authorization": f"Bearer {token}",
+        },
+        follow_redirects=False,
+    )
+    assert r.status_code == 200, f"{path} -> {r.status_code}"
+    names = {t["name"] for t in r.json()["result"]["tools"]}
+    assert "hermes_list_tasks" in names

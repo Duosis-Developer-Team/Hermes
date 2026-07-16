@@ -27,4 +27,9 @@ ENV PATH="/opt/venv/bin:$PATH" \
 USER 10001
 EXPOSE 8010
 
-CMD ["uvicorn", "hermes_mcp.main:app", "--host", "0.0.0.0", "--port", "8010"]
+# --proxy-headers + --forwarded-allow-ips: ingress arkasinda X-Forwarded-
+# Proto/For'a guven (aksi halde uretilen URL'ler http:// oluyordu — canli
+# bulgu). Pod'a YALNIZCA cluster-ici ingress erisir; MCP hicbir yetki
+# kararini IP'ye dayandirmaz (yetki Public API'de).
+CMD ["uvicorn", "hermes_mcp.main:app", "--host", "0.0.0.0", "--port", "8010", \
+     "--proxy-headers", "--forwarded-allow-ips", "*"]
