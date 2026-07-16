@@ -57,6 +57,8 @@ async def api_request(
     token: str,
     tool: str,
     params: Optional[dict] = None,
+    json_body: Optional[dict] = None,
+    extra_headers: Optional[dict] = None,
 ):
     """Public API'ye tek istek. `path` GORELI olmali (or. 'tasks' veya
     f\"tasks/{seg(code)}\"). Yanit: (status_code, parsed_json_or_None).
@@ -74,8 +76,12 @@ async def api_request(
         "User-Agent": f"{config.SERVER_NAME}/{config.SERVER_VERSION} "
         f"tool={tool}",
     }
+    if extra_headers:
+        headers.update(extra_headers)
     client = await _get_client()
-    resp = await client.request(method, url, headers=headers, params=params)
+    resp = await client.request(
+        method, url, headers=headers, params=params, json=json_body
+    )
     try:
         body = resp.json() if resp.content else None
     except ValueError:

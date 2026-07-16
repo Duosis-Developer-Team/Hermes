@@ -185,7 +185,7 @@ function ApiReferenceSection({ goTo }) {
                     write
                     idempotent
                 >
-                    Complete (assignee-only rule applies).
+                    Complete (internal assignee/assigner rule applies).
                 </Endpoint>
                 <Endpoint
                     m="POST"

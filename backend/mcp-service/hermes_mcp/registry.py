@@ -41,6 +41,10 @@ class ToolSpec:
     scope: Optional[str]  # None → yalnizca gecerli token yeterli
     input_schema: dict
     handler: Callable[[dict, str], Awaitable[dict]]
+    # 5C: write tool'lari yalnizca USER-BOUND client'lara listelenir;
+    # gercek yetki yine HER cagrida Public API'dedir.
+    write: bool = False
+    idempotent: bool = False  # Idempotency-Key destekli POST
 
     def to_mcp_tool(self) -> types.Tool:
         return types.Tool(
@@ -48,8 +52,12 @@ class ToolSpec:
             description=self.description,
             inputSchema=self.input_schema,
             annotations=types.ToolAnnotations(
-                readOnlyHint=True,  # Stage 5A: tamami read-only
+                # readOnlyHint=False → MCP client'lari insan onayi ister
+                # (onayli approval modeli). v1'de delete YOK →
+                # destructiveHint her zaman False.
+                readOnlyHint=not self.write,
                 destructiveHint=False,
+                idempotentHint=self.idempotent if self.write else None,
                 openWorldHint=False,
             ),
         )
@@ -114,6 +122,74 @@ def _bound_text_fields(obj: dict, fields: tuple) -> dict:
     if truncated:
         obj["truncated"] = truncated
     return obj
+
+
+APPROVAL_NOTE = (
+    "This tool WRITES to Hermes — configure your MCP client to require "
+    "human approval before invocation."
+)
+
+IDEMPOTENCY_ARG = {
+    "idempotency_key": {
+        "type": "string",
+        "minLength": 8,
+        "maxLength": 128,
+        "pattern": "^[A-Za-z0-9_\\-\\.]+$",
+        "description": (
+            "Optional logical idempotency key. Transport-level retries "
+            "of THIS tool call are already protected automatically; "
+            "pass the SAME explicit key when retrying the same logical "
+            "operation across separate agent turns — same key + same "
+            "payload replays, same key + different payload conflicts. "
+            "Without a shared explicit key, separate calls are NOT "
+            "semantically de-duplicated."
+        ),
+    }
+}
+
+
+def _idempotency_key(args: dict, tool: str) -> str:
+    """Oncelik: acik `idempotency_key` argumani (mantiksal retry).
+    Yoksa MCP request id'sinden turetilir — ayni HTTP/JSON-RPC istegi
+    yeniden gonderilirse (transport retry) ayni anahtar olusur; YENI
+    agent turu yeni id uretir ve KORUMAZ (bilincli, dokumante)."""
+    import hashlib
+
+    explicit = args.get("idempotency_key")
+    if explicit:
+        return str(explicit)
+    from .auth import current_request_id
+
+    rid = current_request_id.get() or "no-request-id"
+    digest = hashlib.sha256(f"{rid}:{tool}".encode()).hexdigest()[:40]
+    return f"mcp-{digest}"
+
+
+async def _write(
+    method: str,
+    path: str,
+    token: str,
+    tool: str,
+    body: dict,
+    *,
+    idempotent: bool = True,
+) -> dict:
+    body = {k: v for k, v in body.items() if v is not None}
+    headers = None
+    if idempotent:
+        headers = {"Idempotency-Key": _idempotency_key(body, tool)}
+    body.pop("idempotency_key", None)
+    status, resp = await api_request(
+        method,
+        path,
+        token=token,
+        tool=tool,
+        json_body=body,
+        extra_headers=headers,
+    )
+    if status >= 400:
+        raise ApiToolError(map_api_error(status, resp))
+    return resp if isinstance(resp, dict) else {}
 
 
 async def _call(method: str, path: str, token: str, tool: str,
@@ -363,6 +439,69 @@ async def _get_group(args: dict, token: str) -> dict:
         f"groups/{seg(args['group_id'])}",
         token,
         "hermes_get_group",
+    )
+
+
+# ── 5C write handler'lari ───────────────────────────────────────────────
+
+
+async def _create_task(args: dict, token: str) -> dict:
+    return await _write("POST", "tasks", token, "hermes_create_task", args)
+
+
+async def _update_task(args: dict, token: str) -> dict:
+    body = dict(args)
+    code = body.pop("task_code")
+    # PATCH idempotency header'i almaz (API sozlesmesi).
+    return await _write(
+        "PATCH",
+        f"tasks/{seg(code)}",
+        token,
+        "hermes_update_task",
+        body,
+        idempotent=False,
+    )
+
+
+async def _add_task_comment(args: dict, token: str) -> dict:
+    body = dict(args)
+    code = body.pop("task_code")
+    return await _write(
+        "POST",
+        f"tasks/{seg(code)}/comments",
+        token,
+        "hermes_add_task_comment",
+        body,
+    )
+
+
+async def _complete_task(args: dict, token: str) -> dict:
+    body = dict(args)
+    code = body.pop("task_code")
+    return await _write(
+        "POST",
+        f"tasks/{seg(code)}/complete",
+        token,
+        "hermes_complete_task",
+        body,
+    )
+
+
+async def _change_task_status(args: dict, token: str) -> dict:
+    body = dict(args)
+    code = body.pop("task_code")
+    return await _write(
+        "POST",
+        f"tasks/{seg(code)}/status",
+        token,
+        "hermes_change_task_status",
+        body,
+    )
+
+
+async def _log_time(args: dict, token: str) -> dict:
+    return await _write(
+        "POST", "work-logs", token, "hermes_log_time", args
     )
 
 
@@ -739,6 +878,203 @@ REGISTRY: list[ToolSpec] = [
         },
         handler=_get_group,
     ),
+    # ── Stage 5C: write tool'lari (user-bound only) ────────────────────
+    ToolSpec(
+        name="hermes_create_task",
+        description=(
+            "Creates a Hermes work item (task/issue/suggestion) AS the "
+            "bound Hermes user — all internal assignment rules apply "
+            "(assignment permission, hierarchy mapping to the assignee, "
+            "assignee access). The creator/owner is always the bound "
+            "user and cannot be overridden. " + APPROVAL_NOTE + " "
+            + UNTRUSTED_NOTE
+        ),
+        scope="tasks:write",
+        write=True,
+        idempotent=True,
+        input_schema={
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "minLength": 1,
+                          "maxLength": 255},
+                "description": {"type": "string", "minLength": 1,
+                                "maxLength": 10000},
+                "customer_id": {"type": "string", "format": "uuid"},
+                "project_id": {"type": "string", "format": "uuid"},
+                "sub_project_id": {"type": "string", "format": "uuid"},
+                "assignee_user_id": {"type": "string", "format": "uuid"},
+                "scheduled_date": {"type": "string", "format": "date"},
+                "due_date": {"type": "string", "format": "date"},
+                "priority": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high", "urgent"],
+                    "default": "medium",
+                },
+                "task_type": {
+                    "type": "string",
+                    "enum": ["task", "issue", "suggestion"],
+                    "default": "task",
+                },
+                **IDEMPOTENCY_ARG,
+            },
+            "required": [
+                "title",
+                "description",
+                "customer_id",
+                "project_id",
+                "assignee_user_id",
+                "scheduled_date",
+            ],
+            "additionalProperties": False,
+        },
+        handler=_create_task,
+    ),
+    ToolSpec(
+        name="hermes_update_task",
+        description=(
+            "Partially updates a visible work item as the bound user. "
+            "Internal edit/reassignment rules apply; codes, internal "
+            "ids, completion metadata, archive state and ownership "
+            "cannot be changed. " + APPROVAL_NOTE + " " + UNTRUSTED_NOTE
+        ),
+        scope="tasks:write",
+        write=True,
+        input_schema={
+            "type": "object",
+            "properties": {
+                **dict(_TASK_CODE_PROP),
+                "title": {"type": "string", "minLength": 1,
+                          "maxLength": 255},
+                "description": {"type": "string", "minLength": 1,
+                                "maxLength": 10000},
+                "priority": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high", "urgent"],
+                },
+                "scheduled_date": {"type": "string", "format": "date"},
+                "due_date": {"type": "string", "format": "date"},
+                "sub_project_id": {"type": "string", "format": "uuid"},
+                "assignee_user_id": {"type": "string", "format": "uuid"},
+            },
+            "required": ["task_code"],
+            "additionalProperties": False,
+        },
+        handler=_update_task,
+    ),
+    ToolSpec(
+        name="hermes_add_task_comment",
+        description=(
+            "Adds a comment to a visible work item as the bound user. "
+            + APPROVAL_NOTE + " " + UNTRUSTED_NOTE
+        ),
+        scope="tasks:comment",
+        write=True,
+        idempotent=True,
+        input_schema={
+            "type": "object",
+            "properties": {
+                **dict(_TASK_CODE_PROP),
+                "body": {"type": "string", "minLength": 1,
+                         "maxLength": 5000},
+                **IDEMPOTENCY_ARG,
+            },
+            "required": ["task_code", "body"],
+            "additionalProperties": False,
+        },
+        handler=_add_task_comment,
+    ),
+    ToolSpec(
+        name="hermes_complete_task",
+        description=(
+            "Marks a visible work item completed as the bound user "
+            "(internal assignee/assigner rule applies; emits the same "
+            "activity/notification chain as the web app). "
+            + APPROVAL_NOTE + " " + UNTRUSTED_NOTE
+        ),
+        scope="tasks:complete",
+        write=True,
+        idempotent=True,
+        input_schema={
+            "type": "object",
+            "properties": {
+                **dict(_TASK_CODE_PROP),
+                **IDEMPOTENCY_ARG,
+            },
+            "required": ["task_code"],
+            "additionalProperties": False,
+        },
+        handler=_complete_task,
+    ),
+    ToolSpec(
+        name="hermes_change_task_status",
+        description=(
+            "Changes a work item's status as the bound user: accept → "
+            "in progress; reject → rejected; reopen → back to in "
+            "progress/pending. Internal transition rules apply. "
+            + APPROVAL_NOTE + " " + UNTRUSTED_NOTE
+        ),
+        scope="tasks:complete",
+        write=True,
+        idempotent=True,
+        input_schema={
+            "type": "object",
+            "properties": {
+                **dict(_TASK_CODE_PROP),
+                "action": {
+                    "type": "string",
+                    "enum": ["accept", "reject", "reopen"],
+                },
+                **IDEMPOTENCY_ARG,
+            },
+            "required": ["task_code", "action"],
+            "additionalProperties": False,
+        },
+        handler=_change_task_status,
+    ),
+    ToolSpec(
+        name="hermes_log_time",
+        description=(
+            "Creates a Hermes time entry — ALWAYS recorded for the "
+            "bound user (no on-behalf-of; the owner cannot be set). "
+            "Duration 0.25-24h; optionally link task_code OR meeting_id "
+            "(never both); the linked item must be visible to this "
+            "token. " + APPROVAL_NOTE + " " + UNTRUSTED_NOTE
+        ),
+        scope="work-logs:write",
+        write=True,
+        idempotent=True,
+        input_schema={
+            "type": "object",
+            "properties": {
+                "customer_id": {"type": "string", "format": "uuid"},
+                "project_id": {"type": "string", "format": "uuid"},
+                "work_type_id": {"type": "string", "format": "uuid"},
+                "date_worked": {"type": "string", "format": "date"},
+                "duration_hours": {
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 24,
+                },
+                "description": {"type": "string", "maxLength": 5000},
+                "activity_type_id": {"type": "string",
+                                     "format": "uuid"},
+                "platform_id": {"type": "string", "format": "uuid"},
+                "work_line_id": {"type": "string", "format": "uuid"},
+                **dict(_TASK_CODE_PROP),
+                "meeting_id": {"type": "string", "format": "uuid"},
+                **IDEMPOTENCY_ARG,
+            },
+            "required": [
+                "customer_id",
+                "project_id",
+                "work_type_id",
+                "date_worked",
+                "duration_hours",
+            ],
+            "additionalProperties": False,
+        },
+        handler=_log_time,
+    ),
 ]
 
 TOOLS_BY_NAME = {t.name: t for t in REGISTRY}
@@ -774,6 +1110,18 @@ CONTRACT: dict = {
     "hermes_get_user": ("GET", "/v1/users/{user_id}", None),
     "hermes_list_groups": ("GET", "/v1/groups", None),
     "hermes_get_group": ("GET", "/v1/groups/{group_id}", None),
+    "hermes_create_task": ("POST", "/v1/tasks", None),
+    "hermes_update_task": ("PATCH", "/v1/tasks/{task_code}", None),
+    "hermes_add_task_comment": (
+        "POST", "/v1/tasks/{task_code}/comments", None,
+    ),
+    "hermes_complete_task": (
+        "POST", "/v1/tasks/{task_code}/complete", None,
+    ),
+    "hermes_change_task_status": (
+        "POST", "/v1/tasks/{task_code}/status", None,
+    ),
+    "hermes_log_time": ("POST", "/v1/work-logs", None),
 }
 
 # Tool argumani ↔ OpenAPI path parametresi ad eslemesi (contract-lock

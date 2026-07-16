@@ -226,7 +226,7 @@ async def add_comment(
     summary="Complete task",
     description=(
         "Marks a visible work item as completed as the bound user (the "
-        "internal assignee-only rule applies). Emits the same activity "
+        "internal assignee/assigner rule applies). Emits the same activity "
         "event and first-completion notification chain as the internal "
         "app. Does not create a work log."
     ),

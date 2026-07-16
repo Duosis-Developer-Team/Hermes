@@ -16,7 +16,12 @@ from mcp.server.lowlevel import Server
 from mcp.shared.exceptions import McpError
 
 from . import config
-from .auth import AuthError, require_token, resolve_visibility
+from .auth import (
+    AuthError,
+    current_request_id,
+    require_token,
+    resolve_visibility,
+)
 from .registry import REGISTRY, TOOLS_BY_NAME, ApiToolError
 
 logger = logging.getLogger("hermes_mcp.server")
@@ -48,10 +53,15 @@ async def list_tools() -> list[types.Tool]:
     except AuthError as exc:
         raise _auth_mcp_error(exc) from exc
     scopes = visibility["scopes"]
+    # 5C: write tool'lari yalnizca USER-BOUND client'lara gorunur —
+    # service client'lar dogru scope'a sahip olsa bile listede goremez
+    # (API zaten cagrida 403 verir; bu katman UX/least-surprise icindir).
+    is_user_bound = visibility["client_type"] == "user"
     tools = [
         spec.to_mcp_tool()
         for spec in REGISTRY
-        if spec.scope is None or spec.scope in scopes
+        if (spec.scope is None or spec.scope in scopes)
+        and (not spec.write or is_user_bound)
     ]
     logger.info("tools/list -> %d tools", len(tools))
     return tools
@@ -72,6 +82,13 @@ async def call_tool(name: str, arguments: dict):
             )
         )
 
+    # Otomatik Idempotency-Key turetimi icin aktif request id'yi yayinla
+    # (transport retry ayni id'yi tasir → ayni anahtar).
+    try:
+        rid = str(server.request_context.request_id)
+    except LookupError:
+        rid = None
+    reset = current_request_id.set(rid)
     try:
         result = await spec.handler(arguments or {}, token)
         return result  # dict → structuredContent + JSON text (SDK)
@@ -86,3 +103,5 @@ async def call_tool(name: str, arguments: dict):
                 )
             ],
         )
+    finally:
+        current_request_id.reset(reset)

@@ -441,17 +441,33 @@ def test_full_contract_lock(mcp_http, pg_session):
         else:
             assert required == [tool.scope], tool.name
 
-        # 5B'de tum tool'lar read-only ⇔ GET.
-        assert method == "GET", tool.name
-        assert tool.to_mcp_tool().annotations.readOnlyHint is True
+        # Annotation ↔ HTTP metod tutarliligi (5C: write'lar dahil).
+        ann = tool.to_mcp_tool().annotations
+        if tool.write:
+            assert method in ("POST", "PATCH"), tool.name
+            assert ann.readOnlyHint is False, tool.name
+        else:
+            assert method == "GET", tool.name
+            assert ann.readOnlyHint is True, tool.name
+        assert ann.destructiveHint is False, tool.name  # v1: delete YOK
 
-        # Input alanlari ⊆ endpoint query+path parametreleri.
+        # Input alanlari ⊆ endpoint query+path parametreleri ∪ govde
+        # semasi property'leri (write'lar) ∪ {idempotency_key} (header'a
+        # cevrilir — API'de Idempotency-Key parametresi olarak var).
         op_params = {
             p["name"] for p in op.get("parameters", [])
         }
+        body_props = set()
+        rb = op.get("requestBody")
+        if rb:
+            ref = rb["content"]["application/json"]["schema"]["$ref"]
+            body_props = set(
+                schemas[ref.split("/")[-1]].get("properties", {})
+            )
+        allowed = op_params | body_props | {"idempotency_key"}
         for prop in tool.input_schema.get("properties", {}):
             mapped = PATH_PARAM_ALIASES.get(prop, prop)
-            assert mapped in op_params, f"{tool.name}.{prop}"
+            assert mapped in allowed, f"{tool.name}.{prop}"
 
         # Liste projeksiyonu ⊆ yanit item semasi property'leri.
         if projection is not None:

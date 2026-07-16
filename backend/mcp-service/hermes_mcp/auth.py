@@ -21,6 +21,12 @@ current_token: ContextVar[Optional[str]] = ContextVar(
     "hermes_mcp_token", default=None
 )
 
+# Aktif MCP request id'si (server.call_tool doldurur) — otomatik
+# transport-retry Idempotency-Key turetimi icin (5C).
+current_request_id: ContextVar[Optional[str]] = ContextVar(
+    "hermes_mcp_request_id", default=None
+)
+
 
 class AuthError(Exception):
     """Handshake/gorunurluk kimlik hatasi — MCP protokol hatasina cevrilir."""
