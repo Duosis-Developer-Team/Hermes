@@ -9,6 +9,68 @@ import { Tag } from 'antd'
 
 const CHANGELOG = [
     {
+        version: 'v1.2.0',
+        date: 'July 2026',
+        title: 'Group assignment',
+        entries: [
+            {
+                tag: 'API',
+                text:
+                    'New POST /v1/task-groups — assign to every active ' +
+                    'member of a user group in one call (one work item per ' +
+                    'member, sharing one assignment_batch_id), matching the ' +
+                    'group assignment already available in the Hermes web ' +
+                    'app. Recipients are derived from the group; member ' +
+                    'lists are never sent or returned. Members without ' +
+                    'access are skipped and the bound user is never ' +
+                    'included, so created_count may be lower than the ' +
+                    "group's member count — skipped_count reports the " +
+                    'difference. Additive: POST /v1/tasks is unchanged and ' +
+                    'remains the single-assignee endpoint.',
+            },
+            {
+                tag: 'MCP',
+                text:
+                    'New hermes_create_task_for_group tool covering the ' +
+                    'same surface, so AI clients reach feature parity with ' +
+                    'the web app for group assignment. Write rules are ' +
+                    'unchanged: user-bound clients only, human approval ' +
+                    'annotation, optional idempotency key.',
+            },
+            {
+                tag: 'MCP',
+                text:
+                    'MCP status promoted from internal beta to ACTIVE. The ' +
+                    'service is live and reuses the Public API token, scope, ' +
+                    'binding, audit and rate-limit model unchanged. ' +
+                    'Bearer-token integrations are verified with Claude ' +
+                    'Code, Cursor and Codex. A native OAuth connector is ' +
+                    'still not available and remains documented as such — ' +
+                    'the missing authorization server limits that one ' +
+                    'connection path, not the service.',
+            },
+            {
+                tag: 'Fix',
+                text:
+                    'Directory endpoints (/v1/users, /v1/groups) returned ' +
+                    'internal_error in every deployment: the auth-service ' +
+                    'base URL was built without stripping the configured ' +
+                    '/api/v1 suffix, so the internal directory route ' +
+                    'answered 404. URL derivation now lives in one shared ' +
+                    'normaliser and is locked by a regression test.',
+            },
+            {
+                tag: 'Docs',
+                text:
+                    'Developer Portal refreshed against the live product: ' +
+                    'MCP status card, per-client compatibility matrix backed ' +
+                    'by real test evidence, full MCP setup/limits/audit ' +
+                    'guidance, and the group assignment endpoint and tool ' +
+                    'documented across API Reference and MCP sections.',
+            },
+        ],
+    },
+    {
         version: 'v1.1.0',
         date: 'July 2026',
         title: 'Directory & MCP read foundation',

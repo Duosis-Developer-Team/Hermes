@@ -12,15 +12,18 @@
 #     TASIMAZ.
 #   - Scope kontrolu kullanici izinlerine EK olarak uygulanir.
 #   - Tum POST'lar OPSIYONEL Idempotency-Key destekler (anahtarsiz
-#     retry'lar korunmaz — dokumante). Grup fan-out v1'de public'e kapali.
+#     retry'lar korunmaz — dokumante).
 #   - Kapsam disi task_code = 404 (varlik ifsasi yok).
+#   - Atama HEDEFI (assignee_user_id / assignee_group_id) data-access
+#     binding'lerine karsi KONTROL EDILMEZ; hedefi ic izin modeli
+#     belirler (_validate_assignment / can_assign_to_group). Binding
+#     katmani "ne gorulur"u yonetir, "kime atanabilir"i degil.
 #
 # Bildirim yan etkileri: internal ile AYNI gonderim zinciri, AYNI admin
-# kurallariyla (notification_allowed) baglanir. Bilinen v1 sinirlamasi:
-# alici e-postalari auth-service lookup'i CAGIRANIN JWT'siyle yapar;
-# API token'inda JWT olmadigi icin lookup bos doner ve e-posta fiilen
-# GONDERILMEZ (zincir calisir, teslimat no-op). Cozum icin S2S lookup
-# credential'i gerekir — raporlandi.
+# kurallariyla (notification_allowed) baglanir. Alici e-postalari Stage
+# 5B-2'den beri S2S dizin credential'iyle cozulur (cagiran JWT'si
+# GEREKMEZ); bu yuzden token="" gecilir. S2S yapilandirilmamissa zincir
+# fail-safe olarak no-op eder ve domain kaydi ASLA geri alinmaz.
 # =============================================================================
 
 from typing import Optional
@@ -29,6 +32,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.orm import Session
 
 from ...database import get_db
+from ...models.user_group import UserGroup
 from ...routers.tasks import _notif_payload, _serialize_task
 from ...schemas.task import TaskCreate, TaskUpdate
 from ...services import api_access_service, public_resource_service as res
@@ -45,6 +49,8 @@ from ..schemas.resources import (
     PublicStatusAction,
     PublicTask,
     PublicTaskCreate,
+    PublicTaskGroupCreate,
+    PublicTaskGroupResult,
     PublicTaskUpdate,
     serialize_comment,
     serialize_task,
@@ -102,10 +108,11 @@ def _maybe_status_side_effects(
     summary="Create task",
     description=(
         "Creates a work item as the bound Hermes user (user-bound clients "
-        "only; single assignee — group fan-out is not part of the Public "
-        "API). All internal assignment rules apply: the bound user needs "
-        "assignment permission in the item's scope and a hierarchy mapping "
-        "to the assignee; the assignee needs access."
+        "only; exactly one assignee). All internal assignment rules apply: "
+        "the bound user needs assignment permission in the item's scope and "
+        "a hierarchy mapping to the assignee; the assignee needs access. To "
+        "assign to every active member of a group in one call, use POST "
+        "/v1/task-groups instead."
     ),
     openapi_extra=scope_docs("tasks:write"),
 )
@@ -151,6 +158,108 @@ async def create_task(
 
     return _run_idempotent(
         db, ctx, idempotency_key, "/v1/tasks", _dump(payload), run
+    )
+
+
+@router.post(
+    "/task-groups",
+    status_code=201,
+    response_model=PublicTaskGroupResult,
+    summary="Create tasks for a group",
+    description=(
+        "Fans a single create action out to the active members of a user "
+        "group as the bound Hermes user (user-bound clients only), one "
+        "work item per member, all sharing one assignment_batch_id. This "
+        "mirrors the group assignment available in the Hermes web app; "
+        "POST /v1/tasks remains the single-assignee endpoint and is "
+        "unchanged.\n\n"
+        "Recipients are DERIVED from the group — callers never supply a "
+        "member list. The bound user needs assignment permission for the "
+        "target group in the item's scope. Members without access in that "
+        "scope are skipped, and the bound user is never included even when "
+        "they belong to the group, so `created_count` may be lower than the "
+        "group's member count; `skipped_count` reports the difference. If "
+        "no member is eligible, nothing is created and the call fails."
+    ),
+    openapi_extra=scope_docs("tasks:write"),
+)
+async def create_task_group(
+    payload: PublicTaskGroupCreate,
+    background_tasks: BackgroundTasks,
+    idempotency_key: Optional[str] = IDEMPOTENCY_HEADER_PARAM,
+    ctx: ApiContext = Depends(require_scopes("tasks:write")),
+    db: Session = Depends(get_db),
+):
+    actor = _actor_of(ctx)
+
+    def run():
+        # Ic web router'in (routers/tasks.py, create_tasks_for_group ucu)
+        # sirasi BIREBIR: iki modul guard'i, sonra servisin kendisi. Is
+        # kurali burada YOK — grup aktifligi, can_assign_to_group, aktif
+        # uye filtresi, atayanin haric tutulmasi ve batch id tamamen
+        # task_service'e aittir.
+        scope = task_service.perm_scope_for_type(payload.task_type)
+        task_service.require_task_access(db, actor, scope)
+        task_service.require_task_assigner(db, actor, scope)
+
+        # skipped_count icin fan-out ONCESI aktif uye kumesi (grup yoksa
+        # bos doner; yetkili hata yine servisten gelir).
+        member_ids = task_service.get_active_group_member_ids(
+            db, payload.assignee_group_id
+        )
+
+        batch_id, tasks = task_service.create_tasks_for_group(
+            db,
+            actor,
+            customer_id=payload.customer_id,
+            project_id=payload.project_id,
+            sub_project_id=payload.sub_project_id,
+            assignee_group_id=payload.assignee_group_id,
+            title=payload.title,
+            description=payload.description,
+            scheduled_date=payload.scheduled_date,
+            due_date=payload.due_date,
+            estimated_duration_minutes=payload.estimated_duration_minutes,
+            priority=payload.priority,
+            task_type=payload.task_type,
+        )
+
+        serialized = [_serialize_task(t) for t in tasks]
+        # Ic grup ucuyla ayni bildirim zinciri: her uyeye atama e-postasi,
+        # atayana tek grup ozeti. Fan-out satirlarinin tipi/onceligi/
+        # termini ayni oldugu icin tek gate kontrolu yeterli.
+        if serialized and task_service.notification_allowed(
+            db,
+            task_type=serialized[0].task_type,
+            priority=serialized[0].priority,
+            due_date=serialized[0].due_date,
+            event="assignment",
+        ):
+            background_tasks.add_task(
+                send_assignment_notifications,
+                token="",
+                tasks=[_notif_payload(s) for s in serialized],
+                assigner_user_id=actor.id,
+            )
+
+        # Servis 404 yukselttigi icin bu noktada grup kesinlikle vardir.
+        group = (
+            db.query(UserGroup)
+            .filter(UserGroup.id == payload.assignee_group_id)
+            .first()
+        )
+        result = PublicTaskGroupResult(
+            assignment_batch_id=batch_id,
+            group_id=payload.assignee_group_id,
+            group_name=group.name if group else "",
+            created_count=len(tasks),
+            skipped_count=max(0, len(member_ids) - len(tasks)),
+            created_tasks=[serialize_task(t) for t in tasks],
+        )
+        return 201, _dump(result)
+
+    return _run_idempotent(
+        db, ctx, idempotency_key, "/v1/task-groups", _dump(payload), run
     )
 
 

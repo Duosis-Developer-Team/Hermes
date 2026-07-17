@@ -62,6 +62,25 @@ function KnownLimitationsSection() {
                     </div>
                 </li>
                 <li>
+                    <Tag color="orange">MCP — OAuth</Tag>
+                    <div>
+                        The MCP server itself is <b>active</b> and
+                        bearer-token integrations are supported. What is
+                        missing is an <b>OAuth 2.1 authorization server</b>:
+                        MCP clients that require the full OAuth discovery
+                        flow — such as Claude Desktop&apos;s native connector
+                        — <b>cannot connect directly</b>, and no such
+                        compatibility is claimed. The Protected Resource
+                        Metadata document says this machine-readably rather
+                        than implying support. Clients that send a custom{' '}
+                        <code>Authorization</code> header are unaffected.
+                        When OAuth arrives it will change the credential{' '}
+                        <i>transport</i> only: the same API client, scopes,
+                        bindings, environment, revocation and audit identity
+                        stay authoritative — never a second permission model.
+                    </div>
+                </li>
+                <li>
                     <Tag>Work logs</Tag>
                     <div>
                         <code>work_type_id</code> is <b>required</b> when

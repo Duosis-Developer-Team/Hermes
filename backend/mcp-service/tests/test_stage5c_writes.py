@@ -30,6 +30,7 @@ WRITE_SCOPES = [
 
 WRITE_TOOLS = {
     "hermes_create_task",
+    "hermes_create_task_for_group",
     "hermes_update_task",
     "hermes_add_task_comment",
     "hermes_complete_task",

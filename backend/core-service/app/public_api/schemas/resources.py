@@ -384,6 +384,57 @@ class PublicTaskCreate(BaseModel):
     task_type: Literal["task", "issue", "suggestion"] = "task"
 
 
+class PublicTaskGroupCreate(BaseModel):
+    """Gruba tek seferde task acma (fan-out). Ornekler kurgusaldir.
+
+    `assignee_user_id` YOKTUR: hedef gruptur, alicilar grubun aktif
+    uyelerinden TUREtILIR — cagiran uye listesi veremez (dizin uye
+    listesi zaten public'e acik degildir).
+    """
+
+    model_config = {"extra": "forbid"}
+
+    title: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        examples=["Rotate staging credentials"],
+    )
+    description: str = Field(
+        ...,
+        min_length=1,
+        max_length=10000,
+        examples=["Every team member rotates their own staging token."],
+    )
+    customer_id: UUID
+    project_id: UUID
+    sub_project_id: Optional[UUID] = None
+    assignee_group_id: UUID
+    scheduled_date: date = Field(..., examples=["2026-08-01"])
+    due_date: Optional[date] = Field(None, examples=["2026-08-15"])
+    estimated_duration_minutes: Optional[int] = Field(
+        None, ge=1, examples=[60]
+    )
+    priority: Literal["low", "medium", "high", "urgent"] = "medium"
+    task_type: Literal["task", "issue", "suggestion"] = "task"
+
+
+class PublicTaskGroupResult(BaseModel):
+    """Bir grup fan-out'unun sonucu.
+
+    `created_count` grubun uye sayisiyla AYNI OLMAYABILIR: fan-out,
+    atayanin kendisini ve bu kapsamda erisimi olmayan uyeleri disarida
+    birakir. `skipped_count` tam olarak bu farki verir.
+    """
+
+    assignment_batch_id: UUID
+    group_id: UUID
+    group_name: str
+    created_count: int
+    skipped_count: int
+    created_tasks: List[PublicTask]
+
+
 class PublicTaskUpdate(BaseModel):
     model_config = {"extra": "forbid"}
 

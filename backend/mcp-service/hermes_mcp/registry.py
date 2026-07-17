@@ -449,6 +449,12 @@ async def _create_task(args: dict, token: str) -> dict:
     return await _write("POST", "tasks", token, "hermes_create_task", args)
 
 
+async def _create_task_for_group(args: dict, token: str) -> dict:
+    return await _write(
+        "POST", "task-groups", token, "hermes_create_task_for_group", args
+    )
+
+
 async def _update_task(args: dict, token: str) -> dict:
     body = dict(args)
     code = body.pop("task_code")
@@ -930,6 +936,69 @@ REGISTRY: list[ToolSpec] = [
         handler=_create_task,
     ),
     ToolSpec(
+        name="hermes_create_task_for_group",
+        description=(
+            "Creates ONE work item per active member of a Hermes user "
+            "group in a single action, AS the bound Hermes user — the "
+            "same group assignment the Hermes web app offers. Use this "
+            "instead of calling hermes_create_task once per person; use "
+            "hermes_create_task when there is a single known assignee. "
+            "Recipients are DERIVED from the group: you cannot supply a "
+            "member list, and member lists are never readable. The bound "
+            "user needs assignment permission for that group. Members "
+            "without access are skipped and the bound user is never "
+            "included even if they belong to the group, so created_count "
+            "MAY BE LOWER than the group's member_count — skipped_count "
+            "reports the difference and created_tasks lists exactly what "
+            "was created. If no member is eligible, nothing is created "
+            "and the call fails. All items share one assignment_batch_id. "
+            + APPROVAL_NOTE + " " + UNTRUSTED_NOTE
+        ),
+        scope="tasks:write",
+        write=True,
+        idempotent=True,
+        input_schema={
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "minLength": 1,
+                          "maxLength": 255},
+                "description": {"type": "string", "minLength": 1,
+                                "maxLength": 10000},
+                "customer_id": {"type": "string", "format": "uuid"},
+                "project_id": {"type": "string", "format": "uuid"},
+                "sub_project_id": {"type": "string", "format": "uuid"},
+                "assignee_group_id": {"type": "string", "format": "uuid"},
+                "scheduled_date": {"type": "string", "format": "date"},
+                "due_date": {"type": "string", "format": "date"},
+                "estimated_duration_minutes": {
+                    "type": "integer",
+                    "minimum": 1,
+                },
+                "priority": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high", "urgent"],
+                    "default": "medium",
+                },
+                "task_type": {
+                    "type": "string",
+                    "enum": ["task", "issue", "suggestion"],
+                    "default": "task",
+                },
+                **IDEMPOTENCY_ARG,
+            },
+            "required": [
+                "title",
+                "description",
+                "customer_id",
+                "project_id",
+                "assignee_group_id",
+                "scheduled_date",
+            ],
+            "additionalProperties": False,
+        },
+        handler=_create_task_for_group,
+    ),
+    ToolSpec(
         name="hermes_update_task",
         description=(
             "Partially updates a visible work item as the bound user. "
@@ -1111,6 +1180,7 @@ CONTRACT: dict = {
     "hermes_list_groups": ("GET", "/v1/groups", None),
     "hermes_get_group": ("GET", "/v1/groups/{group_id}", None),
     "hermes_create_task": ("POST", "/v1/tasks", None),
+    "hermes_create_task_for_group": ("POST", "/v1/task-groups", None),
     "hermes_update_task": ("PATCH", "/v1/tasks/{task_code}", None),
     "hermes_add_task_comment": (
         "POST", "/v1/tasks/{task_code}/comments", None,

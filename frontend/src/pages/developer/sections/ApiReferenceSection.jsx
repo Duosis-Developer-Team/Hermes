@@ -157,8 +157,27 @@ function ApiReferenceSection({ goTo }) {
                     write
                     idempotent
                 >
-                    Create as the bound user — all internal assignment rules
-                    (permission, hierarchy, assignee access) apply unchanged.
+                    Create as the bound user with exactly one assignee — all
+                    internal assignment rules (permission, hierarchy, assignee
+                    access) apply unchanged.
+                </Endpoint>
+                <Endpoint
+                    m="POST"
+                    path="/task-groups"
+                    scope="tasks:write"
+                    write
+                    idempotent
+                >
+                    Assign to a whole user group in one call: one work item per
+                    active member, all sharing one{' '}
+                    <code>assignment_batch_id</code> — the same group assignment
+                    the Hermes web app offers. Recipients are derived from the
+                    group; you never send a member list. The bound user needs
+                    assignment permission for that group. Members without access
+                    are skipped and the bound user is never included, so{' '}
+                    <code>created_count</code> may be lower than the group&apos;s
+                    member count — <code>skipped_count</code> reports the
+                    difference. If no member is eligible, nothing is created.
                 </Endpoint>
                 <Endpoint
                     m="PATCH"

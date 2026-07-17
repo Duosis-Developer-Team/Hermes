@@ -34,6 +34,8 @@ SURFACE = {
     ("/v1/me", "get"),
     ("/v1/tasks", "get"),
     ("/v1/tasks", "post"),
+    # Grup fan-out: AYRI uc — /v1/tasks tek atanan sozlesmesini korur.
+    ("/v1/task-groups", "post"),
     ("/v1/tasks/{task_code}", "get"),
     ("/v1/tasks/{task_code}", "patch"),
     ("/v1/tasks/{task_code}/activity", "get"),
@@ -217,11 +219,18 @@ _FORBIDDEN_SPEC_MARKERS = [
     "event_data",
     "body_preview",
     "billable_duration",
-    "assignment_batch",
     "issue_key_manual",
     "token_hash",
     "/api/v1/core",
 ]
+
+# NOT: "assignment_batch" bu listede DEGIL — yasak SILINMEDI, DARALTILDI.
+# Gerekce: batch id, grup fan-out'u public'te hic yokken PublicTask'a
+# sizmasin diye yasaklanmisti (Stage 3.2: "no batch ids"). Fan-out artik
+# public bir operasyon (POST /v1/task-groups) ve batch id o operasyonun
+# KENDI sonuc kimligi — is payload'ina sizan bir ic alan degil. Orijinal
+# koruma test_assignment_batch_id_scoped_to_group_result ile aynen
+# suruyor: task payload'larinda hala yasak, yalnizca grup sonucunda var.
 
 _ALLOWED_SCHEMA_NAME = re.compile(
     r"^(Public.*|Page.*|PageMeta|ErrorEnvelope|HTTPValidationError|"
@@ -233,6 +242,26 @@ def test_no_internal_markers_in_spec(spec):
     text = _json.dumps(spec)
     for marker in _FORBIDDEN_SPEC_MARKERS:
         assert marker not in text, marker
+
+
+def test_assignment_batch_id_scoped_to_group_result(spec):
+    """Daraltilmis yasak: batch id yalnizca grup fan-out'unun SONUCUNDA
+    yasar. Hicbir task payload'i (PublicTask / create / update) batch id
+    tasimaz — Stage 3.2'nin "no batch ids in task payloads" karari aynen
+    gecerli."""
+    schemas = spec["components"]["schemas"]
+
+    carriers = {
+        name
+        for name, s in schemas.items()
+        if any("assignment_batch" in p for p in (s.get("properties") or {}))
+    }
+    assert carriers == {"PublicTaskGroupResult"}, carriers
+
+    for name in ("PublicTask", "PublicTaskCreate", "PublicTaskUpdate"):
+        props = schemas[name].get("properties") or {}
+        assert not any("assignment_batch" in p for p in props), name
+        assert not any("batch" in p for p in props), name
 
 
 def test_component_schema_names_are_public_only(spec):

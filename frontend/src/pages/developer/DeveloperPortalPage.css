@@ -737,6 +737,23 @@
     box-shadow: 0 0 6px color-mix(in srgb, #22c55e 60%, transparent);
 }
 
+/* MCP durumu API Status'un ALTINDA ama ondan gorsel olarak AYRI durur
+   (CTO karari): canli saglik ile yetenek beyani ayni sey degil. Bu
+   yuzden burada canli nokta yok; sol serit ikisini ayirir. */
+.dp-status.is-mcp {
+    margin-top: 8px;
+    border-left: 3px solid #22c55e;
+}
+
+/* MCP "status at a glance" listesi: etiket + aciklama satirlari. */
+.dp-status-list li {
+    margin-bottom: 6px;
+}
+
+.dp-status-list .ant-tag {
+    margin-inline-end: 6px;
+}
+
 .dp-sdk .ant-tag {
     width: fit-content;
     margin-top: 2px;

@@ -127,8 +127,10 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Build frontend
         working-directory: frontend
+        # Portal testleri build'den ONCE kosar (dev ile ayni gate).
         run: |
           npm ci
+          npm test
           npx vite build
 
   build_push_deploy:

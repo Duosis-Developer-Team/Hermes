@@ -9,6 +9,7 @@ import {
     SafetyCertificateOutlined,
     ThunderboltOutlined,
 } from '@ant-design/icons'
+import { VERIFIED_CLIENTS } from '../mcpClients'
 
 function StatusDot({ ok }) {
     return (
@@ -81,6 +82,23 @@ function OverviewSection({ capabilities, goTo, health, specInfo }) {
                 </span>
                 <span className="dp-status-item">
                     <StatusDot ok={specOk} /> Swagger / OpenAPI
+                </span>
+            </div>
+
+            {/* MCP durumu AYRI bir blok (CTO karari): API Status'un canli
+                sagligiyla karistirilmamali. Burada canli nokta YOK — /mcp
+                ingress'inde CORS bilerek kapali oldugu icin tarayicidan
+                prob atilamaz. Bu yuzden bunlar YETENEK etiketleridir,
+                canli saglik iddiasi degil. */}
+            <div className="dp-status is-mcp" role="status">
+                <span className="dp-status-title">
+                    MCP Status: <b className="is-ok-text">Active</b>
+                </span>
+                <span className="dp-status-item">
+                    <Tag color="green">Bearer integrations supported</Tag>
+                </span>
+                <span className="dp-status-item">
+                    <Tag color="orange">OAuth native connector planned</Tag>
                 </span>
             </div>
 
@@ -174,12 +192,14 @@ function OverviewSection({ capabilities, goTo, health, specInfo }) {
             </ul>
 
             <div className="dp-note">
-                <Tag color="gold">Internal beta</Tag>
+                <Tag color="green">MCP Active</Tag>
                 <span>
-                    The Hermes <b>MCP server</b> lets AI tools (Claude, IDE
-                    agents and others) talk to Hermes natively — reusing
-                    exactly this API's token, scope and data-access model.
-                    See the{' '}
+                    The Hermes <b>MCP server</b> lets AI tools talk to Hermes
+                    natively — reusing exactly this API's token, scope,
+                    data-access, audit and rate-limit model. Verified with{' '}
+                    {VERIFIED_CLIENTS.join(', ')}. Bearer-token integrations
+                    are supported today; a native OAuth connector is not yet
+                    available. See the{' '}
                     <button
                         type="button"
                         className="dp-inline-link"
@@ -187,7 +207,7 @@ function OverviewSection({ capabilities, goTo, health, specInfo }) {
                     >
                         MCP Server
                     </button>{' '}
-                    section for setup and honest compatibility status.
+                    section for setup and per-client status.
                 </span>
             </div>
         </div>

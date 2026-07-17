@@ -1383,14 +1383,17 @@ function ApiManagementPage() {
                             ))}
                         </span>
                     </div>
-                    <div className="am-doc-card is-static is-coming">
+                    <div className="am-doc-card is-static">
                         <span className="am-doc-title">
-                            MCP Server{' '}
-                            <Tag color="orange">coming later</Tag>
+                            MCP Server <Tag color="green">Active</Tag>
                         </span>
                         <span className="am-doc-sub">
-                            AI-tool integration through the Hermes MCP server
-                            is planned for a later stage.
+                            AI tools connect with these same tokens, scopes
+                            and data-access bindings — nothing separate to
+                            issue. Every tool call lands in the Request Logs
+                            below, and revoking a token cuts the tool off at
+                            its next call. Issue a user-bound client for
+                            write access; service clients stay read-only.
                         </span>
                     </div>
                 </div>
