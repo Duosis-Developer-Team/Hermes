@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
-    isTaskCopyable, permScopeFor, resolveViewedUserId,
+    permScopeFor, resolveViewedUserId,
     selectTaskPermissions, scopePerms,
 } from '../../features/tasks/model/permissions'
 
@@ -111,12 +111,3 @@ describe('goruntulenen kullanici cozumu', () => {
     })
 })
 
-describe('kopyalanabilirlik kurali', () => {
-    it('completed ve rejected kopyalanamaz; pending/in_progress kopyalanabilir', () => {
-        expect(isTaskCopyable({ status: 'pending' })).toBe(true)
-        expect(isTaskCopyable({ status: 'in_progress' })).toBe(true)
-        expect(isTaskCopyable({ status: 'completed' })).toBe(false)
-        expect(isTaskCopyable({ status: 'rejected' })).toBe(false)
-        expect(isTaskCopyable(null)).toBe(false)
-    })
-})

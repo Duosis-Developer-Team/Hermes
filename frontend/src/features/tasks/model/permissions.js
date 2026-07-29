@@ -65,8 +65,3 @@ export function selectTaskPermissions({
 export const resolveViewedUserId = ({ isTaskAdmin, selectedUserId, currentUserId }) =>
     isTaskAdmin ? (selectedUserId || currentUserId) : currentUserId
 
-/** Completed gorevler kopyalanamaz (paket §2). Task copy/paste su an
- *  UYGULANMAMIS oldugundan bu kural yalnizca kart etkilesiminde
- *  (secim/log-time) gecerlidir — ayrintili not: Sprint 5 raporu. */
-export const isTaskCopyable = (task) =>
-    !!task && task.status !== 'completed' && task.status !== 'rejected'

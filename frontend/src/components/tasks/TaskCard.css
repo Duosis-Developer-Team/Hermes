@@ -175,13 +175,6 @@
 }
 
 /* ── Selected state (Time Entry parity) ──────────────────────── */
-.task-card-selected {
-    border: 2px solid #4a7cff;
-    background: rgba(74, 124, 255, 0.1);
-    box-shadow: 0 0 0 1px rgba(74, 124, 255, 0.25);
-    /* Compensate for added 2px border so layout stays stable */
-    padding: 8px 10px 8px 8px;
-}
 
 .task-card-selected:hover {
     background: rgba(74, 124, 255, 0.15);

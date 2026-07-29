@@ -108,7 +108,6 @@ function TaskCard({
     onToggleCompletion,
     canToggleCompletion,
     completionLoading = false,
-    isSelected = false,
 }) {
     const isCompleted = task.status === 'completed'
     const assigneeIsMe = task.assignee_user_id === currentUserId
@@ -155,25 +154,19 @@ function TaskCard({
         ? ` · ${task.sub_project_name}`
         : ''
 
-    // Sprint 5 bulgusu: task copy/paste UYGULANMAMIS. `isSelected`
-    // hicbir cagiran tarafindan gecilmiyordu (hep false), dolayisiyla
-    // "C" rozeti ve "Press Ctrl+C to copy" ipucu ASLA render olmuyordu —
-    // yaniltici olu iskele kaldirildi. Prop, ileride gercek clipboard
-    // baglandiginda kullanilmak uzere sozlesmede KALIR ve secili
-    // gorunumu completed disinda uygular.
-    const showAsSelected = isSelected && !isCompleted
+    // CTO urun karari (2026-07-29): Task copy/paste kapsam DISI.
+    // Calendar tabanli hedef-gun akisi Board/List modeline tasinmadi;
+    // secim durumu artik yalnizca detay panelini acar.
     const className =
         'task-card' +
         ` task-card-type-${task.task_type || 'task'}` +
-        (isCompleted ? ' task-card-completed' : '') +
-        (showAsSelected ? ' task-card-selected' : '')
+        (isCompleted ? ' task-card-completed' : '')
 
     return (
         <div
             className={className}
             role="button"
             tabIndex={0}
-            aria-pressed={showAsSelected}
             /* Durum yalniz RENKLE anlatilmaz: erisilebilir ad basligi,
                durumu ve atananı tasir (§12 erisilebilirlik). */
             aria-label={
