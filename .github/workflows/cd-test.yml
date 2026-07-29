@@ -137,6 +137,9 @@ jobs:
           npm ci
           npm test
           npx vite build
+          # Build ARTIFACT kapisi (Sprint 5.1) — dev ile ayni gate.
+          test -s dist/env-config.js
+          grep -q "window._env_" dist/env-config.js
 
   build_push_deploy:
     runs-on: ubuntu-latest

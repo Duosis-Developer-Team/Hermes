@@ -132,6 +132,14 @@ jobs:
           npm ci
           npm test
           npx vite build
+          # Build ARTIFACT kapisi (Sprint 5.1): index.html /env-config.js
+          # dosyasini KOSULSUZ yukler. Dosya cikti icinde yoksa her sayfa
+          # acilisinda 404 olusur. Kaynak sozlesmesi vitest ile kilitli
+          # (src/test/runtimeConfig.test.js); burada YALNIZCA build'in
+          # gercekten uretip uretmedigi dogrulanir — `npm test` build'den
+          # ONCE kostugu icin bu kontrol oraya konulamaz.
+          test -s dist/env-config.js
+          grep -q "window._env_" dist/env-config.js
 
   build_push_deploy:
     runs-on: ubuntu-latest
