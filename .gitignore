@@ -14,3 +14,43 @@ build/
 
 # Docker
 .docker_data/
+
+# =============================================================================
+# Sprint 0 — Secret containment (CTO paketi, 2026-07-29)
+# Gercek runtime degerleri tasiyabilecek dosya siniflari. Guvenli
+# .example sablonlarina bilerek izin verilir.
+# =============================================================================
+
+# Environment dosyalari (kok ve alt dizinler)
+.env.*
+!.env.example
+!**/.env.example
+
+# Private key / sertifika demetleri
+*.key
+*.pem
+*.p12
+*.pfx
+tls.crt
+tls.key
+
+# Kubernetes runtime Secret manifestleri (example'lar haric)
+k8s/**/*secret*.yaml
+k8s/**/*secret*.yml
+!k8s/**/*secret*.example.yaml
+!k8s/**/*secret*.example.yml
+
+# Kubeconfig / operator credential dizinleri
+kubeconfig
+kubeconfig.*
+*.kubeconfig
+secrets/
+ops/secrets/
+
+# Yerel asistan/arac ayarlari
+.claude/settings.local.json
+
+# Uretilen frontend/test artefaktlari
+coverage/
+playwright-report/
+test-results/

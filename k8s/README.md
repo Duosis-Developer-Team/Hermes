@@ -233,7 +233,10 @@ cd k8s
 # 3. Apply all configurations in order
 kubectl apply -f 00-namespace.yaml
 kubectl apply -f 01-configmap.yaml
-kubectl apply -f 01-secrets.yaml
+# Secrets: values are NOT tracked in Git (Sprint 0). Fill a copy of
+# 01-secrets.example.yaml OUTSIDE the repo and apply that instead.
+# Contract & recovery: docs/security/runtime-secret-contract.md
+# kubectl apply -f ~/hermes-ops/01-secrets.yaml
 kubectl apply -f 02-db-auth.yaml
 kubectl apply -f 02-db-core.yaml
 
@@ -543,7 +546,13 @@ echo "All images built and pushed successfully!"
 
 ### Step 2: Configure Secrets
 
-**IMPORTANT**: Update `01-secrets.yaml` with actual base64-encoded values:
+> **Sprint 0 (2026-07-29):** `01-secrets.yaml` artik Git'te degildir ve
+> repoya asla geri konmaz (CI guard'i engeller). Asagidaki uretim
+> komutlari REPO DISI bir calisma dizininde kullanilir; doldurulan
+> dosya yalnizca oradan apply edilir. Sozlesme:
+> `docs/security/runtime-secret-contract.md`
+
+**IMPORTANT**: Fill an OUT-OF-REPO copy of `01-secrets.example.yaml` with actual base64-encoded values:
 
 ```bash
 # Generate secure passwords and secrets
@@ -562,7 +571,7 @@ echo -n "$RABBITMQ_PASS" | base64
 [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("$DB_PASSWORD"))
 ```
 
-Edit `01-secrets.yaml` and replace placeholder values:
+Edit your out-of-repo copy (e.g. `~/hermes-ops/01-secrets.yaml`) and replace placeholder values:
 ```yaml
 data:
   POSTGRES_PASSWORD: "BASE64_ENCODED_VALUE"

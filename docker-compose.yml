@@ -5,6 +5,7 @@
 # ayağa kaldırmak için kullanılır.
 #
 # Kullanım:
+#   cp .env.example .env   # once yerel degerleri doldur (Sprint 0)
 #   docker-compose up --build
 #
 # Servisler:
@@ -28,7 +29,7 @@ services:
     container_name: hermes-auth-db
     environment:
       POSTGRES_USER: hermes
-      POSTGRES_PASSWORD: hermes_dev_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required — set it in an untracked .env file}
       POSTGRES_DB: auth_db
     ports:
       - "5432:5432"
@@ -47,7 +48,7 @@ services:
     container_name: hermes-core-db
     environment:
       POSTGRES_USER: hermes
-      POSTGRES_PASSWORD: hermes_dev_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required — set it in an untracked .env file}
       POSTGRES_DB: core_db
     ports:
       - "5433:5432"
@@ -74,9 +75,9 @@ services:
       - AUTH_DB_HOST=auth-db
       - AUTH_DB_PORT=5432
       - AUTH_DB_USER=hermes
-      - AUTH_DB_PASSWORD=hermes_dev_password
+      - AUTH_DB_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required — set it in an untracked .env file}
       - AUTH_DB_NAME=auth_db
-      - JWT_SECRET_KEY=hermes-dev-secret-key-change-in-production
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY is required — set it in an untracked .env file}
       - DEBUG=false
     ports:
       - "8000:8000"
@@ -99,9 +100,9 @@ services:
       - CORE_DB_HOST=core-db
       - CORE_DB_PORT=5432
       - CORE_DB_USER=hermes
-      - CORE_DB_PASSWORD=hermes_dev_password
+      - CORE_DB_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required — set it in an untracked .env file}
       - CORE_DB_NAME=core_db
-      - JWT_SECRET_KEY=hermes-dev-secret-key-change-in-production
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY is required — set it in an untracked .env file}
       - AUTH_SERVICE_URL=http://auth-service:8000
       - DEBUG=false
     ports:
@@ -126,7 +127,7 @@ services:
     environment:
       - AUTH_SERVICE_URL=http://auth-service:8000
       - CORE_SERVICE_URL=http://core-service:8001
-      - JWT_SECRET_KEY=hermes-dev-secret-key-change-in-production
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY is required — set it in an untracked .env file}
       - DEBUG=false
     ports:
       - "8002:8002"
