@@ -10,7 +10,22 @@ import { afterEach, beforeEach, vi } from 'vitest'
 // jsdom ortaminda jest-dom matcher'lari (node testlerinde zararsiz)
 if (typeof window !== 'undefined') {
     await import('@testing-library/jest-dom/vitest')
-    const { cleanup } = await import('@testing-library/react')
+    const { cleanup, configure } = await import('@testing-library/react')
+
+    // findBy*/waitFor icin ORTAK bekleme sozlesmesi. RTL'in varsayilani
+    // 1000 ms'dir ve Tasks entegrasyon testleri GERCEK sayfayi mount
+    // ettigi icin CI kosucusunda ilk sorgu bu sinira takiliyordu: sayfa
+    // iskeleti cizilmis ama gorev listesi henuz gelmemis oluyordu
+    // (kanit: run 30476696257, "Unable to find role=button ... Log time
+    // — …", DOM dokumunde hic .task-card yok). Bu bir URUN kusuru degil,
+    // makine hizina bagli bir test sozlesmesi bosludur.
+    //
+    // 5000 ms SONLU bir ust sinirdir, sabit bir bekleme DEGILDIR: gecen
+    // testler sorgu tuttugu anda devam eder, sure eklenmez. Gercek
+    // assertion hatalari, cozulmeyen promise'ler ve hic render olmayan
+    // icerik yine kirmizi kalir — yalnizca kirmiziya donme suresi uzar.
+    // Yalnizca jsdom ortaminda kurulur; urun paketine GIRMEZ.
+    configure({ asyncUtilTimeout: 5000 })
     // AntD'nin message/notification kaplari React kokunun DISINDA,
     // dogrudan body'ye baglanir; cleanup onlari kaldirmaz ve onceki
     // testin toast'i bir sonrakinde "ayni metinden birden fazla" olarak

@@ -20,6 +20,13 @@ export default defineConfig({
         // (board + list + 4 modal + AntD Select portallari). jsdom'da tek
         // kullanici etkilesimi ~1 sn surer; 5 sn'lik varsayilan gercek bir
         // takilmayi degil, sadece agirligi olcuyordu.
-        testTimeout: 20000,
+        //
+        // 20000 → 45000 (CI kosucusu): bu makinede en agir dosya
+        // ~7,8 sn/test kosuyor; 2 cekirdekli GitHub runner'inda ayni
+        // govdeler 20 sn tavanini asti (run 30476696257, 10 test
+        // "Test timed out in 20000ms"). Sinir SONLUDUR — gercek bir hang
+        // veya cozulmeyen mock hala timeout ile kirmizi kalir; yalnizca
+        // tavan kosucunun gercek hizina gore ayarlandi.
+        testTimeout: 45000,
     },
 })
