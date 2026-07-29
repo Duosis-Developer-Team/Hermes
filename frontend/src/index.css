@@ -57,7 +57,13 @@
   --Red500: #E34935;
 
   /* Aliases - Kolay kullanım için */
-  --bg-primary: var(--N900);
+  /* Sprint 3 KOPRU: app canvas'i DS V2 semantic tokenina baglandi.
+     GERCEK TARAYICI QA BULGUSU: canvas #1D2125 iken shell yuzeyleri
+     #111720 idi — yani sayfa arka plani sidebar'dan ACIKTI, derinlik
+     hiyerarsisi tersti. Alias SILINMEDI (Time Entry/Tasks/Meetings/
+     Login hala tuketiyor); yalnizca kaynagi degisti, hepsi tutarli
+     canvas'a oturdu. Diger bg ve c- aliaslari Sprint 4/5'e ait. */
+  --bg-primary: var(--h-bg-canvas);
   --bg-secondary: var(--N800);
   --bg-tertiary: var(--N700);
   --bg-hover: var(--N600);
@@ -132,7 +138,7 @@
    ========================================================================== */
 :root[data-theme="light"] {
   /* Atlassian aliases — flipped to a light neutral ramp */
-  --bg-primary: #f4f5f7;
+  --bg-primary: var(--h-bg-canvas); /* Sprint 3 kopru */
   --bg-secondary: #ffffff;
   --bg-tertiary: #ebecf0;
   --bg-hover: #dfe1e6;

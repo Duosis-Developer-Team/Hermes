@@ -283,3 +283,173 @@
     height: 44px !important;
     line-height: 44px !important;
 }
+/* =============================================================================
+   SPRINT 3 — PREMIUM SHELL (token tabanli; ham deger YOK)
+   ========================================================================== */
+
+/* Sider/Header shell z-katmani + genislik/yukseklik tokenlari */
+.main-sider {
+    z-index: var(--h-z-shell);
+    transition: width var(--h-motion-layout) var(--h-ease-standard),
+        min-width var(--h-motion-layout) var(--h-ease-standard),
+        max-width var(--h-motion-layout) var(--h-ease-standard);
+}
+.main-header {
+    height: var(--h-header-height);
+    z-index: var(--h-z-shell);
+    border-bottom: 1px solid var(--h-border-subtle);
+    transition: box-shadow var(--h-motion-fast) var(--h-ease-standard),
+        border-color var(--h-motion-fast) var(--h-ease-standard);
+}
+/* Icerik kayarken hafif elevation (§4) */
+.main-header[data-scrolled] {
+    border-bottom-color: var(--h-border-default);
+    box-shadow: var(--h-shadow-hover);
+}
+
+/* Logo crossfade: expanded=wordmark, collapsed=ikon; ayni x hizasi */
+.logo-container { position: relative; }
+.sidebar-logo {
+    transition: opacity var(--h-motion-fast) var(--h-ease-standard);
+}
+.sidebar-logo--icon {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    opacity: 0;
+}
+.ant-layout-sider-collapsed .sidebar-logo--full { opacity: 0; }
+.ant-layout-sider-collapsed .sidebar-logo--icon { opacity: 1; }
+
+/* Nav item: hit target + label gecisi + transform tabanli aktif cizgi */
+.main-menu .ant-menu-item {
+    min-height: 38px;
+    border-radius: var(--h-radius-control);
+}
+.main-menu .ant-menu-item .ant-menu-title-content {
+    transition: opacity var(--h-motion-fast) var(--h-ease-standard);
+}
+.ant-layout-sider-collapsed .main-menu .ant-menu-title-content { opacity: 0; }
+.main-menu .ant-menu-item-selected {
+    background: var(--h-bg-selected);
+    color: var(--h-brand);
+}
+.main-menu .ant-menu-item-selected::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 60%;
+    width: 3px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-brand);
+    transform: translateY(-50%) scaleY(1);
+    transform-origin: center;
+    transition: transform var(--h-motion-fast) var(--h-ease-enter);
+}
+.main-menu .ant-menu-item:not(.ant-menu-item-selected)::before {
+    transform: translateY(-50%) scaleY(0);
+}
+.main-menu .ant-menu-item:focus-visible {
+    outline: 2px solid var(--h-focus);
+    outline-offset: -2px;
+}
+
+/* Tema butonu: kisa rotate/crossfade (§11); RM'de global kural durdurur */
+.theme-toggle-icon {
+    display: inline-flex;
+    transition: transform var(--h-motion-fast) var(--h-ease-standard),
+        opacity var(--h-motion-fast) var(--h-ease-standard);
+}
+.theme-toggle-btn:hover .theme-toggle-icon { transform: rotate(20deg); }
+.theme-toggle-btn:active .theme-toggle-icon { transform: scale(0.9); }
+
+/* Kullanici alani: uzun ad tasmasi (§4 gorsel hedefler) */
+.user-name {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Icerik cercevesi: token padding + yatay tasma kilidi */
+.main-content {
+    padding: var(--h-content-pad);
+    overflow-x: hidden;
+}
+
+/* Route girisi (§6): opacity + 4px; height collapse yok */
+.route-transition {
+    animation: h-route-enter var(--h-motion-base) var(--h-ease-enter);
+}
+@keyframes h-route-enter {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Offline banner (§9): sakin, sabit yukseklik, toast degil */
+.offline-banner {
+    padding: var(--h-space-2) var(--h-space-4);
+    background: color-mix(in srgb, var(--h-warning) 14%, var(--h-bg-surface));
+    color: var(--h-text-primary);
+    border-bottom: 1px solid var(--h-border-default);
+    font-size: var(--h-font-meta);
+    text-align: center;
+}
+
+/* Mobil drawer: safe-area (§10) */
+.mobile-nav-drawer .ant-drawer-body {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* -----------------------------------------------------------------------
+   SHELL GEOMETRISI — GERCEK TARAYICI QA BULGULARININ DUZELTMESI
+   -----------------------------------------------------------------------
+   1) Header, fixed sidebar'in ustune biniyordu: z-index'i shell
+      katmanina baglayinca sider ile ESITLENDI ve DOM sirasi geregi
+      header ustte kaldi → logo gorunmez oldu. Cozum: header artik
+      sidebar'i ORTMEZ, yaninda baslar (tek gorsel sistem, §4).
+   2) Collapsed sidebar 72px iken icerik bosluğu 80px'ti → 8px acik.
+      Iki taraf da ayni token'dan besleniyor.
+   3) min-height eski 56px header varsayimina dayaliydi → token.
+   -------------------------------------------------------------------- */
+.main-header {
+    margin-left: var(--h-sidebar-width);
+    transition: margin-left var(--h-motion-layout) var(--h-ease-standard),
+        box-shadow var(--h-motion-fast) var(--h-ease-standard),
+        border-color var(--h-motion-fast) var(--h-ease-standard);
+}
+.main-sider.ant-layout-sider-collapsed + .ant-layout .main-header {
+    margin-left: var(--h-sidebar-width-collapsed);
+}
+
+.main-content {
+    margin-left: var(--h-sidebar-width);
+    min-height: calc(100vh - var(--h-header-height));
+    transition: margin-left var(--h-motion-layout) var(--h-ease-standard);
+}
+.main-sider.ant-layout-sider-collapsed + .ant-layout .main-content {
+    margin-left: var(--h-sidebar-width-collapsed);
+}
+
+/* Collapsed'da grup basliklari "MA…"/"CO…" diye kirpiliyordu — ikon
+   ritmini bozan anlamsiz metin yerine ince ayirici cizgi. */
+.ant-layout-sider-collapsed .main-menu .ant-menu-item-group-title {
+    height: 1px;
+    padding: 0;
+    margin: var(--h-space-2) var(--h-space-4);
+    overflow: hidden;
+    background: var(--h-border-subtle);
+    color: transparent;
+}
+
+@media (max-width: 768px) {
+    .main-header,
+    .main-content {
+        margin-left: 0;
+    }
+}

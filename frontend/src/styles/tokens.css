@@ -88,6 +88,12 @@
   --h-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
   --h-ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
+  /* --- 3.3 Component tokenlari — SHELL (Sprint 3) --- */
+  --h-sidebar-width: 240px;
+  --h-sidebar-width-collapsed: 72px;
+  --h-header-height: 64px;
+  --h-content-pad: var(--h-space-6);
+
   /* --- 8. Z-index sozlesmesi (rastgele 9999 YASAK) --- */
   --h-z-base: 0;
   --h-z-sticky: 10;

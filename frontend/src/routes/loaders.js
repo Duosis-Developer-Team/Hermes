@@ -29,3 +29,26 @@ export const routeLoaders = {
     apiManagement: () => import('../pages/admin/ApiManagementPage'),
     developerPortal: () => import('../pages/developer/DeveloperPortalPage'),
 }
+
+/** Nav path'i → loader (Sprint 3 hover/focus prefetch). YALNIZCA kodu
+ *  indirir — API verisi cekmez; menu zaten izin-filtreli oldugu icin
+ *  izinsiz route prefetch'i yapisal olarak imkansiz. */
+export const loaderByPath = {
+    '/time-entry': routeLoaders.timeEntry,
+    '/project-management': routeLoaders.tasks,
+    '/meetings': routeLoaders.meetings,
+    '/developer': routeLoaders.developerPortal,
+    '/dashboard': routeLoaders.dashboard,
+    '/management/billable-hours': routeLoaders.billableHours,
+    '/management/reports': routeLoaders.reports,
+    '/management/contracts': routeLoaders.contracts,
+    '/pm-configurations': routeLoaders.taskManagement,
+    '/api-management': routeLoaders.apiManagement,
+    '/customers': routeLoaders.customers,
+    '/projects': routeLoaders.projects,
+    '/work-types': routeLoaders.workTypes,
+    '/activity-types': routeLoaders.activityTypes,
+    '/platforms': routeLoaders.platforms,
+    '/work-lines': routeLoaders.workLines,
+    '/users': routeLoaders.users,
+}

@@ -7,10 +7,10 @@
  * =============================================================================
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Suspense } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Drawer, Layout, Menu, Avatar, Dropdown, Space, Typography, Button, Switch } from 'antd'
+import { Drawer, Layout, Menu, Avatar, Dropdown, Space, Typography, Button } from 'antd'
 import {
     ApiOutlined,
     CodeOutlined,
@@ -35,8 +35,12 @@ import { useAuthStore } from '../../stores/authStore'
 import { useThemeStore } from '../../stores/themeStore'
 import { authService } from '../../services/api'
 import { useTaskPermissions } from '../../hooks/useTaskPermissions'
+import { loaderByPath } from '../../routes/loaders'
+import { IconButton } from '../ui'
 import logoFullDark from '../../assets/logos/logo-full-dark.jpg'
 import logoFullLight from '../../assets/logos/logo-full-light.png'
+import logoIconDark from '../../assets/logos/logo-icon-dark.jpg'
+import logoIconLight from '../../assets/logos/logo-icon-light.png'
 import PageSkeleton from '../common/PageSkeleton'
 import { RouteErrorBoundary } from '../common/ErrorBoundaries'
 import './MainLayout.css'
@@ -56,8 +60,34 @@ const { Text } = Typography
 // navigation moves into a slide-in Drawer.
 const MOBILE_QUERY = '(max-width: 768px)'
 
+const SIDEBAR_KEY = 'hermes-sidebar-collapsed'
+
 function MainLayout() {
-    const [collapsed, setCollapsed] = useState(false)
+    // Sprint 3: collapse tercihi persist (paket §3 Collapsed).
+    const [collapsed, setCollapsedState] = useState(() => {
+        try { return localStorage.getItem(SIDEBAR_KEY) === '1' } catch { return false }
+    })
+    const setCollapsed = (v) => {
+        setCollapsedState(v)
+        try { localStorage.setItem(SIDEBAR_KEY, v ? '1' : '0') } catch { /* yok say */ }
+    }
+    // Header scroll durumu (§4): icerik kayarken hafif elevation.
+    const [scrolled, setScrolled] = useState(false)
+    const contentRef = useRef(null)
+    // Offline banner (§9): sakin, toast-spam'siz.
+    const [offline, setOffline] = useState(
+        typeof navigator !== 'undefined' && navigator.onLine === false
+    )
+    useEffect(() => {
+        const on = () => setOffline(false)
+        const off = () => setOffline(true)
+        window.addEventListener('online', on)
+        window.addEventListener('offline', off)
+        return () => {
+            window.removeEventListener('online', on)
+            window.removeEventListener('offline', off)
+        }
+    }, [])
     // Mobile navigation drawer (sidebar replacement under 768px).
     const [mobileNavOpen, setMobileNavOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(
@@ -108,6 +138,36 @@ function MainLayout() {
         { key: '/work-lines', icon: <SettingOutlined />, label: 'Work Lines', perm: 'reference.manage' },
         { key: '/users', icon: <UserOutlined />, label: 'Users', perm: 'users.manage' },
     ].filter((i) => can(i.perm)).map(({ perm, ...i }) => i)
+
+    // Sprint 3 §10: drawer acikken arka plan scroll'u KILITLENIR ve
+    // kapaninca focus tetikleyiciye doner. AntD kendi kilidini gercek
+    // tarayicida uygular; burada acik ve ortamdan bagimsiz garanti
+    // veriyoruz (jsdom'da AntD hicbir sey yazmiyor — testle sabit).
+    const navTriggerRef = useRef(null)
+    useEffect(() => {
+        if (!mobileNavOpen) return undefined
+        const prev = document.body.style.overflow
+        // Ref cleanup'ta degismis olabilir — effect ICINDE yakalanir.
+        const trigger = navTriggerRef.current
+        document.body.style.overflow = 'hidden'
+        return () => {
+            document.body.style.overflow = prev
+            // Focus guvenli sekilde tetikleyiciye doner.
+            trigger?.focus?.()
+        }
+    }, [mobileNavOpen])
+
+    // Sprint 3 §7: nav uzerinde kisa pointer-intent sonrasi route
+    // CHUNK'i prefetch edilir (API verisi degil). Menu izin-filtreli
+    // oldugu icin izinsiz route prefetch'i yapisal olarak imkansiz.
+    const prefetchTimer = useRef(null)
+    const prefetchRoute = (key) => {
+        const loader = loaderByPath[key]
+        if (!loader) return
+        clearTimeout(prefetchTimer.current)
+        prefetchTimer.current = setTimeout(() => loader(), 65)
+    }
+    const cancelPrefetch = () => clearTimeout(prefetchTimer.current)
 
     // Menu items
     const menuItems = [
@@ -167,6 +227,25 @@ function MainLayout() {
         ] : []),
     ]
 
+    // Prefetch: her nav ogesinin label'i hover/focus intent tasir.
+    const withPrefetch = (items) => items.map((it) => {
+        if (it?.children) return { ...it, children: withPrefetch(it.children) }
+        if (!it?.key?.startsWith('/')) return it
+        return {
+            ...it,
+            label: (
+                <span
+                    onMouseEnter={() => prefetchRoute(it.key)}
+                    onMouseLeave={cancelPrefetch}
+                    onFocus={() => prefetchRoute(it.key)}
+                >
+                    {it.label}
+                </span>
+            ),
+        }
+    })
+    const navItems = withPrefetch(menuItems)
+
     // User dropdown menu
     const userMenuItems = [
 
@@ -222,14 +301,27 @@ function MainLayout() {
                 collapsible
                 collapsed={collapsed}
                 width={240}
+                collapsedWidth={72}
                 className="main-sider"
             >
-                {/* Logo - Tıklandığında anasayfaya yönlendirir */}
-                <div className="logo-container" onClick={() => navigate('/time-entry')}>
+                {/* Logo: expanded'da wordmark, collapsed'da ikon —
+                    crossfade; distortion yok (§3 Collapsed). */}
+                <div
+                    className="logo-container"
+                    onClick={() => navigate('/time-entry')}
+                    role="link"
+                    aria-label="Ana sayfa"
+                >
                     <img
                         src={isLight ? logoFullLight : logoFullDark}
                         alt="Hermes"
-                        className="sidebar-logo"
+                        className="sidebar-logo sidebar-logo--full"
+                    />
+                    <img
+                        src={isLight ? logoIconLight : logoIconDark}
+                        alt=""
+                        aria-hidden="true"
+                        className="sidebar-logo sidebar-logo--icon"
                     />
                 </div>
 
@@ -238,7 +330,7 @@ function MainLayout() {
                     theme={isLight ? 'light' : 'dark'}
                     mode="inline"
                     selectedKeys={[selectedKey]}
-                    items={menuItems}
+                    items={navItems}
                     onClick={handleMenuClick}
                     className="main-menu"
                 />
@@ -255,10 +347,11 @@ function MainLayout() {
             {/* Main Content Area */}
             <Layout>
                 {/* Header */}
-                <Header className="main-header">
+                <Header className="main-header" data-scrolled={scrolled || undefined}>
                     {/* Collapse Button — on mobile the Sider is hidden, so
                         the same button opens the navigation drawer instead. */}
                     <Button
+                        ref={navTriggerRef}
                         type="text"
                         icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                         onClick={() =>
@@ -275,14 +368,17 @@ function MainLayout() {
                     {/* Spacer */}
                     <div style={{ flex: 1 }} />
 
-                    {/* Light / Dark toggle — sliding switch, default dark */}
-                    <Switch
-                        className="theme-switch"
-                        checked={isLight}
-                        onChange={toggleTheme}
-                        checkedChildren={<BulbFilled />}
-                        unCheckedChildren={<BulbOutlined />}
-                        aria-label="Toggle light and dark mode"
+                    {/* Tema: kisa ikon crossfade/rotate'li buton (§11);
+                        reduced-motion global kuralla durur. */}
+                    <IconButton
+                        label={isLight ? 'Koyu temaya geç' : 'Açık temaya geç'}
+                        icon={
+                            <span className="theme-toggle-icon" data-mode={isLight ? 'light' : 'dark'}>
+                                {isLight ? <BulbFilled /> : <BulbOutlined />}
+                            </span>
+                        }
+                        onClick={toggleTheme}
+                        className="theme-toggle-btn"
                     />
 
                     {/* User Dropdown */}
@@ -307,10 +403,24 @@ function MainLayout() {
                     degisir (full-screen spinner yasak, §5.3). Route
                     hatasi kurtarilabilir boundary'de kalir, shell'i
                     dusurmez; route degisince kendini sifirlar. */}
-                <Content className="main-content">
+                {offline && (
+                    <div className="offline-banner" role="status">
+                        Bağlantı koptu — yeniden bağlanınca kaldığınız yerden devam eder.
+                    </div>
+                )}
+                <Content
+                    className="main-content"
+                    ref={contentRef}
+                    onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 4)}
+                >
                     <RouteErrorBoundary resetKey={location.pathname}>
                         <Suspense fallback={<PageSkeleton />}>
-                            <Outlet />
+                            {/* Sprint 3 §6: route girisi opacity+4px, ~200ms;
+                                shell sabit; reduced-motion'da global kural
+                                animasyonu pratik sifira indirir. */}
+                            <div className="route-transition" key={location.pathname}>
+                                <Outlet />
+                            </div>
                         </Suspense>
                     </RouteErrorBoundary>
                 </Content>
@@ -344,7 +454,7 @@ function MainLayout() {
                     theme={isLight ? 'light' : 'dark'}
                     mode="inline"
                     selectedKeys={[selectedKey]}
-                    items={menuItems}
+                    items={navItems}
                     onClick={handleMenuClick}
                     className="main-menu"
                 />
