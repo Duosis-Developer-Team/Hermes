@@ -79,6 +79,13 @@ export function TaskDueBadge({ task, compact = false }) {
     )
 }
 
+const STATUS_LABELS = {
+    pending: 'Beklemede',
+    in_progress: 'Devam ediyor',
+    completed: 'Tamamlandı',
+    rejected: 'Reddedildi',
+}
+
 function TaskCard({
     task,
     userMap = {},
@@ -148,8 +155,12 @@ function TaskCard({
         ? ` · ${task.sub_project_name}`
         : ''
 
-    // Completed tasks are not selectable for copy/paste — drop the
-    // selected styling and the C badge regardless of stale state.
+    // Sprint 5 bulgusu: task copy/paste UYGULANMAMIS. `isSelected`
+    // hicbir cagiran tarafindan gecilmiyordu (hep false), dolayisiyla
+    // "C" rozeti ve "Press Ctrl+C to copy" ipucu ASLA render olmuyordu —
+    // yaniltici olu iskele kaldirildi. Prop, ileride gercek clipboard
+    // baglandiginda kullanilmak uzere sozlesmede KALIR ve secili
+    // gorunumu completed disinda uygular.
     const showAsSelected = isSelected && !isCompleted
     const className =
         'task-card' +
@@ -162,9 +173,20 @@ function TaskCard({
             className={className}
             role="button"
             tabIndex={0}
+            aria-pressed={showAsSelected}
+            /* Durum yalniz RENKLE anlatilmaz: erisilebilir ad basligi,
+               durumu ve atananı tasir (§12 erisilebilirlik). */
+            aria-label={
+                `${task.task_code ? task.task_code + ' ' : ''}${task.title}`
+                + ` — ${STATUS_LABELS[task.status] || task.status || 'bilinmiyor'}`
+                + (task.priority ? `, öncelik ${task.priority}` : '')
+            }
             onClick={handleBodyClick}
             onKeyDown={(e) => {
-                if (e.key !== 'Enter') return
+                // Native buton semantigi: Enter VE Space (Space sayfayi
+                // kaydirmamali).
+                if (e.key !== 'Enter' && e.key !== ' ') return
+                e.preventDefault()
                 onSelect?.(task)
             }}
         >
@@ -280,14 +302,6 @@ function TaskCard({
                 )}
             </div>
 
-            {showAsSelected && (
-                <div
-                    className="task-card-selected-badge"
-                    title="Press Ctrl+C to copy"
-                >
-                    C
-                </div>
-            )}
         </div>
     )
 }

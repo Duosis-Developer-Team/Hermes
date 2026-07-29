@@ -8,12 +8,8 @@
  */
 
 import { useState, useMemo, useEffect } from 'react'
-import { Button, Modal, message, Avatar, Tooltip, Select } from 'antd'
+import { Button, Modal, message } from 'antd'
 import {
-    LeftOutlined,
-    RightOutlined,
-    UserOutlined,
-    FileExcelOutlined,
     ExclamationCircleOutlined,
     DeleteOutlined
 } from '@ant-design/icons'
@@ -24,7 +20,6 @@ import 'dayjs/locale/en'
 
 import WeeklyListView from '../components/time-entry/WeeklyListView'
 import TimesheetView from '../components/time-entry/TimesheetView'
-import SubmitPeriodDropdown from '../components/time-entry/SubmitPeriodDropdown'
 import LogTimeModal from '../components/modals/LogTimeModal'
 import PlanTimeModal from '../components/modals/PlanTimeModal'
 import SubmitPeriodModal from '../components/modals/SubmitPeriodModal'
@@ -33,6 +28,8 @@ import { useAuthStore } from '../stores/authStore'
 import {
     buildPastePayload, isEditableTarget, makeClipboardSnapshot,
 } from '../features/time-entry/model/clipboard'
+import WeekNavigator from '../features/time-entry/components/WeekNavigator'
+import TimeEntryHeader from '../features/time-entry/components/TimeEntryHeader'
 import './TimeEntryPage.css'
 
 dayjs.extend(isoWeek)
@@ -493,138 +490,44 @@ function TimeEntryPage() {
     // ==========================================================================
     return (
         <div className="time-entry-page">
-            {/* Header */}
-            {/* User Header (Jira Tempo Style) */}
-            <div className="user-header">
-                <div className="user-header-left">
-                    <Avatar
-                        size={40}
-                        icon={<UserOutlined />}
-                        className="user-avatar-large"
-                    />
-                    {/* Admin User Selector */}
-                    {canWorklogsAdmin ? (
-                        <div className="admin-user-selector">
-                            <Select
-                                className="user-select-dropdown"
-                                value={targetUserId}
-                                onChange={setSelectedUserId}
-                                style={{ width: 200, fontSize: '1.2rem', fontWeight: 600 }}
-                                bordered={false}
-                                loading={!usersList.length}
-                                options={[
-                                    { value: user.id, label: user.full_name || 'Me' }, // Always show self first
-                                    ...usersList
-                                        .filter(u => u.id !== user.id)
-                                        .map(u => ({ value: u.id, label: u.full_name }))
-                                ]}
-                                showSearch
-                                filterOption={(input, option) =>
-                                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                                }
-                            />
-                        </div>
-                    ) : (
-                        <h1 className="user-header-name">{user?.full_name || 'User'}</h1>
-                    )}
-                </div>
+            {/* Kullanici basligi + ust aksiyonlar — Sprint 5: ayri
+                bilesen (markup/handler sozlesmesi ayni). */}
+            <TimeEntryHeader
+                canSelectUser={canWorklogsAdmin}
+                targetUserId={targetUserId}
+                usersList={usersList}
+                onSelectUser={setSelectedUserId}
+                displayName={user?.full_name || user?.email}
+                exportLoading={exportLoading}
+                onExport={handleExportExcel}
+                periods={periodStatus ? [{
+                    id: 'current',
+                    name: 'Current Period',
+                    status: periodStatus.status,
+                    statusColor: periodStatus.status === 'OPEN' ? 'blue' : 'orange',
+                    startDate: dayjs(periodStatus.period_start),
+                    endDate: dayjs(periodStatus.period_end),
+                    hoursLogged: periodStatus.logged_hours,
+                    hoursRequired: periodStatus.required_hours,
+                    behind: Math.max(0, periodStatus.required_hours - periodStatus.logged_hours),
+                }] : []}
+                onOpenSubmitModal={(period) => {
+                    setSelectedPeriod(period)
+                    setSubmitModalOpen(true)
+                }}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+            />
 
-                <div className="user-header-right">
-                    <Tooltip title="Export CSV">
-                        <Button
-                            type="primary"
-                            shape="circle"
-                            icon={<FileExcelOutlined />}
-                            loading={exportLoading}
-                            onClick={handleExportExcel}
-                            style={{
-                                background: '#16a34a !important',
-                                borderColor: '#16a34a !important',
-                                backgroundColor: '#16a34a', // Fallback
-                                marginRight: 8,
-                                minWidth: 32,
-                                width: 32,
-                                height: 32,
-                                padding: 0,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}
-                        />
-                    </Tooltip>
-
-                    <SubmitPeriodDropdown
-                        periods={periodStatus ? [{
-                            id: 'current',
-                            name: 'Current Period',
-                            status: periodStatus.status,
-                            statusColor: periodStatus.status === 'OPEN' ? 'blue' : 'orange',
-                            startDate: dayjs(periodStatus.period_start),
-                            endDate: dayjs(periodStatus.period_end),
-                            hoursLogged: periodStatus.logged_hours,
-                            hoursRequired: periodStatus.required_hours,
-                            behind: Math.max(0, periodStatus.required_hours - periodStatus.logged_hours)
-                        }] : []}
-                        onOpenSubmitModal={(period) => {
-                            setSelectedPeriod(period)
-                            setSubmitModalOpen(true)
-                        }}
-                    />
-
-                    <div className="view-switchers">
-                        <span
-                            className={`view-link ${viewMode === 'list' ? 'active' : ''}`}
-                            onClick={() => setViewMode('list')}
-                        >
-                            List
-                        </span>
-                        <span
-                            className={`view-link ${viewMode === 'timesheet' ? 'active' : ''}`}
-                            onClick={() => setViewMode('timesheet')}
-                        >
-                            Timesheet
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Week Navigation Header */}
-            <div className="time-entry-header">
-                <div className="header-left">
-                    {/* Week Navigation */}
-                    <div className="week-nav">
-                        <Button
-                            type="text"
-                            icon={<LeftOutlined />}
-                            onClick={goToPreviousWeek}
-                            className="nav-btn"
-                        />
-                        <span className="week-label">{weekLabel}</span>
-                        <Button
-                            type="text"
-                            icon={<RightOutlined />}
-                            onClick={goToNextWeek}
-                            className="nav-btn"
-                        />
-                    </div>
-                    <Button onClick={goToToday} className="today-btn">
-                        Today
-                    </Button>
-                </div>
-
-                <div className="header-right">
-                    {/* Week Summary */}
-                    <div className="week-summary">
-                        <span className="summary-label">Week:</span>
-                        <span className="summary-hours">{formatDuration(weekTotalHours)}</span>
-                        <span className="summary-target">/ 40h</span>
-                    </div>
-
-                    {/* View Toggle - Removed in favor of top header switchers */}
-                    {/* Kept commented out just in case or we can remove completely */}
-                    {/* <Segmented ... /> */}
-                </div>
-            </div>
+            {/* Week Navigation + haftalik ozet — Sprint 5: ayri bilesen
+                (davranis/markup ayni). */}
+            <WeekNavigator
+                weekLabel={weekLabel}
+                totalLabel={formatDuration(weekTotalHours)}
+                onPrevious={goToPreviousWeek}
+                onNext={goToNextWeek}
+                onToday={goToToday}
+            />
 
             {/* Content */}
             <div className="time-entry-content">

@@ -314,3 +314,19 @@
     /* darker green hover */
     border-color: #15803d !important;
 }
+/* Sprint 5: export butonu — inline ham hex + React tarafindan zaten
+   yok sayilan olu oncelik bayragi yerine
+   semantic success tokeni (tek kaynak, iki temada dogru kontrast). */
+.te-export-btn.ant-btn-primary {
+    background: var(--h-success);
+    border-color: var(--h-success);
+    color: var(--h-on-brand);
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    margin-right: var(--h-space-2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}

@@ -51,6 +51,9 @@ import {
 } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
+import {
+    resolveViewedUserId, selectTaskPermissions,
+} from '../features/tasks/model/permissions'
 import { typeMeta } from '../utils/workItemType'
 import TasksListView from '../components/tasks/TasksListView'
 import TasksBoardView from '../components/tasks/TasksBoardView'
@@ -205,14 +208,17 @@ function TasksPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    // Permission scope follows the active work-item type: issues +
-    // suggestions share the 'issue' scope, separate from tasks.
-    const permScope = taskType === 'task' ? 'task' : 'issue'
-    const activePerms = scopes?.[permScope] || scopes?.task || {}
-    const canAccessScope = !!activePerms.canAccess
-    const canAssignScope = !!activePerms.canAssign
-    const assignableUserIds = activePerms.assignableUserIds || []
-    const assignableGroupIds = activePerms.assignableGroupIds || []
+    // Sprint 5 §4: TUM izin kararlari TEK selector katmanindan gelir
+    // (features/tasks/model/permissions). Fail-closed: scopes henuz
+    // yuklenmemisken her sey false — yetkisiz kontrol flash etmez.
+    // UI gizleme backend authorization'in YERINE GECMEZ.
+    const taskPerms = selectTaskPermissions({
+        scopes, isTaskAdmin, canAccessAny, taskType, createType,
+    })
+    const canAccessScope = taskPerms.canAccessScope
+    const canAssignScope = taskPerms.canAssignTasks
+    const assignableUserIds = taskPerms.assignableUserIds
+    const assignableGroupIds = taskPerms.assignableGroupIds
 
     // Scope-pill labels follow the active kind: "My Tasks" / "My Issues" /
     // "My Suggestions". "Assigned by Me" is the same for all kinds.
@@ -225,11 +231,13 @@ function TasksPage() {
     // "+" menu choice), which can differ from the kind currently viewed —
     // e.g. "+ New Issue" while on the Tasks tab. Assignee options are
     // hierarchy-driven, so this must follow createType, not taskType.
-    const createScope = createType === 'task' ? 'task' : 'issue'
-    const createPerms = scopes?.[createScope] || {}
+    const createPerms = {
+        assignableUserIds: taskPerms.createAssignableUserIds,
+        assignableGroupIds: taskPerms.createAssignableGroupIds,
+    }
 
     // "Assigned by Me" requires assign permission (in the active scope) or admin.
-    const canViewAssignedByMe = isTaskAdmin || canAssignScope
+    const canViewAssignedByMe = taskPerms.canViewAssignedByMe
     // If permission is revoked while the page is open and the user is on
     // the Assigned-by-Me scope, fall back to My Tasks.
     if (taskScope === 'assigned-by-me' && !canViewAssignedByMe) {
@@ -238,7 +246,9 @@ function TasksPage() {
 
     // Effective viewed user. Non-admin path always resolves to current user
     // regardless of the selector — backend also coerces, defense in depth.
-    const viewedUserId = isTaskAdmin ? selectedUserId || user?.id : user?.id
+    const viewedUserId = resolveViewedUserId({
+        isTaskAdmin, selectedUserId, currentUserId: user?.id,
+    })
 
     const weekEnd = weekStart.endOf('isoWeek')
 

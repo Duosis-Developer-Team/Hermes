@@ -14,7 +14,11 @@
     padding: 10px 12px 10px 10px;
     position: relative;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition:
+        transform var(--h-motion-fast) var(--h-ease-standard),
+        border-color var(--h-motion-fast) var(--h-ease-standard),
+        box-shadow var(--h-motion-fast) var(--h-ease-standard),
+        background var(--h-motion-fast) var(--h-ease-standard);
     margin-bottom: 8px;
     display: flex;
     gap: 10px;
@@ -245,4 +249,39 @@
 }
 .task-card.task-card-type-suggestion {
     border-left: 3px solid #a855f7;
+}
+
+/* =============================================================================
+   SPRINT 5 — TaskCard etkilesim ve erisilebilirlik katmani (token tabanli)
+   ========================================================================== */
+.task-card:hover {
+    transform: translateY(-1px);
+    border-color: var(--h-border-default);
+    box-shadow: var(--h-shadow-hover);
+}
+.task-card:active { transform: scale(0.985); }
+.task-card:focus-visible {
+    outline: 2px solid var(--h-focus);
+    outline-offset: 2px;
+}
+.task-card-selected {
+    border-color: var(--h-brand);
+    background: var(--h-bg-selected);
+}
+
+/* Tarih/sure degerleri hizali taransin (§8). */
+.task-card-dates,
+.task-card-due,
+.task-card-meta time { font-variant-numeric: tabular-nums; }
+
+/* Dokunmatik: aksiyonlar YALNIZ hover ile erisilebilir kalmaz (§8/§12). */
+@media (hover: none) {
+    .task-card-actions { opacity: 1; }
+}
+
+/* Reduced-motion: hover kalkisi ve press olceklemesi kalkar (global kural
+   sureleri sifirlar; burada donusum de notrlenir). */
+@media (prefers-reduced-motion: reduce) {
+    .task-card:hover,
+    .task-card:active { transform: none; }
 }
