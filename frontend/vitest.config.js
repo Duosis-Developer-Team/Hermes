@@ -16,5 +16,10 @@ export default defineConfig({
         ],
         setupFiles: ['./src/test/setup.js'],
         globals: true,
+        // Sprint 5C: Tasks entegrasyon testleri GERCEK sayfayi mount eder
+        // (board + list + 4 modal + AntD Select portallari). jsdom'da tek
+        // kullanici etkilesimi ~1 sn surer; 5 sn'lik varsayilan gercek bir
+        // takilmayi degil, sadece agirligi olcuyordu.
+        testTimeout: 20000,
     },
 })

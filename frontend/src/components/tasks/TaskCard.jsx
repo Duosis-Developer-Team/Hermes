@@ -251,11 +251,16 @@ function TaskCard({
 
             {/* Hover actions — top-right, mirrors WorkLogCard exactly */}
             <div className="task-card-actions">
+                {/* Ikon-only butonlar: tooltip ERISILEBILIR AD DEGILDIR
+                    (§8) — her biri gorev basligini tasiyan acik bir
+                    aria-label alir, boylece ekran okuyucu hangi karta ait
+                    oldugunu bilir ve klavye kullanicisi ayirt edebilir. */}
                 {isCompleted && onOpenLogTime && (
                     <Tooltip title="Log Time">
                         <button
                             type="button"
                             className="task-card-action-btn"
+                            aria-label={`Log time — ${task.title}`}
                             onClick={handleLogTimeClick}
                         >
                             <FieldTimeOutlined />
@@ -266,6 +271,7 @@ function TaskCard({
                     <button
                         type="button"
                         className="task-card-action-btn"
+                        aria-label={`Review ${typeMeta(task.task_type).singular} — ${task.title}`}
                         onClick={handleReviewClick}
                     >
                         <EyeOutlined />
@@ -277,6 +283,7 @@ function TaskCard({
                             <button
                                 type="button"
                                 className="task-card-action-btn"
+                                aria-label={`Edit — ${task.title}`}
                                 onClick={handleEditClick}
                             >
                                 <EditOutlined />
@@ -286,6 +293,7 @@ function TaskCard({
                             <button
                                 type="button"
                                 className="task-card-action-btn delete"
+                                aria-label={`Delete — ${task.title}`}
                                 onClick={handleDeleteClick}
                             >
                                 <DeleteOutlined />

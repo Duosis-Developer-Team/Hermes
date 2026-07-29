@@ -289,7 +289,8 @@ function TaskReviewModal({
                 footer={null}
                 width={560}
                 className="task-review-modal"
-                destroyOnClose
+                /* AntD 5.x: destroyOnClose deprecated → destroyOnHidden. */
+                destroyOnHidden
             >
                 <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     {isCompleted && (

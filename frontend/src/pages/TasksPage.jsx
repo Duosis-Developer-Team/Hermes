@@ -562,7 +562,10 @@ function TasksPage() {
         },
         onError: (err) => {
             message.error(err?.response?.data?.detail || 'Failed to delete task.')
-            setDeletingTask(null)
+            // Onay modali ACIK kalir: silme basarisiz oldugunda diyalogu
+            // kapatmak, kullaniciya "silindi" izlenimi veren kurtarilamaz
+            // bir durumdu (§7 recoverable error). Tekrar denemek icin
+            // kart yeniden bulunmak zorunda kalmaz.
         },
     })
 
@@ -674,20 +677,27 @@ function TasksPage() {
 
     const handleSubmitTask = async (payload, meta = {}) => {
         // meta = { taskId? , isBulk? , isGroup? } — modal decides which.
-        if (meta.taskId) {
-            await updateMutation.mutateAsync({ id: meta.taskId, data: payload })
-            return
+        // Hatanin SAHIBI mutation'in onError'idir (sunucu mesajini o
+        // gosterir) ve modal onSuccess disinda KAPANMAZ. Reddi buradan
+        // disari birakmak, AntD Form'un onFinish'ini await etmemesi
+        // yuzunden "Uncaught (in promise)" uretiyordu — kullaniciya
+        // ek bilgi vermeyen, konsolu kirleten bir sizinti.
+        try {
+            if (meta.taskId) {
+                await updateMutation.mutateAsync({
+                    id: meta.taskId, data: payload,
+                })
+            } else if (meta.isBulk) {
+                // Multi-select create (users and/or groups) → bulk endpoint.
+                await createBulkMutation.mutateAsync(payload)
+            } else if (meta.isGroup) {
+                await createGroupMutation.mutateAsync(payload)
+            } else {
+                await createMutation.mutateAsync(payload)
+            }
+        } catch {
+            // toast zaten gosterildi; form ve modal yerinde kalir
         }
-        if (meta.isBulk) {
-            // Multi-select create (users and/or groups) → bulk endpoint.
-            await createBulkMutation.mutateAsync(payload)
-            return
-        }
-        if (meta.isGroup) {
-            await createGroupMutation.mutateAsync(payload)
-            return
-        }
-        await createMutation.mutateAsync(payload)
     }
 
     // Runs the actual status change. Callers must confirm first (the
@@ -835,12 +845,16 @@ function TasksPage() {
                         <Select
                             value={selectedUserId || user?.id}
                             onChange={setSelectedUserId}
+                            /* Etiketsiz kontrol: erisilebilir ad acikca
+                               verilir (§8). */
+                            aria-label="Viewed user"
                             style={{
                                 width: 220,
                                 fontSize: '1.2rem',
                                 fontWeight: 600,
                             }}
-                            bordered={false}
+                            /* AntD 5.x: bordered deprecated → variant. */
+                            variant="borderless"
                             loading={!allActiveUsers.length}
                             options={userSelectorOptions}
                             showSearch
@@ -1163,6 +1177,9 @@ function TasksPage() {
                     <FilterOutlined style={{ color: 'var(--c-text-muted)' }} />
                     <Select
                         allowClear
+                        /* Etiketsiz filtre kontrolleri (§8): gorsel bir
+                           <label> yok, erisilebilir ad acikca verilir. */
+                        aria-label="Filter by status"
                         placeholder="Status"
                         style={{ width: 140 }}
                         value={statusFilter}
@@ -1171,6 +1188,7 @@ function TasksPage() {
                     />
                     <Select
                         allowClear
+                        aria-label="Filter by priority"
                         placeholder="Priority"
                         style={{ width: 140 }}
                         value={priorityFilter}
@@ -1180,6 +1198,7 @@ function TasksPage() {
                     <Select
                         allowClear
                         showSearch
+                        aria-label="Filter by customer"
                         placeholder="Customer"
                         style={{ width: 200 }}
                         value={customerFilter}
@@ -1194,6 +1213,7 @@ function TasksPage() {
                     <Select
                         allowClear
                         showSearch
+                        aria-label="Filter by project"
                         placeholder="Project"
                         style={{ width: 200 }}
                         value={projectFilter}
@@ -1211,6 +1231,7 @@ function TasksPage() {
                     <Select
                         allowClear
                         showSearch
+                        aria-label="Filter by sub project"
                         placeholder="Sub Project"
                         style={{ width: 200 }}
                         value={subProjectFilter}
@@ -1412,6 +1433,20 @@ function TasksPage() {
                 width={420}
                 centered
                 closable={false}
+                /* Diyalog ADI (§8): bu modal ozel gorunumlu — gorunur
+                   baslik govdede duruyor. rc-dialog aria-labelledby'yi
+                   YALNIZCA `title` verilince yazar ve dialog element'ine
+                   aria-* gecirmez; ad, gorsel olarak gizli bir baslikla
+                   verilir. Tasarim degismez. */
+                title={
+                    <span className="h-sr-only">
+                        Delete {typeMeta(deletingTask?.task_type).singular}
+                    </span>
+                }
+                classNames={{ header: 'h-sr-only' }}
+                /* Pending'te kapanma kilidi (§7). */
+                maskClosable={!deleteMutation.isPending}
+                keyboard={!deleteMutation.isPending}
                 styles={{
                     content: {
                         background: 'var(--c-surface-2)',
@@ -1490,9 +1525,13 @@ function TasksPage() {
                             type="primary"
                             danger
                             icon={<DeleteOutlined />}
-                            onClick={() =>
-                                deletingTask && deleteMutation.mutate(deletingTask.id)
-                            }
+                            onClick={() => {
+                                // Cift silme kilidi KAYNAKTA.
+                                if (deleteMutation.isPending) return
+                                if (deletingTask) {
+                                    deleteMutation.mutate(deletingTask.id)
+                                }
+                            }}
                             loading={deleteMutation.isPending}
                             style={{ borderRadius: 8 }}
                         >

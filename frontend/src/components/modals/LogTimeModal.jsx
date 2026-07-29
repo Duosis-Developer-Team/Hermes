@@ -159,7 +159,6 @@ function LogTimeModal({
     // Editing modunda form'u doldur
     useEffect(() => {
         if (editingLog && open) {
-            console.log('Editing Log Data:', editingLog) // DEBUG
             setSelectedCustomerId(editingLog.customer_id)
             setSelectedProjectId(editingLog.project_id)
             setStep(2)
@@ -267,59 +266,71 @@ function LogTimeModal({
 
     // Form submit
     const handleSubmit = async () => {
+        // Cift gonderim kilidi KAYNAKTA (butonun loading render'ini
+        // beklemeden).
+        if (loading) return
+        // 1) Validasyon — form hatasi KULLANICI hatasidir, burada
+        //    bildirilir.
+        let values
         try {
-            const values = await form.validateFields()
-            const data = {
-                customer_id: selectedCustomerId,
-                project_id: selectedProjectId || values.project_id,
-                work_type_id: values.work_type_id,
-                activity_type_id: values.activity_type_id || null,
-                platform_id: values.platform_id || null,
-                work_line_id: values.work_line_id || null,
-                date_worked: values.date_worked.format('YYYY-MM-DD'),
-                duration_hours: values.duration_hours,
-                description: values.description,
-            }
-
-            await onSubmit?.(data, editingLog?.id)
-
-            if (logAnother) {
-                // Kayıt başarılı — formu sıfırla ama süre ve açıklama hariç her şeyi koru.
-                const currentValues = form.getFieldsValue()
-
-                form.resetFields()
-                form.setFieldsValue({
-                    project_id: selectedProjectId,
-                    customer_id: selectedCustomerId,
-                    date_worked: dayjs(currentValues.date_worked),
-                    work_type_id: currentValues.work_type_id,
-                    activity_type_id: currentValues.activity_type_id,
-                    platform_id: currentValues.platform_id,
-                    work_line_id: currentValues.work_line_id,
-                    duration_hours: null,
-                    description: undefined
-                })
-
-                // Eğer edit modundaylaysak, parent'a edit modundan çıkmasını söyle (artık yeni kayıt girilecek)
-                if (editingLog && onLogAnother) {
-                    onLogAnother()
-                }
-
-                message.success('Saved! Ready for next entry.')
-            } else {
-                handleClose()
-            }
+            values = await form.validateFields()
         } catch (error) {
-            console.error('Submit Error:', error)
-            // AntD validasyon hataları
             if (error?.errorFields) {
                 message.error('Please fill in all required fields.')
             } else {
-                // Runtime JS hataları veya validation-dışı hatalar (örneğin date format vs)
                 message.error('Unexpected error: ' + (error?.message || ''))
             }
-            // API hataları mutation'ın onError'ı tarafından gösterildi,
-            // modal açık kalır ve kullanıcı tekrar deneyebilir.
+            return
+        }
+
+        const data = {
+            customer_id: selectedCustomerId,
+            project_id: selectedProjectId || values.project_id,
+            work_type_id: values.work_type_id,
+            activity_type_id: values.activity_type_id || null,
+            platform_id: values.platform_id || null,
+            work_line_id: values.work_line_id || null,
+            date_worked: values.date_worked.format('YYYY-MM-DD'),
+            duration_hours: values.duration_hours,
+            description: values.description,
+        }
+
+        // 2) Gonderim — API hatasinin SAHIBI cagiranin mutation'idir
+        //    (onError zaten sunucunun mesajini gosterir). Burada IKINCI
+        //    bir toast ATILMAZ ve console.error YAZILMAZ: modal ACIK
+        //    kalir, girilen degerler KORUNUR, kullanici tekrar dener.
+        try {
+            await onSubmit?.(data, editingLog?.id)
+        } catch {
+            return
+        }
+
+        // 3) Basari — YALNIZCA burada modal kapanir/temizlenir.
+        if (logAnother) {
+            // Kayıt başarılı — formu sıfırla ama süre ve açıklama hariç her şeyi koru.
+            const currentValues = form.getFieldsValue()
+
+            form.resetFields()
+            form.setFieldsValue({
+                project_id: selectedProjectId,
+                customer_id: selectedCustomerId,
+                date_worked: dayjs(currentValues.date_worked),
+                work_type_id: currentValues.work_type_id,
+                activity_type_id: currentValues.activity_type_id,
+                platform_id: currentValues.platform_id,
+                work_line_id: currentValues.work_line_id,
+                duration_hours: null,
+                description: undefined
+            })
+
+            // Eğer edit modundaylaysak, parent'a edit modundan çıkmasını söyle (artık yeni kayıt girilecek)
+            if (editingLog && onLogAnother) {
+                onLogAnother()
+            }
+
+            message.success('Saved! Ready for next entry.')
+        } else {
+            handleClose()
         }
     }
 
@@ -334,8 +345,19 @@ function LogTimeModal({
             footer={null}
             width={480}
             className="log-time-modal"
-            title={null}
-            closable={true}
+            /* Diyalog ADI (§8): rc-dialog aria-labelledby'yi YALNIZCA
+               title verildiginde yazar ve dialog element'ine aria-*
+               gecirmez. Baslik gorsel olarak gizlenir — modalin kendi
+               adim basliklari zaten gorunur durumda, ikinci bir baslik
+               cubugu tasarimi degistirirdi. */
+            title={<span className="h-sr-only">Log time</span>}
+            classNames={{ header: 'h-sr-only' }}
+            /* Pending'te yanlislikla kapanma KILITLI (§7 UX sozlesmesi):
+               kayit sunucuya giderken Escape/mask/X ile cikip "kaydoldu
+               mu?" belirsizligi yaratilamaz. */
+            closable={!loading}
+            maskClosable={!loading}
+            keyboard={!loading}
         >
             <Form form={form} layout="vertical" className="log-time-form">
                 {/* Step 0: Customer Selection */}

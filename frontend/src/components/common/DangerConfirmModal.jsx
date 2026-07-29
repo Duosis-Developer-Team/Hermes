@@ -54,7 +54,18 @@ function DangerConfirmModal({
             width={420}
             centered
             closable={false}
-            destroyOnClose
+            /* Diyalog ADI (§8): baslik zaten govdede GORUNUR bicimde
+               duruyor; rc-dialog ad icin `title` bekledigi ve dialog
+               element'ine aria-* gecirmedigi icin ayni metin gorsel
+               olarak gizli bir baslik olarak da verilir. Tasarim
+               degismez, diyalogun adi olur. */
+            title={<span className="h-sr-only">{title}</span>}
+            classNames={{ header: 'h-sr-only' }}
+            /* Pending'te kapanma kilidi (§7). */
+            maskClosable={!loading}
+            keyboard={!loading}
+            /* AntD 5.x: destroyOnClose deprecated → destroyOnHidden. */
+            destroyOnHidden
             styles={{
                 content: {
                     background: 'var(--c-surface-2)',

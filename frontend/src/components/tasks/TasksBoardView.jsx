@@ -269,6 +269,10 @@ function TasksBoardView({
                             type="primary"
                             icon={<PlusOutlined />}
                             className="tasks-board-new-btn"
+                            /* Ikon + "New" metni AntD'nin ikon
+                               aria-label'lariyla karisik bir ad
+                               uretiyordu; acik ad verilir (§8). */
+                            aria-label="New work item"
                         >
                             New <DownOutlined />
                         </Button>

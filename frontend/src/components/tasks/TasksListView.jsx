@@ -248,12 +248,16 @@ function TasksListView({
                     isAdmin || record.assigner_user_id === currentUserId
                 const isCompleted = record.status === 'completed'
                 return (
+                    /* Aksiyon adlari Board'daki TaskCard ile BIREBIR ayni
+                       kaliptadir — ayni gorev iki gorunumde ayni
+                       erisilebilir ada sahiptir (§8 ikon-only kurali). */
                     <Space>
                         {isCompleted && onOpenLogTime && (
                             <Tooltip title="Log Time">
                                 <Button
                                     size="small"
                                     icon={<FieldTimeOutlined />}
+                                    aria-label={`Log time — ${record.title}`}
                                     onClick={() => onOpenLogTime(record)}
                                 />
                             </Tooltip>
@@ -262,6 +266,7 @@ function TasksListView({
                             <Button
                                 size="small"
                                 icon={<EyeOutlined />}
+                                aria-label={`Review ${typeMeta(record.task_type).singular} — ${record.title}`}
                                 onClick={() => onOpenReview?.(record)}
                             />
                         </Tooltip>
@@ -271,6 +276,7 @@ function TasksListView({
                                     <Button
                                         size="small"
                                         icon={<EditOutlined />}
+                                        aria-label={`Edit — ${record.title}`}
                                         onClick={() => onEditTask?.(record)}
                                     />
                                 </Tooltip>
@@ -279,6 +285,7 @@ function TasksListView({
                                         size="small"
                                         danger
                                         icon={<DeleteOutlined />}
+                                        aria-label={`Delete — ${record.title}`}
                                         onClick={() => onDeleteTask?.(record)}
                                     />
                                 </Tooltip>

@@ -248,6 +248,11 @@ function CreateTaskModal({
     }
 
     const handleFinish = async (values) => {
+        // Cift gonderim kilidi KAYNAKTA: OK butonunun loading durumu bir
+        // render gecikmesiyle olusuyor ve o pencerede ikinci tiklama
+        // ikinci mutation aciyordu. Guard'i form seviyesine almak yarisi
+        // tamamen kapatir.
+        if (loading) return
         const scheduled = values.scheduled_date?.format('YYYY-MM-DD')
         const due = values.due_date ? values.due_date.format('YYYY-MM-DD') : null
         if (due && scheduled && due < scheduled) {
@@ -340,7 +345,14 @@ function CreateTaskModal({
             confirmLoading={loading}
             onOk={() => form.submit()}
             width={640}
-            destroyOnClose
+            /* Pending'te kapanma kilidi (§7): kayit sunucuya giderken
+               mask/Escape/X ile cikip yarim durum birakilamaz. */
+            closable={!loading}
+            maskClosable={!loading}
+            keyboard={!loading}
+            /* AntD 5.x: destroyOnClose deprecated → destroyOnHidden.
+               Eski ad her render'da console.error uretiyordu. */
+            destroyOnHidden
         >
             <Form
                 form={form}
@@ -409,7 +421,8 @@ function CreateTaskModal({
                         loading={subProjectsLoading}
                         optionFilterProp="label"
                         options={subProjects.map((s) => ({ value: s.id, label: s.name }))}
-                        dropdownRender={(menu) => (
+                        /* AntD 5.x: dropdownRender deprecated → popupRender. */
+                        popupRender={(menu) => (
                             <>
                                 {menu}
                                 <Divider style={{ margin: '8px 0' }} />
@@ -486,6 +499,10 @@ function CreateTaskModal({
                     rules={[
                         {
                             required: true,
+                            // Yalnizca bosluk = BOS. required tek basina
+                            // "   " degerini gecerli sayiyor, payload'a
+                            // trim'lenmis bos baslik gidiyordu.
+                            whitespace: true,
                             message: `${typeLabel} title is required.`,
                         },
                         { max: 255, message: 'Max 255 characters.' },

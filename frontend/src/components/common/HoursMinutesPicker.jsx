@@ -163,6 +163,9 @@ function HoursMinutesPicker({ value, onChange, disabled = false, size = 'default
                         className="hmp-input"
                         type="text"
                         inputMode="numeric"
+                        /* Ozel kontrol: Form.Item label'i bu input'a
+                           baglanmaz — erisilebilir ad acikca verilir. */
+                        aria-label="Hours"
                         value={hoursRaw}
                         onChange={handleHoursChange}
                         onBlur={handleHoursBlur}
@@ -192,6 +195,7 @@ function HoursMinutesPicker({ value, onChange, disabled = false, size = 'default
                         className={`hmp-input${minutesError ? ' hmp-input-error' : ''}`}
                         type="text"
                         inputMode="numeric"
+                        aria-label="Minutes"
                         value={minutesRaw}
                         onChange={handleMinutesChange}
                         onBlur={handleMinutesBlur}

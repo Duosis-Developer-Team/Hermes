@@ -827,3 +827,25 @@ body {
 .ant-modal-body .ant-descriptions-item-content {
   color: var(--text-primary) !important;
 }
+
+/* =============================================================================
+   Erisilebilirlik yardimcisi (Sprint 5C) — gercekten GLOBAL primitive
+   =============================================================================
+   Gorsel olarak gizli, erisilebilirlik agacinda GORUNUR. Kullanim yeri:
+   ozel gorunume sahip modallara diyalog ADI vermek. rc-dialog yalnizca
+   `title` verildiginde `aria-labelledby` yazar ve dialog element'ine
+   aria-* prop'u GECIRMEZ — bu yuzden ad, gorsel olarak gizlenmis bir
+   baslikla verilir. `display:none` KULLANILMAZ: gizlenen icerik
+   erisilebilir ad hesabindan da duserdi.
+   ========================================================================== */
+.h-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
