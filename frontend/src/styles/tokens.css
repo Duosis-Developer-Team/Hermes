@@ -1,0 +1,168 @@
+/* =============================================================================
+   HERMES DESIGN SYSTEM V2 — TOKEN KATMANI (Sprint 2, CTO paketi §3-8)
+   =============================================================================
+   TEK kaynak. Bilesenler YALNIZCA semantic token tuketir (--h-*);
+   primitive palet (--hp-*) yalniz bu dosyada semantic'e baglanir,
+   bilesen kodunda ASLA dogrudan kullanilmaz.
+
+   Tema modeli: koyu VARSAYILANDIR (mevcut Hermes kimligi);
+   [data-theme="light"] semantic katmani yeniden baglar. Tema attribute'u
+   ilk paint ONCESI themeStore tarafindan yazilir (flash yok).
+   ========================================================================== */
+
+:root {
+  /* --- 3.1 Primitive palette (ton adlari; kullanim amaci TASIMAZ) --- */
+  --hp-neutral-0: #FFFFFF;
+  --hp-neutral-50: #F5F7FA;
+  --hp-neutral-100: #F0F3F7;
+  --hp-neutral-200: #E8EDF3;
+  --hp-neutral-300: #D9E1EA;
+  --hp-neutral-400: #A8B3C2;
+  --hp-neutral-500: #78869A;
+  --hp-neutral-600: #526174;
+  --hp-neutral-700: #2A3747;
+  --hp-neutral-750: #202B38;
+  --hp-neutral-800: #1B2532;
+  --hp-neutral-850: #161D27;
+  --hp-neutral-900: #111720;
+  --hp-neutral-950: #0B0F14;
+  --hp-neutral-ink: #17202D;
+
+  --hp-blue-300: #85B8FF;
+  --hp-blue-400: #579DFF;
+  --hp-blue-500: #388BFF;
+  --hp-blue-600: #0C66E4;
+  --hp-blue-700: #0055CC;
+
+  --hp-green-300: #4BCE97;
+  --hp-green-500: #22A06B;
+  --hp-green-700: #1F845A;
+
+  --hp-amber-300: #F5CD47;
+  --hp-amber-500: #E2B203;
+  --hp-amber-700: #946F00;
+
+  --hp-red-300: #F87168;
+  --hp-red-500: #E2483D;
+  --hp-red-700: #C9372C;
+
+  --hp-purple-300: #B8ACF6;
+  --hp-purple-500: #8F7EE7;
+
+  /* --- 5. Spacing (4px taban) --- */
+  --h-space-0: 0;
+  --h-space-1: 4px;
+  --h-space-2: 8px;
+  --h-space-3: 12px;
+  --h-space-4: 16px;
+  --h-space-5: 20px;
+  --h-space-6: 24px;
+  --h-space-8: 32px;
+  --h-space-10: 40px;
+  --h-space-12: 48px;
+
+  /* --- 5. Radius --- */
+  --h-radius-control: 6px;
+  --h-radius-standard: 8px;
+  --h-radius-card: 10px;
+  --h-radius-modal: 14px;
+  --h-radius-pill: 999px; /* yalniz badge/chip */
+
+  /* --- 6. Typography --- */
+  --h-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --h-font-body: 14px;
+  --h-font-meta: 12px;
+  --h-font-label: 12.5px;
+  --h-font-section-title: 17px;
+  --h-font-page-title: 24px;
+  --h-line-body: 1.5;
+
+  /* --- 7. Motion --- */
+  --h-motion-instant: 100ms;
+  --h-motion-fast: 160ms;
+  --h-motion-base: 220ms;
+  --h-motion-layout: 280ms;
+  --h-motion-reveal: 400ms;
+  --h-ease-standard: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --h-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --h-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* --- 8. Z-index sozlesmesi (rastgele 9999 YASAK) --- */
+  --h-z-base: 0;
+  --h-z-sticky: 10;
+  --h-z-shell: 100;
+  --h-z-dropdown: 400;
+  --h-z-drawer: 600;
+  --h-z-modal: 700;
+  --h-z-toast: 900;
+
+  /* --- 3.2 Semantic tokens — DARK (varsayilan Hermes kimligi) --- */
+  --h-bg-canvas: var(--hp-neutral-950);
+  --h-bg-surface: var(--hp-neutral-900);
+  --h-bg-elevated: var(--hp-neutral-850);
+  --h-bg-hover: var(--hp-neutral-800);
+  --h-bg-selected: rgba(87, 157, 255, 0.16); /* brand dusuk alpha */
+  --h-text-primary: #F4F7FB;
+  --h-text-secondary: var(--hp-neutral-400);
+  --h-text-muted: var(--hp-neutral-500);
+  --h-border-subtle: var(--hp-neutral-750);
+  --h-border-default: var(--hp-neutral-700);
+  --h-border-strong: #3B4A5E;
+  --h-brand: var(--hp-blue-400);
+  --h-brand-hover: var(--hp-blue-300);
+  --h-brand-strong: var(--hp-blue-500);
+  --h-focus: var(--hp-blue-400);
+  --h-success: var(--hp-green-300);
+  --h-warning: var(--hp-amber-300);
+  --h-danger: var(--hp-red-300);
+  --h-info: var(--hp-blue-300);
+  --h-on-brand: var(--hp-neutral-ink); /* brand yuzeyi ustundeki metin */
+
+  /* --- Elevation (dark: shadow tek basina gorunmez — border sart) --- */
+  --h-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --h-shadow-dropdown: 0 6px 20px rgba(0, 0, 0, 0.45);
+  --h-shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.55);
+}
+
+/* --- 3.2 Semantic tokens — LIGHT ------------------------------------- */
+:root[data-theme='light'] {
+  --h-bg-canvas: var(--hp-neutral-50);
+  --h-bg-surface: var(--hp-neutral-0);
+  --h-bg-elevated: var(--hp-neutral-0);
+  --h-bg-hover: var(--hp-neutral-100);
+  --h-bg-selected: rgba(12, 102, 228, 0.10);
+  --h-text-primary: var(--hp-neutral-ink);
+  --h-text-secondary: var(--hp-neutral-600);
+  --h-text-muted: #7C8999;
+  --h-border-subtle: var(--hp-neutral-200);
+  --h-border-default: var(--hp-neutral-300);
+  --h-border-strong: #B9C6D3;
+  --h-brand: var(--hp-blue-600);
+  --h-brand-hover: var(--hp-blue-500);
+  --h-brand-strong: var(--hp-blue-700);
+  --h-focus: var(--hp-blue-600);
+  /* Semantic durumlar iki temada AYRI kontrast testi ister (§4) —
+     light'ta koyu tonlar kullanilir, ayni hex kopyalanmaz. */
+  --h-success: var(--hp-green-700);
+  --h-warning: var(--hp-amber-700);
+  --h-danger: var(--hp-red-700);
+  --h-info: var(--hp-blue-600);
+  --h-on-brand: var(--hp-neutral-0);
+
+  --h-shadow-hover: 0 2px 8px rgba(23, 32, 45, 0.08);
+  --h-shadow-dropdown: 0 6px 20px rgba(23, 32, 45, 0.14);
+  --h-shadow-modal: 0 16px 48px rgba(23, 32, 45, 0.22);
+}
+
+/* --- 7. Reduced motion (paket sablonu; app'e scope'lu) ---------------- */
+@media (prefers-reduced-motion: reduce) {
+  #root *,
+  #root *::before,
+  #root *::after {
+    scroll-behavior: auto !important; /* token-sistem istisnasi: RM zorunlu */
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

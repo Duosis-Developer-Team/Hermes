@@ -15,6 +15,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { customerService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
+import { Page, PageHeader } from '../../components/ui'
 
 function CustomersPage() {
     const [form] = Form.useForm()
@@ -162,20 +163,21 @@ function CustomersPage() {
         },
     ]
 
+    // Sprint 2 PILOT 3 (admin tablo yuzeyi): sayfa iskeleti DS V2
+    // primitifleriyle — davranis/kolonlar/moduller AYNEN korundu.
     return (
-        <div className="customers-page fade-in">
-            <div className="page-header">
-                <h1>Customers</h1>
-                <p>Manage user accounts and organization details</p>
-            </div>
-
-            <Card
-                title={`📋 Customer List (${customers.length})`}
+        <Page className="customers-page fade-in">
+            <PageHeader
+                title="Customers"
+                subtitle="Manage user accounts and organization details"
                 extra={
                     <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
                         New Customer
                     </Button>
                 }
+            />
+            <Card
+                title={`📋 Customer List (${customers.length})`}
             >
                 <Table
                     dataSource={customers}
@@ -238,7 +240,7 @@ function CustomersPage() {
             />
 
 
-        </div>
+        </Page>
     )
 }
 

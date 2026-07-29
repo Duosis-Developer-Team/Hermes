@@ -47,13 +47,21 @@ const top20 = files.map((f) => [relative(FE, f), loc(f)])
 // --- desen sayaclari ------------------------------------------------------
 let inlineStyle = 0, importantCount = 0, transitionAll = 0, oldInvalidation = 0
 const hexColors = new Set()
+const debtHexColors = new Set() // token kaynagi HARIC (DS V2 sonrasi borc)
+// DS V2 (Sprint 2): tek tasarlanmis token kaynagi — buradaki hex'ler
+// sistemin kendisidir, borc DEGILdir; yine de toplam ayri raporlanir.
+const TOKEN_SOURCES = ['src/styles/tokens.css', 'src/theme/antdTheme.js']
 for (const f of files) {
   const s = read(f)
   inlineStyle += (s.match(/style=\{\{/g) || []).length
   importantCount += (s.match(/!important/g) || []).length
   transitionAll += (s.match(/transition:\s*all/g) || []).length
   oldInvalidation += (s.match(/invalidateQueries\(\s*\[/g) || []).length
-  for (const m of s.match(/#[0-9a-fA-F]{3,8}\b/g) || []) hexColors.add(m.toLowerCase())
+  const isTokenSource = TOKEN_SOURCES.some((t) => f.endsWith(t))
+  for (const m of s.match(/#[0-9a-fA-F]{3,8}\b/g) || []) {
+    hexColors.add(m.toLowerCase())
+    if (!isTokenSource) debtHexColors.add(m.toLowerCase())
+  }
 }
 
 // --- route envanteri ------------------------------------------------------
@@ -125,7 +133,8 @@ P(`| Lazy route | ${lazyCount} (0 = tum route'lar statik import) |`)
 P(`| Inline style (style={{) | ${inlineStyle} |`)
 P(`| !important | ${importantCount} |`)
 P(`| transition: all | ${transitionAll} |`)
-P(`| Benzersiz ham hex renk | ${hexColors.size} |`)
+P(`| Benzersiz ham hex renk (toplam) | ${hexColors.size} |`)
+P(`| Benzersiz ham hex renk (TOKEN KAYNAGI HARIC = borc) | ${debtHexColors.size} |`)
 P(`| Eski dizi-bicimli invalidateQueries([...]) | ${oldInvalidation} |`)
 P(`| Test dosyasi | ${testFiles.length} |`)
 P(`| Dis host referansi (fonts/cdn) | ${externalRefs} adet / host'lar: ${[...externalHosts].sort().join(', ') || 'yok'} |`)

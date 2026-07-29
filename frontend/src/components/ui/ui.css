@@ -1,0 +1,170 @@
+/* =============================================================================
+   HERMES DS V2 - Primitive stilleri (Sprint 2 §10-11)
+   =============================================================================
+   YALNIZCA semantic token tuketir (--h-*). Ham hex/px shadow YASAK.
+   Hover/press animasyonlari transform+opacity/border/box-shadow — layout
+   olusturan ozellikler animate EDILMEZ. Reduced-motion tokens.css'teki
+   global kuralla durur. !important YOK.
+   ========================================================================== */
+
+/* --- Surface / Card --------------------------------------------------- */
+.h-surface {
+  background: var(--h-bg-surface);
+  border: 1px solid var(--h-border-subtle);
+  border-radius: var(--h-radius-standard);
+  color: var(--h-text-primary);
+}
+.h-surface--elevated { background: var(--h-bg-elevated); }
+
+.h-card {
+  background: var(--h-bg-surface);
+  border: 1px solid var(--h-border-subtle);
+  border-radius: var(--h-radius-card);
+  padding: var(--h-space-4);
+  color: var(--h-text-primary);
+}
+.h-card--interactive {
+  cursor: pointer;
+  transition:
+    transform var(--h-motion-fast) var(--h-ease-standard),
+    border-color var(--h-motion-fast) var(--h-ease-standard),
+    box-shadow var(--h-motion-fast) var(--h-ease-standard);
+}
+.h-card--interactive:hover {
+  transform: translateY(-1px);
+  border-color: var(--h-border-default);
+  box-shadow: var(--h-shadow-hover);
+}
+.h-card--interactive:active { transform: scale(0.985); }
+.h-card--selected {
+  border-color: var(--h-brand);
+  background: var(--h-bg-selected);
+}
+
+/* --- Page / PageHeader / Toolbar -------------------------------------- */
+.h-page { padding: var(--h-space-6); }
+.h-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--h-space-4);
+  margin-bottom: var(--h-space-5);
+}
+.h-page-header__title {
+  margin: 0;
+  font-size: var(--h-font-page-title);
+  font-weight: 680;
+  color: var(--h-text-primary);
+  line-height: 1.25;
+}
+.h-page-header__subtitle {
+  margin: var(--h-space-1) 0 0;
+  font-size: var(--h-font-body);
+  color: var(--h-text-secondary);
+}
+.h-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--h-space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--h-space-4);
+}
+.h-toolbar__spacer { flex: 1; }
+
+/* --- Stack / Inline ---------------------------------------------------- */
+.h-stack { display: flex; flex-direction: column; }
+.h-inline { display: flex; align-items: center; flex-wrap: wrap; }
+
+/* --- StatusBadge -------------------------------------------------------- */
+.h-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--h-space-1);
+  padding: 2px var(--h-space-2);
+  border-radius: var(--h-radius-pill);
+  font-size: var(--h-font-meta);
+  font-weight: 600;
+  line-height: 1.6;
+  border: 1px solid transparent;
+}
+.h-badge--neutral {
+  color: var(--h-text-secondary);
+  background: var(--h-bg-hover);
+  border-color: var(--h-border-subtle);
+}
+.h-badge--success { color: var(--h-success); background: color-mix(in srgb, var(--h-success) 12%, transparent); }
+.h-badge--warning { color: var(--h-warning); background: color-mix(in srgb, var(--h-warning) 12%, transparent); }
+.h-badge--danger  { color: var(--h-danger);  background: color-mix(in srgb, var(--h-danger) 12%, transparent); }
+.h-badge--info    { color: var(--h-info);    background: color-mix(in srgb, var(--h-info) 12%, transparent); }
+.h-badge--brand   { color: var(--h-brand);   background: var(--h-bg-selected); }
+
+/* --- Metric ------------------------------------------------------------- */
+.h-metric { display: flex; flex-direction: column; gap: var(--h-space-1); }
+.h-metric__label {
+  font-size: var(--h-font-label);
+  font-weight: 600;
+  color: var(--h-text-secondary);
+}
+.h-metric__value {
+  font-size: 24px;
+  font-weight: 650;
+  color: var(--h-text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.h-metric__hint { font-size: var(--h-font-meta); color: var(--h-text-muted); }
+
+/* --- EmptyState / InlineError ------------------------------------------ */
+.h-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--h-space-2);
+  padding: var(--h-space-10) var(--h-space-6);
+  text-align: center;
+  color: var(--h-text-secondary);
+}
+.h-empty__title { font-weight: 600; color: var(--h-text-primary); }
+.h-inline-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--h-space-2);
+  padding: var(--h-space-2) var(--h-space-3);
+  border: 1px solid color-mix(in srgb, var(--h-danger) 40%, transparent);
+  border-radius: var(--h-radius-control);
+  background: color-mix(in srgb, var(--h-danger) 10%, transparent);
+  color: var(--h-danger);
+  font-size: var(--h-font-meta);
+}
+
+/* --- FilterChip --------------------------------------------------------- */
+.h-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--h-space-1);
+  padding: 3px var(--h-space-3);
+  border-radius: var(--h-radius-pill);
+  border: 1px solid var(--h-border-default);
+  background: transparent;
+  color: var(--h-text-secondary);
+  font-size: var(--h-font-label);
+  cursor: pointer;
+  transition:
+    border-color var(--h-motion-fast) var(--h-ease-standard),
+    background var(--h-motion-fast) var(--h-ease-standard),
+    color var(--h-motion-fast) var(--h-ease-standard);
+}
+.h-chip:hover { background: var(--h-bg-hover); color: var(--h-text-primary); }
+.h-chip:active { transform: scale(0.985); }
+.h-chip--active {
+  border-color: var(--h-brand);
+  background: var(--h-bg-selected);
+  color: var(--h-brand);
+}
+
+/* --- Odak halkasi (tum interaktif primitifler) ------------------------- */
+.h-chip:focus-visible,
+.h-card--interactive:focus-visible {
+  outline: 2px solid var(--h-focus);
+  outline-offset: 2px;
+}

@@ -1,3 +1,5 @@
+/* Sprint 2 pilot: shell degiskenleri DS V2 semantic tokenlarina
+   baglandi (legacy --bg-*/--N* aliaslari yerine --h-*). */
 /**
  * =============================================================================
  * HERMES PLATFORM - Main Layout Styles
@@ -16,8 +18,8 @@
    ========================================================================== */
 
 .main-sider {
-    background: var(--N800) !important;
-    border-right: 1px solid var(--border-default);
+    background: var(--h-bg-surface) !important;
+    border-right: 1px solid var(--h-border-default);
     position: fixed !important;
     left: 0;
     top: 0;
@@ -37,9 +39,9 @@
     align-items: center;
     justify-content: center;
     padding: 12px 16px;
-    border-bottom: 1px solid var(--border-default);
+    border-bottom: 1px solid var(--h-border-default);
     cursor: pointer;
-    transition: opacity var(--transition-fast);
+    transition: opacity var(--h-motion-fast) var(--h-ease-standard);
 }
 
 .logo-container:hover {
@@ -53,7 +55,7 @@
     height: 72px;
     width: 150px;
     object-fit: contain;
-    border-radius: var(--radius-sm);
+    border-radius: var(--h-radius-control);
 }
 
 /* Navigation Menu */
@@ -70,19 +72,19 @@
     line-height: 36px !important;
     margin: 2px 0 !important;
     padding: 0 12px !important;
-    border-radius: var(--radius-md) !important;
-    color: var(--text-secondary) !important;
-    transition: all var(--transition-fast);
+    border-radius: var(--h-radius-standard) !important;
+    color: var(--h-text-secondary) !important;
+    transition: all var(--h-motion-fast) var(--h-ease-standard);
 }
 
 .main-menu .ant-menu-item:hover {
-    color: var(--text-primary) !important;
-    background: var(--bg-tertiary) !important;
+    color: var(--h-text-primary) !important;
+    background: var(--h-bg-hover) !important;
 }
 
 .main-menu .ant-menu-item-selected {
-    background: var(--bg-tertiary) !important;
-    color: var(--text-primary) !important;
+    background: var(--h-bg-hover) !important;
+    color: var(--h-text-primary) !important;
     position: relative;
 }
 
@@ -94,7 +96,7 @@
     top: 6px;
     bottom: 6px;
     width: 3px;
-    background: var(--color-primary);
+    background: var(--h-brand);
     border-radius: 0 2px 2px 0;
 }
 
@@ -104,7 +106,7 @@
 
 /* Menu Group Title */
 .main-menu .ant-menu-item-group-title {
-    color: var(--text-muted) !important;
+    color: var(--h-text-muted) !important;
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.05em;
@@ -114,27 +116,27 @@
 
 /* Menu Divider */
 .main-menu .ant-menu-item-divider {
-    background: var(--border-default) !important;
+    background: var(--h-border-default) !important;
     margin: 8px 0 !important;
 }
 
 /* Sidebar Footer */
 .sidebar-footer {
     padding: 16px 20px;
-    border-top: 1px solid var(--border-default);
+    border-top: 1px solid var(--h-border-default);
     text-align: center;
-    background: var(--N800);
+    background: var(--h-bg-surface);
 }
 
 .copyright-text {
-    color: var(--text-secondary);
+    color: var(--h-text-secondary);
     font-size: 11px;
     font-weight: 500;
     margin-bottom: 2px;
 }
 
 .rights-text {
-    color: var(--text-muted);
+    color: var(--h-text-muted);
     font-size: 10px;
 }
 
@@ -143,13 +145,13 @@
    ========================================================================== */
 
 .main-header {
-    background: var(--bg-primary) !important;
+    background: var(--h-bg-canvas) !important;
     padding: 0 20px !important;
     height: 64px !important;
     line-height: 64px !important;
     display: flex;
     align-items: center;
-    border-bottom: 1px solid var(--border-default);
+    border-bottom: 1px solid var(--h-border-default);
     position: sticky;
     top: 0;
     z-index: 99;
@@ -164,14 +166,14 @@
     width: 32px !important;
     height: 32px !important;
     padding: 0 !important;
-    color: var(--text-secondary) !important;
+    color: var(--h-text-secondary) !important;
     font-size: 16px;
-    border-radius: var(--radius-md) !important;
+    border-radius: var(--h-radius-standard) !important;
 }
 
 .collapse-btn:hover {
-    color: var(--text-primary) !important;
-    background: var(--bg-tertiary) !important;
+    color: var(--h-text-primary) !important;
+    background: var(--h-bg-hover) !important;
 }
 
 /* Header Center Logo */
@@ -190,12 +192,12 @@
 .user-dropdown {
     cursor: pointer;
     padding: 6px 10px;
-    border-radius: var(--radius-md);
-    transition: background var(--transition-fast);
+    border-radius: var(--h-radius-standard);
+    transition: background var(--h-motion-fast) var(--h-ease-standard);
 }
 
 .user-dropdown:hover {
-    background: var(--bg-tertiary);
+    background: var(--h-bg-hover);
 }
 
 .user-info {
@@ -205,14 +207,14 @@
 }
 
 .user-name {
-    color: var(--text-primary) !important;
+    color: var(--h-text-primary) !important;
     font-weight: 500;
     font-size: 13px;
     line-height: 1.3;
 }
 
 .user-role {
-    color: var(--text-muted) !important;
+    color: var(--h-text-muted) !important;
     font-size: 11px;
     line-height: 1.3;
 }
@@ -225,8 +227,8 @@
     margin-left: 240px;
     padding: 24px;
     min-height: calc(100vh - 56px);
-    background: var(--bg-primary);
-    transition: margin-left var(--transition-normal);
+    background: var(--h-bg-canvas);
+    transition: margin-left var(--h-motion-base) var(--h-ease-standard);
 }
 
 /* Collapsed state */
@@ -265,7 +267,7 @@
 .mobile-nav-drawer .ant-drawer-body {
     display: flex;
     flex-direction: column;
-    background: var(--N800);
+    background: var(--h-bg-surface);
 }
 
 .mobile-nav-drawer .logo-container {

@@ -49,7 +49,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    background: #10b981;
+    background: var(--h-success);
     padding: 4px 8px;
     border-radius: 4px;
 }
@@ -103,12 +103,12 @@
 
 .worklog-action-btn.delete:hover {
     background: rgba(255, 77, 79, 0.3);
-    color: #ff4d4f;
+    color: var(--h-danger);
 }
 
 /* ── Copy-Paste: selected state ─────────────────────────────────────────── */
 .worklog-card-selected {
-    border: 2px solid #4a7cff;
+    border: 2px solid var(--h-brand);
     background: rgba(74, 124, 255, 0.1);
     box-shadow: 0 0 0 1px rgba(74, 124, 255, 0.25);
 }
@@ -124,11 +124,11 @@
     left: 6px;
     width: 16px;
     height: 16px;
-    background: #4a7cff;
+    background: var(--h-brand);
     border-radius: 3px;
     font-size: 9px;
     font-weight: 700;
-    color: #fff;
+    color: var(--h-on-brand);
     display: flex;
     align-items: center;
     justify-content: center;

@@ -34,8 +34,14 @@ beforeEach((ctx) => {
         (...args) => {
             orig(...args)
             const text = String(args[0] ?? '')
-            // Boundary testleri bilerek hata loglar — isaretli mesaj muaf.
-            if (!text.includes('[hermes-boundary]')) {
+            // Muaflar: (1) boundary testleri bilerek loglar; (2) jsdom'un
+            // "Not implemented" ortam gurultusu (orn. AntD motion'in
+            // pseudo-element getComputedStyle cagrisi) uygulama hatasi
+            // degildir. Geri kalan her console.error testi KIRAR.
+            if (
+                !text.includes('[hermes-boundary]')
+                && !text.includes('Not implemented:')
+            ) {
                 throw new Error('console.error test icinde cagrildi: ' + text)
             }
         }
