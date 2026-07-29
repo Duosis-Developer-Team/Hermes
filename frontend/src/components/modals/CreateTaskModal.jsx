@@ -55,7 +55,6 @@ function CreateTaskModal({
     // for all three — only the title label + stored type differ.
     taskType = 'task',
     assignableUserIds = [],
-    isAdmin = false,
     loading = false,
 }) {
     const TYPE_LABEL = { task: 'Task', issue: 'Issue', suggestion: 'Suggestion' }

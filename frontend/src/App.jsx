@@ -6,11 +6,12 @@
  * =============================================================================
  */
 
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Spin } from 'antd'
 import { useAuthStore } from './stores/authStore'
 import { authService, rbacService } from './services/api'
+import { AppErrorBoundary } from './components/common/ErrorBoundaries'
 
 /**
  * Centered loader used in place of `return null` while auth + task
@@ -37,26 +38,30 @@ function CenteredLoader() {
 // Layouts
 import MainLayout from './components/layout/MainLayout'
 
-// Pages
-import LoginPage from './pages/LoginPage'
-import AuthCallbackPage from './pages/AuthCallbackPage'
-import DashboardPage from './pages/DashboardPage'
-import TimeEntryPage from './pages/TimeEntryPage'
-import CustomersPage from './pages/admin/CustomersPage'
-import ProjectsPage from './pages/admin/ProjectsPage'
-import WorkTypesPage from './pages/admin/WorkTypesPage'
-import UsersPage from './pages/admin/UsersPage'
-import ActivityTypesPage from './pages/ActivityTypesPage'
-import PlatformsPage from './pages/PlatformsPage'
-import WorkLinesPage from './pages/WorkLinesPage'
-import BillableHoursPage from './pages/BillableHoursPage'
-import ReportsPage from './pages/ReportsPage'
-import ContractStatusPage from './pages/admin/ContractStatusPage'
-import TasksPage from './pages/TasksPage'
-import TaskManagementPage from './pages/admin/TaskManagementPage'
-import ApiManagementPage from './pages/admin/ApiManagementPage'
-import DeveloperPortalPage from './pages/developer/DeveloperPortalPage'
-import MeetingsPage from './pages/MeetingsPage'
+// Pages — Sprint 1: route-based code splitting. Statik import YOK;
+// her sayfa kendi chunk'inda, loader'lar src/routes/loaders.js'te
+// (ayni loader ileride prefetch icin yeniden kullanilir).
+import { routeLoaders } from './routes/loaders'
+
+const LoginPage = lazy(routeLoaders.login)
+const AuthCallbackPage = lazy(routeLoaders.authCallback)
+const DashboardPage = lazy(routeLoaders.dashboard)
+const TimeEntryPage = lazy(routeLoaders.timeEntry)
+const CustomersPage = lazy(routeLoaders.customers)
+const ProjectsPage = lazy(routeLoaders.projects)
+const WorkTypesPage = lazy(routeLoaders.workTypes)
+const UsersPage = lazy(routeLoaders.users)
+const ActivityTypesPage = lazy(routeLoaders.activityTypes)
+const PlatformsPage = lazy(routeLoaders.platforms)
+const WorkLinesPage = lazy(routeLoaders.workLines)
+const BillableHoursPage = lazy(routeLoaders.billableHours)
+const ReportsPage = lazy(routeLoaders.reports)
+const ContractStatusPage = lazy(routeLoaders.contracts)
+const TasksPage = lazy(routeLoaders.tasks)
+const TaskManagementPage = lazy(routeLoaders.taskManagement)
+const ApiManagementPage = lazy(routeLoaders.apiManagement)
+const DeveloperPortalPage = lazy(routeLoaders.developerPortal)
+const MeetingsPage = lazy(routeLoaders.meetings)
 import { useTaskPermissions } from './hooks/useTaskPermissions'
 
 /**
@@ -163,6 +168,8 @@ function App() {
     if (!sessionChecked) return <CenteredLoader />
 
     return (
+        <AppErrorBoundary>
+        <Suspense fallback={<CenteredLoader />}>
         <Routes>
             {/* Public Routes */}
             <Route
@@ -347,6 +354,8 @@ function App() {
             {/* 404 - Redirect to home */}
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
+        </AppErrorBoundary>
     )
 }
 

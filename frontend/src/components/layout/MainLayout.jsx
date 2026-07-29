@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { Suspense } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { Drawer, Layout, Menu, Avatar, Dropdown, Space, Typography, Button, Switch } from 'antd'
 import {
@@ -36,6 +37,8 @@ import { authService } from '../../services/api'
 import { useTaskPermissions } from '../../hooks/useTaskPermissions'
 import logoFullDark from '../../assets/logos/logo-full-dark.jpg'
 import logoFullLight from '../../assets/logos/logo-full-light.png'
+import PageSkeleton from '../common/PageSkeleton'
+import { RouteErrorBoundary } from '../common/ErrorBoundaries'
 import './MainLayout.css'
 
 const { Header, Sider, Content } = Layout
@@ -85,7 +88,7 @@ function MainLayout() {
     // icinde gorunur oge kaldiysa render edilir. can() fail-closed:
     // izinler yuklenene dek yonetim menusu gorunmez.
     const can = useAuthStore((s) => s.can)
-    const permissions = useAuthStore((s) => s.permissions) // re-render tetikleyici
+    useAuthStore((s) => s.permissions) // re-render tetikleyici
 
     const managementItems = [
         { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard', perm: 'reports.view' },
@@ -299,9 +302,17 @@ function MainLayout() {
                     </Dropdown>
                 </Header>
 
-                {/* Page Content */}
+                {/* Page Content — Sprint 1: route chunk'i yuklenirken
+                    SHELL AYAKTA KALIR; icerik alani sayfa iskeletiyle
+                    degisir (full-screen spinner yasak, §5.3). Route
+                    hatasi kurtarilabilir boundary'de kalir, shell'i
+                    dusurmez; route degisince kendini sifirlar. */}
                 <Content className="main-content">
-                    <Outlet />
+                    <RouteErrorBoundary resetKey={location.pathname}>
+                        <Suspense fallback={<PageSkeleton />}>
+                            <Outlet />
+                        </Suspense>
+                    </RouteErrorBoundary>
                 </Content>
             </Layout>
 

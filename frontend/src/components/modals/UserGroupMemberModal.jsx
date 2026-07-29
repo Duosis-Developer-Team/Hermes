@@ -96,7 +96,6 @@ function UserGroupMemberModal({
     }
 
     const noCandidates = !isEditing && candidateUsers.length === 0
-    const okText = isEditing
         ? 'Save Changes'
         : `Add Member${
               !isEditing && form.getFieldValue?.('user_ids')?.length > 1 ? 's' : ''

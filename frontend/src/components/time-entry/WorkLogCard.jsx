@@ -8,7 +8,7 @@
  * =============================================================================
  */
 
-import { Tag, Tooltip } from 'antd'
+import { Tooltip } from 'antd'
 import { CheckSquareOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import './WorkLogCard.css'
 
@@ -29,7 +29,6 @@ function WorkLogCard({ workLog, onEdit, onDelete, isSelected = false, onSelect }
         customer_code,
         description,
         duration_hours,
-        work_type_name
     } = workLog
 
     // Issue key gösterimi (müşteri kodu veya kısaltma)

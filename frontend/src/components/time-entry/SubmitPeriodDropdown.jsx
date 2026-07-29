@@ -21,9 +21,7 @@ function formatDuration(decimal) {
 }
 
 function SubmitPeriodDropdown({
-    currentPeriod,
     periods = [],
-    onSubmitPeriod,
     onOpenSubmitModal
 }) {
     const [open, setOpen] = useState(false)

@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import {
     Card, Table, Button, Space, Modal, Form, Input, Select,
-    message, Typography, Switch, Tag, InputNumber
+    message, Switch, Tag, InputNumber
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, WarningOutlined, ClockCircleOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -18,7 +18,6 @@ import { projectService, customerService, workLogService } from '../../services/
 const HOURS_PER_DAY = 8
 import DeleteModal from '../../components/common/DeleteModal'
 
-const { Title, Text } = Typography
 
 function ProjectsPage() {
     const [form] = Form.useForm()
@@ -49,7 +48,7 @@ function ProjectsPage() {
         onSuccess: () => {
             message.success('Project created')
             handleCloseModal()
-            queryClient.invalidateQueries(['projects'])
+            queryClient.invalidateQueries({ queryKey: ['projects'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'An error occurred'),
     })
@@ -59,7 +58,7 @@ function ProjectsPage() {
         onSuccess: () => {
             message.success('Project updated')
             handleCloseModal()
-            queryClient.invalidateQueries(['projects'])
+            queryClient.invalidateQueries({ queryKey: ['projects'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'An error occurred'),
     })
@@ -69,7 +68,7 @@ function ProjectsPage() {
         onSuccess: () => {
             message.success('Project archived (soft deleted)')
             handleDeleteCancel()
-            queryClient.invalidateQueries(['projects'])
+            queryClient.invalidateQueries({ queryKey: ['projects'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Error archiving project'),
     })
@@ -79,7 +78,7 @@ function ProjectsPage() {
         onSuccess: () => {
             message.success({ content: 'Project permanently deleted', style: { marginTop: '10vh' } })
             handleDeleteCancel()
-            queryClient.invalidateQueries(['projects'])
+            queryClient.invalidateQueries({ queryKey: ['projects'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Unable to delete (Constraint Error). Try archiving instead.'),
     })

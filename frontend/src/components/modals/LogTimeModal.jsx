@@ -13,10 +13,7 @@ import {
     Button, Checkbox, message
 } from 'antd'
 import {
-    ClockCircleOutlined,
-    SearchOutlined,
     ArrowLeftOutlined,
-    WarningOutlined
 } from '@ant-design/icons'
 import HoursMinutesPicker from '../common/HoursMinutesPicker'
 import { useQuery } from '@tanstack/react-query'
@@ -100,7 +97,6 @@ function LogTimeModal({
     const [step, setStep] = useState(0) // 0: Customer, 1: Project, 2: Form
     const [selectedCustomerId, setSelectedCustomerId] = useState(null)
     const [selectedProjectId, setSelectedProjectId] = useState(null)
-    const [issueSearch, setIssueSearch] = useState('')
     const [logAnother, setLogAnother] = useState(false)
 
     // API Queries - sadece modal açıkken çalışsın
@@ -145,9 +141,6 @@ function LogTimeModal({
         ? allProjects.filter(p => p.customer_id === selectedCustomerId)
         : []
 
-    // Continue button state
-    const canProceed = selectedCustomerId && selectedProjectId
-
     // Proje seçildiğinde
     const handleProjectSelect = (projectId) => {
         setSelectedProjectId(projectId)
@@ -162,12 +155,6 @@ function LogTimeModal({
     // Step navigation
     const nextStep = () => setStep(prev => prev + 1)
     const prevStep = () => setStep(prev => prev - 1)
-
-    const handleProceed = () => {
-        if (canProceed) {
-            setStep(2)
-        }
-    }
 
     // Editing modunda form'u doldur
     useEffect(() => {
@@ -270,14 +257,6 @@ function LogTimeModal({
     }
 
     // Issue seçildiğinde
-    const handleIssueSelect = (issue) => {
-        setSelectedCustomerId(issue.customer_id)
-        setSelectedProjectId(issue.id)
-        form.setFieldValue('project_id', issue.id)
-        form.setFieldValue('customer_id', issue.customer_id)
-        setStep(2)
-    }
-
     // Geri dön
     const handleBack = () => {
         // If in form (step 2)

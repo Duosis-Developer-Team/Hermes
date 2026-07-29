@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import {
     Card, Table, Button, Space, Modal, Form, Input,
-    message, Typography, Switch, Tag
+    message, Switch, Tag
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -34,7 +34,7 @@ function CustomersPage() {
         onSuccess: () => {
             message.success('Customer created')
             handleCloseModal()
-            queryClient.invalidateQueries(['customers'])
+            queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'An error occurred'),
     })
@@ -44,7 +44,7 @@ function CustomersPage() {
         onSuccess: () => {
             message.success('Customer updated')
             handleCloseModal()
-            queryClient.invalidateQueries(['customers'])
+            queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'An error occurred'),
     })
@@ -54,7 +54,7 @@ function CustomersPage() {
         onSuccess: () => {
             message.success('Customer archived (soft deleted)')
             handleDeleteCancel()
-            queryClient.invalidateQueries(['customers'])
+            queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Error archiving customer'),
     })
@@ -64,7 +64,7 @@ function CustomersPage() {
         onSuccess: () => {
             message.success({ content: 'Customer permanently deleted', style: { marginTop: '10vh' } })
             handleDeleteCancel()
-            queryClient.invalidateQueries(['customers'])
+            queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Unable to delete (Constraint Error). Try archiving instead.'),
     })

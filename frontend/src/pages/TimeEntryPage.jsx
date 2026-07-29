@@ -8,19 +8,12 @@
  */
 
 import { useState, useMemo, useEffect } from 'react'
-import { Button, Modal, Space, message, Avatar, Tooltip, Select } from 'antd'
+import { Button, Modal, message, Avatar, Tooltip, Select } from 'antd'
 import {
-    UnorderedListOutlined,
-    TableOutlined,
     LeftOutlined,
     RightOutlined,
     UserOutlined,
-    AppstoreOutlined,
-    CalendarOutlined,
-    FilterOutlined,
-    SettingOutlined,
     FileExcelOutlined,
-    DownloadOutlined,
     ExclamationCircleOutlined,
     DeleteOutlined
 } from '@ant-design/icons'
@@ -103,7 +96,7 @@ function TimeEntryPage() {
     const targetUserId = selectedUserId || user?.id
 
     // Fetch Work Logs
-    const { data: workLogsResponse, isLoading } = useQuery({
+    const { data: workLogsResponse } = useQuery({
         queryKey: ['workLogs', weekStart.format('YYYY-MM-DD'), targetUserId],
         queryFn: () => workLogService.getMyLogs({
             start_date: weekStart.format('YYYY-MM-DD'),
@@ -117,7 +110,7 @@ function TimeEntryPage() {
     // Fetch Plan Times (haftalık takvim için)
     // Admin: getAll → oluşturduğu dahil tüm plan time'lar görünür
     // User: getMyPlanTimes → yalnızca kendisine atananlar
-    const { data: planTimesResponse, refetch: refetchPlanTimes } = useQuery({
+    const { data: planTimesResponse,  } = useQuery({
         queryKey: ['planTimes', weekStart.format('YYYY-MM-DD'), user?.id, canWorklogsAdmin],
         queryFn: () => canWorklogsAdmin
             ? planTimeService.getAll({
@@ -181,7 +174,7 @@ function TimeEntryPage() {
         mutationFn: (data) => workLogService.create(data, selectedUserId || null),
         onSuccess: () => {
             message.success('Time logged')
-            queryClient.invalidateQueries(['workLogs'])
+            queryClient.invalidateQueries({ queryKey: ['workLogs'] })
             refetchPeriodStatus()
         },
         onError: (error) => {
@@ -193,7 +186,7 @@ function TimeEntryPage() {
     const pasteMutation = useMutation({
         mutationFn: (data) => workLogService.create(data, selectedUserId || null),
         onSuccess: () => {
-            queryClient.invalidateQueries(['workLogs'])
+            queryClient.invalidateQueries({ queryKey: ['workLogs'] })
             refetchPeriodStatus()
         },
         onError: (error) => {
@@ -205,7 +198,7 @@ function TimeEntryPage() {
         mutationFn: ({ id, data }) => workLogService.update(id, data),
         onSuccess: () => {
             message.success('Time updated')
-            queryClient.invalidateQueries(['workLogs'])
+            queryClient.invalidateQueries({ queryKey: ['workLogs'] })
             refetchPeriodStatus()
         },
         onError: (error) => {
@@ -217,7 +210,7 @@ function TimeEntryPage() {
         mutationFn: workLogService.delete,
         onSuccess: () => {
             message.success('Log entry deleted successfully')
-            queryClient.invalidateQueries(['workLogs'])
+            queryClient.invalidateQueries({ queryKey: ['workLogs'] })
             setDeletingLog(null)
         },
         onError: (error) => {

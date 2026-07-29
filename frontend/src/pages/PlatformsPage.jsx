@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import {
     Table, Button, Modal, Form, Input, Switch, Space,
-    Popconfirm, message, Card, Tag
+    message, Card, Tag
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -35,7 +35,7 @@ function PlatformsPage() {
         mutationFn: platformService.create,
         onSuccess: () => {
             message.success('Platform created')
-            queryClient.invalidateQueries(['platforms'])
+            queryClient.invalidateQueries({ queryKey: ['platforms'] })
             handleCloseModal()
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Error'),
@@ -45,7 +45,7 @@ function PlatformsPage() {
         mutationFn: ({ id, data }) => platformService.update(id, data),
         onSuccess: () => {
             message.success('Platform updated')
-            queryClient.invalidateQueries(['platforms'])
+            queryClient.invalidateQueries({ queryKey: ['platforms'] })
             handleCloseModal()
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Error'),
@@ -56,7 +56,7 @@ function PlatformsPage() {
         onSuccess: () => {
             message.success('Platform archived (soft deleted)')
             handleDeleteCancel()
-            queryClient.invalidateQueries(['platforms'])
+            queryClient.invalidateQueries({ queryKey: ['platforms'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Error archiving platform'),
     })
@@ -66,7 +66,7 @@ function PlatformsPage() {
         onSuccess: () => {
             message.success({ content: 'Platform permanently deleted', style: { marginTop: '10vh' } })
             handleDeleteCancel()
-            queryClient.invalidateQueries(['platforms'])
+            queryClient.invalidateQueries({ queryKey: ['platforms'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Unable to delete (Constraint Error). Try archiving instead.'),
     })

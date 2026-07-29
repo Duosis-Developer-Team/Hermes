@@ -7,21 +7,18 @@
  */
 
 import { useState } from 'react'
-import { Card, Row, Col, Typography, DatePicker, Space, Statistic, Spin, Button } from 'antd'
+import { Card, Row, Col, Spin, Button } from 'antd'
 import {
-    ClockCircleOutlined, TeamOutlined, ProjectOutlined,
-    RiseOutlined, DashboardOutlined, LeftOutlined, RightOutlined
+    
+    LeftOutlined, RightOutlined
 } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import dayjs from 'dayjs'
 import { reportsService, authService } from '../services/api'
 
-const { Title, Text } = Typography
-const { RangePicker } = DatePicker
 
 // Chart colors - Jira palette
-const COLORS = ['#579DFF', '#6CC3E0', '#4BCE97', '#F5CD47', '#F87168', '#9F8FEF']
 
 // 0.75 → "0h 45m", 2.75 → "2h 45m", 2.0 → "2h"
 function formatDuration(decimal) {
@@ -55,12 +52,6 @@ function DashboardPage() {
         queryFn: () => authService.getUsers(),
     })
     const users = usersResponse.data || []
-
-    const handleDateChange = (dates) => {
-        if (dates) {
-            setDateRange(dates)
-        }
-    }
 
     // Debug logging
     if (data) {

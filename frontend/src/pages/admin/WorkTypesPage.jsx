@@ -7,13 +7,12 @@
  */
 
 import { useState } from 'react'
-import { Card, Table, Button, Space, Modal, Form, Input, message, Popconfirm, Typography, Switch, Tag } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, AppstoreOutlined } from '@ant-design/icons'
+import { Card, Table, Button, Space, Modal, Form, Input, message, Switch, Tag } from 'antd'
+import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { workTypeService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
 
-const { Title, Text } = Typography
 
 function WorkTypesPage() {
     const [form] = Form.useForm()
@@ -28,13 +27,13 @@ function WorkTypesPage() {
 
     const createMutation = useMutation({
         mutationFn: workTypeService.create,
-        onSuccess: () => { message.success('Work type created'); handleCloseModal(); queryClient.invalidateQueries(['workTypes']) },
+        onSuccess: () => { message.success('Work type created'); handleCloseModal(); queryClient.invalidateQueries({ queryKey: ['workTypes'] }) },
         onError: (err) => message.error(err.response?.data?.detail || 'Error'),
     })
 
     const updateMutation = useMutation({
         mutationFn: ({ id, data }) => workTypeService.update(id, data),
-        onSuccess: () => { message.success('Work type updated'); handleCloseModal(); queryClient.invalidateQueries(['workTypes']) },
+        onSuccess: () => { message.success('Work type updated'); handleCloseModal(); queryClient.invalidateQueries({ queryKey: ['workTypes'] }) },
         onError: (err) => message.error(err.response?.data?.detail || 'Error'),
     })
 
@@ -43,7 +42,7 @@ function WorkTypesPage() {
         onSuccess: () => {
             message.success('Work type archived (soft deleted)')
             handleDeleteCancel()
-            queryClient.invalidateQueries(['workTypes'])
+            queryClient.invalidateQueries({ queryKey: ['workTypes'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Error archiving work type'),
     })
@@ -53,7 +52,7 @@ function WorkTypesPage() {
         onSuccess: () => {
             message.success({ content: 'Work type permanently deleted', style: { marginTop: '10vh' } })
             handleDeleteCancel()
-            queryClient.invalidateQueries(['workTypes'])
+            queryClient.invalidateQueries({ queryKey: ['workTypes'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Unable to delete (Constraint Error). Try archiving instead.'),
     })

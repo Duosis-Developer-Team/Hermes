@@ -16,7 +16,7 @@
  */
 
 import { useState } from 'react'
-import { Card, Table, Button, Space, Modal, Form, Input, message, Select, Switch, Tag, Typography, Tabs } from 'antd'
+import { Card, Table, Button, Space, Modal, Form, Input, message, Select, Switch, Tag, Tabs } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, CrownOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authService, rbacService } from '../../services/api'
@@ -25,7 +25,6 @@ import UserGroupsTab from './UserGroupsTab'
 import RolesTab from './RolesTab'
 import './UsersPage.css'
 
-const { Text } = Typography
 
 function UsersTab() {
     const [form] = Form.useForm()

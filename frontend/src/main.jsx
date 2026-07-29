@@ -9,7 +9,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { ConfigProvider } from 'antd'
 import enUS from 'antd/locale/en_US'
 import dayjs from 'dayjs'
@@ -24,16 +24,8 @@ import './index.css'
 
 dayjs.locale('en')
 
-// React Query client
-const queryClient = new QueryClient({
-    defaultOptions: {
-        queries: {
-            staleTime: 5 * 60 * 1000, // 5 dakika
-            retry: 1,
-            refetchOnWindowFocus: false,
-        },
-    },
-})
+// React Query client — merkezi fabrika (Sprint 1): src/query/queryClient.js
+import { queryClient } from './query/queryClient'
 
 // Ant Design tema
 const theme = {

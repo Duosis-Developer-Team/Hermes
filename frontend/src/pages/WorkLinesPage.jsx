@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import {
     Table, Button, Modal, Form, Input, Switch, Space,
-    Popconfirm, message, Card, Tag
+    message, Card, Tag
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -35,7 +35,7 @@ function WorkLinesPage() {
         mutationFn: workLineService.create,
         onSuccess: () => {
             message.success('Work line created')
-            queryClient.invalidateQueries(['workLines'])
+            queryClient.invalidateQueries({ queryKey: ['workLines'] })
             handleCloseModal()
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Error'),
@@ -45,7 +45,7 @@ function WorkLinesPage() {
         mutationFn: ({ id, data }) => workLineService.update(id, data),
         onSuccess: () => {
             message.success('Work line updated')
-            queryClient.invalidateQueries(['workLines'])
+            queryClient.invalidateQueries({ queryKey: ['workLines'] })
             handleCloseModal()
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Error'),
@@ -56,7 +56,7 @@ function WorkLinesPage() {
         onSuccess: () => {
             message.success('Work line archived (soft deleted)')
             handleDeleteCancel()
-            queryClient.invalidateQueries(['workLines'])
+            queryClient.invalidateQueries({ queryKey: ['workLines'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Error archiving work line'),
     })
@@ -66,7 +66,7 @@ function WorkLinesPage() {
         onSuccess: () => {
             message.success({ content: 'Work line permanently deleted', style: { marginTop: '10vh' } })
             handleDeleteCancel()
-            queryClient.invalidateQueries(['workLines'])
+            queryClient.invalidateQueries({ queryKey: ['workLines'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Unable to delete (Constraint Error). Try archiving instead.'),
     })

@@ -23,9 +23,7 @@ import HoursMinutesPicker from '../components/common/HoursMinutesPicker'
 import {
     LeftOutlined,
     RightOutlined,
-    UserOutlined,
     SaveOutlined,
-    ClockCircleOutlined,
     CalendarOutlined
 } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -39,7 +37,7 @@ import { useAuthStore } from '../stores/authStore'
 dayjs.extend(isoWeek)
 dayjs.locale('en')
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 // Decimal hours → "2h 30m" display string (handles legacy data)
 function formatDecimalToHM(decimal) {
@@ -174,7 +172,7 @@ function BillableHoursPage() {
         mutationFn: ({ id, billable_duration_hours }) => workLogService.update(id, { billable_duration_hours }),
         onSuccess: () => {
             message.success('Hours updated')
-            queryClient.invalidateQueries(['workLogs'])
+            queryClient.invalidateQueries({ queryKey: ['workLogs'] })
             setEditingId(null)
             setEditValue(null)
         },

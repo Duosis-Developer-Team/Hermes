@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import {
     Table, Button, Modal, Form, Input, Switch, Space,
-    Popconfirm, message, Card, Tag
+    message, Card, Tag
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -35,7 +35,7 @@ function ActivityTypesPage() {
         mutationFn: activityTypeService.create,
         onSuccess: () => {
             message.success('Activity type created')
-            queryClient.invalidateQueries(['activityTypes'])
+            queryClient.invalidateQueries({ queryKey: ['activityTypes'] })
             handleCloseModal()
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Error'),
@@ -45,7 +45,7 @@ function ActivityTypesPage() {
         mutationFn: ({ id, data }) => activityTypeService.update(id, data),
         onSuccess: () => {
             message.success('Activity type updated')
-            queryClient.invalidateQueries(['activityTypes'])
+            queryClient.invalidateQueries({ queryKey: ['activityTypes'] })
             handleCloseModal()
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Error'),
@@ -56,7 +56,7 @@ function ActivityTypesPage() {
         onSuccess: () => {
             message.success('Activity type archived (soft deleted)')
             handleDeleteCancel()
-            queryClient.invalidateQueries(['activityTypes'])
+            queryClient.invalidateQueries({ queryKey: ['activityTypes'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Error archiving activity type'),
     })
@@ -66,7 +66,7 @@ function ActivityTypesPage() {
         onSuccess: () => {
             message.success({ content: 'Activity type permanently deleted', style: { marginTop: '10vh' } })
             handleDeleteCancel()
-            queryClient.invalidateQueries(['activityTypes'])
+            queryClient.invalidateQueries({ queryKey: ['activityTypes'] })
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Unable to delete (Constraint Error). Try archiving instead.'),
     })

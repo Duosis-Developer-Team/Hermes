@@ -26,7 +26,6 @@ function TimesheetView({
     weekStart,
     workLogs = [],
     onCellClick,
-    onLogTime
 }) {
     // Haftanın günlerini hesapla (2 hafta gösterilecek - 14 gün)
     const displayDays = useMemo(() => {
@@ -168,25 +167,6 @@ function TimesheetView({
     }))
 
     // Footer (Total row)
-    const footer = () => (
-        <div className="timesheet-footer-row">
-            <div className="timesheet-footer-label">Total</div>
-            <div className="timesheet-footer-logged">{grandTotal}</div>
-            {displayDays.map(day => {
-                const dateKey = day.format('YYYY-MM-DD')
-                const isWeekend = day.day() === 0 || day.day() === 6
-                return (
-                    <div
-                        key={dateKey}
-                        className={`timesheet-footer-day ${isWeekend ? 'weekend' : ''}`}
-                    >
-                        {dailyTotals[dateKey] || 0}
-                    </div>
-                )
-            })}
-        </div>
-    )
-
     return (
         <div className="timesheet-view">
             <Table

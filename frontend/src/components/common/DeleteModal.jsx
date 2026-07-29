@@ -1,4 +1,3 @@
-import React from 'react';
 import { Modal, Button, Typography } from 'antd';
 import { DeleteOutlined, WarningOutlined, StopOutlined } from '@ant-design/icons';
 import './DeleteModal.css';
@@ -37,7 +36,6 @@ const DeleteModal = ({
     const buttonText = isDeactivateMode ? 'Archive' : 'Delete Permanently';
     // Use orange for archive, red for delete
     const buttonIcon = isDeactivateMode ? <StopOutlined /> : <DeleteOutlined />;
-    const buttonDanger = !isDeactivateMode; // Only hard delete is "danger" red
     // For archive we might want a different style, maybe default or specific class, but let's stick to simple props first.
     // Actually user used "Archive" in plan.
 

@@ -7,8 +7,11 @@
  * =============================================================================
  */
 
-/* Google Fonts - Inter (Atlassian Sans benzeri) */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Sprint 1 (CTO paketi §7): runtime Google Fonts @import KALDIRILDI —
+   production'da dis font istegi sifir. Sistem font stack'i Inter'e cok
+   yakin metriklerle render eder (macOS: SF, Windows: Segoe UI). Lisansli
+   self-hosted Inter WOFF2'ye gecis Sprint 2 Design System karari olarak
+   acik birakildi; font-family degiskeni tek noktada. */
 
 /* ==========================================================================
    ROOT VARIABLES - ATLASSIAN NEUTRAL PALETTE
@@ -185,7 +188,7 @@
 html,
 body {
   height: 100%;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   background: var(--bg-primary);

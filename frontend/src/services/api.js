@@ -7,223 +7,32 @@
  * =============================================================================
  */
 
-import axios from 'axios'
-import { useAuthStore } from '../stores/authStore'
-
-
 // =============================================================================
-// API Base Configuration
+// Sprint 1 (§10) GECIS DURUMU: bu dosya artik COMPATIBILITY FACADE'dir.
+//   - HTTP istemcisi/interceptor'lar: src/api/httpClient.js (tek kaynak)
+//   - Tasinan domainler: authService → src/api/authApi.js,
+//     rbacService → src/api/rbacApi.js (asagida re-export edilir)
+//   - Kalan domainler sonraki sprintlerde ayni desenle tasinir; tuketici
+//     import'lari o zamana kadar KIRILMAZ.
 // =============================================================================
+import { coreClient } from '../api/httpClient'
+import { authService } from '../api/authApi'
+import { rbacService } from '../api/rbacApi'
 
-// Servis URL'leri - Vite proxy üzerinden gider (development)
-// Production'da VITE_*_API_URL environment variable'ları kullanılır
-const API_URLS = {
-    auth: import.meta.env.VITE_AUTH_API_URL || '',
-    core: import.meta.env.VITE_CORE_API_URL || '',
-    reports: import.meta.env.VITE_REPORTS_API_URL || '',
-}
+export { authService, rbacService }
 
-/**
- * Axios instance oluştur
- *
- * [KRİTİK-6] withCredentials: true — tarayıcı, HttpOnly cookie'yi
- * her istekte otomatik olarak backend'e gönderir.
- * Manuel token ekleme / Authorization header'ı KALDIRILDI.
- *
- * @param {string} baseURL - Base URL
- */
-const createApiClient = (baseURL) => {
-    const client = axios.create({
-        baseURL,
-        timeout: 30000,
-        withCredentials: true, // HttpOnly cookie otomatik gönderilir
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    })
-
-    // Request interceptor — token ekleme yok; cookie otomatik gönderilir
-    client.interceptors.request.use(
-        (config) => config,
-        (error) => Promise.reject(error)
-    )
-
-    // Response interceptor — 401'de UI state'ini temizle
-    client.interceptors.response.use(
-        (response) => response,
-        (error) => {
-            if (error.response?.status === 401) {
-                // Cookie backend tarafından zaten geçersiz/süresi dolmuş.
-                // Yalnızca UI state'ini temizle; cookie'yi silmek için /auth/logout çağrılmalı.
-                useAuthStore.getState().logout()
-            }
-            return Promise.reject(error)
-        }
-    )
-
-    return client
-}
-
-// API clients
-const authApi = createApiClient(API_URLS.auth)
-const coreApi = createApiClient(API_URLS.core)
-const reportsApi = createApiClient(API_URLS.reports)
+const coreApi = coreClient
 
 // =============================================================================
 // AUTH SERVICE
 // =============================================================================
 
-export const authService = {
-    /**
-     * Login — E-posta ve şifre ile giriş.
-     *
-     * [KRİTİK-6] Backend artık token döndürmez; HttpOnly cookie set eder.
-     * Response yalnızca { user } içerir.
-     *
-     * @returns {{ user: object }}
-     */
-    login: async (email, password) => {
-        const formData = new URLSearchParams()
-        formData.append('username', email)
-        formData.append('password', password)
-
-        const response = await authApi.post('/api/v1/auth/token', formData, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        })
-        // response.data = { user: {...} }
-        return response.data
-    },
-
-    /**
-     * Microsoft SSO Login.
-     *
-     * [KRİTİK-6] Backend HttpOnly cookie set eder; response yalnızca { user }.
-     *
-     * @param {Object} data { code, redirect_uri }
-     * @returns {{ user: object }}
-     */
-    microsoftLogin: async (data) => {
-        const response = await authApi.post('/api/v1/auth/microsoft', data)
-        return response.data
-    },
-
-    /**
-     * Oturumu kapat.
-     * Backend cookie'yi siler; store logout() ile UI state temizlenir.
-     */
-    logout: async () => {
-        await authApi.post('/api/v1/auth/logout')
-    },
-
-    /**
-     * Mevcut kullanıcı bilgisi
-     */
-    getMe: async () => {
-        const response = await authApi.get('/api/v1/auth/users/me')
-        return response.data
-    },
-
-    /**
-     * Kullanıcı listesi (Admin)
-     */
-    getUsers: async (params = {}) => {
-        const response = await authApi.get('/api/v1/auth/users', { params })
-        return response.data
-    },
-
-    /**
-     * Kullanıcı oluştur (Admin)
-     */
-    createUser: async (userData) => {
-        const response = await authApi.post('/api/v1/auth/users', userData)
-        return response.data
-    },
-
-    /**
-     * Kullanıcı güncelle (Admin)
-     */
-    updateUser: async (userId, userData) => {
-        const response = await authApi.put(`/api/v1/auth/users/${userId}`, userData)
-        return response.data
-    },
-
-    /**
-     * Kullanıcı sil (Admin)
-     */
-    deleteUser: async (userId) => {
-        await authApi.delete(`/api/v1/auth/users/${userId}`)
-    },
-
-    /**
-     * Lightweight user lookup for any authenticated user.
-     * Used by feature modules (e.g. Tasks) for assigner/assignee display.
-     * params: { ids?: string[], include_inactive?: boolean }
-     */
-    lookupUsers: async (params = {}) => {
-        const { ids, include_inactive } = params
-        const search = new URLSearchParams()
-        if (Array.isArray(ids)) ids.forEach(id => search.append('ids', id))
-        if (include_inactive) search.append('include_inactive', 'true')
-        const qs = search.toString()
-        const url = qs ? `/api/v1/auth/users/lookup?${qs}` : '/api/v1/auth/users/lookup'
-        const response = await authApi.get(url)
-        return response.data
-    },
-}
 
 // =============================================================================
 // AUTH SERVICE - RBAC (R3)
 // =============================================================================
 // Rol yönetimi + izin çözümü. can() için tek kaynak: getMyPermissions.
 
-export const rbacService = {
-    /** Oturum sahibinin efektif izinleri + rolleri. */
-    getMyPermissions: async () => {
-        const response = await authApi.get('/api/v1/auth/rbac/me')
-        return response.data
-    },
-
-    /** İzin kataloğu (rol editörünü besler). */
-    getPermissionCatalog: async () => {
-        const response = await authApi.get('/api/v1/auth/rbac/permission-catalog')
-        return response.data
-    },
-
-    listRoles: async (includeInactive = false) => {
-        const response = await authApi.get('/api/v1/auth/rbac/roles', {
-            params: includeInactive ? { include_inactive: true } : {},
-        })
-        return response.data
-    },
-
-    createRole: async (payload) => {
-        const response = await authApi.post('/api/v1/auth/rbac/roles', payload)
-        return response.data
-    },
-
-    updateRole: async (roleId, payload) => {
-        const response = await authApi.patch(`/api/v1/auth/rbac/roles/${roleId}`, payload)
-        return response.data
-    },
-
-    deactivateRole: async (roleId) => {
-        const response = await authApi.delete(`/api/v1/auth/rbac/roles/${roleId}`)
-        return response.data
-    },
-
-    getUserRoles: async (userId) => {
-        const response = await authApi.get(`/api/v1/auth/rbac/users/${userId}/roles`)
-        return response.data
-    },
-
-    /** Kullanıcının rol kümesini REPLACE eder. */
-    setUserRoles: async (userId, roleIds) => {
-        const response = await authApi.put(`/api/v1/auth/rbac/users/${userId}/roles`, {
-            role_ids: roleIds,
-        })
-        return response.data
-    },
-}
 
 // =============================================================================
 // CORE SERVICE - Müşteriler

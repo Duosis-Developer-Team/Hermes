@@ -39,7 +39,6 @@ import {
     authService,
     taskAssignmentGroupService,
     taskAssignmentService,
-    taskPermissionService,
     userGroupService,
 } from '../../services/api'
 import DangerConfirmModal from '../../components/common/DangerConfirmModal'
@@ -413,16 +412,6 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
         for (const u of users) map[u.id] = u
         return map
     }, [users])
-
-    const { data: permissionRows = [] } = useQuery({
-        queryKey: ['admin-task-permissions'],
-        queryFn: () => taskPermissionService.listAdminUsers(),
-    })
-    const permMap = useMemo(() => {
-        const map = {}
-        for (const p of permissionRows) map[p.user_id] = p
-        return map
-    }, [permissionRows])
 
     // Assignment Hierarchy is configuration — show every active user.
     // Whether a mapping is *effective* at task-create time is enforced

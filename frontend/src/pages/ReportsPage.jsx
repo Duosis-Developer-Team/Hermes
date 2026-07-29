@@ -9,8 +9,7 @@
 
 import { useState, useMemo } from 'react'
 import {
-    DatePicker, Button, Select, Typography,
-    Row, Col, Table, message, Statistic, Tag, Empty, Spin
+    DatePicker, Button, Select, Row, Col, Table, message, Tag, Empty, Spin
 } from 'antd'
 import {
     DownloadOutlined,
@@ -31,7 +30,6 @@ import {
 } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 
-const { Text } = Typography
 const { RangePicker } = DatePicker
 
 // Converts decimal hours to human-readable duration: 0.75 → "45m", 2.75 → "2h 45m", 2.0 → "2h"
@@ -48,7 +46,6 @@ function formatDuration(decimalHours) {
 // =============================================================================
 
 function ReportsPage() {
-    const { user } = useAuthStore()
     // RBAC R3: sayfa yetkisi reports.view iznine bakar
     const canViewReports = useAuthStore((s) => s.can)('reports.view')
     useAuthStore((s) => s.permissions)

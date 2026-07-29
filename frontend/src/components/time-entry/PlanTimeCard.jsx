@@ -14,7 +14,7 @@
  * =============================================================================
  */
 
-import { Button, Tooltip } from 'antd'
+import { Tooltip } from 'antd'
 import { CheckOutlined, CloseOutlined, ClockCircleOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import './PlanTimeCard.css'
@@ -36,7 +36,7 @@ function getCardStyle(status, isExpired) {
     }
 }
 
-function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, calendarDate = null, responding = false }) {
+function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, calendarDate = null }) {
     const {
         id,
         project_name,
