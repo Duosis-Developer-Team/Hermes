@@ -38,12 +38,15 @@ import {
     taskPermissionService,
     userGroupService,
 } from '../../services/api'
+import {
+    applyAssignRequiresAccess, mergeMemberPermissions,
+} from '../../features/admin/permissions/model/effectivePermission'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Member overrides panel — rendered inside each group's expanded row
 // ─────────────────────────────────────────────────────────────────────────────
 
-function GroupMemberOverridesPanel({ group, allUsersById }) {
+function GroupMemberOverridesPanel({ group, allUsersById, groupPermission }) {
     const queryClient = useQueryClient()
 
     const { data: members = [], isLoading: membersLoading } = useQuery({
@@ -55,12 +58,6 @@ function GroupMemberOverridesPanel({ group, allUsersById }) {
         queryKey: ['admin-task-group-member-overrides', group.id],
         queryFn: () => taskGroupPermissionService.listMemberOverrides(group.id),
     })
-
-    const overrideByUserId = useMemo(() => {
-        const map = {}
-        for (const o of overrides) map[o.user_id] = o
-        return map
-    }, [overrides])
 
     const upsertMutation = useMutation({
         mutationFn: ({ userId, data }) =>
@@ -100,23 +97,20 @@ function GroupMemberOverridesPanel({ group, allUsersById }) {
         })
     }
 
+    // KUSUR DUZELTMESI (Sprint 6B): overrides ucu YALNIZCA override
+    // satiri olan uyeler icin kayit doner. Eski kod `!!o?.effective_...`
+    // okudugu icin, satiri olmayan (yani grup default'unu DEVRALAN) her
+    // uye KAPALI gorunuyordu — grup izni ACIK olsa bile. Efektif deger
+    // artik grup default'uyla birlikte, backend kuralinin birebir
+    // portundan hesaplanir (features/admin/permissions/model).
     const rows = useMemo(
         () =>
-            members.map((m) => {
-                const o = overrideByUserId[m.user_id]
-                // The toggle state mirrors the *effective* contribution
-                // — explicit override if set, else group default.
-                return {
-                    ...m,
-                    effective_access_in_group: !!o?.effective_access_in_group,
-                    effective_assign_in_group: !!o?.effective_assign_in_group,
-                    effective_access_issues_in_group:
-                        !!o?.effective_access_issues_in_group,
-                    effective_assign_issues_in_group:
-                        !!o?.effective_assign_issues_in_group,
-                }
+            mergeMemberPermissions({
+                members,
+                overrides,
+                permission: groupPermission,
             }),
-        [members, overrideByUserId]
+        [members, overrides, groupPermission]
     )
 
     const columns = [
@@ -555,16 +549,13 @@ function TaskAccessByGroupTab() {
                     ? checked
                     : !!current?.can_assign_issues_default,
         }
-        // Invariant — assign requires access. Mirror what the
-        // backend enforces so the client-side toast feels accurate
-        // before the refetch lands. Applied independently per scope.
-        if (!data.can_access_tasks_default) {
-            data.can_assign_tasks_default = false
-        }
-        if (!data.can_access_issues_default) {
-            data.can_assign_issues_default = false
-        }
-        upsertPermMutation.mutate({ groupId: group.id, data })
+        // Degismez — assign, access gerektirir. Backend'in zorladigi
+        // kuralin AYNISI; kural artik tek yerde yasiyor ve testli
+        // (features/admin/permissions/model.applyAssignRequiresAccess).
+        upsertPermMutation.mutate({
+            groupId: group.id,
+            data: applyAssignRequiresAccess(data),
+        })
     }
 
     const rows = useMemo(
@@ -707,6 +698,10 @@ function TaskAccessByGroupTab() {
                         <GroupMemberOverridesPanel
                             group={group}
                             allUsersById={allUsersById}
+                            /* Grup default'u panele GECIRILIR: devralan
+                               uyelerin efektif izni ancak bununla
+                               hesaplanabilir (bkz. mergeMemberPermissions). */
+                            groupPermission={permByGroupId[group.id]}
                         />
                     ),
                     rowExpandable: () => true,
