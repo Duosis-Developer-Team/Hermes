@@ -170,7 +170,7 @@ function TokenOnceModal({ issued, onDone }) {
                 </Button>
             }
             width={640}
-            destroyOnClose
+            destroyOnHidden
         >
             <Alert
                 type="warning"
@@ -300,7 +300,7 @@ function ClientModal({ open, editing, scopes, pickers, onClose, onSubmit, saving
             onCancel={onClose}
             confirmLoading={saving}
             width={680}
-            destroyOnClose
+            destroyOnHidden
         >
             <Form
                 form={form}
@@ -1499,7 +1499,7 @@ function ApiManagementPage() {
                 }
                 confirmLoading={updateExpiry.isPending}
                 onCancel={() => setExpiryModal(null)}
-                destroyOnClose
+                destroyOnHidden
             >
                 <p style={{ color: 'var(--c-text-muted)', marginBottom: 12 }}>
                     Leave empty for a token that never expires.

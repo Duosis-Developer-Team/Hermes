@@ -284,7 +284,7 @@ function SubProjectsTab() {
                 onOk={() => form.submit()}
                 okText={editing ? 'Save Changes' : 'Create Sub Project'}
                 confirmLoading={createMutation.isPending || updateMutation.isPending}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <Form.Item

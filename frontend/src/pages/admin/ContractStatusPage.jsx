@@ -230,7 +230,8 @@ function ContractStatusPage() {
                     <SearchOutlined style={{ color: 'var(--c-text-faint)', fontSize: 18 }} />
                     <Input
                         placeholder="Search by customer or project name..."
-                        bordered={false}
+                        /* AntD 5.x: bordered deprecated → variant. */
+                        variant="borderless"
                         onChange={e => setSearchText(e.target.value)}
                         style={{ color: 'var(--c-text-strong)', fontSize: 16, width: 350 }}
                         className="modern-search-input"

@@ -32,8 +32,12 @@ FROM docker.io/library/nginx:alpine
 # Default nginx config temizle
 RUN rm /etc/nginx/conf.d/default.conf
 
-# Custom config ekle
+# Custom config ekle. Guvenlik header'lari AYRI bir parcada tutulur ve
+# nginx.conf icinden include edilir (tek kaynak; bkz. dosya basligi).
+# Uzanti `.inc` — nginx conf.d/*.conf dosyalarini kendiliginden server
+# blogu olarak yukler, bu parca yalniz include edilmelidir.
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx-security-headers.inc /etc/nginx/conf.d/security-headers.inc
 
 # Build aşamasından çıkan dosyaları kopyala
 COPY --from=builder /app/dist /usr/share/nginx/html

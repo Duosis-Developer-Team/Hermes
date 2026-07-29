@@ -99,7 +99,7 @@ function MeetingReviewModal({
             onCancel={onClose}
             footer={null}
             width={560}
-            destroyOnClose
+            destroyOnHidden
             className="meeting-review-modal"
         >
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>

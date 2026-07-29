@@ -284,7 +284,7 @@ function AddRuleModal({
             onOk={() => form.submit()}
             okText="Save"
             confirmLoading={loading}
-            destroyOnClose
+            destroyOnHidden
             afterClose={() => form.resetFields()}
         >
             <Form

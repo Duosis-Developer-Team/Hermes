@@ -50,7 +50,7 @@ function UserGroupModal({
             confirmLoading={loading}
             onOk={() => form.submit()}
             width={520}
-            destroyOnClose
+            destroyOnHidden
         >
             <Form form={form} layout="vertical" onFinish={handleFinish}>
                 <Form.Item

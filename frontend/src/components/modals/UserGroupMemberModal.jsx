@@ -111,7 +111,7 @@ function UserGroupMemberModal({
             confirmLoading={loading}
             onOk={() => form.submit()}
             width={520}
-            destroyOnClose
+            destroyOnHidden
             okButtonProps={{ disabled: noCandidates }}
         >
             {noCandidates && (
