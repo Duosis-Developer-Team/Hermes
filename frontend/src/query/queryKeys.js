@@ -79,7 +79,12 @@ export const queryKeys = {
     platforms: { all: ['platforms'] },
     activityTypes: { all: ['activityTypes'] },
     meetings: { all: ['meetings'] },
-    dashboard: { all: ['dashboard'] },
+    dashboard: {
+        all: ['dashboard'],
+        /** Tarih araligi cache anahtarinin PARCASIDIR: aralik degisince
+         *  ayri bir sorgu olur, geri donuste onceki sonuc hazir gelir. */
+        range: (from, to) => ['dashboard', 'range', stableFilters({ from, to })],
+    },
     reports: { all: ['reports'] },
     apiClients: { all: ['apiClients'] },
 }

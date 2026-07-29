@@ -16,17 +16,19 @@ import { useQuery } from '@tanstack/react-query'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import dayjs from 'dayjs'
 import { reportsService, authService } from '../services/api'
+import { queryKeys } from '../query/queryKeys'
+import {
+    chartState, dashboardSummary, resolveUserNames, toChartSeries,
+} from '../features/dashboard/model/dashboardData'
 
-
-// Chart colors - Jira palette
-
-// 0.75 → "0h 45m", 2.75 → "2h 45m", 2.0 → "2h"
-function formatDuration(decimal) {
-    if (!decimal) return '0h'
-    const h = Math.floor(decimal)
-    const m = Math.round((decimal - h) * 60)
-    if (m > 0) return `${h}h ${m}m`
-    return `${h}h`
+// Grafik renkleri SEMANTIC token'dan gelir; ham hex tekrarlanmaz.
+// Recharts SVG attribute'lari CSS degiskenini dogrudan kabul ettigi icin
+// var(--...) referansi yeterli — tema degisiminde renk kendiliginde
+// dogru tarafa gecer.
+const CHART_SERIES_COLOR = {
+    customer: 'var(--h-success)',
+    project: 'var(--h-brand)',
+    user: 'var(--h-info)',
 }
 
 function DashboardPage() {
@@ -37,7 +39,10 @@ function DashboardPage() {
 
     // Dashboard data
     const { data, isLoading } = useQuery({
-        queryKey: ['dashboard', dateRange[0]?.format('YYYY-MM-DD'), dateRange[1]?.format('YYYY-MM-DD')],
+        queryKey: queryKeys.dashboard.range(
+            dateRange[0]?.format('YYYY-MM-DD'),
+            dateRange[1]?.format('YYYY-MM-DD')
+        ),
         queryFn: () => reportsService.getDashboard({
             start_date: dateRange[0]?.format('YYYY-MM-DD'),
             end_date: dateRange[1]?.format('YYYY-MM-DD'),
@@ -45,29 +50,17 @@ function DashboardPage() {
         enabled: !!dateRange[0] && !!dateRange[1],
     })
 
-    console.log('Dashboard Data:', data)
-
     const { data: usersResponse = {} } = useQuery({
-        queryKey: ['users'],
+        queryKey: queryKeys.users.all,
         queryFn: () => authService.getUsers(),
     })
     const users = usersResponse.data || []
 
-    // Debug logging
-    if (data) {
-        console.log('Dashboard Data Raw:', data)
-    }
-
-    // Ensure numeric values for charts
-    const customerData = (data?.by_customer || []).map(item => ({
-        ...item,
-        hours: Number(item.hours)
-    }))
-
-    const projectData = (data?.by_project || []).map(item => ({
-        ...item,
-        hours: Number(item.hours)
-    }))
+    // Donusumler TEST EDILEBILIR adaptorden gelir (features/dashboard/
+    // model): sayisal olmayan degerler NaN olarak grafige gitmez, ham
+    // UUID ekrana sizmaz.
+    const customerData = toChartSeries(data?.by_customer, { limit: 8 })
+    const projectData = toChartSeries(data?.by_project, { limit: 8 })
 
     const goToPreviousMonth = () => {
         setDateRange(prev => [prev[0].subtract(1, 'month').startOf('month'), prev[0].subtract(1, 'month').endOf('month')])
@@ -79,20 +72,45 @@ function DashboardPage() {
         setDateRange([dayjs().startOf('month'), dayjs().endOf('month')])
     }
 
-    // Map user_id to name in dashboard data
-    const dashboardData = {
-        ...data,
-        by_user: data?.by_user?.map(item => {
-            const user = users.find(u => u.id === item.name) // item.name is user_id from backend
-            return { ...item, name: user ? user.full_name : item.name }
-        }) || []
+    // Backend `by_user.name` alaninda user_id gonderir; adaptor onu
+    // goruntulenen ada cevirir ve cozulemezse notr tire yazar.
+    const userData = resolveUserNames(data?.by_user, users)
+    const summary = dashboardSummary(data, userData)
+
+    /**
+     * Grafik cercevesi: veri yoksa veya tamami sifir saatse GRAFIK
+     * CIZILMEZ, durumu anlatan bir mesaj gosterilir. "Veri yok" ile
+     * "kayit var ama sifir saat" ayri mesajlardir — ikisini ayni
+     * gostermek kullaniciyi yanlis yonlendirirdi.
+     */
+    const ChartFrame = ({ series, children }) => {
+        const state = chartState(series)
+        if (state === 'ready') return children
+        return (
+            <div
+                role="status"
+                style={{
+                    height: 300,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    color: 'var(--c-text-muted)',
+                    fontSize: 14,
+                }}
+            >
+                {state === 'empty'
+                    ? 'No data for the selected date range.'
+                    : 'Records exist but no hours were logged in this range.'}
+            </div>
+        )
     }
 
     const CustomTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {
             return (
                 <div style={{
-                    backgroundColor: '#1C2127',
+                    backgroundColor: 'var(--c-surface-2)',
                     border: '1px solid var(--c-border)',
                     borderRadius: '4px',
                     padding: '8px 12px',
@@ -142,25 +160,25 @@ function DashboardPage() {
             <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={6}>
                     <div className="stat-card">
-                        <div className="stat-value">{formatDuration(data?.total_hours)}</div>
+                        <div className="stat-value">{summary.totalHours}</div>
                         <div className="stat-label">Total Hours</div>
                     </div>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <div className="stat-card">
-                        <div className="stat-value">{data?.by_customer?.length || 0}</div>
+                        <div className="stat-value">{summary.customerCount}</div>
                         <div className="stat-label">Customers</div>
                     </div>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <div className="stat-card">
-                        <div className="stat-value">{data?.by_project?.length || 0}</div>
+                        <div className="stat-value">{summary.projectCount}</div>
                         <div className="stat-label">Projects</div>
                     </div>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <div className="stat-card">
-                        <div className="stat-value">{dashboardData?.by_user?.length || 0}</div>
+                        <div className="stat-value">{summary.memberCount}</div>
                         <div className="stat-label">Active Members</div>
                     </div>
                 </Col>
@@ -171,46 +189,52 @@ function DashboardPage() {
                 {/* By Customer - Pie Chart */}
                 <Col xs={24} lg={12}>
                     <Card title="🏢 By Customer">
+                        <ChartFrame series={customerData}>
                         <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={customerData.slice(0, 8)} layout="vertical">
+                            <BarChart data={customerData} layout="vertical">
                                 <CartesianGrid strokeDasharray="3 3" stroke="var(--N700)" />
                                 <XAxis type="number" stroke="var(--N400)" />
                                 <YAxis dataKey="name" type="category" width={100} stroke="var(--N400)" tick={{ fontSize: 12 }} />
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-                                <Bar dataKey="hours" fill="#4BCE97" radius={[0, 4, 4, 0]} />
+                                <Bar dataKey="hours" fill={CHART_SERIES_COLOR.customer} radius={[0, 4, 4, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
+                        </ChartFrame>
                     </Card>
                 </Col>
 
                 {/* By Project - Bar Chart */}
                 <Col xs={24} lg={12}>
                     <Card title="📁 By Project">
+                        <ChartFrame series={projectData}>
                         <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={projectData.slice(0, 8)} layout="vertical">
+                            <BarChart data={projectData} layout="vertical">
                                 <CartesianGrid strokeDasharray="3 3" stroke="var(--N700)" />
                                 <XAxis type="number" stroke="var(--N400)" />
                                 <YAxis dataKey="name" type="category" width={100} stroke="var(--N400)" tick={{ fontSize: 12 }} />
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-                                <Bar dataKey="hours" fill="#579DFF" radius={[0, 4, 4, 0]} />
+                                <Bar dataKey="hours" fill={CHART_SERIES_COLOR.project} radius={[0, 4, 4, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
+                        </ChartFrame>
                     </Card>
                 </Col>
 
                 {/* By User - Bar Chart */}
                 <Col xs={24}>
                     <Card title="👥 By User">
+                        <ChartFrame series={userData}>
                         <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={dashboardData?.by_user || []}>
+                            <BarChart data={userData}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="var(--N700)" />
                                 <XAxis dataKey="name" stroke="var(--N400)" />
                                 <YAxis stroke="var(--N400)" />
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
                                 <Legend />
-                                <Bar dataKey="hours" name="Hours" fill="#6CC3E0" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="hours" name="Hours" fill={CHART_SERIES_COLOR.user} radius={[4, 4, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
+                        </ChartFrame>
                     </Card>
                 </Col>
             </Row>
