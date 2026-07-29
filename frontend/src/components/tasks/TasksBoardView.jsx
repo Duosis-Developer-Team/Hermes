@@ -40,6 +40,7 @@ import {
 } from '@dnd-kit/core'
 
 import TaskCard from './TaskCard'
+import { canDragTaskStatus } from '../../features/tasks/model/permissions'
 import { typeMeta } from '../../utils/workItemType'
 import './TasksBoardView.css'
 
@@ -150,12 +151,12 @@ function TasksBoardView({
     }, [tasks])
 
     // A card is drag-movable only when status drag is allowed for this
-    // view AND the viewer may change this task's status.
+    // view AND the viewer may change this task's status. KURAL BURADA
+    // TEKRARLANMAZ — tek kaynak features/tasks/model/permissions.
     const canDragStatus = (t) =>
-        allowStatusDrag &&
-        (isAdmin ||
-            t.assignee_user_id === currentUserId ||
-            t.assigner_user_id === currentUserId)
+        canDragTaskStatus({
+            allowStatusDrag, task: t, currentUserId, isTaskAdmin: isAdmin,
+        })
 
     // Status buckets (flat board).
     const buckets = useMemo(() => {

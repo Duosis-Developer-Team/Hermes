@@ -100,6 +100,24 @@ describe('RBAC: ikinci bir karar sistemi YOK', () => {
         expect(owners).toEqual(['features/tasks/model/permissions.js'])
     })
 
+    it('durum degistirme kurali TEK yerde yazilir (kopya yok)', () => {
+        // Sprint 5C+ bulgusu: "admin VEYA atanan VEYA atayan" ifadesi
+        // board surukleme gate'i, list checkbox'i, sayfanin drop guard'i
+        // ve Review modalinin canAct'inde AYRI AYRI yazilmisti — yani
+        // permissions katmanini asan ikinci bir RBAC sistemi.
+        const owners = TASK_SOURCES.filter((f) =>
+            /assign(ee|er)_user_id === (currentUserId|user\?\.id)/.test(read(f))
+        )
+        expect(owners).toEqual(['features/tasks/model/permissions.js'])
+    })
+
+    it('durum selector’lari TEK dosyadan export edilir', () => {
+        const owners = TASK_SOURCES.filter((f) =>
+            /export const (canChangeTaskStatus|canDragTaskStatus)/.test(read(f))
+        )
+        expect(owners).toEqual(['features/tasks/model/permissions.js'])
+    })
+
     it('TasksPage izin kararini kendisi TUREYMEZ, selector’dan alir', () => {
         const code = read('pages/TasksPage.jsx')
         expect(code).toContain('selectTaskPermissions')
@@ -125,13 +143,15 @@ describe('veri katmani sozlesmesi', () => {
         }
     })
 
-    it('mutasyon + invalidation TEK hook’ta toplanir', () => {
-        const withMutations = FEATURE.filter((f) =>
+    it('invalidation SOZLESMESI tek dosyada yasar', () => {
+        // "Bir yazma hangi aileleri tazeler?" sorusunun tek cevabi:
+        // CRUD, durum degisikligi ve zaman kaydi hook'lari ayni
+        // sozlesmeyi tuketir, hicbiri kendi anahtarini yazmaz.
+        const withInvalidation = FEATURE.filter((f) =>
             read(f).includes('invalidateQueries')
         ).sort()
-        expect(withMutations).toEqual([
-            'features/tasks/hooks/useTaskMutations.js',
-            'features/tasks/hooks/useTaskWorkLog.js',
+        expect(withInvalidation).toEqual([
+            'features/tasks/hooks/useTaskInvalidation.js',
         ])
     })
 

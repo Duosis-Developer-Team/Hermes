@@ -11,7 +11,19 @@ import { afterEach, beforeEach, vi } from 'vitest'
 if (typeof window !== 'undefined') {
     await import('@testing-library/jest-dom/vitest')
     const { cleanup } = await import('@testing-library/react')
-    afterEach(() => cleanup())
+    // AntD'nin message/notification kaplari React kokunun DISINDA,
+    // dogrudan body'ye baglanir; cleanup onlari kaldirmaz ve onceki
+    // testin toast'i bir sonrakinde "ayni metinden birden fazla" olarak
+    // gorunur. DOM'dan ELLE silmek YANLIS: antd singleton'i o kaba
+    // referans tutar ve sonraki mesajlar KOPUK bir dugume render olur
+    // (bir kez denendi; toast'lar tamamen kayboldu). Dogru yol resmi
+    // destroy API'sidir.
+    const { message, notification } = await import('antd')
+    afterEach(() => {
+        cleanup()
+        message.destroy()
+        notification.destroy()
+    })
 
     // jsdom matchMedia saglamaz; MainLayout (mobil sorgusu) ve theme
     // store kullanir. Deterministik masaustu varsayilani: eslesme yok.

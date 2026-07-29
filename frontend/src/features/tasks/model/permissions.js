@@ -65,3 +65,48 @@ export function selectTaskPermissions({
 export const resolveViewedUserId = ({ isTaskAdmin, selectedUserId, currentUserId }) =>
     isTaskAdmin ? (selectedUserId || currentUserId) : currentUserId
 
+/**
+ * TEK GOREV uzerinde durum degistirme yetkisi (kabul / tamamla / yeniden
+ * ac / board surukle-birak). Backend'in uyguladigi kuralin AYNISI:
+ * admin VEYA atanan VEYA atayan.
+ *
+ * Sprint 5C bulgusu: bu ifade DORT ayri dosyada elle tekrarlanmisti
+ * (board surukleme gate'i, list checkbox'i, sayfanin drop guard'i ve
+ * Review modalinin canAct'i). Ayni kuralin dort kopyasi = permissions
+ * katmanini asan IKINCI bir RBAC sistemi. Artik tek kaynak burasi.
+ *
+ * FAIL-CLOSED: gorev veya kullanici cozulmemisse yetki YOKTUR.
+ * UI kararidir; sunucu her istekte kendi kontrolunu yapar.
+ */
+export const canChangeTaskStatus = ({ task, currentUserId, isTaskAdmin = false }) => {
+    if (!task) return false
+    if (isTaskAdmin) return true
+    if (!currentUserId) return false
+    return (
+        task.assignee_user_id === currentUserId ||
+        task.assigner_user_id === currentUserId
+    )
+}
+
+/**
+ * Board'da bir kartin SURUKLENEBILIR olup olmadigi. Iki kosul birlikte:
+ *  - gorunum surukleme destekliyor mu (`allowStatusDrag`) — durum
+ *    degisikligi atananin kendi "My Tasks" gorunumune aittir; "Assigned
+ *    by Me" salt izlemedir,
+ *  - kullanici BU gorevin durumunu degistirebiliyor mu.
+ */
+export const canDragTaskStatus = ({ allowStatusDrag, task, currentUserId, isTaskAdmin }) =>
+    !!allowStatusDrag && canChangeTaskStatus({ task, currentUserId, isTaskAdmin })
+
+/**
+ * Gorevin CEKIRDEK alanlarini duzenleme / silme yetkisi: admin VEYA
+ * gorevi ATAYAN. (Atanan isi yapar, tanimini degistirmez.) Bu kural da
+ * TaskCard ve TasksListView'de ayri ayri yazilmisti — tek kaynak burasi.
+ */
+export const canEditTask = ({ task, currentUserId, isTaskAdmin = false }) => {
+    if (!task) return false
+    if (isTaskAdmin) return true
+    if (!currentUserId) return false
+    return task.assigner_user_id === currentUserId
+}
+

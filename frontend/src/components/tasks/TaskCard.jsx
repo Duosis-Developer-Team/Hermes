@@ -28,6 +28,7 @@ import {
     FieldTimeOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import { canEditTask } from '../../features/tasks/model/permissions'
 import { typeMeta } from '../../utils/workItemType'
 import './TaskCard.css'
 
@@ -110,10 +111,12 @@ function TaskCard({
     completionLoading = false,
 }) {
     const isCompleted = task.status === 'completed'
-    const assigneeIsMe = task.assignee_user_id === currentUserId
-    const assignerIsMe = task.assigner_user_id === currentUserId
-    const canEditCore = isAdmin || assignerIsMe
-    const showAssignee = !assigneeIsMe // only show "Assignee:" if I'm not the assignee
+    // GORUNUM karari (hangi satir gosterilecek) — yetki DEGIL.
+    const showAssignee = task.assignee_user_id !== currentUserId
+    // YETKI karari tek kaynaktan gelir (features/tasks/model/permissions).
+    const canEditCore = canEditTask({
+        task, currentUserId, isTaskAdmin: isAdmin,
+    })
     const dueDifferent =
         task.due_date && task.due_date !== task.scheduled_date
 

@@ -18,41 +18,17 @@
  * sizan red "Uncaught (in promise)" uretiyordu.
  * =============================================================================
  */
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { message } from 'antd'
 
 import { taskService } from '../../../services/api'
-import { queryKeys } from '../../../query/queryKeys'
 import { typeMeta } from '../../../utils/workItemType'
+import useTaskInvalidation from './useTaskInvalidation'
 
 const detail = (err, fallback) => err?.response?.data?.detail || fallback
 
 export function useTaskMutations({ createType, onWriteSettled, onTaskRefreshed }) {
-    const queryClient = useQueryClient()
-
-    /** Gorev yazildi → SADECE gorev aileleri tazelenir. */
-    const invalidateTaskFamilies = () => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
-        queryClient.invalidateQueries({ queryKey: queryKeys.taskActivity.all })
-    }
-
-    // ── Optimistic cache yardimcilari (board surukle-birak) ──────────────
-    // Aktif ['tasks', ...] sorgularini yamalar ki kart birakildigi anda
-    // yerine gecsin; sunucu reddederse snapshot geri yuklenir.
-    const optimisticPatchTask = async (taskId, patch) => {
-        await queryClient.cancelQueries({ queryKey: queryKeys.tasks.all })
-        const prev = queryClient.getQueriesData({ queryKey: queryKeys.tasks.all })
-        queryClient.setQueriesData({ queryKey: queryKeys.tasks.all }, (old) =>
-            Array.isArray(old)
-                ? old.map((t) => (t.id === taskId ? { ...t, ...patch } : t))
-                : old
-        )
-        return prev
-    }
-    const rollbackTasks = (prev) => {
-        if (!prev) return
-        for (const [key, data] of prev) queryClient.setQueryData(key, data)
-    }
+    const { invalidateTaskFamilies } = useTaskInvalidation()
 
     const afterWrite = (text) => {
         if (text) message.success(text)
@@ -165,21 +141,6 @@ export function useTaskMutations({ createType, onWriteSettled, onTaskRefreshed }
         onError: (err) => message.error(detail(err, 'Failed to accept task.')),
     })
 
-    // Board surukle-birak — optimistic. Ham status ucunu kullanir (kabul
-    // etme guardi yok): surukleme ACIK niyettir ve _apply_status_change
-    // tamamlanma alanlarini tutarli tutar.
-    const dndStatusMutation = useMutation({
-        mutationFn: ({ id, status }) => taskService.updateStatus(id, status),
-        onMutate: async ({ id, status }) => ({
-            prev: await optimisticPatchTask(id, { status }),
-        }),
-        onError: (err, _vars, ctx) => {
-            rollbackTasks(ctx?.prev)
-            message.error(detail(err, 'Failed to update status.'))
-        },
-        onSettled: () => invalidateTaskFamilies(),
-    })
-
     /**
      * Create/edit modalinin tek gonderim kapisi. `meta` hangi ucun
      * kullanilacagini modal belirler: { taskId? , isBulk? , isGroup? }.
@@ -207,7 +168,6 @@ export function useTaskMutations({ createType, onWriteSettled, onTaskRefreshed }
         rejectMutation,
         reopenMutation,
         acceptMutation,
-        dndStatusMutation,
         isSavingTask:
             createMutation.isPending ||
             updateMutation.isPending ||

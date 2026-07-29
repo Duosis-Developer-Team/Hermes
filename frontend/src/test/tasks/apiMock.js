@@ -120,6 +120,13 @@ export const mockState = INITIAL()
 const ok = (value) => () => Promise.resolve(value)
 const from = (key) => () => Promise.resolve(mockState[key])
 
+/** Sunucu tarafi kalicilik taklidi — liste ucu guncel durumu doner. */
+const persistStatus = (id, status) => {
+    mockState.tasks = mockState.tasks.map((t) =>
+        t.id === id ? { ...t, status } : t
+    )
+}
+
 // ── Varsayilan implementasyonlar (servis → fonksiyon → impl) ────────────
 const DEFS = {
     authService: {
@@ -162,10 +169,23 @@ const DEFS = {
         createForGroup: ok({ tasks: [{ id: 't-new' }] }),
         listAssignableGroups: from('assignableGroups'),
         update: (id) => Promise.resolve({ id, status: 'pending' }),
-        updateStatus: (id, status) => Promise.resolve({ id, status }),
-        setCompleted: (id, completed) =>
-            Promise.resolve({ id, status: completed ? 'completed' : 'pending' }),
-        reject: (id) => Promise.resolve({ id, status: 'rejected' }),
+        // Durum yazan uclar sunucu gibi KALICI etki birakir: aksi halde
+        // basarili bir mutasyondan sonraki refetch eski durumu geri
+        // yazar ve testler "optimistic geri alindi mi" sorusunu yanlis
+        // olcerdi (mock sadakati).
+        updateStatus: (id, status) => {
+            persistStatus(id, status)
+            return Promise.resolve({ id, status })
+        },
+        setCompleted: (id, completed) => {
+            const status = completed ? 'completed' : 'pending'
+            persistStatus(id, status)
+            return Promise.resolve({ id, status })
+        },
+        reject: (id) => {
+            persistStatus(id, 'rejected')
+            return Promise.resolve({ id, status: 'rejected' })
+        },
         delete: ok({ ok: true }),
         listActivity: from('activity'),
         listComments: from('comments'),

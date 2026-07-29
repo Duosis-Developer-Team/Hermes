@@ -15,14 +15,14 @@
  * =============================================================================
  */
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { message } from 'antd'
 
 import { workLogService } from '../../../services/api'
-import { queryKeys } from '../../../query/queryKeys'
+import useTaskInvalidation from './useTaskInvalidation'
 
 export function useTaskWorkLog() {
-    const queryClient = useQueryClient()
+    const { invalidateWorkLogFamilies } = useTaskInvalidation()
     const [logTimeTask, setLogTimeTask] = useState(null)
 
     const workLogMutation = useMutation({
@@ -37,9 +37,7 @@ export function useTaskWorkLog() {
             const dateStr = variables?.data?.date_worked
             message.success(dateStr ? `Time logged for ${dateStr}.` : 'Time logged.')
             setLogTimeTask(null)
-            queryClient.invalidateQueries({ queryKey: queryKeys.workLogs.all })
-            queryClient.invalidateQueries({ queryKey: queryKeys.periodStatus.all })
-            queryClient.invalidateQueries({ queryKey: queryKeys.taskActivity.all })
+            invalidateWorkLogFamilies()
         },
         onError: (err) => {
             message.error(err?.response?.data?.detail || 'Failed to log time.')

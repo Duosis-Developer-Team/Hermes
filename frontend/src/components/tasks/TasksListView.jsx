@@ -26,6 +26,9 @@ import {
 } from '@ant-design/icons'
 
 import { TaskDueBadge } from './TaskCard'
+import {
+    canDragTaskStatus, canEditTask,
+} from '../../features/tasks/model/permissions'
 import { typeMeta } from '../../utils/workItemType'
 
 const PRIORITY_RANK = { low: 0, medium: 1, high: 2, urgent: 3 }
@@ -107,11 +110,13 @@ function TasksListView({
             align: 'center',
             render: (_, record) => {
                 const isCompleted = record.status === 'completed'
-                const canToggle =
-                    allowStatusChange &&
-                    (isAdmin ||
-                        record.assignee_user_id === currentUserId ||
-                        record.assigner_user_id === currentUserId)
+                // Board ile AYNI kural, ayni kaynaktan (permissions).
+                const canToggle = canDragTaskStatus({
+                    allowStatusDrag: allowStatusChange,
+                    task: record,
+                    currentUserId,
+                    isTaskAdmin: isAdmin,
+                })
                 return (
                     <Tooltip
                         title={
@@ -244,8 +249,9 @@ function TasksListView({
             key: 'actions',
             width: 180,
             render: (_, record) => {
-                const canEdit =
-                    isAdmin || record.assigner_user_id === currentUserId
+                const canEdit = canEditTask({
+                    task: record, currentUserId, isTaskAdmin: isAdmin,
+                })
                 const isCompleted = record.status === 'completed'
                 return (
                     /* Aksiyon adlari Board'daki TaskCard ile BIREBIR ayni

@@ -10,8 +10,9 @@
  *
  *   model/      permissions · constants · dates · taskQuery
  *   hooks/      useTaskTypeRoute · useTaskViewState · useTaskFilters
- *               useTaskDirectory · useTasksQuery · useTaskMutations
- *               useTaskWorkLog · useTaskDialogs
+ *               useTaskDirectory · useTasksQuery · useTaskInvalidation
+ *               useTaskMutations · useTaskStatusMutation · useTaskWorkLog
+ *               useTaskDialogs
  *   components/ TasksHeader · TaskQuickFilters · TaskRangeBar
  *               TaskFilterBar · TasksSurface
  *   modals/     TaskDeleteModal · TaskStatusConfirmModal
@@ -27,7 +28,7 @@ import { Empty, message } from 'antd'
 import { useAuthStore } from '../stores/authStore'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
 import {
-    resolveViewedUserId, selectTaskPermissions,
+    canChangeTaskStatus, resolveViewedUserId, selectTaskPermissions,
 } from '../features/tasks/model/permissions'
 import useTaskTypeRoute from '../features/tasks/hooks/useTaskTypeRoute'
 import useTaskViewState from '../features/tasks/hooks/useTaskViewState'
@@ -35,6 +36,7 @@ import useTaskFilters from '../features/tasks/hooks/useTaskFilters'
 import useTaskDirectory from '../features/tasks/hooks/useTaskDirectory'
 import useTasksQuery from '../features/tasks/hooks/useTasksQuery'
 import useTaskMutations from '../features/tasks/hooks/useTaskMutations'
+import useTaskStatusMutation from '../features/tasks/hooks/useTaskStatusMutation'
 import useTaskWorkLog from '../features/tasks/hooks/useTaskWorkLog'
 import useTaskDialogs from '../features/tasks/hooks/useTaskDialogs'
 import TasksHeader from '../features/tasks/components/TasksHeader'
@@ -111,6 +113,7 @@ function TasksPage() {
         },
     })
 
+    const status = useTaskStatusMutation()
     const workLog = useTaskWorkLog()
 
     // ── Tamamla → Log Time akisi ──────────────────────────────────────────
@@ -151,23 +154,22 @@ function TasksPage() {
     // board tarafinda da kontrol edilir; bu ikinci savunmadir.
     const handleCardDrop = async (task, { newStatus }) => {
         if (!newStatus) return
-        const canStatus =
-            isTaskAdmin ||
-            task.assignee_user_id === user?.id ||
-            task.assigner_user_id === user?.id
+        // Board zaten surukleme kapisini uyguluyor; bu IKINCI savunmadir
+        // (orn. kart cizildikten sonra gorev baskasina atanirsa). Kural
+        // AYNI selector'dan gelir — kopya yok.
+        const canStatus = canChangeTaskStatus({
+            task, currentUserId: user?.id, isTaskAdmin,
+        })
         if (!canStatus) {
             message.info('You are not allowed to change this task status.')
             return
         }
-        try {
-            await mutations.dndStatusMutation.mutateAsync({
-                id: task.id, status: newStatus,
-            })
-            // Checkbox akisinin verdigi Log Time davetini KORU.
-            if (newStatus === 'completed') workLog.openLogTime(task)
-        } catch {
-            // toast already shown by the mutation
-        }
+        const result = await status.changeTaskStatus({
+            id: task.id, status: newStatus,
+        })
+        // Checkbox akisinin verdigi Log Time davetini KORU — yalnizca
+        // GERCEKTEN calisan bir gecisin ardindan.
+        if (result.ok && newStatus === 'completed') workLog.openLogTime(task)
     }
 
     const handleReviewReopen = async (task) => {
@@ -313,14 +315,16 @@ function TasksPage() {
                 userMap={directory.userMap}
                 onClose={dialogs.closeReview}
                 canAct={
-                    !!dialogs.reviewTask &&
                     // Durum aksiyonlari "My Tasks"ta yasar (atanan kendi
                     // isine karar verir). "Assigned by Me"de atayan
                     // yalnizca izler — modal orada salt okunurdur.
+                    // Gorev bazli kural yine TEK selector'dan gelir.
                     view.taskScope === 'my-tasks' &&
-                    (isTaskAdmin ||
-                        dialogs.reviewTask.assignee_user_id === user?.id ||
-                        dialogs.reviewTask.assigner_user_id === user?.id)
+                    canChangeTaskStatus({
+                        task: dialogs.reviewTask,
+                        currentUserId: user?.id,
+                        isTaskAdmin,
+                    })
                 }
                 onAccept={(task) => mutations.acceptMutation.mutateAsync(task.id)}
                 onMarkCompleted={async (task) => {
