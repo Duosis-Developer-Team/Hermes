@@ -10,19 +10,13 @@
 
 import { Tooltip } from 'antd'
 import { CheckSquareOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import { formatHours } from '../../features/time-entry/model/timeEntry'
 import './WorkLogCard.css'
 
-// Format decimal hours → "2h 30m" (handles legacy data: 2.5 → 2h 30m)
-const formatHours = (hours) => {
-    if (!hours && hours !== 0) return '0h'
-    const num = parseFloat(hours)
-    const h = Math.floor(num)
-    const m = Math.round((num - h) * 60)
-    if (m === 0) return `${h}h`
-    return `${h}h ${m}m`
-}
 
-function WorkLogCard({ workLog, onEdit, onDelete, isSelected = false, onSelect }) {
+function WorkLogCard({
+    workLog, onEdit, onDelete, isSelected = false, isCopied = false, onSelect,
+}) {
     const {
         project_name,
         customer_name,
@@ -36,10 +30,33 @@ function WorkLogCard({ workLog, onEdit, onDelete, isSelected = false, onSelect }
 
     return (
         <div
-            className={`worklog-card${isSelected ? ' worklog-card-selected' : ''}`}
+            className={
+                'worklog-card'
+                + (isSelected ? ' worklog-card-selected' : '')
+                + (isCopied ? ' worklog-card-copied' : '')
+            }
+            role="button"
+            tabIndex={0}
+            aria-pressed={isSelected}
+            /* Durum yalnizca RENKLE anlatilmaz: erisilebilir ad ile de
+               bildirilir (renk korlugu / ekran okuyucu — CTO §5). */
+            aria-label={
+                `${project_name || 'Project'}, ${formatHours(duration_hours)}`
+                + (isCopied ? ' — panoya kopyalandi' : '')
+                + (isSelected ? ' — secili' : '')
+            }
             onClick={(e) => {
                 e.stopPropagation() // Prevent bubbling to DayColumn (which would set targetDate)
                 onSelect?.(workLog.id)
+            }}
+            onKeyDown={(e) => {
+                // Klavye ile secim (§ erisilebilirlik): kart bir buton gibi
+                // davranir; Space sayfayi kaydirmaz.
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onSelect?.(workLog.id)
+                }
             }}
         >
             {/* Proje Adı (Ana başlık) */}
@@ -73,6 +90,7 @@ function WorkLogCard({ workLog, onEdit, onDelete, isSelected = false, onSelect }
                 <Tooltip title="Edit">
                     <button
                         className="worklog-action-btn"
+                        aria-label="Kaydı düzenle"
                         onClick={(e) => { e.stopPropagation(); onEdit?.(workLog) }}
                     >
                         <EditOutlined />
@@ -81,6 +99,7 @@ function WorkLogCard({ workLog, onEdit, onDelete, isSelected = false, onSelect }
                 <Tooltip title="Delete">
                     <button
                         className="worklog-action-btn delete"
+                        aria-label="Kaydı sil"
                         onClick={(e) => { e.stopPropagation(); onDelete?.(workLog) }}
                     >
                         <DeleteOutlined />
@@ -88,10 +107,16 @@ function WorkLogCard({ workLog, onEdit, onDelete, isSelected = false, onSelect }
                 </Tooltip>
             </div>
 
-            {/* Selected indicator badge */}
-            {isSelected && (
-                <div className="worklog-selected-badge" title="Press Ctrl+C to copy">
-                    C
+            {/* Durum rozeti — metin tasir, yalniz renk degil. */}
+            {(isCopied || isSelected) && (
+                <div
+                    className={
+                        'worklog-selected-badge'
+                        + (isCopied ? ' is-copied' : '')
+                    }
+                    title={isCopied ? 'Panoda — hedef gün seçip Ctrl+V' : 'Ctrl+C ile kopyala'}
+                >
+                    {isCopied ? 'COPIED' : 'C'}
                 </div>
             )}
         </div>

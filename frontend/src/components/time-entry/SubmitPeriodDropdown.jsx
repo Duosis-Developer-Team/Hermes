@@ -164,7 +164,9 @@ function SubmitPeriodDropdown({
             <Dropdown
                 open={open}
                 onOpenChange={setOpen}
-                dropdownRender={() => dropdownContent}
+                /* AntD 5.x: dropdownRender deprecated → popupRender.
+                   Console uyarisi Sprint 4 QA kapisinda yakalandi. */
+                popupRender={() => dropdownContent}
                 trigger={['click']}
                 placement="bottomRight"
             >

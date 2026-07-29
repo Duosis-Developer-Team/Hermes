@@ -30,6 +30,9 @@ import PlanTimeModal from '../components/modals/PlanTimeModal'
 import SubmitPeriodModal from '../components/modals/SubmitPeriodModal'
 import { workLogService, timesheetService, reportsService, authService, planTimeService } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
+import {
+    buildPastePayload, isEditableTarget, makeClipboardSnapshot,
+} from '../features/time-entry/model/clipboard'
 import './TimeEntryPage.css'
 
 dayjs.extend(isoWeek)
@@ -380,11 +383,10 @@ function TimeEntryPage() {
     // Keyboard shortcut listener — Ctrl/Cmd + C/V/Escape
     useEffect(() => {
         const handleKeyDown = async (e) => {
-            // Guard: don't intercept when typing in a form field
-            const tag = document.activeElement?.tagName?.toUpperCase()
-            const isEditable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
-                document.activeElement?.isContentEditable === true
-            if (isEditable) return
+            // Guard: form alanindayken sayfa kisayollari calismaz.
+            // Saf fonksiyon (features/time-entry/model/clipboard) — DOM'da
+            // test edilemeyen contenteditable dali orada kapsanir.
+            if (isEditableTarget(document.activeElement)) return
 
             const isMod = e.ctrlKey || e.metaKey
 
@@ -393,9 +395,11 @@ function TimeEntryPage() {
                 if (selectedLogId) {
                     const log = workLogs.find(l => l.id === selectedLogId)
                     if (log) {
-                        setCopiedLog(log)
-                        const label = log.project_name || log.description?.substring(0, 25) || 'Log'
-                        message.info(`"${label}" copied — select a target day, then Ctrl+V`)
+                        // IMMUTABLE snapshot: kaynak kayit sonradan
+                        // degisse/silinse bile pano icerigi korunur (§6).
+                        const snapshot = makeClipboardSnapshot(log)
+                        setCopiedLog(snapshot)
+                        message.info(`"${snapshot.label}" copied — select a target day, then Ctrl+V`)
                         e.preventDefault()
                     }
                 }
@@ -413,23 +417,13 @@ function TimeEntryPage() {
                     return
                 }
 
-                const newLog = {
-                    customer_id: copiedLog.customer_id,
-                    project_id: copiedLog.project_id,
-                    work_type_id: copiedLog.work_type_id,
-                    activity_type_id: copiedLog.activity_type_id || null,
-                    platform_id: copiedLog.platform_id || null,
-                    work_line_id: copiedLog.work_line_id || null,
-                    date_worked: targetDate,
-                    duration_hours: copiedLog.duration_hours,
-                    description: copiedLog.description,
-                }
+                const newLog = buildPastePayload(copiedLog, targetDate)
                 if (pasteMutation.isPending) return // debounce double-paste
 
                 try {
                     await pasteMutation.mutateAsync(newLog)
                     const formattedDate = dayjs(targetDate).format('DD MMM')
-                    message.success(`"${copiedLog.project_name || 'Log'}" pasted to ${formattedDate} ✓`)
+                    message.success(`"${copiedLog.label}" pasted to ${formattedDate} ✓`)
                     setTargetDate(null) // clear target; copiedLog stays for multiple pastes
                 } catch {
                     // error handled by pasteMutation.onError
@@ -647,6 +641,7 @@ function TimeEntryPage() {
                         onDeletePlanTime={handleDeletePlanTime}
                         onEditPlanTime={handleEditPlanTime}
                         selectedLogId={selectedLogId}
+                        copiedLogId={copiedLog?.sourceId ?? null}
                         copiedLog={copiedLog}
                         targetDate={targetDate}
                         onSelectLog={handleSelectLog}

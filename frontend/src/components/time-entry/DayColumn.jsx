@@ -35,6 +35,7 @@ function DayColumn({
     isAdmin = false,
     // Copy-paste props
     selectedLogId,
+    copiedLogId,
     isTargeted = false,
     hasCopiedLog = false,
     onSelectLog,
@@ -139,6 +140,7 @@ function DayColumn({
                             onEdit={onEditLog}
                             onDelete={onDeleteLog}
                             isSelected={selectedLogId === log.id}
+                            isCopied={copiedLogId === log.id}
                             onSelect={onSelectLog}
                         />
                     ))

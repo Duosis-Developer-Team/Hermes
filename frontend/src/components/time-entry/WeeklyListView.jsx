@@ -30,6 +30,7 @@ function WeeklyListView({
     isAdmin = false,
     // Copy-paste props
     selectedLogId,
+    copiedLogId,
     copiedLog,
     targetDate,
     onSelectLog,
@@ -144,6 +145,7 @@ function WeeklyListView({
                             isToday={dateKey === today}
                             isAdmin={isAdmin}
                             selectedLogId={selectedLogId}
+                    copiedLogId={copiedLogId}
                             isTargeted={dateKey === targetDate}
                             hasCopiedLog={!!copiedLog}
                             onSelectLog={onSelectLog}
