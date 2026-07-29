@@ -18,13 +18,15 @@
  * =============================================================================
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
     Button,
     Input,
+    Progress,
     Space,
     Switch,
     Table,
+    Tag,
     Tooltip,
     message,
 } from 'antd'
@@ -39,8 +41,11 @@ import {
     userGroupService,
 } from '../../services/api'
 import {
-    applyAssignRequiresAccess, mergeMemberPermissions,
+    applyAssignRequiresAccess, classifyBulkResult, mergeMemberPermissions,
 } from '../../features/admin/permissions/model/effectivePermission'
+import {
+    errorText, failedTargets, runBulkOverrides,
+} from '../../features/admin/permissions/model/bulkOverrides'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Member overrides panel — rendered inside each group's expanded row
@@ -59,18 +64,24 @@ function GroupMemberOverridesPanel({ group, allUsersById, groupPermission }) {
         queryFn: () => taskGroupPermissionService.listMemberOverrides(group.id),
     })
 
+    // Izin yazmalarindan sonra tazelenmesi gereken TAM kume — tek yerde.
+    // Ilgisiz cache (Time Entry, genel uygulama) DOKUNULMAZ.
+    const refreshPermissionQueries = () => {
+        queryClient.invalidateQueries({
+            queryKey: ['admin-task-group-member-overrides', group.id],
+        })
+        queryClient.invalidateQueries({
+            queryKey: ['admin-task-permissions-effective'],
+        })
+        queryClient.invalidateQueries({ queryKey: ['task-permissions'] })
+    }
+
     const upsertMutation = useMutation({
         mutationFn: ({ userId, data }) =>
             taskGroupPermissionService.upsertMemberOverride(group.id, userId, data),
         onSuccess: () => {
             message.success('Override saved.')
-            queryClient.invalidateQueries({
-                queryKey: ['admin-task-group-member-overrides', group.id],
-            })
-            queryClient.invalidateQueries({
-                queryKey: ['admin-task-permissions-effective'],
-            })
-            queryClient.invalidateQueries({ queryKey: ['task-permissions'] })
+            refreshPermissionQueries()
         },
         onError: (err) => {
             message.error(
@@ -78,6 +89,70 @@ function GroupMemberOverridesPanel({ group, allUsersById, groupPermission }) {
             )
         },
     })
+
+    // ── Toplu uygulama ────────────────────────────────────────────────
+    // Uye override ucu TEK UYELIKtir → N uye = N istek, islem ATOMIK
+    // DEGIL. Arayuz atomikmis gibi davranmaz: ilerleme sayilir, her
+    // uyenin gercek sonucu saklanir, kismi basari ASLA tam basari gibi
+    // gosterilmez ve yeniden deneme YALNIZCA basarisizlari kapsar.
+    const [bulk, setBulk] = useState(null)
+    const abortRef = useRef({ aborted: false })
+
+    // Panel kapanirsa/unmount olursa surucu susar: unmount sonrasi
+    // state guncellemesi ve unhandled rejection olusmaz.
+    useEffect(() => {
+        const flag = abortRef.current
+        return () => { flag.aborted = true }
+    }, [])
+
+    const applyToMembers = async (targets, data, label) => {
+        // Ayni panelde ikinci bir toplu islem baslatilamaz.
+        if (bulk?.running) return
+        if (!targets.length) {
+            message.info('No members to update.')
+            return
+        }
+        setBulk({
+            running: true, label, data,
+            progress: { total: targets.length, completed: 0, succeeded: 0, failed: 0 },
+            results: null,
+        })
+        const { results, aborted } = await runBulkOverrides({
+            targets,
+            data,
+            signal: abortRef.current,
+            apply: ({ userId, data: patch }) =>
+                taskGroupPermissionService.upsertMemberOverride(group.id, userId, patch),
+            onProgress: (progress) =>
+                setBulk((prev) => (prev ? { ...prev, progress } : prev)),
+        })
+        if (aborted) return
+
+        const outcome = classifyBulkResult(results)
+        setBulk((prev) => (prev ? { ...prev, running: false, results, outcome } : prev))
+
+        // Sunucu gercegini yeniden oku — kismi basarida cache'i "hepsi
+        // basarili" durumuna ZORLAMAYIZ; basarili uyeler yeni degeri,
+        // basarisiz uyeler eski degeri gosterir.
+        refreshPermissionQueries()
+
+        if (outcome.kind === 'success') {
+            message.success(`${outcome.total} member(s) updated.`)
+        } else if (outcome.kind === 'partial') {
+            message.warning(
+                `${outcome.total - outcome.failed.length} of ${outcome.total} updated — `
+                + `${outcome.failed.length} failed.`
+            )
+        } else if (outcome.kind === 'error') {
+            message.error(`All ${outcome.total} update(s) failed.`)
+        }
+    }
+
+    const retryFailed = () => {
+        if (!bulk?.results) return
+        const byId = Object.fromEntries(rows.map((r) => [r.user_id, r]))
+        applyToMembers(failedTargets(bulk.results, byId), bulk.data, bulk.label)
+    }
 
     // Simple binary toggle: ON = explicit TRUE override, OFF = explicit
     // FALSE override. The "inherit-from-default" tri-state is gone in v1
@@ -113,6 +188,25 @@ function GroupMemberOverridesPanel({ group, allUsersById, groupPermission }) {
         [members, overrides, groupPermission]
     )
 
+    /**
+     * Iznin KAYNAGI: "Direct override" mi, gruptan mi devralindi.
+     * Renk TEK BASINA anlatmaz (§8) — gorunur METIN + erisilebilir ad.
+     * Access ve Assign kaynaklari BAGIMSIZ gosterilir.
+     */
+    const SourceTag = ({ source, kind }) => {
+        const explicit = source === 'explicit'
+        const label = explicit ? 'Direct override' : 'Inherited from group'
+        return (
+            <Tag
+                color={explicit ? 'gold' : 'default'}
+                aria-label={`${kind}: ${label}`}
+                style={{ marginInlineStart: 8, fontSize: 11 }}
+            >
+                {explicit ? 'Direct' : 'Inherited'}
+            </Tag>
+        )
+    }
+
     const columns = [
         {
             title: 'User',
@@ -136,36 +230,48 @@ function GroupMemberOverridesPanel({ group, allUsersById, groupPermission }) {
         {
             title: 'Access Tasks',
             dataIndex: 'effective_access_in_group',
-            width: 140,
+            width: 190,
             render: (val, record) => (
-                <Switch
-                    checked={!!val}
-                    disabled={upsertMutation.isPending}
-                    onClick={(_, e) => e?.stopPropagation?.()}
-                    onChange={(checked) =>
-                        handleMemberToggle(record, 'access', checked)
-                    }
-                />
+                <>
+                    <Switch
+                        checked={!!val}
+                        disabled={upsertMutation.isPending || !!bulk?.running}
+                        onClick={(_, e) => e?.stopPropagation?.()}
+                        onChange={(checked) =>
+                            handleMemberToggle(record, 'access', checked)
+                        }
+                    />
+                    <SourceTag source={record.access_source} kind="Access Tasks" />
+                </>
             ),
         },
         {
             title: 'Assign Tasks',
             dataIndex: 'effective_assign_in_group',
-            width: 140,
+            width: 190,
             render: (val, record) => {
                 // Invariant — assign requires access. If access is OFF
                 // for this member, the Assign toggle is forced off and
                 // disabled. Backend enforces the same invariant.
                 const accessOff = !record.effective_access_in_group
                 return (
-                    <Switch
-                        checked={!accessOff && !!val}
-                        disabled={accessOff || upsertMutation.isPending}
-                        onClick={(_, e) => e?.stopPropagation?.()}
-                        onChange={(checked) =>
-                            handleMemberToggle(record, 'assign', checked)
-                        }
-                    />
+                    <>
+                        <Switch
+                            checked={!accessOff && !!val}
+                            disabled={
+                                accessOff || upsertMutation.isPending
+                                || !!bulk?.running
+                            }
+                            onClick={(_, e) => e?.stopPropagation?.()}
+                            onChange={(checked) =>
+                                handleMemberToggle(record, 'assign', checked)
+                            }
+                        />
+                        <SourceTag
+                            source={record.assign_source}
+                            kind="Assign Tasks"
+                        />
+                    </>
                 )
             },
         },
@@ -207,11 +313,111 @@ function GroupMemberOverridesPanel({ group, allUsersById, groupPermission }) {
         },
     ]
 
+    const failedCount = bulk?.outcome?.failed?.length ?? 0
+
     return (
         <div style={{ padding: '8px 0' }}>
             <div style={{ marginBottom: 8, color: 'var(--c-text-muted)', fontSize: 12 }}>
                 Members are managed in Users → Groups.
             </div>
+
+            {/* Toplu uygulama: hedef sayisi ONCEDEN bellidir, pending
+                sirasinda ikinci islem baslatilamaz. */}
+            <Space wrap style={{ marginBottom: 12 }}>
+                <Button
+                    size="small"
+                    disabled={!!bulk?.running || rows.length === 0}
+                    onClick={() =>
+                        applyToMembers(
+                            rows,
+                            { can_access_tasks_override: true },
+                            'Access Tasks ON'
+                        )
+                    }
+                >
+                    Grant Access to all {rows.length}
+                </Button>
+                <Button
+                    size="small"
+                    disabled={!!bulk?.running || rows.length === 0}
+                    onClick={() =>
+                        applyToMembers(
+                            rows,
+                            {
+                                can_access_tasks_override: false,
+                                can_assign_tasks_override: false,
+                            },
+                            'Access Tasks OFF'
+                        )
+                    }
+                >
+                    Revoke Access from all {rows.length}
+                </Button>
+            </Space>
+
+            {bulk && (
+                <div
+                    role="status"
+                    aria-live="polite"
+                    style={{
+                        marginBottom: 12,
+                        padding: '8px 12px',
+                        background: 'var(--c-surface-raised)',
+                        border: '1px solid var(--c-border)',
+                        borderRadius: 8,
+                    }}
+                >
+                    <div style={{ fontSize: 12, color: 'var(--c-text)' }}>
+                        {bulk.label} — {bulk.progress.completed}/{bulk.progress.total}
+                        {' · '}
+                        {bulk.progress.succeeded} succeeded
+                        {' · '}
+                        {bulk.progress.failed} failed
+                        {bulk.running ? ' · working…' : ''}
+                    </div>
+                    <Progress
+                        percent={Math.round(
+                            (bulk.progress.completed / (bulk.progress.total || 1)) * 100
+                        )}
+                        size="small"
+                        showInfo={false}
+                        status={
+                            bulk.running
+                                ? 'active'
+                                : failedCount > 0 ? 'exception' : 'success'
+                        }
+                    />
+                    {!bulk.running && failedCount > 0 && (
+                        <div style={{ marginTop: 8 }}>
+                            {/* Kismi basari ASLA tam basari gibi gosterilmez:
+                                basarisiz uyeler ADLARIYLA listelenir ve
+                                yalnizca onlar yeniden denenir. */}
+                            <div style={{ fontSize: 12, color: 'var(--c-text)' }}>
+                                Failed for:{' '}
+                                {bulk.outcome.failed
+                                    .map((f) => {
+                                        const u = allUsersById[f.user_id]
+                                        const who =
+                                            u?.full_name || u?.email || f.user_id
+                                        // Sebep de gosterilir: "basarisiz"
+                                        // demek tek basina eyleme
+                                        // gecirilebilir bilgi degil.
+                                        return `${who} (${errorText(f.error)})`
+                                    })
+                                    .join(', ')}
+                            </div>
+                            <Button
+                                size="small"
+                                style={{ marginTop: 6 }}
+                                onClick={retryFailed}
+                            >
+                                Retry {failedCount} failed
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            )}
+
             <Table
                 rowKey="id"
                 size="small"

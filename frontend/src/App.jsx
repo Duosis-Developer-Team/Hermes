@@ -68,7 +68,7 @@ import { useTaskPermissions } from './hooks/useTaskPermissions'
  * Protected Route Component
  * Kimlik doğrulaması gerektiğinde kullanılır.
  */
-const ProtectedRoute = ({ children, permission = null }) => {
+export const ProtectedRoute = ({ children, permission = null }) => {
     // RBAC R3: rota koruması izin-tabanlı. `permission` string veya
     // dizi (dizi = herhangi biri yeterli). Backend her koşulda gerçek
     // otorite — bu yalnızca UX katmanı. İzinler henüz yüklenmediyse
@@ -96,7 +96,7 @@ const ProtectedRoute = ({ children, permission = null }) => {
  * Task-Protected Route — admin OR can_access_tasks.
  * Backend remains the source of truth; this is UX only.
  */
-const TaskProtectedRoute = ({ children }) => {
+export const TaskProtectedRoute = ({ children }) => {
     const { isAuthenticated, user } = useAuthStore()
     const { isLoading, canAccessAny, isTaskAdmin } = useTaskPermissions()
 
