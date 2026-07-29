@@ -34,12 +34,37 @@ export const queryKeys = {
         list: (filters) => ['planTimes', 'list', stableFilters(filters)],
     },
     periods: { all: ['periods'] },
+    /** Time Entry'nin donem durumu ailesi — Tasks'tan Log Time sonrasi
+     *  da tazelenir (ayni core_db kaydi yazilir). */
+    periodStatus: { all: ['periodStatus'] },
     tasks: {
         all: ['tasks'],
         list: (filters) => ['tasks', 'list', stableFilters(filters)],
         detail: (id) => ['tasks', 'detail', id],
     },
-    taskPermissions: { all: ['taskPermissions'] },
+    /** Gorev aktivite akisi (Review modal + yorum thread'i ayni aileyi
+     *  tuketir; kok anahtar DEGISTIRILEMEZ). */
+    taskActivity: {
+        all: ['task-activity'],
+        byTask: (taskId) => ['task-activity', taskId],
+    },
+    /** Alt projeler — Create modal ile Tasks filtre cubugu AYNI cache'i
+     *  paylasir, bu yuzden anahtar birebir aynidir. */
+    taskSubProjects: {
+        all: ['task-sub-projects'],
+        list: (customerId, projectId) =>
+            ['task-sub-projects', customerId, projectId],
+    },
+    /** auth-service /users/lookup — iki ayri cagri sekli var. */
+    authUsersLookup: {
+        all: ['auth-users-lookup'],
+        byIds: (ids) => ['auth-users-lookup', { ids }],
+        activeUsers: () => ['auth-users-lookup', { include_inactive: false }],
+    },
+    /** DIKKAT: gercek anahtar 'task-permissions' (tire ile). Onceki
+     *  ['taskPermissions'] degeri hicbir yerde kullanilmiyordu ve
+     *  invalidation'i sessizce iskalardi. */
+    taskPermissions: { all: ['task-permissions'] },
     users: { all: ['users'] },
     userGroups: { all: ['userGroups'] },
     rbacRoles: {

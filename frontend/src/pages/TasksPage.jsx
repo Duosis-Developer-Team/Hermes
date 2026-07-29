@@ -1,641 +1,154 @@
 /**
  * =============================================================================
- * HERMES - Tasks Page
+ * HERMES - Tasks Page (route orkestrasyonu)
  * =============================================================================
- * Calendar / list view of tasks scoped to the current user's visibility.
- * Layout matches the Time Entry page (weekly columns, Hermes Ant Design).
+ * Board / List gorunumu, kullanicinin gorebildigi gorevlerle sinirli.
  *
- * After fetching tasks, this page calls auth-service /users/lookup once to
- * resolve assigner / assignee names, then passes the resulting userMap to
- * the card and detail modal.
+ * Sprint 5C: bu dosya artik YALNIZCA baglayicidir — durum, sorgu,
+ * mutasyon, tarih matematigi ve izin karari `src/features/tasks` altina
+ * kendi sinirlarina ayrildi:
+ *
+ *   model/      permissions · constants · dates · taskQuery
+ *   hooks/      useTaskTypeRoute · useTaskViewState · useTaskFilters
+ *               useTaskDirectory · useTasksQuery · useTaskMutations
+ *               useTaskWorkLog · useTaskDialogs
+ *   components/ TasksHeader · TaskQuickFilters · TaskRangeBar
+ *               TaskFilterBar · TasksSurface
+ *   modals/     TaskDeleteModal · TaskStatusConfirmModal
+ *
+ * TEK bir "mega hook" YOKTUR: her hook tek bir soruyu cevaplar ve tek
+ * basina test edilebilir. Burada kalan is, aralarindaki AKISI kurmak —
+ * ozellikle "tamamla → Log Time" gecisi.
  * =============================================================================
  */
 
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import {
-    Avatar,
-    Button,
-    Card,
-    Empty,
-    Modal,
-    Select,
-    Space,
-    Spin,
-    Switch,
-    message,
-} from 'antd'
-import {
-    LeftOutlined,
-    RightOutlined,
-    FilterOutlined,
-    ExclamationCircleOutlined,
-    DeleteOutlined,
-    UserOutlined,
-    CloseOutlined,
-    PlayCircleOutlined,
-    CheckCircleOutlined,
-    UndoOutlined,
-} from '@ant-design/icons'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import dayjs from 'dayjs'
-import isoWeek from 'dayjs/plugin/isoWeek'
+import { Empty, message } from 'antd'
 
-import {
-    authService,
-    customerService,
-    projectService,
-    taskService,
-    taskSubProjectService,
-    workLogService,
-} from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
 import {
     resolveViewedUserId, selectTaskPermissions,
 } from '../features/tasks/model/permissions'
-import { typeMeta } from '../utils/workItemType'
-import TasksListView from '../components/tasks/TasksListView'
-import TasksBoardView from '../components/tasks/TasksBoardView'
-import TaskDetailPanel from '../components/tasks/TaskDetailPanel'
-import TasksSearchBar from '../components/tasks/TasksSearchBar'
+import useTaskTypeRoute from '../features/tasks/hooks/useTaskTypeRoute'
+import useTaskViewState from '../features/tasks/hooks/useTaskViewState'
+import useTaskFilters from '../features/tasks/hooks/useTaskFilters'
+import useTaskDirectory from '../features/tasks/hooks/useTaskDirectory'
+import useTasksQuery from '../features/tasks/hooks/useTasksQuery'
+import useTaskMutations from '../features/tasks/hooks/useTaskMutations'
+import useTaskWorkLog from '../features/tasks/hooks/useTaskWorkLog'
+import useTaskDialogs from '../features/tasks/hooks/useTaskDialogs'
+import TasksHeader from '../features/tasks/components/TasksHeader'
+import TaskQuickFilters from '../features/tasks/components/TaskQuickFilters'
+import TaskRangeBar from '../features/tasks/components/TaskRangeBar'
+import TaskFilterBar from '../features/tasks/components/TaskFilterBar'
+import TasksSurface from '../features/tasks/components/TasksSurface'
+import TaskDeleteModal from '../features/tasks/modals/TaskDeleteModal'
+import TaskStatusConfirmModal from '../features/tasks/modals/TaskStatusConfirmModal'
 import CreateTaskModal from '../components/modals/CreateTaskModal'
 import TaskReviewModal from '../components/modals/TaskReviewModal'
 import LogTimeModal from '../components/modals/LogTimeModal'
-import DangerConfirmModal from '../components/common/DangerConfirmModal'
 import './TasksPage.css'
-
-dayjs.extend(isoWeek)
-
-const STATUS_OPTIONS = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'in_progress', label: 'In Progress' },
-    { value: 'completed', label: 'Completed' },
-    { value: 'cancelled', label: 'Cancelled' },
-    { value: 'rejected', label: 'Rejected' },
-]
-
-// Scope (primary) — which pool of tasks we're looking at. Single-
-// select. "Assigned by Me" stays hidden from users without assign
-// permission (same gate as the legacy pill).
-const TASK_SCOPES = [
-    { value: 'my-tasks', label: 'My Tasks' },
-    { value: 'assigned-by-me', label: 'Assigned by Me', assignerOnly: true },
-]
-
-// Work item kinds — same board/list/comments/notifications; just a filter
-// + colour cue. Colours mirror the per-card border accents (TaskCard.css).
-const TASK_TYPES = [
-    { value: 'task', label: 'Tasks', singular: 'Task', color: '#388bff' },
-    { value: 'issue', label: 'Issues', singular: 'Issue', color: '#f97316' },
-    {
-        value: 'suggestion',
-        label: 'Suggestions',
-        singular: 'Suggestion',
-        color: '#a855f7',
-    },
-]
-
-// URL <-> state: the route segment is the plural ("/project-management/issues"),
-// the internal taskType is the singular ("issue").
-const TYPE_TO_PLURAL = { task: 'tasks', issue: 'issues', suggestion: 'suggestions' }
-const PLURAL_TO_TYPE = { tasks: 'task', issues: 'issue', suggestions: 'suggestion' }
-const PM_BASE = '/project-management'
-
-// Quick filters (secondary) — optional single-select chip on top of
-// the scope. Clicking the active chip clears it.
-const TASK_QUICK_FILTERS = [
-    { value: 'due-this-week', label: 'Due This Week' },
-    { value: 'overdue', label: 'Overdue' },
-    { value: 'completed-this-week', label: 'Completed This Week' },
-]
-
-const PRIORITY_OPTIONS = [
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
-    { value: 'urgent', label: 'Urgent' },
-]
 
 function TasksPage() {
     const { user } = useAuthStore()
-    const queryClient = useQueryClient()
     const { isTaskAdmin, canAccessAny, scopes } = useTaskPermissions()
 
-    const [weekStart, setWeekStart] = useState(() => dayjs().startOf('isoWeek'))
-    const [statusFilter, setStatusFilter] = useState(null)
-    const [priorityFilter, setPriorityFilter] = useState(null)
-    const [customerFilter, setCustomerFilter] = useState(null)
-    const [projectFilter, setProjectFilter] = useState(null)
-    const [subProjectFilter, setSubProjectFilter] = useState(null)
-
-    const [createOpen, setCreateOpen] = useState(false)
-    const [editingTask, setEditingTask] = useState(null)
-    const [initialDate, setInitialDate] = useState(null)
-    const [deletingTask, setDeletingTask] = useState(null)
-    // Pending checkbox-driven status change awaiting confirmation:
-    // { task, nextCompleted } | null.
-    const [pendingToggle, setPendingToggle] = useState(null)
-    const [reviewTask, setReviewTask] = useState(null)
-    // Task whose inline detail panel is docked beside the board/list.
-    // Opened by clicking a card body; the card's "Review" eye button still
-    // opens the full modal (reviewTask).
-    const [panelTask, setPanelTask] = useState(null)
-    // Task to prefill the Log Time modal with. Set on first completion
-    // and on the explicit "Log Time" action; never set on reopen.
-    const [logTimeTask, setLogTimeTask] = useState(null)
-
-    // ── View switches ──────────────────────────────────────────────────────
-    // Scope (primary) and Quick Filter (secondary, optional) are two
-    // independent controls. Layout (List/Board) is a third independent
-    // axis — none of these auto-flip each other. Board is the default
-    // surface; the old Calendar (weekly) layout was removed as it was
-    // not usable for task management.
-    const [viewLayout, setViewLayout] = useState('board')
-    // Time range mode — 'all' (default): date-independent kanban showing
-    // every visible item regardless of dates (management view: everything
-    // assigned & not yet done at a glance). 'week': the classic weekly
-    // window, but windowed by DUE DATE (termin), not scheduled date.
-    const [rangeMode, setRangeMode] = useState('all')
-    // Board-only: lay tasks out in per-assignee swimlanes so dragging a
-    // card to another row reassigns it. Off by default.
-    const [groupByAssignee, setGroupByAssignee] = useState(false)
-    const [taskScope, setTaskScope] = useState('my-tasks')
-    // Work item kind currently viewed: task | issue | suggestion. Same
-    // board/list/comments/notifications — just a filter + colour cue.
-    const [taskType, setTaskType] = useState('task')
-    // Kind chosen via the "+" menu for the create modal.
-    const [createType, setCreateType] = useState('task')
-    const [taskQuickFilter, setTaskQuickFilter] = useState(null)
-    // Admin-only user selector (Time Entry parity). null → current user.
-    const [selectedUserId, setSelectedUserId] = useState(null)
-
-    // The active type follows the URL segment (/project-management/:type).
-    const { type: typeParam } = useParams()
-    const navigate = useNavigate()
-    useEffect(() => {
-        const t = PLURAL_TO_TYPE[typeParam]
-        if (t) setTaskType(t)
-    }, [typeParam])
-
-    // Deep link from notification e-mails: the type is in the path
-    // (/project-management/issues), the item id in the query (?item=<id>).
-    // Open the item's Review modal, then strip the param so a refresh
-    // doesn't re-open it. (?type= is still honoured for legacy links.)
-    const [searchParams, setSearchParams] = useSearchParams()
-    useEffect(() => {
-        const itemId = searchParams.get('item')
-        const legacyType = searchParams.get('type')
-        if (
-            legacyType &&
-            ['task', 'issue', 'suggestion'].includes(legacyType)
-        ) {
-            setTaskType(legacyType)
-        }
-        if (itemId) {
-            taskService
-                .getById(itemId)
-                .then((t) => {
-                    if (t) setReviewTask(t)
-                })
-                .catch(() => {})
-            const next = new URLSearchParams(searchParams)
-            next.delete('item')
-            next.delete('type')
-            setSearchParams(next, { replace: true })
-        }
-        // Run once on mount.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
-
-    // Sprint 5 §4: TUM izin kararlari TEK selector katmanindan gelir
-    // (features/tasks/model/permissions). Fail-closed: scopes henuz
-    // yuklenmemisken her sey false — yetkisiz kontrol flash etmez.
-    // UI gizleme backend authorization'in YERINE GECMEZ.
-    const taskPerms = selectTaskPermissions({
-        scopes, isTaskAdmin, canAccessAny, taskType, createType,
+    // ── Diyaloglar ────────────────────────────────────────────────────────
+    // Once kurulur: derin baglanti (?item=) Review modalini acar.
+    const dialogs = useTaskDialogs({ defaultCreateType: 'task' })
+    const { taskType, goToType } = useTaskTypeRoute({
+        onDeepLinkTask: dialogs.openReview,
     })
-    const canAccessScope = taskPerms.canAccessScope
-    const canAssignScope = taskPerms.canAssignTasks
-    const assignableUserIds = taskPerms.assignableUserIds
-    const assignableGroupIds = taskPerms.assignableGroupIds
 
-    // Scope-pill labels follow the active kind: "My Tasks" / "My Issues" /
-    // "My Suggestions". "Assigned by Me" is the same for all kinds.
-    const activeTypeMeta =
-        TASK_TYPES.find((t) => t.value === taskType) || TASK_TYPES[0]
-    const scopeLabel = (s) =>
-        s.value === 'my-tasks' ? `My ${activeTypeMeta.label}` : s.label
+    // ── Izinler: TUM kararlar TEK selector katmanindan (Sprint 5 §4) ──────
+    // Fail-closed: scopes yuklenmemisken her sey false — yetkisiz kontrol
+    // flash etmez. UI gizleme backend authorization'in YERINE GECMEZ.
+    const taskPerms = selectTaskPermissions({
+        scopes, isTaskAdmin, canAccessAny, taskType,
+        createType: dialogs.createType,
+    })
 
-    // The Create modal must use the scope of the kind BEING CREATED (the
-    // "+" menu choice), which can differ from the kind currently viewed —
-    // e.g. "+ New Issue" while on the Tasks tab. Assignee options are
-    // hierarchy-driven, so this must follow createType, not taskType.
-    const createPerms = {
-        assignableUserIds: taskPerms.createAssignableUserIds,
-        assignableGroupIds: taskPerms.createAssignableGroupIds,
-    }
-
-    // "Assigned by Me" requires assign permission (in the active scope) or admin.
-    const canViewAssignedByMe = taskPerms.canViewAssignedByMe
-    // If permission is revoked while the page is open and the user is on
-    // the Assigned-by-Me scope, fall back to My Tasks.
-    if (taskScope === 'assigned-by-me' && !canViewAssignedByMe) {
-        setTaskScope('my-tasks')
-    }
+    const view = useTaskViewState({
+        canViewAssignedByMe: taskPerms.canViewAssignedByMe,
+    })
+    const { filters, clearFilters, ...filterActions } = useTaskFilters()
 
     // Effective viewed user. Non-admin path always resolves to current user
     // regardless of the selector — backend also coerces, defense in depth.
     const viewedUserId = resolveViewedUserId({
-        isTaskAdmin, selectedUserId, currentUserId: user?.id,
+        isTaskAdmin, selectedUserId: view.selectedUserId, currentUserId: user?.id,
     })
 
-    const weekEnd = weekStart.endOf('isoWeek')
+    const { tasks, isLoading } = useTasksQuery({
+        enabled: taskPerms.canAccessScope,
+        taskType,
+        taskScope: view.taskScope,
+        viewedUserId,
+        rangeMode: view.rangeMode,
+        weekStart: view.weekStart,
+        quickFilter: view.quickFilter,
+        filters,
+    })
 
-    // Filter selectors data
-    const { data: customers = [] } = useQuery({
-        queryKey: ['customers'],
-        queryFn: () => customerService.getAll(),
+    const directory = useTaskDirectory({
         enabled: canAccessAny,
-    })
-    const { data: projects = [] } = useQuery({
-        queryKey: ['projects'],
-        queryFn: () => projectService.getAll(),
-        enabled: canAccessAny,
-    })
-    const filteredProjects = useMemo(() => {
-        if (!customerFilter) return projects
-        return projects.filter((p) => p.customer_id === customerFilter)
-    }, [projects, customerFilter])
-
-    const { data: subProjects = [] } = useQuery({
-        queryKey: ['task-sub-projects', customerFilter, projectFilter],
-        queryFn: () =>
-            taskSubProjectService.list({
-                customer_id: customerFilter || undefined,
-                project_id: projectFilter || undefined,
-            }),
-        enabled: canAccessAny,
+        isTaskAdmin,
+        currentUser: user,
+        tasks,
+        customerFilter: filters.customer,
+        projectFilter: filters.project,
     })
 
-    // Translate the active view into list-endpoint params. Every view
-    // declares its own scope (assignee_user_id vs assigner_user_id),
-    // and the date-range views drop the scheduled-date window so
-    // history and future are reachable from the same screen.
-    const todayStr = dayjs().format('YYYY-MM-DD')
-    const yesterdayStr = dayjs().subtract(1, 'day').format('YYYY-MM-DD')
-    const weekStartStr = weekStart.format('YYYY-MM-DD')
-    const weekEndStr = weekEnd.format('YYYY-MM-DD')
-
-    // Scope → backend assignee_user_id / assigner_user_id.
-    const effectiveScopeParams = useMemo(() => {
-        if (!viewedUserId) return {}
-        return taskScope === 'assigned-by-me'
-            ? { assigner_user_id: viewedUserId }
-            : { assignee_user_id: viewedUserId }
-    }, [taskScope, viewedUserId])
-
-    // Quick filter → additional backend filter params. When set, the
-    // scheduled-date week window is intentionally dropped so the
-    // filter can match tasks scheduled in other weeks (e.g. an
-    // "Overdue" task scheduled three weeks ago).
-    const quickFilterParams = useMemo(() => {
-        switch (taskQuickFilter) {
-            case 'due-this-week':
-                return {
-                    due_from: weekStartStr,
-                    due_to: weekEndStr,
-                    status_exclude: ['completed', 'rejected'],
-                }
-            case 'overdue':
-                return {
-                    due_to: yesterdayStr,
-                    status_exclude: ['completed', 'rejected'],
-                }
-            case 'completed-this-week':
-                return {
-                    statuses: ['completed'],
-                    completed_from: weekStartStr,
-                    completed_to: weekEndStr,
-                }
-            default:
-                return null
-        }
-    }, [taskQuickFilter, weekStartStr, weekEndStr, yesterdayStr])
-
-    const { data: tasks = [], isLoading } = useQuery({
-        queryKey: [
-            'tasks',
-            taskScope,
-            taskType,
-            taskQuickFilter,
-            viewedUserId,
-            rangeMode,
-            weekStartStr,
-            statusFilter,
-            priorityFilter,
-            customerFilter,
-            projectFilter,
-            subProjectFilter,
-            todayStr,
-        ],
-        queryFn: () => {
-            const base = {
-                status: statusFilter || undefined,
-                priority: priorityFilter || undefined,
-                task_type: taskType,
-                customer_id: customerFilter || undefined,
-                project_id: projectFilter || undefined,
-                sub_project_id: subProjectFilter || undefined,
-                ...effectiveScopeParams,
+    const mutations = useTaskMutations({
+        createType: dialogs.createType,
+        onWriteSettled: dialogs.closeCreate,
+        // Review modali acikken durum degisirse, kullanici kapatmadan
+        // once guncel bayragi gorsun (eski not modalinin deseni).
+        onTaskRefreshed: (updated) => {
+            if (dialogs.reviewTask && dialogs.reviewTask.id === updated?.id) {
+                dialogs.openReview(updated)
             }
-            if (quickFilterParams) {
-                // Quick filter active — drop any date window so "Overdue"
-                // reaches older weeks and "Completed This Week" finds rows
-                // scheduled outside this week. Works with either scope.
-                return taskService.list({
-                    ...base,
-                    ...quickFilterParams,
-                })
-            }
-            if (rangeMode === 'week') {
-                // Weekly mode windows by DUE DATE (termin) — management
-                // asked to see what is due this week, not what was
-                // scheduled this week. Items without a due date only
-                // appear in the All view.
-                return taskService.list({
-                    ...base,
-                    due_from: weekStartStr,
-                    due_to: weekEndStr,
-                })
-            }
-            // 'all' — date-independent kanban: every visible item.
-            return taskService.list(base)
         },
-        // Only fetch the active scope's items when the user can access it.
-        enabled: canAccessScope,
     })
 
-    // Collect every user id referenced by the current task list and resolve
-    // names with a single auth-service /users/lookup call.
-    const referencedUserIds = useMemo(() => {
-        const ids = new Set()
-        for (const t of tasks) {
-            if (t.assignee_user_id) ids.add(t.assignee_user_id)
-            if (t.assigner_user_id) ids.add(t.assigner_user_id)
-            if (t.completed_by_user_id) ids.add(t.completed_by_user_id)
+    const workLog = useTaskWorkLog()
+
+    // ── Tamamla → Log Time akisi ──────────────────────────────────────────
+    // Cagiranlar ONCE onaylatir (kart checkbox'i onay modalinden gecer;
+    // Review modalinin kendi onayi vardir).
+    const executeToggle = async (task, nextCompleted) => {
+        // Workflow gate: pending bir gorev DOGRUDAN tamamlanamaz. Ilk
+        // "tamamla" aksiyonu onu KABUL eder (→ In Progress); atanan bir
+        // sonraki aksiyonda tamamlar.
+        if (nextCompleted && task.status === 'pending') {
+            await mutations.acceptMutation.mutateAsync(task.id)
+            return
         }
-        return Array.from(ids)
-    }, [tasks])
-
-    const { data: usersForTasks = [] } = useQuery({
-        queryKey: ['auth-users-lookup', { ids: referencedUserIds }],
-        queryFn: () => authService.lookupUsers({ ids: referencedUserIds }),
-        enabled: canAccessAny && referencedUserIds.length > 0,
-        staleTime: 60 * 1000,
-    })
-
-    // Admin user-selector: full active user list (Time Entry parity).
-    const { data: allActiveUsers = [] } = useQuery({
-        queryKey: ['auth-users-lookup', { include_inactive: false }],
-        queryFn: () => authService.lookupUsers(),
-        enabled: canAccessAny && isTaskAdmin,
-        staleTime: 60 * 1000,
-    })
-
-    const userMap = useMemo(() => {
-        const map = {}
-        // Combine the lookup result sets so selector + cards + swimlanes
-        // see the same names — admins always have allActiveUsers; non-
-        // admins get the set referenced by visible tasks.
-        for (const u of allActiveUsers) map[u.id] = u
-        for (const u of usersForTasks) map[u.id] = u
-        return map
-    }, [usersForTasks, allActiveUsers])
-
-    // ── Optimistic cache helpers for drag/drop status change ──────────────
-    // Patch every active ['tasks', ...] query so the card moves the instant
-    // it is dropped; rollback restores the snapshot if the server rejects.
-    const optimisticPatchTask = async (taskId, patch) => {
-        await queryClient.cancelQueries({ queryKey: ['tasks'] })
-        const prev = queryClient.getQueriesData({ queryKey: ['tasks'] })
-        queryClient.setQueriesData({ queryKey: ['tasks'] }, (old) =>
-            Array.isArray(old)
-                ? old.map((t) => (t.id === taskId ? { ...t, ...patch } : t))
-                : old
-        )
-        return prev
-    }
-    const rollbackTasks = (prev) => {
-        if (!prev) return
-        for (const [key, data] of prev) queryClient.setQueryData(key, data)
+        try {
+            await mutations.completionMutation.mutateAsync({
+                id: task.id, completed: nextCompleted,
+            })
+        } catch {
+            return
+        }
+        if (nextCompleted) {
+            // Log Time YALNIZCA tamamlanmaya ILK geciste acilir.
+            // Yeniden acma (completed → pending) bilerek hicbir sey yapmaz.
+            dialogs.closeReview()
+            workLog.openLogTime(task)
+        }
     }
 
-    // Mutations
-    const createMutation = useMutation({
-        mutationFn: (data) => taskService.create(data),
-        onSuccess: () => {
-            message.success(`${typeMeta(createType).singular} created successfully.`)
-            queryClient.invalidateQueries({ queryKey: ['tasks'] })
-            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
-            setCreateOpen(false)
-            setEditingTask(null)
-        },
-        onError: (err) => {
-            message.error(
-                err?.response?.data?.detail ||
-                    `Failed to create ${typeMeta(createType).lower}.`
-            )
-        },
-    })
+    const handleConfirmToggle = async () => {
+        if (!dialogs.pendingToggle) return
+        const { task, nextCompleted } = dialogs.pendingToggle
+        await executeToggle(task, nextCompleted)
+        dialogs.clearToggle()
+    }
 
-    const updateMutation = useMutation({
-        mutationFn: ({ id, data }) => taskService.update(id, data),
-        onSuccess: () => {
-            message.success(`${typeMeta(createType).singular} updated.`)
-            queryClient.invalidateQueries({ queryKey: ['tasks'] })
-            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
-            setCreateOpen(false)
-            setEditingTask(null)
-        },
-        onError: (err) => {
-            message.error(
-                err?.response?.data?.detail ||
-                    `Failed to update ${typeMeta(createType).lower}.`
-            )
-        },
-    })
-
-    const createGroupMutation = useMutation({
-        mutationFn: (data) => taskService.createForGroup(data),
-        onSuccess: (res) => {
-            const count = Array.isArray(res?.tasks) ? res.tasks.length : 0
-            const noun =
-                count === 1
-                    ? typeMeta(createType).lower
-                    : typeMeta(createType).lowerPlural
-            message.success(`${count} ${noun} created for the group.`)
-            queryClient.invalidateQueries({ queryKey: ['tasks'] })
-            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
-            setCreateOpen(false)
-            setEditingTask(null)
-        },
-        onError: (err) => {
-            message.error(
-                err?.response?.data?.detail ||
-                    `Failed to create group ${typeMeta(createType).lowerPlural}.`
-            )
-        },
-    })
-
-    // Multi-assignee create — one item per selected user / group member.
-    const createBulkMutation = useMutation({
-        mutationFn: (data) => taskService.createBulk(data),
-        onSuccess: (tasks) => {
-            const count = Array.isArray(tasks) ? tasks.length : 0
-            const noun =
-                count === 1
-                    ? typeMeta(createType).lower
-                    : typeMeta(createType).lowerPlural
-            message.success(`${count} ${noun} created.`)
-            queryClient.invalidateQueries({ queryKey: ['tasks'] })
-            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
-            setCreateOpen(false)
-            setEditingTask(null)
-        },
-        onError: (err) => {
-            message.error(
-                err?.response?.data?.detail ||
-                    `Failed to create ${typeMeta(createType).lowerPlural}.`
-            )
-        },
-    })
-
-    const completionMutation = useMutation({
-        mutationFn: ({ id, completed }) => taskService.setCompleted(id, completed),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['tasks'] })
-            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
-        },
-        onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to update status.')
-        },
-    })
-
-    const workLogMutation = useMutation({
-        // Route the log to the task's *assignee* — that's whose work it
-        // was. Backend (POST /work-logs) honours target_user_id only
-        // when the caller is admin; for a non-admin assignee logging
-        // their own task this collapses to "log for self" anyway. The
-        // page-level `selectedUserId` (admin view-as override) is
-        // deliberately NOT passed here — the task itself dictates the
-        // owner, not the viewing context.
-        mutationFn: ({ data, assigneeUserId }) =>
-            workLogService.create(data, assigneeUserId || null),
-        onSuccess: (_created, variables) => {
-            const dateStr = variables?.data?.date_worked
-            message.success(
-                dateStr ? `Time logged for ${dateStr}.` : 'Time logged.'
-            )
-            setLogTimeTask(null)
-            // The work log is created in core_db just like a Time
-            // Entry — must invalidate the same caches Time Entry uses
-            // so the new row shows up when the user navigates there
-            // (without this, React Query serves stale data within its
-            // staleTime window and the user thinks the log vanished).
-            queryClient.invalidateQueries({ queryKey: ['workLogs'] })
-            queryClient.invalidateQueries({ queryKey: ['periodStatus'] })
-            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
-        },
-        onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to log time.')
-        },
-    })
-
-    const deleteMutation = useMutation({
-        mutationFn: (taskId) => taskService.delete(taskId),
-        onSuccess: () => {
-            message.success('Task deleted.')
-            queryClient.invalidateQueries({ queryKey: ['tasks'] })
-            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
-            setDeletingTask(null)
-        },
-        onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to delete task.')
-            // Onay modali ACIK kalir: silme basarisiz oldugunda diyalogu
-            // kapatmak, kullaniciya "silindi" izlenimi veren kurtarilamaz
-            // bir durumdu (§7 recoverable error). Tekrar denemek icin
-            // kart yeniden bulunmak zorunda kalmaz.
-        },
-    })
-
-    const rejectMutation = useMutation({
-        mutationFn: (taskId) => taskService.reject(taskId),
-        onSuccess: (updated) => {
-            message.success('Task rejected.')
-            queryClient.invalidateQueries({ queryKey: ['tasks'] })
-            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
-            // Refresh the modal so it shows the rejected banner before
-            // the user closes it. Same pattern as the legacy note modal.
-            if (reviewTask && reviewTask.id === updated.id) setReviewTask(updated)
-        },
-        onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to reject task.')
-        },
-    })
-
-    const reopenMutation = useMutation({
-        mutationFn: (taskId) => taskService.updateStatus(taskId, 'pending'),
-        onSuccess: (updated) => {
-            queryClient.invalidateQueries({ queryKey: ['tasks'] })
-            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
-            if (reviewTask && reviewTask.id === updated.id) setReviewTask(updated)
-        },
-        onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to reopen task.')
-        },
-    })
-
-    // Accept a pending task — moves it into In Progress. This is the
-    // first step of the assignee workflow: pending → (accept) →
-    // in_progress → (complete) → completed.
-    const acceptMutation = useMutation({
-        mutationFn: (taskId) => taskService.updateStatus(taskId, 'in_progress'),
-        onSuccess: (updated) => {
-            message.success('Task accepted — moved to In Progress.')
-            queryClient.invalidateQueries({ queryKey: ['tasks'] })
-            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
-            if (reviewTask && reviewTask.id === updated.id) setReviewTask(updated)
-        },
-        onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to accept task.')
-        },
-    })
-
-    // ── Drag-and-drop status change (board) — optimistic. Uses the raw
-    // status endpoint (no accept-first guard): a drag is explicit intent,
-    // and _apply_status_change keeps completion fields consistent.
-    const dndStatusMutation = useMutation({
-        mutationFn: ({ id, status }) => taskService.updateStatus(id, status),
-        onMutate: async ({ id, status }) => {
-            const prev = await optimisticPatchTask(id, { status })
-            return { prev }
-        },
-        onError: (err, _vars, ctx) => {
-            rollbackTasks(ctx?.prev)
-            message.error(
-                err?.response?.data?.detail || 'Failed to update status.'
-            )
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['tasks'] })
-            queryClient.invalidateQueries({ queryKey: ['task-activity'] })
-        },
-    })
-
-    // Board card dropped onto a status column → status change only.
-    // Assignee is fixed at creation (no drag-to-reassign). Permission is
-    // re-checked here as defense-in-depth even though the board gates drag.
+    // Board karti bir durum kolonuna birakildi → yalnizca durum degisir.
+    // Atanan olusturmada sabittir (surukleyerek yeniden atama YOK). Izin
+    // board tarafinda da kontrol edilir; bu ikinci savunmadir.
     const handleCardDrop = async (task, { newStatus }) => {
         if (!newStatus) return
         const canStatus =
@@ -647,180 +160,39 @@ function TasksPage() {
             return
         }
         try {
-            await dndStatusMutation.mutateAsync({
-                id: task.id,
-                status: newStatus,
+            await mutations.dndStatusMutation.mutateAsync({
+                id: task.id, status: newStatus,
             })
-            // Preserve the Log Time prompt the checkbox flow gives on
-            // completion.
-            if (newStatus === 'completed') setLogTimeTask(task)
+            // Checkbox akisinin verdigi Log Time davetini KORU.
+            if (newStatus === 'completed') workLog.openLogTime(task)
         } catch {
             // toast already shown by the mutation
         }
     }
 
-    const handleCreate = (type) => {
-        setEditingTask(null)
-        // The "+" menu passes the kind to create; fall back to the kind
-        // currently being viewed.
-        setCreateType(type || taskType)
-        setInitialDate(null)
-        setCreateOpen(true)
-    }
-
-    const handleEdit = (task) => {
-        setEditingTask(task)
-        setCreateType(task.task_type || 'task')
-        setInitialDate(task.scheduled_date)
-        setCreateOpen(true)
-    }
-
-    const handleSubmitTask = async (payload, meta = {}) => {
-        // meta = { taskId? , isBulk? , isGroup? } — modal decides which.
-        // Hatanin SAHIBI mutation'in onError'idir (sunucu mesajini o
-        // gosterir) ve modal onSuccess disinda KAPANMAZ. Reddi buradan
-        // disari birakmak, AntD Form'un onFinish'ini await etmemesi
-        // yuzunden "Uncaught (in promise)" uretiyordu — kullaniciya
-        // ek bilgi vermeyen, konsolu kirleten bir sizinti.
-        try {
-            if (meta.taskId) {
-                await updateMutation.mutateAsync({
-                    id: meta.taskId, data: payload,
-                })
-            } else if (meta.isBulk) {
-                // Multi-select create (users and/or groups) → bulk endpoint.
-                await createBulkMutation.mutateAsync(payload)
-            } else if (meta.isGroup) {
-                await createGroupMutation.mutateAsync(payload)
-            } else {
-                await createMutation.mutateAsync(payload)
-            }
-        } catch {
-            // toast zaten gosterildi; form ve modal yerinde kalir
-        }
-    }
-
-    // Runs the actual status change. Callers must confirm first (the
-    // card checkbox routes through a confirm modal; the review modal
-    // has its own confirmation).
-    const executeToggle = async (task, nextCompleted) => {
-        // Workflow gate: a pending task can't be completed directly.
-        // The first "complete" action accepts it (→ In Progress); the
-        // assignee completes it on the next action.
-        if (nextCompleted && task.status === 'pending') {
-            await acceptMutation.mutateAsync(task.id)
-            return
-        }
-        try {
-            await completionMutation.mutateAsync({
-                id: task.id,
-                completed: nextCompleted,
-            })
-        } catch {
-            return
-        }
-        if (nextCompleted) {
-            // Auto-open Log Time only on first transition to completed.
-            // Reopen (completed → pending) intentionally does nothing.
-            setReviewTask(null)
-            setLogTimeTask(task)
-        }
-    }
-
-    // Card/list checkbox entry point — opens a confirmation first so an
-    // accidental click can't change the task's state.
-    const handleToggleCompletion = (task, nextCompleted) => {
-        setPendingToggle({ task, nextCompleted })
-    }
-
-    const handleConfirmToggle = async () => {
-        if (!pendingToggle) return
-        const { task, nextCompleted } = pendingToggle
-        await executeToggle(task, nextCompleted)
-        setPendingToggle(null)
-    }
-
-    const handleAcceptTask = async (task) => {
-        await acceptMutation.mutateAsync(task.id)
-    }
-
-    const handleOpenLogTime = (task) => {
-        setLogTimeTask(task)
-    }
-
-    const handleLogTimeSubmit = async (data) => {
-        // Carry the task_id so the backend can link work_logs.task_id
-        // and emit the log_time_created activity event.
-        const payload = { ...data, task_id: logTimeTask?.id || null }
-        await workLogMutation.mutateAsync({
-            data: payload,
-            assigneeUserId: logTimeTask?.assignee_user_id || null,
-        })
-    }
-
-    const handleOpenReview = (task) => {
-        setReviewTask(task)
-    }
-
-    const handleReviewMarkCompleted = async (task) => {
-        // Already confirmed inside the review modal — run directly.
-        // Closes review, flips status, and auto-opens Log Time on success.
-        setReviewTask(null)
-        await executeToggle(task, true)
-    }
-
-    const handleReviewReject = async (task) => {
-        await rejectMutation.mutateAsync(task.id)
-    }
-
     const handleReviewReopen = async (task) => {
         if (task.status === 'completed') {
-            // Undo an accidental completion → back to In Progress
-            // (no need to re-accept your own work).
-            const updated = await completionMutation.mutateAsync({
-                id: task.id,
-                completed: false,
+            // Yanlislikla tamamlamayi geri al → In Progress (kendi isini
+            // yeniden kabul etmeye gerek yok).
+            const updated = await mutations.completionMutation.mutateAsync({
+                id: task.id, completed: false,
             })
-            if (updated?.id) setReviewTask(updated)
+            if (updated?.id) dialogs.openReview(updated)
         } else {
-            // Rejected → back to Pending (must be re-accepted).
-            await reopenMutation.mutateAsync(task.id)
+            // Reddedilmis → Pending (yeniden kabul edilmeli).
+            await mutations.reopenMutation.mutateAsync(task.id)
         }
     }
 
-    const handleClearFilters = () => {
-        setStatusFilter(null)
-        setPriorityFilter(null)
-        setCustomerFilter(null)
-        setProjectFilter(null)
-        setSubProjectFilter(null)
-    }
-
-    // Create requires assign permission AND at least one assignable
-    // target (user OR group). Previously this only counted
-    // assignableUserIds, which hid Create from users who could only
-    // assign through a group mapping — and also hid it from anyone
-    // whose direct user→user mappings had been wiped by an earlier
-    // permission OFF cascade.
+    // Create requires assign permission AND at least one assignable target
+    // (user OR group): sadece grup eslemesi uzerinden atayabilen — ya da
+    // dogrudan eslemeleri bir izin kapatma cascade'iyle silinmis —
+    // kullanicilardan Create'i gizlememek icin ikisi de sayilir.
     const canCreateTask =
         isTaskAdmin ||
-        (canAssignScope &&
-            (assignableUserIds.length > 0 || assignableGroupIds.length > 0))
-
-    // Compute BEFORE the no-access early return below — useMemo is a
-    // hook and must run in the same order on every render. Cold-load
-    // of /tasks starts with canAccessTasks=false (permissions still
-    // fetching) and flips to true once they resolve; hopping over a
-    // hook between those two renders triggers React #310.
-    const userSelectorOptions = useMemo(() => {
-        if (!user?.id) return []
-        const me = { value: user.id, label: user.full_name || 'Me' }
-        if (!isTaskAdmin) return [me]
-        const others = allActiveUsers
-            .filter((u) => u.id !== user.id)
-            .map((u) => ({ value: u.id, label: u.full_name || u.email }))
-        return [me, ...others]
-    }, [user, isTaskAdmin, allActiveUsers])
+        (taskPerms.canAssignTasks &&
+            (taskPerms.assignableUserIds.length > 0 ||
+                taskPerms.assignableGroupIds.length > 0))
 
     if (!canAccessAny) {
         return (
@@ -832,725 +204,172 @@ function TasksPage() {
 
     return (
         <div className="tasks-page">
-            {/* User header — same shape as Time Entry: avatar + identity / admin selector left,
-                tab links + week nav + Create on the right. */}
-            <div className="tasks-user-header">
-                <div className="tasks-user-header-left">
-                    <Avatar
-                        size={40}
-                        icon={<UserOutlined />}
-                        className="tasks-user-avatar"
-                    />
-                    {isTaskAdmin ? (
-                        <Select
-                            value={selectedUserId || user?.id}
-                            onChange={setSelectedUserId}
-                            /* Etiketsiz kontrol: erisilebilir ad acikca
-                               verilir (§8). */
-                            aria-label="Viewed user"
-                            style={{
-                                width: 220,
-                                fontSize: '1.2rem',
-                                fontWeight: 600,
-                            }}
-                            /* AntD 5.x: bordered deprecated → variant. */
-                            variant="borderless"
-                            loading={!allActiveUsers.length}
-                            options={userSelectorOptions}
-                            showSearch
-                            filterOption={(input, option) =>
-                                (option?.label ?? '')
-                                    .toLowerCase()
-                                    .includes(input.toLowerCase())
-                            }
-                        />
-                    ) : (
-                        <h1 className="tasks-user-name">
-                            {user?.full_name || 'User'}
-                        </h1>
-                    )}
-                </div>
+            <TasksHeader
+                user={user}
+                isTaskAdmin={isTaskAdmin}
+                canViewAssignedByMe={taskPerms.canViewAssignedByMe}
+                selectedUserId={view.selectedUserId}
+                onSelectUser={view.setSelectedUserId}
+                userSelectorOptions={directory.userSelectorOptions}
+                usersLoaded={directory.allActiveUsers.length > 0}
+                taskType={taskType}
+                onSelectType={goToType}
+                userMap={directory.userMap}
+                onOpenReview={dialogs.openReview}
+                taskScope={view.taskScope}
+                onSelectScope={view.setTaskScope}
+                viewLayout={view.viewLayout}
+                onSelectLayout={view.setViewLayout}
+                groupByAssignee={view.groupByAssignee}
+                onToggleGroupByAssignee={view.setGroupByAssignee}
+            />
 
-                <div className="tasks-user-header-right">
-                    {/* Work item type — Tasks / Issues / Suggestions.
-                        Primary, colour-coded mode switch. Same board/list
-                        below; only the filter + accent colour change. */}
-                    <div
-                        className="tasks-types"
-                        role="tablist"
-                        aria-label="Work item type"
-                    >
-                        {TASK_TYPES.map((t) => {
-                            const isActive = taskType === t.value
-                            return (
-                                <button
-                                    key={t.value}
-                                    type="button"
-                                    role="tab"
-                                    aria-selected={isActive}
-                                    style={{ '--type-color': t.color }}
-                                    className={`tasks-type-pill${
-                                        isActive
-                                            ? ' tasks-type-pill-active'
-                                            : ''
-                                    }`}
-                                    onClick={() => {
-                                        if (!isActive)
-                                            navigate(
-                                                `${PM_BASE}/${TYPE_TO_PLURAL[t.value]}`
-                                            )
-                                    }}
-                                >
-                                    {t.label}
-                                </button>
-                            )
-                        })}
-                    </div>
-                    <div className="tasks-tabs-divider" />
-                    {/* Free-text task search — visibility enforced server-side */}
-                    <TasksSearchBar
-                        userMap={userMap}
-                        onSelect={handleOpenReview}
-                        taskType={taskType}
-                    />
-                    <div className="tasks-tabs-divider" />
-                    {/* Views — sole scope+filter controller. The
-                        previous standalone My/Assigned-by-Me pills are
-                        now folded into this segmented control. */}
-                    <div
-                        className="tasks-views"
-                        role="tablist"
-                        aria-label="Task scope"
-                    >
-                        {TASK_SCOPES.filter(
-                            (s) => !s.assignerOnly || canViewAssignedByMe
-                        ).map((s) => {
-                            const isActive = taskScope === s.value
-                            return (
-                                <button
-                                    key={s.value}
-                                    type="button"
-                                    role="tab"
-                                    aria-selected={isActive}
-                                    className={`tasks-views-pill${
-                                        isActive
-                                            ? ' tasks-views-pill-active'
-                                            : ''
-                                    }`}
-                                    onClick={() => {
-                                        if (isActive) return
-                                        // Scope only changes which pool
-                                        // of tasks we view. Quick
-                                        // filter and Calendar/List/
-                                        // Board layout stay as-is.
-                                        setTaskScope(s.value)
-                                    }}
-                                >
-                                    {scopeLabel(s)}
-                                </button>
-                            )
-                        })}
-                    </div>
-                    <div className="tasks-tabs-divider" />
-                    {/* Layout tabs — Board (default) and List. The
-                        Calendar (weekly) layout was removed. */}
-                    <div className="tasks-tabs">
-                        <span
-                            className={`tasks-tab-link ${
-                                viewLayout === 'board' ? 'active' : ''
-                            }`}
-                            onClick={() => setViewLayout('board')}
-                        >
-                            Board
-                        </span>
-                        <span
-                            className={`tasks-tab-link ${
-                                viewLayout === 'list' ? 'active' : ''
-                            }`}
-                            onClick={() => setViewLayout('list')}
-                        >
-                            List
-                        </span>
-                    </div>
-                    {/* Per-assignee swimlanes — only meaningful when
-                        monitoring multiple assignees (Assigned by Me).
-                        The slot is ALWAYS rendered (hidden via visibility
-                        when not applicable) so switching Board/List or
-                        scope never shifts the search box and tab links. */}
-                    {(() => {
-                        const showGroupBy =
-                            viewLayout === 'board' &&
-                            taskScope === 'assigned-by-me'
-                        return (
-                            <div
-                                className="tasks-groupby-slot"
-                                aria-hidden={!showGroupBy}
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 24,
-                                    visibility: showGroupBy
-                                        ? 'visible'
-                                        : 'hidden',
-                                }}
-                            >
-                                <div className="tasks-tabs-divider" />
-                                <label
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: 8,
-                                        cursor: 'pointer',
-                                        color: 'var(--c-text-muted)',
-                                        fontSize: 13,
-                                        whiteSpace: 'nowrap',
-                                    }}
-                                >
-                                    <Switch
-                                        size="small"
-                                        checked={groupByAssignee}
-                                        onChange={setGroupByAssignee}
-                                        disabled={!showGroupBy}
-                                    />
-                                    Group by assignee
-                                </label>
-                            </div>
-                        )
-                    })()}
-                    {/* Create lives inside the Board view toolbar
-                        ("+ New Task"), wired to handleCreate. */}
-                </div>
-            </div>
+            <TaskQuickFilters
+                value={view.quickFilter}
+                onToggle={view.toggleQuickFilter}
+                onClear={view.clearQuickFilter}
+            />
 
-            {/* Quick filter chip strip — secondary control, layers
-                on top of the active scope. Single-select; clicking
-                the active chip clears it. Independent of layout.
-                A "Clear" pill appears at the end whenever a quick
-                filter is active so users can drop the secondary
-                filter without remembering which chip was on. The
-                primary scope (My Tasks / Assigned by Me) is not a
-                filter and is unaffected by Clear. */}
-            <div
-                className="tasks-quickfilters"
-                role="toolbar"
-                aria-label="Quick task filters"
-            >
-                {TASK_QUICK_FILTERS.map((f) => {
-                    const isActive = taskQuickFilter === f.value
-                    return (
-                        <button
-                            key={f.value}
-                            type="button"
-                            aria-pressed={isActive}
-                            className={`tasks-quickfilter-chip${
-                                isActive
-                                    ? ' tasks-quickfilter-chip-active'
-                                    : ''
-                            }`}
-                            onClick={() => {
-                                // Toggle: clicking the active chip
-                                // clears the filter back to none.
-                                setTaskQuickFilter(
-                                    isActive ? null : f.value
-                                )
-                            }}
-                        >
-                            {f.label}
-                        </button>
-                    )
-                })}
-                {taskQuickFilter !== null && (
-                    <button
-                        type="button"
-                        className="tasks-quickfilter-clear"
-                        aria-label="Clear quick filter"
-                        onClick={() => {
-                            // Scoped to the quick-filter chip strip:
-                            // only clears Due/Overdue/Completed. The
-                            // My Tasks vs Assigned by Me scope is
-                            // primary navigation, not a filter, and
-                            // stays put. Layout and the cross-filter
-                            // dropdowns are also untouched.
-                            setTaskQuickFilter(null)
-                        }}
-                    >
-                        <CloseOutlined />
-                        Clear
-                    </button>
-                )}
-            </div>
-
-            {/* Range row — All (date-independent kanban, default) vs
-                Weekly. Weekly windows by DUE DATE and re-enables the week
-                pager; All shows every visible item regardless of dates. */}
-            {!taskQuickFilter && (
-                <div
-                    className="tasks-body"
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'flex-start',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: 12,
-                        paddingTop: 10,
-                        paddingBottom: 0,
-                    }}
-                >
-                    <div
-                        className="tasks-views"
-                        role="tablist"
-                        aria-label="Time range"
-                    >
-                        {[
-                            { value: 'all', label: 'All' },
-                            { value: 'week', label: 'Weekly' },
-                        ].map((m) => (
-                            <button
-                                key={m.value}
-                                type="button"
-                                role="tab"
-                                aria-selected={rangeMode === m.value}
-                                className={`tasks-views-pill${
-                                    rangeMode === m.value
-                                        ? ' tasks-views-pill-active'
-                                        : ''
-                                }`}
-                                onClick={() => setRangeMode(m.value)}
-                            >
-                                {m.label}
-                            </button>
-                        ))}
-                    </div>
-                    {rangeMode === 'week' && (
-                        <Space wrap>
-                            <Button
-                                icon={<LeftOutlined />}
-                                onClick={() =>
-                                    setWeekStart((prev) =>
-                                        prev.subtract(1, 'week')
-                                    )
-                                }
-                            />
-                            <Button
-                                onClick={() =>
-                                    setWeekStart(dayjs().startOf('isoWeek'))
-                                }
-                            >
-                                Today
-                            </Button>
-                            <Button
-                                icon={<RightOutlined />}
-                                onClick={() =>
-                                    setWeekStart((prev) => prev.add(1, 'week'))
-                                }
-                            />
-                            <span
-                                style={{
-                                    color: 'var(--c-text-strong)',
-                                    fontWeight: 500,
-                                }}
-                            >
-                                {weekStart.format('DD MMM')} –{' '}
-                                {weekEnd.format('DD MMM, YYYY')}
-                            </span>
-                            <span
-                                style={{
-                                    color: 'var(--c-text-muted)',
-                                    fontSize: 12,
-                                }}
-                            >
-                                by due date
-                            </span>
-                        </Space>
-                    )}
-                </div>
+            {/* Hizli filtre aktifken aralik seridi gizlenir: filtre kendi
+                tarih penceresini getirir, ikisi ayni anda anlamsizdir. */}
+            {!view.quickFilter && (
+                <TaskRangeBar
+                    rangeMode={view.rangeMode}
+                    onSelectRange={view.setRangeMode}
+                    weekStart={view.weekStart}
+                    weekEnd={view.weekStart.endOf('isoWeek')}
+                    onPreviousWeek={view.goToPreviousWeek}
+                    onCurrentWeek={view.goToCurrentWeek}
+                    onNextWeek={view.goToNextWeek}
+                />
             )}
 
             <div className="tasks-body">
-
-            {/* Filters */}
-            <Card
-                size="small"
-                style={{ marginBottom: 16, background: 'var(--c-surface-raised)', borderColor: 'var(--c-border)' }}
-            >
-                <Space wrap>
-                    <FilterOutlined style={{ color: 'var(--c-text-muted)' }} />
-                    <Select
-                        allowClear
-                        /* Etiketsiz filtre kontrolleri (§8): gorsel bir
-                           <label> yok, erisilebilir ad acikca verilir. */
-                        aria-label="Filter by status"
-                        placeholder="Status"
-                        style={{ width: 140 }}
-                        value={statusFilter}
-                        onChange={setStatusFilter}
-                        options={STATUS_OPTIONS}
-                    />
-                    <Select
-                        allowClear
-                        aria-label="Filter by priority"
-                        placeholder="Priority"
-                        style={{ width: 140 }}
-                        value={priorityFilter}
-                        onChange={setPriorityFilter}
-                        options={PRIORITY_OPTIONS}
-                    />
-                    <Select
-                        allowClear
-                        showSearch
-                        aria-label="Filter by customer"
-                        placeholder="Customer"
-                        style={{ width: 200 }}
-                        value={customerFilter}
-                        onChange={(v) => {
-                            setCustomerFilter(v)
-                            setProjectFilter(null)
-                            setSubProjectFilter(null)
-                        }}
-                        optionFilterProp="label"
-                        options={customers.map((c) => ({ value: c.id, label: c.name }))}
-                    />
-                    <Select
-                        allowClear
-                        showSearch
-                        aria-label="Filter by project"
-                        placeholder="Project"
-                        style={{ width: 200 }}
-                        value={projectFilter}
-                        disabled={!customerFilter}
-                        onChange={(v) => {
-                            setProjectFilter(v)
-                            setSubProjectFilter(null)
-                        }}
-                        optionFilterProp="label"
-                        options={filteredProjects.map((p) => ({
-                            value: p.id,
-                            label: p.name,
-                        }))}
-                    />
-                    <Select
-                        allowClear
-                        showSearch
-                        aria-label="Filter by sub project"
-                        placeholder="Sub Project"
-                        style={{ width: 200 }}
-                        value={subProjectFilter}
-                        disabled={!projectFilter}
-                        onChange={setSubProjectFilter}
-                        optionFilterProp="label"
-                        options={subProjects.map((s) => ({ value: s.id, label: s.name }))}
-                    />
-                    <Button onClick={handleClearFilters}>Clear</Button>
-                </Space>
-            </Card>
-
-            {/* View + docked detail panel sit side by side. Clicking a card
-                opens the panel on the right; the board/list area shrinks. */}
-            <div className="tasks-view-row">
-            <div className="tasks-view-main">
-            {isLoading ? (
-                <div style={{ textAlign: 'center', padding: 48 }}>
-                    <Spin />
-                </div>
-            ) : viewLayout === 'list' ? (
-                <TasksListView
-                    tasks={tasks}
-                    userMap={userMap}
-                    currentUserId={user?.id}
-                    isAdmin={isTaskAdmin}
-                    taskType={taskType}
-                    onEditTask={handleEdit}
-                    onDeleteTask={(t) => setDeletingTask(t)}
-                    onOpenReview={handleOpenReview}
-                    onToggleCompletion={handleToggleCompletion}
-                    completionLoading={completionMutation.isPending}
-                    onOpenLogTime={handleOpenLogTime}
-                    onOpenPanel={(t) => setPanelTask(t)}
-                    /* Status changes only in My Tasks (the assignee acts);
-                       Assigned by Me is read-only monitoring. */
-                    allowStatusChange={taskScope === 'my-tasks'}
+                <TaskFilterBar
+                    filters={filters}
+                    customers={directory.customers}
+                    projects={directory.filteredProjects}
+                    subProjects={directory.subProjects}
+                    onStatusChange={filterActions.setStatus}
+                    onPriorityChange={filterActions.setPriority}
+                    onCustomerChange={filterActions.setCustomer}
+                    onProjectChange={filterActions.setProject}
+                    onSubProjectChange={filterActions.setSubProject}
+                    onClear={clearFilters}
                 />
-            ) : (
-                <TasksBoardView
+
+                <TasksSurface
+                    isLoading={isLoading}
+                    viewLayout={view.viewLayout}
                     tasks={tasks}
-                    userMap={userMap}
+                    userMap={directory.userMap}
                     currentUserId={user?.id}
                     isAdmin={isTaskAdmin}
                     taskType={taskType}
-                    onEditTask={handleEdit}
-                    onDeleteTask={(t) => setDeletingTask(t)}
-                    onOpenReview={handleOpenReview}
-                    onOpenLogTime={handleOpenLogTime}
-                    onToggleCompletion={handleToggleCompletion}
-                    completionLoading={completionMutation.isPending}
-                    onCreate={handleCreate}
-                    /* Creating a task = assigning it to someone, which only
-                       makes sense in the "Assigned by Me" scope. In "My
-                       Tasks" you view work assigned TO you, so the create
-                       button is hidden there. */
-                    canCreate={canCreateTask && taskScope === 'assigned-by-me'}
-                    /* Swimlanes only matter when viewing many assignees
-                       (Assigned by Me); in My Tasks it's always one lane. */
+                    /* Durum degisikligi atanana aittir ve kendi "My Tasks"
+                       gorunumunde yapilir; "Assigned by Me" salt izleme. */
+                    allowStatusChange={view.taskScope === 'my-tasks'}
+                    /* Gorev olusturmak = birine ATAMAK; yalnizca
+                       "Assigned by Me" kapsaminda anlamlidir. */
+                    canCreate={canCreateTask && view.taskScope === 'assigned-by-me'}
                     groupByAssignee={
-                        groupByAssignee && taskScope === 'assigned-by-me'
+                        view.groupByAssignee && view.taskScope === 'assigned-by-me'
                     }
-                    /* Status changes belong to the assignee in their own
-                       My Tasks view. Assigned by Me is read-only monitoring. */
-                    allowStatusDrag={taskScope === 'my-tasks'}
+                    completionLoading={mutations.completionMutation.isPending}
+                    panelTask={dialogs.panelTask}
+                    onEditTask={dialogs.openEdit}
+                    onDeleteTask={dialogs.openDelete}
+                    onOpenReview={dialogs.openReview}
+                    onOpenLogTime={workLog.openLogTime}
+                    onToggleCompletion={dialogs.requestToggle}
+                    onCreate={dialogs.openCreate}
                     onCardDrop={handleCardDrop}
-                    onOpenPanel={(t) => setPanelTask(t)}
+                    onOpenPanel={dialogs.openPanel}
+                    onClosePanel={dialogs.closePanel}
                 />
-            )}
-            </div>
-            {panelTask && (
-                <TaskDetailPanel
-                    task={panelTask}
-                    userMap={userMap}
-                    currentUserId={user?.id}
-                    isAdmin={isTaskAdmin}
-                    onClose={() => setPanelTask(null)}
-                    onOpenReview={(t) => {
-                        setPanelTask(null)
-                        handleOpenReview(t)
-                    }}
-                />
-            )}
-            </div>
-
             </div>
 
             {/* Create / Edit modal — same Hermes Time Entry pattern */}
             <CreateTaskModal
-                open={createOpen}
-                onClose={() => {
-                    setCreateOpen(false)
-                    setEditingTask(null)
-                }}
-                onSubmit={handleSubmitTask}
-                initialDate={initialDate}
-                editingTask={editingTask}
-                taskType={createType}
-                assignableUserIds={createPerms.assignableUserIds || []}
+                open={dialogs.createOpen}
+                onClose={dialogs.closeCreate}
+                onSubmit={mutations.submitTask}
+                initialDate={dialogs.initialDate}
+                editingTask={dialogs.editingTask}
+                taskType={dialogs.createType}
+                /* Create modali OLUSTURULAN turun scope'unu kullanir —
+                   goruntulenen turden farkli olabilir ("+ New Issue"
+                   Tasks sekmesindeyken). */
+                assignableUserIds={taskPerms.createAssignableUserIds}
                 isAdmin={isTaskAdmin}
-                loading={
-                    createMutation.isPending ||
-                    updateMutation.isPending ||
-                    createGroupMutation.isPending ||
-                    createBulkMutation.isPending
-                }
+                loading={mutations.isSavingTask}
             />
 
-            {/* Review modal — read-only details + decision actions.
-                Same canAct gate the backend enforces (admin, assignee,
-                assigner). Marking completed auto-opens the Log Time
-                flow via handleToggleCompletion. */}
+            {/* Review modal — read-only details + decision actions. Same
+                canAct gate the backend enforces (admin, assignee, assigner). */}
             <TaskReviewModal
-                open={!!reviewTask}
-                task={reviewTask}
-                userMap={userMap}
-                onClose={() => setReviewTask(null)}
+                open={!!dialogs.reviewTask}
+                task={dialogs.reviewTask}
+                userMap={directory.userMap}
+                onClose={dialogs.closeReview}
                 canAct={
-                    !!reviewTask &&
-                    // Status actions live in My Tasks (the assignee acts on
-                    // their own work). In Assigned by Me the assigner only
-                    // monitors progress — the modal is read-only there.
-                    taskScope === 'my-tasks' &&
+                    !!dialogs.reviewTask &&
+                    // Durum aksiyonlari "My Tasks"ta yasar (atanan kendi
+                    // isine karar verir). "Assigned by Me"de atayan
+                    // yalnizca izler — modal orada salt okunurdur.
+                    view.taskScope === 'my-tasks' &&
                     (isTaskAdmin ||
-                        reviewTask.assignee_user_id === user?.id ||
-                        reviewTask.assigner_user_id === user?.id)
+                        dialogs.reviewTask.assignee_user_id === user?.id ||
+                        dialogs.reviewTask.assigner_user_id === user?.id)
                 }
-                onAccept={handleAcceptTask}
-                onMarkCompleted={handleReviewMarkCompleted}
-                onReject={handleReviewReject}
+                onAccept={(task) => mutations.acceptMutation.mutateAsync(task.id)}
+                onMarkCompleted={async (task) => {
+                    // Modal icinde zaten onaylandi — dogrudan calistir.
+                    dialogs.closeReview()
+                    await executeToggle(task, true)
+                }}
+                onReject={(task) => mutations.rejectMutation.mutateAsync(task.id)}
                 onReopen={handleReviewReopen}
-                actionLoading={
-                    rejectMutation.isPending ||
-                    reopenMutation.isPending ||
-                    completionMutation.isPending ||
-                    acceptMutation.isPending
-                }
+                actionLoading={mutations.isStatusActionPending}
                 currentUserId={user?.id}
                 isAdmin={isTaskAdmin}
             />
 
-            {/* Confirmation for checkbox-driven status changes (accept /
-                complete / reopen) — same dialog pattern as delete so an
-                accidental click can't silently change a task's state. */}
-            {(() => {
-                if (!pendingToggle) return null
-                const { task, nextCompleted } = pendingToggle
-                const isAccept = nextCompleted && task.status === 'pending'
-                const cfg = isAccept
-                    ? {
-                          title: 'Accept this task?',
-                          body: 'The task will move to In Progress so you can start working on it.',
-                          confirmLabel: 'Accept Task',
-                          icon: <PlayCircleOutlined />,
-                      }
-                    : nextCompleted
-                    ? {
-                          title: 'Mark task as completed?',
-                          body: 'This marks the task as completed. You can reopen it afterwards if needed.',
-                          confirmLabel: 'Mark as Completed',
-                          icon: <CheckCircleOutlined />,
-                      }
-                    : {
-                          title: 'Reopen this task?',
-                          body: 'The task will move back to In Progress so it can be worked on again.',
-                          confirmLabel: 'Reopen',
-                          icon: <UndoOutlined />,
-                      }
-                return (
-                    <DangerConfirmModal
-                        open={!!pendingToggle}
-                        tone="primary"
-                        badgeIcon={cfg.icon}
-                        confirmIcon={cfg.icon}
-                        title={cfg.title}
-                        body={cfg.body}
-                        itemName={task.title}
-                        itemSubtitle={
-                            [task.customer_name, task.project_name]
-                                .filter(Boolean)
-                                .join(' · ') || undefined
-                        }
-                        confirmLabel={cfg.confirmLabel}
-                        onCancel={() => setPendingToggle(null)}
-                        onConfirm={handleConfirmToggle}
-                        loading={
-                            completionMutation.isPending ||
-                            acceptMutation.isPending
-                        }
-                    />
-                )
-            })()}
-
-            {/* Delete confirmation — mirrors Time Entry's delete modal */}
-            <Modal
-                open={!!deletingTask}
-                onCancel={() => setDeletingTask(null)}
-                footer={null}
-                width={420}
-                centered
-                closable={false}
-                /* Diyalog ADI (§8): bu modal ozel gorunumlu — gorunur
-                   baslik govdede duruyor. rc-dialog aria-labelledby'yi
-                   YALNIZCA `title` verilince yazar ve dialog element'ine
-                   aria-* gecirmez; ad, gorsel olarak gizli bir baslikla
-                   verilir. Tasarim degismez. */
-                title={
-                    <span className="h-sr-only">
-                        Delete {typeMeta(deletingTask?.task_type).singular}
-                    </span>
+            <TaskStatusConfirmModal
+                pendingToggle={dialogs.pendingToggle}
+                loading={
+                    mutations.completionMutation.isPending ||
+                    mutations.acceptMutation.isPending
                 }
-                classNames={{ header: 'h-sr-only' }}
-                /* Pending'te kapanma kilidi (§7). */
-                maskClosable={!deleteMutation.isPending}
-                keyboard={!deleteMutation.isPending}
-                styles={{
-                    content: {
-                        background: 'var(--c-surface-2)',
-                        border: '1px solid var(--c-border)',
-                        borderRadius: 12,
-                        padding: '28px 28px 24px',
-                    },
+                onCancel={dialogs.clearToggle}
+                onConfirm={handleConfirmToggle}
+            />
+
+            <TaskDeleteModal
+                task={dialogs.deletingTask}
+                loading={mutations.deleteMutation.isPending}
+                onCancel={dialogs.closeDelete}
+                onConfirm={() => {
+                    // Cift silme kilidi KAYNAKTA.
+                    if (mutations.deleteMutation.isPending) return
+                    if (dialogs.deletingTask) {
+                        mutations.deleteMutation.mutate(dialogs.deletingTask.id, {
+                            onSuccess: dialogs.closeDelete,
+                        })
+                    }
                 }}
-            >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div
-                            style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: 10,
-                                background: 'rgba(239,68,68,0.15)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                flexShrink: 0,
-                            }}
-                        >
-                            <ExclamationCircleOutlined
-                                style={{ color: '#ef4444', fontSize: 20 }}
-                            />
-                        </div>
-                        <div>
-                            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--c-text-strong)' }}>
-                                Delete {typeMeta(deletingTask?.task_type).singular}
-                            </div>
-                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 2 }}>
-                                The {typeMeta(deletingTask?.task_type).lower} will be archived and removed from the board.
-                            </div>
-                        </div>
-                    </div>
-
-                    {deletingTask && (
-                        <div
-                            style={{
-                                background: 'var(--c-border)',
-                                border: '1px solid var(--c-border-strong)',
-                                borderRadius: 8,
-                                padding: '10px 14px',
-                            }}
-                        >
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text)' }}>
-                                {deletingTask.title}
-                            </div>
-                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 3 }}>
-                                {deletingTask.customer_name || '—'}
-                                {deletingTask.project_name
-                                    ? ` · ${deletingTask.project_name}`
-                                    : ''}
-                            </div>
-                        </div>
-                    )}
-
-                    <p style={{ margin: 0, color: 'var(--c-text-muted)', fontSize: 14, lineHeight: 1.6 }}>
-                        Are you sure you want to delete this task?
-                    </p>
-
-                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
-                        <Button
-                            onClick={() => setDeletingTask(null)}
-                            style={{
-                                background: 'transparent',
-                                borderColor: 'var(--c-border-strong)',
-                                color: 'var(--c-text)',
-                                borderRadius: 8,
-                            }}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="primary"
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={() => {
-                                // Cift silme kilidi KAYNAKTA.
-                                if (deleteMutation.isPending) return
-                                if (deletingTask) {
-                                    deleteMutation.mutate(deletingTask.id)
-                                }
-                            }}
-                            loading={deleteMutation.isPending}
-                            style={{ borderRadius: 8 }}
-                        >
-                            Delete
-                        </Button>
-                    </div>
-                </div>
-            </Modal>
+            />
 
             {/* Log Time modal — opens automatically after a task is
                 completed for the first time, and on the explicit
                 "Log Time" action for a completed task. */}
             <LogTimeModal
-                open={!!logTimeTask}
-                onClose={() => setLogTimeTask(null)}
-                onSubmit={handleLogTimeSubmit}
-                prefillTask={logTimeTask}
-                initialDate={logTimeTask?.scheduled_date || null}
-                loading={workLogMutation.isPending}
+                open={!!workLog.logTimeTask}
+                onClose={workLog.closeLogTime}
+                onSubmit={workLog.submitWorkLog}
+                prefillTask={workLog.logTimeTask}
+                initialDate={workLog.logTimeTask?.scheduled_date || null}
+                loading={workLog.isLoggingTime}
             />
         </div>
     )
