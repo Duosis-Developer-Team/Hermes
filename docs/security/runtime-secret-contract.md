@@ -14,7 +14,7 @@
 | Secret nesnesi | Zorunlu key'ler | Tüketiciler | Not |
 |---|---|---|---|
 | `hermes-secrets` | `POSTGRES_PASSWORD`, `JWT_SECRET_KEY`, `AZURE_CLIENT_SECRET`, `RABBITMQ_PASSWORD` | db-auth, db-core StatefulSet'leri; auth/core/reporting Deployment'ları; api-cleanup CronJob | Değerler yalnızca cluster'da yaşar |
-| `hermes-backup-secret` | `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`, `ONEDRIVE_USER`, `DB_PASSWORD` | backup CronJob | |
+| `hermes-backup-secret` | `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`, `ONEDRIVE_USER`, `DB_PASSWORD` | backup CronJob | **Ortam politikası (CTO, 2026-07-29):** `hermes-test`'te ZORUNLU; `hermes-dev`'de backup bilinçli olarak KULLANILMIYOR (CronJob dev'e kurulu değil) → Secret dev'de aranmaz, yokluğu hata/ihlal değildir. Backup dev'de etkinleştirilirse Secret yeniden zorunlu olur (preflight politika bloğundaki dev istisnası kaldırılır) |
 | `hermes-tls` | `tls.crt`, `tls.key` | 05-ingress, 09-mcp-ingress | Repo kökündeki tls.* dosyaları artık takip edilmiyor; kaynak cluster'dır |
 | `hermes-jwt-auth` | `JWT_PRIVATE_KEY` (yalnız auth), `JWT_PUBLIC_KEY` (auth/core/reporting/cronjob) | 03-backend-* + api-cleanup | Manifesti repoda hiç olmadı (doğru durum) |
 | `hermes-s2s` | `HERMES_S2S_TOKEN_CURRENT` (zorunlu sayılır), `HERMES_S2S_TOKEN_NEXT` (rotasyon yuvası, opsiyonel) | auth (CURRENT+NEXT), core (CURRENT) | Manifestte `optional: true`; ama S2S dizin + RBAC izin çözümü buna dayanır — yokluğu üretimde yönetim uçlarını 503 yapar |

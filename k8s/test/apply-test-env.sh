@@ -73,9 +73,20 @@ kubectl apply -f k8s/test/01-configmap.yaml
 
 echo "[3/8] Runtime Secret'lar (dev → hermes-test, overwrite YOK)..."
 copy_secret hermes-secrets
-copy_secret hermes-backup-secret
 copy_secret hermes-jwt-auth
 copy_secret hermes-s2s
+
+# Backup: dev'de BILINCLI olarak yok (CTO 2026-07-29) — dev'den
+# kopyalanamaz. Test'te ZORUNLUDUR; yoksa operatör kasadan doldurulmuş
+# repo-dışı bir kopyayla oluşturur (bkz. runtime-secret-contract.md).
+# Eksikse aşağıdaki preflight (5b) zaten açık hatayla durduracaktır.
+if ! kubectl get secret hermes-backup-secret -n hermes-test >/dev/null 2>&1; then
+  echo "  ! hermes-backup-secret hermes-test'te YOK — dev'den kopyalanamaz"
+  echo "    (dev'de backup bilinçli kapalı). Kasadan doldurulmuş repo-dışı"
+  echo "    kopyayla oluşturun: kubectl apply -f ~/hermes-ops/backup-secret.yaml"
+else
+  echo "  = hermes-backup-secret hermes-test'te mevcut — DOKUNULMADI"
+fi
 
 echo "[4/8] TLS secret..."
 copy_secret hermes-tls || {

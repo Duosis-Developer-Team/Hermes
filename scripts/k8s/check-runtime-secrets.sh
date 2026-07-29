@@ -19,6 +19,21 @@ case "$namespace" in
   *) echo "[FAIL] unsupported namespace: $namespace (allowed: hermes-dev, hermes-test)" >&2; exit 2 ;;
 esac
 
+# =============================================================================
+# ORTAM POLITIKASI (namespace bazli, acik ve genisletilebilir)
+# =============================================================================
+# CTO karari (2026-07-29): hermes-dev'de backup ozelligi BILINCLI olarak
+# kullanilmiyor — backup CronJob'i dev'e kurulu degil. Bu yuzden
+# hermes-backup-secret dev'de ARANMAZ; yoklugu hata/ihlal DEGILDIR.
+# hermes-test'te (production-like) backup zorunlulugu AYNEN devam eder.
+# Backup ileride dev'de etkinlestirilirse bu politika satiri kaldirilir
+# ve Secret yeniden zorunlu olur (docs/security/runtime-secret-contract.md).
+# Yeni ortam/istisna eklerken yalnizca bu bloga satir eklenir.
+policy_backup_required=1
+case "$namespace" in
+  hermes-dev) policy_backup_required=0 ;;
+esac
+
 fail=0
 
 check_secret() {
@@ -52,8 +67,12 @@ check_secret() {
 # Sozlesme: docs/security/runtime-secret-contract.md (tek kaynak).
 check_secret hermes-secrets \
   POSTGRES_PASSWORD JWT_SECRET_KEY AZURE_CLIENT_SECRET RABBITMQ_PASSWORD
-check_secret hermes-backup-secret \
-  AZURE_CLIENT_ID AZURE_CLIENT_SECRET AZURE_TENANT_ID ONEDRIVE_USER DB_PASSWORD
+if [ "$policy_backup_required" -eq 1 ]; then
+  check_secret hermes-backup-secret \
+    AZURE_CLIENT_ID AZURE_CLIENT_SECRET AZURE_TENANT_ID ONEDRIVE_USER DB_PASSWORD
+else
+  echo "[SKIP] hermes-backup-secret: backup deliberately disabled in $namespace (CTO decision 2026-07-29)"
+fi
 check_secret hermes-tls tls.crt tls.key
 check_secret hermes-jwt-auth JWT_PRIVATE_KEY JWT_PUBLIC_KEY
 # Manifestte optional:true, ama RBAC izin cozumu + S2S dizin buna
