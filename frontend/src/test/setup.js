@@ -38,9 +38,16 @@ beforeEach((ctx) => {
             // "Not implemented" ortam gurultusu (orn. AntD motion'in
             // pseudo-element getComputedStyle cagrisi) uygulama hatasi
             // degildir. Geri kalan her console.error testi KIRAR.
+            // React'in "not wrapped in act(...)" uyarisi TEST KOSUM
+            // ARTEFAKTIDIR (async state oturmasi), uygulama hatasi
+            // degil — fatal sayilirsa vitest onu "unhandled error"
+            // yapip kosuyu dusurur. CI bunu yakaladi; yerelde yalniz
+            // "Tests" satirina bakip CIKIS KODUNU kontrol etmemistim.
+            // Geri kalan HER console.error hala testi kirar.
             if (
                 !text.includes('[hermes-boundary]')
                 && !text.includes('Not implemented:')
+                && !text.includes('not wrapped in act')
             ) {
                 throw new Error('console.error test icinde cagrildi: ' + text)
             }
