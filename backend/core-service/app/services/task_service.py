@@ -55,7 +55,14 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 def is_task_admin(user: CurrentUser) -> bool:
-    return bool(user.is_admin)
+    """RBAC R2: task-admin kisayolu artik is_admin BIT'ine degil
+    tasks.admin IZNINE bakar (S2S + 60 sn cache; fail-closed → False:
+    cozum yoksa kullanici admin-genisletmesi olmadan kendi normal
+    kapsamiyla calisir). 16 cagri noktasi bu tek tanimdan beslenir."""
+    from ..authz import user_has
+    from shared.permissions import Perm
+
+    return user_has(user, Perm.TASKS_ADMIN)
 
 
 # =============================================================================

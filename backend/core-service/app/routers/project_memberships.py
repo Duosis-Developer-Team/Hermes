@@ -6,7 +6,10 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import ProjectMembership, Project
 from ..schemas.project_membership import ProjectMembershipCreate, ProjectMembershipUpdate, ProjectMembershipResponse
-from shared.auth import get_current_user, require_admin, CurrentUser
+from shared.auth import get_current_user, CurrentUser
+# RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
+from ..authz import require_permissions
+from shared.permissions import Perm
 
 router = APIRouter(
     prefix="/project-memberships",
@@ -20,7 +23,7 @@ router = APIRouter(
 def create_membership(
     mem_in: ProjectMembershipCreate,
     db: Session = Depends(get_db),
-    admin: CurrentUser = Depends(require_admin),  # [KRİTİK-5] Sadece Admin
+    admin: CurrentUser = Depends(require_permissions(Perm.PROJECTS_MANAGE)),  # [KRİTİK-5] Sadece Admin
 ):
     # Proje var mı?
     project = db.query(Project).filter(Project.id == mem_in.project_id).first()
@@ -60,7 +63,7 @@ def get_memberships(
 def delete_membership(
     mem_id: UUID,
     db: Session = Depends(get_db),
-    admin: CurrentUser = Depends(require_admin),  # [KRİTİK-5] Sadece Admin
+    admin: CurrentUser = Depends(require_permissions(Perm.PROJECTS_MANAGE)),  # [KRİTİK-5] Sadece Admin
 ):
     mem = db.query(ProjectMembership).filter(ProjectMembership.id == mem_id).first()
     if not mem:

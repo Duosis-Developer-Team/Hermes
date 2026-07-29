@@ -419,7 +419,10 @@ async def sync_all_active_users_range(
 def _user_can_view_meeting(
     user: CurrentUser, meeting: Meeting, viewer_uuid: UUID
 ) -> bool:
-    if user.is_admin:
+    from ..authz import user_has
+    from shared.permissions import Perm
+
+    if user_has(user, Perm.MEETINGS_ADMIN):
         return True
     # Walk the attendee rows to check mapping.
     for a in meeting.attendees:
@@ -458,7 +461,10 @@ def list_meetings_for_user(
     # can order by start_datetime directly with no DISTINCT.
     query = db.query(Meeting)
 
-    if user.is_admin:
+    from ..authz import user_has
+    from shared.permissions import Perm
+
+    if user_has(user, Perm.MEETINGS_ADMIN):
         if target_user_ids:
             query = query.filter(
                 Meeting.attendees.any(

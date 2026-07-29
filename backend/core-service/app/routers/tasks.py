@@ -316,7 +316,7 @@ async def list_sub_projects(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tasks module access is required.",
         )
-    effective_include_inactive = bool(include_inactive) and current_user.is_admin
+    effective_include_inactive = bool(include_inactive) and task_service.is_task_admin(current_user)
     subs = task_service.list_sub_projects(
         db,
         customer_id=customer_id,
@@ -391,7 +391,7 @@ async def list_tasks(
     task_service.require_task_access(
         db, current_user, task_service.perm_scope_for_type(task_type)
     )
-    effective_include_archived = bool(include_archived) and current_user.is_admin
+    effective_include_archived = bool(include_archived) and task_service.is_task_admin(current_user)
     tasks = task_service.list_tasks_for_user(
         db,
         current_user,

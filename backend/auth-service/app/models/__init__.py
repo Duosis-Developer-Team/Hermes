@@ -5,6 +5,7 @@
 # Tüm modeller tek bir yerden import edilebilir.
 # =============================================================================
 
+from .rbac import RbacRole, RbacUserRole
 from .user import User
 
-__all__ = ["User"]
+__all__ = ["User", "RbacRole", "RbacUserRole"]

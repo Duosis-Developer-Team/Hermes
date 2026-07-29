@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Spin } from 'antd'
 import { useAuthStore } from './stores/authStore'
-import { authService } from './services/api'
+import { authService, rbacService } from './services/api'
 
 /**
  * Centered loader used in place of `return null` while auth + task
@@ -63,15 +63,25 @@ import { useTaskPermissions } from './hooks/useTaskPermissions'
  * Protected Route Component
  * Kimlik doğrulaması gerektiğinde kullanılır.
  */
-const ProtectedRoute = ({ children, adminOnly = false }) => {
-    const { isAuthenticated, user } = useAuthStore()
+const ProtectedRoute = ({ children, permission = null }) => {
+    // RBAC R3: rota koruması izin-tabanlı. `permission` string veya
+    // dizi (dizi = herhangi biri yeterli). Backend her koşulda gerçek
+    // otorite — bu yalnızca UX katmanı. İzinler henüz yüklenmediyse
+    // (null) loader gösterilir; yanlış yere yönlendirme yapılmaz.
+    const { isAuthenticated } = useAuthStore()
+    const permissions = useAuthStore((s) => s.permissions)
+    const canAny = useAuthStore((s) => s.canAny)
 
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />
     }
 
-    if (adminOnly && !user?.is_admin) {
-        return <Navigate to="/time-entry" replace />
+    if (permission) {
+        if (permissions === null) return <CenteredLoader />
+        const wanted = Array.isArray(permission) ? permission : [permission]
+        if (!canAny(...wanted)) {
+            return <Navigate to="/time-entry" replace />
+        }
     }
 
     return children
@@ -106,7 +116,7 @@ const TaskProtectedRoute = ({ children }) => {
  * Main App Component
  */
 function App() {
-    const { isAuthenticated, login } = useAuthStore()
+    const { isAuthenticated, login, setPermissions } = useAuthStore()
     const [sessionChecked, setSessionChecked] = useState(false)
 
     useEffect(() => {
@@ -117,7 +127,10 @@ function App() {
             console.log('Legacy hermes-auth token removed from localStorage for security')
         }
 
-        // Sayfa yenilemesinde mevcut HttpOnly cookie üzerinden oturumu geri yükle
+        // Sayfa yenilemesinde mevcut HttpOnly cookie üzerinden oturumu geri yükle.
+        // RBAC R3: kimlikle birlikte efektif izinler de yüklenir — can()
+        // fail-closed olduğu için izinler gelene dek yönetim yüzeyleri
+        // görünmez; hata halinde boş liste (yine fail-closed).
         authService.getMe()
             .then(user => {
                 if (user) login(user)
@@ -129,6 +142,18 @@ function App() {
                 setSessionChecked(true)
             })
     }, [])
+
+    // RBAC R3: oturum AÇIK olduğu her an (boot VEYA login sonrası)
+    // efektif izinleri yükle. can() fail-closed: izinler gelene dek
+    // yönetim yüzeyleri görünmez; hata → boş liste (yine kapalı).
+    const permissions = useAuthStore((s) => s.permissions)
+    useEffect(() => {
+        if (isAuthenticated && permissions === null) {
+            rbacService.getMyPermissions()
+                .then(r => setPermissions(r.permissions))
+                .catch(() => setPermissions([]))
+        }
+    }, [isAuthenticated, permissions])
 
     // /me kontrolü bitmeden route'ları render etme — aksi halde cookie hâlâ geçerliyken
     // isAuthenticated=false olduğu için login'e yönlendirme yapılır.
@@ -198,7 +223,7 @@ function App() {
                 <Route
                     path="pm-configurations"
                     element={
-                        <ProtectedRoute adminOnly>
+                        <ProtectedRoute permission={'tasks.permissions.manage'}>
                             <TaskManagementPage />
                         </ProtectedRoute>
                     }
@@ -208,7 +233,7 @@ function App() {
                 <Route
                     path="api-management"
                     element={
-                        <ProtectedRoute adminOnly>
+                        <ProtectedRoute permission={'api.manage'}>
                             <ApiManagementPage />
                         </ProtectedRoute>
                     }
@@ -231,7 +256,7 @@ function App() {
                 <Route
                     path="dashboard"
                     element={
-                        <ProtectedRoute adminOnly>
+                        <ProtectedRoute permission={'reports.view'}>
                             <DashboardPage />
                         </ProtectedRoute>
                     }
@@ -239,7 +264,7 @@ function App() {
                 <Route
                     path="/management/billable-hours"
                     element={
-                        <ProtectedRoute adminOnly>
+                        <ProtectedRoute permission={'reports.view'}>
                             <BillableHoursPage />
                         </ProtectedRoute>
                     }
@@ -247,7 +272,7 @@ function App() {
                 <Route
                     path="/management/reports"
                     element={
-                        <ProtectedRoute adminOnly>
+                        <ProtectedRoute permission={'reports.view'}>
                             <ReportsPage />
                         </ProtectedRoute>
                     }
@@ -255,7 +280,7 @@ function App() {
                 <Route
                     path="/management/contracts"
                     element={
-                        <ProtectedRoute adminOnly>
+                        <ProtectedRoute permission={'reports.view'}>
                             <ContractStatusPage />
                         </ProtectedRoute>
                     }
@@ -263,7 +288,7 @@ function App() {
                 <Route
                     path="customers"
                     element={
-                        <ProtectedRoute adminOnly>
+                        <ProtectedRoute permission={'customers.manage'}>
                             <CustomersPage />
                         </ProtectedRoute>
                     }
@@ -271,7 +296,7 @@ function App() {
                 <Route
                     path="projects"
                     element={
-                        <ProtectedRoute adminOnly>
+                        <ProtectedRoute permission={'projects.manage'}>
                             <ProjectsPage />
                         </ProtectedRoute>
                     }
@@ -279,7 +304,7 @@ function App() {
                 <Route
                     path="work-types"
                     element={
-                        <ProtectedRoute adminOnly>
+                        <ProtectedRoute permission={'reference.manage'}>
                             <WorkTypesPage />
                         </ProtectedRoute>
                     }
@@ -287,7 +312,7 @@ function App() {
                 <Route
                     path="users"
                     element={
-                        <ProtectedRoute adminOnly>
+                        <ProtectedRoute permission={'users.manage'}>
                             <UsersPage />
                         </ProtectedRoute>
                     }
@@ -296,7 +321,7 @@ function App() {
                 <Route
                     path="activity-types"
                     element={
-                        <ProtectedRoute adminOnly>
+                        <ProtectedRoute permission={'reference.manage'}>
                             <ActivityTypesPage />
                         </ProtectedRoute>
                     }
@@ -304,7 +329,7 @@ function App() {
                 <Route
                     path="platforms"
                     element={
-                        <ProtectedRoute adminOnly>
+                        <ProtectedRoute permission={'reference.manage'}>
                             <PlatformsPage />
                         </ProtectedRoute>
                     }
@@ -312,7 +337,7 @@ function App() {
                 <Route
                     path="work-lines"
                     element={
-                        <ProtectedRoute adminOnly>
+                        <ProtectedRoute permission={'reference.manage'}>
                             <WorkLinesPage />
                         </ProtectedRoute>
                     }

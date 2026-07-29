@@ -10,7 +10,9 @@ from io import BytesIO
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
-from shared.auth import require_admin, CurrentUser
+from shared.auth import CurrentUser
+# RBAC R3: guard izin-tabanli; token cikarimi guard'da (G10 duzeltmesi).
+from ..rbac import ReportsAccess, require_reports_view
 from ..services.report_service import ReportService
 
 
@@ -37,15 +39,14 @@ async def export_excel_v1(
     request: Request,
     start_date: Optional[date] = Query(None, description="Başlangıç tarihi"),
     end_date: Optional[date] = Query(None, description="Bitiş tarihi"),
-    admin: CurrentUser = Depends(require_admin)
+    access: ReportsAccess = Depends(require_reports_view())
 ):
     """
     Excel export endpoint'i.
     
     Varsayılan tarih aralığı: Son 30 gün.
     """
-    auth_header = request.headers.get("Authorization", "")
-    token = auth_header.replace("Bearer ", "")
+    token = access.token  # guard'in dogruladigi token (G10 fix)
     
     try:
         service = ReportService(token)

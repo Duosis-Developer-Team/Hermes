@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 
 from app.database import get_db
 from app.models.api_client import ApiRequestLog
-from shared.auth import CurrentUser, require_admin
+from shared.auth import CurrentUser, get_current_user
 
 ADMIN = CurrentUser(id=str(uuid.uuid4()), email="admin@test.local", is_admin=True)
 BASE = "/api/v1/core/admin"
@@ -24,7 +24,20 @@ BASE = "/api/v1/core/admin"
 @pytest.fixture()
 def admin_http(pg_session):
     from app.main import app
+    from app.services import authz_client
+    from shared.permissions import ALL_PERMISSIONS
 
+    # RBAC R2: eski require_admin override'inin yeni karsiligi — kimlik
+    # get_current_user'dan, izinler stub'lanmis authz cozumunden (ADMIN'e
+    # tam katalog). BILEREK monkeypatch KULLANILMAZ: bazi testler kendi
+    # icinde monkeypatch.undo() cagirir ve fixture'la ayni ornegi
+    # paylastigi icin stub'i da geri alirdi (3f'te yasandi — 503).
+    _orig_resolve = authz_client.effective_permissions
+    authz_client.effective_permissions = (
+        lambda uid: frozenset(ALL_PERMISSIONS)
+        if str(uid) == ADMIN.id
+        else frozenset()
+    )
     # Mounted public app'in get_db'si AYRI instance'tadir — ayni test
     # DB'sine baglanmasi icin onu da override et.
     public_app = next(
@@ -33,13 +46,14 @@ def admin_http(pg_session):
         if getattr(r, "path", "") == "/api/public"
     )
     app.dependency_overrides[get_db] = lambda: pg_session
-    app.dependency_overrides[require_admin] = lambda: ADMIN
+    app.dependency_overrides[get_current_user] = lambda: ADMIN
     public_app.dependency_overrides[get_db] = lambda: pg_session
 
     http = TestClient(app, raise_server_exceptions=False)
     yield http
     app.dependency_overrides.pop(get_db, None)
-    app.dependency_overrides.pop(require_admin, None)
+    app.dependency_overrides.pop(get_current_user, None)
+    authz_client.effective_permissions = _orig_resolve
     public_app.dependency_overrides.pop(get_db, None)
 
 

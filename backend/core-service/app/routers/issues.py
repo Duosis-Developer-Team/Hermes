@@ -7,7 +7,10 @@ from ..database import get_db
 from ..models import Issue, Project
 from ..models.project_membership import ProjectMembership
 from ..schemas.issue import IssueCreate, IssueUpdate, IssueResponse
-from shared.auth import get_current_user, require_admin, CurrentUser
+from shared.auth import get_current_user, CurrentUser
+# RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
+from ..authz import require_permissions
+from shared.permissions import Perm
 
 router = APIRouter(
     prefix="/issues",
@@ -24,7 +27,11 @@ def _check_project_membership(
     Admin'ler her projeye erişebilir. Standart kullanıcılar yalnızca
     üyesi oldukları projelerde issue oluşturabilir/güncelleyebilir/silebilir.
     """
-    if current_user.is_admin:
+    # RBAC R2: proje-uyeligi bypass'i artik projects.manage iznine bakar.
+    from ..authz import user_has
+    from shared.permissions import Perm
+
+    if user_has(current_user, Perm.PROJECTS_MANAGE):
         return
     membership = db.query(ProjectMembership).filter(
         ProjectMembership.project_id == project_id,
@@ -119,7 +126,7 @@ def update_issue(
 def delete_issue(
     issue_id: UUID,
     db: Session = Depends(get_db),
-    admin: CurrentUser = Depends(require_admin),  # [KRİTİK-5] Silme yalnızca Admin
+    admin: CurrentUser = Depends(require_permissions(Perm.PROJECTS_MANAGE)),  # [KRİTİK-5] Silme yalnızca Admin
 ):
     issue = db.query(Issue).filter(Issue.id == issue_id).first()
     if not issue:

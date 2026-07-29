@@ -31,6 +31,13 @@ export const useAuthStore = create((set, get) => ({
     /** Kullanıcı aktif oturumda mı? */
     isAuthenticated: false,
 
+    /**
+     * RBAC R3: efektif izin listesi (/api/v1/auth/rbac/me).
+     * TEK yetki kaynağı budur — is_admin yalnızca geçiş-dönemi rozeti.
+     * null = henüz yüklenmedi (fail-closed: can() false döner).
+     */
+    permissions: null,
+
     // =========================================================================
     // Actions
     // =========================================================================
@@ -57,7 +64,13 @@ export const useAuthStore = create((set, get) => ({
         set({
             user: null,
             isAuthenticated: false,
+            permissions: null,
         })
+    },
+
+    /** RBAC izinlerini yükler (boot'ta /rbac/me yanıtından). */
+    setPermissions: (permissions) => {
+        set({ permissions: permissions || [] })
     },
 
     /**
@@ -74,10 +87,28 @@ export const useAuthStore = create((set, get) => ({
     // Getters
     // =========================================================================
 
-    /** Kullanıcı admin mi? */
+    /**
+     * Kullanıcı admin mi? (GEÇİŞ DÖNEMİ — yeni kod can() kullanmalı.
+     * Backend is_admin'i system-admin rolünden türettiği için doğru
+     * kalır; ama granüler yetkiler için tek doğru soru can()'dır.)
+     */
     isAdmin: () => {
         const { user } = get()
         return user?.is_admin === true
+    },
+
+    /** Verilen izinlerin TÜMÜ var mı? (fail-closed: yüklenmediyse false) */
+    can: (...codes) => {
+        const { permissions } = get()
+        if (!permissions) return false
+        return codes.every((c) => permissions.includes(c))
+    },
+
+    /** Verilen izinlerden EN AZ BİRİ var mı? */
+    canAny: (...codes) => {
+        const { permissions } = get()
+        if (!permissions) return false
+        return codes.some((c) => permissions.includes(c))
     },
 }))
 

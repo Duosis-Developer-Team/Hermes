@@ -17,7 +17,10 @@ from ..database import get_db
 from ..models.work_log import WorkLog
 from ..schemas.work_log import WorkLogCreate, WorkLogUpdate, WorkLogResponse, WorkLogListResponse
 from ..services.work_log_service import WorkLogService
-from shared.auth import get_current_user, require_admin, CurrentUser
+from shared.auth import get_current_user, CurrentUser
+# RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
+from ..authz import require_permissions, user_has
+from shared.permissions import Perm
 from shared.exceptions import NotFoundError, ForbiddenError
 
 router = APIRouter(prefix="/work-logs", tags=["Work Logs"])
@@ -41,7 +44,7 @@ async def create_work_log(
     """
     service = WorkLogService(db)
     try:
-        if target_user_id and current_user.is_admin:
+        if target_user_id and user_has(current_user, Perm.WORKLOGS_ADMIN):
             effective_user_id = target_user_id
         else:
             effective_user_id = UUID(current_user.id)
@@ -79,7 +82,7 @@ async def list_work_logs(
     if user_id:
         # Kendi ID'si ise sorun yok, başkası ise admin olmalı
         if str(user_id) != current_user.id:
-            if not current_user.is_admin:
+            if not user_has(current_user, Perm.WORKLOGS_ADMIN):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Başkasına ait zaman girişlerini görme yetkiniz yok"
@@ -104,7 +107,7 @@ async def list_work_logs(
 
 @router.get("/billable-summary")
 async def get_billable_summary(
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.WORKLOGS_ADMIN)),
     db: Session = Depends(get_db)
 ):
     """
@@ -132,7 +135,7 @@ async def list_all_work_logs(
     customer_id: Optional[UUID] = Query(None),
     project_id: Optional[UUID] = Query(None),
     user_id: Optional[UUID] = Query(None),
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.WORKLOGS_ADMIN)),
     db: Session = Depends(get_db)
 ):
     """
@@ -183,7 +186,7 @@ async def get_work_log(
         work_log = service.get_by_id_or_404(work_log_id)
         
         # Yetki kontrolü
-        if str(work_log.user_id) != current_user.id and not current_user.is_admin:
+        if str(work_log.user_id) != current_user.id and not user_has(current_user, Perm.WORKLOGS_ADMIN):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Bu zaman girişini görme yetkiniz yok"
@@ -217,7 +220,7 @@ async def update_work_log(
             work_log_id,
             data,
             UUID(current_user.id),
-            current_user.is_admin
+            user_has(current_user, Perm.WORKLOGS_ADMIN)
         )
         return service.to_response(work_log)
     except NotFoundError as e:
@@ -244,7 +247,7 @@ async def delete_work_log(
     service = WorkLogService(db)
     
     try:
-        service.delete(work_log_id, UUID(current_user.id), current_user.is_admin)
+        service.delete(work_log_id, UUID(current_user.id), user_has(current_user, Perm.WORKLOGS_ADMIN))
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
     except ForbiddenError as e:

@@ -15,7 +15,7 @@ Bu modül aşağıdaki ortak bileşenleri sağlar:
 - responses: Standart API yanıt formatları
 """
 
-from .auth import verify_token, get_current_user, require_admin
+from .auth import verify_token, get_current_user
 from .exceptions import (
     HermesException,
     NotFoundError,
@@ -34,7 +34,6 @@ __all__ = [
     # Auth
     "verify_token",
     "get_current_user",
-    "require_admin",
     # Exceptions
     "HermesException",
     "NotFoundError",

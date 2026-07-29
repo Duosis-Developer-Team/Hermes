@@ -23,8 +23,12 @@ from ..schemas.user import (
     UserListResponse
 )
 from ..services.user_service import UserService
-from shared.auth import require_admin, get_current_user, CurrentUser
+# RBAC R1: bu router'in guard'lari artik is_admin bit'ine degil,
+# users.manage iznine bakar. require_admin bilerek import edilmiyor.
+from ..services.rbac_service import require_permissions
+from shared.auth import get_current_user, CurrentUser
 from shared.exceptions import NotFoundError, ConflictError
+from shared.permissions import Perm
 from shared.responses import success_response
 
 
@@ -48,7 +52,7 @@ router = APIRouter(
 )
 async def create_user(
     user_data: UserCreate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.USERS_MANAGE)),
     db: Session = Depends(get_db)
 ) -> UserResponse:
     """
@@ -104,7 +108,7 @@ async def list_users(
     skip: int = Query(0, ge=0, description="Atlanacak kayıt sayısı"),
     limit: int = Query(100, ge=1, le=500, description="Maksimum kayıt sayısı"),
     include_inactive: bool = Query(False, description="Pasif kullanıcıları dahil et"),
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.USERS_MANAGE)),
     db: Session = Depends(get_db)
 ) -> UserListResponse:
     """
@@ -157,7 +161,7 @@ async def list_users(
 )
 async def list_user_options(
     role: str = Query(None, description="Role göre filtrele (REVIEWER, ADMIN, USER)"),
-    current_user: CurrentUser = Depends(require_admin), # Admin Only VEYA get_current_user olabilir. İhtiyaca göre get_current_user kullanıyorum ki herkes görebilsin
+    current_user: CurrentUser = Depends(require_permissions(Perm.USERS_MANAGE)), # Admin Only VEYA get_current_user olabilir. İhtiyaca göre get_current_user kullanıyorum ki herkes görebilsin
     db: Session = Depends(get_db)
 ):
     """
@@ -215,7 +219,13 @@ async def lookup_users(
 
     query = db.query(User)
 
-    if include_inactive and current_user.is_admin:
+    # RBAC R1: pasifleri gorme ayricaligi artik is_admin claim'ine degil
+    # users.manage iznine bakar (DB'den cozulur — bayat claim yetmez).
+    from ..services.rbac_service import effective_permissions
+
+    if include_inactive and Perm.USERS_MANAGE in effective_permissions(
+        db, current_user.id
+    ):
         pass  # No filter
     else:
         query = query.filter(User.is_active == True)  # noqa: E712
@@ -250,7 +260,7 @@ async def lookup_users(
 )
 async def get_user(
     user_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.USERS_MANAGE)),
     db: Session = Depends(get_db)
 ) -> UserResponse:
     """
@@ -292,7 +302,7 @@ async def get_user(
 async def update_user(
     user_id: UUID,
     user_data: UserUpdate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.USERS_MANAGE)),
     db: Session = Depends(get_db)
 ) -> UserResponse:
     """
@@ -349,7 +359,7 @@ async def update_user(
 )
 async def delete_user(
     user_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.USERS_MANAGE)),
     db: Session = Depends(get_db)
 ):
     """

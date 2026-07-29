@@ -42,7 +42,10 @@ from ..schemas.task import (
 from ..models.user_group import TaskGroupPermission
 from ..services import task_service, user_group_service
 from ..routers.tasks import _serialize_sub_project
-from shared.auth import CurrentUser, require_admin
+from shared.auth import CurrentUser
+# RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
+from ..authz import require_permissions
+from shared.permissions import Perm
 
 
 router = APIRouter(prefix="/admin", tags=["Task Admin"])
@@ -57,7 +60,7 @@ router = APIRouter(prefix="/admin", tags=["Task Admin"])
     response_model=List[TaskPermissionRow],
 )
 async def list_task_permission_rows(
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     """Returns one row per existing permission record (IDs only).
@@ -87,7 +90,7 @@ async def list_task_permission_rows(
 async def update_task_permission(
     user_id: UUID,
     data: TaskPermissionUpdate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     perm = task_service.upsert_task_permission(db, user_id, data)
@@ -105,7 +108,7 @@ async def update_task_permission(
     "/task-permissions/effective",
 )
 async def list_effective_permissions(
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     """Returns per-user effective permission data used by the
@@ -135,7 +138,7 @@ async def list_effective_permissions(
 )
 async def list_assignment_relations(
     scope: str = Query("task"),
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     relations = task_service.list_assignment_relations(db, scope)
@@ -159,7 +162,7 @@ async def list_assignment_relations(
 )
 async def create_assignment_relations(
     data: TaskAssignmentRelationCreate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     relations = task_service.create_assignment_relations(
@@ -187,7 +190,7 @@ async def create_assignment_relations(
 )
 async def delete_assignment_relation(
     relation_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     task_service.delete_assignment_relation(db, relation_id)
@@ -204,7 +207,7 @@ async def delete_assignment_relation(
 )
 async def list_assignment_group_relations(
     scope: str = Query("task"),
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     relations = task_service.list_assignment_group_relations(db, scope)
@@ -228,7 +231,7 @@ async def list_assignment_group_relations(
 )
 async def create_assignment_group_relation(
     data: TaskAssignmentGroupRelationCreate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     relation = task_service.create_assignment_group_relation(
@@ -250,7 +253,7 @@ async def create_assignment_group_relation(
 )
 async def delete_assignment_group_relation(
     relation_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     task_service.delete_assignment_group_relation(db, relation_id)
@@ -268,7 +271,7 @@ async def delete_assignment_group_relation(
 )
 async def create_sub_project(
     data: TaskSubProjectCreate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     sub = task_service.create_sub_project(db, data, UUID(admin.id))
@@ -282,7 +285,7 @@ async def create_sub_project(
 async def update_sub_project(
     sub_project_id: UUID,
     data: TaskSubProjectUpdate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     sub = task_service.update_sub_project(db, sub_project_id, data)
@@ -295,7 +298,7 @@ async def update_sub_project(
 )
 async def delete_sub_project(
     sub_project_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     task_service.delete_sub_project(db, sub_project_id)
@@ -316,7 +319,7 @@ async def delete_sub_project(
     response_model=List[TaskGroupPermissionResponse],
 )
 async def list_task_group_permissions(
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     """All task permission rows (sparse — only groups that have been
@@ -344,7 +347,7 @@ async def list_task_group_permissions(
 async def upsert_task_group_permission(
     group_id: UUID,
     data: TaskGroupPermissionUpdate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     perm = user_group_service.upsert_task_group_permission(
@@ -415,7 +418,7 @@ def _serialize_override(
 )
 async def list_task_group_member_overrides(
     group_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     user_group_service.get_user_group(db, group_id)  # 404 if missing
@@ -440,7 +443,7 @@ async def upsert_task_group_member_override(
     group_id: UUID,
     user_id: UUID,
     data: TaskGroupMemberOverrideUpdate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     override = user_group_service.upsert_task_group_member_override(
@@ -474,7 +477,7 @@ async def upsert_task_group_member_override(
     response_model=List[NotificationSettingRow],
 )
 async def list_notification_settings(
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     """One row per work-item type (task / issue / suggestion). Types that
@@ -492,7 +495,7 @@ async def list_notification_settings(
 async def update_notification_setting(
     task_type: str,
     data: NotificationSettingUpdate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     row = task_service.upsert_notification_setting(db, task_type, data)

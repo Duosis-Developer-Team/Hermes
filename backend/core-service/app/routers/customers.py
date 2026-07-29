@@ -12,7 +12,10 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..schemas.customer import CustomerCreate, CustomerUpdate, CustomerResponse
 from ..services.customer_service import CustomerService
-from shared.auth import require_admin, CurrentUser, get_current_user
+from shared.auth import CurrentUser, get_current_user
+# RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
+from ..authz import require_permissions
+from shared.permissions import Perm
 from shared.exceptions import NotFoundError
 
 router = APIRouter(prefix="/customers", tags=["Customers"])
@@ -21,7 +24,7 @@ router = APIRouter(prefix="/customers", tags=["Customers"])
 @router.post("", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
 async def create_customer(
     data: CustomerCreate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.CUSTOMERS_MANAGE)),
     db: Session = Depends(get_db)
 ):
     """Yeni müşteri oluşturur (Admin)."""
@@ -61,7 +64,7 @@ async def get_customer(
 async def update_customer(
     customer_id: UUID,
     data: CustomerUpdate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.CUSTOMERS_MANAGE)),
     db: Session = Depends(get_db)
 ):
     """Müşteriyi günceller (Admin)."""
@@ -75,7 +78,7 @@ async def update_customer(
 @router.delete("/{customer_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_customer(
     customer_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.CUSTOMERS_MANAGE)),
     db: Session = Depends(get_db)
 ):
     """Müşteriyi siler - soft delete (Admin)."""

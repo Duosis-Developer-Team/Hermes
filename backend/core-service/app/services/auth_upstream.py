@@ -20,19 +20,21 @@
 # ".co" kesilmesi); buradaki kullanim o sinifa girmez.
 # =============================================================================
 
-from ..config import get_settings
+from shared.auth_upstream import normalize_auth_base_url
 
-_API_PREFIX = "/api/v1"
+from ..config import get_settings
 
 
 def auth_service_base_url() -> str:
     """auth-service KOK adresi: sonda egik cizgi yok, /api/v1 soneki yok.
 
-    Cagiranlar kendi yolunu ekler — kok, iki farkli yuzeyi de tasir:
+    Cagiranlar kendi yolunu ekler — kok, uc farkli yuzeyi de tasir:
       - S2S dizin (prefix DISI):  f"{base}/internal/directory/users/resolve"
+      - S2S authz (prefix DISI):  f"{base}/internal/authz/resolve"
       - Kullanici JWT'li uclar:   f"{base}/api/v1/auth/users/lookup"
+
+    Normalizasyonun kendisi shared/auth_upstream.py'de yasar (RBAC R3'te
+    reporting-service de ayni kurala muhtac oldu — kopya yazmak yerine
+    fonksiyon shared'a alindi; bu adapter core settings'ini baglar).
     """
-    base = (get_settings().AUTH_SERVICE_URL or "").strip().rstrip("/")
-    if base.endswith(_API_PREFIX):
-        base = base[: -len(_API_PREFIX)]
-    return base
+    return normalize_auth_base_url(get_settings().AUTH_SERVICE_URL)

@@ -12,7 +12,10 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..schemas.work_type import WorkTypeCreate, WorkTypeUpdate, WorkTypeResponse
 from ..services.work_type_service import WorkTypeService
-from shared.auth import require_admin, CurrentUser, get_current_user
+from shared.auth import CurrentUser, get_current_user
+# RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
+from ..authz import require_permissions
+from shared.permissions import Perm
 from shared.exceptions import NotFoundError
 
 router = APIRouter(prefix="/work-types", tags=["Work Types"])
@@ -21,7 +24,7 @@ router = APIRouter(prefix="/work-types", tags=["Work Types"])
 @router.post("", response_model=WorkTypeResponse, status_code=status.HTTP_201_CREATED)
 async def create_work_type(
     data: WorkTypeCreate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.REFERENCE_MANAGE)),
     db: Session = Depends(get_db)
 ):
     """Yeni iş tipi oluşturur (Admin)."""
@@ -60,7 +63,7 @@ async def get_work_type(
 async def update_work_type(
     work_type_id: UUID,
     data: WorkTypeUpdate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.REFERENCE_MANAGE)),
     db: Session = Depends(get_db)
 ):
     """İş tipini günceller (Admin)."""
@@ -74,7 +77,7 @@ async def update_work_type(
 @router.delete("/{work_type_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_work_type(
     work_type_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.REFERENCE_MANAGE)),
     db: Session = Depends(get_db)
 ):
     """İş tipini siler - soft delete (Admin)."""

@@ -53,6 +53,9 @@ function formatDecimalToHM(decimal) {
 function BillableHoursPage() {
     const queryClient = useQueryClient()
     const { user } = useAuthStore()
+    // RBAC R3: sayfa yetkisi reports.view iznine bakar
+    const canViewReports = useAuthStore((s) => s.can)('reports.view')
+    useAuthStore((s) => s.permissions)
 
     // ==========================================================================
     // State
@@ -80,21 +83,21 @@ function BillableHoursPage() {
     const { data: usersResponse, isLoading: usersLoading } = useQuery({
         queryKey: ['users-list'],
         queryFn: () => authService.getUsers(),
-        enabled: !!user?.is_admin,
+        enabled: !!canViewReports,
     })
 
     // Fetch Customers
     const { data: customersResponse } = useQuery({
         queryKey: ['customers-list'],
         queryFn: () => customerService.getAll(),
-        enabled: !!user?.is_admin,
+        enabled: !!canViewReports,
     })
 
     // Fetch Projects
     const { data: projectsResponse } = useQuery({
         queryKey: ['projects-list'],
         queryFn: () => projectService.getAll(),
-        enabled: !!user?.is_admin,
+        enabled: !!canViewReports,
     })
 
     // Fetch Work Logs for selected user
@@ -324,7 +327,7 @@ function BillableHoursPage() {
     // ==========================================================================
     // Render
     // ==========================================================================
-    if (!user?.is_admin) {
+    if (!canViewReports) {
         return <div style={{ padding: 40, textAlign: 'center', color: 'var(--c-text-strong)' }}>Access Denied</div>
     }
 

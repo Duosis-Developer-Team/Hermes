@@ -43,7 +43,7 @@ def pg_engine():
     except Exception:
         pytest.skip("test database unavailable")
     from app.database import Base
-    from app.models import user  # noqa: F401
+    from app.models import rbac, user  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
     yield engine
@@ -58,7 +58,7 @@ def pg_session(pg_engine):
     Session = sessionmaker(bind=pg_engine, autoflush=False,
                            autocommit=False)
     s = Session()
-    s.execute(sa_text("TRUNCATE users CASCADE"))
+    s.execute(sa_text("TRUNCATE users, rbac_roles CASCADE"))
     s.commit()
     yield s
     s.rollback()

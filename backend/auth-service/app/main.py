@@ -53,7 +53,22 @@ async def lifespan(app: FastAPI):
     # Veritabanı tablolarını oluştur
     init_db()
     print("✅ Veritabanı tabloları hazır")
-    
+
+    # RBAC bootstrap (R1, idempotent): system-admin rolu katalogla
+    # senkronlanir, legacy is_admin=True kullanicilara rol atanir.
+    # Basarisizlik startup'i DURDURUR (fail-fast): RBAC'siz calisan bir
+    # auth-service, izin-korumali uclari herkese kapatir (fail-closed)
+    # ve bu sessiz kalmamali.
+    from .database import SessionLocal
+    from .services.rbac_service import bootstrap as rbac_bootstrap
+
+    _db = SessionLocal()
+    try:
+        rbac_bootstrap(_db)
+        print("✅ RBAC bootstrap tamam")
+    finally:
+        _db.close()
+
     yield
     
     # Shutdown
@@ -160,6 +175,17 @@ app.include_router(users_router, prefix=f"{API_PREFIX}/auth")
 from .routers.internal_directory import router as internal_directory_router  # noqa: E402
 
 app.include_router(internal_directory_router)
+
+# RBAC (R1): rol yonetimi + kendi izinlerim → /api/v1/auth/rbac/*
+from .routers.rbac_admin import router as rbac_admin_router  # noqa: E402
+
+app.include_router(rbac_admin_router, prefix=f"{API_PREFIX}/auth")
+
+# Internal S2S authz resolve (RBAC R1) — directory ile ayni guard ve
+# ayni "/api disinda" kurali.
+from .routers.internal_authz import router as internal_authz_router  # noqa: E402
+
+app.include_router(internal_authz_router)
 
 
 # =============================================================================

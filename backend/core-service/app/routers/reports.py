@@ -16,7 +16,10 @@ from ..models.project import Project
 from ..models.work_type import WorkType
 from ..models.activity_type import ActivityType
 from ..models.platform import Platform
-from shared.auth import require_admin, CurrentUser, get_current_user
+from shared.auth import CurrentUser, get_current_user
+# RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
+from ..authz import require_permissions, user_has
+from shared.permissions import Perm
 
 router = APIRouter(
     prefix="/reports",
@@ -128,7 +131,7 @@ async def export_excel(
         token = request.cookies.get("access_token") or (auth_header.replace("Bearer ", "") if auth_header else "")
 
         users_map = {}
-        if current_user.is_admin:
+        if user_has(current_user, Perm.REPORTS_VIEW):
             users_map = await get_all_users_map(token)
         else:
             users_map = {str(current_user.id): current_user.email}
@@ -157,7 +160,7 @@ async def export_excel(
         )
 
         # Access control
-        if not current_user.is_admin:
+        if not user_has(current_user, Perm.REPORTS_VIEW):
             query = query.filter(WorkLog.user_id == current_user.id)
         else:
             # [YÜKSEK-9] cast(…, String) kaldırıldı — UUID tipi doğrudan kullanılır
@@ -236,7 +239,7 @@ async def export_excel(
 @router.get("/export/global/detailed")
 async def export_global_detailed(
     month: str = Query(..., description="YYYY-MM fortmatında ay"),
-    current_user: CurrentUser = Depends(require_admin), # Admin Only
+    current_user: CurrentUser = Depends(require_permissions(Perm.REPORTS_VIEW)), # Admin Only
     db: Session = Depends(get_db),
 ):
     """
@@ -250,7 +253,7 @@ async def export_global_detailed(
 async def export_global_detailed_v2(
     request: Request,
     month: str = Query(..., description="YYYY-MM"),
-    current_user: CurrentUser = Depends(require_admin),
+    current_user: CurrentUser = Depends(require_permissions(Perm.REPORTS_VIEW)),
     db: Session = Depends(get_db)
 ):
     # Extract token from header or cookie
@@ -331,7 +334,7 @@ async def export_global_matrix(
     request: Request,
     start_date: date = Query(...),
     end_date: date = Query(...),
-    current_user: CurrentUser = Depends(require_admin),
+    current_user: CurrentUser = Depends(require_permissions(Perm.REPORTS_VIEW)),
     db: Session = Depends(get_db)
 ):
     """
@@ -420,7 +423,7 @@ async def get_user_logs_json(
     token = request.cookies.get("access_token") or (auth_header.replace("Bearer ", "") if auth_header else "")
 
     users_map = {}
-    if current_user.is_admin:
+    if user_has(current_user, Perm.REPORTS_VIEW):
         users_map = await get_all_users_map(token)
     else:
         users_map = {str(current_user.id): current_user.email}
@@ -449,7 +452,7 @@ async def get_user_logs_json(
     )
 
     # Access control + user filter
-    if not current_user.is_admin:
+    if not user_has(current_user, Perm.REPORTS_VIEW):
         # Standart kullanıcı: yalnızca kendi verilerini görür, ek filtreler yok
         query = query.filter(WorkLog.user_id == current_user.id)
     else:
@@ -499,7 +502,7 @@ async def get_user_logs_json(
 async def get_global_detailed_json(
     request: Request,
     month: str = Query(..., description="YYYY-MM"),
-    current_user: CurrentUser = Depends(require_admin),
+    current_user: CurrentUser = Depends(require_permissions(Perm.REPORTS_VIEW)),
     db: Session = Depends(get_db)
 ):
     """
@@ -562,7 +565,7 @@ async def get_matrix_json(
     request: Request,
     start_date: date = Query(...),
     end_date: date = Query(...),
-    current_user: CurrentUser = Depends(require_admin),
+    current_user: CurrentUser = Depends(require_permissions(Perm.REPORTS_VIEW)),
     db: Session = Depends(get_db)
 ):
     """

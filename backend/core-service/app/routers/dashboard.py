@@ -10,7 +10,10 @@ from ..models.work_log import WorkLog
 from ..models.customer import Customer
 from ..models.project import Project
 from ..schemas.dashboard import DashboardStats, ChartItem
-from shared.auth import require_admin, CurrentUser
+from shared.auth import CurrentUser
+# RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
+from ..authz import require_permissions
+from shared.permissions import Perm
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -18,7 +21,7 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 async def get_dashboard_stats(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.REPORTS_VIEW)),
     db: Session = Depends(get_db)
 ):
     """

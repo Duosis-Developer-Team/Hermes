@@ -80,6 +80,32 @@ function MainLayout() {
     const { canAccessAny } = useTaskPermissions()
     const showTasksItem = isAdmin || canAccessAny
 
+    // RBAC R3: menu ogeleri artik ROL/izin bazli gorunur — "hepsi ya da
+    // hicbiri" admin blogu yerine her oge kendi iznini ister. Bir grup,
+    // icinde gorunur oge kaldiysa render edilir. can() fail-closed:
+    // izinler yuklenene dek yonetim menusu gorunmez.
+    const can = useAuthStore((s) => s.can)
+    const permissions = useAuthStore((s) => s.permissions) // re-render tetikleyici
+
+    const managementItems = [
+        { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard', perm: 'reports.view' },
+        { key: '/management/billable-hours', icon: <ClockCircleOutlined />, label: 'Billable Hours', perm: 'reports.view' },
+        { key: '/management/reports', icon: <FileExcelOutlined />, label: 'Reports', perm: 'reports.view' },
+        { key: '/management/contracts', icon: <FileTextOutlined />, label: 'Contract Status', perm: 'reports.view' },
+        { key: '/pm-configurations', icon: <CheckSquareOutlined />, label: 'PM Configurations', perm: 'tasks.permissions.manage' },
+        { key: '/api-management', icon: <ApiOutlined />, label: 'API Management', perm: 'api.manage' },
+    ].filter((i) => can(i.perm)).map(({ perm, ...i }) => i)
+
+    const configurationItems = [
+        { key: '/customers', icon: <TeamOutlined />, label: 'Customers', perm: 'customers.manage' },
+        { key: '/projects', icon: <ProjectOutlined />, label: 'Projects', perm: 'projects.manage' },
+        { key: '/work-types', icon: <AppstoreOutlined />, label: 'Work Types', perm: 'reference.manage' },
+        { key: '/activity-types', icon: <AppstoreOutlined />, label: 'Activity Types', perm: 'reference.manage' },
+        { key: '/platforms', icon: <SettingOutlined />, label: 'Platforms', perm: 'reference.manage' },
+        { key: '/work-lines', icon: <SettingOutlined />, label: 'Work Lines', perm: 'reference.manage' },
+        { key: '/users', icon: <UserOutlined />, label: 'Users', perm: 'users.manage' },
+    ].filter((i) => can(i.perm)).map(({ perm, ...i }) => i)
+
     // Menu items
     const menuItems = [
         // Standart Kullanıcı Menüsü
@@ -115,89 +141,25 @@ function MainLayout() {
             label: 'Developer',
         },
 
-        // Admin Menüsü
-        ...(isAdmin ? [
-            {
-                type: 'divider',
-            },
+        // RBAC R3: yonetim gruplari, icinde GORUNUR oge varsa render
+        // edilir — tek is_admin bit'i yerine oge-bazli izinler.
+        ...(managementItems.length || configurationItems.length ? [
+            { type: 'divider' },
+        ] : []),
+        ...(managementItems.length ? [
             {
                 key: 'admin-group',
                 label: 'MANAGEMENT',
                 type: 'group',
-                children: [
-                    {
-                        key: '/dashboard',
-                        icon: <DashboardOutlined />,
-                        label: 'Dashboard',
-                    },
-                    {
-                        key: '/management/billable-hours',
-                        icon: <ClockCircleOutlined />,
-                        label: 'Billable Hours',
-                    },
-                    {
-                        key: '/management/reports',
-                        icon: <FileExcelOutlined />,
-                        label: 'Reports',
-                    },
-                    {
-                        key: '/management/contracts',
-                        icon: <FileTextOutlined />,
-                        label: 'Contract Status',
-                    },
-                    {
-                        key: '/pm-configurations',
-                        icon: <CheckSquareOutlined />,
-                        label: 'PM Configurations',
-                    },
-                    {
-                        key: '/api-management',
-                        icon: <ApiOutlined />,
-                        label: 'API Management',
-                    },
-                ],
+                children: managementItems,
             },
+        ] : []),
+        ...(configurationItems.length ? [
             {
                 key: 'config-group',
                 label: 'CONFIGURATION',
                 type: 'group',
-                children: [
-                    {
-                        key: '/customers',
-                        icon: <TeamOutlined />,
-                        label: 'Customers',
-                    },
-                    {
-                        key: '/projects',
-                        icon: <ProjectOutlined />,
-                        label: 'Projects',
-                    },
-                    {
-                        key: '/work-types',
-                        icon: <AppstoreOutlined />,
-                        label: 'Work Types',
-                    },
-                    {
-                        key: '/activity-types',
-                        icon: <AppstoreOutlined />,
-                        label: 'Activity Types',
-                    },
-                    {
-                        key: '/platforms',
-                        icon: <SettingOutlined />,
-                        label: 'Platforms',
-                    },
-                    {
-                        key: '/work-lines',
-                        icon: <SettingOutlined />,
-                        label: 'Work Lines',
-                    },
-                    {
-                        key: '/users',
-                        icon: <UserOutlined />,
-                        label: 'Users',
-                    },
-                ],
+                children: configurationItems,
             },
         ] : []),
     ]

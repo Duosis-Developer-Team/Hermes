@@ -49,6 +49,9 @@ function formatDuration(decimalHours) {
 
 function ReportsPage() {
     const { user } = useAuthStore()
+    // RBAC R3: sayfa yetkisi reports.view iznine bakar
+    const canViewReports = useAuthStore((s) => s.can)('reports.view')
+    useAuthStore((s) => s.permissions)
 
     // ── Filter State ──────────────────────────────────────────────────────────
     const [dateRange, setDateRange] = useState([
@@ -65,7 +68,7 @@ function ReportsPage() {
     const { data: usersData } = useQuery({
         queryKey: ['users-list'],
         queryFn: () => authService.getUsers(),
-        enabled: !!user?.is_admin,
+        enabled: !!canViewReports,
         staleTime: 5 * 60 * 1000
     })
     const users = useMemo(() => (usersData?.data || []).sort((a, b) =>
@@ -75,7 +78,7 @@ function ReportsPage() {
     const { data: customersData } = useQuery({
         queryKey: ['customers-list'],
         queryFn: () => customerService.getAll(),
-        enabled: !!user?.is_admin,
+        enabled: !!canViewReports,
         staleTime: 5 * 60 * 1000
     })
     const customers = useMemo(() => {
@@ -86,7 +89,7 @@ function ReportsPage() {
     const { data: projectsData } = useQuery({
         queryKey: ['projects-list'],
         queryFn: () => projectService.getAll(),
-        enabled: !!user?.is_admin,
+        enabled: !!canViewReports,
         staleTime: 5 * 60 * 1000
     })
     const projects = useMemo(() => {
@@ -97,7 +100,7 @@ function ReportsPage() {
     const { data: workTypesData } = useQuery({
         queryKey: ['work-types-list'],
         queryFn: () => workTypeService.getAll(),
-        enabled: !!user?.is_admin,
+        enabled: !!canViewReports,
         staleTime: 5 * 60 * 1000
     })
     const workTypes = useMemo(() => {
@@ -108,7 +111,7 @@ function ReportsPage() {
     const { data: platformsData } = useQuery({
         queryKey: ['platforms-list'],
         queryFn: () => platformService.getAll(),
-        enabled: !!user?.is_admin,
+        enabled: !!canViewReports,
         staleTime: 5 * 60 * 1000
     })
     const platforms = useMemo(() => {
@@ -117,7 +120,7 @@ function ReportsPage() {
     }, [platformsData])
 
     // ── Access Control ────────────────────────────────────────────────────────
-    if (!user?.is_admin) {
+    if (!canViewReports) {
         return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>Access Restricted</div>
     }
 

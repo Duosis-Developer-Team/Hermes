@@ -97,6 +97,16 @@ class UserService:
         # Veritabanına kaydet
         try:
             self.db.add(db_user)
+            self.db.flush()
+            # RBAC gecis koprusu: legacy is_admin=True ile olusturulan
+            # kullanici system-admin rolunu de alir (tek dogruluk
+            # kaynagi rol; sutun turetilmis).
+            if db_user.is_admin:
+                from .rbac_service import sync_admin_role_from_legacy_flag
+
+                sync_admin_role_from_legacy_flag(
+                    self.db, user_id=db_user.id, is_admin=True
+                )
             self.db.commit()
             self.db.refresh(db_user)
             return db_user
@@ -252,7 +262,18 @@ class UserService:
         # Alanları güncelle
         for field, value in update_data.items():
             setattr(db_user, field, value)
-        
+
+        # RBAC gecis koprusu: legacy is_admin degisikligi rol atamasina
+        # cevrilir (son-admin kilidi dahil — 409 fırlatabilir).
+        if "is_admin" in update_data:
+            from .rbac_service import sync_admin_role_from_legacy_flag
+
+            sync_admin_role_from_legacy_flag(
+                self.db,
+                user_id=db_user.id,
+                is_admin=bool(update_data["is_admin"]),
+            )
+
         # Kaydet
         self.db.commit()
         self.db.refresh(db_user)
@@ -277,7 +298,14 @@ class UserService:
             NotFoundError: Kullanıcı bulunamazsa
         """
         db_user = self.get_by_id_or_404(user_id)
-        
+
+        # RBAC son-admin kilidi: son aktif system-admin silinirse/pasif
+        # yapilirsa kimse RBAC yonetemez — 409 ile engellenir.
+        if db_user.is_admin:
+            from .rbac_service import enforce_last_admin_guard
+
+            enforce_last_admin_guard(self.db, losing_user_id=db_user.id)
+
         if soft:
             # Soft delete - sadece pasif yap
             db_user.is_active = False
@@ -286,7 +314,7 @@ class UserService:
             # Hard delete - veritabanından sil
             self.db.delete(db_user)
             self.db.commit()
-        
+
         return True
     
     def reactivate(self, user_id: UUID) -> User:

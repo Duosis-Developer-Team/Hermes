@@ -35,7 +35,10 @@ from ..schemas.api_admin import (
     ApiTokenResponse,
 )
 from ..services import api_client_service as svc
-from shared.auth import CurrentUser, require_admin
+from shared.auth import CurrentUser
+# RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
+from ..authz import require_permissions
+from shared.permissions import Perm
 
 router = APIRouter(prefix="/admin", tags=["API Management"])
 
@@ -89,7 +92,7 @@ def _client_response(db: Session, client: ApiClient) -> ApiClientResponse:
 
 @router.get("/api-clients", response_model=List[ApiClientResponse])
 async def list_api_clients(
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
 ):
     return [_client_response(db, c) for c in svc.list_clients(db)]
@@ -102,7 +105,7 @@ async def list_api_clients(
 )
 async def create_api_client(
     data: ApiClientCreate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
 ):
     client = svc.create_client(db, data, created_by=UUID(admin.id))
@@ -112,7 +115,7 @@ async def create_api_client(
 @router.get("/api-clients/{client_id}", response_model=ApiClientResponse)
 async def get_api_client(
     client_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
 ):
     return _client_response(db, svc.get_client(db, client_id))
@@ -122,7 +125,7 @@ async def get_api_client(
 async def update_api_client(
     client_id: UUID,
     data: ApiClientUpdate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
 ):
     client = svc.get_client(db, client_id)
@@ -133,7 +136,7 @@ async def update_api_client(
 @router.delete("/api-clients/{client_id}", response_model=ApiClientResponse)
 async def disable_api_client(
     client_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
 ):
     """SOFT disable — veri silinmez; client'in tum token'lari dogrulama
@@ -150,7 +153,7 @@ async def disable_api_client(
 async def replace_api_client_bindings(
     client_id: UUID,
     data: AccessBindingsUpdate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
 ):
     client = svc.get_client(db, client_id)
@@ -174,7 +177,7 @@ async def replace_api_client_bindings(
 async def create_api_token(
     client_id: UUID,
     data: ApiTokenCreate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
 ):
     """Plaintext token YALNIZCA bu yanitta gorunur."""
@@ -197,7 +200,7 @@ async def create_api_token(
 @router.get("/api-tokens", response_model=List[ApiTokenResponse])
 async def list_api_tokens(
     client_id: Optional[UUID] = Query(None),
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
 ):
     if client_id is not None:
@@ -217,7 +220,7 @@ async def list_api_tokens(
 )
 async def revoke_api_token(
     token_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
 ):
     token = svc.get_token(db, token_id)
@@ -231,7 +234,7 @@ async def revoke_api_token(
 )
 async def rotate_api_token(
     token_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
 ):
     """Transactional rotate: yeni token + eski revoke tek commit'te.
@@ -250,7 +253,7 @@ async def rotate_api_token(
 async def update_api_token_expiry(
     token_id: UUID,
     data: ApiTokenExpiryUpdate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
 ):
     token = svc.get_token(db, token_id)
@@ -273,7 +276,7 @@ async def list_api_request_logs(
     created_from: Optional[datetime] = Query(None),
     created_to: Optional[datetime] = Query(None),
     request_id: Optional[str] = Query(None, max_length=64),
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
 ):
     rows = svc.list_request_logs(
@@ -313,7 +316,7 @@ async def list_api_request_logs(
 
 @router.get("/api-cleanup")
 def cleanup_status(
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
 ):
     """Retention politikasi + son calisma ozeti (admin panel karti)."""
@@ -355,7 +358,7 @@ def cleanup_status(
 @router.post("/api-cleanup/run")
 def run_cleanup_now(
     dry_run: bool = Query(False),
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
 ):
     """Manuel temizlik tetigi (admin onay modali arkasinda). dry_run=true

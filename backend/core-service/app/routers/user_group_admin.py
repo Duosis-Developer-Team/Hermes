@@ -31,7 +31,10 @@ from ..schemas.user_group import (
     UserGroupUpdate,
 )
 from ..services import user_group_service
-from shared.auth import CurrentUser, require_admin
+from shared.auth import CurrentUser
+# RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
+from ..authz import require_permissions
+from shared.permissions import Perm
 
 
 router = APIRouter(prefix="/admin", tags=["User Group Admin"])
@@ -73,7 +76,7 @@ def _serialize_member(member) -> UserGroupMemberResponse:
 )
 async def list_user_groups(
     include_inactive: bool = Query(False),
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     groups = user_group_service.list_user_groups(
@@ -93,7 +96,7 @@ async def list_user_groups(
 )
 async def create_user_group(
     data: UserGroupCreate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     group = user_group_service.create_user_group(
@@ -109,7 +112,7 @@ async def create_user_group(
 async def update_user_group(
     group_id: UUID,
     data: UserGroupUpdate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     group = user_group_service.update_user_group(db, group_id, data)
@@ -123,7 +126,7 @@ async def update_user_group(
 )
 async def deactivate_user_group(
     group_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     """Soft delete — sets is_active=false + deactivated_at. Group rows
@@ -144,7 +147,7 @@ async def deactivate_user_group(
 )
 async def list_group_members(
     group_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     members = user_group_service.list_group_members(db, group_id)
@@ -159,7 +162,7 @@ async def list_group_members(
 async def add_group_member(
     group_id: UUID,
     data: UserGroupMemberCreate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     member = user_group_service.add_group_member(db, group_id, data)
@@ -174,7 +177,7 @@ async def update_group_member(
     group_id: UUID,
     member_id: UUID,
     data: UserGroupMemberUpdate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     member = user_group_service.update_group_member(db, group_id, member_id, data)
@@ -188,7 +191,7 @@ async def update_group_member(
 async def remove_group_member(
     group_id: UUID,
     member_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
     db: Session = Depends(get_db),
 ):
     """Removes group membership only. Does not touch the user account or

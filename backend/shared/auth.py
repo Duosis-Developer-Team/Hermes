@@ -111,10 +111,19 @@ class TokenData(BaseModel):
 
 
 class CurrentUser(BaseModel):
-    """Aktif kullanıcı bilgilerini taşıyan model."""
+    """Aktif kullanıcı bilgilerini taşıyan model.
+
+    RBAC R2 notu: `is_admin` claim'i YALNIZCA gecis-donemi uyumlulugu
+    icin tasinir; RBAC karar noktalari onu OKUMAZ (izinler auth-service
+    DB'sinden cozulur). `allow_rbac_resolution=False`, public-API'nin
+    sentezlenmis aktorleri icindir: bu aktorler icin izin cozumu HIC
+    yapilmaz ve her izin kontrolu False doner — bagli kullanicinin RBAC
+    yetkileri API token'i uzerinden YAPISAL olarak sizamaz.
+    """
     id: str
     email: str
     is_admin: bool = False
+    allow_rbac_resolution: bool = True
 
 
 # =============================================================================
@@ -264,21 +273,13 @@ async def get_current_user(
         )
 
 
-async def require_admin(
-    current_user: CurrentUser = Depends(get_current_user),
-) -> CurrentUser:
-    """
-    Kullanıcının admin olduğunu doğrular.
-
-    Raises:
-        HTTPException 403: Admin yetkisi yoksa.
-    """
-    if not current_user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Bu işlem için admin yetkisi gereklidir",
-        )
-    return current_user
+# RBAC R4 NOTU: require_admin SILINDI (superseden yol tamamen kaldirilir
+# kurali). Yerine gecenler:
+#   - auth-service:      app.services.rbac_service.require_permissions
+#   - core-service:      app.authz.require_permissions (S2S cozumlu)
+#   - reporting-service: app.rbac.require_reports_view (JWT-forward)
+# is_admin claim'i yalnizca gecis-donemi uyumlulugu icin token'da durur;
+# hicbir guard artik onu OKUMAZ.
 
 
 async def get_current_user_optional(

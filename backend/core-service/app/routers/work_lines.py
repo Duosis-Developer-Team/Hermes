@@ -10,7 +10,10 @@ from uuid import UUID
 from ..database import get_db
 from ..models.work_line import WorkLine
 from ..schemas.work_line import WorkLineCreate, WorkLineUpdate, WorkLineResponse
-from shared.auth import require_admin, get_current_user
+from shared.auth import get_current_user
+# RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
+from ..authz import require_permissions
+from shared.permissions import Perm
 
 router = APIRouter(prefix="/work-lines", tags=["Work Lines"])
 
@@ -41,7 +44,7 @@ async def get_work_line(
     return item
 
 
-@router.post("", response_model=WorkLineResponse, dependencies=[Depends(require_admin)])
+@router.post("", response_model=WorkLineResponse, dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
 async def create_work_line(
     data: WorkLineCreate,
     db: Session = Depends(get_db)
@@ -59,7 +62,7 @@ async def create_work_line(
     return item
 
 
-@router.put("/{item_id}", response_model=WorkLineResponse, dependencies=[Depends(require_admin)])
+@router.put("/{item_id}", response_model=WorkLineResponse, dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
 async def update_work_line(
     item_id: UUID,
     data: WorkLineUpdate,
@@ -79,7 +82,7 @@ async def update_work_line(
     return item
 
 
-@router.delete("/{item_id}", dependencies=[Depends(require_admin)])
+@router.delete("/{item_id}", dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
 async def delete_work_line(
     item_id: UUID,
     db: Session = Depends(get_db)

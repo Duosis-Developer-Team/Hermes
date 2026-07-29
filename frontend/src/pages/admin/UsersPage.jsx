@@ -3,19 +3,29 @@
  * HERMES PLATFORM - Users Admin Page
  * =============================================================================
  * Admin kullanıcı yönetimi sayfası (FR 3.4).
+ *
+ * RBAC R3:
+ *   - "Roles" sekmesi eklendi (dinamik rol CRUD — RolesTab).
+ *   - Kullanıcı modalındaki legacy USER/ADMIN enum seçimi kaldırıldı;
+ *     yerine RBAC rol ataması geldi (çoklu seçim, subset kuralı ve
+ *     son-admin kilidi backend'de).
+ *   - Rol sütunundaki "is_admin ? ADMIN : role" legacy fallback'i öldü:
+ *     is_admin artık system-admin rolünden TÜRETİLDİĞİ için rozet
+ *     güvenilir; ham enum hiç okunmaz.
  * =============================================================================
  */
 
 import { useState } from 'react'
-import { Card, Table, Button, Space, Modal, Form, Input, message, Popconfirm, Typography, Switch, Tag, Checkbox, Select, Tabs } from 'antd'
+import { Card, Table, Button, Space, Modal, Form, Input, message, Select, Switch, Tag, Typography, Tabs } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, CrownOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { authService } from '../../services/api'
+import { authService, rbacService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
 import UserGroupsTab from './UserGroupsTab'
+import RolesTab from './RolesTab'
 import './UsersPage.css'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 function UsersTab() {
     const [form] = Form.useForm()
@@ -29,16 +39,50 @@ function UsersTab() {
     })
     const users = usersData?.data || []
 
-    const createMutation = useMutation({
-        mutationFn: authService.createUser,
-        onSuccess: () => { message.success('User created'); handleCloseModal(); queryClient.invalidateQueries(['users']) },
-        onError: (err) => message.error(err.response?.data?.detail || 'Error'),
+    // Atanabilir roller (aktif) — kullanıcı modalındaki çoklu seçim için.
+    const { data: rolesData } = useQuery({
+        queryKey: ['rbac-roles-active'],
+        queryFn: () => rbacService.listRoles(false),
     })
+    const assignableRoles = rolesData?.roles || []
 
-    const updateMutation = useMutation({
-        mutationFn: ({ id, data }) => authService.updateUser(id, data),
-        onSuccess: () => { message.success('User updated'); handleCloseModal(); queryClient.invalidateQueries(['users']) },
-        onError: (err) => message.error(err.response?.data?.detail || 'Error'),
+    const invalidateUsers = () => {
+        queryClient.invalidateQueries({ queryKey: ['users'] })
+        queryClient.invalidateQueries({ queryKey: ['rbac-roles'] })
+        queryClient.invalidateQueries({ queryKey: ['rbac-roles-active'] })
+    }
+
+    // Kullanıcı kaydet + rol kümesini uygula (iki adım; rol hatası ayrı
+    // ve açıkça raporlanır — kısmi başarı sessizce yutulmaz).
+    const saveMutation = useMutation({
+        mutationFn: async ({ id, data, roleIds }) => {
+            let userId = id
+            if (id) {
+                await authService.updateUser(id, data)
+            } else {
+                const created = await authService.createUser(data)
+                userId = created?.id || created?.data?.id
+            }
+            if (userId && roleIds !== undefined) {
+                try {
+                    await rbacService.setUserRoles(userId, roleIds)
+                } catch (e) {
+                    const detail = e.response?.data?.detail
+                    throw new Error(
+                        `Kullanıcı kaydedildi ama roller uygulanamadı: ${detail || e.message}`
+                    )
+                }
+            }
+        },
+        onSuccess: () => {
+            message.success(editingId ? 'User updated' : 'User created')
+            handleCloseModal()
+            invalidateUsers()
+        },
+        onError: (err) =>
+            message.error(
+                err.response?.data?.detail || err.message || 'Error'
+            ),
     })
 
     const archiveMutation = useMutation({
@@ -46,7 +90,7 @@ function UsersTab() {
         onSuccess: () => {
             message.success('User archived (soft deleted)')
             handleDeleteCancel()
-            queryClient.invalidateQueries(['users'])
+            invalidateUsers()
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Error archiving user'),
     })
@@ -56,7 +100,7 @@ function UsersTab() {
         onSuccess: () => {
             message.success({ content: 'User permanently deleted', style: { marginTop: '10vh' } })
             handleDeleteCancel()
-            queryClient.invalidateQueries(['users'])
+            invalidateUsers()
         },
         onError: (err) => message.error(err.response?.data?.detail || 'Unable to delete (Constraint Error). Try archiving instead.'),
     })
@@ -84,17 +128,31 @@ function UsersTab() {
         setDeletingRecord(null)
     }
 
-    const handleOpenModal = (record = null) => {
-        if (record) { setEditingId(record.id); form.setFieldsValue(record) }
-        else { setEditingId(null); form.resetFields() }
+    const handleOpenModal = async (record = null) => {
+        if (record) {
+            setEditingId(record.id)
+            form.setFieldsValue(record)
+            // Mevcut rol atamalarını yükle (modal açıkken).
+            try {
+                const r = await rbacService.getUserRoles(record.id)
+                form.setFieldsValue({
+                    role_ids: (r.roles || []).map((x) => x.id),
+                })
+            } catch {
+                form.setFieldsValue({ role_ids: [] })
+            }
+        } else {
+            setEditingId(null)
+            form.resetFields()
+        }
         setModalOpen(true)
     }
 
     const handleCloseModal = () => { setModalOpen(false); setEditingId(null); form.resetFields() }
 
     const handleSubmit = async (values) => {
-        if (editingId) updateMutation.mutate({ id: editingId, data: values })
-        else createMutation.mutate(values)
+        const { role_ids, ...data } = values
+        saveMutation.mutate({ id: editingId, data, roleIds: role_ids ?? [] })
     }
 
     const columns = [
@@ -102,21 +160,15 @@ function UsersTab() {
         { title: 'Full Name', dataIndex: 'full_name', key: 'full_name' },
         {
             title: 'Role',
-            dataIndex: 'role',
-            key: 'role',
+            dataIndex: 'is_admin',
+            key: 'is_admin',
             width: 120,
-            render: (role, record) => {
-                // If legacy is_admin is true but role is USER, assume ADMIN for display until migrated
-                const effectiveRole = record.is_admin ? 'ADMIN' : (role || 'USER')
-
-                let color = 'default'
-                let icon = <UserOutlined />
-
-                if (effectiveRole === 'ADMIN') { color = 'gold'; icon = <CrownOutlined /> }
-                else { color = 'blue' }
-
-                return <Tag icon={icon} color={color}>{effectiveRole}</Tag>
-            }
+            render: (isAdmin) =>
+                // is_admin artık system-admin ROLÜNDEN türetiliyor —
+                // rozet güvenilir; detaylı roller düzenleme modalında.
+                isAdmin
+                    ? <Tag icon={<CrownOutlined />} color="gold">Admin</Tag>
+                    : <Tag icon={<UserOutlined />} color="blue">User</Tag>,
         },
         { title: 'Status', dataIndex: 'is_active', key: 'is_active', width: 100, render: (active) => <Tag color={active ? 'success' : 'default'}>{active ? 'Active' : 'Inactive'}</Tag> },
         {
@@ -149,14 +201,23 @@ function UsersTab() {
                     )}
                     {editingId && <Form.Item name="is_active" label="Status" valuePropName="checked"><Switch checkedChildren="Active" unCheckedChildren="Inactive" /></Form.Item>}
 
-                    <Form.Item name="role" label="Role" initialValue="USER">
-                        <Select>
-                            <Select.Option value="USER">User</Select.Option>
-                            <Select.Option value="ADMIN">Admin</Select.Option>
-                        </Select>
+                    <Form.Item
+                        name="role_ids"
+                        label="Roles"
+                        extra="Yetkiler rollerden gelir. Sahip olmadığınız izinleri içeren bir rolü atayamazsınız (subset kuralı); son aktif yönetici düşürülemez."
+                    >
+                        <Select
+                            mode="multiple"
+                            placeholder="Rol seçin"
+                            optionFilterProp="label"
+                            options={assignableRoles.map((r) => ({
+                                value: r.id,
+                                label: r.name,
+                            }))}
+                        />
                     </Form.Item>
 
-                    <Form.Item><Space style={{ width: '100%', justifyContent: 'flex-end' }}><Button onClick={handleCloseModal}>Cancel</Button><Button type="primary" htmlType="submit" loading={createMutation.isPending || updateMutation.isPending}>{editingId ? 'Update' : 'Create'}</Button></Space></Form.Item>
+                    <Form.Item><Space style={{ width: '100%', justifyContent: 'flex-end' }}><Button onClick={handleCloseModal}>Cancel</Button><Button type="primary" htmlType="submit" loading={saveMutation.isPending}>{editingId ? 'Update' : 'Create'}</Button></Space></Form.Item>
                 </Form>
             </Modal>
 
@@ -177,12 +238,13 @@ function UsersPage() {
         <div className="users-page fade-in">
             <div className="page-header">
                 <h1>Users</h1>
-                <p>Manage users and groups</p>
+                <p>Manage users, roles and groups</p>
             </div>
             <Tabs
                 className="users-page-tabs"
                 items={[
                     { key: 'users', label: 'Users', children: <UsersTab /> },
+                    { key: 'roles', label: 'Roles', children: <RolesTab /> },
                     { key: 'groups', label: 'Groups', children: <UserGroupsTab /> },
                 ]}
             />

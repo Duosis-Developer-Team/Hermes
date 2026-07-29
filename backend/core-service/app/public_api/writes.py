@@ -55,6 +55,11 @@ def actor_of(ctx: ApiContext) -> CurrentUser:
         id=str(ctx.client.bound_user_id),
         email=f"api-client-{ctx.client.id}@hermes.internal",
         is_admin=False,
+        # RBAC R2: sentezlenmis aktor icin izin cozumu YAPILMAZ — bagli
+        # kullanici Hermes'te tasks.admin dahi olsa, API token'i uzerinden
+        # hicbir RBAC yetkisi akmaz (test kilitli). Public API'nin kendi
+        # scope+binding katmani tek yetki merciidir.
+        allow_rbac_resolution=False,
     )
 
 

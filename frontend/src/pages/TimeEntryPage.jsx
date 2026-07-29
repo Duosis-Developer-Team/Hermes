@@ -87,13 +87,19 @@ function TimeEntryPage() {
     // Data Fetching
     // ==========================================================================
     // Admin: Fetch all users
+    // RBAC R3: baskasi adina log/plan gorme worklogs.admin ister.
+    // Kullanici listesi getUsers'tan (users.manage isteyen admin ucu)
+    // DEGIL lookupUsers'tan gelir — worklogs.admin'i olan ama
+    // users.manage'i olmayan rol de selector'u kullanabilsin.
+    const canWorklogsAdmin = useAuthStore((s) => s.can)('worklogs.admin')
+    useAuthStore((s) => s.permissions)
     const { data: usersResponse } = useQuery({
         queryKey: ['users-list'],
-        queryFn: () => authService.getUsers(),
-        enabled: !!user?.is_admin,
+        queryFn: () => authService.lookupUsers(),
+        enabled: canWorklogsAdmin,
     })
 
-    const usersList = usersResponse?.data || []
+    const usersList = Array.isArray(usersResponse) ? usersResponse : (usersResponse?.data || [])
     const targetUserId = selectedUserId || user?.id
 
     // Fetch Work Logs
@@ -112,8 +118,8 @@ function TimeEntryPage() {
     // Admin: getAll → oluşturduğu dahil tüm plan time'lar görünür
     // User: getMyPlanTimes → yalnızca kendisine atananlar
     const { data: planTimesResponse, refetch: refetchPlanTimes } = useQuery({
-        queryKey: ['planTimes', weekStart.format('YYYY-MM-DD'), user?.id, user?.is_admin],
-        queryFn: () => user?.is_admin
+        queryKey: ['planTimes', weekStart.format('YYYY-MM-DD'), user?.id, canWorklogsAdmin],
+        queryFn: () => canWorklogsAdmin
             ? planTimeService.getAll({
                 start_date: weekStart.format('YYYY-MM-DD'),
                 end_date: weekEnd.format('YYYY-MM-DD'),
@@ -127,7 +133,7 @@ function TimeEntryPage() {
     // Admin için getAll dönüyor — assignments array'inden görüntülenen kullanıcının status'unu enrich et
     const planTimes = useMemo(() => {
         const raw = planTimesResponse?.data || []
-        if (!user?.is_admin) return raw
+        if (!canWorklogsAdmin) return raw
 
         // Hangi kullanıcının takvimi görüntüleniyor?
         const viewedId = selectedUserId || user.id
@@ -510,7 +516,7 @@ function TimeEntryPage() {
                         className="user-avatar-large"
                     />
                     {/* Admin User Selector */}
-                    {user?.is_admin ? (
+                    {canWorklogsAdmin ? (
                         <div className="admin-user-selector">
                             <Select
                                 className="user-select-dropdown"
@@ -641,7 +647,7 @@ function TimeEntryPage() {
                         workLogs={workLogs}
                         planTimes={planTimes}
                         onLogTime={handleLogTime}
-                        onPlanTime={user?.is_admin ? handlePlanTime : undefined}
+                        onPlanTime={canWorklogsAdmin ? handlePlanTime : undefined}
                         onEditLog={handleEditLog}
                         onDeleteLog={handleDeleteLog}
                         onPlanTimeRespond={handlePlanTimeRespond}
@@ -653,7 +659,7 @@ function TimeEntryPage() {
                         onSelectLog={handleSelectLog}
                         onSelectDay={handleSelectDay}
                         onClearClipboard={handleClearClipboard}
-                        isAdmin={user?.is_admin}
+                        isAdmin={canWorklogsAdmin}
                     />
                 ) : (
                     <TimesheetView

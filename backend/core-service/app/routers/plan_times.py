@@ -15,7 +15,10 @@ from pydantic import BaseModel
 
 from ..database import get_db
 from ..models.plan_time import PlanTime, PlanTimeAssignment
-from shared.auth import get_current_user, require_admin, CurrentUser
+from shared.auth import get_current_user, CurrentUser
+# RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
+from ..authz import require_permissions
+from shared.permissions import Perm
 
 router = APIRouter(prefix="/plan-times", tags=["Plan Times"])
 
@@ -88,7 +91,7 @@ def _serialize_plan_time(pt: PlanTime, user_status: Optional[str] = None) -> dic
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_plan_time(
     data: PlanTimeCreate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.PLANS_MANAGE)),
     db: Session = Depends(get_db)
 ):
     """
@@ -192,7 +195,7 @@ async def get_my_plan_times(
 async def get_all_plan_times(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.PLANS_MANAGE)),
     db: Session = Depends(get_db)
 ):
     """
@@ -278,7 +281,7 @@ async def respond_to_plan_time(
 async def update_plan_time(
     plan_time_id: UUID,
     data: PlanTimeUpdate,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.PLANS_MANAGE)),
     db: Session = Depends(get_db)
 ):
     """
@@ -348,7 +351,7 @@ async def update_plan_time(
 @router.delete("/{plan_time_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_plan_time(
     plan_time_id: UUID,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.PLANS_MANAGE)),
     db: Session = Depends(get_db)
 ):
     """

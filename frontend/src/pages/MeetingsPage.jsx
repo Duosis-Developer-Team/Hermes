@@ -45,7 +45,10 @@ dayjs.extend(isoWeek)
 function MeetingsPage() {
     const { user } = useAuthStore()
     const queryClient = useQueryClient()
-    const isAdmin = user?.is_admin === true
+    // RBAC R3: baskalarinin toplantilarini gorme/sync yetkisi
+    const can = useAuthStore((s) => s.can)
+    useAuthStore((s) => s.permissions) // izinler degisince re-render
+    const isAdmin = can('meetings.admin')
 
     const [weekStart, setWeekStart] = useState(() =>
         dayjs().startOf('isoWeek')

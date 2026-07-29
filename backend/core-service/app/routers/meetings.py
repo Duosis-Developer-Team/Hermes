@@ -27,7 +27,10 @@ from ..schemas.meeting import (
 )
 from ..services import meeting_service
 from ..services.graph_service import get_graph_client
-from shared.auth import CurrentUser, get_current_user, require_admin
+from shared.auth import CurrentUser, get_current_user
+# RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
+from ..authz import require_permissions
+from shared.permissions import Perm
 
 
 logger = logging.getLogger(__name__)
@@ -223,7 +226,7 @@ async def sync_my_meetings(
 @router.post("/sync-user", response_model=MeetingSyncResult)
 async def sync_user_meetings_admin(
     payload: SyncUserRequest,
-    admin: CurrentUser = Depends(require_admin),
+    admin: CurrentUser = Depends(require_permissions(Perm.MEETINGS_ADMIN)),
     db: Session = Depends(get_db),
 ):
     """Admin only — sync ONE specific user's calendar (the user the

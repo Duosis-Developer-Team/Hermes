@@ -10,7 +10,10 @@ from uuid import UUID
 from ..database import get_db
 from ..models.activity_type import ActivityType
 from ..schemas.activity_type import ActivityTypeCreate, ActivityTypeUpdate, ActivityTypeResponse
-from shared.auth import require_admin, get_current_user
+from shared.auth import get_current_user
+# RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
+from ..authz import require_permissions
+from shared.permissions import Perm
 
 router = APIRouter(prefix="/activity-types", tags=["Activity Types"])
 
@@ -41,7 +44,7 @@ async def get_activity_type(
     return item
 
 
-@router.post("", response_model=ActivityTypeResponse, dependencies=[Depends(require_admin)])
+@router.post("", response_model=ActivityTypeResponse, dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
 async def create_activity_type(
     data: ActivityTypeCreate,
     db: Session = Depends(get_db)
@@ -59,7 +62,7 @@ async def create_activity_type(
     return item
 
 
-@router.put("/{item_id}", response_model=ActivityTypeResponse, dependencies=[Depends(require_admin)])
+@router.put("/{item_id}", response_model=ActivityTypeResponse, dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
 async def update_activity_type(
     item_id: UUID,
     data: ActivityTypeUpdate,
@@ -79,7 +82,7 @@ async def update_activity_type(
     return item
 
 
-@router.delete("/{item_id}", dependencies=[Depends(require_admin)])
+@router.delete("/{item_id}", dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
 async def delete_activity_type(
     item_id: UUID,
     db: Session = Depends(get_db)

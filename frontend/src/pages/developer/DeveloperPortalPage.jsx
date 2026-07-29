@@ -192,7 +192,10 @@ const SECTIONS = [
 
 function DeveloperPortalPage() {
     const { user } = useAuthStore()
-    const isAdmin = user?.is_admin === true
+    // RBAC R3: API Management kisayolu api.manage iznine bakar
+    const can = useAuthStore((s) => s.can)
+    useAuthStore((s) => s.permissions)
+    const isAdmin = can('api.manage')
     const location = useLocation()
     const navigate = useNavigate()
     const [query, setQuery] = useState('')
