@@ -30,6 +30,7 @@ import {
 } from 'antd'
 import {
     DeleteOutlined,
+    SearchOutlined,
     PlusOutlined,
     TeamOutlined,
     UserOutlined,
@@ -673,7 +674,15 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
                     marginBottom: 12,
                 }}
             >
-                <Input.Search
+                {/*
+                  * `Input.Search` DEGIL: filtre zaten yazarken canli
+                  * uygulaniyor, dolayisiyla arama BUTONU hicbir sey
+                  * yapmiyordu — ustelik zayif adlandirilmis ("search")
+                  * fazladan bir dokunma hedefi ekliyordu. Sozluk
+                  * yuzeylerinde ayni karar verilmisti.
+                  */}
+                <Input
+                    prefix={<SearchOutlined aria-hidden="true" />}
                     aria-label="Search assigner by name or email"
                     allowClear
                     placeholder="Search assigner by name or email"

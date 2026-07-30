@@ -208,6 +208,16 @@ function GroupMemberOverridesPanel({ group, allUsersById, groupPermission }) {
         )
     }
 
+    /**
+     * Anahtarlarin erisilebilir adinda kullanilan kisi etiketi. Ham UUID
+     * son caredir — ekran okuyucuya "Access Tasks for
+     * 3f2a-..." demek yerine ad/e-posta verilir.
+     */
+    const memberLabel = (record) => {
+        const u = allUsersById[record.user_id]
+        return u?.full_name || u?.email || record.user_id
+    }
+
     const columns = [
         {
             title: 'User',
@@ -234,8 +244,15 @@ function GroupMemberOverridesPanel({ group, allUsersById, groupPermission }) {
             width: 190,
             render: (val, record) => (
                 <>
+                    {/*
+                      * Erisilebilir ad ZORUNLU: ekran okuyucu kullanicisi
+                      * anahtarin HANGI kisinin HANGI iznini degistirdigini
+                      * baska turlu bilemez. Bu, izin yuzeyinde en kritik
+                      * a11y sozlesmesi.
+                      */}
                     <Switch
                         checked={!!val}
+                        aria-label={`Access Tasks for ${memberLabel(record)}`}
                         disabled={upsertMutation.isPending || !!bulk?.running}
                         onClick={(_, e) => e?.stopPropagation?.()}
                         onChange={(checked) =>
@@ -259,6 +276,7 @@ function GroupMemberOverridesPanel({ group, allUsersById, groupPermission }) {
                     <>
                         <Switch
                             checked={!accessOff && !!val}
+                            aria-label={`Assign Tasks for ${memberLabel(record)}`}
                             disabled={
                                 accessOff || upsertMutation.isPending
                                 || !!bulk?.running
@@ -282,6 +300,7 @@ function GroupMemberOverridesPanel({ group, allUsersById, groupPermission }) {
             width: 140,
             render: (val, record) => (
                 <Switch
+                    aria-label={`Access Issues for ${memberLabel(record)}`}
                     checked={!!val}
                     disabled={upsertMutation.isPending}
                     onClick={(_, e) => e?.stopPropagation?.()}
@@ -302,6 +321,7 @@ function GroupMemberOverridesPanel({ group, allUsersById, groupPermission }) {
                 const accessOff = !record.effective_access_issues_in_group
                 return (
                     <Switch
+                        aria-label={`Assign Issues for ${memberLabel(record)}`}
                         checked={!accessOff && !!val}
                         disabled={accessOff || upsertMutation.isPending}
                         onClick={(_, e) => e?.stopPropagation?.()}
@@ -540,6 +560,7 @@ function AdditionalUsersSection({ users }) {
             width: 140,
             render: (val, row) => (
                 <Switch
+                    aria-label={`Access Tasks for ${row.full_name || row.email || row.user_id}`}
                     checked={!!val}
                     disabled={!row.is_active || updateMutation.isPending}
                     onChange={(checked) =>
@@ -556,6 +577,7 @@ function AdditionalUsersSection({ users }) {
                 const accessOff = !row.can_access_tasks
                 return (
                     <Switch
+                        aria-label={`Assign Tasks for ${row.full_name || row.email || row.user_id}`}
                         checked={!accessOff && !!val}
                         disabled={
                             !row.is_active ||
@@ -575,6 +597,7 @@ function AdditionalUsersSection({ users }) {
             width: 140,
             render: (val, row) => (
                 <Switch
+                    aria-label={`Access Issues for ${row.full_name || row.email || row.user_id}`}
                     checked={!!val}
                     disabled={!row.is_active || updateMutation.isPending}
                     onChange={(checked) =>
@@ -591,6 +614,7 @@ function AdditionalUsersSection({ users }) {
                 const accessOff = !row.can_access_issues
                 return (
                     <Switch
+                        aria-label={`Assign Issues for ${row.full_name || row.email || row.user_id}`}
                         checked={!accessOff && !!val}
                         disabled={
                             !row.is_active ||
@@ -805,6 +829,7 @@ function TaskAccessByGroupTab() {
             width: 140,
             render: (val, row) => (
                 <Switch
+                    aria-label={`Default Access Tasks for group ${row.name}`}
                     checked={!!val}
                     disabled={upsertPermMutation.isPending}
                     onClick={(_, e) => e?.stopPropagation?.()}
@@ -822,6 +847,7 @@ function TaskAccessByGroupTab() {
                 const accessOff = !row.can_access_tasks_default
                 return (
                     <Switch
+                        aria-label={`Default Assign Tasks for group ${row.name}`}
                         checked={!accessOff && !!val}
                         disabled={accessOff || upsertPermMutation.isPending}
                         onClick={(_, e) => e?.stopPropagation?.()}
@@ -838,6 +864,7 @@ function TaskAccessByGroupTab() {
             width: 140,
             render: (val, row) => (
                 <Switch
+                    aria-label={`Default Access Issues for group ${row.name}`}
                     checked={!!val}
                     disabled={upsertPermMutation.isPending}
                     onClick={(_, e) => e?.stopPropagation?.()}
@@ -855,6 +882,7 @@ function TaskAccessByGroupTab() {
                 const accessOff = !row.can_access_issues_default
                 return (
                     <Switch
+                        aria-label={`Default Assign Issues for group ${row.name}`}
                         checked={!accessOff && !!val}
                         disabled={accessOff || upsertPermMutation.isPending}
                         onClick={(_, e) => e?.stopPropagation?.()}
