@@ -32,7 +32,9 @@ import {
     Alert, Button, Card, Form, Input, Modal, Space, Switch, Table, Tag,
     message,
 } from 'antd'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
+import {
+    DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined,
+} from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import DeleteModal from '../../../components/common/DeleteModal'
@@ -266,8 +268,17 @@ function DictionaryCrudPage({
                 title={title}
                 extra={
                     <Space wrap>
-                        <Input.Search
+                        {/*
+                          * `Input.Search` DEGIL: filtre zaten yazarken
+                          * canli uygulaniyor, dolayisiyla arama butonu
+                          * hicbir sey yapmiyordu — ustelik ikon-only ve
+                          * zayif adlandirilmis fazladan bir dokunma
+                          * hedefi ekliyordu. Gercek Chromium QA'sinde
+                          * 24 kombinasyonun HEPSINDE bulgu verdi.
+                          */}
+                        <Input
                             allowClear
+                            prefix={<SearchOutlined aria-hidden="true" />}
                             placeholder={`Search ${title.toLowerCase()}`}
                             aria-label={`Search ${title}`}
                             value={search}
