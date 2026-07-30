@@ -11,8 +11,9 @@
  * =============================================================================
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
+    Alert,
     Table,
     Button,
     Checkbox,
@@ -54,12 +55,14 @@ import './TaskManagementPage.css'
 import TaskAccessByGroupTab from './TaskAccessByGroupTab'
 import AssignmentHierarchyTab from './AssignmentHierarchyTab'
 import DangerConfirmModal from '../../components/common/DangerConfirmModal'
+import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
+import { resetAndFill } from '../../features/admin/shared/formLifecycle'
 
 // =============================================================================
 // Sub Projects
 // =============================================================================
 
-function SubProjectsTab() {
+export function SubProjectsTab() {
     const queryClient = useQueryClient()
     const [filterCustomer, setFilterCustomer] = useState(null)
     const [filterProject, setFilterProject] = useState(null)
@@ -89,7 +92,9 @@ function SubProjectsTab() {
         return projects.filter((p) => p.customer_id === formCustomerId)
     }, [projects, formCustomerId])
 
-    const { data: subProjects = [], isLoading } = useQuery({
+    const {
+        data: subProjects = [], isLoading, isError, error, refetch,
+    } = useQuery({
         queryKey: ['admin-task-sub-projects', filterCustomer, filterProject],
         queryFn: () =>
             taskSubProjectService.list({
@@ -108,7 +113,7 @@ function SubProjectsTab() {
             queryClient.invalidateQueries({ queryKey: ['task-sub-projects'] })
         },
         onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to create sub project.')
+            message.error(normalizeApiError(err).message)
         },
     })
 
@@ -123,7 +128,7 @@ function SubProjectsTab() {
             queryClient.invalidateQueries({ queryKey: ['task-sub-projects'] })
         },
         onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to update sub project.')
+            message.error(normalizeApiError(err).message)
         },
     })
 
@@ -136,29 +141,54 @@ function SubProjectsTab() {
             queryClient.invalidateQueries({ queryKey: ['task-sub-projects'] })
         },
         onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to delete sub project.')
+            message.error(normalizeApiError(err).message)
             setDeletingSub(null)
         },
     })
 
     const handleOpenCreate = () => {
         setEditing(null)
-        form.resetFields()
         setModalOpen(true)
     }
 
     const handleOpenEdit = (record) => {
         setEditing(record)
-        form.setFieldsValue({
-            customer_id: record.customer_id,
-            project_id: record.project_id,
-            name: record.name,
-            description: record.description || '',
-        })
         setModalOpen(true)
     }
 
+    /**
+     * Form doldurma MODAL ACILDIKTAN SONRA yapilir. `destroyOnHidden`
+     * kullanildigi icin modal kapaliyken form alanlari MOUNT DEGILDIR;
+     * acilis handler'i icinde doldurmak baglanmamis bir instance'a
+     * yazmak demekti. Etki: ikinci Edit acilisi hic cizilmiyordu.
+     *
+     * resetAndFill TAM sekli yazar: Edit A → Edit B geciste A'nin (orn.
+     * eksik olan) aciklamasi B'de KALMAZ — `setFieldsValue` sig
+     * birlestirir.
+     */
+    useEffect(() => {
+        if (!modalOpen) return
+        resetAndFill(form, editing
+            ? {
+                customer_id: editing.customer_id,
+                project_id: editing.project_id,
+                name: editing.name ?? '',
+                description: editing.description ?? '',
+            }
+            : {
+                customer_id: undefined,
+                project_id: undefined,
+                name: '',
+                description: '',
+            })
+    }, [modalOpen, editing, form])
+
+    const isSaving = createMutation.isPending || updateMutation.isPending
+    const isDeleting = deleteMutation.isPending
+
     const handleSubmit = (values) => {
+        // Cift gonderim kilidi KAYNAKTA.
+        if (isSaving) return
         if (editing) {
             updateMutation.mutate({
                 id: editing.id,
@@ -195,9 +225,12 @@ function SubProjectsTab() {
             title: 'Actions',
             render: (_, record) => (
                 <Space>
+                    {/* AntD Tooltip erisilebilir AD VERMEZ. */}
                     <Tooltip title="Edit">
                         <Button
                             size="small"
+                            aria-label={`Edit ${record.name}`}
+                            disabled={isDeleting}
                             icon={<EditOutlined />}
                             onClick={() => handleOpenEdit(record)}
                         />
@@ -206,6 +239,10 @@ function SubProjectsTab() {
                         size="small"
                         danger
                         icon={<DeleteOutlined />}
+                        /* Bu uc GERCEKTEN kalici siler (soft degil):
+                           erisilebilir ad bunu soyler. */
+                        aria-label={`Delete ${record.name} permanently`}
+                        disabled={isDeleting}
                         onClick={() => setDeletingSub(record)}
                     >
                         Delete
@@ -217,6 +254,19 @@ function SubProjectsTab() {
 
     return (
         <>
+            {isError && (
+                <Alert
+                    type="error"
+                    showIcon
+                    style={{ marginBottom: 12 }}
+                    message={normalizeApiError(error).message}
+                    action={
+                        <Button size="small" onClick={() => refetch()}>
+                            Retry
+                        </Button>
+                    }
+                />
+            )}
             <div
                 style={{
                     marginBottom: 12,
@@ -268,8 +318,13 @@ function SubProjectsTab() {
                 rowKey="id"
                 columns={columns}
                 dataSource={subProjects}
-                loading={isLoading}
-                locale={{ emptyText: 'No sub-projects found.' }}
+                loading={isLoading && subProjects.length === 0}
+                locale={{
+                    // ILK KULLANIM boslugu ile FILTRE sonucu yoklugu AYRI.
+                    emptyText: (filterCustomer || filterProject)
+                        ? 'No sub-projects match the selected filters.'
+                        : 'No sub-projects yet. Use “Create Sub Project”.',
+                }}
                 pagination={{ pageSize: 20 }}
                 scroll={{ x: 'max-content' }}
             />
@@ -281,10 +336,16 @@ function SubProjectsTab() {
                     setModalOpen(false)
                     setEditing(null)
                 }}
-                onOk={() => form.submit()}
+                onOk={() => {
+                    if (isSaving) return
+                    form.submit()
+                }}
                 okText={editing ? 'Save Changes' : 'Create Sub Project'}
-                confirmLoading={createMutation.isPending || updateMutation.isPending}
+                confirmLoading={isSaving}
                 destroyOnHidden
+                closable={!isSaving}
+                maskClosable={!isSaving}
+                keyboard={!isSaving}
             >
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <Form.Item
@@ -330,7 +391,10 @@ function SubProjectsTab() {
                         label="Name"
                         name="name"
                         rules={[
-                            { required: true, message: 'Name is required.' },
+                            {
+                                required: true, whitespace: true,
+                                message: 'Name is required.',
+                            },
                             { max: 255, message: 'Max 255 characters.' },
                         ]}
                     >
@@ -358,10 +422,12 @@ function SubProjectsTab() {
                 }
                 confirmLabel="Delete"
                 onCancel={() => setDeletingSub(null)}
-                onConfirm={() =>
-                    deletingSub && deleteMutation.mutate(deletingSub.id)
-                }
-                loading={deleteMutation.isPending}
+                onConfirm={() => {
+                    // Cift tetikleme kilidi KAYNAKTA.
+                    if (isDeleting || !deletingSub) return
+                    deleteMutation.mutate(deletingSub.id)
+                }}
+                loading={isDeleting}
             />
         </>
     )
@@ -437,10 +503,7 @@ function MailNotificationsTab() {
             })
         },
         onError: (err) => {
-            message.error(
-                err?.response?.data?.detail ||
-                    'Failed to save notification settings.'
-            )
+            message.error(normalizeApiError(err).message)
         },
     })
 
