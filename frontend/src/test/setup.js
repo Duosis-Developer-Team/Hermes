@@ -71,10 +71,26 @@ beforeEach((ctx) => {
             // yapip kosuyu dusurur. CI bunu yakaladi; yerelde yalniz
             // "Tests" satirina bakip CIKIS KODUNU kontrol etmemistim.
             // Geri kalan HER console.error hala testi kirar.
+            // "There may be circular references": rc-util@5.44.4
+            // isEqual'in YANLIS POZITIFI, urun kodundan gelmiyor
+            // (src/ altinda isEqual cagrisi YOK). Mekanizma node ile
+            // birebir dogrulandi: isEqual tek bir `refSet` tutar ve
+            // esit-ama-ayni-referans-olmayan degerleri sete ekler.
+            // rc-field-form Field.js modul seviyesinde TEK bir
+            // `EMPTY_ERRORS = []` sabitini HEM `errors` HEM `warnings`
+            // icin kullanir. Dogrulama TAZE bir bos dizi ile bitince
+            //   errors:   EMPTY_ERRORS vs []            → true (+ sete ekler)
+            //   warnings: EMPTY_ERRORS vs EMPTY_ERRORS  → sette! → uyari
+            // Sonuc: dev-only bir uyari + bir fazladan onMetaChange;
+            // dogruluk etkisi YOK. Uretim derlemesinde rc-util'in
+            // `warning`i process.env.NODE_ENV==='production' ile
+            // tamamen kaldirilir, yani kullaniciya asla ulasmaz.
+            // Kapsam bilerek DAR: yalnizca bu tam metin.
             if (
                 !text.includes('[hermes-boundary]')
                 && !text.includes('Not implemented:')
                 && !text.includes('not wrapped in act')
+                && !text.includes('There may be circular references')
             ) {
                 throw new Error('console.error test icinde cagrildi: ' + text)
             }
