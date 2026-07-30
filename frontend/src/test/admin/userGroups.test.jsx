@@ -95,6 +95,26 @@ const dlgButton = (name) => within(groupDialog()).getByRole('button', { name })
  * a11y karari). Bu yuzden metin degil DIYALOG ADI aranir.
  */
 const confirmDialog = (nameRe) => screen.findByRole('dialog', { name: nameRe })
+
+/**
+ * Diyalog BASLIK METNI uzerinden bulunur, erisilebilir ad uzerinden
+ * DEGIL: rc-util `useId` NODE_ENV=test altinda SABIT "test-id" dondurur,
+ * bu yuzden ust uste acilan diyaloglar ayni `aria-labelledby`yi paylasir
+ * ve ikinci acilista ad cozumu bozulur (CI'da bu yuzden kirmizi oldu,
+ * yerelde zamanlama sayesinde gecmisti). Gercek tarayicida id'ler
+ * benzersizdir; bu bir TEST ORTAMI artefaktidir, urun kusuru degil.
+ */
+const dialogByTitle = async (titleRe) => {
+    const title = await screen.findByText(titleRe, { selector: '.ant-modal-title' })
+    return title.closest('[role="dialog"]')
+}
+
+/** Bir sonraki acilistan ONCE diyalogun gercekten kaldirilmasini bekler. */
+const awaitDialogGone = async () => {
+    await waitFor(() =>
+        expect(document.querySelector('.ant-modal-content')).toBeNull()
+    )
+}
 /**
  * AntD ikonlari `role="img" aria-label="delete"` cizer ve bu, butonun
  * erisilebilir adina KATILIR ("delete Remove"). Bu yuzden onay butonlari
@@ -197,7 +217,7 @@ describe('KUSUR — uye ekleme onay butonu HER ZAMAN disabled’di', () => {
         renderGroups()
         await expandGroup(user, 'Technical Team')
         await user.click(await screen.findByRole('button', { name: /Add Member/ }))
-        const dialog = await screen.findByRole('dialog', { name: /Add Members/ })
+        const dialog = await dialogByTitle(/Add Members/)
         // Eski davranista bu buton disabled'di → uye HIC eklenemiyordu.
         expect(within(dialog).getByRole('button', { name: /^Add Members$/ }))
             .toBeEnabled()
@@ -224,7 +244,7 @@ describe('KUSUR — uye ekleme onay butonu HER ZAMAN disabled’di', () => {
         renderGroups()
         await expandGroup(user, 'Technical Team')
         await user.click(await screen.findByRole('button', { name: /Add Member/ }))
-        const dialog = await screen.findByRole('dialog', { name: /Add Members/ })
+        const dialog = await dialogByTitle(/Add Members/)
         expect(within(dialog).getByText(/All users are already members/))
             .toBeInTheDocument()
         expect(within(dialog).getByRole('button', { name: /^Add Members$/ }))
@@ -238,7 +258,7 @@ describe('KUSUR — uye ekleme onay butonu HER ZAMAN disabled’di', () => {
         await user.click(
             await screen.findByRole('button', { name: /Edit title for Bob Bit/ })
         )
-        const dialog = await screen.findByRole('dialog', { name: /Edit Member Title/ })
+        const dialog = await dialogByTitle(/Edit Member Title/)
         expect(within(dialog).getByRole('button', { name: /Save Changes/ }))
             .toBeEnabled()
         // Kimlik ham UUID olarak GOSTERILMEZ (salt-okunur alan, bu yuzden
@@ -254,7 +274,7 @@ describe('uye ekleme / cikarma davranisi', () => {
         renderGroups()
         await expandGroup(user, 'Technical Team')
         await user.click(await screen.findByRole('button', { name: /Add Member/ }))
-        const dialog = await screen.findByRole('dialog', { name: /Add Members/ })
+        const dialog = await dialogByTitle(/Add Members/)
 
         await user.click(within(dialog).getByRole('combobox'))
         await user.click(await screen.findByTitle('Cleo Cache'))
@@ -273,7 +293,7 @@ describe('uye ekleme / cikarma davranisi', () => {
         renderGroups()
         await expandGroup(user, 'Technical Team')
         await user.click(await screen.findByRole('button', { name: /Add Member/ }))
-        const dialog = await screen.findByRole('dialog', { name: /Add Members/ })
+        const dialog = await dialogByTitle(/Add Members/)
         await user.click(within(dialog).getByRole('combobox'))
         await user.click(await screen.findByTitle('Cleo Cache'))
         const ok = within(dialog).getByRole('button', { name: /^Add Members$/ })
@@ -326,7 +346,7 @@ describe('uye ekleme / cikarma davranisi', () => {
         renderGroups()
         await expandGroup(user, 'Technical Team')
         await user.click(await screen.findByRole('button', { name: /Add Member/ }))
-        const dialog = await screen.findByRole('dialog', { name: /Add Members/ })
+        const dialog = await dialogByTitle(/Add Members/)
         await user.click(within(dialog).getByRole('combobox'))
         await user.click(await screen.findByTitle('Cleo Cache'))
         await user.click(within(dialog).getByRole('button', { name: /^Add Members$/ }))
@@ -391,7 +411,7 @@ describe('grup modal lifecycle', () => {
         renderGroups()
         await screen.findByText('Technical Team')
         await user.click(screen.getByRole('button', { name: /Create Group/ }))
-        const d = await screen.findByRole('dialog', { name: /Create Group/ })
+        const d = await dialogByTitle(/Create Group/)
         expect(within(d).getByLabelText('Group Name')).toHaveValue('')
         expect(within(d).getByLabelText('Description')).toHaveValue('')
     })
@@ -400,12 +420,13 @@ describe('grup modal lifecycle', () => {
         const user = setupUser()
         renderGroups()
         await user.click(await screen.findByRole('button', { name: 'Edit Technical Team' }))
-        let d = await screen.findByRole('dialog', { name: /Edit Group/ })
+        let d = await dialogByTitle(/Edit Group/)
         expect(within(d).getByLabelText('Description')).toHaveValue('Builds things')
         await user.click(within(d).getByRole('button', { name: 'Cancel' }))
+        await awaitDialogGone()
 
         await user.click(screen.getByRole('button', { name: 'Edit Support' }))
-        d = await screen.findByRole('dialog', { name: /Edit Group/ })
+        d = await dialogByTitle(/Edit Group/)
         expect(within(d).getByLabelText('Group Name')).toHaveValue('Support')
         expect(within(d).getByLabelText('Description')).toHaveValue('')
     })
@@ -414,9 +435,11 @@ describe('grup modal lifecycle', () => {
         const user = setupUser()
         renderGroups()
         await user.click(await screen.findByRole('button', { name: 'Edit Technical Team' }))
+        await dialogByTitle(/Edit Group/)
         await user.click(dlgButton('Cancel'))
+        await awaitDialogGone()
         await user.click(screen.getByRole('button', { name: /Create Group/ }))
-        const d = await screen.findByRole('dialog', { name: /Create Group/ })
+        const d = await dialogByTitle(/Create Group/)
         expect(within(d).getByLabelText('Group Name')).toHaveValue('')
     })
 
@@ -425,7 +448,7 @@ describe('grup modal lifecycle', () => {
         renderGroups()
         await screen.findByText('Technical Team')
         await user.click(screen.getByRole('button', { name: /Create Group/ }))
-        const d = await screen.findByRole('dialog', { name: /Create Group/ })
+        const d = await dialogByTitle(/Create Group/)
         await user.type(within(d).getByLabelText('Group Name'), '   ')
         await user.click(within(d).getByRole('button', { name: /^Create Group$/ }))
         expect(await screen.findByText(/Group name is required/)).toBeInTheDocument()
@@ -439,7 +462,7 @@ describe('grup modal lifecycle', () => {
         renderGroups()
         await screen.findByText('Technical Team')
         await user.click(screen.getByRole('button', { name: /Create Group/ }))
-        const d = await screen.findByRole('dialog', { name: /Create Group/ })
+        const d = await dialogByTitle(/Create Group/)
         await user.type(within(d).getByLabelText('Group Name'), 'Yeni Grup')
         const ok = within(d).getByRole('button', { name: /^Create Group$/ })
         await user.click(ok)
@@ -458,7 +481,7 @@ describe('grup modal lifecycle', () => {
         renderGroups()
         await screen.findByText('Technical Team')
         await user.click(screen.getByRole('button', { name: /Create Group/ }))
-        const d = await screen.findByRole('dialog', { name: /Create Group/ })
+        const d = await dialogByTitle(/Create Group/)
         await user.type(within(d).getByLabelText('Group Name'), 'Technical Team')
         await user.click(within(d).getByRole('button', { name: /^Create Group$/ }))
         expect(await screen.findByText('A group with this name already exists.'))
@@ -475,7 +498,7 @@ describe('grup modal lifecycle', () => {
         renderGroups()
         await screen.findByText('Technical Team')
         await user.click(screen.getByRole('button', { name: /Create Group/ }))
-        const d = await screen.findByRole('dialog', { name: /Create Group/ })
+        const d = await dialogByTitle(/Create Group/)
         await user.type(within(d).getByLabelText('Group Name'), 'X')
         await user.click(within(d).getByRole('button', { name: /^Create Group$/ }))
         expect(await screen.findByText(/server had a problem/i)).toBeInTheDocument()

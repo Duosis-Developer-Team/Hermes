@@ -67,6 +67,24 @@ const renderTab = (scope = 'task') =>
 
 const confirmDialog = (nameRe) => screen.findByRole('dialog', { name: nameRe })
 
+/**
+ * AddRuleModal `destroyOnHidden` kullanir, yani kapanip yeniden acilir.
+ * Diyalog BASLIK METNI uzerinden bulunur: rc-util `useId` NODE_ENV=test
+ * altinda SABIT "test-id" dondurdugu icin ust uste acilan diyaloglarda
+ * erisilebilir ad cozumu IKINCI acilista bozulabiliyor (test ortami
+ * artefakti; gercek tarayicida id'ler benzersiz).
+ */
+const dialogByTitle = async (titleRe) => {
+    const title = await screen.findByText(titleRe, { selector: '.ant-modal-title' })
+    return title.closest('[role="dialog"]')
+}
+
+const awaitDialogGone = async () => {
+    await waitFor(() =>
+        expect(document.querySelector('.ant-modal-content')).toBeNull()
+    )
+}
+
 /** Assigner kartini genisletir. */
 const expandAssigner = async (user, label) => {
     const el = await screen.findByText(label)
@@ -106,7 +124,7 @@ describe('KARAKTERIZASYON — atama semantigi', () => {
         renderTab()
         await screen.findByText('Ada Lovelace')
         await user.click(screen.getByRole('button', { name: 'Add assignment rule for Ada Lovelace' }))
-        const dialog = await screen.findByRole('dialog', { name: /Add Assignment Rules/ })
+        const dialog = await dialogByTitle(/Add Assignment Rules/)
 
         // Assigner on-secili geldi (kart butonundan acildi).
         const combos = within(dialog).getAllByRole('combobox')
@@ -133,7 +151,7 @@ describe('KARAKTERIZASYON — atama semantigi', () => {
         renderTab()
         await screen.findByText('Ada Lovelace')
         await user.click(screen.getByRole('button', { name: 'Add assignment rule for Ada Lovelace' }))
-        const dialog = await screen.findByRole('dialog', { name: /Add Assignment Rules/ })
+        const dialog = await dialogByTitle(/Add Assignment Rules/)
         const combos = within(dialog).getAllByRole('combobox')
         await user.click(combos[2])
         await user.click(await screen.findByTitle('Support'))
@@ -150,7 +168,7 @@ describe('KARAKTERIZASYON — atama semantigi', () => {
         renderTab()
         await screen.findByText('Ada Lovelace')
         await user.click(screen.getByRole('button', { name: 'Add assignment rule for Ada Lovelace' }))
-        const dialog = await screen.findByRole('dialog', { name: /Add Assignment Rules/ })
+        const dialog = await dialogByTitle(/Add Assignment Rules/)
         const combos = within(dialog).getAllByRole('combobox')
         await user.click(combos[2])
         await user.click(await screen.findByTitle('Support'))
@@ -168,13 +186,14 @@ describe('bayat secim TASINMAZ', () => {
 
         // 1) Karttan ac: assigner on-secili.
         await user.click(screen.getByRole('button', { name: 'Add assignment rule for Ada Lovelace' }))
-        let dialog = await screen.findByRole('dialog', { name: /Add Assignment Rules/ })
+        let dialog = await dialogByTitle(/Add Assignment Rules/)
         expect(within(dialog).getByTitle('Ada Lovelace')).toBeInTheDocument()
         await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+        await awaitDialogGone()
 
         // 2) Ust butondan ac: eski assigner KALMAZ.
         await user.click(screen.getByRole('button', { name: 'Add assignment rule' }))
-        dialog = await screen.findByRole('dialog', { name: /Add Assignment Rules/ })
+        dialog = await dialogByTitle(/Add Assignment Rules/)
         expect(within(dialog).queryByTitle('Ada Lovelace')).not.toBeInTheDocument()
         expect(within(dialog).getByText('Select assigner')).toBeInTheDocument()
     })
@@ -184,14 +203,15 @@ describe('bayat secim TASINMAZ', () => {
         renderTab()
         await screen.findByText('Ada Lovelace')
         await user.click(screen.getByRole('button', { name: 'Add assignment rule for Ada Lovelace' }))
-        let dialog = await screen.findByRole('dialog', { name: /Add Assignment Rules/ })
+        let dialog = await dialogByTitle(/Add Assignment Rules/)
         const combos = within(dialog).getAllByRole('combobox')
         await user.click(combos[1])
         await user.click(await screen.findByTitle('Cleo Cache'))
         await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+        await awaitDialogGone()
 
         await user.click(screen.getByRole('button', { name: 'Add assignment rule for Ada Lovelace' }))
-        dialog = await screen.findByRole('dialog', { name: /Add Assignment Rules/ })
+        dialog = await dialogByTitle(/Add Assignment Rules/)
         // Onceki secim etiket olarak KALMAZ.
         expect(within(dialog).queryByTitle('Cleo Cache')).not.toBeInTheDocument()
     })
@@ -205,7 +225,7 @@ describe('cift tetikleme kilitleri', () => {
         renderTab()
         await screen.findByText('Ada Lovelace')
         await user.click(screen.getByRole('button', { name: 'Add assignment rule for Ada Lovelace' }))
-        const dialog = await screen.findByRole('dialog', { name: /Add Assignment Rules/ })
+        const dialog = await dialogByTitle(/Add Assignment Rules/)
         const combos = within(dialog).getAllByRole('combobox')
         await user.click(combos[1])
         await user.click(await screen.findByTitle('Cleo Cache'))

@@ -160,6 +160,12 @@ function GroupMemberOverridesPanel({ group, allUsersById, groupPermission }) {
     // for a cleaner UX; the underlying nullable column is preserved on
     // the backend so old NULL rows still resolve to the group default.
     const handleMemberToggle = (member, kind, checked) => {
+        /*
+         * Cift tetikleme kilidi KAYNAKTA. Onceden yalnizca kontrolun
+         * `disabled` render'ina guveniliyordu; `disabled` bir render GEC
+         * geldigi icin arada ikinci istek acilabiliyordu.
+         */
+        if (upsertMutation.isPending || bulk?.running) return
         const fieldByKind = {
             access: 'can_access_tasks_override',
             assign: 'can_assign_tasks_override',
@@ -530,6 +536,12 @@ function AdditionalUsersSection({ users }) {
     )
 
     const handleToggle = (row, field, value) => {
+        /*
+         * Cift tetikleme kilidi KAYNAKTA. Onceden yalnizca kontrolun
+         * `disabled` render'ina guveniliyordu; `disabled` bir render GEC
+         * geldigi icin arada ikinci istek acilabiliyordu.
+         */
+        if (updateMutation.isPending) return
         const next = {
             can_access_tasks:
                 field === 'can_access_tasks' ? value : !!row.can_access_tasks,
@@ -765,6 +777,12 @@ function TaskAccessByGroupTab() {
     })
 
     const handleDefaultToggle = (group, kind, checked) => {
+        /*
+         * Cift tetikleme kilidi KAYNAKTA. Onceden yalnizca kontrolun
+         * `disabled` render'ina guveniliyordu; `disabled` bir render GEC
+         * geldigi icin arada ikinci istek acilabiliyordu.
+         */
+        if (upsertPermMutation.isPending) return
         const current = permByGroupId[group.id]
         const data = {
             can_access_tasks_default:
