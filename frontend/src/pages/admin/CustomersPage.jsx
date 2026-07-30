@@ -15,6 +15,12 @@ import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { customerService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
+import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
+import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecycle'
+
+// Formda GERCEKTEN olan alanlar: API kaydindaki id/created_at gibi
+// alanlar form store'una sizmaz, eksik alan da bayat deger BIRAKMAZ.
+const FORM_SHAPE = { name: '', is_active: true }
 import { Page, PageHeader } from '../../components/ui'
 
 function CustomersPage() {
@@ -37,7 +43,7 @@ function CustomersPage() {
             handleCloseModal()
             queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'An error occurred'),
+        onError: (err) => message.error(normalizeApiError(err).message),
     })
 
     const updateMutation = useMutation({
@@ -47,7 +53,7 @@ function CustomersPage() {
             handleCloseModal()
             queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'An error occurred'),
+        onError: (err) => message.error(normalizeApiError(err).message),
     })
 
     const archiveMutation = useMutation({
@@ -57,7 +63,7 @@ function CustomersPage() {
             handleDeleteCancel()
             queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'Error archiving customer'),
+        onError: (err) => message.error(normalizeApiError(err).message),
     })
 
     const deleteMutation = useMutation({
@@ -67,17 +73,27 @@ function CustomersPage() {
             handleDeleteCancel()
             queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'Unable to delete (Constraint Error). Try archiving instead.'),
+        onError: (err) => (() => {
+            // Kullanimda olan kayit silinemez; ARSIVLEME yolu gosterilir.
+            const n = normalizeApiError(err)
+            message.error(
+                n.kind === 'conflict' || n.status === 400
+                    ? `${n.message} Try archiving it instead.`
+                    : n.message
+            )
+        })(),
     })
 
     // Handlers
     const handleOpenModal = (record = null) => {
         if (record) {
             setEditingId(record.id)
-            form.setFieldsValue(record)
+            // resetAndFill: Edit A → Edit B gecisinde A'nin degeri TASINMAZ
+            // (`setFieldsValue` tek basina SIG birlestirir).
+            resetAndFill(form, pickFields(record, FORM_SHAPE))
         } else {
             setEditingId(null)
-            form.resetFields()
+            resetAndFill(form, null)
         }
         setModalOpen(true)
     }
@@ -88,7 +104,13 @@ function CustomersPage() {
         form.resetFields()
     }
 
+    const isSaving = createMutation.isPending || updateMutation.isPending
+    const isDestroying = archiveMutation.isPending || deleteMutation.isPending
+
     const handleSubmit = async (values) => {
+        // Cift gonderim kilidi KAYNAKTA: buton `loading`i bir render GEC
+        // gelir, arada iki mutation acilabiliyordu.
+        if (isSaving) return
         if (editingId) {
             updateMutation.mutate({ id: editingId, data: values })
         } else {
@@ -106,6 +128,8 @@ function CustomersPage() {
     }
 
     const handleDeleteConfirm = () => {
+        // Ayni cift-tetikleme kilidi yikici islemler icin de gecerli.
+        if (isDestroying) return
         if (deletingRecord) {
             if (deletingRecord.is_active) {
                 // Soft Delete
@@ -156,8 +180,23 @@ function CustomersPage() {
             width: 120,
             render: (_, record) => (
                 <Space>
-                    <Button type="text" icon={<EditOutlined />} onClick={() => handleOpenModal(record)} />
-                    <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteClick(record)} />
+                    <Button
+                        type="text"
+                        icon={<EditOutlined />}
+                        aria-label={`Edit ${record.name}`}
+                        onClick={() => handleOpenModal(record)}
+                    />
+                    <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        aria-label={
+                            record.is_active
+                                ? `Archive ${record.name}`
+                                : `Delete ${record.name} permanently`
+                        }
+                        onClick={() => handleDeleteClick(record)}
+                    />
                 </Space>
             ),
         },
@@ -220,7 +259,7 @@ function CustomersPage() {
                             <Button
                                 type="primary"
                                 htmlType="submit"
-                                loading={createMutation.isPending || updateMutation.isPending}
+                                loading={isSaving}
                             >
                                 {editingId ? 'Update' : 'Create'}
                             </Button>
@@ -236,7 +275,7 @@ function CustomersPage() {
                 itemName={deletingRecord?.name}
                 onConfirm={handleDeleteConfirm}
                 onCancel={handleDeleteCancel}
-                loading={deleteMutation.isPending || archiveMutation.isPending}
+                loading={isDestroying}
             />
 
 

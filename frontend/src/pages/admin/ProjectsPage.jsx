@@ -17,6 +17,12 @@ import { projectService, customerService, workLogService } from '../../services/
 
 const HOURS_PER_DAY = 8
 import DeleteModal from '../../components/common/DeleteModal'
+import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
+import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecycle'
+
+// Formda GERCEKTEN olan alanlar: API kaydindaki id/created_at gibi
+// alanlar form store'una sizmaz, eksik alan da bayat deger BIRAKMAZ.
+const FORM_SHAPE = { name: '', customer_id: undefined, is_active: true, contract_duration_days: undefined }
 
 
 function ProjectsPage() {
@@ -50,7 +56,7 @@ function ProjectsPage() {
             handleCloseModal()
             queryClient.invalidateQueries({ queryKey: ['projects'] })
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'An error occurred'),
+        onError: (err) => message.error(normalizeApiError(err).message),
     })
 
     const updateMutation = useMutation({
@@ -60,7 +66,7 @@ function ProjectsPage() {
             handleCloseModal()
             queryClient.invalidateQueries({ queryKey: ['projects'] })
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'An error occurred'),
+        onError: (err) => message.error(normalizeApiError(err).message),
     })
 
     const archiveMutation = useMutation({
@@ -70,7 +76,7 @@ function ProjectsPage() {
             handleDeleteCancel()
             queryClient.invalidateQueries({ queryKey: ['projects'] })
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'Error archiving project'),
+        onError: (err) => message.error(normalizeApiError(err).message),
     })
 
     const deleteMutation = useMutation({
@@ -80,7 +86,15 @@ function ProjectsPage() {
             handleDeleteCancel()
             queryClient.invalidateQueries({ queryKey: ['projects'] })
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'Unable to delete (Constraint Error). Try archiving instead.'),
+        onError: (err) => (() => {
+            // Kullanimda olan kayit silinemez; ARSIVLEME yolu gosterilir.
+            const n = normalizeApiError(err)
+            message.error(
+                n.kind === 'conflict' || n.status === 400
+                    ? `${n.message} Try archiving it instead.`
+                    : n.message
+            )
+        })(),
     })
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false)
@@ -92,6 +106,8 @@ function ProjectsPage() {
     }
 
     const handleDeleteConfirm = () => {
+        // Ayni cift-tetikleme kilidi yikici islemler icin de gecerli.
+        if (isDestroying) return
         if (deletingRecord) {
             if (deletingRecord.is_active) {
                 // Soft Delete
@@ -111,10 +127,12 @@ function ProjectsPage() {
     const handleOpenModal = (record = null) => {
         if (record) {
             setEditingId(record.id)
-            form.setFieldsValue(record)
+            // resetAndFill: Edit A → Edit B gecisinde A'nin degeri TASINMAZ
+            // (`setFieldsValue` tek basina SIG birlestirir).
+            resetAndFill(form, pickFields(record, FORM_SHAPE))
         } else {
             setEditingId(null)
-            form.resetFields()
+            resetAndFill(form, null)
         }
         setModalOpen(true)
     }
@@ -125,7 +143,13 @@ function ProjectsPage() {
         form.resetFields()
     }
 
+    const isSaving = createMutation.isPending || updateMutation.isPending
+    const isDestroying = archiveMutation.isPending || deleteMutation.isPending
+
     const handleSubmit = async (values) => {
+        // Cift gonderim kilidi KAYNAKTA: buton `loading`i bir render GEC
+        // gelir, arada iki mutation acilabiliyordu.
+        if (isSaving) return
         if (editingId) {
             updateMutation.mutate({ id: editingId, data: values })
         } else {
@@ -211,8 +235,23 @@ function ProjectsPage() {
             width: 120,
             render: (_, record) => (
                 <Space>
-                    <Button type="text" icon={<EditOutlined />} onClick={() => handleOpenModal(record)} />
-                    <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteClick(record)} />
+                    <Button
+                        type="text"
+                        icon={<EditOutlined />}
+                        aria-label={`Edit ${record.name}`}
+                        onClick={() => handleOpenModal(record)}
+                    />
+                    <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        aria-label={
+                            record.is_active
+                                ? `Archive ${record.name}`
+                                : `Delete ${record.name} permanently`
+                        }
+                        onClick={() => handleDeleteClick(record)}
+                    />
                 </Space>
             ),
         },
@@ -278,7 +317,7 @@ function ProjectsPage() {
                     <Form.Item>
                         <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
                             <Button onClick={handleCloseModal}>Cancel</Button>
-                            <Button type="primary" htmlType="submit" loading={createMutation.isPending || updateMutation.isPending}>
+                            <Button type="primary" htmlType="submit" loading={isSaving}>
                                 {editingId ? 'Update' : 'Create'}
                             </Button>
                         </Space>
@@ -292,7 +331,7 @@ function ProjectsPage() {
                 itemName={deletingRecord?.name}
                 onConfirm={handleDeleteConfirm}
                 onCancel={handleDeleteCancel}
-                loading={deleteMutation.isPending || archiveMutation.isPending}
+                loading={isDestroying}
             />
         </div>
     )

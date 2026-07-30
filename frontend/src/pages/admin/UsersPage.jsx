@@ -15,21 +15,34 @@
  * =============================================================================
  */
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Card, Table, Button, Space, Modal, Form, Input, message, Select, Switch, Tag, Tabs } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, CrownOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authService, rbacService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
+import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
+import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecycle'
+
 import UserGroupsTab from './UserGroupsTab'
 import RolesTab from './RolesTab'
 import './UsersPage.css'
+/**
+ * Formda GERCEKTEN olan alanlar. `password` bilerek `undefined`: bos
+ * string yazilirsa duzenlemede sunucuya BOS PAROLA gonderilebilirdi.
+ * `role_ids` ayrica yuklenir (asenkron).
+ */
+const FORM_SHAPE = {
+    email: '', full_name: '', password: undefined, is_active: true,
+}
 
 
-function UsersTab() {
+export function UsersTab() {
     const [form] = Form.useForm()
     const [modalOpen, setModalOpen] = useState(false)
     const [editingId, setEditingId] = useState(null)
+    // Acilis jetonu: geciken rol yanitinin YANLIS forma yazilmasini onler.
+    const openTokenRef = useRef(0)
     const queryClient = useQueryClient()
 
     const { data: usersData, isLoading } = useQuery({
@@ -78,10 +91,16 @@ function UsersTab() {
             handleCloseModal()
             invalidateUsers()
         },
-        onError: (err) =>
+        onError: (err) => {
+            // Rol uygulama KISMI basarisizligi yerel olarak firlatilir:
+            // HTTP yaniti yoktur ama mesaji kritiktir ("kullanici
+            // kaydedildi ama roller uygulanamadi"). normalizeApiError
+            // bunu "sunucuya ulasilamiyor" sanip EZERDI.
+            const isLocal = !err?.response && !err?.isAxiosError
             message.error(
-                err.response?.data?.detail || err.message || 'Error'
-            ),
+                isLocal && err?.message ? err.message : normalizeApiError(err).message
+            )
+        },
     })
 
     const archiveMutation = useMutation({
@@ -91,7 +110,7 @@ function UsersTab() {
             handleDeleteCancel()
             invalidateUsers()
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'Error archiving user'),
+        onError: (err) => message.error(normalizeApiError(err).message),
     })
 
     const deleteMutation = useMutation({
@@ -101,7 +120,15 @@ function UsersTab() {
             handleDeleteCancel()
             invalidateUsers()
         },
-        onError: (err) => message.error(err.response?.data?.detail || 'Unable to delete (Constraint Error). Try archiving instead.'),
+        onError: (err) => {
+            // Kullanimda olan kayit silinemez; ARSIVLEME yolu gosterilir.
+            const n = normalizeApiError(err)
+            message.error(
+                n.kind === 'conflict' || n.status === 400
+                    ? `${n.message} Try archiving it instead.`
+                    : n.message
+            )
+        },
     })
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false)
@@ -113,6 +140,7 @@ function UsersTab() {
     }
 
     const handleDeleteConfirm = () => {
+        if (isDestroying) return
         if (deletingRecord) {
             if (deletingRecord.is_active) {
                 archiveMutation.mutate({ id: deletingRecord.id })
@@ -128,28 +156,41 @@ function UsersTab() {
     }
 
     const handleOpenModal = async (record = null) => {
+        // Her acilis kendi jetonunu alir: Edit A acilip HEMEN Edit B
+        // acilirsa, A'nin geciken rol yaniti B'nin formuna YAZILMAZ.
+        const token = ++openTokenRef.current
         if (record) {
             setEditingId(record.id)
-            form.setFieldsValue(record)
-            // Mevcut rol atamalarını yükle (modal açıkken).
+            // Edit A → Edit B gecisinde A'nin degeri (parola dahil)
+            // TASINMAZ; `setFieldsValue` tek basina SIG birlestirir.
+            resetAndFill(form, pickFields(record, FORM_SHAPE))
+            setModalOpen(true)
             try {
                 const r = await rbacService.getUserRoles(record.id)
+                if (token !== openTokenRef.current) return
                 form.setFieldsValue({
                     role_ids: (r.roles || []).map((x) => x.id),
                 })
             } catch {
+                if (token !== openTokenRef.current) return
                 form.setFieldsValue({ role_ids: [] })
             }
-        } else {
-            setEditingId(null)
-            form.resetFields()
+            return
         }
+        setEditingId(null)
+        resetAndFill(form, null)
         setModalOpen(true)
     }
 
     const handleCloseModal = () => { setModalOpen(false); setEditingId(null); form.resetFields() }
 
+    const isSaving = saveMutation.isPending
+    const isDestroying = archiveMutation.isPending || deleteMutation.isPending
+
     const handleSubmit = async (values) => {
+        // Cift gonderim kilidi KAYNAKTA: buton `loading`i bir render GEC
+        // gelir, arada iki kayit istegi acilabiliyordu.
+        if (isSaving) return
         const { role_ids, ...data } = values
         saveMutation.mutate({ id: editingId, data, roleIds: role_ids ?? [] })
     }
@@ -173,8 +214,23 @@ function UsersTab() {
         {
             title: 'Actions', key: 'actions', width: 120, render: (_, record) => (
                 <Space>
-                    <Button type="text" icon={<EditOutlined />} onClick={() => handleOpenModal(record)} />
-                    <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteClick(record)} />
+                    <Button
+                        type="text"
+                        icon={<EditOutlined />}
+                        aria-label={`Edit ${record.email}`}
+                        onClick={() => handleOpenModal(record)}
+                    />
+                    <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        aria-label={
+                            record.is_active
+                                ? `Archive ${record.email}`
+                                : `Delete ${record.email} permanently`
+                        }
+                        onClick={() => handleDeleteClick(record)}
+                    />
                 </Space>
             )
         },
@@ -216,7 +272,7 @@ function UsersTab() {
                         />
                     </Form.Item>
 
-                    <Form.Item><Space style={{ width: '100%', justifyContent: 'flex-end' }}><Button onClick={handleCloseModal}>Cancel</Button><Button type="primary" htmlType="submit" loading={saveMutation.isPending}>{editingId ? 'Update' : 'Create'}</Button></Space></Form.Item>
+                    <Form.Item><Space style={{ width: '100%', justifyContent: 'flex-end' }}><Button onClick={handleCloseModal}>Cancel</Button><Button type="primary" htmlType="submit" loading={isSaving}>{editingId ? 'Update' : 'Create'}</Button></Space></Form.Item>
                 </Form>
             </Modal>
 
@@ -226,7 +282,7 @@ function UsersTab() {
                 itemName={deletingRecord?.full_name || deletingRecord?.email}
                 onConfirm={handleDeleteConfirm}
                 onCancel={handleDeleteCancel}
-                loading={deleteMutation.isPending || archiveMutation.isPending}
+                loading={isDestroying}
             />
         </>
     )
