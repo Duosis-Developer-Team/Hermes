@@ -9,10 +9,13 @@
  */
 
 import { useState } from 'react'
-import { Card, Table, Tag, Typography, Progress, Row, Col, Input } from 'antd'
+import {
+    Alert, Button, Card, Col, Input, Progress, Row, Table, Tag, Typography,
+} from 'antd'
 import { SearchOutlined, ClockCircleOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { projectService, workLogService } from '../../services/api'
+import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import dayjs from 'dayjs'
 
 const HOURS_PER_DAY = 8
@@ -23,17 +26,39 @@ function ContractStatusPage() {
     const [searchText, setSearchText] = useState('')
 
     // Fetch Projects (include inactive to show all contracts)
-    const { data: projects = [], isLoading } = useQuery({
+    const {
+        data: projects = [], isLoading, isFetching,
+        isError: projectsError, error: projectsErrObj, refetch: refetchProjects,
+    } = useQuery({
         queryKey: ['projects', { include_inactive: false }],
         queryFn: () => projectService.getAll({ include_inactive: false }),
     })
 
     // Fetch billable hours summary (project_id → total hours)
-    const { data: billableSummaryResponse } = useQuery({
+    const {
+        data: billableSummaryResponse,
+        isError: billableError, error: billableErrObj, refetch: refetchBillable,
+    } = useQuery({
         queryKey: ['billable-summary'],
         queryFn: () => workLogService.getBillableSummary(),
     })
     const billableSummary = billableSummaryResponse?.data || {}
+
+    /**
+     * Iki sorgudan HANGISI basarisiz olursa tablo yaniltir: proje verisi
+     * gelmezse "sozlesme yok", kullanim verisi gelmezse "hic gun
+     * harcanmamis" gibi gorunur. Ikisi de acikca bildirilir ve yeniden
+     * denenebilir — sessiz bos tablo YOK.
+     */
+    const loadError = projectsError
+        ? { message: normalizeApiError(projectsErrObj).message, retry: refetchProjects }
+        : billableError
+            ? {
+                message: `${normalizeApiError(billableErrObj).message} `
+                    + 'Contract usage cannot be calculated without it.',
+                retry: refetchBillable,
+            }
+            : null
 
     // Calculate Status Logic — only projects with contract data (effort-based)
     const processedData = projects.map(p => {
@@ -76,9 +101,12 @@ function ContractStatusPage() {
         .sort((a, b) => a.remainingDays - b.remainingDays)
 
     // Filter by Search (customer name or project name)
+    // `p.name` null olabilir: ham `p.name.toLowerCase()` cagrisi tum
+    // sayfayi COKERTIYORDU (arama yazilmasi bile gerekmiyordu).
+    const query = searchText.trim().toLowerCase()
     const filteredData = processedData.filter(p =>
-        (p.customer_name || '').toLowerCase().includes(searchText.toLowerCase()) ||
-        p.name.toLowerCase().includes(searchText.toLowerCase())
+        (p.customer_name || '').toLowerCase().includes(query) ||
+        (p.name || '').toLowerCase().includes(query)
     )
 
     // Columns — Görev 7 sıralaması: Customer, Project, Status, Remaining Time, End Date
@@ -133,8 +161,14 @@ function ContractStatusPage() {
                         showInfo={false}
                         strokeColor={record.color}
                         trailColor="rgba(var(--overlay-rgb),0.1)"
-                        strokeWidth={6}
-                        size="small"
+                        /*
+                         * AntD 5.x: `strokeWidth` deprecated → `size`.
+                         * Onceki deger cifti (`size="small"` + strokeWidth 6)
+                         * antd icinde height=6'ya cozuluyordu; nesne bicimi
+                         * ayni yuksekligi ACIKCA korur, genislik otomatik
+                         * kalir.
+                         */
+                        size={{ height: 6 }}
                     />
                 </div>
             )
@@ -176,6 +210,20 @@ function ContractStatusPage() {
                     </Text>
                 </div>
             </div>
+
+            {loadError && (
+                <Alert
+                    type="error"
+                    showIcon
+                    style={{ marginBottom: 24 }}
+                    message={loadError.message}
+                    action={
+                        <Button size="small" onClick={() => loadError.retry()}>
+                            Retry
+                        </Button>
+                    }
+                />
+            )}
 
             {/* KPI Cards */}
             <Row gutter={[20, 20]} style={{ marginBottom: 32 }}>
@@ -230,15 +278,19 @@ function ContractStatusPage() {
                     <SearchOutlined style={{ color: 'var(--c-text-faint)', fontSize: 18 }} />
                     <Input
                         placeholder="Search by customer or project name..."
+                        aria-label="Search contracts by customer or project"
                         /* AntD 5.x: bordered deprecated → variant. */
                         variant="borderless"
+                        value={searchText}
                         onChange={e => setSearchText(e.target.value)}
                         style={{ color: 'var(--c-text-strong)', fontSize: 16, width: 350 }}
                         className="modern-search-input"
                     />
                 </div>
-                <div style={{ color: 'var(--c-text-faint)' }}>
-                    {filteredData.length} records found
+                <div style={{ color: 'var(--c-text-faint)' }} role="status">
+                    {isFetching && projects.length > 0
+                        ? 'Refreshing…'
+                        : `${filteredData.length} records found`}
                 </div>
             </div>
 
@@ -257,11 +309,21 @@ function ContractStatusPage() {
                     dataSource={filteredData}
                     columns={columns}
                     rowKey="id"
-                    loading={isLoading}
+                    loading={isLoading && projects.length === 0}
                     pagination={{ pageSize: 10 }}
                     rowClassName="modern-row"
                     scroll={{ x: 'max-content' }}
-                    locale={{ emptyText: <div style={{ padding: 40, color: 'var(--c-text-faint)' }}>No contract data found. Add contract duration to your projects.</div> }}
+                    locale={{
+                        // ILK KULLANIM boslugu ile FILTRE sonucu yoklugu
+                        // AYRI mesajlanir: ikisi ayni sey degil.
+                        emptyText: (
+                            <div style={{ padding: 40, color: 'var(--c-text-faint)' }}>
+                                {query
+                                    ? `No contracts match “${searchText.trim()}”.`
+                                    : 'No contract data found. Add contract duration to your projects.'}
+                            </div>
+                        ),
+                    }}
                 />
             </Card>
 

@@ -13,8 +13,9 @@
  * =============================================================================
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
+    Alert,
     Button,
     Card,
     Empty,
@@ -42,6 +43,8 @@ import {
     userGroupService,
 } from '../../services/api'
 import DangerConfirmModal from '../../components/common/DangerConfirmModal'
+import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
+import { resetAndFill } from '../../features/admin/shared/formLifecycle'
 
 function userLabel(u) {
     if (!u) return '—'
@@ -67,7 +70,8 @@ function AssignerCard({
         <Card
             size="small"
             style={{ marginBottom: 12 }}
-            bodyStyle={{ padding: 0 }}
+            /* AntD 5.x: bodyStyle deprecated → styles.body. */
+            styles={{ body: { padding: 0 } }}
         >
             <div
                 role="button"
@@ -104,10 +108,16 @@ function AssignerCard({
                     <Tag color="purple">
                         {groupCount} group{groupCount === 1 ? '' : 's'}
                     </Tag>
+                    {/*
+                      * Ust bardaki genel buton ile ayni GORUNUR metni
+                      * tasiyor ama farkli sey yapiyor (bu assigner'i
+                      * on-secer). Erisilebilir ad bu ayrimi soyler.
+                      */}
                     <Button
                         size="small"
                         type="primary"
                         icon={<PlusOutlined />}
+                        aria-label={`Add assignment rule for ${userLabel(assigner)}`}
                         onClick={(e) => {
                             e.stopPropagation()
                             onAddRule(assigner.id)
@@ -175,11 +185,17 @@ function AssignerCard({
                                                 {count} member{count === 1 ? '' : 's'}
                                             </span>
                                         </div>
+                                        {/* Tooltip erisilebilir AD VERMEZ. */}
                                         <Tooltip title="Remove this group from assigner">
                                             <Button
                                                 size="small"
                                                 danger
                                                 icon={<DeleteOutlined />}
+                                                aria-label={
+                                                    `Remove group ${g?.name
+                                                        || rel.assignee_group_id} `
+                                                    + `from ${userLabel(assigner)}`
+                                                }
                                                 onClick={() => onRemoveGroupRelation(rel)}
                                             />
                                         </Tooltip>
@@ -245,11 +261,17 @@ function AssignerCard({
                                                 </span>
                                             )}
                                         </div>
+                                        {/* Tooltip erisilebilir AD VERMEZ. */}
                                         <Tooltip title="Remove this user from assigner">
                                             <Button
                                                 size="small"
                                                 danger
                                                 icon={<DeleteOutlined />}
+                                                aria-label={
+                                                    `Remove ${u ? userLabel(u)
+                                                        : rel.assignee_user_id} `
+                                                    + `from ${userLabel(assigner)}`
+                                                }
                                                 onClick={() => onRemoveUserRelation(rel)}
                                             />
                                         </Tooltip>
@@ -276,23 +298,42 @@ function AddRuleModal({
 }) {
     const [form] = Form.useForm()
 
+    /**
+     * Her acilista TAM sekil yazilir. `initialValues` yalnizca mount'ta
+     * uygulanir ve `afterClose` icindeki resetFields O ANDAKI initial
+     * degerlere doner; bu yuzden bir karttan on-secili assigner ile
+     * acildiktan sonra genel butondan acmak eski assigner'i
+     * BIRAKABILIYORDU. Coklu secimler de acikca temizlenir.
+     */
+    useEffect(() => {
+        if (!open) return
+        resetAndFill(form, {
+            assigner_user_id: initialAssignerId || undefined,
+            assignee_user_ids: [],
+            assignee_group_ids: [],
+        })
+    }, [open, initialAssignerId, form])
+
     return (
         <Modal
             title="Add Assignment Rules"
             open={open}
             onCancel={onClose}
-            onOk={() => form.submit()}
+            onOk={() => {
+                // Cift gonderim kilidi KAYNAKTA.
+                if (loading) return
+                form.submit()
+            }}
             okText="Save"
             confirmLoading={loading}
             destroyOnHidden
-            afterClose={() => form.resetFields()}
+            closable={!loading}
+            maskClosable={!loading}
+            keyboard={!loading}
         >
             <Form
                 form={form}
                 layout="vertical"
-                initialValues={{
-                    assigner_user_id: initialAssignerId || undefined,
-                }}
                 onFinish={onSubmit}
             >
                 <Form.Item
@@ -444,14 +485,35 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
         return map
     }, [groups])
 
-    const { data: userRelations = [], isLoading: userRelLoading } = useQuery({
+    const {
+        data: userRelations = [], isLoading: userRelLoading,
+        isError: userRelError, error: userRelErrObj, refetch: refetchUserRel,
+    } = useQuery({
         queryKey: ['admin-task-assignment-relations', scope],
         queryFn: () => taskAssignmentService.list(scope),
     })
-    const { data: groupRelations = [], isLoading: groupRelLoading } = useQuery({
+    const {
+        data: groupRelations = [], isLoading: groupRelLoading,
+        isError: groupRelError, error: groupRelErrObj, refetch: refetchGroupRel,
+    } = useQuery({
         queryKey: ['admin-task-assignment-group-relations', scope],
         queryFn: () => taskAssignmentGroupService.list(scope),
     })
+
+    /**
+     * Kurallar IKI sorgudan gelir. Biri basarisiz olursa geri kalan
+     * kartlar EKSIK bir hiyerarsiyi TAM gibi gosterir — yetki verisinde
+     * bu yaniltici. Hata acikca bildirilir ve yeniden denenebilir.
+     */
+    const relationsError = userRelError
+        ? { message: normalizeApiError(userRelErrObj).message, retry: refetchUserRel }
+        : groupRelError
+            ? {
+                message: `${normalizeApiError(groupRelErrObj).message} `
+                    + 'Group rules are missing from the list below.',
+                retry: refetchGroupRel,
+            }
+            : null
 
     // Group rules per assigner so we can render one card per assigner.
     const cardsByAssigner = useMemo(() => {
@@ -530,9 +592,7 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
             setAddModalOpen(false)
         },
         onError: (err) => {
-            message.error(
-                err?.response?.data?.detail || 'Failed to add assignment rules.'
-            )
+            message.error(normalizeApiError(err).message)
         },
         onSettled: () => {
             queryClient.invalidateQueries({
@@ -554,7 +614,7 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
             })
         },
         onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to remove rule.')
+            message.error(normalizeApiError(err).message)
             setRemovingUserRelation(null)
         },
     })
@@ -569,12 +629,18 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
             })
         },
         onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to remove rule.')
+            message.error(normalizeApiError(err).message)
             setRemovingGroupRelation(null)
         },
     })
 
+    const isAddingRules = addRulesMutation.isPending
+    const isRemovingRule =
+        deleteUserMutation.isPending || deleteGroupMutation.isPending
+
     const handleAdd = (values) => {
+        // Cift gonderim kilidi KAYNAKTA.
+        if (isAddingRules) return
         const userIds = values.assignee_user_ids || []
         const groupIds = values.assignee_group_ids || []
         if (userIds.length === 0 && groupIds.length === 0) {
@@ -608,6 +674,7 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
                 }}
             >
                 <Input.Search
+                    aria-label="Search assigner by name or email"
                     allowClear
                     placeholder="Search assigner by name or email"
                     value={assignerSearch}
@@ -617,6 +684,9 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
                 <Button
                     type="primary"
                     icon={<PlusOutlined />}
+                    /* Kart icindeki ayni metinli butondan AYRI ad: bu
+                       hicbir assigner'i on-secmez. */
+                    aria-label="Add assignment rule"
                     onClick={() => {
                         setPresetAssignerId(null)
                         setAddModalOpen(true)
@@ -625,6 +695,20 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
                     Add Assignment Rule
                 </Button>
             </div>
+
+            {relationsError && (
+                <Alert
+                    type="error"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    message={relationsError.message}
+                    action={
+                        <Button size="small" onClick={() => relationsError.retry()}>
+                            Retry
+                        </Button>
+                    }
+                />
+            )}
 
             {sortedAssignerCards.length === 0 ? (
                 <Empty
@@ -685,11 +769,12 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
                 }
                 confirmLabel="Remove"
                 onCancel={() => setRemovingUserRelation(null)}
-                onConfirm={() =>
-                    removingUserRelation &&
+                onConfirm={() => {
+                    // Cift tetikleme kilidi KAYNAKTA.
+                    if (isRemovingRule || !removingUserRelation) return
                     deleteUserMutation.mutate(removingUserRelation.id)
-                }
-                loading={deleteUserMutation.isPending}
+                }}
+                loading={isRemovingRule}
             />
 
             <DangerConfirmModal
@@ -699,11 +784,11 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
                 itemName={removingGroupName}
                 confirmLabel="Remove"
                 onCancel={() => setRemovingGroupRelation(null)}
-                onConfirm={() =>
-                    removingGroupRelation &&
+                onConfirm={() => {
+                    if (isRemovingRule || !removingGroupRelation) return
                     deleteGroupMutation.mutate(removingGroupRelation.id)
-                }
-                loading={deleteGroupMutation.isPending}
+                }}
+                loading={isRemovingRule}
             />
         </>
     )
