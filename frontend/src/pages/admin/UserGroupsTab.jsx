@@ -18,6 +18,7 @@
 
 import { useMemo, useState } from 'react'
 import {
+    Alert,
     Button,
     Space,
     Table,
@@ -37,6 +38,7 @@ import { authService, userGroupService } from '../../services/api'
 import UserGroupModal from '../../components/modals/UserGroupModal'
 import UserGroupMemberModal from '../../components/modals/UserGroupMemberModal'
 import DangerConfirmModal from '../../components/common/DangerConfirmModal'
+import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Virtual group helpers
@@ -151,13 +153,15 @@ function RealMembersTable({ group, allUsersById, users }) {
                 queryKey: ['admin-user-group-members', group.id],
             })
         },
-        onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to update member.')
-        },
+        // Hata mesaji MODAL icinde form seviyesinde gosterilir
+        // (mutateAsync reddi oraya ulasir); burada tekrar toast atmak
+        // ayni hatayi iki kez anlatirdi.
     })
 
     const handleBulkAdd = async ({ user_ids: userIds = [], title = null }) => {
         if (!userIds.length) return
+        // Cift tetikleme kilidi KAYNAKTA.
+        if (bulkAdding) return
         setBulkAdding(true)
         try {
             const results = await Promise.allSettled(
@@ -175,13 +179,17 @@ function RealMembersTable({ group, allUsersById, users }) {
                     `${succeeded} member${succeeded === 1 ? '' : 's'} added to ${group.name}.`
                 )
             }
-            if (failed > 0) {
-                const firstFail = results.find((r) => r.status === 'rejected')
+            // Kismi basari SESSIZCE yutulmaz: basarili olanlar yukarida
+            // bildirildi, basarisiz olanlar burada.
+            const firstFail = results.find((r) => r.status === 'rejected')
+            if (failed > 0 && succeeded > 0) {
                 message.error(
-                    firstFail?.reason?.response?.data?.detail ||
-                        `${failed} member${failed === 1 ? '' : 's'} could not be added.`
+                    `${normalizeApiError(firstFail?.reason).message} `
+                    + `(${failed} of ${results.length} could not be added.)`
                 )
             }
+            // Hicbiri eklenemediyse hata MODALA firlatilir: kullanici
+            // secimini kaybetmeden form seviyesinde mesaji gorur.
             queryClient.invalidateQueries({
                 queryKey: ['admin-user-group-members', group.id],
             })
@@ -190,6 +198,8 @@ function RealMembersTable({ group, allUsersById, users }) {
             if (succeeded > 0) {
                 setMemberModalOpen(false)
                 setEditingMember(null)
+            } else if (firstFail) {
+                throw firstFail.reason
             }
         } finally {
             setBulkAdding(false)
@@ -208,10 +218,12 @@ function RealMembersTable({ group, allUsersById, users }) {
             queryClient.invalidateQueries({ queryKey: ['task-permissions'] })
         },
         onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to remove member.')
+            message.error(normalizeApiError(err).message)
             setRemovingMember(null)
         },
     })
+
+    const isRemoving = removeMutation.isPending
 
     const handleSubmit = async (payload, member) => {
         if (member) {
@@ -260,10 +272,21 @@ function RealMembersTable({ group, allUsersById, users }) {
             key: 'actions',
             render: (_, record) => (
                 <Space onClick={(e) => e.stopPropagation()}>
+                    {/*
+                      * AntD `Tooltip` erisilebilir AD VERMEZ (title
+                      * attribute'u basmaz, portala cizer). Ikon-only
+                      * butonlarin adi bu yuzden acikca yazilir.
+                      */}
                     <Tooltip title="Edit Member Title">
                         <Button
                             size="small"
                             icon={<EditOutlined />}
+                            aria-label={`Edit title for ${
+                                allUsersById[record.user_id]?.full_name
+                                || allUsersById[record.user_id]?.email
+                                || record.user_id
+                            }`}
+                            disabled={isRemoving}
                             onClick={() => {
                                 setEditingMember(record)
                                 setMemberModalOpen(true)
@@ -275,6 +298,12 @@ function RealMembersTable({ group, allUsersById, users }) {
                             size="small"
                             danger
                             icon={<DeleteOutlined />}
+                            aria-label={`Remove ${
+                                allUsersById[record.user_id]?.full_name
+                                || allUsersById[record.user_id]?.email
+                                || record.user_id
+                            } from group`}
+                            disabled={isRemoving}
                             onClick={() => setRemovingMember(record)}
                         />
                     </Tooltip>
@@ -352,10 +381,11 @@ function RealMembersTable({ group, allUsersById, users }) {
                 }
                 confirmLabel="Remove"
                 onCancel={() => setRemovingMember(null)}
-                onConfirm={() =>
-                    removingMember && removeMutation.mutate(removingMember.id)
-                }
-                loading={removeMutation.isPending}
+                onConfirm={() => {
+                    if (isRemoving || !removingMember) return
+                    removeMutation.mutate(removingMember.id)
+                }}
+                loading={isRemoving}
             />
         </div>
     )
@@ -383,7 +413,9 @@ function UserGroupsTab() {
         return map
     }, [users])
 
-    const { data: realGroups = [], isLoading } = useQuery({
+    const {
+        data: realGroups = [], isLoading, isError, error, refetch,
+    } = useQuery({
         queryKey: ['admin-user-groups'],
         queryFn: () => userGroupService.list(),
     })
@@ -404,9 +436,8 @@ function UserGroupsTab() {
             setEditingGroup(null)
             queryClient.invalidateQueries({ queryKey: ['admin-user-groups'] })
         },
-        onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to create group.')
-        },
+        // Hata MODAL icinde form seviyesinde gosterilir (mutateAsync
+        // reddi oraya ulasir) — ayni hatayi iki kez anlatmiyoruz.
     })
 
     const updateMutation = useMutation({
@@ -417,24 +448,25 @@ function UserGroupsTab() {
             setEditingGroup(null)
             queryClient.invalidateQueries({ queryKey: ['admin-user-groups'] })
         },
-        onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to update group.')
-        },
+        // Hata MODAL icinde form seviyesinde gosterilir.
     })
 
     const deactivateMutation = useMutation({
         mutationFn: (groupId) => userGroupService.deactivate(groupId),
         onSuccess: () => {
-            message.success('Group deleted.')
+            message.success('Group archived.')
             setDeletingGroup(null)
             queryClient.invalidateQueries({ queryKey: ['admin-user-groups'] })
             queryClient.invalidateQueries({ queryKey: ['task-permissions'] })
         },
         onError: (err) => {
-            message.error(err?.response?.data?.detail || 'Failed to delete group.')
+            message.error(normalizeApiError(err).message)
             setDeletingGroup(null)
         },
     })
+
+    const isSavingGroup = createMutation.isPending || updateMutation.isPending
+    const isArchivingGroup = deactivateMutation.isPending
 
     const handleSubmit = async (payload, groupId) => {
         if (groupId) {
@@ -482,19 +514,27 @@ function UserGroupsTab() {
                             <Button
                                 size="small"
                                 icon={<EditOutlined />}
+                                aria-label={`Edit ${record.name}`}
+                                disabled={isArchivingGroup}
                                 onClick={() => {
                                     setEditingGroup(record)
                                     setGroupModalOpen(true)
                                 }}
                             />
                         </Tooltip>
+                        {/*
+                          * Backend `deactivate` cagirir (soft): kayit ve
+                          * gecmis korunur. UI buna "Delete" DEMEZ.
+                          */}
                         <Button
                             size="small"
                             danger
                             icon={<DeleteOutlined />}
+                            aria-label={`Archive ${record.name}`}
+                            disabled={isArchivingGroup}
                             onClick={() => setDeletingGroup(record)}
                         >
-                            Delete
+                            Archive
                         </Button>
                     </Space>
                 ),
@@ -503,6 +543,19 @@ function UserGroupsTab() {
 
     return (
         <>
+            {isError && (
+                <Alert
+                    type="error"
+                    showIcon
+                    style={{ marginBottom: 12 }}
+                    message={normalizeApiError(error).message}
+                    action={
+                        <Button size="small" onClick={() => refetch()}>
+                            Retry
+                        </Button>
+                    }
+                />
+            )}
             <div
                 style={{
                     marginBottom: 12,
@@ -555,13 +608,13 @@ function UserGroupsTab() {
                 }}
                 onSubmit={handleSubmit}
                 editingGroup={editingGroup}
-                loading={createMutation.isPending || updateMutation.isPending}
+                loading={isSavingGroup}
             />
 
             <DangerConfirmModal
                 open={!!deletingGroup}
-                title="Delete group?"
-                body="This removes the group from active use. User accounts and existing tasks remain unchanged."
+                title="Archive group?"
+                body="This removes the group from active use. Membership, user accounts and existing tasks remain unchanged, and the group can be restored by an administrator."
                 itemName={deletingGroup?.name}
                 itemSubtitle={
                     deletingGroup
@@ -570,12 +623,13 @@ function UserGroupsTab() {
                           }`
                         : null
                 }
-                confirmLabel="Delete Group"
+                confirmLabel="Archive Group"
                 onCancel={() => setDeletingGroup(null)}
-                onConfirm={() =>
-                    deletingGroup && deactivateMutation.mutate(deletingGroup.id)
-                }
-                loading={deactivateMutation.isPending}
+                onConfirm={() => {
+                    if (isArchivingGroup || !deletingGroup) return
+                    deactivateMutation.mutate(deletingGroup.id)
+                }}
+                loading={isArchivingGroup}
             />
         </>
     )

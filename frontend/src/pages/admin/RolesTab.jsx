@@ -23,6 +23,16 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { rbacService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
+import {
+    applyErrorToForm, normalizeApiError,
+} from '../../features/admin/shared/normalizeApiError'
+import { resetAndFill } from '../../features/admin/shared/formLifecycle'
+
+// Formda GERCEKTEN olan alanlar. Alanlar MODA GORE kosullu cizildigi
+// icin (code yalniz olusturmada, is_active yalniz edit-ve-system-degil)
+// her acilista tam sekil yazilir — aksi halde bir rolun degeri
+// digerinin formunda kalir.
+const FORM_FIELDS = ['code', 'name', 'description', 'permissions', 'is_active']
 
 const { Text } = Typography
 
@@ -75,9 +85,12 @@ function RolesTab() {
     const [modalOpen, setModalOpen] = useState(false)
     const [editing, setEditing] = useState(null) // rol nesnesi | null
     const [deactivating, setDeactivating] = useState(null)
+    const [formError, setFormError] = useState(null)
     const queryClient = useQueryClient()
 
-    const { data: rolesData, isLoading } = useQuery({
+    const {
+        data: rolesData, isLoading, isError, error, refetch,
+    } = useQuery({
         queryKey: ['rbac-roles'],
         queryFn: () => rbacService.listRoles(true),
     })
@@ -94,15 +107,26 @@ function RolesTab() {
         queryClient.invalidateQueries({ queryKey: ['rbac-roles'] })
     }
 
+    /**
+     * Hata alanlara baglanir; baglanamayan mesaj FORM ustunde durur.
+     * Onceki davranis `|| 'Hata'` idi: alan hatalari hic baglanmiyor,
+     * teknik govdeler (stack trace, sqlalchemy) dogrudan gosterilebiliyor
+     * ve sunucu aciklama gondermediginde kullaniciya "Hata" deniyordu.
+     */
+    const showFormError = (e) => {
+        const leftover = applyErrorToForm(e, form, FORM_FIELDS)
+        if (leftover) setFormError(leftover)
+    }
+
     const createMutation = useMutation({
         mutationFn: rbacService.createRole,
         onSuccess: () => { message.success('Rol oluşturuldu'); close(); invalidate() },
-        onError: (e) => message.error(e.response?.data?.detail || 'Hata'),
+        onError: showFormError,
     })
     const updateMutation = useMutation({
         mutationFn: ({ id, data }) => rbacService.updateRole(id, data),
         onSuccess: () => { message.success('Rol güncellendi'); close(); invalidate() },
-        onError: (e) => message.error(e.response?.data?.detail || 'Hata'),
+        onError: showFormError,
     })
     const deactivateMutation = useMutation({
         mutationFn: rbacService.deactivateRole,
@@ -110,28 +134,43 @@ function RolesTab() {
             message.success('Rol pasifleştirildi — izinleri artık geçerli değil')
             setDeactivating(null); invalidate()
         },
-        onError: (e) => message.error(e.response?.data?.detail || 'Hata'),
+        onError: (e) => {
+            // Kullanimda olan rol ya da son-admin kilidi: sunucunun
+            // aciklamasi KRITIK, generic metnin altinda kaybolmaz.
+            message.error(normalizeApiError(e).message)
+            setDeactivating(null)
+        },
     })
+
+    const isSaving = createMutation.isPending || updateMutation.isPending
+    const isDeactivating = deactivateMutation.isPending
 
     const open = (role = null) => {
         setEditing(role)
-        if (role) {
-            form.setFieldsValue({
-                code: role.code,
-                name: role.name,
-                description: role.description,
-                permissions: role.permissions,
-                is_active: role.is_active,
-            })
-        } else {
-            form.resetFields()
-            form.setFieldsValue({ permissions: [], is_active: true })
-        }
+        setFormError(null)
+        // resetAndFill: TAM sekil yazilir. Onceden resetFields YOKTU ve
+        // `setFieldsValue` sig birlestirdigi icin Edit A → Edit B
+        // geciste A'nin (orn. eksik olan) aciklamasi B'de kaliyordu.
+        resetAndFill(form, role
+            ? {
+                code: role.code ?? '',
+                name: role.name ?? '',
+                description: role.description ?? '',
+                permissions: role.permissions ?? [],
+                is_active: role.is_active ?? true,
+            }
+            : { code: '', name: '', description: '', permissions: [], is_active: true })
         setModalOpen(true)
     }
-    const close = () => { setModalOpen(false); setEditing(null); form.resetFields() }
+    const close = () => {
+        setModalOpen(false); setEditing(null); setFormError(null); form.resetFields()
+    }
 
     const submit = (values) => {
+        // Cift gonderim kilidi KAYNAKTA: buton `loading`i bir render GEC
+        // gelir, arada ikinci istek acilabiliyordu.
+        if (isSaving) return
+        setFormError(null)
         if (editing) {
             // System rolde yalnizca aciklama gonderilir (kilit).
             const data = editing.is_system
@@ -189,11 +228,15 @@ function RolesTab() {
             title: 'İşlem', key: 'actions', width: 120,
             render: (_, r) => (
                 <Space>
+                    {/* Ikon-only aksiyonlar HANGI rolu hedefledigini soyler. */}
                     <Button type="text" icon={<EditOutlined />}
+                            aria-label={`Edit ${r.name}`}
+                            disabled={isDeactivating}
                             onClick={() => open(r)} />
                     {!r.is_system && r.is_active && (
                         <Button type="text" danger icon={<StopOutlined />}
-                                title="Pasifleştir"
+                                aria-label={`Deactivate ${r.name}`}
+                                disabled={isDeactivating}
                                 onClick={() => setDeactivating(r)} />
                     )}
                 </Space>
@@ -205,6 +248,19 @@ function RolesTab() {
 
     return (
         <>
+            {isError && (
+                <Alert
+                    type="error"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    message={normalizeApiError(error).message}
+                    action={
+                        <Button size="small" onClick={() => refetch()}>
+                            Retry
+                        </Button>
+                    }
+                />
+            )}
             <Card
                 title={`🛡️ Roles (${roles.length})`}
                 extra={
@@ -216,15 +272,25 @@ function RolesTab() {
             >
                 <Table
                     dataSource={roles} columns={columns} rowKey="id"
-                    loading={isLoading} pagination={false}
+                    loading={isLoading && roles.length === 0} pagination={false}
                     scroll={{ x: 'max-content' }}
+                    locale={{ emptyText: 'No roles defined yet. Use “New Role”.' }}
                 />
             </Card>
 
             <Modal
-                title={editing ? `✏️ ${editing.name}` : '➕ New Role'}
+                title={editing ? `Edit Role — ${editing.name}` : 'New Role'}
                 open={modalOpen} onCancel={close} footer={null} width={640}
+                closable={!isSaving}
+                maskClosable={!isSaving}
+                keyboard={!isSaving}
             >
+                {formError && (
+                    <Alert
+                        type="error" showIcon style={{ marginBottom: 12 }}
+                        message={formError}
+                    />
+                )}
                 {systemLocked && (
                     <Alert
                         type="info" showIcon style={{ marginBottom: 16 }}
@@ -297,8 +363,7 @@ function RolesTab() {
                             <Button onClick={close}>Cancel</Button>
                             <Button
                                 type="primary" htmlType="submit"
-                                loading={createMutation.isPending
-                                    || updateMutation.isPending}
+                                loading={isSaving}
                             >
                                 {editing ? 'Update' : 'Create'}
                             </Button>
@@ -311,9 +376,12 @@ function RolesTab() {
                 open={!!deactivating}
                 isActive
                 itemName={deactivating?.name}
-                onConfirm={() => deactivateMutation.mutate(deactivating.id)}
+                onConfirm={() => {
+                    if (isDeactivating || !deactivating) return
+                    deactivateMutation.mutate(deactivating.id)
+                }}
                 onCancel={() => setDeactivating(null)}
-                loading={deactivateMutation.isPending}
+                loading={isDeactivating}
             />
         </>
     )

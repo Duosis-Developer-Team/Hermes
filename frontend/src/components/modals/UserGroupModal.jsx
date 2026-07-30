@@ -7,8 +7,15 @@
  * =============================================================================
  */
 
-import { useEffect } from 'react'
-import { Modal, Form, Input } from 'antd'
+import { useEffect, useState } from 'react'
+import { Alert, Modal, Form, Input } from 'antd'
+
+import {
+    applyErrorToForm,
+} from '../../features/admin/shared/normalizeApiError'
+import { resetAndFill } from '../../features/admin/shared/formLifecycle'
+
+const FORM_FIELDS = ['name', 'description']
 
 function UserGroupModal({
     open,
@@ -18,26 +25,41 @@ function UserGroupModal({
     loading = false,
 }) {
     const [form] = Form.useForm()
+    const [submitError, setSubmitError] = useState(null)
+    const [submitting, setSubmitting] = useState(false)
     const isEditing = !!editingGroup
 
     useEffect(() => {
         if (!open) return
-        if (editingGroup) {
-            form.setFieldsValue({
-                name: editingGroup.name,
-                description: editingGroup.description || '',
-            })
-        } else {
-            form.resetFields()
-        }
+        setSubmitError(null)
+        // resetAndFill: Edit A → Edit B ve Edit → Create gecislerinde
+        // onceki grubun degeri KALMAZ (`setFieldsValue` sig birlestirir).
+        resetAndFill(form, {
+            name: editingGroup?.name ?? '',
+            description: editingGroup?.description ?? '',
+        })
     }, [open, editingGroup, form])
 
     const handleFinish = async (values) => {
+        // Cift gonderim kilidi KAYNAKTA: `confirmLoading` bir render GEC
+        // gelir, arada ikinci istek acilabiliyordu.
+        if (submitting || loading) return
+        setSubmitError(null)
+        setSubmitting(true)
         const payload = {
             name: values.name?.trim(),
             description: values.description || null,
         }
-        await onSubmit(payload, editingGroup?.id)
+        try {
+            await onSubmit(payload, editingGroup?.id)
+        } catch (err) {
+            // AntD `onFinish`i BEKLEMEZ: yakalanmayan reddetme daha once
+            // unhandled rejection oluyordu.
+            const leftover = applyErrorToForm(err, form, FORM_FIELDS)
+            if (leftover) setSubmitError(leftover)
+        } finally {
+            setSubmitting(false)
+        }
     }
 
     return (
@@ -47,17 +69,31 @@ function UserGroupModal({
             onCancel={onClose}
             okText={isEditing ? 'Save Changes' : 'Create Group'}
             cancelText="Cancel"
-            confirmLoading={loading}
+            confirmLoading={loading || submitting}
             onOk={() => form.submit()}
             width={520}
             destroyOnHidden
+            closable={!(loading || submitting)}
+            maskClosable={!(loading || submitting)}
+            keyboard={!(loading || submitting)}
         >
+            {submitError && (
+                <Alert
+                    type="error"
+                    showIcon
+                    message={submitError}
+                    style={{ marginBottom: 16 }}
+                />
+            )}
             <Form form={form} layout="vertical" onFinish={handleFinish}>
                 <Form.Item
                     label="Group Name"
                     name="name"
                     rules={[
-                        { required: true, message: 'Group name is required.' },
+                        {
+                            required: true, whitespace: true,
+                            message: 'Group name is required.',
+                        },
                         { max: 255, message: 'Max 255 characters.' },
                     ]}
                 >

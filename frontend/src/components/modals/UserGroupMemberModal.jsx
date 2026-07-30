@@ -20,8 +20,15 @@
  * =============================================================================
  */
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Alert, Form, Input, Modal, Select } from 'antd'
+
+import {
+    applyErrorToForm,
+} from '../../features/admin/shared/normalizeApiError'
+import { resetAndFill } from '../../features/admin/shared/formLifecycle'
+
+const FORM_FIELDS = ['user_ids', 'title']
 
 function userDisplay(user) {
     if (!user) return ''
@@ -42,17 +49,18 @@ function UserGroupMemberModal({
     loading = false,
 }) {
     const [form] = Form.useForm()
+    const [submitError, setSubmitError] = useState(null)
+    const [submitting, setSubmitting] = useState(false)
     const isEditing = !!editingMember
 
     useEffect(() => {
         if (!open) return
-        if (editingMember) {
-            form.setFieldsValue({
-                title: editingMember.title || '',
-            })
-        } else {
-            form.resetFields()
-        }
+        setSubmitError(null)
+        // resetAndFill: Edit A → Edit B ve Edit → Add gecislerinde onceki
+        // uyenin basligi formda KALMAZ (`setFieldsValue` sig birlestirir).
+        resetAndFill(form, editingMember
+            ? { user_ids: undefined, title: editingMember.title || '' }
+            : { user_ids: undefined, title: '' })
     }, [open, editingMember, form])
 
     const userOptions = useMemo(
@@ -74,51 +82,79 @@ function UserGroupMemberModal({
     )
 
     const handleFinish = async (values) => {
+        // Cift gonderim kilidi KAYNAKTA: `confirmLoading` bir render GEC
+        // gelir, arada ikinci istek acilabiliyordu.
+        if (submitting || loading) return
+        setSubmitError(null)
+        setSubmitting(true)
         const trimmed = (values.title || '').trim()
-        if (isEditing) {
-            const payload = {}
-            if (trimmed) {
-                payload.title = trimmed
-            } else if (editingMember.title) {
-                payload.clear_title = true
+        try {
+            if (isEditing) {
+                const payload = {}
+                if (trimmed) {
+                    payload.title = trimmed
+                } else if (editingMember.title) {
+                    payload.clear_title = true
+                }
+                await onSubmit(payload, editingMember)
+            } else {
+                const userIds = Array.isArray(values.user_ids) ? values.user_ids : []
+                await onSubmit({ user_ids: userIds, title: trimmed || null }, null)
             }
-            await onSubmit(payload, editingMember)
-        } else {
-            const userIds = Array.isArray(values.user_ids) ? values.user_ids : []
-            await onSubmit(
-                {
-                    user_ids: userIds,
-                    title: trimmed || null,
-                },
-                null
-            )
+        } catch (err) {
+            // AntD `onFinish`i BEKLEMEZ: yakalanmayan reddetme daha once
+            // unhandled rejection oluyordu. Hata artik alanlara baglanir,
+            // baglanamayan mesaj form ustunde durur.
+            const leftover = applyErrorToForm(err, form, FORM_FIELDS)
+            if (leftover) setSubmitError(leftover)
+        } finally {
+            setSubmitting(false)
         }
     }
 
+    /**
+     * KUSUR DUZELTMESI: burada bir BOOLEAN olmasi gerekirken ters
+     * kurulmus bir ternary iki dalda da dolu STRING donduruyordu. Deger
+     * her zaman truthy oldugu icin `okButtonProps.disabled` HER DURUMDA
+     * dolu, "hepsi uye" uyarisi da HER DURUMDA gorunurdu — yani gruba
+     * uye eklemek ve uye basligini duzenlemek TAMAMEN calismiyordu.
+     */
     const noCandidates = !isEditing && candidateUsers.length === 0
+
+    const okText = isEditing
         ? 'Save Changes'
-        : `Add Member${
-              !isEditing && form.getFieldValue?.('user_ids')?.length > 1 ? 's' : ''
-          }`
+        : 'Add Members'
 
     return (
         <Modal
             title={isEditing ? 'Edit Member Title' : 'Add Members'}
             open={open}
             onCancel={onClose}
-            okText={isEditing ? 'Save Changes' : 'Add Members'}
+            okText={okText}
             cancelText="Cancel"
-            confirmLoading={loading}
+            confirmLoading={loading || submitting}
             onOk={() => form.submit()}
             width={520}
             destroyOnHidden
             okButtonProps={{ disabled: noCandidates }}
+            closable={!(loading || submitting)}
+            maskClosable={!(loading || submitting)}
+            keyboard={!(loading || submitting)}
         >
             {noCandidates && (
                 <Alert
                     type="info"
                     showIcon
                     message="All users are already members of this group."
+                    style={{ marginBottom: 16 }}
+                />
+            )}
+
+            {submitError && (
+                <Alert
+                    type="error"
+                    showIcon
+                    message={submitError}
                     style={{ marginBottom: 16 }}
                 />
             )}
