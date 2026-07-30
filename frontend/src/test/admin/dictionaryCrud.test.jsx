@@ -30,9 +30,12 @@ const ITEMS = [
 let service
 const setupUser = () => userEvent.setup({ delay: null })
 
-const renderPage = () =>
-    render(
-        <QueryClientProvider client={makeTestQueryClient()}>
+let lastInvalidateSpy = null
+const renderPage = () => {
+    const queryClient = makeTestQueryClient()
+    lastInvalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+    return render(
+        <QueryClientProvider client={queryClient}>
             <ConfigProvider>
                 <DictionaryCrudPage
                     title="Activity Types"
@@ -44,6 +47,7 @@ const renderPage = () =>
             </ConfigProvider>
         </QueryClientProvider>
     )
+}
 
 const httpError = (status, data) => ({ response: { status, data } })
 const deferred = () => {
@@ -317,8 +321,14 @@ describe('gonderim: validation, cift gonderim, hata', () => {
                 screen.queryByRole('dialog', { name: /Add Activity Type/ })
             ).not.toBeInTheDocument()
         )
-        // Hedefli invalidation → liste yeniden cekilir.
-        await waitFor(() => expect(service.getAll.mock.calls.length).toBeGreaterThan(1))
+        // Hedefli invalidation: refetch SAYMAK yaris uretir, bu yuzden
+        // dogru anahtarin invalidate edildigi dogrulanir.
+        await waitFor(() => {
+            const keys = lastInvalidateSpy.mock.calls
+                .map((c) => c[0]?.queryKey?.[0])
+                .filter(Boolean)
+            expect(keys).toContain('activityTypes')
+        })
     })
 
     it('edit dogru id ve payload ile gonderilir', async () => {

@@ -81,12 +81,22 @@ const deferred = () => {
 }
 const httpError = (status, data) => ({ response: { status, data } })
 
-const renderTab = () =>
-    render(
-        <QueryClientProvider client={makeTestQueryClient()}>
+/** Render + invalidate casusu (refetch SAYMAK yaris uretiyordu). */
+const renderTab = () => {
+    const queryClient = makeTestQueryClient()
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+    const result = render(
+        <QueryClientProvider client={queryClient}>
             <SubProjectsTab />
         </QueryClientProvider>
     )
+    return { ...result, queryClient, invalidateSpy }
+}
+
+const invalidatedKeys = (spy) =>
+    Array.from(new Set(
+        spy.mock.calls.map((c) => c[0]?.queryKey?.[0]).filter((k) => typeof k === 'string')
+    ))
 
 /**
  * Diyalog BASLIK METNI uzerinden bulunur, erisilebilir ad uzerinden
@@ -376,17 +386,18 @@ describe('hata sunumu ve liste durumlari', () => {
             .toBeInTheDocument()
     })
 
-    it('mutasyon sonrasi Tasks tarafi da tazelenir', async () => {
+    it('mutasyon HEM admin listesini HEM Tasks tarafini invalidate eder', async () => {
         const user = setupUser()
-        renderTab()
+        const { invalidateSpy } = renderTab()
         await user.click(await screen.findByRole('button', { name: 'Edit Faz 1' }))
         const d = await dialog(/Edit Sub Project/)
         await user.click(within(d).getByRole('button', { name: /Save Changes/ }))
         await waitFor(() => expect(taskSubProjectService.update).toHaveBeenCalled())
-        // Admin listesi yeniden cekilir (Tasks tarafindaki
-        // `task-sub-projects` anahtari da invalidate edilir).
-        await waitFor(() =>
-            expect(taskSubProjectService.list.mock.calls.length).toBeGreaterThan(1)
-        )
+        await waitFor(() => {
+            const keys = invalidatedKeys(invalidateSpy)
+            expect(keys).toContain('admin-task-sub-projects')
+            // Tasks yuzeyi ayni veriyi baska anahtarla okur; o da tazelenir.
+            expect(keys).toContain('task-sub-projects')
+        })
     })
 })

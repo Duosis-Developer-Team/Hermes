@@ -63,12 +63,28 @@ const deferred = () => {
 }
 const httpError = (status, data) => ({ response: { status, data } })
 
-const renderGroups = () =>
-    render(
-        <QueryClientProvider client={makeTestQueryClient()}>
+/**
+ * Render + invalidate CASUSU. Onbellek etkisini "kac kez refetch oldu"
+ * diye SAYMAK yaris uretir (CI'da 1 kalip yerelde 2 olabiliyordu ve
+ * gercekten oyle oldu). Dogru sozlesme: dogru query anahtarinin
+ * invalidate EDILMESI — bu deterministiktir.
+ */
+const renderGroups = () => {
+    const queryClient = makeTestQueryClient()
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+    const result = render(
+        <QueryClientProvider client={queryClient}>
             <UserGroupsTab />
         </QueryClientProvider>
     )
+    return { ...result, queryClient, invalidateSpy }
+}
+
+/** Casusa dusen tum invalidate cagrilarinin kok anahtarlari. */
+const invalidatedKeys = (spy) =>
+    Array.from(new Set(
+        spy.mock.calls.map((c) => c[0]?.queryKey?.[0]).filter((k) => typeof k === 'string')
+    ))
 
 const groupDialog = () => screen.getByRole('dialog')
 const dlgButton = (name) => within(groupDialog()).getByRole('button', { name })
@@ -319,7 +335,7 @@ describe('uye ekleme / cikarma davranisi', () => {
 
     it('uye mutasyonu uyelik + grup + izin cache’lerini tazeler', async () => {
         const user = setupUser()
-        renderGroups()
+        const { invalidateSpy } = renderGroups()
         await expandGroup(user, 'Technical Team')
         await user.click(
             await screen.findByRole('button', { name: /Remove Bob Bit from group/ })
@@ -327,13 +343,14 @@ describe('uye ekleme / cikarma davranisi', () => {
         const dialog = await confirmDialog(/Remove member from group\?/)
         await user.click(confirmButton(dialog, /Remove/))
         await waitFor(() => expect(userGroupService.removeMember).toHaveBeenCalled())
-        // Uyelik degisti → uye listesi ve grup listesi yeniden cekilir.
-        await waitFor(() =>
-            expect(userGroupService.listMembers.mock.calls.length).toBeGreaterThan(1)
-        )
-        await waitFor(() =>
-            expect(userGroupService.list.mock.calls.length).toBeGreaterThan(1)
-        )
+        // Uyelik degisti: uye listesi, grup listesi ve Tasks tarafindaki
+        // izin gorunumu HEDEFLI olarak invalidate edilir.
+        await waitFor(() => {
+            const keys = invalidatedKeys(invalidateSpy)
+            expect(keys).toContain('admin-user-group-members')
+            expect(keys).toContain('admin-user-groups')
+            expect(keys).toContain('task-permissions')
+        })
     })
 })
 

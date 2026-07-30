@@ -73,12 +73,22 @@ const deferred = () => {
 }
 const httpError = (status, data) => ({ response: { status, data } })
 
-const renderRoles = () =>
-    render(
-        <QueryClientProvider client={makeTestQueryClient()}>
+/** Render + invalidate casusu (refetch SAYMAK yaris uretiyordu). */
+const renderRoles = () => {
+    const queryClient = makeTestQueryClient()
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+    const result = render(
+        <QueryClientProvider client={queryClient}>
             <RolesTab />
         </QueryClientProvider>
     )
+    return { ...result, queryClient, invalidateSpy }
+}
+
+const invalidatedKeys = (spy) =>
+    Array.from(new Set(
+        spy.mock.calls.map((c) => c[0]?.queryKey?.[0]).filter((k) => typeof k === 'string')
+    ))
 
 const roleDialog = () => screen.getByRole('dialog', { name: /Role|Rol/i })
 const inDialog = (label) => within(roleDialog()).getByRole('button', { name: label })
@@ -328,17 +338,17 @@ describe('liste durumlari', () => {
 })
 
 describe('cache etkisi', () => {
-    it('rol kaydi kullanici ve gorunurluk cache’lerini de tazeler', async () => {
+    it('rol kaydi rol listesini HEDEFLI invalidate eder', async () => {
         const user = setupUser()
-        renderRoles()
+        const { invalidateSpy } = renderRoles()
         await openEdit(user, 'Report Viewer')
         await user.click(inDialog('Update'))
         await waitFor(() => expect(rbacService.updateRole).toHaveBeenCalled())
-        // Rol izinleri degisti: rol listesi YENIDEN cekilir. (Kullanici
-        // rolleri ve mevcut kullanicinin izinleri ayri anahtarlardadir;
+        // Rol izinleri degisti: rol listesi invalidate edilir. (Kullanici
+        // rolleri ve mevcut kullanicinin izinleri AYRI anahtarlardadir;
         // onlarin invalidasyonu UsersPage tarafinda test edilir.)
         await waitFor(() =>
-            expect(rbacService.listRoles.mock.calls.length).toBeGreaterThan(1)
+            expect(invalidatedKeys(invalidateSpy)).toContain('rbac-roles')
         )
     })
 })
