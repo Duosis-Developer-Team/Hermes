@@ -235,3 +235,39 @@ describe('cift gonderim ve hata mesaji', () => {
         expect(screen.queryByText(/sqlalchemy/)).not.toBeInTheDocument()
     })
 })
+
+describe('liste durumu sozlesmesi', () => {
+    it('arama girdisinin ERISILEBILIR ADI vardir ve listeyi daraltir', async () => {
+        const user = setupUser()
+        renderUsers()
+        await screen.findByText('ada@x.com')
+        await user.type(screen.getByLabelText('Search Users'), 'bob')
+        await waitFor(() =>
+            expect(screen.queryByText('ada@x.com')).not.toBeInTheDocument()
+        )
+        expect(screen.getByText('bob@x.com')).toBeInTheDocument()
+    })
+
+    it('FILTRE sonucu yoklugu ILK KULLANIM boslugundan AYRIDIR', async () => {
+        const user = setupUser()
+        renderUsers()
+        await screen.findByText('ada@x.com')
+        await user.type(screen.getByLabelText('Search Users'), 'zzzz')
+        expect(await screen.findByText(/No users match “zzzz”/)).toBeInTheDocument()
+
+        authService.getUsers.mockResolvedValue({ data: [] })
+        renderUsers()
+        expect(await screen.findByText(/No users yet/)).toBeInTheDocument()
+    })
+
+    it('liste hatasinda RETRY sunulur — sessiz bos tablo YOK', async () => {
+        authService.getUsers.mockRejectedValueOnce({ response: { status: 503, data: {} } })
+        const user = setupUser()
+        renderUsers()
+        const retry = await screen.findByRole('button', { name: 'Retry' })
+        expect(screen.getByText(/server had a problem/i)).toBeInTheDocument()
+        authService.getUsers.mockResolvedValue({ data: USERS })
+        await user.click(retry)
+        expect(await screen.findByText('ada@x.com')).toBeInTheDocument()
+    })
+})

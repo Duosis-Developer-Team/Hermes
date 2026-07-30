@@ -27,7 +27,7 @@
  * arsivlemeye "Delete" DEMEZ.
  * =============================================================================
  */
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
     Alert, Button, Card, Form, Input, Modal, Space, Switch, Table, Tag,
     message,
@@ -147,7 +147,7 @@ function DictionaryCrudPage({
         setModalOpen(true)
     }
 
-    const openEdit = (item) => {
+    const openEdit = useCallback((item) => {
         setEditingItem(item)
         setFormError(null)
         // resetFields ZORUNLU: `setFieldsValue` SIG birlestirir, yani
@@ -161,7 +161,7 @@ function DictionaryCrudPage({
             is_active: item.is_active ?? true,
         })
         setModalOpen(true)
-    }
+    }, [form])
 
     const handleSubmit = async () => {
         // Cift gonderim kilidi KAYNAKTA.
@@ -235,9 +235,10 @@ function DictionaryCrudPage({
                 </Space>
             ),
         },
-        // `isDestroying` disinda bagimlilik yok: kolonlar her render'da
-        // yeniden uretilmez (rc-table kolon kimligine gore yeniden cizer).
-    ], [isDestroying])
+        // Bagimliliklar DURUST: kolonlar yalnizca gercekten degistiginde
+        // yeniden uretilir. `openEdit` useCallback ile stabil tutulur,
+        // aksi halde memo hicbir sey kazandirmazdi.
+    ], [isDestroying, codeColor, openEdit])
 
     // Ilk yukleme ile arkaplan yenilemesi AYRI: mevcut veri arkaplan
     // refetch sirasinda kaybolmaz.

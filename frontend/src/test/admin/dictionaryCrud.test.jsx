@@ -173,7 +173,7 @@ describe('modal lifecycle — bayat deger YOK', () => {
         const user = setupUser()
         renderPage()
         await screen.findByText('Coding')
-        const dialog = await openEditFor(user, 'Coding')
+        await openEditFor(user, 'Coding')
         await user.click(cancelBtn())
         await user.click(screen.getByRole('button', { name: 'Add Activity Type' }))
         const create = screen.getByRole('dialog', { name: /Add Activity Type/ })

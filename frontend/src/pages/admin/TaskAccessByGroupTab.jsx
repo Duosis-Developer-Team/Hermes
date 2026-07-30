@@ -46,6 +46,7 @@ import {
 import {
     errorText, failedTargets, runBulkOverrides,
 } from '../../features/admin/permissions/model/bulkOverrides'
+import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Member overrides panel — rendered inside each group's expanded row
@@ -84,9 +85,9 @@ function GroupMemberOverridesPanel({ group, allUsersById, groupPermission }) {
             refreshPermissionQueries()
         },
         onError: (err) => {
-            message.error(
-                err?.response?.data?.detail || 'Failed to save override.'
-            )
+            // Sunum katmani: sunucunun domain aciklamasi korunur,
+            // teknik govde ve 5xx icerigi kullaniciya gosterilmez.
+            message.error(normalizeApiError(err).message)
         },
     })
 
@@ -466,9 +467,9 @@ function AdditionalUsersSection({ users }) {
             queryClient.invalidateQueries({ queryKey: ['task-permissions'] })
         },
         onError: (err) => {
-            message.error(
-                err?.response?.data?.detail || 'Failed to update permissions.'
-            )
+            // Sunum katmani: sunucunun domain aciklamasi korunur,
+            // teknik govde ve 5xx icerigi kullaniciya gosterilmez.
+            message.error(normalizeApiError(err).message)
         },
     })
 
@@ -733,9 +734,9 @@ function TaskAccessByGroupTab() {
             queryClient.invalidateQueries({ queryKey: ['task-permissions'] })
         },
         onError: (err) => {
-            message.error(
-                err?.response?.data?.detail || 'Failed to update group default.'
-            )
+            // Sunum katmani: sunucunun domain aciklamasi korunur,
+            // teknik govde ve 5xx icerigi kullaniciya gosterilmez.
+            message.error(normalizeApiError(err).message)
         },
     })
 

@@ -100,7 +100,9 @@ function RolesTab() {
         staleTime: 5 * 60 * 1000,
     })
     const roles = rolesData?.roles || []
-    const catalog = catalogData?.permissions || []
+    // `catalogData?.permissions || []` her render'da YENI dizi uretir;
+    // memo bagimliligi surekli degisirdi. Referans stabil tutulur.
+    const catalog = useMemo(() => catalogData?.permissions || [], [catalogData])
     const grouped = useMemo(() => groupCatalog(catalog), [catalog])
 
     const invalidate = () => {

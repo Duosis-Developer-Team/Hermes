@@ -6,18 +6,25 @@
  * =============================================================================
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
     Card, Table, Button, Space, Modal, Form, Input, Select,
     message, Switch, Tag, InputNumber
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, WarningOutlined, ClockCircleOutlined } from '@ant-design/icons'
+import {
+    PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined,
+    WarningOutlined, ClockCircleOutlined, SearchOutlined,
+} from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { projectService, customerService, workLogService } from '../../services/api'
 
 const HOURS_PER_DAY = 8
 import DeleteModal from '../../components/common/DeleteModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
+import {
+    AdminErrorAlert, AdminRefreshHint,
+} from '../../features/admin/shared/AdminListStates'
+import { adminEmptyText } from '../../features/admin/shared/adminEmptyText'
 import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecycle'
 
 // Formda GERCEKTEN olan alanlar: API kaydindaki id/created_at gibi
@@ -32,7 +39,10 @@ function ProjectsPage() {
     const queryClient = useQueryClient()
 
     // Data fetching
-    const { data: projects = [], isLoading } = useQuery({
+    const [search, setSearch] = useState('')
+    const {
+        data: projects = [], isLoading, isFetching, isError, error, refetch,
+    } = useQuery({
         queryKey: ['projects', { include_inactive: true }],
         queryFn: () => projectService.getAll({ include_inactive: true }),
     })
@@ -142,6 +152,17 @@ function ProjectsPage() {
         setEditingId(null)
         form.resetFields()
     }
+
+    /** Arama: proje adi, kodu ve MUSTERI adinda. */
+    const query = search.trim().toLowerCase()
+    const filteredProjects = useMemo(() => {
+        if (!query) return projects
+        return projects.filter((p) =>
+            [p.name, p.code, p.customer_name]
+                .filter(Boolean)
+                .some((val) => String(val).toLowerCase().includes(query))
+        )
+    }, [projects, query])
 
     const isSaving = createMutation.isPending || updateMutation.isPending
     const isDestroying = archiveMutation.isPending || deleteMutation.isPending
@@ -264,18 +285,48 @@ function ProjectsPage() {
                 <p>Manage projects</p>
             </div>
 
+            <AdminErrorAlert error={isError ? error : null} onRetry={refetch} />
+
             <Card
-                title={`📋 Project List (${projects.length})`}
-                extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>New Project</Button>}
+                title={`📋 Project List (${filteredProjects.length})`}
+                extra={
+                    <Space wrap>
+                        <Input
+                            allowClear
+                            prefix={<SearchOutlined aria-hidden="true" />}
+                            placeholder="Search projects"
+                            aria-label="Search Projects"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            style={{ width: 220 }}
+                        />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
+                            New Project
+                        </Button>
+                    </Space>
+                }
             >
                 <Table
-                    dataSource={projects}
+                    dataSource={filteredProjects}
                     columns={columns}
                     rowKey="id"
-                    loading={isLoading}
+                    /* Ilk yukleme ile arkaplan yenilemesi AYRI. */
+                    loading={isLoading && projects.length === 0}
                     pagination={{ pageSize: 10 }}
                     showSorterTooltip={false}
                     scroll={{ x: 'max-content' }}
+                    locale={{
+                        emptyText: adminEmptyText({
+                            filtered: !!query,
+                            entityPlural: 'projects',
+                            createLabel: 'New Project',
+                            term: search.trim(),
+                        }),
+                    }}
+                />
+                <AdminRefreshHint
+                    isFetching={isFetching}
+                    hasData={projects.length > 0}
                 />
             </Card>
 

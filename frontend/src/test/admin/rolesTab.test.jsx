@@ -182,7 +182,7 @@ describe('modal lifecycle — bayat deger YOK', () => {
     it('Edit → Create temiz defaultlarla acilir', async () => {
         const user = setupUser()
         renderRoles()
-        const d = await openEdit(user, 'Report Viewer')
+        await openEdit(user, 'Report Viewer')
         await user.click(inDialog('Cancel'))
         await user.click(screen.getByRole('button', { name: /New Role/ }))
         const create = roleDialog()

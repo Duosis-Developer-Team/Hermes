@@ -15,13 +15,20 @@
  * =============================================================================
  */
 
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Card, Table, Button, Space, Modal, Form, Input, message, Select, Switch, Tag, Tabs } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, CrownOutlined } from '@ant-design/icons'
+import {
+    PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, CrownOutlined,
+    SearchOutlined,
+} from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authService, rbacService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
+import {
+    AdminErrorAlert, AdminRefreshHint,
+} from '../../features/admin/shared/AdminListStates'
+import { adminEmptyText } from '../../features/admin/shared/adminEmptyText'
 import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecycle'
 
 import UserGroupsTab from './UserGroupsTab'
@@ -45,11 +52,27 @@ export function UsersTab() {
     const openTokenRef = useRef(0)
     const queryClient = useQueryClient()
 
-    const { data: usersData, isLoading } = useQuery({
+    const [search, setSearch] = useState('')
+    const {
+        data: usersData, isLoading, isFetching, isError, error, refetch,
+    } = useQuery({
         queryKey: ['users'],
         queryFn: () => authService.getUsers(),
     })
-    const users = usersData?.data || []
+    // `usersData?.data || []` her render'da YENI bir dizi uretir; bu
+    // durumda asagidaki useMemo hic ise yaramaz. Referans stabil tutulur.
+    const users = useMemo(() => usersData?.data || [], [usersData])
+
+    /** Arama: e-posta ve tam adda. */
+    const query = search.trim().toLowerCase()
+    const filteredUsers = useMemo(() => {
+        if (!query) return users
+        return users.filter((u) =>
+            [u.email, u.full_name]
+                .filter(Boolean)
+                .some((val) => String(val).toLowerCase().includes(query))
+        )
+    }, [users, query])
 
     // Atanabilir roller (aktif) — kullanıcı modalındaki çoklu seçim için.
     const { data: rolesData } = useQuery({
@@ -238,8 +261,45 @@ export function UsersTab() {
 
     return (
         <>
-            <Card title={`📋 User List (${users.length})`} extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>New User</Button>}>
-                <Table dataSource={users} columns={columns} rowKey="id" loading={isLoading} pagination={{ pageSize: 10 }} scroll={{ x: 'max-content' }} />
+            <AdminErrorAlert error={isError ? error : null} onRetry={refetch} />
+
+            <Card
+                title={`📋 User List (${filteredUsers.length})`}
+                extra={
+                    <Space wrap>
+                        <Input
+                            allowClear
+                            prefix={<SearchOutlined aria-hidden="true" />}
+                            placeholder="Search users"
+                            aria-label="Search Users"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            style={{ width: 220 }}
+                        />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
+                            New User
+                        </Button>
+                    </Space>
+                }
+            >
+                <Table
+                    dataSource={filteredUsers}
+                    columns={columns}
+                    rowKey="id"
+                    /* Ilk yukleme ile arkaplan yenilemesi AYRI. */
+                    loading={isLoading && users.length === 0}
+                    pagination={{ pageSize: 10 }}
+                    scroll={{ x: 'max-content' }}
+                    locale={{
+                        emptyText: adminEmptyText({
+                            filtered: !!query,
+                            entityPlural: 'users',
+                            createLabel: 'New User',
+                            term: search.trim(),
+                        }),
+                    }}
+                />
+                <AdminRefreshHint isFetching={isFetching} hasData={users.length > 0} />
             </Card>
             <Modal title={editingId ? '✏️ Edit User' : '➕ New User'} open={modalOpen} onCancel={handleCloseModal} footer={null}>
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>

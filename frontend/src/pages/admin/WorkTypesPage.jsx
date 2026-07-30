@@ -6,13 +6,19 @@
  * =============================================================================
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Card, Table, Button, Space, Modal, Form, Input, message, Switch, Tag } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import {
+    PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
+} from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { workTypeService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
+import {
+    AdminErrorAlert, AdminRefreshHint,
+} from '../../features/admin/shared/AdminListStates'
+import { adminEmptyText } from '../../features/admin/shared/adminEmptyText'
 import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecycle'
 
 // Formda GERCEKTEN olan alanlar. API kaydindaki id/created_at gibi
@@ -26,7 +32,10 @@ function WorkTypesPage() {
     const [editingId, setEditingId] = useState(null)
     const queryClient = useQueryClient()
 
-    const { data: workTypes = [], isLoading } = useQuery({
+    const [search, setSearch] = useState('')
+    const {
+        data: workTypes = [], isLoading, isFetching, isError, error, refetch,
+    } = useQuery({
         queryKey: ['workTypes', { include_inactive: true }],
         queryFn: () => workTypeService.getAll({ include_inactive: true }),
     })
@@ -106,6 +115,17 @@ function WorkTypesPage() {
 
     const handleCloseModal = () => { setModalOpen(false); setEditingId(null); form.resetFields() }
 
+    /** Arama: ad ve kodda. */
+    const query = search.trim().toLowerCase()
+    const filteredWorkTypes = useMemo(() => {
+        if (!query) return workTypes
+        return workTypes.filter((w) =>
+            [w.name, w.code]
+                .filter(Boolean)
+                .some((val) => String(val).toLowerCase().includes(query))
+        )
+    }, [workTypes, query])
+
     const isSaving = createMutation.isPending || updateMutation.isPending
     const isDestroying = archiveMutation.isPending || deleteMutation.isPending
 
@@ -151,8 +171,48 @@ function WorkTypesPage() {
                 <h1>Work Types</h1>
                 <p>Manage work types</p>
             </div>
-            <Card title={`📋 Work Type List (${workTypes.length})`} extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>New Work Type</Button>}>
-                <Table dataSource={workTypes} columns={columns} rowKey="id" loading={isLoading} pagination={{ pageSize: 10 }} scroll={{ x: 'max-content' }} />
+            <AdminErrorAlert error={isError ? error : null} onRetry={refetch} />
+
+            <Card
+                title={`📋 Work Type List (${filteredWorkTypes.length})`}
+                extra={
+                    <Space wrap>
+                        <Input
+                            allowClear
+                            prefix={<SearchOutlined aria-hidden="true" />}
+                            placeholder="Search work types"
+                            aria-label="Search Work Types"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            style={{ width: 200 }}
+                        />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
+                            New Work Type
+                        </Button>
+                    </Space>
+                }
+            >
+                <Table
+                    dataSource={filteredWorkTypes}
+                    columns={columns}
+                    rowKey="id"
+                    /* Ilk yukleme ile arkaplan yenilemesi AYRI. */
+                    loading={isLoading && workTypes.length === 0}
+                    pagination={{ pageSize: 10 }}
+                    scroll={{ x: 'max-content' }}
+                    locale={{
+                        emptyText: adminEmptyText({
+                            filtered: !!query,
+                            entityPlural: 'work types',
+                            createLabel: 'New Work Type',
+                            term: search.trim(),
+                        }),
+                    }}
+                />
+                <AdminRefreshHint
+                    isFetching={isFetching}
+                    hasData={workTypes.length > 0}
+                />
             </Card>
             <Modal
                 title={editingId ? 'Edit Work Type' : 'New Work Type'}

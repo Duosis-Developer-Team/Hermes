@@ -6,16 +6,22 @@
  * =============================================================================
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
     Card, Table, Button, Space, Modal, Form, Input,
     message, Switch, Tag
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import {
+    PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
+} from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { customerService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
+import {
+    AdminErrorAlert, AdminRefreshHint,
+} from '../../features/admin/shared/AdminListStates'
+import { adminEmptyText } from '../../features/admin/shared/adminEmptyText'
 import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecycle'
 
 // Formda GERCEKTEN olan alanlar: API kaydindaki id/created_at gibi
@@ -30,7 +36,10 @@ function CustomersPage() {
     const queryClient = useQueryClient()
 
     // Data fetching
-    const { data: customers = [], isLoading } = useQuery({
+    const [search, setSearch] = useState('')
+    const {
+        data: customers = [], isLoading, isFetching, isError, error, refetch,
+    } = useQuery({
         queryKey: ['customers', { include_inactive: true }],
         queryFn: () => customerService.getAll({ include_inactive: true }),
     })
@@ -103,6 +112,17 @@ function CustomersPage() {
         setEditingId(null)
         form.resetFields()
     }
+
+    /** Arama: ad, kod ve iletisim alanlarinda. */
+    const query = search.trim().toLowerCase()
+    const filteredCustomers = useMemo(() => {
+        if (!query) return customers
+        return customers.filter((c) =>
+            [c.name, c.code, c.contact_person, c.email]
+                .filter(Boolean)
+                .some((val) => String(val).toLowerCase().includes(query))
+        )
+    }, [customers, query])
 
     const isSaving = createMutation.isPending || updateMutation.isPending
     const isDestroying = archiveMutation.isPending || deleteMutation.isPending
@@ -210,22 +230,50 @@ function CustomersPage() {
                 title="Customers"
                 subtitle="Manage user accounts and organization details"
                 extra={
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
-                        New Customer
-                    </Button>
+                    <Space wrap>
+                        <Input
+                            allowClear
+                            prefix={<SearchOutlined aria-hidden="true" />}
+                            placeholder="Search customers"
+                            aria-label="Search Customers"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            style={{ width: 220 }}
+                        />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
+                            New Customer
+                        </Button>
+                    </Space>
                 }
             />
+
+            <AdminErrorAlert error={isError ? error : null} onRetry={refetch} />
+
             <Card
-                title={`📋 Customer List (${customers.length})`}
+                title={`📋 Customer List (${filteredCustomers.length})`}
             >
                 <Table
-                    dataSource={customers}
+                    dataSource={filteredCustomers}
                     columns={columns}
                     rowKey="id"
-                    loading={isLoading}
+                    /* Ilk yukleme ile arkaplan yenilemesi AYRI: mevcut
+                       veri refetch sirasinda kaybolmaz. */
+                    loading={isLoading && customers.length === 0}
                     pagination={{ pageSize: 10 }}
                     showSorterTooltip={false}
                     scroll={{ x: 'max-content' }}
+                    locale={{
+                        emptyText: adminEmptyText({
+                            filtered: !!query,
+                            entityPlural: 'customers',
+                            createLabel: 'New Customer',
+                            term: search.trim(),
+                        }),
+                    }}
+                />
+                <AdminRefreshHint
+                    isFetching={isFetching}
+                    hasData={customers.length > 0}
                 />
             </Card>
 
