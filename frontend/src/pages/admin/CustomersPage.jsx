@@ -8,7 +8,7 @@
 
 import { useMemo, useState } from 'react'
 import {
-    Card, Table, Button, Space, Modal, Form, Input,
+    Card, Table, Button, Space, Modal, Form, Input, InputNumber, DatePicker,
     message, Switch, Tag
 } from 'antd'
 import {
@@ -23,10 +23,23 @@ import {
 } from '../../features/admin/shared/AdminListStates'
 import { adminEmptyText } from '../../features/admin/shared/adminEmptyText'
 import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecycle'
+import {
+    contractToForm, contractToPayload,
+} from '../../features/admin/shared/contractFields'
 
 // Formda GERCEKTEN olan alanlar: API kaydindaki id/created_at gibi
 // alanlar form store'una sizmaz, eksik alan da bayat deger BIRAKMAZ.
-const FORM_SHAPE = { name: '', is_active: true }
+/**
+ * Backend sozlesmesi (schemas/customer.py): CustomerCreate ve
+ * CustomerUpdate ikisi de `contract_start_date` + `contract_duration_days`
+ * KABUL EDIYOR ve CustomerResponse bunlari DONDURUYOR — ama form bu iki
+ * alani hic sunmuyordu, yani musteri sozlesmesi arayuzden hic
+ * yonetilemiyordu. Alanlar uydurulmadi; var olan sozlesme aciga cikarildi.
+ */
+const FORM_SHAPE = {
+    name: '', is_active: true,
+    contract_start_date: null, contract_duration_days: undefined,
+}
 import { Page, PageHeader } from '../../components/ui'
 
 function CustomersPage() {
@@ -99,7 +112,11 @@ function CustomersPage() {
             setEditingId(record.id)
             // resetAndFill: Edit A → Edit B gecisinde A'nin degeri TASINMAZ
             // (`setFieldsValue` tek basina SIG birlestirir).
-            resetAndFill(form, pickFields(record, FORM_SHAPE))
+            resetAndFill(form, {
+                ...pickFields(record, FORM_SHAPE),
+                // Tarih alani DatePicker icin dayjs'e cevrilir.
+                ...contractToForm(record),
+            })
         } else {
             setEditingId(null)
             resetAndFill(form, null)
@@ -131,10 +148,11 @@ function CustomersPage() {
         // Cift gonderim kilidi KAYNAKTA: buton `loading`i bir render GEC
         // gelir, arada iki mutation acilabiliyordu.
         if (isSaving) return
+        const data = { ...values, ...contractToPayload(values) }
         if (editingId) {
-            updateMutation.mutate({ id: editingId, data: values })
+            updateMutation.mutate({ id: editingId, data })
         } else {
-            createMutation.mutate(values)
+            createMutation.mutate(data)
         }
     }
 
@@ -288,9 +306,38 @@ function CustomersPage() {
                     <Form.Item
                         name="name"
                         label="Customer Name"
-                        rules={[{ required: true, message: 'Customer name is required' }]}
+                        rules={[
+                            {
+                                required: true, whitespace: true,
+                                message: 'Customer name is required',
+                            },
+                        ]}
                     >
-                        <Input placeholder="e.g. ABC Tech Inc." />
+                        <Input placeholder="e.g. ABC Tech Inc." maxLength={255} />
+                    </Form.Item>
+
+                    {/* Sozlesme alanlari: backend ikisini de opsiyonel kabul
+                        eder, bu yuzden zorunlu yapilmadi. */}
+                    <Form.Item
+                        name="contract_start_date"
+                        label="Contract Start Date — Optional"
+                    >
+                        <DatePicker
+                            style={{ width: '100%' }}
+                            format="YYYY-MM-DD"
+                            placeholder="Select start date"
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="contract_duration_days"
+                        label="Contract Duration (Days) — Optional"
+                    >
+                        <InputNumber
+                            min={1}
+                            placeholder="e.g. 365"
+                            style={{ width: '100%' }}
+                        />
                     </Form.Item>
 
 

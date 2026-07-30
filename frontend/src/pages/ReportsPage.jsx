@@ -18,8 +18,13 @@ import {
     CloseCircleOutlined,
     CalendarOutlined
 } from '@ant-design/icons'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useMutation } from '@tanstack/react-query'
 import dayjs from 'dayjs'
+
+import { normalizeApiError } from '../features/admin/shared/normalizeApiError'
+import {
+    AdminErrorAlert, AdminRefreshHint,
+} from '../features/admin/shared/AdminListStates'
 import {
     reportsService,
     authService,
@@ -46,9 +51,16 @@ function formatDuration(decimalHours) {
 // =============================================================================
 
 function ReportsPage() {
-    // RBAC R3: sayfa yetkisi reports.view iznine bakar
+    // RBAC R3: sayfa yetkisi reports.view iznine bakar.
     const canViewReports = useAuthStore((s) => s.can)('reports.view')
-    useAuthStore((s) => s.permissions)
+    const permissions = useAuthStore((s) => s.permissions)
+    /*
+     * `can()` izinler HENUZ YUKLENMEMISKEN (null) de `false` doner ve bu
+     * sayfa bunu dogrudan "Access Restricted" olarak gosteriyordu:
+     * yetkili kullanici, izinler gelene kadar YANLIS bir ret ekrani
+     * goruyordu. Ucuncu durum gerekli — "henuz bilmiyoruz".
+     */
+    const permissionsLoaded = Array.isArray(permissions)
 
     // ── Filter State ──────────────────────────────────────────────────────────
     const [dateRange, setDateRange] = useState([
@@ -117,6 +129,15 @@ function ReportsPage() {
     }, [platformsData])
 
     // ── Access Control ────────────────────────────────────────────────────────
+    if (!permissionsLoaded) {
+        // Izinler bilinmiyor: NE rapor NE ret gosterilir.
+        return (
+            <div style={{ padding: 40, textAlign: 'center' }}>
+                <Spin />
+            </div>
+        )
+    }
+
     if (!canViewReports) {
         return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>Access Restricted</div>
     }
@@ -332,7 +353,9 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
         selectedUsers, selectedCustomers, selectedProjects, selectedTypes, selectedPlatforms
     ]
 
-    const { data: jsonResponse, isLoading, isFetching } = useQuery({
+    const {
+        data: jsonResponse, isLoading, isFetching, isError, error, refetch,
+    } = useQuery({
         queryKey,
         queryFn: () => reportsService.getJsonUserLogs({
             start_date: startDate,
@@ -344,14 +367,50 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             platform_ids: selectedPlatforms
         }),
         enabled: !!startDate && !!endDate,
-        keepPreviousData: true
+        /*
+         * TanStack Query v5'te `keepPreviousData` KALDIRILDI; buradaki
+         * `keepPreviousData: true` sessizce yok sayiliyordu, yani her
+         * filtre degisiminde tablo bosaliyor ve yeniden doluyordu.
+         * v5 karsiligi `placeholderData`dir.
+         *
+         * Yaris konusunda ek onleme gerek YOK: filtreler query key'in
+         * PARCASI oldugu icin her kombinasyon kendi cache girdisine
+         * yazar; gecikmis bir yanit yeni secimin sonucunu EZEMEZ.
+         */
+        placeholderData: keepPreviousData,
     })
 
-    const logs = jsonResponse?.data || []
+    /**
+     * Satir anahtari VERIDEN turetilir. Eskiden `rowKey={(r, i) => ...}`
+     * kullaniliyordu; AntD 5.x'te `rowKey`in `index` parametresi
+     * DEPRECATED (siralama/filtreleme sonrasi ayni index farkli satiri
+     * gosterebilir). Bu uc kayit `id` DONDURMUYOR, bu yuzden anahtar
+     * satirin kendi alanlarindan uretilir; birebir ayni iki kayit varsa
+     * deterministik bir sayac ile ayrilir.
+     */
+    const logs = useMemo(() => {
+        const raw = jsonResponse?.data || []
+        const seen = new Map()
+        return raw.map((row) => {
+            const base = [
+                row.date, row.user_name, row.customer_name, row.project_name,
+                row.work_type, row.activity_type, row.platform_name,
+                row.duration, row.description,
+            ].join('|')
+            const n = (seen.get(base) || 0) + 1
+            seen.set(base, n)
+            return { ...row, _rowKey: n === 1 ? base : `${base}#${n}` }
+        })
+    }, [jsonResponse])
     const totalHours = useMemo(() => logs.reduce((sum, l) => sum + (l.duration || 0), 0), [logs])
     const entryCount = logs.length
 
-    const { mutate: exportCsv, isPending: exportLoading } = useMutation({
+    const exportMutation = useMutation({
+        /*
+         * Indirilen dosyanin filtresi ile EKRANDAKI filtre ayni kaynaktan
+         * gelir: asagidaki parametreler tablonun `queryKey`iyle birebir
+         * ayni degerleri kullanir.
+         */
         mutationFn: () => reportsService.exportExcel({
             start_date: startDate,
             end_date: endDate,
@@ -361,9 +420,35 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             work_type_ids: selectedTypes,
             platform_ids: selectedPlatforms
         }),
-        onSuccess: () => message.success('CSV export started'),
-        onError: () => message.error('Export failed')
+        // Dosya gercekten uretildikten SONRA konusuruz: eskiden
+        // "export started" deniyordu, oysa mutation cozüldügunde
+        // indirme ya olmustu ya da olmamisti.
+        onSuccess: (result) => {
+            message.success(`Downloaded ${result?.filename || 'report'}`)
+        },
+        onError: (err) => {
+            /*
+             * Basarisiz indirme BASARI gibi gosterilmez.
+             *
+             * Indirme yardimcisi, sunucunun JSON hata govdesindeki
+             * aciklamayi (orn. "Report window too large.") YEREL bir
+             * Error olarak firlatir — HTTP yaniti tasimaz. Bu yuzden
+             * dogrudan `normalizeApiError`e verilirse "sunucuya
+             * ulasilamiyor" diye siniflanip domain mesaji KAYBOLUR.
+             * Yardimci zaten teknik govdeyi disarida birakiyor, bu
+             * yuzden onun mesaji guvenle gosterilebilir.
+             */
+            const local = err?.isDownloadError && err?.message
+            message.error(local || normalizeApiError(err).message)
+        },
     })
+    const exportLoading = exportMutation.isPending
+    const exportCsv = () => {
+        // Cift tetikleme kilidi KAYNAKTA: butonun `disabled` olmasi bir
+        // render GEC geldigi icin arada ikinci indirme baslayabiliyordu.
+        if (exportLoading) return
+        exportMutation.mutate()
+    }
 
     const columns = [
         {
@@ -498,10 +583,24 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                     </div>
                 </Col>
                 <Col xs={24} sm={8}>
-                    <div
+                    {/*
+                      * Birincil aksiyon `<div onClick>` idi: klavyeyle
+                      * ERISILEMIYOR, ekran okuyucuya buton olarak
+                      * gorunmuyor ve adi yoktu. Gorsel duzen aynen
+                      * korunarak gercek bir butona cevrildi.
+                      */}
+                    <button
+                        type="button"
                         className="stat-card"
-                        onClick={() => !exportLoading && exportCsv()}
+                        onClick={exportCsv}
+                        disabled={exportLoading}
+                        aria-busy={exportLoading}
+                        aria-label="Download CSV — exports the current filter view"
                         style={{
+                            border: '1px solid var(--Blue500)',
+                            font: 'inherit',
+                            textAlign: 'left',
+                            width: '100%',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -521,13 +620,15 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                             <div style={{ color: 'var(--Blue400)', fontWeight: 600, fontSize: 14 }}>Download CSV</div>
                             <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 2 }}>Exports current filter view</div>
                         </div>
-                    </div>
+                    </button>
                 </Col>
             </Row>
 
             {/* ── Data Table ────────────────────────────────────────────────── */}
+            <AdminErrorAlert error={isError ? error : null} onRetry={refetch} />
+
             <div className="content-card">
-                {logs.length === 0 && !isLoading ? (
+                {logs.length === 0 && !isLoading && !isError ? (
                     <div style={{ padding: 60, textAlign: 'center' }}>
                         <Empty
                             description={
@@ -539,7 +640,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                     <Table
                         dataSource={logs}
                         columns={columns}
-                        rowKey={(r, i) => `${r.date}-${r.user_name}-${r.project_name}-${i}`}
+                        rowKey="_rowKey"
                         pagination={{
                             defaultPageSize: 25,
                             showSizeChanger: true,
@@ -548,11 +649,16 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                                 <span style={{ color: 'var(--text-muted)' }}>{total} entries</span>
                             )
                         }}
-                        loading={isLoading || isFetching}
+                        /*
+                         * Ilk yukleme ile arkaplan yenilemesi AYRI: elde
+                         * veri varken tablo spinner'in altinda kaybolmaz.
+                         */
+                        loading={isLoading && logs.length === 0}
                         showSorterTooltip={false}
                         scroll={{ x: 1100, y: 520 }}
                     />
                 )}
+                <AdminRefreshHint isFetching={isFetching} hasData={logs.length > 0} />
             </div>
         </div>
     )

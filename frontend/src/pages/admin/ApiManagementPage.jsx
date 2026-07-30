@@ -19,36 +19,14 @@
 
 import { useMemo, useState } from 'react'
 import {
-    Alert,
-    Button,
-    Checkbox,
-    DatePicker,
-    Form,
-    Input,
-    InputNumber,
-    Modal,
-    Select,
-    Space,
-    Table,
-    Tag,
-    Tooltip,
-    message,
+    Button, DatePicker, Input, Modal, Select, Space, Table, Tag, Tooltip, message
 } from 'antd'
 import {
-    ApiOutlined,
-    CopyOutlined,
-    DownOutlined,
-    EyeInvisibleOutlined,
-    EyeOutlined,
-    FileTextOutlined,
-    KeyOutlined,
-    PlusOutlined,
-    ReloadOutlined,
-    SafetyCertificateOutlined,
-    StopOutlined,
-    UnorderedListOutlined,
+    ApiOutlined, FileTextOutlined, KeyOutlined, PlusOutlined, ReloadOutlined, SafetyCertificateOutlined, StopOutlined, UnorderedListOutlined
 } from '@ant-design/icons'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+    keepPreviousData, useMutation, useQuery, useQueryClient,
+} from '@tanstack/react-query'
 import dayjs from 'dayjs'
 
 import {
@@ -62,456 +40,20 @@ import DangerConfirmModal from '../../components/common/DangerConfirmModal'
 import './TaskManagementPage.css'
 import './ApiManagementPage.css'
 
-const ENV_META = {
-    dev: { label: 'Development', color: '#f59e0b' },
-    live: { label: 'Live', color: '#22a06b' },
-}
-const TYPE_LABEL = { service: 'Service', user: 'User-bound' }
-const BINDING_LABEL = {
-    global: 'Global (everything)',
-    user: 'User',
-    group: 'Group',
-    customer: 'Customer',
-    project: 'Project',
-}
+/*
+ * Sorumluluk sinirlari (Sprint 6A/6C): bu dosya artik YALNIZCA
+ * orkestrasyon yapar — sorgular, mutation'lar, onay akislari ve bolum
+ * duzeni. Saf sozlukler, sunum kabuklari ve iki modal kendi
+ * modullerinde yasar. Davranis DEGISMEDI.
+ */
+import {
+    BINDING_LABEL, ENV_META, SCOPE_HELP, TYPE_LABEL, fmtDate, fmtDateTime,
+} from '../../features/api-management/model/format'
+import { Section, StatCard } from '../../features/api-management/components/Shell'
+import TokenOnceModal from '../../features/api-management/components/TokenOnceModal'
+import ClientModal from '../../features/api-management/modals/ClientModal'
+import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 
-function fmtDate(v) {
-    return v ? dayjs(v).format('DD MMM YYYY') : '—'
-}
-function fmtDateTime(v) {
-    return v ? dayjs(v).format('DD MMM YYYY HH:mm') : '—'
-}
-
-// =============================================================================
-// Section shell (PM Configurations ile ayni kalip)
-// =============================================================================
-
-function Section({ icon, title, subtitle, count, accent, open, onToggle, children }) {
-    return (
-        <section
-            className={`tm-section${open ? ' is-open' : ''}`}
-            style={{ '--tm-accent': accent }}
-        >
-            <button
-                type="button"
-                className="tm-section-head"
-                onClick={onToggle}
-                aria-expanded={open}
-            >
-                <span className="tm-section-icon">{icon}</span>
-                <span className="tm-section-titles">
-                    <span className="tm-section-title">{title}</span>
-                    {subtitle && (
-                        <span className="tm-section-sub">{subtitle}</span>
-                    )}
-                </span>
-                {typeof count === 'number' && (
-                    <span className="tm-section-count">{count}</span>
-                )}
-                <DownOutlined className="tm-section-chevron" />
-            </button>
-            <div className="tm-section-body-wrap">
-                <div className="tm-section-body">
-                    <div className="tm-section-inner">{children}</div>
-                </div>
-            </div>
-        </section>
-    )
-}
-
-function StatCard({ icon, label, value, accent }) {
-    return (
-        <div className="tm-stat" style={{ '--tm-accent': accent }}>
-            <span className="tm-stat-icon">{icon}</span>
-            <div className="tm-stat-body">
-                <div className="tm-stat-value">{value}</div>
-                <div className="tm-stat-label">{label}</div>
-            </div>
-        </div>
-    )
-}
-
-// =============================================================================
-// Token-once modal — plaintext'in gorundugu TEK yer
-// =============================================================================
-
-function TokenOnceModal({ issued, onDone }) {
-    const [copied, setCopied] = useState(false)
-    const [confirmed, setConfirmed] = useState(false)
-    const [masked, setMasked] = useState(false)
-
-    if (!issued) return null
-    const token = issued.token
-
-    const copy = async () => {
-        try {
-            await navigator.clipboard.writeText(token)
-            setCopied(true)
-            message.success('Token copied to clipboard.')
-        } catch {
-            message.error('Copy failed — select and copy manually.')
-        }
-    }
-
-    return (
-        <Modal
-            open
-            title="API token created"
-            closable={false}
-            maskClosable={false}
-            keyboard={false}
-            footer={
-                <Button
-                    type="primary"
-                    disabled={!confirmed}
-                    onClick={onDone}
-                >
-                    Done — token stored securely
-                </Button>
-            }
-            width={640}
-            destroyOnHidden
-        >
-            <Alert
-                type="warning"
-                showIcon
-                message="This token will not be shown again. Store it securely now."
-                style={{ marginBottom: 16 }}
-            />
-            <div className="am-token-box">
-                <code className="am-token-value">
-                    {masked
-                        ? `${token.slice(0, 12)}${'•'.repeat(24)}`
-                        : token}
-                </code>
-                <Space>
-                    <Tooltip title={masked ? 'Show' : 'Hide'}>
-                        <Button
-                            size="small"
-                            icon={
-                                masked ? (
-                                    <EyeOutlined />
-                                ) : (
-                                    <EyeInvisibleOutlined />
-                                )
-                            }
-                            onClick={() => setMasked((m) => !m)}
-                        />
-                    </Tooltip>
-                    <Button
-                        size="small"
-                        type="primary"
-                        icon={<CopyOutlined />}
-                        onClick={copy}
-                    >
-                        Copy
-                    </Button>
-                </Space>
-            </div>
-            <Checkbox
-                checked={confirmed}
-                onChange={(e) => setConfirmed(e.target.checked)}
-                style={{ marginTop: 16 }}
-            >
-                I have copied and securely stored this token.
-            </Checkbox>
-            {!copied && confirmed && (
-                <div className="am-token-hint">
-                    Tip: use the Copy button to avoid typos.
-                </div>
-            )}
-        </Modal>
-    )
-}
-
-// =============================================================================
-// Client create/edit modal (guided) + bindings editor
-// =============================================================================
-
-const SCOPE_HELP = {
-    'tasks:read': 'Read work items',
-    'tasks:write': 'Create & update work items',
-    'tasks:comment': 'Comment on work items',
-    'tasks:complete': 'Change work item status',
-    'customers:read': 'Read customers',
-    'projects:read': 'Read projects',
-    'work-logs:read': 'Read work logs',
-    'work-logs:write': 'Create work logs',
-    'meetings:read': 'Read meetings',
-    'users:read': 'Read user directory',
-    'groups:read': 'Read groups',
-}
-
-function ClientModal({ open, editing, scopes, pickers, onClose, onSubmit, saving }) {
-    const [form] = Form.useForm()
-    const clientType = Form.useWatch('client_type', form) || 'service'
-    const bindings = Form.useWatch('access', form) || []
-    const hasGlobal = bindings.some((b) => b?.access_type === 'global')
-
-    const scopeOptions = useMemo(
-        () =>
-            scopes.map((s) => ({
-                value: s,
-                label: `${s} — ${SCOPE_HELP[s] || ''}`,
-            })),
-        [scopes]
-    )
-
-    const bindingTypeOptions = useMemo(() => {
-        const opts = [
-            { value: 'user', label: 'User' },
-            { value: 'group', label: 'Group' },
-            { value: 'customer', label: 'Customer' },
-            { value: 'project', label: 'Project' },
-        ]
-        // Kural: global yalniz basina; user-bound client global alamaz.
-        if (clientType !== 'user' && bindings.length <= 1) {
-            opts.unshift({ value: 'global', label: BINDING_LABEL.global })
-        }
-        return opts
-    }, [clientType, bindings.length])
-
-    const targetOptions = (type) => pickers[type] || []
-
-    const handleFinish = (values) => {
-        const access = (values.access || []).filter(Boolean).map((b) => ({
-            access_type: b.access_type,
-            target_id: b.access_type === 'global' ? null : b.target_id,
-        }))
-        onSubmit({
-            name: values.name?.trim(),
-            description: values.description || null,
-            client_type: values.client_type,
-            bound_user_id:
-                values.client_type === 'user' ? values.bound_user_id : null,
-            environment: values.environment,
-            scopes: values.scopes || [],
-            rate_limit_per_min: values.rate_limit_per_min || null,
-            access,
-        })
-    }
-
-    return (
-        <Modal
-            open={open}
-            title={editing ? 'Edit API Client' : 'Create API Client'}
-            okText={editing ? 'Save Changes' : 'Create Client'}
-            onOk={() => form.submit()}
-            onCancel={onClose}
-            confirmLoading={saving}
-            width={680}
-            destroyOnHidden
-        >
-            <Form
-                form={form}
-                layout="vertical"
-                onFinish={handleFinish}
-                initialValues={
-                    editing
-                        ? {
-                              name: editing.name,
-                              description: editing.description,
-                              client_type: editing.client_type,
-                              bound_user_id: editing.bound_user_id,
-                              environment: editing.environment,
-                              scopes: editing.scopes,
-                              rate_limit_per_min: editing.rate_limit_per_min,
-                              access: editing.access?.map((b) => ({
-                                  access_type: b.access_type,
-                                  target_id: b.target_id,
-                              })),
-                          }
-                        : {
-                              client_type: 'service',
-                              environment: 'dev',
-                              scopes: [],
-                              access: [],
-                          }
-                }
-            >
-                <Form.Item
-                    label="Client Name"
-                    name="name"
-                    rules={[
-                        { required: true, message: 'Name is required.' },
-                        { min: 2, max: 100 },
-                    ]}
-                >
-                    <Input placeholder="e.g. Reporting Bot" maxLength={100} />
-                </Form.Item>
-                <Form.Item label="Description" name="description">
-                    <Input.TextArea
-                        rows={2}
-                        maxLength={2000}
-                        placeholder="What integrates through this client?"
-                    />
-                </Form.Item>
-                <div className="am-form-row">
-                    <Form.Item
-                        label="Client Type"
-                        name="client_type"
-                        tooltip="Service: server-to-server integration. User-bound: acts on behalf of one Hermes user and can never see more than they can."
-                    >
-                        <Select
-                            disabled={!!editing}
-                            options={[
-                                { value: 'service', label: 'Service' },
-                                { value: 'user', label: 'User-bound' },
-                            ]}
-                        />
-                    </Form.Item>
-                    <Form.Item
-                        label="Environment"
-                        name="environment"
-                        tooltip="Development tokens only work on the dev deployment; Live tokens only on the live deployment."
-                    >
-                        <Select
-                            disabled={!!editing}
-                            options={[
-                                { value: 'dev', label: 'Development' },
-                                { value: 'live', label: 'Live' },
-                            ]}
-                        />
-                    </Form.Item>
-                    <Form.Item
-                        label="Rate Limit (req/min)"
-                        name="rate_limit_per_min"
-                        tooltip="Empty = default 60 requests per minute."
-                    >
-                        <InputNumber
-                            min={1}
-                            max={10000}
-                            style={{ width: '100%' }}
-                            placeholder="60"
-                        />
-                    </Form.Item>
-                </div>
-                {clientType === 'user' && (
-                    <Form.Item
-                        label="Bound Hermes User"
-                        name="bound_user_id"
-                        rules={[
-                            {
-                                required: true,
-                                message:
-                                    'A user-bound client requires a bound user.',
-                            },
-                        ]}
-                    >
-                        <Select
-                            showSearch
-                            optionFilterProp="label"
-                            options={targetOptions('user')}
-                            placeholder="Select the Hermes user this client acts as"
-                            disabled={!!editing}
-                        />
-                    </Form.Item>
-                )}
-                <Form.Item
-                    label="Scopes"
-                    name="scopes"
-                    tooltip="What operations the client may perform. Data visibility is controlled separately by access bindings below."
-                >
-                    <Select
-                        mode="multiple"
-                        options={scopeOptions}
-                        placeholder="Select allowed operations"
-                        maxTagCount="responsive"
-                    />
-                </Form.Item>
-
-                <div className="am-bindings-label">
-                    Access bindings
-                    <span className="am-bindings-hint">
-                        Which data the client can see. No bindings = no
-                        business data. Global cannot be combined with
-                        narrower bindings.
-                    </span>
-                </div>
-                <Form.List name="access">
-                    {(fields, { add, remove }) => (
-                        <>
-                            {fields.map((field) => {
-                                const row = bindings[field.name] || {}
-                                return (
-                                    <div
-                                        key={field.key}
-                                        className="am-binding-row"
-                                    >
-                                        <Form.Item
-                                            name={[field.name, 'access_type']}
-                                            rules={[{ required: true }]}
-                                            style={{ marginBottom: 0 }}
-                                        >
-                                            <Select
-                                                placeholder="Type"
-                                                options={bindingTypeOptions}
-                                                style={{ minWidth: 150 }}
-                                            />
-                                        </Form.Item>
-                                        {row.access_type !== 'global' && (
-                                            <Form.Item
-                                                name={[
-                                                    field.name,
-                                                    'target_id',
-                                                ]}
-                                                rules={[
-                                                    {
-                                                        required: true,
-                                                        message:
-                                                            'Target required.',
-                                                    },
-                                                ]}
-                                                style={{
-                                                    marginBottom: 0,
-                                                    flex: 1,
-                                                }}
-                                            >
-                                                <Select
-                                                    showSearch
-                                                    optionFilterProp="label"
-                                                    placeholder="Select target"
-                                                    options={targetOptions(
-                                                        row.access_type
-                                                    )}
-                                                />
-                                            </Form.Item>
-                                        )}
-                                        <Button
-                                            danger
-                                            size="small"
-                                            onClick={() =>
-                                                remove(field.name)
-                                            }
-                                        >
-                                            Remove
-                                        </Button>
-                                    </div>
-                                )
-                            })}
-                            <Button
-                                icon={<PlusOutlined />}
-                                size="small"
-                                disabled={hasGlobal}
-                                onClick={() => add({ access_type: undefined })}
-                                style={{ marginTop: 4 }}
-                            >
-                                Add binding
-                            </Button>
-                            {hasGlobal && (
-                                <span className="am-bindings-hint">
-                                    {' '}
-                                    Global grants everything — remove it to
-                                    add narrower bindings.
-                                </span>
-                            )}
-                        </>
-                    )}
-                </Form.List>
-            </Form>
-        </Modal>
-    )
-}
 
 // =============================================================================
 // Page
@@ -585,8 +127,12 @@ function ApiManagementPage() {
         queryClient.invalidateQueries({ queryKey: ['admin-api-clients'] })
         queryClient.invalidateQueries({ queryKey: ['admin-api-tokens'] })
     }
-    const onErr = (err) =>
-        message.error(err?.response?.data?.detail || 'Operation failed.')
+    /*
+     * Hata sunumu ortak modele bagli: sunucunun domain aciklamasi
+     * (orn. "scope not allowed for service clients") KORUNUR, teknik
+     * govde ve 5xx icerigi kullaniciya gosterilmez.
+     */
+    const onErr = (err) => message.error(normalizeApiError(err).message)
 
     const [clientModal, setClientModal] = useState(null) // {editing|null}
     const saveClient = useMutation({
@@ -610,7 +156,7 @@ function ApiManagementPage() {
                 )
             } catch (err) {
                 const detail =
-                    err?.response?.data?.detail ||
+                    normalizeApiError(err).message ||
                     'Access bindings could not be updated.'
                 const partial = new Error(detail)
                 partial.isPartial = true
@@ -703,6 +249,15 @@ function ApiManagementPage() {
         },
         onError: onErr,
     })
+
+    /*
+     * Yikici/geri alinamaz aksiyonlarin ORTAK mesguliyeti: tek bir
+     * bayrak, onay modalinin hem `loading` gorunumunu hem kaynak
+     * seviyesindeki kilidini besler.
+     */
+    const destructiveBusy =
+        revokeToken.isPending || rotateToken.isPending
+        || toggleClientStatus.isPending
 
     // Onay modallari
     const [confirm, setConfirm] = useState(null) // {kind, client?, token?}
@@ -845,7 +400,12 @@ function ApiManagementPage() {
                 ...logFilters,
             }),
         enabled: open.logs,
-        keepPreviousData: true,
+        /*
+         * TanStack Query v5'te `keepPreviousData` KALDIRILDI ve sessizce
+         * yok sayiliyordu: her sayfa/filtre degisiminde audit tablosu
+         * bosalip yeniden doluyordu. v5 karsiligi `placeholderData`.
+         */
+        placeholderData: keepPreviousData,
     })
 
     // ── Retention / cleanup (Stage 3F) ──────────────────────────────────
@@ -1475,6 +1035,10 @@ function ApiManagementPage() {
                 }
                 onCancel={() => setConfirm(null)}
                 onConfirm={() => {
+                    // Cift tetikleme kilidi KAYNAKTA: revoke/rotate/enable
+                    // geri alinamaz ya da yeni sir uretir; butonun
+                    // `loading` olmasi bir render GEC gelir.
+                    if (destructiveBusy) return
                     const c = confirm
                     setConfirm(null)
                     if (c.kind === 'revoke')
@@ -1483,20 +1047,23 @@ function ApiManagementPage() {
                         rotateToken.mutate({ tokenId: c.token.id })
                     else toggleClientStatus.mutate({ client: c.client })
                 }}
+                loading={destructiveBusy}
             />
 
             <Modal
                 open={!!expiryModal}
                 title="Update token expiry"
                 okText="Save"
-                onOk={() =>
+                onOk={() => {
+                    // Cift gonderim kilidi KAYNAKTA.
+                    if (updateExpiry.isPending) return
                     updateExpiry.mutate({
                         tokenId: expiryModal.token.id,
                         expiresAt: expiryValue
                             ? expiryValue.endOf('day').toISOString()
                             : null,
                     })
-                }
+                }}
                 confirmLoading={updateExpiry.isPending}
                 onCancel={() => setExpiryModal(null)}
                 destroyOnHidden

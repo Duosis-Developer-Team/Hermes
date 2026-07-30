@@ -18,6 +18,7 @@
 import { coreClient } from '../api/httpClient'
 import { authService } from '../api/authApi'
 import { rbacService } from '../api/rbacApi'
+import { downloadBlobResponse } from './fileDownload'
 
 export { authService, rbacService }
 
@@ -286,111 +287,60 @@ export const reportsService = {
      * CSV export (dosya indirme)
      */
     exportExcel: async (params = {}, customFilename = null) => {
-        try {
-            // Build URLSearchParams to handle repeated array keys correctly
-            const { user_ids, customer_ids, project_ids, work_type_ids, platform_ids, ...scalarParams } = params
-            const urlParams = new URLSearchParams()
-            Object.entries(scalarParams).forEach(([k, v]) => {
-                if (v !== null && v !== undefined) urlParams.append(k, v)
-            })
-            if (Array.isArray(user_ids) && user_ids.length > 0) {
-                user_ids.forEach(id => urlParams.append('user_ids', id))
-            }
-            if (Array.isArray(customer_ids) && customer_ids.length > 0) {
-                customer_ids.forEach(id => urlParams.append('customer_ids', id))
-            }
-            if (Array.isArray(project_ids) && project_ids.length > 0) {
-                project_ids.forEach(id => urlParams.append('project_ids', id))
-            }
-            if (Array.isArray(work_type_ids) && work_type_ids.length > 0) {
-                work_type_ids.forEach(id => urlParams.append('work_type_ids', id))
-            }
-            if (Array.isArray(platform_ids) && platform_ids.length > 0) {
-                platform_ids.forEach(id => urlParams.append('platform_ids', id))
-            }
-
-            const response = await coreApi.get(
-                `/api/v1/core/reports/export/excel/v1?${urlParams.toString()}`,
-                { responseType: 'blob' }
-            )
-
-            // Check if response is actually JSON error (unexpected 401/500 treated as blob)
-            if (response.data.type === 'application/json') {
-                const text = await response.data.text()
-                const errorData = JSON.parse(text)
-                throw new Error(errorData.detail || errorData.error?.message || 'Download failed')
-            }
-
-            // Create blob with explicit CSV type
-            const blob = new Blob([response.data], {
-                type: 'text/csv;charset=utf-8;'
-            })
-            const url = window.URL.createObjectURL(blob)
-
-            // Filename generation
-            let filename = customFilename
-
-            if (!filename) {
-                // Fallback to date based
-                const dateStr = new Date().toISOString().split('T')[0]
-                filename = `hermes_rapor_${dateStr}.csv`
-            }
-
-            // Ensure extension
-            if (!filename.endsWith('.csv')) {
-                filename = filename.replace(/\.[^/.]+$/, "") + ".csv"
-            }
-
-            console.log(`DEBUG: Final filename: ${filename}`)
-
-            // Manual DOM manipulation
-            const link = document.createElement('a')
-            link.href = url
-            link.setAttribute('download', filename)
-            link.style.visibility = 'hidden'
-            link.style.position = 'absolute'
-            document.body.appendChild(link)
-            link.click()
-
-            setTimeout(() => {
-                document.body.removeChild(link)
-                window.URL.revokeObjectURL(url)
-            }, 2000)
-        } catch (error) {
-            console.error('Export failed:', error)
-            throw error
+        // Dizi parametreleri FastAPI List[] icin TEKRARLI anahtar olarak
+        // gonderilir; bu davranis korunuyor.
+        const {
+            user_ids, customer_ids, project_ids, work_type_ids, platform_ids,
+            ...scalarParams
+        } = params
+        const urlParams = new URLSearchParams()
+        Object.entries(scalarParams).forEach(([k, v]) => {
+            if (v !== null && v !== undefined) urlParams.append(k, v)
+        })
+        for (const [key, list] of Object.entries({
+            user_ids, customer_ids, project_ids, work_type_ids, platform_ids,
+        })) {
+            if (Array.isArray(list)) list.forEach((id) => urlParams.append(key, id))
         }
+
+        const response = await coreApi.get(
+            `/api/v1/core/reports/export/excel/v1?${urlParams.toString()}`,
+            { responseType: 'blob' }
+        )
+        // Indirme, sizinti/dosya-adi/hata-blob kurallarini tek yerde
+        // uygulayan ortak yardimciya devredildi.
+        const dateStr = new Date().toISOString().split('T')[0]
+        return downloadBlobResponse(
+            response,
+            customFilename || `hermes_rapor_${dateStr}.csv`
+        )
     },
+
     /**
      * Rapor 2: Aylık Detaylı Global Rapor
      */
     exportGlobalDetailed: async (month) => {
-        try {
-            const response = await coreApi.get('/api/v1/core/reports/export/global/detailed_v2', {
-                params: { month }, // YYYY-MM
-                responseType: 'blob',
-            })
-            await handleFileDownload(response, `hermes_global_rapor_${month}.csv`)
-        } catch (error) {
-            console.error('Export failed:', error)
-            throw error
-        }
+        const response = await coreApi.get('/api/v1/core/reports/export/global/detailed_v2', {
+            params: { month }, // YYYY-MM
+            responseType: 'blob',
+        })
+        // Hata YUKARI birakilir: cagiran taraf kullaniciya anlamli mesaj
+        // gosterir. Burada `console.error` ile ham API hatasini loglamak
+        // teknik icerigi konsola sizdiriyordu.
+        return downloadBlobResponse(response, `hermes_global_rapor_${month}.csv`)
     },
 
     /**
      * Rapor 3: Customer x User Matrix
      */
     exportGlobalMatrix: async (startDate, endDate) => {
-        try {
-            const response = await coreApi.get('/api/v1/core/reports/export/global/matrix', {
-                params: { start_date: startDate, end_date: endDate },
-                responseType: 'blob',
-            })
-            await handleFileDownload(response, `hermes_matrix_rapor_${startDate}_${endDate}.csv`)
-        } catch (error) {
-            console.error('Export failed:', error)
-            throw error
-        }
+        const response = await coreApi.get('/api/v1/core/reports/export/global/matrix', {
+            params: { start_date: startDate, end_date: endDate },
+            responseType: 'blob',
+        })
+        return downloadBlobResponse(
+            response, `hermes_matrix_rapor_${startDate}_${endDate}.csv`
+        )
     },
 
     // JSON Data Endpoints for Dashboard
@@ -437,43 +387,6 @@ export const reportsService = {
 }
 
 // Helper for file download
-const handleFileDownload = async (response, defaultFilename) => {
-    // Check if response is actually JSON error
-    if (response.data.type === 'application/json') {
-        const text = await response.data.text()
-        const errorData = JSON.parse(text)
-        throw new Error(errorData.detail || errorData.error?.message || 'Download failed')
-    }
-
-    // Create blob
-    const blob = new Blob([response.data], {
-        type: 'text/csv;charset=utf-8;'
-    })
-    const url = window.URL.createObjectURL(blob)
-
-    // Filename from header or default
-    let filename = defaultFilename
-    const disposition = response.headers['content-disposition']
-    if (disposition && disposition.indexOf('filename=') !== -1) {
-        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition)
-        if (matches != null && matches[1]) {
-            filename = matches[1].replace(/['"]/g, '')
-        }
-    }
-
-    // Download link
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', filename)
-    document.body.appendChild(link)
-    link.click()
-
-    setTimeout(() => {
-        document.body.removeChild(link)
-        window.URL.revokeObjectURL(url)
-    }, 2000)
-}
-
 // =============================================================================
 // CORE SERVICE - Plan Times
 // =============================================================================

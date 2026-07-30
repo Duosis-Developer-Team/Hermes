@@ -17,7 +17,8 @@ import {
     Space,
     Card,
     Tooltip,
-    Tag
+    Tag,
+    Spin
 } from 'antd'
 import HoursMinutesPicker from '../components/common/HoursMinutesPicker'
 import {
@@ -27,6 +28,11 @@ import {
     CalendarOutlined
 } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+
+import { normalizeApiError } from '../features/admin/shared/normalizeApiError'
+import {
+    AdminErrorAlert, AdminRefreshHint,
+} from '../features/admin/shared/AdminListStates'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import 'dayjs/locale/en'
@@ -51,9 +57,18 @@ function formatDecimalToHM(decimal) {
 function BillableHoursPage() {
     const queryClient = useQueryClient()
     const { user } = useAuthStore()
-    // RBAC R3: sayfa yetkisi reports.view iznine bakar
+    // RBAC R3: sayfa yetkisi reports.view iznine bakar.
     const canViewReports = useAuthStore((s) => s.can)('reports.view')
-    useAuthStore((s) => s.permissions)
+    const permissions = useAuthStore((s) => s.permissions)
+    /*
+     * `can()` izinler HENUZ YUKLENMEMISKEN (null) de `false` doner. Bu
+     * sayfa bunu dogrudan "Access Denied" olarak gosteriyordu: yetkili
+     * bir kullanici, izinler gelene kadar YANLIS bir ret ekrani
+     * goruyordu. Ucuncu bir durum gerekiyor — "henuz bilmiyoruz".
+     * (Rota zaten ProtectedRoute ile korunuyor; buradaki kontrol
+     * savunma katmanidir ve artik yaniltmiyor.)
+     */
+    const permissionsLoaded = Array.isArray(permissions)
 
     // ==========================================================================
     // State
@@ -99,7 +114,10 @@ function BillableHoursPage() {
     })
 
     // Fetch Work Logs for selected user
-    const { data: workLogsResponse, isLoading: logsLoading } = useQuery({
+    const {
+        data: workLogsResponse, isLoading: logsLoading, isFetching: logsFetching,
+        isError: logsError, error: logsErrObj, refetch: refetchLogs,
+    } = useQuery({
         queryKey: ['workLogs', weekStart.format('YYYY-MM-DD'), selectedUserId],
         queryFn: () => workLogService.getMyLogs({
             start_date: weekStart.format('YYYY-MM-DD'),
@@ -177,7 +195,9 @@ function BillableHoursPage() {
             setEditValue(null)
         },
         onError: (error) => {
-            message.error(error.response?.data?.detail || 'Update failed')
+            // Teknik govde kullaniciya sizmaz; sunucunun domain aciklamasi
+            // korunur.
+            message.error(normalizeApiError(error).message)
         },
     })
 
@@ -194,6 +214,9 @@ function BillableHoursPage() {
     }
 
     const handleSave = (id) => {
+        // Cift gonderim kilidi KAYNAKTA: butonun `loading` olmasi bir
+        // render GEC gelir.
+        if (updateMutation.isPending) return
         if (editValue === null || editValue <= 0) return
         const mins = Math.round((editValue - Math.floor(editValue)) * 60)
         if (mins % 15 !== 0) {
@@ -325,6 +348,16 @@ function BillableHoursPage() {
     // ==========================================================================
     // Render
     // ==========================================================================
+    if (!permissionsLoaded) {
+        // Izinler bilinmiyor: NE icerik NE ret. Aksi halde yetkili
+        // kullaniciya bir an "Access Denied" gosteriliyordu.
+        return (
+            <div style={{ padding: 40, textAlign: 'center' }}>
+                <Spin />
+            </div>
+        )
+    }
+
     if (!canViewReports) {
         return <div style={{ padding: 40, textAlign: 'center', color: 'var(--c-text-strong)' }}>Access Denied</div>
     }
@@ -433,15 +466,32 @@ function BillableHoursPage() {
                     border: '1px solid var(--c-border)'
                 }}
             >
+                <AdminErrorAlert
+                    error={logsError ? logsErrObj : null}
+                    onRetry={refetchLogs}
+                />
                 <Table
                     dataSource={workLogs}
                     columns={columns}
                     rowKey="id"
-                    loading={logsLoading}
+                    /* Ilk yukleme ile arkaplan yenilemesi AYRI. */
+                    loading={logsLoading && workLogs.length === 0}
                     pagination={false}
                     rowClassName="modern-row"
                     scroll={{ x: 800 }}
-                    locale={{ emptyText: <div style={{ padding: 40, color: 'var(--c-text-faint)' }}>No entries found.</div> }}
+                    locale={{
+                        emptyText: (
+                            <div style={{ padding: 40, color: 'var(--c-text-faint)' }}>
+                                {logsError
+                                    ? 'Could not load this week’s entries.'
+                                    : `No entries for ${weekLabel}.`}
+                            </div>
+                        ),
+                    }}
+                />
+                <AdminRefreshHint
+                    isFetching={logsFetching}
+                    hasData={workLogs.length > 0}
                 />
             </Card>
 

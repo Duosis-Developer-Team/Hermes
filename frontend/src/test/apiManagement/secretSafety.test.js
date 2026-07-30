@@ -28,6 +28,15 @@ const read = (rel) => readFileSync(join(ROOT, rel), 'utf8')
 const PAGE = 'pages/admin/ApiManagementPage.jsx'
 const page = () => read(PAGE)
 
+/*
+ * Sprint 6A/6C: plaintext token GOSTERIMI ayri bir module tasindi
+ * (sorumluluk ayrimi; davranis birebir korundu — govde diff'i bos).
+ * Yapisal yasak DEGISMEDI, yalnizca dosya yolu degisti: gosterim
+ * iddialarini artik o modul karsilamalidir.
+ */
+const TOKEN_MODAL = 'features/api-management/components/TokenOnceModal.jsx'
+const tokenModal = () => read(TOKEN_MODAL)
+
 /** Yorumlari atar — yasak kelimeler aciklama metninde gecebilir. */
 const code = (text) =>
     text
@@ -84,15 +93,15 @@ describe('reveal-once sozlesmesi', () => {
 
     it('varsayilan gosterim MASKELI', () => {
         // Token kutusu once maskelenir; tam deger acik bir eylemle gorunur.
-        expect(page()).toMatch(/'•'\.repeat\(/)
+        expect(tokenModal()).toMatch(/'•'\.repeat\(/)
     })
 
     it('"bir daha gosterilmeyecek" uyarisi kullaniciya soylenir', () => {
-        expect(page()).toMatch(/will not be shown again/i)
+        expect(tokenModal()).toMatch(/will not be shown again/i)
     })
 
     it('kopyalama ACIK bir kullanici eylemi ve geri bildirimi var', () => {
-        const c = code(page())
+        const c = code(tokenModal())
         expect(c).toContain('navigator.clipboard.writeText')
         // Panoya yazma bir tiklama isleyicisinin icinde olmali, render
         // sirasinda kendiliginden calismamali.
