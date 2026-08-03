@@ -159,7 +159,6 @@ const DEFS = {
         update: ok({}),
         delete: ok(undefined),
     },
-    timesheetService: { getPeriodStatus: ok({ status: 'open' }) },
     taskService: {
         list: from('tasks'),
         getById: (id) =>
@@ -211,7 +210,6 @@ export const workLineService = build('workLineService')
 export const taskSubProjectService = build('taskSubProjectService')
 export const taskPermissionService = build('taskPermissionService')
 export const workLogService = build('workLogService')
-export const timesheetService = build('timesheetService')
 export const taskService = build('taskService')
 
 const SERVICES = {
@@ -225,7 +223,6 @@ const SERVICES = {
     taskSubProjectService,
     taskPermissionService,
     workLogService,
-    timesheetService,
     taskService,
 }
 

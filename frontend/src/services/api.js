@@ -256,20 +256,6 @@ export const workLineService = {
 // CORE SERVICE - Timesheets
 // =============================================================================
 
-export const timesheetService = {
-    getPeriodStatus: async (date) => {
-        const response = await coreApi.get('/api/v1/core/timesheets/period-status', {
-            params: { date }
-        })
-        return response.data
-    },
-
-    submitTimesheet: async (data) => {
-        const response = await coreApi.post('/api/v1/core/timesheets/submit', data)
-        return response.data
-    },
-}
-
 // =============================================================================
 // REPORTS SERVICE
 // =============================================================================
@@ -961,7 +947,6 @@ export default {
     activityTypeService,
     platformService,
     workLineService,
-    timesheetService,
     reportsService,
     taskPermissionService,
     taskNotificationSettingsService,

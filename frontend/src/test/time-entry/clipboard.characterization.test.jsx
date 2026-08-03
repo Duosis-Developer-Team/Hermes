@@ -68,10 +68,6 @@ vi.mock('../../services/api', () => ({
         getMyPlanTimes: vi.fn(() => Promise.resolve({ data: [] })),
         respond: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(),
     },
-    timesheetService: {
-        getPeriodStatus: vi.fn(() => Promise.resolve({ status: 'open' })),
-        submitPeriod: vi.fn(),
-    },
     customerService: { getAll: vi.fn(() => Promise.resolve({ data: [] })) },
     projectService: { getAll: vi.fn(() => Promise.resolve({ data: [] })) },
     workTypeService: { getAll: vi.fn(() => Promise.resolve({ data: [] })) },

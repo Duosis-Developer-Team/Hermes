@@ -87,18 +87,22 @@ function DashboardPage() {
         const state = chartState(series)
         if (state === 'ready') return children
         return (
+            /* Premium UI: 300px bos gri alan yerine kompakt, ferah bos
+               durum — ikon + kisa metin; panel yuksekligi iceriktir. */
             <div
                 role="status"
                 style={{
-                    height: 300,
+                    padding: '40px 24px',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    justifyContent: 'center',
+                    gap: 8,
                     textAlign: 'center',
                     color: 'var(--c-text-muted)',
-                    fontSize: 14,
+                    fontSize: 13,
                 }}
             >
+                <span aria-hidden="true" style={{ fontSize: 22, opacity: 0.5 }}>📊</span>
                 {state === 'empty'
                     ? 'No data for the selected date range.'
                     : 'Records exist but no hours were logged in this range.'}

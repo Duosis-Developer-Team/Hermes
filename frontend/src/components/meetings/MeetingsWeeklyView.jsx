@@ -69,8 +69,12 @@ function MeetingsWeeklyView({
                         (isWeekend ? ' meeting-day-column-weekend' : '') +
                         (isToday ? ' meeting-day-column-today' : '')
                     return (
-                        <div key={key} className={className}>
-                            <div className="meeting-day-column-header">
+                        <div
+                            key={key}
+                            className={className}
+                            aria-current={isToday ? 'date' : undefined}
+                        >
+                            <div className={`meeting-day-column-header${isToday ? ' h-today-flag' : ''}`}>
                                 <span className="meeting-day-name">
                                     {day.format('ddd')}
                                 </span>

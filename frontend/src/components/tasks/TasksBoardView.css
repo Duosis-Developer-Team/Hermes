@@ -91,8 +91,10 @@
 }
 
 .tasks-board-column {
-    background: var(--c-surface);
-    border: 1px solid var(--c-border);
+    /* Premium UI: agir gri kart yerine canvas'la butunlesen subtle
+       yuzey; ayrim ince border + baslik accent'iyle. */
+    background: var(--h-surface-subtle);
+    border: 1px solid var(--h-border-subtle);
     border-radius: 8px;
     display: flex;
     flex-direction: column;
@@ -106,8 +108,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 10px 12px;
-    border-bottom: 1px solid var(--c-border);
-    background: var(--c-surface-raised);
+    border-bottom: 1px solid var(--h-border-subtle);
+    background: transparent;
 }
 .tasks-board-column-label {
     font-size: 12px;

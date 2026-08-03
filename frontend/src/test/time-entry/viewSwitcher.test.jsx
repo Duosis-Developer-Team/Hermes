@@ -28,8 +28,6 @@ const renderHeader = (props = {}) =>
             displayName="Ada Lovelace"
             exportLoading={false}
             onExport={vi.fn()}
-            periods={[]}
-            onOpenSubmitModal={vi.fn()}
             viewMode="list"
             onViewModeChange={vi.fn()}
             {...props}
@@ -81,5 +79,14 @@ describe('native buton gorunumu geri DONMEZ', () => {
             expect(tab.className).not.toContain('ant-btn')
             expect(tab.className).toContain('view-link')
         }
+    })
+})
+
+
+describe('Premium UI — Submit Period tamamen kalkti', () => {
+    it('header Submit Period butonu/bolumu icermez', () => {
+        renderHeader()
+        expect(screen.queryByText(/Submit Period/i)).toBeNull()
+        expect(document.querySelector('.submit-period-dropdown')).toBeNull()
     })
 })

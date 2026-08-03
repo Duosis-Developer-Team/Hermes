@@ -3,7 +3,9 @@
  */
 
 .worklog-card {
-    background: var(--c-border-strong);
+    /* Premium UI: gri dolgu yerine yuzey + ince cerceve. */
+    background: var(--h-bg-surface);
+    border: 1px solid var(--h-border-subtle);
     border-radius: var(--h-radius-control);
     padding: 12px;
     position: relative;
@@ -14,10 +16,6 @@
         box-shadow var(--h-motion-fast) var(--h-ease-standard),
         background var(--h-motion-fast) var(--h-ease-standard);
     margin-bottom: 8px;
-}
-
-.worklog-card:hover {
-    background: var(--c-border-strong);
 }
 
 .worklog-card:hover .worklog-card-actions {

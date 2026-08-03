@@ -123,8 +123,9 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 20px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-default);
+    /* Premium UI: gri bant yerine canvas'la butunlesen seffaf serit. */
+    background: transparent;
+    border-bottom: 1px solid var(--h-border-subtle);
     gap: 16px;
     flex-wrap: wrap;
 }
@@ -170,15 +171,15 @@
     border-color: var(--border-subtle) !important;
 }
 
-/* Week Summary */
+/* Week Summary — Premium UI: gri rozet DEGIL; tipografiyle kurulan
+   sade ozet + ince marka alt cizgisi. */
 .week-summary {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     gap: 6px;
-    padding: 6px 12px;
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-md);
+    padding: 2px 0;
     font-size: 13px;
+    border-bottom: 2px solid color-mix(in srgb, var(--h-brand) 45%, transparent);
 }
 
 .summary-label {

@@ -11,7 +11,7 @@
  * placeholder erisilebilir ad DEGILDIR.
  * =============================================================================
  */
-import { Button, Card, Select, Space } from 'antd'
+import { Button, Select, Space } from 'antd'
 import { FilterOutlined } from '@ant-design/icons'
 
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '../model/constants'
@@ -22,12 +22,14 @@ function TaskFilterBar({
     onSubProjectChange, onClear,
 }) {
     return (
-        <Card
-            size="small"
+        /* Premium UI: gri Card paneli KALKTI — filtreler toolbar'la
+           butunlesen seffaf, ince-ayircili bir serit. Kontrollerin
+           yuzeyi merkezi input sisteminden gelir (premium.css). */
+        <div
             style={{
                 marginBottom: 16,
-                background: 'var(--c-surface-raised)',
-                borderColor: 'var(--c-border)',
+                paddingBottom: 12,
+                borderBottom: '1px solid var(--h-border-subtle)',
             }}
         >
             <Space wrap>
@@ -87,7 +89,7 @@ function TaskFilterBar({
                 />
                 <Button onClick={onClear}>Clear</Button>
             </Space>
-        </Card>
+        </div>
     )
 }
 

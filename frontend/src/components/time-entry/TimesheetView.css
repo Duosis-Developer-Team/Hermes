@@ -150,9 +150,8 @@
     background: rgba(0, 0, 0, 0.1) !important;
 }
 
-.timesheet-day-cell.today {
-    background: rgba(87, 157, 255, 0.08) !important;
-}
+/* Premium UI: bugun hucre/kolon BOYANMAZ — baslik sancagi yeterli
+   (.h-today-flag). Gorsel isaret + aria-current birlikte tasinir. */
 
 /* Hours Cell (clickable) */
 .timesheet-hours-cell {

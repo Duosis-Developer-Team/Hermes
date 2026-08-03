@@ -87,13 +87,15 @@ function DayColumn({
     return (
         <div
             className={`day-column${isWeekend ? ' day-column-weekend' : ''}${isToday ? ' day-column-today' : ''}${isTargeted ? ' day-column-targeted' : ''}`}
+            aria-current={isToday ? 'date' : undefined}
             onClick={handleDayClick}
         >
             {/* Gün Başlığı */}
             <div className="day-column-header">
-                <div className="day-column-name">
+                <div className={`day-column-name${isToday ? ' h-today-flag' : ''}`}>
                     <span className="day-name">{dayName}</span>
                     <span className="day-number">{dayNumber}</span>
+                    {isToday && <span className="h-today-label">Today</span>}
                 </div>
                 <div className="day-column-hours">
                     {formatDuration(totalHours)} / {DAILY_TARGET_HOURS}h

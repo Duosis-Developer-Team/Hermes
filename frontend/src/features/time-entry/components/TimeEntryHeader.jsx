@@ -11,12 +11,10 @@
  */
 import { Avatar, Button, Select, Tooltip } from 'antd'
 import { FileExcelOutlined, UserOutlined } from '@ant-design/icons'
-import SubmitPeriodDropdown from '../../../components/time-entry/SubmitPeriodDropdown'
 
 function TimeEntryHeader({
     canSelectUser, targetUserId, usersList, onSelectUser, displayName,
     exportLoading, onExport,
-    periods, onOpenSubmitModal,
     viewMode, onViewModeChange,
 }) {
     return (
@@ -56,10 +54,6 @@ function TimeEntryHeader({
                     />
                 </Tooltip>
 
-                <SubmitPeriodDropdown
-                    periods={periods}
-                    onOpenSubmitModal={onOpenSubmitModal}
-                />
 
                 <div className="view-switchers" role="tablist" aria-label="View">
                     {['list', 'timesheet'].map((v) => (

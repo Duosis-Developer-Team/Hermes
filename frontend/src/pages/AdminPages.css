@@ -1,63 +1,27 @@
 /**
  * Admin Pages Common Styles
+ *
+ * Premium UI (2026-08-04): eski gri levha katmani KALDIRILDI — tablo,
+ * modal ve input gorunumu artik MERKEZI koprulerden gelir
+ * (theme/antdTheme.js + styles/premium.css). Burada yalnizca admin
+ * sayfalarina ozgu kalan kucuk duzeltmeler ve mobil davranis durur.
+ * `!important` yigini bilinçli olarak silindi (11 adet).
  */
 
+/* Kart sarmalayici: buyuk gri kutu degil — subtle yuzey. */
 .admin-page .ant-card {
-    background: var(--bg-secondary);
-    border-color: var(--border-default);
+    background: var(--h-surface-subtle);
+    border-color: var(--h-border-subtle);
 }
 
 .admin-page .ant-card-head {
-    background: var(--bg-tertiary);
-    border-color: var(--border-default);
+    background: transparent;
+    border-color: var(--h-border-subtle);
     color: var(--text-primary);
 }
 
 .admin-page .ant-card-head-title {
     color: var(--text-primary);
-}
-
-.admin-page .ant-table {
-    background: transparent !important;
-}
-
-.admin-page .ant-table-thead>tr>th {
-    background: var(--bg-tertiary) !important;
-    border-color: var(--border-default) !important;
-    color: var(--text-primary) !important;
-}
-
-.admin-page .ant-table-tbody>tr>td {
-    border-color: var(--border-default) !important;
-    color: var(--text-primary);
-}
-
-.admin-page .ant-table-tbody>tr:hover>td {
-    background: var(--bg-tertiary) !important;
-}
-
-.admin-page .ant-modal-content {
-    background: var(--bg-secondary);
-}
-
-.admin-page .ant-modal-header {
-    background: var(--bg-secondary);
-    border-color: var(--border-default);
-}
-
-.admin-page .ant-modal-title {
-    color: var(--text-primary);
-}
-
-.admin-page .ant-form-item-label>label {
-    color: var(--text-primary);
-}
-
-.admin-page .ant-input,
-.admin-page .ant-input-textarea textarea {
-    background: var(--bg-tertiary) !important;
-    border-color: var(--border-default) !important;
-    color: var(--text-primary) !important;
 }
 
 /* =============================================================================

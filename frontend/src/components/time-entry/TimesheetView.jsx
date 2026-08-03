@@ -138,7 +138,10 @@ function TimesheetView({
 
             return {
                 title: (
-                    <div className={`timesheet-day-header ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}`}>
+                    <div
+                        className={`timesheet-day-header ${isToday ? 'today h-today-flag' : ''} ${isWeekend ? 'weekend' : ''}`}
+                        aria-current={isToday ? 'date' : undefined}
+                    >
                         <span className="day-num">{dayNum}</span>
                         <span className="day-name">{dayName}</span>
                     </div>

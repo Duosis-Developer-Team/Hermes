@@ -22,8 +22,7 @@ import WeeklyListView from '../components/time-entry/WeeklyListView'
 import TimesheetView from '../components/time-entry/TimesheetView'
 import LogTimeModal from '../components/modals/LogTimeModal'
 import PlanTimeModal from '../components/modals/PlanTimeModal'
-import SubmitPeriodModal from '../components/modals/SubmitPeriodModal'
-import { workLogService, timesheetService, reportsService, authService, planTimeService } from '../services/api'
+import { workLogService, reportsService, authService, planTimeService } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import {
     buildPastePayload, isEditableTarget, makeClipboardSnapshot,
@@ -60,8 +59,6 @@ function TimeEntryPage() {
     const [selectedDate, setSelectedDate] = useState(null)
     const [editingLog, setEditingLog] = useState(null)
     const [editingPlan, setEditingPlan] = useState(null)
-    const [submitModalOpen, setSubmitModalOpen] = useState(false)
-    const [selectedPeriod, setSelectedPeriod] = useState(null)
     const [selectedUserId, setSelectedUserId] = useState(null) // Admin override
     const [deletingLog, setDeletingLog] = useState(null)   // log pending delete confirmation
     const [deletingPlan, setDeletingPlan] = useState(null) // plan pending delete confirmation
@@ -159,13 +156,6 @@ function TimeEntryPage() {
          */
     }, [planTimesResponse, user, selectedUserId, canWorklogsAdmin])
 
-    // Fetch Period Status
-    const { data: periodStatus, refetch: refetchPeriodStatus } = useQuery({
-        queryKey: ['periodStatus', weekStart.format('YYYY-MM-DD'), user?.id],
-        queryFn: () => timesheetService.getPeriodStatus(weekStart.format('YYYY-MM-DD')),
-        enabled: !!user?.id,
-    })
-
     /*
      * `workLogsResponse?.data || []` her render'da YENI bir dizi uretir.
      * Bu, asagidaki useMemo'yu ise yaramaz hale getiriyor ve klavye
@@ -189,7 +179,6 @@ function TimeEntryPage() {
         onSuccess: () => {
             message.success('Time logged')
             queryClient.invalidateQueries({ queryKey: ['workLogs'] })
-            refetchPeriodStatus()
         },
         onError: (error) => {
             message.error(error.response?.data?.detail || 'An error occurred')
@@ -201,7 +190,6 @@ function TimeEntryPage() {
         mutationFn: (data) => workLogService.create(data, selectedUserId || null),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['workLogs'] })
-            refetchPeriodStatus()
         },
         onError: (error) => {
             message.error(error.response?.data?.detail || 'Paste failed')
@@ -213,7 +201,6 @@ function TimeEntryPage() {
         onSuccess: () => {
             message.success('Time updated')
             queryClient.invalidateQueries({ queryKey: ['workLogs'] })
-            refetchPeriodStatus()
         },
         onError: (error) => {
             message.error(error.response?.data?.detail || 'An error occurred')
@@ -233,20 +220,6 @@ function TimeEntryPage() {
         },
     })
 
-    const {
-        mutate: submitTimesheetMutation,
-        isPending: isSubmitting
-    } = useMutation({
-        mutationFn: timesheetService.submitTimesheet,
-        onSuccess: () => {
-            message.success('Timesheet submitted successfully')
-            setSubmitModalOpen(false)
-            refetchPeriodStatus() // Update status to SUBMITTED
-        },
-        onError: (error) => {
-            message.error(error.response?.data?.detail || 'Submission failed')
-        }
-    })
 
     // ==========================================================================
     // Handlers
@@ -362,9 +335,6 @@ function TimeEntryPage() {
         respondPlanTimeMutation.mutate({ planTimeId, status })
     }
 
-    const handleSubmitPeriod = (data) => {
-        submitTimesheetMutation(data)
-    }
 
     // ==========================================================================
     // Copy-Paste State
@@ -514,21 +484,6 @@ function TimeEntryPage() {
                 displayName={user?.full_name || user?.email}
                 exportLoading={exportLoading}
                 onExport={handleExportExcel}
-                periods={periodStatus ? [{
-                    id: 'current',
-                    name: 'Current Period',
-                    status: periodStatus.status,
-                    statusColor: periodStatus.status === 'OPEN' ? 'blue' : 'orange',
-                    startDate: dayjs(periodStatus.period_start),
-                    endDate: dayjs(periodStatus.period_end),
-                    hoursLogged: periodStatus.logged_hours,
-                    hoursRequired: periodStatus.required_hours,
-                    behind: Math.max(0, periodStatus.required_hours - periodStatus.logged_hours),
-                }] : []}
-                onOpenSubmitModal={(period) => {
-                    setSelectedPeriod(period)
-                    setSubmitModalOpen(true)
-                }}
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
             />
@@ -600,13 +555,6 @@ function TimeEntryPage() {
                 loading={createPlanTimeMutation.isPending || updatePlanTimeMutation.isPending}
             />
 
-            <SubmitPeriodModal
-                open={submitModalOpen}
-                onClose={() => setSubmitModalOpen(false)}
-                period={selectedPeriod}
-                onSubmit={handleSubmitPeriod}
-                loading={isSubmitting}
-            />
 
             {/* Plan Time Delete Confirmation Modal */}
             <Modal

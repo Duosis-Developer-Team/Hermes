@@ -37,10 +37,9 @@
     color: var(--text-muted);
 }
 
-/* Today — always overrides weekend if today falls on a weekend */
-.day-column-today {
-    background: var(--bg-tertiary);
-}
+/* Premium UI (2026-08-04): BUGUN artik tam-sutun boyamasi DEGIL —
+   gun basligindaki cift capraz sancak (.h-today-flag, premium.css) +
+   aria-current="date" + kucuk "Today" etiketi. Sutun zemini degismez. */
 
 .day-column-today .day-name {
     color: var(--text-primary);
@@ -92,14 +91,16 @@
     background: var(--bg-tertiary) !important;
 }
 
-/* Add Button */
+/* Add Button — Premium UI: buyuk dashed kutu yerine sade ghost satir;
+   varsayilan halde nerdeyse gorunmez, hover'da belirginlesir. */
 .day-column-add-btn {
     margin: 0 12px 8px;
-    height: 36px;
-    border: 1px dashed var(--border-subtle);
+    height: 30px;
+    border: 1px solid transparent;
     border-radius: var(--radius-md);
     background: transparent;
-    color: var(--text-secondary);
+    color: var(--text-muted);
+    opacity: 0.75;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -113,9 +114,15 @@
 }
 
 .day-column-add-btn:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-    background: rgba(87, 157, 255, 0.1);
+    border-color: color-mix(in srgb, var(--h-brand) 40%, transparent);
+    color: var(--h-brand);
+    background: color-mix(in srgb, var(--h-brand) 8%, transparent);
+    opacity: 1;
+}
+.day-column-add-btn:focus-visible {
+    outline: 2px solid var(--h-focus);
+    outline-offset: 2px;
+    opacity: 1;
 }
 
 /* Section Title */
@@ -136,10 +143,12 @@
 }
 
 .day-column-empty {
+    /* Premium UI: sade, dusuk profilli bos durum. */
     text-align: center;
-    padding: 20px;
+    padding: 14px 8px;
     color: var(--text-muted);
     font-size: 12px;
+    opacity: 0.8;
 }
 
 /* ── Copy-Paste: targeted day state ────────────────────────────────────── */

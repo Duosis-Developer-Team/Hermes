@@ -58,10 +58,12 @@
 }
 
 .dp-nav-item.is-active {
-    background: var(--c-surface-2);
-    border-color: var(--c-border-strong);
-    color: var(--c-text-strong);
+    /* Premium UI: gri kutu yerine tonal marka yuzeyi + sol accent. */
+    background: var(--h-bg-selected);
+    border-color: color-mix(in srgb, var(--h-brand) 35%, transparent);
+    color: var(--h-brand);
     font-weight: 600;
+    box-shadow: inset 3px 0 0 0 var(--h-brand);
 }
 
 .dp-nav-soon {

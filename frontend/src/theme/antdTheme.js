@@ -82,7 +82,33 @@ export function buildAntdTheme(mode = 'dark') {
                 itemBorderRadius: 6,
             },
             Modal: { borderRadiusLG: 14 /* --h-radius-modal */ },
-            Table: { headerBg: s.elevated, rowHoverBg: s.hover },
+            /* Premium UI (2026-08-04): buyuk gri tablo blogu kalkti —
+               baslik tonal/subtle, hover wash premium.css'te accent'li.
+               (headerBg burada da dusuk alfa: sticky header'da zemin
+               kaybolmasin diye canvas ustune binen deger premium.css'te.) */
+            Table: {
+                headerBg: mode === 'light'
+                    ? 'rgba(9, 30, 66, 0.025)'
+                    : 'rgba(255, 255, 255, 0.025)', /* --h-surface-subtle */
+                rowHoverBg: mode === 'light'
+                    ? 'rgba(12, 102, 228, 0.05)'
+                    : 'rgba(87, 157, 255, 0.05)',
+                headerSplitColor: 'transparent',
+                colorBgContainer: 'transparent',
+            },
+            /* Ghost secondary: buyuk gri dolgu yerine seffaf taban. */
+            Button: {
+                defaultBg: 'transparent',
+                defaultHoverBg: s.hover,
+            },
+            /* Kartlar: koyu/gri levha degil — canvas'la butunlesen
+               subtle yuzey (Dashboard bolumleri dahil). */
+            Card: {
+                colorBgContainer: mode === 'light'
+                    ? 'rgba(9, 30, 66, 0.025)'
+                    : 'rgba(255, 255, 255, 0.025)', /* --h-surface-subtle */
+                headerBg: 'transparent',
+            },
         },
     }
 }

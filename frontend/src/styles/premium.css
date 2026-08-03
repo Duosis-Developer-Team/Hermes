@@ -1,0 +1,248 @@
+/* =============================================================================
+   HERMES DS V2.1 — Premium AntD koprusu (2026-08-04)
+   =============================================================================
+   MERKEZI Ant Design gorunum katmani. Kurallar:
+     - YALNIZCA semantic token tuketir (--h-*); ham hex YASAK.
+     - !important KULLANILMAZ — AntD'nin CSS-in-JS'ini yenmek icin
+       `:root` on-eki ile +1 specificity alinir (portallar dahil calisir).
+     - Animasyon yalniz opacity/transform/renk; 140-240ms bandi;
+       reduced-motion tokens.css'teki global kuralla durur.
+     - Sayfa-ozel stil BURAYA girmez; bu dosya urun genelidir.
+
+   Hedef dil: buyuk gri paneller yerine canvas'la butunlesen yuzeyler,
+   gradient primary + ghost secondary butonlar, tonal tablolar, zarif
+   modal/dropdown. Gri yalniz ikincil metin/divider duzeyinde.
+   ========================================================================== */
+
+/* --- 1. Butonlar ------------------------------------------------------- */
+/* Primary: kontrollu marka gradyani + hover isik kaymasi + dogal basilma.
+   Eski duz mavi AntD gorunumu tamamen kalkar. */
+:root .ant-btn-primary:not(:disabled):not(.ant-btn-dangerous) {
+  background: var(--h-grad-primary);
+  background-size: 140% 140%;
+  background-position: 0% 50%;
+  border: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  transition:
+    background-position var(--h-motion-base) var(--h-ease-standard),
+    box-shadow var(--h-motion-fast) var(--h-ease-standard),
+    transform var(--h-motion-instant) var(--h-ease-standard);
+}
+:root .ant-btn-primary:not(:disabled):not(.ant-btn-dangerous):hover {
+  background: var(--h-grad-primary-hover);
+  background-size: 140% 140%;
+  background-position: 60% 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+}
+:root .ant-btn-primary:not(:disabled):not(.ant-btn-dangerous):active {
+  transform: translateY(0.5px) scale(0.985);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+/* Secondary/default: seffaf ghost — buyuk gri dolgu yok. */
+:root .ant-btn-default:not(:disabled) {
+  background: transparent;
+  border-color: var(--h-border-default);
+  transition:
+    background var(--h-motion-fast) var(--h-ease-standard),
+    border-color var(--h-motion-fast) var(--h-ease-standard),
+    color var(--h-motion-fast) var(--h-ease-standard),
+    transform var(--h-motion-instant) var(--h-ease-standard);
+}
+:root .ant-btn-default:not(:disabled):hover {
+  background: var(--h-bg-hover);
+  border-color: var(--h-border-strong);
+}
+:root .ant-btn-default:not(:disabled):active {
+  transform: scale(0.985);
+}
+
+/* Danger: gradient DEGIL — olculu tonal kirmizi. */
+:root .ant-btn-dangerous:not(:disabled) {
+  background: var(--h-surface-danger);
+  border-color: color-mix(in srgb, var(--h-danger) 45%, transparent);
+  color: var(--h-danger);
+}
+:root .ant-btn-dangerous:not(:disabled):hover {
+  background: color-mix(in srgb, var(--h-danger) 20%, transparent);
+  border-color: var(--h-danger);
+  color: var(--h-danger);
+}
+:root .ant-btn-dangerous.ant-btn-primary:not(:disabled) {
+  background: var(--h-danger);
+  color: var(--h-bg-surface);
+  border: none;
+}
+
+/* Icon-only text butonlar (satir aksiyonlari): ghost + tonal hover. */
+:root .ant-btn-text:not(:disabled):hover {
+  background: var(--h-bg-hover);
+}
+
+/* Odak halkasi her buton turunde gorunur. */
+:root .ant-btn:focus-visible {
+  outline: 2px solid var(--h-focus);
+  outline-offset: 2px;
+}
+
+/* --- 2. Input / Select / DatePicker ------------------------------------ */
+/* Kontrol zemini: gri blok degil, canvas'la butunlesen interaktif yuzey. */
+:root .ant-input,
+:root .ant-input-affix-wrapper,
+:root .ant-input-number,
+:root .ant-picker,
+:root .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+  background: var(--h-surface-interactive);
+  border-color: var(--h-border-subtle);
+  transition:
+    border-color var(--h-motion-fast) var(--h-ease-standard),
+    background var(--h-motion-fast) var(--h-ease-standard),
+    box-shadow var(--h-motion-fast) var(--h-ease-standard);
+}
+:root .ant-input:hover,
+:root .ant-input-affix-wrapper:hover,
+:root .ant-input-number:hover,
+:root .ant-picker:hover,
+:root .ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+  border-color: var(--h-border-strong);
+}
+:root .ant-input:focus,
+:root .ant-input-affix-wrapper-focused,
+:root .ant-picker-focused,
+:root .ant-select-focused:not(.ant-select-disabled) .ant-select-selector {
+  border-color: var(--h-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--h-brand) 18%, transparent);
+}
+/* Ic ice gri onlenir: affix wrapper icindeki input seffaf kalir. */
+:root .ant-input-affix-wrapper .ant-input {
+  background: transparent;
+}
+
+/* Dropdown panelleri: gri levha degil — overlay yuzeyi + ince cerceve. */
+:root .ant-select-dropdown,
+:root .ant-dropdown .ant-dropdown-menu,
+:root .ant-picker-dropdown .ant-picker-panel-container {
+  background: var(--h-surface-overlay);
+  border: 1px solid var(--h-border-subtle);
+  box-shadow: var(--h-shadow-dropdown);
+}
+:root .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background: var(--h-bg-selected);
+}
+
+/* --- 3. Tablolar -------------------------------------------------------- */
+/* Buyuk koyu blok yerine: seffaf govde, tonal baslik, ince satir ayrimi,
+   hover'da kisa accent wash. Sticky header korunur (bg zorunlu). */
+:root .ant-table-wrapper .ant-table {
+  background: transparent;
+}
+:root .ant-table-wrapper .ant-table-thead > tr > th,
+:root .ant-table-wrapper .ant-table-thead > tr > td {
+  background: var(--h-surface-subtle);
+  border-bottom: 1px solid var(--h-border-subtle);
+  font-size: var(--h-font-label);
+  font-weight: 600;
+  color: var(--h-text-secondary);
+}
+:root .ant-table-wrapper .ant-table-thead > tr > th::before {
+  display: none; /* dikey baslik ayirici cizgileri — gorsel gurultu */
+}
+:root .ant-table-wrapper .ant-table-tbody > tr > td {
+  background: transparent;
+  border-bottom: 1px solid var(--h-border-subtle);
+  transition: background var(--h-motion-fast) var(--h-ease-standard);
+}
+:root .ant-table-wrapper .ant-table-tbody > tr:hover > td {
+  background: color-mix(in srgb, var(--h-brand) 5%, transparent);
+}
+:root .ant-table-wrapper .ant-table-tbody > tr.ant-table-placeholder:hover > td {
+  background: transparent;
+}
+/* Empty state buyuk gri alan olmasin. */
+:root .ant-table-wrapper .ant-empty-normal {
+  margin-block: var(--h-space-10);
+  color: var(--h-text-secondary);
+}
+
+/* Pagination ayni aileden. */
+:root .ant-pagination .ant-pagination-item {
+  background: transparent;
+  border-color: transparent;
+}
+:root .ant-pagination .ant-pagination-item-active {
+  background: var(--h-bg-selected);
+  border-color: transparent;
+}
+:root .ant-pagination .ant-pagination-item-active a {
+  color: var(--h-brand);
+}
+
+/* --- 4. Modal / Drawer -------------------------------------------------- */
+/* Gri kutu yigini degil: tek zarif panel, ince ayiricilarla bolumlenir. */
+:root .ant-modal .ant-modal-content {
+  background: var(--h-surface-overlay);
+  border: 1px solid var(--h-border-subtle);
+  box-shadow: var(--h-shadow-modal);
+  padding: 0;
+}
+:root .ant-modal .ant-modal-header {
+  background: transparent;
+  padding: var(--h-space-5) var(--h-space-6) var(--h-space-4);
+  margin: 0;
+  border-bottom: 1px solid var(--h-border-subtle);
+}
+:root .ant-modal .ant-modal-body {
+  padding: var(--h-space-5) var(--h-space-6);
+}
+:root .ant-modal .ant-modal-footer {
+  margin: 0;
+  padding: var(--h-space-4) var(--h-space-6) var(--h-space-5);
+  border-top: 1px solid var(--h-border-subtle);
+}
+:root .ant-drawer .ant-drawer-content {
+  background: var(--h-surface-overlay);
+}
+
+/* --- 5. Tabs / Segmented ------------------------------------------------ */
+:root .ant-segmented {
+  background: var(--h-surface-subtle);
+  border: 1px solid var(--h-border-subtle);
+}
+:root .ant-segmented .ant-segmented-item-selected {
+  background: var(--h-bg-selected);
+  color: var(--h-brand);
+  box-shadow: none;
+}
+
+/* --- 6. Bugun isareti (ORTAK primitive) --------------------------------- */
+/* Tam sutun boyamasi YASAK. Gun basligina kucuk, cift cizgili capraz
+   sancak: light'ta koyu tonal, dark'ta acik tonal. Renk tek basina
+   anlam tasimasin diye aria-current="date" ile birlikte kullanilir. */
+.h-today-flag {
+  position: relative;
+}
+.h-today-flag::before,
+.h-today-flag::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--h-brand) 75%, var(--h-text-primary));
+  transform: rotate(-45deg);
+  pointer-events: none;
+}
+.h-today-flag::before { right: -2px; }
+.h-today-flag::after { right: -7px; top: 7px; }
+
+/* Bugun etiketi: kucuk, zarif accent metin (renk tek basina anlam
+   tasimasin — sancak + etiket + aria-current birlikte). */
+.h-today-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--h-brand);
+  line-height: 1.4;
+}

@@ -129,6 +129,22 @@
   --h-bg-elevated: var(--hp-neutral-850);
   --h-bg-hover: var(--hp-neutral-800);
   --h-bg-selected: rgba(87, 157, 255, 0.16); /* brand dusuk alpha */
+  /*
+   * Premium UI (2026-08-04) — yuzey rolleri. Buyuk duz gri paneller
+   * yerine canvas'la butunlesen, cok dusuk alfa yuzeyler:
+   *   subtle      → bolum/section zemini (neredeyse gorunmez)
+   *   interactive → input/select/kontrol zemini
+   *   overlay     → dropdown/modal (elevated + golge ile)
+   *   danger      → tehlike tonal zemini
+   * Ham gri blok tonlari bilesenlerde KULLANILMAZ.
+   */
+  --h-surface-subtle: rgba(255, 255, 255, 0.025);
+  --h-surface-interactive: rgba(255, 255, 255, 0.045);
+  --h-surface-overlay: var(--hp-neutral-850);
+  --h-surface-danger: rgba(248, 113, 104, 0.12);
+  /* Gradient primary buton (marka ailesinden; neon YOK). */
+  --h-grad-primary: linear-gradient(135deg, var(--hp-blue-400), var(--hp-blue-600));
+  --h-grad-primary-hover: linear-gradient(135deg, var(--hp-blue-300), var(--hp-blue-500));
   --h-text-primary: #F4F7FB;
   --h-text-secondary: var(--hp-neutral-400);
   --h-text-muted: var(--hp-neutral-500);
@@ -171,6 +187,12 @@
   --h-bg-elevated: var(--hp-neutral-0);
   --h-bg-hover: var(--hp-neutral-100);
   --h-bg-selected: rgba(12, 102, 228, 0.10);
+  --h-surface-subtle: rgba(9, 30, 66, 0.025);
+  --h-surface-interactive: var(--hp-neutral-0);
+  --h-surface-overlay: var(--hp-neutral-0);
+  --h-surface-danger: rgba(201, 55, 44, 0.08);
+  --h-grad-primary: linear-gradient(135deg, var(--hp-blue-500), var(--hp-blue-700));
+  --h-grad-primary-hover: linear-gradient(135deg, var(--hp-blue-400), var(--hp-blue-600));
   --h-text-primary: var(--hp-neutral-ink);
   --h-text-secondary: var(--hp-neutral-600);
   --h-text-muted: #7C8999;

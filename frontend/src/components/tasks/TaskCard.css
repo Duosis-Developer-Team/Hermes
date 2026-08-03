@@ -9,7 +9,10 @@
  */
 
 .task-card {
-    background: var(--c-border-strong);
+    /* Premium UI: gri dolgu (border-strong!) yerine gercek yuzey +
+       ince cerceve — kart interaktif bir yuzeydir, gri blok degil. */
+    background: var(--h-bg-surface);
+    border: 1px solid var(--h-border-subtle);
     border-radius: 6px;
     padding: 10px 12px 10px 10px;
     position: relative;
@@ -26,7 +29,8 @@
 }
 
 .task-card:hover {
-    background: var(--c-border-strong);
+    border-color: var(--h-border-default);
+    box-shadow: var(--h-shadow-hover);
 }
 
 .task-card:hover .task-card-actions {

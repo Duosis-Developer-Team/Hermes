@@ -20,6 +20,9 @@ import AppErrorBoundary from './components/common/AppErrorBoundary'
 import './stores/themeStore'
 import './styles/tokens.css'
 import './index.css'
+// DS V2.1 (Premium UI): merkezi AntD gorunum koprusu — sayfa-ozel
+// override'lar yerine tek katman (buton/select/tablo/modal/today-flag).
+import './styles/premium.css'
 
 dayjs.locale('en')
 

@@ -47,6 +47,50 @@ def format_decimal_hours(decimal_hours) -> str:
 # Auth Service URL (internal docker network)
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8000")
 
+def _display_name(profile: dict, fallback: str = "") -> str:
+    """ORTAK kullanici gorunen-ad kurali (Reports + Time Entry CSV'leri
+    ayni endpoint'i kullanir; ikinci bir formatter YASAK):
+    full_name → display_name → email → fallback. Turkce karakterler
+    oldugu gibi korunur."""
+    return (
+        (profile.get("full_name") or "").strip()
+        or (profile.get("display_name") or "").strip()
+        or (profile.get("email") or "").strip()
+        or fallback
+    )
+
+
+async def get_self_user_map(token: str, current_user) -> dict:
+    """reports.view OLMAYAN kullanici (Time Entry kendi haftasini
+    indiren kullanici dahil) icin kendi profili /users/lookup'tan
+    cozulur — CSV'de e-posta degil GERCEK AD gorunur. Cozum
+    basarisizsa e-posta son care olarak kalir (bilgi kaybi yok)."""
+    uid = str(current_user.id)
+    fallback = {uid: current_user.email}
+    if not token:
+        return fallback
+    try:
+        base_url = AUTH_SERVICE_URL.rstrip("/")
+        if base_url.endswith("/api/v1"):
+            base_url = base_url[:-7]
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"{base_url}/api/v1/auth/users/lookup",
+                params={"ids": uid},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        if resp.status_code != 200:
+            return fallback
+        data = resp.json()
+        users = data if isinstance(data, list) else data.get("data", [])
+        for u in users:
+            if str(u.get("id")) == uid:
+                return {uid: _display_name(u, current_user.email)}
+    except Exception:  # noqa: BLE001 — fail-soft: e-posta son care
+        pass
+    return fallback
+
+
 async def get_all_users_map(token: str) -> Dict[str, str]:
     """
     Fetches all users from auth-service and returns a map of {user_id: full_name}.
@@ -89,11 +133,7 @@ async def get_all_users_map(token: str) -> Dict[str, str]:
                 mapping = {}
                 for u in users:
                     uid = str(u.get("id", ""))
-                    name = u.get("full_name", "")
-                    if name:
-                        mapping[uid] = name
-                    else:
-                        mapping[uid] = u.get("email", uid) 
+                    mapping[uid] = _display_name(u, uid)
                 
                 print(f"DEBUG: Sample Users: {list(mapping.values())[:3]}", flush=True)
                 print(f"INFO: Fetched {len(mapping)} users from auth-service", flush=True)
@@ -134,7 +174,7 @@ async def export_excel(
         if user_has(current_user, Perm.REPORTS_VIEW):
             users_map = await get_all_users_map(token)
         else:
-            users_map = {str(current_user.id): current_user.email}
+            users_map = await get_self_user_map(token, current_user)
 
         # Base query
         query = db.query(
@@ -426,7 +466,7 @@ async def get_user_logs_json(
     if user_has(current_user, Perm.REPORTS_VIEW):
         users_map = await get_all_users_map(token)
     else:
-        users_map = {str(current_user.id): current_user.email}
+        users_map = await get_self_user_map(token, current_user)
 
     # Base query
     query = db.query(

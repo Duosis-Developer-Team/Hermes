@@ -44,8 +44,9 @@
 }
 
 .meeting-day-column {
-    background: var(--c-surface);
-    border: 1px solid var(--c-border);
+    /* Premium UI: dis yuzey hafifledi — canvas'la butunlesen subtle. */
+    background: var(--h-surface-subtle);
+    border: 1px solid var(--h-border-subtle);
     border-radius: 8px;
     display: flex;
     flex-direction: column;
@@ -54,20 +55,18 @@
     overflow: hidden;
 }
 .meeting-day-column-weekend {
-    background: var(--c-surface-sunken);
+    background: var(--h-bg-weekend);
 }
-.meeting-day-column-today {
-    border-color: rgba(34, 211, 238, 0.45);
-    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.18);
-}
+/* Premium UI: bugun icin cerceve/glow yerine ORTAK baslik sancagi
+   (.h-today-flag) — Time Entry ile ayni primitive. Hafif accent kaldi. */
 
 .meeting-day-column-header {
     display: flex;
     align-items: baseline;
     gap: 8px;
     padding: 10px 12px;
-    border-bottom: 1px solid var(--c-border);
-    background: var(--c-surface-raised);
+    border-bottom: 1px solid var(--h-border-subtle);
+    background: transparent;
 }
 .meeting-day-name {
     font-size: 11px;

@@ -569,17 +569,36 @@ body {
   color: var(--text-secondary);
 }
 
-/* Stat Card - Dashboard */
+/* Stat Card - Dashboard — Premium UI: buyuk gri blok DEGIL; hafif
+   yuzey + sol accent isigi + guclu tipografi. */
 .stat-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
+  position: relative;
+  background: var(--h-surface-subtle);
+  border: 1px solid var(--h-border-subtle);
   border-radius: var(--radius-lg);
   padding: 20px;
-  transition: border-color var(--transition-normal);
+  overflow: hidden;
+  transition:
+    border-color var(--transition-normal),
+    transform var(--h-motion-fast) var(--h-ease-standard),
+    box-shadow var(--h-motion-fast) var(--h-ease-standard);
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--h-brand) 70%, transparent);
 }
 
 .stat-card:hover {
-  border-color: var(--N500);
+  border-color: var(--h-border-default);
+  transform: translateY(-1px);
+  box-shadow: var(--h-shadow-hover);
 }
 
 .stat-card .stat-value {
