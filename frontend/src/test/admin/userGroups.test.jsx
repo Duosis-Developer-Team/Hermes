@@ -131,6 +131,20 @@ const confirmButton = (dialog, re) =>
  */
 const expandGroup = async (user, name) => {
     await screen.findByText('Technical Team')
+    /*
+     * CI FLAKE DUZELTMESI (#258'in koku, urun degismedi): AntD, sorgular
+     * yuklenirken tabloyu `.ant-spin-blur` ile ortup `pointer-events:
+     * none` uygular. Hizli makinede satir gorunur gorunmez blur da
+     * kalkiyor; YAVAS CI kosucusunda tiklama blur hala uzerindeyken
+     * gelip "pointer-events: none" ile patliyordu (userEvent'in pointer
+     * retry dongusu dosyayi ~3.4 dk surundurdu). Tiklamadan once yukleme
+     * ortusunun KALKMASI beklenir — usersLifecycle'daki Sprint 7
+     * receteyle birebir ayni sinif.
+     */
+    await waitFor(() =>
+        expect(document.querySelector('.ant-spin-blur, .ant-spin-spinning'))
+            .toBeNull()
+    )
     const cell = await screen.findByText(name)
     const row = cell.closest('tr')
     await user.click(row)
