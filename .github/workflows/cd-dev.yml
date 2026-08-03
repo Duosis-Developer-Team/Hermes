@@ -8,11 +8,36 @@ permissions:
   contents: read
   packages: write
 
+# =============================================================================
+# perf(ci) 2026-08-04 — pipeline mimarisi:
+#   core_tests ─┐
+#   auth_tests ─┼─> build_images (6'li paralel matrix, per-image GHA cache)
+#   mcp_tests ──┤        └────────> deploy (immutable SHA, stale-guard'li)
+#   frontend_build ┘
+#
+# Kapilar AYNEN korunur: tam core+auth+mcp+frontend suite'leri, secret
+# containment guard, env-config artifact kontrolu, runtime secret
+# preflight, immutable SHA deploy + rollout status. Hizlanma yalnizca
+# paralellik + cache + tekrarsizlik ile saglanir; test kapsami degismez.
+#
+# Concurrency modeli (stale-run koruma):
+#   - Test/build joblari: ayni ref'te yeni push, ESKI kosunun o
+#     asamalarini iptal eder (bosa is yok; deploy'lari zaten stale olurdu).
+#   - deploy job'i: ASLA iptal edilmez (cancel-in-progress: false) —
+#     yarim rollout birakilmaz; es zamanli deploy'lar SERIALIZE olur.
+#   - Ek stale-guard: deploy baslarken origin/dev bu SHA'nin otesine
+#     gectiyse rollout ATLANIR (eski kosunun yeni surumu ezmesi imkansiz).
+# =============================================================================
+
 jobs:
-  # Public API guvenlik/regresyon testleri — basarisiz olursa build/deploy
-  # ASLA calismaz (amendment #1: token/RBAC testleri manuel kalamaz).
-  backend_tests:
+  # Core Public API guvenlik/regresyon testleri — basarisiz olursa
+  # build/deploy ASLA calismaz (amendment #1).
+  core_tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: cd-dev-core-${{ github.ref }}
+      cancel-in-progress: true
 
     services:
       postgres:
@@ -38,21 +63,57 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+          cache-dependency-path: backend/core-service/requirements.txt
 
       - name: Install dependencies
         run: pip install -r backend/core-service/requirements.txt
 
-      - name: Run backend test suite
+      - name: Run core test suite
         working-directory: backend/core-service
         env:
           HERMES_TEST_DATABASE_URL: postgresql://hermes:hermes@localhost:55433/hermes_test
           JWT_PUBLIC_KEY: ci-test-only-not-a-real-key
         run: python -m pytest tests/ -q
 
-      - name: Install auth-service dependencies
+  # auth-service testleri (RBAC + S2S directory) — core'dan bagimsiz
+  # kurulumla PARALEL kosar (eski backend_tests ardisikligi kaldirildi).
+  auth_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: cd-dev-auth-${{ github.ref }}
+      cancel-in-progress: true
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: hermes
+          POSTGRES_PASSWORD: hermes
+          POSTGRES_DB: hermes_test
+        ports:
+          - 55433:5432
+        options: >-
+          --health-cmd "pg_isready -U hermes"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/auth-service/requirements.txt
+
+      - name: Install dependencies
         run: pip install -r backend/auth-service/requirements.txt
 
-      - name: Run auth-service test suite (S2S internal directory)
+      - name: Run auth-service test suite
         working-directory: backend/auth-service
         env:
           HERMES_TEST_DATABASE_URL: postgresql://hermes:hermes@localhost:55433/hermes_test
@@ -62,6 +123,10 @@ jobs:
   # gercek core Public API → Postgres uctan uca zinciri dogrular.
   mcp_tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
+    concurrency:
+      group: cd-dev-mcp-${{ github.ref }}
+      cancel-in-progress: true
 
     services:
       postgres:
@@ -87,6 +152,10 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+          cache-dependency-path: |
+            backend/core-service/requirements.txt
+            backend/mcp-service/requirements-test.txt
+            backend/mcp-service/requirements.txt
 
       - name: Install dependencies
         # Test harness'i core Public API'yi in-process calistirir; runtime
@@ -106,9 +175,15 @@ jobs:
           JWT_PUBLIC_KEY: ci-test-only-not-a-real-key
         run: python -m pytest tests/ -q
 
-  # Frontend build gate (Stage 5D-C): deploy, UI derlenmeden kosamaz.
+  # Frontend kalite kapisi (Stage 5D-C): secret guard + TAM vitest
+  # suite + prod build + env-config artifact kontrolu. Deploy, UI
+  # derlenmeden ve testler gecmeden kosamaz.
   frontend_build:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    concurrency:
+      group: cd-dev-frontend-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -126,24 +201,114 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         # Portal testleri build'den ONCE kosar: Developer Portal bir kez
-        # canli urunden saptigi icin (MCP canliyken "coming later" diyordu)
-        # durum/uyumluluk iddialari artik testle kilitli.
+        # canli urunden saptigi icin durum/uyumluluk iddialari testle
+        # kilitli.
         run: |
           npm ci
           npm test
           npx vite build
           # Build ARTIFACT kapisi (Sprint 5.1): index.html /env-config.js
-          # dosyasini KOSULSUZ yukler. Dosya cikti icinde yoksa her sayfa
-          # acilisinda 404 olusur. Kaynak sozlesmesi vitest ile kilitli
-          # (src/test/runtimeConfig.test.js); burada YALNIZCA build'in
-          # gercekten uretip uretmedigi dogrulanir — `npm test` build'den
-          # ONCE kostugu icin bu kontrol oraya konulamaz.
+          # dosyasini KOSULSUZ yukler; cikti icinde yoksa her acilis 404.
           test -s dist/env-config.js
           grep -q "window._env_" dist/env-config.js
 
-  build_push_deploy:
+  # 6 image PARALEL build/push (onceden tek runner'da ardisikti).
+  # Cache: image basina AYRI GHA scope'u — scope'lar birbirini ezmez;
+  # cache-from ayni scope'tan okur, cache-to mode=max tum katmanlari
+  # yazar. Tek build iki tag'i (SHA + dev) birlikte uretir; ayni image
+  # iki kez BUILD EDILMEZ. provenance kapali: cikti, onceki plain
+  # `docker push` ile ayni tekil-manifest bicimde kalir (deploy tarafi
+  # icin davranis degisikligi yok).
+  build_images:
     runs-on: ubuntu-latest
-    needs: [backend_tests, mcp_tests, frontend_build]
+    timeout-minutes: 20
+    needs: [core_tests, auth_tests, mcp_tests, frontend_build]
+    concurrency:
+      group: cd-dev-build-${{ matrix.name }}-${{ github.ref }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        include:
+          - name: auth
+            image: hermes-auth-service
+            context: ./backend
+            dockerfile: backend/auth-service/Dockerfile
+          - name: core
+            image: hermes-core-service
+            context: ./backend
+            dockerfile: backend/core-service/Dockerfile
+          - name: reporting
+            image: hermes-reporting-service
+            context: ./backend
+            dockerfile: backend/reporting-service/Dockerfile
+          - name: frontend
+            image: hermes-frontend
+            context: ./frontend
+            dockerfile: frontend/Dockerfile
+          - name: backup
+            image: hermes-backup
+            context: ./backup
+            dockerfile: backup/Dockerfile
+          - name: mcp
+            image: hermes-mcp
+            context: ./backend
+            dockerfile: backend/mcp-service/Dockerfile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push (frontend — Vite build args)
+        if: matrix.name == 'frontend'
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          provenance: false
+          tags: |
+            ghcr.io/duosis-developer-team/${{ matrix.image }}:${{ github.sha }}
+            ghcr.io/duosis-developer-team/${{ matrix.image }}:dev
+          build-args: |
+            VITE_AZURE_CLIENT_ID=${{ secrets.VITE_AZURE_CLIENT_ID }}
+            VITE_AZURE_TENANT_ID=${{ secrets.VITE_AZURE_TENANT_ID }}
+          cache-from: type=gha,scope=hermes-dev-${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=hermes-dev-${{ matrix.name }}
+
+      - name: Build & push
+        if: matrix.name != 'frontend'
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          provenance: false
+          tags: |
+            ghcr.io/duosis-developer-team/${{ matrix.image }}:${{ github.sha }}
+            ghcr.io/duosis-developer-team/${{ matrix.image }}:dev
+          cache-from: type=gha,scope=hermes-dev-${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=hermes-dev-${{ matrix.name }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [core_tests, auth_tests, mcp_tests, frontend_build, build_images]
+    # Deploy ASLA yarim kesilmez; es zamanli deploy'lar siraya girer.
+    concurrency:
+      group: cd-dev-deploy
+      cancel-in-progress: false
 
     env:
       NAMESPACE: hermes-dev
@@ -154,75 +319,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Login to GHCR
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build & Push images (tags = commit SHA & latest)
+      - name: Stale-run guard
+        # Kuyrukta beklemis ESKI bir kosu, daha yeni commit'in rollout'unu
+        # EZEMEZ: origin/dev bu SHA'nin otesine gectiyse rollout atlanir
+        # (image'lar zaten immutable SHA ile pushlanmis durumda; hicbir
+        # sey bozulmaz, yalnizca eski surum canliya gitmez).
         run: |
-          TAG="${GITHUB_SHA}"
-
-          AUTH_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-auth-service:${TAG}"
-          AUTH_IMAGE_DEV="${REGISTRY}/${OWNER}/hermes-auth-service:dev"
-          
-          CORE_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-core-service:${TAG}"
-          CORE_IMAGE_DEV="${REGISTRY}/${OWNER}/hermes-core-service:dev"
-
-          REPORTING_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-reporting-service:${TAG}"
-          REPORTING_IMAGE_DEV="${REGISTRY}/${OWNER}/hermes-reporting-service:dev"
-
-          FRONTEND_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-frontend:${TAG}"
-          FRONTEND_IMAGE_DEV="${REGISTRY}/${OWNER}/hermes-frontend:dev"
-
-          BACKUP_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-backup:${TAG}"
-          BACKUP_IMAGE_DEV="${REGISTRY}/${OWNER}/hermes-backup:dev"
-
-          MCP_IMAGE_SHA="${REGISTRY}/${OWNER}/hermes-mcp:${TAG}"
-          MCP_IMAGE_DEV="${REGISTRY}/${OWNER}/hermes-mcp:dev"
-
-          docker build -t "$AUTH_IMAGE_SHA" -t "$AUTH_IMAGE_DEV" -f "backend/auth-service/Dockerfile" ./backend
-          docker push "$AUTH_IMAGE_SHA"
-          docker push "$AUTH_IMAGE_DEV"
-
-          docker build -t "$CORE_IMAGE_SHA" -t "$CORE_IMAGE_DEV" -f "backend/core-service/Dockerfile" ./backend
-          docker push "$CORE_IMAGE_SHA"
-          docker push "$CORE_IMAGE_DEV"
-
-          docker build -t "$REPORTING_IMAGE_SHA" -t "$REPORTING_IMAGE_DEV" -f "backend/reporting-service/Dockerfile" ./backend
-          docker push "$REPORTING_IMAGE_SHA"
-          docker push "$REPORTING_IMAGE_DEV"
-
-          docker build \
-            --build-arg VITE_AZURE_CLIENT_ID="${{ secrets.VITE_AZURE_CLIENT_ID }}" \
-            --build-arg VITE_AZURE_TENANT_ID="${{ secrets.VITE_AZURE_TENANT_ID }}" \
-            -t "$FRONTEND_IMAGE_SHA" -t "$FRONTEND_IMAGE_DEV" \
-            ./frontend
-          docker push "$FRONTEND_IMAGE_SHA"
-          docker push "$FRONTEND_IMAGE_DEV"
-
-          docker build -t "$BACKUP_IMAGE_SHA" -t "$BACKUP_IMAGE_DEV" ./backup
-          docker push "$BACKUP_IMAGE_SHA"
-          docker push "$BACKUP_IMAGE_DEV"
-
-          docker build -t "$MCP_IMAGE_SHA" -t "$MCP_IMAGE_DEV" -f "backend/mcp-service/Dockerfile" ./backend
-          docker push "$MCP_IMAGE_SHA"
-          docker push "$MCP_IMAGE_DEV"
+          REMOTE_SHA="$(git ls-remote origin refs/heads/dev | cut -f1)"
+          if [ -n "$REMOTE_SHA" ] && [ "$REMOTE_SHA" != "$GITHUB_SHA" ]; then
+            echo "::notice::origin/dev=$REMOTE_SHA ilerledi; bu kosu ($GITHUB_SHA) STALE — rollout atlaniyor."
+            echo "SKIP_DEPLOY=1" >> "$GITHUB_ENV"
+          fi
 
       - name: Setup kubeconfig
+        if: env.SKIP_DEPLOY != '1'
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBE_CONFIG_B64 }}" | base64 -d > ~/.kube/config
 
       - name: Runtime secret preflight (read-only, Sprint 0)
+        if: env.SKIP_DEPLOY != '1'
         # Zorunlu Secret nesneleri/key adlari yoksa rollout BASLAMADAN
         # durur. Deger okumaz/yazdirmaz. Routine CD hicbir Secret'i
         # olusturmaz/overwrite etmez.
         run: ./scripts/k8s/check-runtime-secrets.sh hermes-dev
 
       - name: Deploy (immutable SHA — tag separation hardening)
+        if: env.SKIP_DEPLOY != '1'
         run: |
           # IMMUTABLE SHA pinleme: calisan Deployment asla mutable tag
           # tasimaz; :dev tag'i yalnizca insan/ilk-kurulum kolayligidir.
