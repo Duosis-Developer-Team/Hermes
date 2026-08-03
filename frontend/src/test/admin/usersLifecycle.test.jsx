@@ -74,7 +74,21 @@ const renderUsers = () =>
 
 const dialog = () => screen.getByRole('dialog')
 const openEdit = async (user, email) => {
-    await user.click(await screen.findByRole('button', { name: `Edit ${email}` }))
+    /*
+     * CI FLAKE DUZELTMESI (Sprint 7 final turunda yakalandi, urun
+     * degismedi): AntD, sorgu yuklenirken tabloyu `.ant-spin-blur` ile
+     * ortup `pointer-events: none` uygular. Hizli makinede buton
+     * gorunur gorunmez blur da kalkmis oluyor; YAVAS CI kosucusunda
+     * tiklama blur hala uzerindeyken gelip "pointer-events: none" ile
+     * patliyordu. Tiklamadan once yukleme ortusunun KALKMASI beklenir
+     * (userGroups.test'teki 6B.2 cozumuyle ayni sinif).
+     */
+    await screen.findByRole('button', { name: `Edit ${email}` })
+    await waitFor(() =>
+        expect(document.querySelector('.ant-spin-blur, .ant-spin-spinning'))
+            .toBeNull()
+    )
+    await user.click(screen.getByRole('button', { name: `Edit ${email}` }))
     return dialog()
 }
 
