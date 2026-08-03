@@ -166,14 +166,7 @@
     color: var(--text-muted);
 }
 
-/* View Toggle */
-.view-toggle {
-    background: var(--bg-tertiary) !important;
-}
-
-.view-toggle .ant-segmented-item {
-    color: var(--text-secondary) !important;
-}
+/* Sprint 7: `.view-toggle` kaldirildi — JSX'te kullanilmiyordu. */
 
 .view-toggle .ant-segmented-item-selected {
     background: var(--bg-secondary) !important;
@@ -275,45 +268,13 @@
     }
 }
 
-/* Excel Export Button - Force Green */
-.excel-export-btn {
-    background: #16a34a !important;
-    border-color: #16a34a !important;
-    color: white !important;
-    margin-right: 8px !important;
-    min-width: 32px !important;
-    width: 32px !important;
-    height: 32px !important;
-    padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-.excel-export-btn:hover {
-    background: #15803d !important;
-    border-color: #15803d !important;
-}
-
-.excel-export-btn {
-    background: #16a34a !important;
-    border-color: #16a34a !important;
-    color: white !important;
-    margin-right: 8px !important;
-    min-width: 32px !important;
-    width: 32px !important;
-    height: 32px !important;
-    padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-.excel-export-btn:hover {
-    background: #15803d !important;
-    /* darker green hover */
-    border-color: #15803d !important;
-}
+/*
+ * Sprint 7: `.excel-export-btn` blogu KALDIRILDI.
+ * Sprint 5'te yerini `.te-export-btn` (semantic success tokeni) aldi ama
+ * eski kural iki kez kopyalanmis halde geride kalmisti. Hicbir JSX bu
+ * sinifi kullanmiyordu — olu CSS'ti ve tek basina 26 `!important`
+ * tasiyordu.
+ */
 /* Sprint 5: export butonu — inline ham hex + React tarafindan zaten
    yok sayilan olu oncelik bayragi yerine
    semantic success tokeni (tek kaynak, iki temada dogru kontrast). */

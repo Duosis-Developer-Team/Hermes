@@ -29,40 +29,44 @@ function WorkLogCard({
     const issueKey = customer_code || customer_name?.substring(0, 5).toUpperCase() || 'KEY'
 
     return (
+        /*
+         * KOK ARTIK INTERAKTIF DEGIL (Sprint 7 final QA bulgusu).
+         * Onceden `role="button" tabIndex={0}` idi ve ICINDE duzenle/sil
+         * butonlari vardi — TaskCard'daki ile ayni gecersiz ic ice
+         * semantik. Ayni recete uygulandi: kok sade kapsayici (fare
+         * tiklamasi korunur), secim islemi icin baslik GERCEK bir buton
+         * (klavye, odak halkasi, aria-pressed ve erisilebilir ad onda).
+         */
         <div
             className={
                 'worklog-card'
                 + (isSelected ? ' worklog-card-selected' : '')
                 + (isCopied ? ' worklog-card-copied' : '')
             }
-            role="button"
-            tabIndex={0}
-            aria-pressed={isSelected}
-            /* Durum yalnizca RENKLE anlatilmaz: erisilebilir ad ile de
-               bildirilir (renk korlugu / ekran okuyucu — CTO §5). */
-            aria-label={
-                `${project_name || 'Project'}, ${formatHours(duration_hours)}`
-                + (isCopied ? ' — panoya kopyalandi' : '')
-                + (isSelected ? ' — secili' : '')
-            }
             onClick={(e) => {
                 e.stopPropagation() // Prevent bubbling to DayColumn (which would set targetDate)
                 onSelect?.(workLog.id)
             }}
-            onKeyDown={(e) => {
-                // Klavye ile secim (§ erisilebilirlik): kart bir buton gibi
-                // davranir; Space sayfayi kaydirmaz.
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
+        >
+            <button
+                type="button"
+                className="worklog-card-title worklog-card-open"
+                aria-pressed={isSelected}
+                /* Durum yalnizca RENKLE anlatilmaz: erisilebilir ad ile
+                   de bildirilir (renk korlugu / ekran okuyucu — CTO §5). */
+                aria-label={
+                    `${project_name || 'Project'}, ${formatHours(duration_hours)}`
+                    + (isCopied ? ' — panoya kopyalandi' : '')
+                    + (isSelected ? ' — secili' : '')
+                }
+                onClick={(e) => {
+                    // Kok da ayni islemi tetikler; tekrari onle.
                     e.stopPropagation()
                     onSelect?.(workLog.id)
-                }
-            }}
-        >
-            {/* Proje Adı (Ana başlık) */}
-            <div className="worklog-card-title">
+                }}
+            >
                 {project_name || 'Project'}
-            </div>
+            </button>
 
             {/* Açıklama (Açık gri, kısaltılmış) */}
             {description && (

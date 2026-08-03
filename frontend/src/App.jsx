@@ -128,8 +128,9 @@ function App() {
         // [KRİTİK-6]: Temizlik — Eski mimariden kalan güvensiz localStorage token'ını sil
         const legacyToken = localStorage.getItem('hermes-auth')
         if (legacyToken) {
+            // Sessizce temizlenir: kullaniciya gosterilecek bir sey yok ve
+            // konsola guvenlik islemi yazmak (Sprint 7) gereksiz gurultu.
             localStorage.removeItem('hermes-auth')
-            console.log('Legacy hermes-auth token removed from localStorage for security')
         }
 
         // Sayfa yenilemesinde mevcut HttpOnly cookie üzerinden oturumu geri yükle.
@@ -146,7 +147,14 @@ function App() {
             .finally(() => {
                 setSessionChecked(true)
             })
-    }, [])
+        /*
+         * `login` Zustand store'unda `create((set) => ({...}))` icinde BIR
+         * KEZ tanimlanir; referansi store'un omru boyunca STABILDIR. Bu
+         * yuzden bagimlilik listesine eklemek dogru sonucu verir ve efekti
+         * yeniden tetiklemez — uyariyi susturmak icin yanlis bagimlilik
+         * eklenmedi, gercek bagimlilik yazildi.
+         */
+    }, [login])
 
     // RBAC R3: oturum AÇIK olduğu her an (boot VEYA login sonrası)
     // efektif izinleri yükle. can() fail-closed: izinler gelene dek
@@ -158,7 +166,8 @@ function App() {
                 .then(r => setPermissions(r.permissions))
                 .catch(() => setPermissions([]))
         }
-    }, [isAuthenticated, permissions])
+        // `setPermissions` de ayni sekilde stabil bir store aksiyonu.
+    }, [isAuthenticated, permissions, setPermissions])
 
     // /me kontrolü bitmeden route'ları render etme — aksi halde cookie hâlâ geçerliyken
     // isAuthenticated=false olduğu için login'e yönlendirme yapılır.

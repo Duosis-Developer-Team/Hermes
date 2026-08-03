@@ -97,7 +97,13 @@ function PlanTimeModal({
                 setSelectedCustomerId(null)
             }
         }
-    }, [open, initialDate, editingPlan, form])
+        /*
+         * `currentUserId` GERCEK bir bagimlilik: plani olusturan kisi
+         * atanan listesinden CIKARILIYOR. Prop degistiginde form yeniden
+         * doldurulmali; eksik oldugu icin bayat bir filtre kalabiliyordu.
+         * (Oturum sahibi oldugu icin pratikte stabildir — dongu riski yok.)
+         */
+    }, [open, initialDate, editingPlan, form, currentUserId])
 
     const handleClose = () => {
         setSelectedCustomerId(null)

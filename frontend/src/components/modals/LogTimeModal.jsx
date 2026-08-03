@@ -397,6 +397,7 @@ function LogTimeModal({
                         <div className="selection-wrapper">
                             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
                                 <Button
+                                    aria-label="Back to previous step"
                                     type="text"
                                     icon={<ArrowLeftOutlined />}
                                     onClick={prevStep}
@@ -443,6 +444,7 @@ function LogTimeModal({
                         {/* Selected Issue Header */}
                         <div className="selected-issue-header">
                             <Button
+                                aria-label="Back to previous step"
                                 type="text"
                                 icon={<ArrowLeftOutlined />}
                                 onClick={handleBack}

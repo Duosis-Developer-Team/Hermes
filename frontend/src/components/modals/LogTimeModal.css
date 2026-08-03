@@ -62,14 +62,7 @@
     margin-bottom: 16px;
 }
 
-.issue-search-input {
-    background: var(--c-chip) !important;
-    border-color: #d89614 !important;
-}
-
-.issue-search-input .ant-input {
-    background: transparent !important;
-}
+/* Sprint 7: `.issue-search-input` kaldirildi — JSX'te kullanilmiyordu. */
 
 .field-required {
     color: #ff7875;
@@ -93,7 +86,8 @@
     align-items: center;
     cursor: pointer;
     border-bottom: 1px solid var(--border-default);
-    transition: all var(--transition-fast);
+    /* Hover: yalnizca arka plan. */
+    transition: background-color var(--transition-fast);
 }
 
 .issue-item:last-child {

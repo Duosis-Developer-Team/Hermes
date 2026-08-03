@@ -278,3 +278,29 @@
     .task-card:hover,
     .task-card:active { transform: none; }
 }
+
+/* ==========================================================================
+   Baslik = gercek buton (Sprint 7)
+   --------------------------------------------------------------------------
+   Kart koku artik `role="button"` DEGIL; acma islemi klavyeyle erisilebilir
+   ACIK bir kontrole tasindi. Buton, onceki `<div>` ile GORSEL OLARAK AYNI
+   kalmali: tarayici buton kromu (arka plan, kenarlik, hizalama, font)
+   sifirlanir, yalniz odak halkasi eklenir.
+   ========================================================================== */
+.task-card-open {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.task-card-open:focus-visible {
+    outline: 2px solid var(--c-focus, var(--color-primary));
+    outline-offset: 2px;
+    border-radius: 4px;
+}

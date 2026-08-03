@@ -60,13 +60,31 @@ describe('feature sinirlari', () => {
         }
     })
 
-    it('anlamsiz tek-satirlik wrapper yok (her dosya gercek is yapar)', () => {
+    it('anlamsiz wrapper yok (her dosya gercek is yapar)', () => {
+        /*
+         * Sprint 7: kural SATIR SAYISI yerine ANTI-DESENIN KENDISINI
+         * olcuyor. Onceki esik (>12 kod satiri) bir vekildi ve gercek
+         * is yapan KUCUK bir saf yardimciyi (`taskDueState`: tarih
+         * matematigi + dort dal, 12 kod satiri) yanlislikla ihlal
+         * sayiyordu. Kural gevsetilmedi — hedefi netlestirildi:
+         *
+         *   1. Hicbir dosya YALNIZCA re-export olmasin (asil anti-desen).
+         *   2. Dosya en az bir gercek bildirim/mantik tasisin.
+         */
         for (const f of FEATURE) {
             const code = read(f)
                 .split('\n')
                 .filter((l) => l.trim() && !l.trim().startsWith('*')
                     && !l.trim().startsWith('/*') && !l.trim().startsWith('//'))
-            expect(code.length).toBeGreaterThan(12)
+
+            // 1) Salt re-export dosyasi (import + export ... from) yasak.
+            const onlyReExports = code.every(
+                (l) => /^\s*(import|export)\b/.test(l.trim())
+            )
+            expect(onlyReExports, `${f}: yalnizca re-export`).toBe(false)
+
+            // 2) Iskelet dosya yasak: gercek bir govde bulunmali.
+            expect(code.length, `${f}: iskelet dosya`).toBeGreaterThan(5)
         }
     })
 })

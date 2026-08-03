@@ -144,11 +144,11 @@ function DashboardPage() {
                     </Col>
                     <Col>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--c-chip)', padding: '4px 8px', borderRadius: 6, border: '1px solid var(--c-border)' }}>
-                            <Button type="text" icon={<LeftOutlined />} onClick={goToPreviousMonth} style={{ color: 'var(--c-text)' }} />
+                            <Button type="text" aria-label="Previous month" icon={<LeftOutlined />} onClick={goToPreviousMonth} style={{ color: 'var(--c-text)' }} />
                             <span style={{ color: 'var(--c-text)', fontWeight: 500, minWidth: 160, textAlign: 'center' }}>
                                 {dateRange[0].format('DD MMM')} - {dateRange[1].format('DD MMM, YYYY')}
                             </span>
-                            <Button type="text" icon={<RightOutlined />} onClick={goToNextMonth} style={{ color: 'var(--c-text)' }} />
+                            <Button type="text" aria-label="Next month" icon={<RightOutlined />} onClick={goToNextMonth} style={{ color: 'var(--c-text)' }} />
                             <div style={{ width: 1, height: 20, background: 'var(--c-border)', margin: '0 4px' }} />
                             <Button type="text" onClick={goToThisMonth} style={{ color: 'var(--c-text)' }}>Today</Button>
                         </div>

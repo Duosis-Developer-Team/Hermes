@@ -312,6 +312,7 @@ function MeetingsPage() {
                 <div className="meetings-user-header-right">
                     <Space wrap>
                         <Button
+                                aria-label="Previous week"
                             icon={<LeftOutlined />}
                             onClick={() =>
                                 setWeekStart((p) => p.subtract(1, 'week'))
@@ -325,6 +326,7 @@ function MeetingsPage() {
                             Today
                         </Button>
                         <Button
+                                aria-label="Next week"
                             icon={<RightOutlined />}
                             onClick={() =>
                                 setWeekStart((p) => p.add(1, 'week'))

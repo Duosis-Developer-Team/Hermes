@@ -151,7 +151,13 @@ function TimeEntryPage() {
             }
             return pt
         })
-    }, [planTimesResponse, user, selectedUserId])
+        /*
+         * `canWorklogsAdmin` GERCEK bir bagimlilik: izin sorgusu sonradan
+         * cozuldugunde (false → true) admin zenginlestirmesi yeniden
+         * hesaplanmali. Eksik oldugu icin izin geldiginde plan time
+         * status'lari eski haliyle kaliyordu.
+         */
+    }, [planTimesResponse, user, selectedUserId, canWorklogsAdmin])
 
     // Fetch Period Status
     const { data: periodStatus, refetch: refetchPeriodStatus } = useQuery({
@@ -160,7 +166,15 @@ function TimeEntryPage() {
         enabled: !!user?.id,
     })
 
-    const workLogs = workLogsResponse?.data || []
+    /*
+     * `workLogsResponse?.data || []` her render'da YENI bir dizi uretir.
+     * Bu, asagidaki useMemo'yu ise yaramaz hale getiriyor ve klavye
+     * kisayolu effect'ini HER RENDER'da yeniden baglatiyordu (listener
+     * ekle/kaldir dongusu). Referans stabil tutulur.
+     */
+    const workLogs = useMemo(
+        () => workLogsResponse?.data || [], [workLogsResponse]
+    )
 
     // Haftalık toplam saat
     const weekTotalHours = useMemo(() =>

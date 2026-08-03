@@ -369,7 +369,15 @@ body {
 .ant-btn {
   border-radius: var(--radius-md) !important;
   font-weight: 500 !important;
-  transition: all var(--transition-fast) !important;
+  /* Sprint 7: `all` yerine GERCEKTEN degisen ozellikler. AntD
+     butonlarinda hover/focus/active yalnizca renk, arka plan,
+     kenarlik ve golgeyi degistirir; `all` layout ozelliklerini de
+     animasyona sokup gereksiz is cikariyordu. */
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast) !important;
 }
 
 .ant-btn-primary {

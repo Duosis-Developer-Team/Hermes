@@ -66,6 +66,8 @@ export default function TokenOnceModal({ issued, onDone }) {
                 <Space>
                     <Tooltip title={masked ? 'Show' : 'Hide'}>
                         <Button
+                            /* Tooltip erisilebilir ad VERMEZ. */
+                            aria-label={masked ? 'Show token' : 'Hide token'}
                             size="small"
                             icon={
                                 masked ? (

@@ -29,7 +29,9 @@ vi.mock('../../services/api', async () => await import('./apiMock'))
 import { mkTask, resetTasksApi, taskService, workLogService } from './apiMock'
 import { renderTasksPage, setupUser } from './harness'
 import { makeTestQueryClient, resetAuthStore } from '../utils'
-import { TaskDueBadge, taskDueState } from '../../components/tasks/TaskCard'
+import { TaskDueBadge } from '../../components/tasks/TaskCard'
+// Saf yardimci artik kendi modulunde (fast-refresh sozlesmesi).
+import { taskDueState } from '../../features/tasks/model/taskDueState'
 
 const ORIGINAL_TZ = process.env.TZ
 

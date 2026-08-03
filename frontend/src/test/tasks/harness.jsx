@@ -79,13 +79,26 @@ export const setupUser = () => userEvent.setup({ delay: null })
  * aliyor, kartin kendisi de role="button" — bu yuzden rol sorgusu iki
  * eleman bulur. Kart DOM sinifi tek ve kesin hedefi verir.
  */
+/**
+ * Kart kapsayicisi.
+ *
+ * Sprint 7: kart KOKU artik `role="button"` DEGIL (ic ice interaktif
+ * kontrol yasagi). Erisilebilir ad, acma islemini yapan GERCEK butona
+ * (baslik) tasindi; kapsayici sade bir `<div>`. Bu yuzden kart, baslik
+ * butonunun adindan yukari cikilarak bulunur.
+ */
 export const taskCard = (code) => {
-    const el = Array.from(document.querySelectorAll('.task-card')).find((c) =>
-        (c.getAttribute('aria-label') || '').includes(code)
+    const opener = Array.from(document.querySelectorAll('.task-card-open')).find(
+        (b) => (b.getAttribute('aria-label') || '').includes(code)
     )
+    const el = opener?.closest('.task-card')
     if (!el) throw new Error(`task card bulunamadi: ${code}`)
     return el
 }
+
+/** Karti ACAN gercek kontrol (baslik butonu). */
+export const taskCardOpener = (code) =>
+    taskCard(code).querySelector('.task-card-open')
 
 /** Kart icinde sorgu yapmak icin kisayol. */
 export const inCard = (code) => within(taskCard(code))
@@ -214,9 +227,12 @@ export const draggableFor = (code) => taskCard(code).closest('.tasks-board-dragg
  * DragOverlay klonu kolon DISINDA render edilir; onu ATLAR.
  */
 export const columnOf = (code) => {
-    const card = Array.from(document.querySelectorAll('.task-card'))
-        .filter((c) => !c.closest('.tasks-board-drag-overlay'))
-        .find((c) => (c.getAttribute('aria-label') || '').includes(code))
+    // Sprint 7: erisilebilir ad kart KOKUNDE degil, karti acan gercek
+    // butonda (baslik). Karta oradan cikilir.
+    const card = Array.from(document.querySelectorAll('.task-card-open'))
+        .filter((b) => !b.closest('.tasks-board-drag-overlay'))
+        .find((b) => (b.getAttribute('aria-label') || '').includes(code))
+        ?.closest('.task-card')
     if (!card) throw new Error(`kolonda kart yok: ${code}`)
     return statusOfColumnBody(card.closest('.tasks-board-column-body'))
 }

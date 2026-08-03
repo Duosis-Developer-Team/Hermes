@@ -74,7 +74,10 @@
     padding: 0 12px !important;
     border-radius: var(--h-radius-standard) !important;
     color: var(--h-text-secondary) !important;
-    transition: all var(--h-motion-fast) var(--h-ease-standard);
+    /* Menu ogesinde yalnizca renk ve arka plan degisiyor. */
+    transition:
+        color var(--h-motion-fast) var(--h-ease-standard),
+        background-color var(--h-motion-fast) var(--h-ease-standard);
 }
 
 .main-menu .ant-menu-item:hover {

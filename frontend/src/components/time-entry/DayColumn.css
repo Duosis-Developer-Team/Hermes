@@ -98,7 +98,11 @@
     align-items: center;
     justify-content: center;
     font-size: 16px;
-    transition: all var(--transition-fast);
+    /* Hover: kenarlik, metin rengi ve arka plan. */
+    transition:
+        border-color var(--transition-fast),
+        color var(--transition-fast),
+        background-color var(--transition-fast);
 }
 
 .day-column-add-btn:hover {

@@ -155,6 +155,7 @@ function TaskCommentsThread({ taskId, currentUserId, isAdmin, userMap = {} }) {
                                 {canMutate(c) && editingId !== c.id && (
                                     <div className="task-comment-actions">
                                         <Button
+                                aria-label="Edit comment"
                                             size="small"
                                             type="text"
                                             icon={<EditOutlined />}
@@ -164,6 +165,7 @@ function TaskCommentsThread({ taskId, currentUserId, isAdmin, userMap = {} }) {
                                             }}
                                         />
                                         <Button
+                                aria-label="Delete comment"
                                             size="small"
                                             type="text"
                                             danger

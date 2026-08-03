@@ -28,6 +28,8 @@ import {
     FieldTimeOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
+
+import { taskDueState } from '../../features/tasks/model/taskDueState'
 import { canEditTask } from '../../features/tasks/model/permissions'
 import { typeMeta } from '../../utils/workItemType'
 import './TaskCard.css'
@@ -38,25 +40,6 @@ function userLabel(id, userMap) {
     // Never leak a raw UUID into the UI — fall back to a neutral dash if
     // the name hasn't resolved yet / the user isn't in the lookup set.
     return u?.full_name || u?.email || '—'
-}
-
-/**
- * Returns the due-date severity bucket for a task, or null when the
- * task does not warrant any badge. Completed/rejected tasks never
- * surface as overdue — they're done business, the due date is moot.
- *
- * Exposed for reuse by list and board views.
- */
-export function taskDueState(task) {
-    if (!task?.due_date) return null
-    if (task.status === 'completed' || task.status === 'rejected') return null
-    const today = dayjs().startOf('day')
-    const due = dayjs(task.due_date).startOf('day')
-    const diffDays = due.diff(today, 'day')
-    if (diffDays < 0) return 'overdue'
-    if (diffDays === 0) return 'due_today'
-    if (diffDays <= 2) return 'due_soon'
-    return null
 }
 
 const DUE_STATE_LABEL = {
@@ -166,25 +149,26 @@ function TaskCard({
         (isCompleted ? ' task-card-completed' : '')
 
     return (
+        /*
+         * KOK ARTIK INTERAKTIF DEGIL (Sprint 7).
+         *
+         * Onceden burada `role="button" tabIndex={0}` vardi ve kartin
+         * ICINDE checkbox ile aksiyon butonlari yer aliyordu: bir buton
+         * rolunun icine baska interaktif kontroller yerlestirilmisti.
+         * Bu gecersiz semantiktir — ekran okuyucu ic kontrolleri dogru
+         * sunmaz ve klavye sirasi bulaniklasir. Sorun `stopPropagation`
+         * ile ORTULMEDI, HTML semantigiyle cozuldu:
+         *
+         *   - Kok: sade bir kapsayici. Fare kullanicisi icin kartin her
+         *     yerine tiklama KORUNDU (alisilmis davranis), ama artik
+         *     buton gibi ANONS EDILMIYOR.
+         *   - Acma islemi icin ACIK ve klavyeyle erisilebilir bir kontrol
+         *     var: baslik gercek bir <button>. Odak halkasi, Enter/Space
+         *     ve erisilebilir ad ondan gelir.
+         */
         <div
             className={className}
-            role="button"
-            tabIndex={0}
-            /* Durum yalniz RENKLE anlatilmaz: erisilebilir ad basligi,
-               durumu ve atananı tasir (§12 erisilebilirlik). */
-            aria-label={
-                `${task.task_code ? task.task_code + ' ' : ''}${task.title}`
-                + ` — ${STATUS_LABELS[task.status] || task.status || 'bilinmiyor'}`
-                + (task.priority ? `, öncelik ${task.priority}` : '')
-            }
             onClick={handleBodyClick}
-            onKeyDown={(e) => {
-                // Native buton semantigi: Enter VE Space (Space sayfayi
-                // kaydirmamali).
-                if (e.key !== 'Enter' && e.key !== ' ') return
-                e.preventDefault()
-                onSelect?.(task)
-            }}
         >
             <Tooltip
                 title={
@@ -207,12 +191,48 @@ function TaskCard({
             </Tooltip>
 
             <div className="task-card-body">
-                <div className="task-card-title">
+                <button
+                    type="button"
+                    className="task-card-title task-card-open"
+                    /* Durum yalniz RENKLE anlatilmaz: erisilebilir ad
+                       basligi, durumu ve onceligi tasir. */
+                    aria-label={
+                        `${task.task_code ? task.task_code + ' ' : ''}${task.title}`
+                        + ` — ${STATUS_LABELS[task.status] || task.status || 'bilinmiyor'}`
+                        + (task.priority ? `, öncelik ${task.priority}` : '')
+                    }
+                    onClick={(e) => {
+                        /*
+                         * Kok kapsayici da ayni islemi tetikliyor; olay
+                         * yukari cikarsa AYNI aksiyon iki kez calisirdi.
+                         * Burada durdurma, gecersiz semantigi ortmek icin
+                         * DEGIL, tekrari onlemek icindir.
+                         */
+                        e.stopPropagation()
+                        handleBodyClick(e)
+                    }}
+                    onKeyDown={(e) => {
+                        /*
+                         * BOARD'da kart, dnd-kit sarmalayicisinin icinde
+                         * yasar ve KeyboardSensor Enter/Space keydown'unu
+                         * SURUKLEMEYI baslatmak icin yakalayip
+                         * preventDefault yapar — bu, native butonun
+                         * click'ini iptal edip ACMAYI yutuyordu (final
+                         * tarayici QA'sinin buldugu gercek regresyon).
+                         * Olay sarmalayiciya CIKARILMAZ: acma butonu
+                         * acar; klavyeyle surukleme, sarmalayicinin
+                         * KENDI odagindan (Tab ile) baslamaya devam eder.
+                         */
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.stopPropagation()
+                        }
+                    }}
+                >
                     {task.task_code && (
                         <span className="task-card-code">{task.task_code}</span>
                     )}
                     <span className="task-card-title-text">{task.title}</span>
-                </div>
+                </button>
                 <div className="task-card-meta">
                     {task.customer_name || '—'} · {task.project_name || '—'}
                     {subProjectSegment}

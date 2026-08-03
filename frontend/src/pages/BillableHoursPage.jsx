@@ -313,6 +313,7 @@ function BillableHoursPage() {
                         />
                         <div style={{ display: 'flex', gap: 4 }}>
                             <Button
+                                aria-label="Save billable hours"
                                 type="primary"
                                 size="small"
                                 icon={<SaveOutlined />}
@@ -431,6 +432,7 @@ function BillableHoursPage() {
             }}>
                 <Space size={16}>
                     <Button
+                        aria-label="Previous week"
                         type="text"
                         icon={<LeftOutlined />}
                         onClick={goToPreviousWeek}
@@ -443,6 +445,7 @@ function BillableHoursPage() {
                         </span>
                     </div>
                     <Button
+                        aria-label="Next week"
                         type="text"
                         icon={<RightOutlined />}
                         onClick={goToNextWeek}
@@ -527,7 +530,8 @@ function BillableHoursPage() {
                     cursor: pointer;
                     padding: 8px 16px;
                     border-radius: 8px;
-                    transition: all 0.2s;
+                    /* Hover: arka plan + olcek. */
+                    transition: background-color 0.2s, transform 0.2s;
                     display: inline-flex;
                     align-items: baseline;
                     background: rgba(74, 222, 128, 0.05); /* subtle green tint */

@@ -27,7 +27,7 @@ vi.mock('../../services/api', async () => await import('./apiMock'))
 import { PERMS_ADMIN, mkTask, resetTasksApi, taskService } from './apiMock'
 import {
     columnOf, consumeDragClickSuppressor, dragCardTo, draggableFor,
-    installBoardGeometry, inCard, invalidatedFamilies, renderTasksPage,
+    installBoardGeometry, inCard, invalidatedFamilies, renderTasksPage, taskCard,
     restoreBoardGeometry, setupUser, usedLegacyInvalidation,
 } from './harness'
 import { resetAuthStore } from '../utils'
@@ -169,6 +169,35 @@ describe('BASARILI surukleme', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────
+describe('KLAVYE ile acma (dnd sensoru yaninda)', () => {
+    it('baslik butonunda Enter, panel ACAR — dnd KeyboardSensor yutmaz', async () => {
+        /*
+         * GERCEK REGRESYON (Sprint 7 final tarayici QA'sinin bulgusu):
+         * board'da kart, dnd-kit sarmalayicisinin icindedir ve
+         * KeyboardSensor Enter/Space keydown'unu suruklemeyi baslatmak
+         * icin yakalayip preventDefault yapar — native butonun click'i
+         * iptal olur ve acma yutulurdu. Baslik butonu artik Enter/Space
+         * keydown'unu sarmalayiciya CIKARMAZ; klavye sürüklemesi
+         * sarmalayicinin KENDI odagindan calismaya devam eder.
+         */
+        const user = setupUser()
+        renderTasksPage()
+        await onBoard()
+
+        const opener = taskCard('TASK-1').querySelector('.task-card-open')
+        opener.focus()
+        await user.keyboard('{Enter}')
+
+        // Detay paneli (TaskDetailPanel) acilir; surukleme BASLAMAZ.
+        await waitFor(() => {
+            expect(document.querySelector('.task-detail-panel, .tdp-tab-body'))
+                .not.toBeNull()
+        })
+        expect(document.querySelector('.tasks-board-drag-overlay')).toBeNull()
+        expect(taskService.updateStatus).not.toHaveBeenCalled()
+    })
+})
+
 describe('API HATASI → rollback', () => {
     it('kart ONCEKI kolonuna doner, kaybolmaz, iki kolonda birden gorunmez', async () => {
         const gate = deferred()

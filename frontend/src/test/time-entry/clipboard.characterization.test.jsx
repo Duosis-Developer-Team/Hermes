@@ -25,13 +25,31 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ConfigProvider } from 'antd'
 import { MemoryRouter } from 'react-router-dom'
+import dayjs from 'dayjs'
+import isoWeek from 'dayjs/plugin/isoWeek'
+
+dayjs.extend(isoWeek)
 
 const createSpy = vi.fn()
+
+/*
+ * ZAMAN BOMBASI DUZELTMESI (Sprint 7): fixture tarihi `2026-07-27` diye
+ * SABITLENMISTI. TimeEntryPage her zaman ICINDE BULUNULAN ISO haftasini
+ * gosterir; takvim o haftayi gecince kayit gorunur alanin disinda kaldi
+ * ve test, urunde hicbir sey degismeden kirmiziya dondu (30 Temmuz'da
+ * yesildi, 3 Agustos'ta kirmizi). Tarih artik GECERLI haftadan turetilir.
+ */
+const WEEK_MONDAY = dayjs().startOf('isoWeek').format('YYYY-MM-DD')
+/** Hedef gun etiketleri de haftadan turetilir (sabit '28'/'29' DEGIL). */
+const DAY_LABEL = (offset) =>
+    // DayColumn gun numarasini SIFIR DOLGULU ('DD') cizer.
+    dayjs().startOf('isoWeek').add(offset, 'day').format('DD')
+
 const LOGS = [
     {
         id: 'log-1', customer_id: 'c1', project_id: 'p1', work_type_id: 'w1',
         activity_type_id: 'a1', platform_id: null, work_line_id: null,
-        date_worked: '2026-07-27', duration_hours: 2.5,
+        date_worked: WEEK_MONDAY, duration_hours: 2.5,
         description: 'Ilk kayit', customer_name: 'Vakko', project_name: 'ATM',
         work_type_name: 'Dev',
     },
@@ -122,7 +140,7 @@ describe('yapistirma', () => {
         key('c')
         await waitFor(() => expect(document.body.textContent).toMatch(/Ctrl\+V/i))
         // Hedef gun: kaynaktan FARKLI bir gun sec (28)
-        const target = screen.getByText('28')
+        const target = screen.getByText(DAY_LABEL(1))
         fireEvent.click(target.closest('div'))
     }
 
@@ -137,7 +155,7 @@ describe('yapistirma', () => {
             activity_type_id: 'a1', platform_id: null, work_line_id: null,
             duration_hours: 2.5, description: 'Ilk kayit',
         })
-        expect(payload.date_worked).not.toBe('2026-07-27') // hedef gune gitti
+        expect(payload.date_worked).not.toBe(WEEK_MONDAY) // hedef gune gitti
         expect(payload.id).toBeUndefined() // YENI kayit
     })
 
@@ -164,7 +182,7 @@ describe('yapistirma', () => {
         key('v')
         await waitFor(() => expect(createSpy).toHaveBeenCalledTimes(1))
         // Pano hala dolu → yeni hedef secilip tekrar yapistirilabilir
-        fireEvent.click(screen.getByText('29').closest('div'))
+        fireEvent.click(screen.getByText(DAY_LABEL(2)).closest('div'))
         key('v')
         await waitFor(() => expect(createSpy).toHaveBeenCalledTimes(2))
         expect(createSpy.mock.calls[0][0].date_worked)
@@ -226,7 +244,7 @@ describe('cache sozlesmesi (§9 — mutation sonrasi invalidation)', () => {
         fireEvent.click(await screen.findByText('Ilk kayit'))
         fireEvent.keyDown(window, { key: 'c', ctrlKey: true })
         await waitFor(() => expect(document.body.textContent).toMatch(/Ctrl\+V/i))
-        fireEvent.click(screen.getByText('28').closest('div'))
+        fireEvent.click(screen.getByText(DAY_LABEL(1)).closest('div'))
         fireEvent.keyDown(window, { key: 'v', ctrlKey: true })
 
         await waitFor(() => expect(createSpy).toHaveBeenCalled())
