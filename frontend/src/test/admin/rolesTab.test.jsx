@@ -352,3 +352,71 @@ describe('cache etkisi', () => {
         )
     })
 })
+
+describe('RBAC cutover — izin bagimliligi (assign ⇒ access)', () => {
+    /*
+     * Asil zorlayici auth-service'tir (422); buradaki sozlesme checkbox
+     * DAVRANISIDIR: assign isaretlenince access otomatik gelir, access
+     * kaldirilinca ayni scope'un assign'i da kalkar. Katalog, yeni 4
+     * operasyonel izni icerecek sekilde genisletilir.
+     */
+    const CUTOVER_CATALOG = {
+        permissions: [
+            { code: 'tasks.access' }, { code: 'tasks.assign' },
+            { code: 'issues.access' }, { code: 'issues.assign' },
+            { code: 'users.manage' },
+        ],
+    }
+
+    const openCreate = async (user) => {
+        await user.click(screen.getByRole('button', { name: /New Role/i }))
+        return roleDialog()
+    }
+
+    const box = (dialog, label) =>
+        within(dialog).getByRole('checkbox', { name: new RegExp(label) })
+
+    it('assign isaretlenince ayni scope un access i otomatik eklenir', async () => {
+        rbacService.getPermissionCatalog.mockResolvedValue(CUTOVER_CATALOG)
+        const user = setupUser()
+        renderRoles()
+        const dialog = await openCreate(user)
+
+        await user.click(box(dialog, 'Assign tasks'))
+        await waitFor(() => {
+            expect(box(dialog, 'Task module access')).toBeChecked()
+        })
+        expect(box(dialog, 'Assign tasks')).toBeChecked()
+        // Diger scope etkilenmez.
+        expect(box(dialog, 'Issues & suggestions access')).not.toBeChecked()
+    })
+
+    it('access kaldirilinca ayni scope un assign i da kalkar', async () => {
+        rbacService.getPermissionCatalog.mockResolvedValue(CUTOVER_CATALOG)
+        const user = setupUser()
+        renderRoles()
+        const dialog = await openCreate(user)
+
+        await user.click(box(dialog, 'Assign issues & suggestions'))
+        await waitFor(() => {
+            expect(box(dialog, 'Issues & suggestions access')).toBeChecked()
+        })
+        await user.click(box(dialog, 'Issues & suggestions access'))
+        await waitFor(() => {
+            expect(box(dialog, 'Assign issues & suggestions')).not.toBeChecked()
+        })
+    })
+
+    it('yeni operasyonel izinlerin Ingilizce etiketleri katalogda', async () => {
+        rbacService.getPermissionCatalog.mockResolvedValue(CUTOVER_CATALOG)
+        const user = setupUser()
+        renderRoles()
+        const dialog = await openCreate(user)
+        for (const label of [
+            'Task module access', 'Assign tasks',
+            'Issues & suggestions access', 'Assign issues & suggestions',
+        ]) {
+            expect(box(dialog, label)).toBeInTheDocument()
+        }
+    })
+})

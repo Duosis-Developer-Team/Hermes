@@ -1,7 +1,7 @@
 # =============================================================================
 # HERMES - Stage 3C testleri: user-bound task write'lari + idempotency
 # =============================================================================
-# GERCEK izin zinciri calisir: bound user'in TaskUserPermission +
+# GERCEK izin zinciri calisir: bound user'in RBAC izinleri (cutover) +
 # hiyerarsi eslesmesi seed edilir; internal kurallar (atama dogrulama,
 # durum gecisleri, activity event'leri) public yuzeyden dogrulanir.
 # =============================================================================
@@ -38,7 +38,7 @@ WRITE_SCOPES = [
 
 
 @pytest.fixture()
-def world(pg_session):
+def world(pg_session, authz_grants):
     s = pg_session
     from sqlalchemy import text as sa_text
 
@@ -55,20 +55,15 @@ def world(pg_session):
     p1 = Project(id=uuid.uuid4(), customer_id=c1.id, name="ATM", is_active=True)
     s.add_all([c1, p1])
 
-    # Gercek izin zinciri: BU assigner (access+assign), AS erisimli,
-    # NOACCESS erisimsiz; hiyerarsi BU→AS ve BU→NOACCESS (task scope).
+    # RBAC cutover: izinler rollerden (authz_grants). NOACCESS'e BILEREK
+    # legacy access=True satiri birakiyoruz — RBAC grant'i olmadigi icin
+    # yine erisimsiz kalmali (legacy tablolar artik karar VEREMEZ).
     s.add_all(
         [
             TaskUserPermission(
-                user_id=BU, can_access_tasks=True, can_assign_tasks=True
-            ),
-            TaskUserPermission(
-                user_id=AS, can_access_tasks=True, can_assign_tasks=False
-            ),
-            TaskUserPermission(
                 user_id=NOACCESS,
-                can_access_tasks=False,
-                can_assign_tasks=False,
+                can_access_tasks=True,
+                can_assign_tasks=True,
             ),
             TaskAssignmentRelation(
                 assigner_user_id=BU, assignee_user_id=AS, scope="task"
@@ -79,6 +74,9 @@ def world(pg_session):
         ]
     )
     s.commit()
+    authz_grants[str(BU)] = ["tasks.access", "tasks.assign"]
+    authz_grants[str(AS)] = ["tasks.access"]
+    # NOACCESS ve OUT: grant YOK.
     return {"c1": c1, "p1": p1}
 
 
@@ -296,13 +294,13 @@ def test_status_lifecycle_accept_complete_reopen_reject(
     assert r.status_code == 400
 
 
-def test_unrelated_user_cannot_change_status(world, public_http, pg_session):
+def test_unrelated_user_cannot_change_status(
+    world, public_http, pg_session, authz_grants
+):
     assigner = bound_client(pg_session, BU, name="a2")
     code = _create_ok(public_http, assigner, world)["task_code"]
-    # OUT kullanicisi gorunurluk disinda → 404 (varlik ifsasi yok).
-    s = pg_session
-    s.add(TaskUserPermission(user_id=OUT, can_access_tasks=True))
-    s.commit()
+    # OUT kullanicisi ERISIMLI ama gorunurluk disinda → 404 (ifsa yok).
+    authz_grants[str(OUT)] = ["tasks.access"]
     outsider = bound_client(pg_session, OUT, name="outsider")
     r = public_http.post(
         f"{CREATE}/{code}/status", headers=outsider, json={"action": "accept"}

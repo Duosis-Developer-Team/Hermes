@@ -9,7 +9,12 @@
 #      3E surface-lock gelenegimizin RBAC hali).
 #   2. Guard semantigi: izinli 2xx-yolu / izinsiz 403 / authz-kapali 503;
 #      JWT is_admin claim'i HICBIR karari etkilemez.
-#   3. Sentezlenmis public-API aktoru: izin cozumu hic yapilmaz.
+#   3. Sentezlenmis public-API aktoru: ADMIN/GUARD izin cozumu hic
+#      yapilmaz (user_permissions bos kume; tasks.admin API'ye devrolmaz).
+#      RBAC cutover (2026-08-04) NOTU: task-modulu OPERASYONEL izinleri
+#      (tasks.access/assign, issues.*) bagli kullanicinin ham-UUID'siyle
+#      BILEREK cozulur — API, kullanicinin kendi yetkileriyle calisir;
+#      bypass ayricaligi tasinmaz (asagida ayrica testli).
 # =============================================================================
 
 import uuid
@@ -81,9 +86,12 @@ def _user(perms=None, *, is_admin_claim=False, fake_authz=None):
 # Bu envanter BILINCLI olarak elle tutulur — degisiklik = API karari.
 EXPECTED_GUARDS = {
     # task_admin.py — tasks.permissions.manage (18)
+    # RBAC cutover: asagidaki 7 legacy access/assign ucu 410 Gone doner
+    # ama GUARD'lari korunur (yetkisiz cagiran 403/503 almaya devam eder).
     ("GET", "/api/v1/core/admin/task-permissions/users"),
     ("PUT", "/api/v1/core/admin/task-permissions/users/{user_id}"),
     ("GET", "/api/v1/core/admin/task-permissions/effective"),
+    ("POST", "/api/v1/core/admin/task-permissions/rbac-backfill"),
     ("GET", "/api/v1/core/admin/task-assignment-relations"),
     ("POST", "/api/v1/core/admin/task-assignment-relations"),
     ("DELETE", "/api/v1/core/admin/task-assignment-relations/{relation_id}"),
@@ -319,3 +327,33 @@ def test_is_task_admin_false_for_synthesized_actor(fake_authz):
         is_admin=False, allow_rbac_resolution=False,
     )
     assert is_task_admin(synthesized) is False
+
+
+def test_synthesized_actor_uses_bound_users_operational_perms(fake_authz):
+    """RBAC cutover: bagli kullanicinin tasks.access/assign izinleri
+    public aktorde GECERLIDIR (ham-UUID cozumu) — ama tasks.admin
+    ayricaligi (is_task_admin) devrolmaz. Boylece API token'i
+    kullanicinin kendi yetki kapsamini asamaz."""
+    from app.services.task_service import can_access, can_assign, is_task_admin
+
+    bound = str(uuid.uuid4())
+    fake_authz[bound] = [Perm.TASKS_ACCESS, Perm.TASKS_ASSIGN,
+                        Perm.TASKS_ADMIN]
+    synthesized = CurrentUser(
+        id=bound, email="api-client-z@hermes.internal",
+        is_admin=False, allow_rbac_resolution=False,
+    )
+    # Operasyonel yetenekler bagli kullanicidan gelir…
+    assert can_access(None, synthesized, "task") is True
+    assert can_assign(None, synthesized, "task") is True
+    # …ama admin bypass'i TASINMAZ.
+    assert is_task_admin(synthesized) is False
+    # Yalniz-admin kullanicinin token'i operasyonel yetki DE almaz.
+    only_admin = str(uuid.uuid4())
+    fake_authz[only_admin] = [Perm.TASKS_ADMIN]
+    actor2 = CurrentUser(
+        id=only_admin, email="api-client-q@hermes.internal",
+        is_admin=False, allow_rbac_resolution=False,
+    )
+    assert can_access(None, actor2, "task") is False
+    assert can_assign(None, actor2, "task") is False

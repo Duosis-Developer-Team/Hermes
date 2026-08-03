@@ -449,32 +449,12 @@ export const planTimeService = {
 // =============================================================================
 
 export const taskPermissionService = {
-    /** Current user's task capability + assignable users. */
+    /** Current user's task capability + assignable users.
+        RBAC cutover (2026-08-04): admin access/assign yonetimi ROLLERE
+        tasindi — buradaki legacy admin metodlari kaldirildi (backend
+        uclari 410 Gone doner). */
     getMyPermissions: async () => {
         const response = await coreApi.get('/api/v1/core/tasks/permissions/me')
-        return response.data
-    },
-
-    /** Admin: list every user's task permission flags. */
-    listAdminUsers: async () => {
-        const response = await coreApi.get('/api/v1/core/admin/task-permissions/users')
-        return response.data
-    },
-
-    /** Admin: list per-user effective permission data (direct + group grants). */
-    listEffective: async () => {
-        const response = await coreApi.get(
-            '/api/v1/core/admin/task-permissions/effective'
-        )
-        return response.data
-    },
-
-    /** Admin: upsert a user's task permission flags. */
-    updateUserPermission: async (userId, data) => {
-        const response = await coreApi.put(
-            `/api/v1/core/admin/task-permissions/users/${userId}`,
-            data
-        )
         return response.data
     },
 }
@@ -781,46 +761,6 @@ export const userGroupService = {
     },
 }
 
-// =============================================================================
-// CORE SERVICE - Task Group Permissions (per UserGroup defaults + overrides)
-// =============================================================================
-
-export const taskGroupPermissionService = {
-    /** Admin: list per-group task-permission rows (sparse). */
-    list: async () => {
-        const response = await coreApi.get(
-            '/api/v1/core/admin/task-permissions/groups'
-        )
-        return response.data
-    },
-
-    /** Admin: upsert per-group task-permission defaults. */
-    upsertGroupDefaults: async (groupId, data) => {
-        const response = await coreApi.put(
-            `/api/v1/core/admin/task-permissions/groups/${groupId}`,
-            data
-        )
-        return response.data
-    },
-
-    /** Admin: list member overrides for a group. */
-    listMemberOverrides: async (groupId) => {
-        const response = await coreApi.get(
-            `/api/v1/core/admin/task-permissions/groups/${groupId}/member-overrides`
-        )
-        return response.data
-    },
-
-    /** Admin: upsert (or clear) a member override (per user × group). */
-    upsertMemberOverride: async (groupId, userId, data) => {
-        const response = await coreApi.put(
-            `/api/v1/core/admin/task-permissions/groups/${groupId}/member-overrides/${userId}`,
-            data
-        )
-        return response.data
-    },
-}
-
 export const taskService = {
     /** List tasks visible to the current user with optional filters. */
     list: async (params = {}) => {
@@ -1030,7 +970,6 @@ export default {
     taskSubProjectService,
     taskService,
     userGroupService,
-    taskGroupPermissionService,
     meetingService,
 }
 

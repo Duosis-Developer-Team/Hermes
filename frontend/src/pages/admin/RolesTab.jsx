@@ -41,8 +41,12 @@ const PERMISSION_LABELS = {
     'users.manage': 'User management',
     'roles.manage': 'Role management',
     'groups.manage': 'Group management',
-    'tasks.admin': 'Full task module access',
-    'tasks.permissions.manage': 'Task permission & hierarchy management',
+    'tasks.access': 'Task module access',
+    'tasks.assign': 'Assign tasks',
+    'issues.access': 'Issues & suggestions access',
+    'issues.assign': 'Assign issues & suggestions',
+    'tasks.admin': 'Full task module authority',
+    'tasks.permissions.manage': 'PM configuration management',
     'api.manage': 'API Management (Developer Platform)',
     'reports.view': 'Company-wide reports',
     'plans.manage': 'Plan & schedule management',
@@ -50,7 +54,30 @@ const PERMISSION_LABELS = {
     'meetings.admin': 'All meetings + sync',
     'customers.manage': 'Customer management',
     'projects.manage': 'Project management',
-    'reference.manage': 'Referans verisi (work types vb.)',
+    'reference.manage': 'Reference data (work types etc.)',
+}
+
+/*
+ * Bagimlilik kurallari — backend shared/permissions.PERMISSION_REQUIRES
+ * aynasi. Asil zorlayici auth-service'tir (422); burasi yalnizca
+ * checkbox davranisini kullaniciya dogru yasatir:
+ *   - assign isaretlenince ayni scope'un access'i otomatik eklenir,
+ *   - access kaldirilinca ayni scope'un assign'i da kalkar.
+ */
+const PERMISSION_REQUIRES = {
+    'tasks.assign': 'tasks.access',
+    'issues.assign': 'issues.access',
+}
+
+const applyPermissionDependencies = (next = [], prev = []) => {
+    const set = new Set(next)
+    for (const [dep, req] of Object.entries(PERMISSION_REQUIRES)) {
+        if (set.has(dep) && !set.has(req)) {
+            if (!prev.includes(dep)) set.add(req)
+            else set.delete(dep)
+        }
+    }
+    return [...set]
 }
 
 // Kod onekine gore grup basligi.
@@ -60,10 +87,11 @@ const GROUP_LABELS = {
     groups: 'Administration',
     api: 'Administration',
     tasks: 'Task Module',
-    reports: 'Raporlama',
-    plans: 'Zaman & Plan',
-    worklogs: 'Zaman & Plan',
-    meetings: 'Zaman & Plan',
+    issues: 'Task Module',
+    reports: 'Reporting',
+    plans: 'Time & Planning',
+    worklogs: 'Time & Planning',
+    meetings: 'Time & Planning',
     customers: 'Configuration',
     projects: 'Configuration',
     reference: 'Configuration',
@@ -317,14 +345,18 @@ function RolesTab() {
                     )}
                     <Form.Item
                         name="name" label="Name"
-                        rules={[{ required: true, message: 'Ad gerekli' }]}
+                        rules={[{ required: true, message: 'Name is required' }]}
                     >
                         <Input disabled={systemLocked} />
                     </Form.Item>
                     <Form.Item name="description" label="Description">
                         <Input.TextArea rows={2} />
                     </Form.Item>
-                    <Form.Item name="permissions" label="Permissions">
+                    <Form.Item
+                        name="permissions"
+                        label="Permissions"
+                        normalize={applyPermissionDependencies}
+                    >
                         <Checkbox.Group
                             style={{ width: '100%' }}
                             disabled={systemLocked}
@@ -354,7 +386,7 @@ function RolesTab() {
                         </Checkbox.Group>
                     </Form.Item>
                     {editing && !systemLocked && (
-                        <Form.Item name="is_active" label="Aktif"
+                        <Form.Item name="is_active" label="Active"
                                    valuePropName="checked">
                             <Switch />
                         </Form.Item>

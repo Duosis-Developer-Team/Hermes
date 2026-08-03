@@ -27,6 +27,14 @@ class Perm:
     USERS_MANAGE = "users.manage"
     ROLES_MANAGE = "roles.manage"
     GROUPS_MANAGE = "groups.manage"
+    # RBAC cutover (2026-08-04): task-modulu operasyonel izinleri artik
+    # ROLLERDEN gelir — PM Configurations'taki legacy access tablolari
+    # karar kaynagi degildir. "Ne yapabilir" = rol; "kime yapabilir" =
+    # assignment hierarchy (PM Configurations'ta kalir).
+    TASKS_ACCESS = "tasks.access"
+    TASKS_ASSIGN = "tasks.assign"
+    ISSUES_ACCESS = "issues.access"
+    ISSUES_ASSIGN = "issues.assign"
     TASKS_ADMIN = "tasks.admin"
     TASK_PERMISSIONS_MANAGE = "tasks.permissions.manage"
     API_MANAGE = "api.manage"
@@ -49,13 +57,29 @@ PERMISSION_DESCRIPTIONS = {
         "Create and edit RBAC roles and their permission sets."
     ),
     Perm.GROUPS_MANAGE: "Manage user groups and group memberships.",
+    Perm.TASKS_ACCESS: (
+        "Access the task module: see tasks assigned to you."
+    ),
+    Perm.TASKS_ASSIGN: (
+        "Create tasks and assign them to targets allowed by the "
+        "assignment hierarchy. Requires tasks.access."
+    ),
+    Perm.ISSUES_ACCESS: (
+        "Access issues & suggestions assigned to you."
+    ),
+    Perm.ISSUES_ASSIGN: (
+        "Create issues & suggestions and assign them to targets allowed "
+        "by the assignment hierarchy. Requires issues.access."
+    ),
     Perm.TASKS_ADMIN: (
-        "Full task-module authority: see and edit every work item, "
-        "bypass assignment hierarchy (former task-admin shortcut)."
+        "Full task-module authority: covers all four operational task "
+        "permissions, sees and edits every work item and bypasses the "
+        "assignment hierarchy. Does NOT include PM configuration "
+        "management."
     ),
     Perm.TASK_PERMISSIONS_MANAGE: (
-        "Manage task access/assignment permissions, hierarchy relations, "
-        "sub-projects and task notification settings."
+        "Manage PM configuration: assignment hierarchies, sub-projects "
+        "and task notification settings."
     ),
     Perm.API_MANAGE: (
         "Manage Public API clients, tokens, data-access bindings and "
@@ -95,3 +119,12 @@ def _derive_all() -> tuple:
 
 
 ALL_PERMISSIONS = _derive_all()
+
+
+# Bagimlilik kurallari (TEK kaynak): assign izinleri ayni scope'un
+# access iznini GEREKTIRIR. auth-service rol yazim yolunda dogrular;
+# frontend rol editoru checkbox davranisini buradan aynalar.
+PERMISSION_REQUIRES = {
+    Perm.TASKS_ASSIGN: Perm.TASKS_ACCESS,
+    Perm.ISSUES_ASSIGN: Perm.ISSUES_ACCESS,
+}

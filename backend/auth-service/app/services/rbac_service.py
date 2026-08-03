@@ -28,7 +28,7 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from shared.auth import CurrentUser, get_current_user
-from shared.permissions import ALL_PERMISSIONS, Perm
+from shared.permissions import ALL_PERMISSIONS, PERMISSION_REQUIRES, Perm
 
 from ..database import get_db
 from ..models.rbac import RbacRole, RbacUserRole
@@ -39,6 +39,25 @@ logger = logging.getLogger("hermes.rbac")
 # Sistem rolleri — esletirme HER ZAMAN code ile (isimle asla).
 SYSTEM_ADMIN_CODE = "system-admin"
 MEMBER_CODE = "member"
+
+# RBAC cutover komponent rolleri (stabil code slug'lari — backfill S2S
+# ucu bu kodlarla atama yapar). Iceriklerinde bagimlilik invariant'i
+# gozetilir: assigner rolleri access iznini DE tasir.
+TASK_COMPONENT_ROLES = {
+    "task-access": ("Task Access", [Perm.TASKS_ACCESS]),
+    "task-assigner": (
+        "Task Assigner",
+        [Perm.TASKS_ACCESS, Perm.TASKS_ASSIGN],
+    ),
+    "issues-access": (
+        "Issues & Suggestions Access",
+        [Perm.ISSUES_ACCESS],
+    ),
+    "issues-assigner": (
+        "Issues & Suggestions Assigner",
+        [Perm.ISSUES_ACCESS, Perm.ISSUES_ASSIGN],
+    ),
+}
 
 _CODE_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$")
 
@@ -149,13 +168,26 @@ def validate_role_code(code: str) -> None:
 
 
 def validate_permission_codes(codes: Iterable[str]) -> list:
-    """Katalog disi kod → 422 (hangileri oldugu acikca soylenir)."""
+    """Katalog disi kod → 422 (hangileri oldugu acikca soylenir).
+    RBAC cutover: bagimlilik kurali da YAZIM yolunda zorlanir —
+    assign izni ayni scope'un access iznini gerektirir (yalniz
+    frontend checkbox davranisina guvenilmez)."""
     codes = list(dict.fromkeys(codes or []))
     unknown = [c for c in codes if c not in ALL_PERMISSIONS]
     if unknown:
         raise HTTPException(
             status_code=422,
             detail="Unknown permission codes: " + ", ".join(unknown),
+        )
+    violated = [
+        f"{code} requires {required}"
+        for code, required in PERMISSION_REQUIRES.items()
+        if code in codes and required not in codes
+    ]
+    if violated:
+        raise HTTPException(
+            status_code=422,
+            detail="Permission dependency violated: " + "; ".join(violated),
         )
     return sorted(codes)
 
@@ -398,6 +430,33 @@ def bootstrap(db: Session) -> None:
         )
         db.flush()
         logger.info("rbac bootstrap: member role created")
+
+    # RBAC cutover (2026-08-04): PM Configurations'taki legacy task
+    # access verisinin tasinacagi KOMPONENT roller. Yalnizca YOKSA
+    # olusturulur — admin sonradan duzenleyebilir; system-admin gibi
+    # katalogla senkronlanmaz.
+    ensured = 0
+    for code, (name, perms) in TASK_COMPONENT_ROLES.items():
+        if get_role_by_code(db, code) is None:
+            db.add(
+                RbacRole(
+                    code=code,
+                    name=name,
+                    description=(
+                        "Created by the PM-permissions → Roles migration. "
+                        "Grants: " + ", ".join(perms) + "."
+                    ),
+                    permissions=list(perms),
+                    is_system=False,
+                    is_active=True,
+                )
+            )
+            ensured += 1
+    if ensured:
+        db.flush()
+        logger.info(
+            "rbac bootstrap: %d task component role(s) created", ensured
+        )
 
     # Legacy admin'lere rol atamasi (idempotent).
     assigned = 0

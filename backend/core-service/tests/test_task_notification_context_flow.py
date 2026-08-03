@@ -26,10 +26,8 @@ from app.models.project import Project
 from app.models.task import (
     TaskAssignmentGroupRelation,
     TaskAssignmentRelation,
-    TaskUserPermission,
 )
 from app.models.user_group import (
-    TaskGroupPermission,
     UserGroup,
     UserGroupMember,
 )
@@ -48,7 +46,7 @@ PUBLIC_GROUPS = "/api/public/v1/task-groups"
 
 
 @pytest.fixture()
-def world(pg_session):
+def world(pg_session, authz_grants):
     s = pg_session
     from sqlalchemy import text as sa_text
 
@@ -71,22 +69,9 @@ def world(pg_session):
 
     s.add_all(
         [
-            # Dogrudan izinler (grupsuz kullanicilar icin gecerli satirlar).
-            TaskUserPermission(
-                user_id=BU, can_access_tasks=True, can_assign_tasks=True
-            ),
-            TaskUserPermission(
-                user_id=AS1, can_access_tasks=True, can_assign_tasks=False
-            ),
-            TaskUserPermission(
-                user_id=AS2, can_access_tasks=True, can_assign_tasks=False
-            ),
-            # Grup uyeleri: izinleri GRUP varsayilanindan gelir.
-            TaskGroupPermission(
-                group_id=g.id,
-                can_access_tasks_default=True,
-                can_assign_tasks_default=True,
-            ),
+            # RBAC cutover: izinler authz_grants fixture'indan (rollerden)
+            # gelir; legacy tablolara satir YAZILMAZ — karar kaynagi
+            # degiller. Uyelik + hiyerarsi core tablolarinda kalir.
             UserGroupMember(group_id=g.id, user_id=M1, is_active=True),
             UserGroupMember(group_id=g.id, user_id=M2, is_active=True),
             # Hiyerarsi: BU → AS1/AS2/M1/M2 (task scope) + BU → grup.
@@ -108,6 +93,13 @@ def world(pg_session):
         ]
     )
     s.commit()
+
+    OPS = ["tasks.access", "tasks.assign", "issues.access", "issues.assign"]
+    authz_grants[str(BU)] = OPS
+    authz_grants[str(AS1)] = ["tasks.access", "issues.access"]
+    authz_grants[str(AS2)] = ["tasks.access", "issues.access"]
+    authz_grants[str(M1)] = ["tasks.access", "issues.access"]
+    authz_grants[str(M2)] = ["tasks.access", "issues.access"]
     return {"c1": c1, "p1": p1, "g": g}
 
 

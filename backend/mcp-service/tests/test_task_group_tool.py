@@ -43,7 +43,7 @@ def _tool_error(resp):
 
 
 @pytest.fixture()
-def world(pg_session):
+def world(pg_session, authz_grants):
     from sqlalchemy import text as sa_text
 
     from app.models.customer import Customer
@@ -100,6 +100,11 @@ def world(pg_session):
         ]
     )
     s.commit()
+    # RBAC cutover: efektif izinler rollerden. Legacy grup default'u ve
+    # M_NOACCESS override'i BILEREK yerinde — karar veremezler.
+    authz_grants[str(BU)] = ["tasks.access", "tasks.assign"]
+    authz_grants[str(M1)] = ["tasks.access"]
+    authz_grants[str(M2)] = ["tasks.access"]
     return {"c1": c1, "p1": p1, "g": g}
 
 

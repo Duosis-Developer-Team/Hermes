@@ -29,18 +29,11 @@ from ..schemas.task import (
     TaskAssignmentGroupRelationResponse,
     TaskAssignmentRelationCreate,
     TaskAssignmentRelationResponse,
-    TaskGroupMemberOverrideResponse,
-    TaskGroupMemberOverrideUpdate,
-    TaskGroupPermissionResponse,
-    TaskGroupPermissionUpdate,
-    TaskPermissionRow,
-    TaskPermissionUpdate,
     TaskSubProjectCreate,
     TaskSubProjectResponse,
     TaskSubProjectUpdate,
 )
-from ..models.user_group import TaskGroupPermission
-from ..services import task_service, user_group_service
+from ..services import task_service
 from ..routers.tasks import _serialize_sub_project
 from shared.auth import CurrentUser
 # RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
@@ -52,80 +45,68 @@ router = APIRouter(prefix="/admin", tags=["Task Admin"])
 
 
 # =============================================================================
-# Task Permissions
+# Task Permissions — LEGACY (RBAC cutover, 2026-08-04)
 # =============================================================================
+# Task access/assign yetkileri artik ROLLERDEN yonetilir (Roles UI +
+# auth-service RBAC). Bu uclarin yazdigi tablolar karar kaynagi degildir;
+# veri backfill/parity icin YERINDE durur, silinmez. Uclar sessizce
+# basarili olup etkisiz kalmasin diye ACIK 410 Gone doner (guard korunur:
+# yetkisiz cagiran yine 403/503 alir — route-walk envanteri degismedi).
 
-@router.get(
-    "/task-permissions/users",
-    response_model=List[TaskPermissionRow],
+_LEGACY_GONE = (
+    "Task access permissions have moved to Roles (RBAC). "
+    "This legacy endpoint is gone; manage roles instead."
 )
+
+
+def _legacy_gone() -> None:
+    from fastapi import HTTPException
+
+    raise HTTPException(status_code=410, detail=_LEGACY_GONE)
+
+
+@router.get("/task-permissions/users")
 async def list_task_permission_rows(
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
 ):
-    """Returns one row per existing permission record (IDs only).
-
-    Frontend fetches the full user list separately from auth-service and
-    merges with these rows to render the admin Task Access table. Users
-    without a permission row default to false flags client-side.
-    """
-    perms = task_service.list_task_permissions(db)
-    return [
-        TaskPermissionRow(
-            user_id=p.user_id,
-            can_access_tasks=bool(p.can_access_tasks),
-            can_assign_tasks=bool(p.can_assign_tasks),
-            can_access_issues=bool(p.can_access_issues),
-            can_assign_issues=bool(p.can_assign_issues),
-            updated_at=p.updated_at,
-        )
-        for p in perms
-    ]
+    _legacy_gone()
 
 
-@router.put(
-    "/task-permissions/users/{user_id}",
-    response_model=TaskPermissionRow,
-)
+@router.put("/task-permissions/users/{user_id}")
 async def update_task_permission(
     user_id: UUID,
-    data: TaskPermissionUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
 ):
-    perm = task_service.upsert_task_permission(db, user_id, data)
-    return TaskPermissionRow(
-        user_id=user_id,
-        can_access_tasks=bool(perm.can_access_tasks),
-        can_assign_tasks=bool(perm.can_assign_tasks),
-        can_access_issues=bool(perm.can_access_issues),
-        can_assign_issues=bool(perm.can_assign_issues),
-        updated_at=perm.updated_at,
-    )
+    _legacy_gone()
 
 
-@router.get(
-    "/task-permissions/effective",
-)
+@router.get("/task-permissions/effective")
 async def list_effective_permissions(
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
+):
+    _legacy_gone()
+
+
+# =============================================================================
+# RBAC backfill — legacy efektif izinleri komponent rollere tasir
+# =============================================================================
+
+@router.post("/task-permissions/rbac-backfill")
+async def rbac_backfill(
+    dry_run: bool = Query(True),
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
-    """Returns per-user effective permission data used by the
-    Individual Overrides tab.
+    """Legacy efektif izinlerin RBAC komponent rollerine backfill'i.
 
-    Frontend merges with the auth-service user list to decide the
-    final "effective" badge and source label (admin role, individual
-    override, group: <name>, or no access).
+    dry_run=true (varsayilan): yalnizca ozet + anomaliler — parity
+    incelemesi icin. dry_run=false: eksik atamalar auth-service'e
+    yazilir (idempotent; tekrar kosmak duplicate uretmez, hicbir sey
+    silinmez).
     """
-    data = task_service.list_effective_perm_data(db)
-    return [
-        {
-            "user_id": uid,
-            **payload,
-        }
-        for uid, payload in data.items()
-    ]
+    from ..services.rbac_backfill import run
+
+    return run(db, dry_run=dry_run)
 
 
 # =============================================================================
@@ -307,165 +288,42 @@ async def delete_sub_project(
 
 
 # =============================================================================
-# Task Group Permissions  (per UserGroup defaults)
+# Task Group Permissions + Member Overrides — LEGACY (RBAC cutover)
 # =============================================================================
-# These endpoints set the "task" aspect of a global UserGroup. The group
-# itself (name, description, members) is managed under
-# /admin/user-groups/... in routers/user_group_admin.py.
-# =============================================================================
+# Grup default'lari ve uye override'lari artik yetki KAYNAGI degildir;
+# yonetim Roles uzerinden yapilir. Acik 410 (guard korunur).
 
-@router.get(
-    "/task-permissions/groups",
-    response_model=List[TaskGroupPermissionResponse],
-)
+
+@router.get("/task-permissions/groups")
 async def list_task_group_permissions(
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
 ):
-    """All task permission rows (sparse — only groups that have been
-    configured at least once). Frontend joins with /admin/user-groups
-    to render the full matrix.
-    """
-    rows = db.query(TaskGroupPermission).all()
-    return [
-        TaskGroupPermissionResponse(
-            group_id=r.group_id,
-            can_access_tasks_default=bool(r.can_access_tasks_default),
-            can_assign_tasks_default=bool(r.can_assign_tasks_default),
-            can_access_issues_default=bool(r.can_access_issues_default),
-            can_assign_issues_default=bool(r.can_assign_issues_default),
-            updated_at=r.updated_at,
-        )
-        for r in rows
-    ]
+    _legacy_gone()
 
 
-@router.put(
-    "/task-permissions/groups/{group_id}",
-    response_model=TaskGroupPermissionResponse,
-)
+@router.put("/task-permissions/groups/{group_id}")
 async def upsert_task_group_permission(
     group_id: UUID,
-    data: TaskGroupPermissionUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
 ):
-    perm = user_group_service.upsert_task_group_permission(
-        db,
-        group_id,
-        can_access_tasks_default=data.can_access_tasks_default,
-        can_assign_tasks_default=data.can_assign_tasks_default,
-        can_access_issues_default=data.can_access_issues_default,
-        can_assign_issues_default=data.can_assign_issues_default,
-    )
-    return TaskGroupPermissionResponse(
-        group_id=perm.group_id,
-        can_access_tasks_default=bool(perm.can_access_tasks_default),
-        can_assign_tasks_default=bool(perm.can_assign_tasks_default),
-        can_access_issues_default=bool(perm.can_access_issues_default),
-        can_assign_issues_default=bool(perm.can_assign_issues_default),
-        updated_at=perm.updated_at,
-    )
+    _legacy_gone()
 
 
-# =============================================================================
-# Task Group Member Overrides  (tri-state per user × group)
-# =============================================================================
-
-def _serialize_override(
-    *,
-    group_id: UUID,
-    user_id: UUID,
-    override,
-    permission,
-) -> TaskGroupMemberOverrideResponse:
-    access, assign = user_group_service.effective_member_contribution(
-        override=override,
-        permission=permission,
-        scope="task",
-    )
-    i_access, i_assign = user_group_service.effective_member_contribution(
-        override=override,
-        permission=permission,
-        scope="issue",
-    )
-    return TaskGroupMemberOverrideResponse(
-        group_id=group_id,
-        user_id=user_id,
-        can_access_tasks_override=(
-            override.can_access_tasks_override if override else None
-        ),
-        can_assign_tasks_override=(
-            override.can_assign_tasks_override if override else None
-        ),
-        can_access_issues_override=(
-            override.can_access_issues_override if override else None
-        ),
-        can_assign_issues_override=(
-            override.can_assign_issues_override if override else None
-        ),
-        effective_access_in_group=access,
-        effective_assign_in_group=assign,
-        effective_access_issues_in_group=i_access,
-        effective_assign_issues_in_group=i_assign,
-        updated_at=override.updated_at if override else None,
-    )
-
-
-@router.get(
-    "/task-permissions/groups/{group_id}/member-overrides",
-    response_model=List[TaskGroupMemberOverrideResponse],
-)
+@router.get("/task-permissions/groups/{group_id}/member-overrides")
 async def list_task_group_member_overrides(
     group_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
 ):
-    user_group_service.get_user_group(db, group_id)  # 404 if missing
-    permission = user_group_service.get_task_group_permission(db, group_id)
-    overrides = user_group_service.list_task_group_member_overrides(db, group_id)
-    return [
-        _serialize_override(
-            group_id=group_id,
-            user_id=o.user_id,
-            override=o,
-            permission=permission,
-        )
-        for o in overrides
-    ]
+    _legacy_gone()
 
 
-@router.put(
-    "/task-permissions/groups/{group_id}/member-overrides/{user_id}",
-    response_model=TaskGroupMemberOverrideResponse,
-)
+@router.put("/task-permissions/groups/{group_id}/member-overrides/{user_id}")
 async def upsert_task_group_member_override(
     group_id: UUID,
     user_id: UUID,
-    data: TaskGroupMemberOverrideUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
 ):
-    override = user_group_service.upsert_task_group_member_override(
-        db,
-        group_id,
-        user_id,
-        access_value=data.can_access_tasks_override,
-        clear_access=bool(data.clear_access_override),
-        assign_value=data.can_assign_tasks_override,
-        clear_assign=bool(data.clear_assign_override),
-        access_issues_value=data.can_access_issues_override,
-        clear_access_issues=bool(data.clear_access_issues_override),
-        assign_issues_value=data.can_assign_issues_override,
-        clear_assign_issues=bool(data.clear_assign_issues_override),
-    )
-    permission = user_group_service.get_task_group_permission(db, group_id)
-    return _serialize_override(
-        group_id=group_id,
-        user_id=user_id,
-        override=override,
-        permission=permission,
-    )
+    _legacy_gone()
 
 
 # =============================================================================

@@ -40,12 +40,12 @@ from ..schemas.task import (
     NotificationSettingUpdate,
     TaskCreate,
     TaskNoteUpdate,
-    TaskPermissionUpdate,
     TaskSubProjectCreate,
     TaskSubProjectUpdate,
     TaskUpdate,
 )
 from shared.auth import CurrentUser
+from shared.permissions import Perm
 
 logger = logging.getLogger(__name__)
 
@@ -185,16 +185,22 @@ def _effective_group_grant(
     return False
 
 
-def _resolve_effective_for_user(
+def legacy_resolve_effective_for_user(
     db: Session,
     user_id: UUID,
     *,
     column: str,
     scope: str = "task",
 ) -> bool:
-    """Single source of truth for effective Task Access / Assign Tasks
-    permission resolution. Both column="access" and column="assign"
-    routes through here.
+    """LEGACY cozumleyici — RBAC cutover (2026-08-04) sonrasi RUNTIME
+    KARARLARINDA KULLANILMAZ. Tek tuketicisi rbac_backfill: mevcut
+    efektif izinleri komponent rollere tasirken ve parity raporunda
+    "eski dunya ne diyordu" sorusunun DONMUS cevabi budur. Davranisi
+    degistirmeyin; yeni kural eklemeyin.
+
+    Single source of truth for the OLD effective Task Access / Assign
+    resolution. Both column="access" and column="assign" route through
+    here.
 
     Resolution order:
 
@@ -254,6 +260,67 @@ def _resolve_effective_for_user(
     if not bool(getattr(perm, access_attr)):
         return False
     return bool(getattr(perm, _direct_perm_attr(scope, "assign")))
+
+
+# =============================================================================
+# RBAC cutover (2026-08-04): efektif izin cozumu artik ROLLERDEN gelir
+# =============================================================================
+# "Ne yapabilir" = Roles (tasks.access/assign, issues.access/assign);
+# "kime yapabilir" = assignment hierarchy (bu dosyada kalan relation
+# sorgulari). Legacy tablolar (task_user_permissions,
+# task_group_permissions, task_group_member_overrides) karar kaynagi
+# DEGILDIR; veri backfill/parity icin yerinde durur, silinmez.
+#
+# Public API kurali: sentezlenmis aktor is_task_admin'de HER ZAMAN False
+# (authz.user_has, allow_rbac_resolution=False ile bos kume doner) — yani
+# tasks.admin ayricaligi API token'ina TASINMAZ. Bagli kullanicinin
+# operasyonel izinleri ise asagidaki ham-UUID cozumuyle AYNEN gecerlidir:
+# API, kullanicinin tasks.access/tasks.assign'ini kullanir; scope, binding
+# ve hierarchy kontrolleri ayrica devam eder.
+
+_RBAC_CODE = {
+    ("task", "access"): Perm.TASKS_ACCESS,
+    ("task", "assign"): Perm.TASKS_ASSIGN,
+    ("issue", "access"): Perm.ISSUES_ACCESS,
+    ("issue", "assign"): Perm.ISSUES_ASSIGN,
+}
+
+
+def _rbac_perms_for(user_id) -> frozenset:
+    """Kullanicinin efektif RBAC izinleri (S2S + 60 sn cache).
+    Fail-closed: cozum yoksa bos kume — yetki ACILMAZ."""
+    from . import authz_client
+
+    try:
+        return authz_client.effective_permissions(str(user_id))
+    except authz_client.AuthzUnavailable:
+        return frozenset()
+
+
+def _resolve_effective_for_user(
+    db: Session,
+    user_id: UUID,
+    *,
+    column: str,
+    scope: str = "task",
+) -> bool:
+    """Efektif Task/Issue access-assign cozumu — TEK kaynak: RBAC.
+
+    - access → scope'un access izni katalogda kullanicida var mi?
+    - assign → assign IZNI + ayni scope'un access izni (savunma derinligi:
+      yazim yolu invariant'i auth-service'te de zorlanir).
+    - tasks.admin BURADA sayilmaz: web tarafinda can_access/can_assign
+      is_task_admin kisayoluyla zaten True doner; ham-UUID yolunda
+      (assignee uygunlugu, fan-out) ve public aktorde admin imasi yoktur.
+    `db` parametresi imza uyumu icin durur (legacy cagiran cok).
+    """
+    perms = _rbac_perms_for(user_id)
+    code = _RBAC_CODE[(scope, column)]
+    if code not in perms:
+        return False
+    if column == "assign" and _RBAC_CODE[(scope, "access")] not in perms:
+        return False
+    return True
 
 
 def can_access(db: Session, user: CurrentUser, scope: str = "task") -> bool:
@@ -473,175 +540,12 @@ def require_task_assigner(
 
 
 # =============================================================================
-# Permission persistence
+# Permission persistence — KALDIRILDI (RBAC cutover, 2026-08-04)
 # =============================================================================
-
-def upsert_task_permission(
-    db: Session,
-    user_id: UUID,
-    data: TaskPermissionUpdate,
-) -> TaskUserPermission:
-    def _invariant(access: bool, assign: bool) -> tuple[bool, bool]:
-        # - Disabling access also disables assignment
-        # - Granting assignment requires access
-        access, assign = bool(access), bool(assign)
-        if not access:
-            assign = False
-        if assign:
-            access = True
-        return access, assign
-
-    t_access, t_assign = _invariant(data.can_access_tasks, data.can_assign_tasks)
-    i_access, i_assign = _invariant(
-        getattr(data, "can_access_issues", False),
-        getattr(data, "can_assign_issues", False),
-    )
-
-    perm = get_task_permission(db, user_id)
-    if perm is None:
-        perm = TaskUserPermission(
-            user_id=user_id,
-            can_access_tasks=t_access,
-            can_assign_tasks=t_assign,
-            can_access_issues=i_access,
-            can_assign_issues=i_assign,
-        )
-        db.add(perm)
-    else:
-        perm.can_access_tasks = t_access
-        perm.can_assign_tasks = t_assign
-        perm.can_access_issues = i_access
-        perm.can_assign_issues = i_assign
-
-    # Per-scope relation cleanup — revoking assign drops this user's
-    # assigner-side user→user mappings in that scope; revoking access drops
-    # assignee-side mappings. Group relations are left in place (they are
-    # configuration, gated at runtime by can_assign_to_group).
-    for scope, access_on, assign_on in (
-        ("task", t_access, t_assign),
-        ("issue", i_access, i_assign),
-    ):
-        if not assign_on:
-            db.query(TaskAssignmentRelation).filter(
-                TaskAssignmentRelation.assigner_user_id == user_id,
-                TaskAssignmentRelation.scope == scope,
-            ).delete(synchronize_session=False)
-        if not access_on:
-            db.query(TaskAssignmentRelation).filter(
-                TaskAssignmentRelation.assignee_user_id == user_id,
-                TaskAssignmentRelation.scope == scope,
-            ).delete(synchronize_session=False)
-
-    db.commit()
-    db.refresh(perm)
-    return perm
-
-
-def list_task_permissions(db: Session) -> List[TaskUserPermission]:
-    return db.query(TaskUserPermission).all()
-
-
-def list_effective_perm_data(db: Session) -> dict:
-    """Returns a per-user snapshot used by the Task Access page.
-
-    Shape:
-        {
-          user_id_str: {
-            "direct_can_access_tasks": bool | None,
-            "direct_can_assign_tasks": bool | None,
-            "group_grants_access": [group_id_str, ...],
-            "group_grants_assign": [group_id_str, ...],
-            "is_group_member": bool,
-          },
-          ...
-        }
-
-    `is_group_member` is true if the user belongs to any active group
-    (regardless of whether the group has a task-permission row yet),
-    so the frontend can render the "Additional Users" bucket as
-    "everyone who is in no group at all".
-    """
-    def _blank() -> dict:
-        return {
-            "direct_can_access_tasks": False,
-            "direct_can_assign_tasks": False,
-            "direct_can_access_issues": False,
-            "direct_can_assign_issues": False,
-            "group_grants_access": [],
-            "group_grants_assign": [],
-            "group_grants_access_issues": [],
-            "group_grants_assign_issues": [],
-            "is_group_member": False,
-        }
-
-    out: dict = {}
-
-    # Direct overrides (one row per user, sparse).
-    for p in db.query(TaskUserPermission).all():
-        row = _blank()
-        row["direct_can_access_tasks"] = bool(p.can_access_tasks)
-        row["direct_can_assign_tasks"] = bool(p.can_assign_tasks)
-        row["direct_can_access_issues"] = bool(p.can_access_issues)
-        row["direct_can_assign_issues"] = bool(p.can_assign_issues)
-        out[str(p.user_id)] = row
-
-    # Active memberships in active groups. LEFT JOIN to TaskGroupPermission
-    # so users in groups that have no permission row yet still register as
-    # group members — they should not show up under "Additional Users".
-    rows = (
-        db.query(
-            UserGroupMember.user_id,
-            UserGroup.id.label("group_id"),
-            TaskGroupPermission.can_access_tasks_default,
-            TaskGroupPermission.can_assign_tasks_default,
-            TaskGroupPermission.can_access_issues_default,
-            TaskGroupPermission.can_assign_issues_default,
-            TaskGroupMemberOverride.can_access_tasks_override,
-            TaskGroupMemberOverride.can_assign_tasks_override,
-            TaskGroupMemberOverride.can_access_issues_override,
-            TaskGroupMemberOverride.can_assign_issues_override,
-        )
-        .select_from(UserGroupMember)
-        .join(UserGroup, UserGroup.id == UserGroupMember.group_id)
-        .outerjoin(
-            TaskGroupPermission,
-            TaskGroupPermission.group_id == UserGroup.id,
-        )
-        .outerjoin(
-            TaskGroupMemberOverride,
-            and_(
-                TaskGroupMemberOverride.group_id == UserGroup.id,
-                TaskGroupMemberOverride.user_id == UserGroupMember.user_id,
-            ),
-        )
-        .filter(
-            UserGroupMember.is_active.is_(True),
-            UserGroup.is_active.is_(True),
-        )
-        .all()
-    )
-
-    for (
-        user_id, group_id,
-        def_a, def_aa, def_ia, def_iaa,
-        ov_a, ov_aa, ov_ia, ov_iaa,
-    ) in rows:
-        u = str(user_id)
-        if u not in out:
-            out[u] = _blank()
-        out[u]["is_group_member"] = True
-        g = str(group_id)
-        if (ov_a if ov_a is not None else bool(def_a)):
-            out[u]["group_grants_access"].append(g)
-        if (ov_aa if ov_aa is not None else bool(def_aa)):
-            out[u]["group_grants_assign"].append(g)
-        if (ov_ia if ov_ia is not None else bool(def_ia)):
-            out[u]["group_grants_access_issues"].append(g)
-        if (ov_iaa if ov_iaa is not None else bool(def_iaa)):
-            out[u]["group_grants_assign_issues"].append(g)
-
-    return out
-
+# upsert_task_permission / list_task_permissions / list_effective_perm_data
+# legacy Task Access UI'siyla birlikte kaldirildi. Legacy TABLOLAR durur
+# (backfill/parity kaynagi: legacy_resolve_effective_for_user), ama artik
+# hicbir yazma/karar yolu yoktur.
 
 # =============================================================================
 # Notification settings (admin-configurable e-mail rules)
@@ -1605,12 +1509,11 @@ def create_tasks_for_group(
             detail="Due date cannot be before the scheduled date.",
         )
 
-    # Filter to active members WITH effective task access. Members without
+    # Filter to active members WITH effective access. Members without
     # access would receive a row they can't see; safer to skip them cleanly.
-    # Effective access = direct row TRUE OR any active group membership
-    # grants access (group default + member override). The earlier
-    # version of this filter only looked at direct rows, which silently
-    # dropped members whose access came purely from a group default.
+    # RBAC cutover: uygunluk artik ROLLERDEN cozulur (scope'un access
+    # izni). TEK batch S2S cagrisi — uye basina N+1 cozum YOK. Cozum
+    # ulasilamazsa fail-closed: kimse uygun sayilmaz, yetki acilmaz.
     candidate_ids = get_active_group_member_ids(db, assignee_group_id)
     if not candidate_ids:
         raise HTTPException(
@@ -1620,32 +1523,28 @@ def create_tasks_for_group(
     # Never fan a group task out to the assigner themselves — assigning a
     # task to a group you belong to should reach the OTHER members only.
     assigner_uuid = UUID(user.id)
-    eff_data = list_effective_perm_data(db)
-    direct_key = (
-        "direct_can_access_issues" if scope == "issue"
-        else "direct_can_access_tasks"
-    )
-    group_key = (
-        "group_grants_access_issues" if scope == "issue"
-        else "group_grants_access"
-    )
+    from . import authz_client as _authz
+
+    try:
+        perm_map = _authz.effective_permissions_many(
+            [str(u) for u in candidate_ids]
+        )
+    except _authz.AuthzUnavailable:
+        perm_map = {}
+    access_code = _RBAC_CODE[(scope, "access")]
     eligible_ids = [
         uid
         for uid in candidate_ids
         if uid != assigner_uuid
-        and (
-            eff_data.get(str(uid), {}).get(direct_key)
-            or eff_data.get(str(uid), {}).get(group_key)
-        )
+        and access_code in perm_map.get(str(uid), frozenset())
     ]
     if not eligible_ids:
-        access_label = "Access Issues" if scope == "issue" else "Access Tasks"
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                "No eligible group member to assign to. Members need "
-                f"{access_label} enabled (Task Management → Task Access), and "
-                "it is never assigned back to you."
+                "No eligible group member to assign to. Members need a "
+                f"role granting {access_code} (Roles), and it is never "
+                "assigned back to you."
             ),
         )
 
@@ -1740,19 +1639,24 @@ def create_tasks_bulk(
     scope = perm_scope_for_type(task_type)
     assigner_uuid = UUID(user.id)
     admin = is_task_admin(user)
-    eff_data = list_effective_perm_data(db)
-    direct_key = (
-        "direct_can_access_issues" if scope == "issue"
-        else "direct_can_access_tasks"
-    )
-    group_key = (
-        "group_grants_access_issues" if scope == "issue"
-        else "group_grants_access"
-    )
+
+    # RBAC cutover: hedef uygunlugu rollerden, TEK batch cozumle
+    # (dogrudan hedefler + tum grup uyeleri birlikte isinir; N+1 yok).
+    from . import authz_client as _authz
+
+    warm_ids = {str(u) for u in assignee_user_ids}
+    for _gid in assignee_group_ids:
+        warm_ids.update(
+            str(u) for u in get_active_group_member_ids(db, _gid)
+        )
+    try:
+        perm_map = _authz.effective_permissions_many(list(warm_ids))
+    except _authz.AuthzUnavailable:
+        perm_map = {}
+    access_code = _RBAC_CODE[(scope, "access")]
 
     def _has_access(uid: UUID) -> bool:
-        d = eff_data.get(str(uid), {})
-        return bool(d.get(direct_key) or d.get(group_key))
+        return access_code in perm_map.get(str(uid), frozenset())
 
     eligible: list[UUID] = []
     seen: set[UUID] = set()

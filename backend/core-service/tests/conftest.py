@@ -148,3 +148,48 @@ def audit_records(monkeypatch):
 
     monkeypatch.setattr(audit, "_persist", records.append)
     return records
+
+
+# =============================================================================
+# RBAC cutover (2026-08-04): ortak sahte authz upstream'i
+# =============================================================================
+# Efektif task/issue izinleri artik rollerden cozuldugu icin, izin
+# gerektiren HER dunya kurulumunun kullanici→izin eslemesi vermesi
+# gerekir. grants dict'i: user_id(str) -> izin kodu listesi.
+
+@pytest.fixture()
+def authz_grants(monkeypatch):
+    import httpx as _httpx
+
+    from app.services import authz_client as _authz
+
+    grants: dict = {}
+
+    def handler(request: _httpx.Request) -> _httpx.Response:
+        import json as _json
+
+        if request.url.path == "/internal/authz/resolve":
+            ids = _json.loads(request.content)["user_ids"]
+            return _httpx.Response(200, json={
+                "users": [
+                    {"id": str(i), "permissions": grants.get(str(i), [])}
+                    for i in ids
+                ]
+            })
+        return _httpx.Response(404, json={"detail": "Not Found"})
+
+    _authz.set_client_factory(
+        lambda: _httpx.Client(transport=_httpx.MockTransport(handler))
+    )
+    _authz.clear_cache()
+    monkeypatch.setattr(
+        _authz.get_settings(), "AUTH_SERVICE_URL",
+        "http://auth-service/api/v1",
+    )
+    monkeypatch.setattr(
+        _authz.get_settings(), "HERMES_S2S_TOKEN_CURRENT",
+        "s2s-test-" + "x" * 40,
+    )
+    yield grants
+    _authz.set_client_factory(lambda: _httpx.Client(timeout=5))
+    _authz.clear_cache()

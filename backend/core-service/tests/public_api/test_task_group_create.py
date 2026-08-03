@@ -19,7 +19,6 @@ from app.database import get_db
 from app.models.task import (
     Task,
     TaskAssignmentGroupRelation,
-    TaskUserPermission,
 )
 from app.models.customer import Customer
 from app.models.project import Project
@@ -35,7 +34,7 @@ from .test_stage3a_tasks_read import make_api_client
 BU = uuid.uuid4()        # bound user = atayan (grubun DA uyesi)
 M1 = uuid.uuid4()        # erisimli uye
 M2 = uuid.uuid4()        # erisimli uye
-M_NOACCESS = uuid.uuid4()  # uye ama task erisimi YOK → atlanir
+M_NOACCESS = uuid.uuid4()  # uye ama RBAC tasks.access YOK → atlanir
 M_INACTIVE = uuid.uuid4()  # pasif uyelik → hic sayilmaz
 
 WRITE_SCOPES = ["tasks:read", "tasks:write"]
@@ -44,7 +43,7 @@ URL = "/api/public/v1/task-groups"
 
 
 @pytest.fixture()
-def world(pg_session):
+def world(pg_session, authz_grants):
     s = pg_session
     from sqlalchemy import text as sa_text
 
@@ -134,6 +133,17 @@ def world(pg_session):
         ]
     )
     s.commit()
+
+    # RBAC cutover: efektif izinler rollerden. Yukaridaki legacy
+    # TaskGroupPermission/override satirlari BILEREK yerinde birakildi —
+    # artik karar veremezler (M_NOACCESS'in grant'i yok; grubun eski
+    # default'u onu ERISIMLI yapamaz).
+    authz_grants[str(BU)] = ["tasks.access", "tasks.assign"]
+    authz_grants[str(M1)] = ["tasks.access"]
+    authz_grants[str(M2)] = ["tasks.access"]
+    # M_INACTIVE: izni VAR ama uyeligi pasif → yine atlanmali
+    # (filtre uyelikten, izinden degil).
+    authz_grants[str(M_INACTIVE)] = ["tasks.access"]
     return {"c1": c1, "p1": p1, "g": g, "g_inactive": g_inactive,
             "g_empty": g_empty}
 
@@ -299,16 +309,11 @@ def test_group_without_active_members_rejected(
 
 
 def test_no_group_assignment_permission_is_403(
-    world, public_http, pg_session
+    world, public_http, pg_session, authz_grants
 ):
     """Grup eslemesi OLMAYAN bir atayan → 403, hicbir satir olusmaz."""
     other = uuid.uuid4()
-    pg_session.add(
-        TaskUserPermission(
-            user_id=other, can_access_tasks=True, can_assign_tasks=True
-        )
-    )
-    pg_session.commit()
+    authz_grants[str(other)] = ["tasks.access", "tasks.assign"]
     h = bound_client(pg_session, user_id=other)
     r = public_http.post(URL, headers=h, json=payload(world))
     assert r.status_code == 403

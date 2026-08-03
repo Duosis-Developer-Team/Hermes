@@ -195,15 +195,48 @@ async def get_my_task_permissions(
     """
     is_admin = task_service.is_task_admin(current_user)
 
+    # RBAC cutover sozlesme duzeltmesi: backend can_assign_to admin icin
+    # hierarchy'yi BYPASS eder; picker listesi de ayni gercegi soylemeli.
+    # Onceki surumde admin yalniz kendi mapping'lerini goruyordu — backend
+    # izin verdigi halde frontend hedef gostermiyordu (tutarsizlik).
+    # Admin icin: tum aktif kullanicilar (S2S dizin) + tum aktif gruplar.
+    # Dizin cozulmezse admin, mapping listelerine GERI DUSER (davranis
+    # daralir, asla genislemez).
+    admin_user_ids: List[UUID] = []
+    admin_group_ids: List[UUID] = []
+    if is_admin:
+        try:
+            from ..services import directory_client
+
+            offset = 0
+            while offset < 5000:  # emniyet tavani (dizin ucu limit<=100)
+                page, has_more = directory_client.list_users_global(
+                    limit=100, offset=offset
+                )
+                admin_user_ids.extend(
+                    UUID(str(u["id"]))
+                    for u in page
+                    if str(u.get("id")) != str(current_user.id)
+                )
+                if not has_more:
+                    break
+                offset += 100
+        except Exception:  # noqa: BLE001 — fail-closed: mapping fallback
+            admin_user_ids = []
+        from ..models.user_group import UserGroup as _UserGroup
+
+        admin_group_ids = [
+            r[0]
+            for r in db.query(_UserGroup.id)
+            .filter(_UserGroup.is_active.is_(True))
+            .all()
+        ]
+
     def _scope(scope: str) -> TaskScopePermissions:
         access = task_service.can_access(db, current_user, scope)
         assign = task_service.can_assign(db, current_user, scope)
         user_ids: List[UUID] = []
         group_ids: List[UUID] = []
-        # The assignee picker is hierarchy-driven for EVERYONE (admins
-        # included): you can only assign to users/groups explicitly mapped
-        # to you in this scope. Admins are not exempt — they appear here
-        # with their own assignment-relation mappings, same as anyone else.
         if assign:
             user_ids = task_service.get_assignable_user_ids(
                 db, current_user, scope
@@ -211,6 +244,9 @@ async def get_my_task_permissions(
             group_ids = task_service.get_assignable_group_ids(
                 db, current_user, scope
             )
+            if is_admin:
+                user_ids = admin_user_ids or user_ids
+                group_ids = admin_group_ids or group_ids
         return TaskScopePermissions(
             can_access=access,
             can_assign=assign,

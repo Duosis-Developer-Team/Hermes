@@ -77,7 +77,7 @@ def rpc_with_id(client, rpc_id, method, params, token):
 
 
 @pytest.fixture()
-def world(pg_session):
+def world(pg_session, authz_grants):
     from sqlalchemy import text as sa_text
 
     from app.models.customer import Customer
@@ -85,7 +85,6 @@ def world(pg_session):
     from app.models.task import (
         Task,
         TaskAssignmentRelation,
-        TaskUserPermission,
     )
     from app.models.work_type import WorkType
 
@@ -106,15 +105,11 @@ def world(pg_session):
                  is_active=True)
     wt = WorkType(id=uuid.uuid4(), name="Dev", is_active=True)
     s.add_all([c1, p1, wt])
-    # Gercek izin zinciri: BU assigner, AS erisimli; hiyerarsi BU→AS.
+    # RBAC cutover: izinler rollerden (authz_grants); hiyerarsi BU→AS.
+    authz_grants[str(BU)] = ["tasks.access", "tasks.assign"]
+    authz_grants[str(AS)] = ["tasks.access"]
     s.add_all(
         [
-            TaskUserPermission(
-                user_id=BU, can_access_tasks=True, can_assign_tasks=True
-            ),
-            TaskUserPermission(
-                user_id=AS, can_access_tasks=True, can_assign_tasks=False
-            ),
             TaskAssignmentRelation(
                 assigner_user_id=BU, assignee_user_id=AS, scope="task"
             ),

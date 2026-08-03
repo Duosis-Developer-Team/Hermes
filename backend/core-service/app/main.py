@@ -680,6 +680,16 @@ async def lifespan(app: FastAPI):
     _migrate_tasks_task_type()
     _migrate_tasks_type_number()
     _migrate_issue_scope_permissions()
+    # RBAC cutover (2026-08-04): legacy task izinlerini komponent rollere
+    # tasiyan idempotent backfill. Auth erisilemezse loglar ve GECER —
+    # deployment asla yarim kalmaz; admin ucundan yeniden kosulabilir.
+    from app.services.rbac_backfill import run_startup_backfill
+
+    _bf_db = SessionLocal()
+    try:
+        run_startup_backfill(_bf_db)
+    finally:
+        _bf_db.close()
     yield
     print(f"👋 {settings.SERVICE_NAME} kapatılıyor...")
 

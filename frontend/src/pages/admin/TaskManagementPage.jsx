@@ -2,12 +2,12 @@
  * =============================================================================
  * HERMES - Admin Task Management Page
  * =============================================================================
- * Tabs:
- *   1. Task Access           — group-driven permission management, with an
- *                              "Additional Users" section for people who
- *                              live outside any group.
- *   2. Assignment Hierarchy  — assigner -> assignees mappings.
- *   3. Sub Projects          — task-only sub projects under customer/project.
+ * RBAC cutover (2026-08-04): Task Access yonetimi ROLLERE tasindi
+ * (Users → Roles). Bu sayfada KALANLAR:
+ *   1. Task Assignment Hierarchy          — kim kime task atayabilir
+ *   2. Issue & Suggestion Hierarchy       — kim kime issue atayabilir
+ *   3. Sub Projects                       — musteri/proje alti alt projeler
+ *   4. Mail Notifications                 — bildirim kurallari
  * =============================================================================
  */
 
@@ -33,11 +33,9 @@ import {
     DeleteOutlined,
     DownOutlined,
     MailOutlined,
-    SafetyCertificateOutlined,
     ApartmentOutlined,
     FolderOpenOutlined,
     TeamOutlined,
-    KeyOutlined,
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -48,11 +46,9 @@ import {
     userGroupService,
     taskAssignmentService,
     taskAssignmentGroupService,
-    taskPermissionService,
     taskNotificationSettingsService,
 } from '../../services/api'
 import './TaskManagementPage.css'
-import TaskAccessByGroupTab from './TaskAccessByGroupTab'
 import AssignmentHierarchyTab from './AssignmentHierarchyTab'
 import DangerConfirmModal from '../../components/common/DangerConfirmModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
@@ -660,8 +656,7 @@ function Section({ icon, title, subtitle, count, accent, open, onToggle, childre
 function TaskManagementPage() {
     // Multiple sections can be open at once (accordion felt restrictive).
     const [open, setOpen] = useState({
-        access: true,
-        hierarchy: false,
+        hierarchy: true,
         issueHierarchy: false,
         sub: false,
         mail: false,
@@ -694,21 +689,6 @@ function TaskManagementPage() {
         queryKey: ['admin-task-sub-projects', null, null],
         queryFn: () => taskSubProjectService.list({}),
     })
-    const { data: effective = [] } = useQuery({
-        queryKey: ['admin-task-permissions-effective'],
-        queryFn: () => taskPermissionService.listEffective(),
-    })
-
-    const usersWithAccess = useMemo(
-        () =>
-            effective.filter(
-                (r) =>
-                    r.direct_can_access_tasks ||
-                    (Array.isArray(r.group_grants_access) &&
-                        r.group_grants_access.length > 0)
-            ).length,
-        [effective]
-    )
     const rulesCount = userRelations.length + groupRelations.length
     const issueRulesCount =
         issueUserRelations.length + issueGroupRelations.length
@@ -718,8 +698,9 @@ function TaskManagementPage() {
             <header className="tm-header">
                 <h1 className="tm-title">PM Configurations</h1>
                 <p className="tm-subtitle">
-                    Manage access, assignment hierarchies, and sub-projects
-                    for tasks, issues &amp; suggestions in one place.
+                    Manage assignment hierarchies, sub-projects and mail
+                    notifications. Who can USE the task module is managed in
+                    Roles (Users → Roles).
                 </p>
             </header>
 
@@ -729,12 +710,6 @@ function TaskManagementPage() {
                     label="Groups"
                     value={groups.length}
                     accent="#388bff"
-                />
-                <StatCard
-                    icon={<KeyOutlined />}
-                    label="Users with access"
-                    value={usersWithAccess}
-                    accent="#6366f1"
                 />
                 <StatCard
                     icon={<ApartmentOutlined />}
@@ -749,18 +724,6 @@ function TaskManagementPage() {
                     accent="#22a06b"
                 />
             </div>
-
-            <Section
-                icon={<SafetyCertificateOutlined />}
-                title="Task Access"
-                subtitle="Access & assign permissions for groups and ungrouped users"
-                count={groups.length}
-                accent="#388bff"
-                open={open.access}
-                onToggle={() => toggle('access')}
-            >
-                <TaskAccessByGroupTab />
-            </Section>
 
             <Section
                 icon={<ApartmentOutlined />}

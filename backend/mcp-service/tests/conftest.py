@@ -179,12 +179,55 @@ def _wire_core(pg_session, core_asgi_app, monkeypatch):
         "HERMES_S2S_TOKEN_CURRENT",
         "s2s-mcp-test-" + "z" * 32,
     )
+
+    # RBAC cutover (2026-08-04): core, efektif task izinlerini rollerden
+    # cozer — dunya kurulumlari kullanici→izin eslemesini _authz_holder'a
+    # yazar (authz_grants fixture'i). Cozum sahte authz upstream'inden.
+    from app.services import authz_client as _authz_mod
+
+    _authz_holder.clear()
+
+    def _fake_authz(request):
+        if request.url.path == "/internal/authz/resolve":
+            ids = _json.loads(request.content)["user_ids"]
+            return httpx.Response(200, json={
+                "users": [
+                    {"id": str(i),
+                     "permissions": _authz_holder.get(str(i), [])}
+                    for i in ids
+                ]
+            })
+        return httpx.Response(404, json={"detail": "Not Found"})
+
+    _authz_mod.set_client_factory(
+        lambda: httpx.Client(transport=httpx.MockTransport(_fake_authz))
+    )
+    _authz_mod.clear_cache()
+    monkeypatch.setattr(
+        _authz_mod.get_settings(), "AUTH_SERVICE_URL",
+        "http://auth-service/api/v1",
+    )
+    monkeypatch.setattr(
+        _authz_mod.get_settings(), "HERMES_S2S_TOKEN_CURRENT",
+        "s2s-mcp-test-" + "z" * 32,
+    )
     yield
     directory_client.set_client_factory(
         lambda: httpx.Client(timeout=5)
     )
     directory_client.clear_cache()
+    _authz_mod.set_client_factory(lambda: httpx.Client(timeout=5))
+    _authz_mod.clear_cache()
     _db_holder["session"] = None
+
+
+_authz_holder: dict = {}
+
+
+@pytest.fixture()
+def authz_grants():
+    """user_id(str) -> RBAC izin listesi (sahte authz upstream'i besler)."""
+    return _authz_holder
 
 
 @pytest.fixture(scope="session")

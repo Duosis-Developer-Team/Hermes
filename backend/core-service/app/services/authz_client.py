@@ -96,3 +96,56 @@ def effective_permissions(user_id: str) -> frozenset:
         _cache.clear()  # basit sinir — dogruluk auth'ta
     _cache[uid] = (now + POSITIVE_TTL_SECONDS, perms)
     return perms
+
+
+def effective_permissions_many(user_ids) -> Dict[str, frozenset]:
+    """Batch cozum: tek /internal/authz/resolve cagrisiyla birden fazla
+    kullanicinin izinlerini getirir ve cache'i doldurur. Fan-out gibi
+    N kullaniciyi arka arkaya soracak yerler icin — N+1 S2S YOK.
+
+    Cache'te taze olanlar istege dahil edilmez. Basarisizlik →
+    AuthzUnavailable (fail-closed; cagiran karar noktasi bilir)."""
+    now = time.monotonic()
+    out: Dict[str, frozenset] = {}
+    missing = []
+    for uid in dict.fromkeys(str(u) for u in user_ids):
+        hit = _cache.get(uid)
+        if hit and hit[0] > now:
+            out[uid] = hit[1]
+        else:
+            missing.append(uid)
+    if not missing:
+        return out
+
+    settings = get_settings()
+    token = settings.HERMES_S2S_TOKEN_CURRENT
+    if not token:
+        raise AuthzUnavailable("S2S credential not configured")
+
+    CHUNK = 500  # auth tarafindaki MAX_RESOLVE_IDS siniri
+    for i in range(0, len(missing), CHUNK):
+        chunk = missing[i : i + CHUNK]
+        try:
+            resp = _get_client().post(
+                f"{auth_service_base_url()}/internal/authz/resolve",
+                json={"user_ids": chunk},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        except Exception as exc:  # noqa: BLE001 — fail closed
+            logger.warning("authz batch resolve transport error class=%s",
+                           type(exc).__name__)
+            raise AuthzUnavailable("transport") from exc
+        if resp.status_code != 200:
+            logger.warning("authz batch resolve status=%s", resp.status_code)
+            raise AuthzUnavailable(f"status {resp.status_code}")
+        got = {
+            str(u.get("id")): frozenset(u.get("permissions") or [])
+            for u in resp.json().get("users") or []
+        }
+        for uid in chunk:
+            perms = got.get(uid, frozenset())
+            if len(_cache) >= _CACHE_MAX:
+                _cache.clear()
+            _cache[uid] = (now + POSITIVE_TTL_SECONDS, perms)
+            out[uid] = perms
+    return out
