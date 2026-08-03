@@ -104,7 +104,7 @@ export function UsersTab() {
                 } catch (e) {
                     const detail = e.response?.data?.detail
                     throw new Error(
-                        `Kullanıcı kaydedildi ama roller uygulanamadı: ${detail || e.message}`
+                        `User saved, but roles could not be applied: ${detail || e.message}`
                     )
                 }
             }
@@ -319,11 +319,11 @@ export function UsersTab() {
                     <Form.Item
                         name="role_ids"
                         label="Roles"
-                        extra="Yetkiler rollerden gelir. Sahip olmadığınız izinleri içeren bir rolü atayamazsınız (subset kuralı); son aktif yönetici düşürülemez."
+                        extra="Permissions come from roles. You cannot assign a role containing permissions you do not hold (subset rule); the last active admin cannot be demoted."
                     >
                         <Select
                             mode="multiple"
-                            placeholder="Rol seçin"
+                            placeholder="Select roles"
                             optionFilterProp="label"
                             options={assignableRoles.map((r) => ({
                                 value: r.id,

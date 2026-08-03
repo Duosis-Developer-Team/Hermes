@@ -110,13 +110,13 @@ describe('sidebar collapse + persist', () => {
 describe('tema kontrolu', () => {
     it('erisilebilir adli buton temayi degistirir ve persist eder', () => {
         renderShell()
-        const btn = screen.getByRole('button', { name: /Açık temaya geç/i })
+        const btn = screen.getByRole('button', { name: /Switch to light theme/i })
         fireEvent.click(btn)
         expect(useThemeStore.getState().theme).toBe('light')
         expect(document.documentElement.getAttribute('data-theme')).toBe('light')
         expect(localStorage.getItem('hermes-theme')).toBe('light')
         // Etiket yeni duruma gore degisir (yon anlamini korur)
-        expect(screen.getByRole('button', { name: /Koyu temaya geç/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /Switch to dark theme/i })).toBeInTheDocument()
     })
 })
 

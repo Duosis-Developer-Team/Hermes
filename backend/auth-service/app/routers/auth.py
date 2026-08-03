@@ -150,7 +150,7 @@ async def microsoft_login(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="SSO kimlik doğrulama başarısız",
+            detail="SSO authentication failed",
         )
 
     _set_auth_cookie(response, token_obj.access_token)
@@ -179,7 +179,7 @@ async def logout(response: Response) -> dict:
         secure=_COOKIE_SECURE,
         samesite=_COOKIE_SAMESITE,
     )
-    return {"detail": "Oturum kapatıldı"}
+    return {"detail": "Signed out"}
 
 
 # =============================================================================
@@ -213,7 +213,7 @@ async def get_current_user_info(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Kullanıcı bulunamadı",
+            detail="User not found",
         )
 
     return user

@@ -78,5 +78,5 @@ async def get_dashboard_v1(
         logging.getLogger(__name__).error("Dashboard veri alma hatası", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail="Dashboard verisi alınamadı. Lütfen tekrar deneyin."
+            detail="Could not load dashboard data. Please try again."
         )

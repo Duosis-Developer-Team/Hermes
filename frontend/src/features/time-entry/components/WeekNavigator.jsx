@@ -20,7 +20,7 @@ function WeekNavigator({
                         icon={<LeftOutlined />}
                         onClick={onPrevious}
                         className="nav-btn"
-                        aria-label="Önceki hafta"
+                        aria-label="Previous week"
                     />
                     <span className="week-label">{weekLabel}</span>
                     <Button
@@ -28,7 +28,7 @@ function WeekNavigator({
                         icon={<RightOutlined />}
                         onClick={onNext}
                         className="nav-btn"
-                        aria-label="Sonraki hafta"
+                        aria-label="Next week"
                     />
                 </div>
                 <Button onClick={onToday} className="today-btn">

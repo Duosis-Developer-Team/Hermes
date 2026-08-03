@@ -41,7 +41,7 @@ class ProjectService(BaseCRUDService[Project, ProjectCreate, ProjectUpdate]):
                 Customer.id == data.customer_id
             ).first()
             if not customer:
-                raise NotFoundError("Müşteri", data.customer_id)
+                raise NotFoundError("Customer", data.customer_id)
         
         # Contract duration verilip start_date verilmemişse bugünü ata
         if data.contract_duration_days and not data.contract_start_date:
@@ -64,7 +64,7 @@ class ProjectService(BaseCRUDService[Project, ProjectCreate, ProjectUpdate]):
                 Customer.id == update_data['customer_id']
             ).first()
             if not customer:
-                raise NotFoundError("Müşteri", update_data['customer_id'])
+                raise NotFoundError("Customer", update_data['customer_id'])
         
         # Contract duration verilip start_date yoksa otomatik bugünü ata
         if 'contract_duration_days' in update_data and update_data['contract_duration_days']:

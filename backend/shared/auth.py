@@ -254,7 +254,7 @@ async def get_current_user(
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Kimlik doğrulama gerekli",
+            detail="Authentication required",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

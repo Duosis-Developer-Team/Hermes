@@ -46,17 +46,17 @@ function AuthCallbackPage() {
 
                 const user = data?.user
                 if (!user) {
-                    throw new Error("Kullanıcı bilgisi alınamadı")
+                    throw new Error("Could not load user information")
                 }
 
                 // Store'a yalnızca kullanıcı bilgisi kaydedilir — token değil
                 login(user)
 
-                message.success('Giriş başarılı!')
+                message.success('Signed in successfully.')
                 navigate('/')
             } catch (error) {
                 const detail = error?.response?.data?.detail || error?.message || 'Bilinmeyen hata'
-                message.error(`Microsoft girişi başarısız: ${detail}`, 8)
+                message.error(`Microsoft sign-in failed: ${detail}`, 8)
                 navigate('/login')
             }
         }

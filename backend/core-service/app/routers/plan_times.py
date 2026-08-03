@@ -101,13 +101,13 @@ async def create_plan_time(
     if not data.user_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="En az bir kullanıcı seçilmelidir."
+            detail="At least one user must be selected."
         )
 
     if data.recurrence not in ("one_time", "weekly", "monthly"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Geçersiz recurrence değeri. 'one_time', 'weekly' veya 'monthly' olmalıdır."
+            detail="Invalid recurrence value. It must be 'one_time', 'weekly' or 'monthly'."
         )
 
     plan = PlanTime(
@@ -239,7 +239,7 @@ async def respond_to_plan_time(
     if payload.status not in ("accepted", "rejected"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Geçersiz statü. 'accepted' veya 'rejected' olmalıdır."
+            detail="Invalid status. It must be 'accepted' or 'rejected'."
         )
 
     user_uuid = UUID(current_user.id)
@@ -256,7 +256,7 @@ async def respond_to_plan_time(
     if not assignment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bu plan time olayına atanmamışsınız."
+            detail="You are not assigned to this plan time event."
         )
 
     assignment.status = payload.status
@@ -293,13 +293,13 @@ async def update_plan_time(
     if not plan:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Plan time bulunamadı."
+            detail="Plan time not found."
         )
 
     if data.recurrence and data.recurrence not in ("one_time", "weekly", "monthly", "daily"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Geçersiz recurrence değeri."
+            detail="Invalid recurrence value."
         )
 
     if data.customer_id is not None:
@@ -362,7 +362,7 @@ async def delete_plan_time(
     if not plan:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Plan time bulunamadı."
+            detail="Plan time not found."
         )
 
     db.delete(plan)

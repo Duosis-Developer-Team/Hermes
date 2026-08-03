@@ -727,7 +727,7 @@ async def hermes_exception_handler(request: Request, exc: HermesException):
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     settings = get_settings()
-    error_detail = str(exc) if settings.DEBUG else "Beklenmeyen bir hata oluştu"
+    error_detail = str(exc) if settings.DEBUG else "An unexpected error occurred"
     return JSONResponse(
         status_code=500,
         content={"success": False, "error": {"code": "INTERNAL_ERROR", "message": error_detail}}

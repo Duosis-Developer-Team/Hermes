@@ -58,7 +58,7 @@ def require_permissions(*codes: str):
         if not current_user.allow_rbac_resolution:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Bu işlem için yetkiniz yok.",
+                detail="You do not have permission to do this.",
             )
         try:
             perms = authz_client.effective_permissions(current_user.id)

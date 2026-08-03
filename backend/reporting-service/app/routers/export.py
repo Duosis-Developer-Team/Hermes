@@ -73,7 +73,7 @@ async def export_excel_v1(
         logging.getLogger(__name__).error("Excel export hatası", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail="Excel raporu oluşturulamadı. Lütfen tekrar deneyin."
+            detail="Could not generate the Excel report. Please try again."
         )
 
 

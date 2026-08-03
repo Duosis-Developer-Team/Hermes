@@ -35,7 +35,7 @@ function TimeEntryHeader({
                             }))}
                             showSearch
                             optionFilterProp="label"
-                            aria-label="Kullanıcı seç"
+                            aria-label="Select user"
                         />
                     </div>
                 ) : (
@@ -52,7 +52,7 @@ function TimeEntryHeader({
                         icon={<FileExcelOutlined />}
                         loading={exportLoading}
                         onClick={onExport}
-                        aria-label="CSV olarak dışa aktar"
+                        aria-label="Export as CSV"
                     />
                 </Tooltip>
 
@@ -61,7 +61,7 @@ function TimeEntryHeader({
                     onOpenSubmitModal={onOpenSubmitModal}
                 />
 
-                <div className="view-switchers" role="tablist" aria-label="Görünüm">
+                <div className="view-switchers" role="tablist" aria-label="View">
                     {['list', 'timesheet'].map((v) => (
                         <button
                             key={v}

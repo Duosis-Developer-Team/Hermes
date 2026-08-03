@@ -37,10 +37,10 @@ from .graph_service import (
 logger = logging.getLogger(__name__)
 
 _PRIORITY_LABELS = {
-    "low": "Düşük",
-    "medium": "Orta",
-    "high": "Yüksek",
-    "urgent": "Acil",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "urgent": "Urgent",
 }
 _PRIORITY_COLORS = {
     "low": "#6b7280",
@@ -229,7 +229,7 @@ def _detail_row(label: str, value: Optional[str]) -> str:
 
 def _task_card_html(task: dict) -> str:
     code = _esc(task.get("task_code") or "")
-    title = _esc(task.get("title") or "Görev")
+    title = _esc(task.get("title") or "Task")
     priority = (task.get("priority") or "medium").lower()
     p_label = _PRIORITY_LABELS.get(priority, priority)
     p_color = _PRIORITY_COLORS.get(priority, _BLUE)
@@ -253,9 +253,9 @@ def _task_card_html(task: dict) -> str:
 
     rows = "".join(
         [
-            _detail_row("Kapsam", scope or None),
-            _detail_row("Planlanan", task.get("scheduled_date")),
-            _detail_row("Termin", task.get("due_date")),
+            _detail_row("Scope", scope or None),
+            _detail_row("Scheduled", task.get("scheduled_date")),
+            _detail_row("Due date", task.get("due_date")),
         ]
     )
 
@@ -319,7 +319,7 @@ def _cta_button(task: dict, app_base_url: str) -> str:
         )
     else:
         link = f"{base}/project-management/{plural}"
-    label = _TYPE_ACC[ttype].capitalize() + " Görüntüle"
+    label = "View " + _TYPE_NOUN[ttype]
     return (
         '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" '
         'style="margin:24px 0 4px;"><tr><td align="center">'
@@ -377,7 +377,7 @@ def _shell(
         '<tr><td style="padding:18px 28px;background:' + _SURFACE_DEEP + ';'
         'border-top:1px solid ' + _BORDER_SOFT + ';color:' + _TEXT_FAINT + ';'
         'font-size:12px;text-align:center;">'
-        'Bu otomatik bir bildirimdir · Hermes Proje Yönetimi'
+        'This is an automated notification · Hermes Project Management'
         '</td></tr>'
         '</table></td></tr></table></div>'
     )
@@ -390,18 +390,10 @@ def _intro(text_html: str) -> str:
     )
 
 
-# Type-aware Turkish nouns so issues + suggestions get their own copy
-# instead of "görev". Three grammatical forms are kept because the e-mail
-# titles need the nominative, accusative and 2nd-person possessive.
-# English product nouns kept verbatim, with Turkish suffixes attached via
-# apostrophe (the loanword convention): Task / Issue / Suggestion.
-_TYPE_NOUN = {"task": "Task", "issue": "Issue", "suggestion": "Suggestion"}
-_TYPE_ACC = {"task": "Task'i", "issue": "Issue'yu", "suggestion": "Suggestion'ı"}
-_TYPE_POSS = {
-    "task": "Task'iniz",
-    "issue": "Issue'nuz",
-    "suggestion": "Suggestion'ınız",
-}
+# Type-aware nouns so issues and suggestions get their own copy. English
+# needs a single form (Sprint 8: all system texts are English; the old
+# Turkish accusative/possessive variants are gone).
+_TYPE_NOUN = {"task": "task", "issue": "issue", "suggestion": "suggestion"}
 # Plural slug for the deep-link path (/project-management/<plural>).
 _TYPE_PLURAL = {"task": "tasks", "issue": "issues", "suggestion": "suggestions"}
 
@@ -411,16 +403,119 @@ def _ttype(task: dict) -> str:
     return t if t in _TYPE_NOUN else "task"
 
 
-def _assignee_email_html(task: dict, assigner_name: str, app_base_url: str) -> str:
+def _assignment_scope_html(
+    *,
+    assignee_entries: List[tuple],
+    direct_ids: set,
+    group_names: List[str],
+    list_title: str,
+) -> str:
+    """Team-context block: who this assignment actually targets.
+
+    `assignee_entries` is the deterministic (user_id, display_name) list
+    derived from the SAME fan-out snapshot the recipients come from — no
+    second query, no race with later membership changes. Display names
+    only; e-mail addresses are never shown to other recipients.
+    """
+    items = "".join(
+        '<li style="margin:2px 0;color:' + _TEXT + ';">'
+        + _esc(name) + '</li>'
+        for _uid, name in assignee_entries
+    )
+    groups_line = ""
+    if group_names:
+        groups_line = (
+            '<div style="margin:0 0 6px;color:' + _TEXT_MUTED + ';'
+            'font-size:13px;">Assigned groups: <strong style="color:'
+            + _TEXT + ';">'
+            + _esc(", ".join(group_names))
+            + '</strong></div>'
+        )
+    return (
+        '<div style="margin:16px 0 0;padding:14px 16px;background:'
+        + _SURFACE_DEEP + ';border:1px solid ' + _BORDER + ';'
+        'border-radius:8px;">'
+        + groups_line
+        + '<div style="color:' + _TEXT_MUTED + ';font-size:13px;'
+        'margin-bottom:6px;">' + _esc(list_title) + ' ('
+        + str(len(assignee_entries)) + '):</div>'
+        '<ul style="margin:0;padding-left:18px;font-size:13px;'
+        'line-height:1.7;">' + items + '</ul>'
+        '</div>'
+    )
+
+
+def _assignee_email_html(
+    task: dict,
+    assigner_name: str,
+    app_base_url: str,
+    *,
+    assignee_entries: List[tuple],
+    direct_ids: set,
+    group_names: List[str],
+) -> str:
+    """Per-recipient assignment e-mail.
+
+    Sprint 8: every recipient still gets an INDIVIDUAL e-mail (addresses
+    are never pooled into one To/CC), but the body now shows the real
+    scope of the assignment — a lone assignee no longer reads a 4-person
+    team task as if it were theirs alone.
+    """
     noun = _TYPE_NOUN[_ttype(task)]
-    intro = _intro(
-        '<strong>' + _esc(assigner_name) + '</strong> size yeni bir ' + noun
-        + ' atadı. Detaylar aşağıda:'
+    n = len(assignee_entries)
+
+    if n <= 1 and not group_names:
+        # Genuinely personal assignment — keep the personal wording.
+        intro = _intro(
+            '<strong>' + _esc(assigner_name) + '</strong> assigned you the '
+            + noun + ' below.'
+        )
+        reason = ""
+    elif group_names:
+        gtxt = '”, “'.join(group_names)
+        gword = 'groups' if len(group_names) > 1 else 'group'
+        intro = _intro(
+            '<strong>' + _esc(assigner_name) + '</strong> assigned the '
+            + noun + ' below to the <strong>“' + _esc(gtxt)
+            + '”</strong> ' + gword
+            + (' and individually selected people' if direct_ids else '')
+            + '.'
+        )
+        reason = (
+            'You are receiving this email as a member of the “'
+            + _esc(group_names[0]) + '” group.'
+            if len(group_names) == 1 and not direct_ids
+            else 'You are receiving this email because you are one of the '
+                 'assignees.'
+        )
+    else:
+        intro = _intro(
+            '<strong>' + _esc(assigner_name) + '</strong> assigned the '
+            + noun + ' below to <strong>' + str(n) + ' people</strong>.'
+        )
+        reason = (
+            'You are receiving this email because you are one of the '
+            'assignees.'
+        )
+
+    scope_block = ""
+    if n > 1 or group_names:
+        scope_block = _assignment_scope_html(
+            assignee_entries=assignee_entries,
+            direct_ids=direct_ids,
+            group_names=group_names,
+            list_title="Group assignees" if group_names else "Assignees",
+        )
+    reason_block = (
+        '<p style="margin:14px 0 0;color:' + _TEXT_MUTED + ';'
+        'font-size:12px;line-height:1.6;">' + reason + '</p>'
+        if reason
+        else ""
     )
     return _shell(
-        "Size yeni bir " + noun + " atandı",
+        "You have a new " + noun,
         intro,
-        _task_card_html(task),
+        _task_card_html(task) + scope_block + reason_block,
         app_base_url,
         task,
     )
@@ -431,11 +526,11 @@ def _assigner_single_email_html(
 ) -> str:
     noun = _TYPE_NOUN[_ttype(task)]
     intro = _intro(
-        '<strong>' + _esc(assignee_name) + '</strong> kişisine yeni bir '
-        + noun + ' atadınız. Özet aşağıda:'
+        'You assigned the ' + noun + ' below to <strong>'
+        + _esc(assignee_name) + '</strong>.'
     )
     return _shell(
-        "Bir " + noun + " atadınız",
+        "You assigned a " + noun,
         intro,
         _task_card_html(task),
         app_base_url,
@@ -445,17 +540,17 @@ def _assigner_single_email_html(
 
 def _status_assignee_email_html(task: dict, event: str, app_base_url: str) -> str:
     """E-mail to the assignee (the actor) when they accept/complete."""
-    acc = _TYPE_ACC[_ttype(task)]
+    noun = _TYPE_NOUN[_ttype(task)]
     if event == "accept":
-        title_line = acc.capitalize() + " kabul ettiniz"
+        title_line = "You accepted the " + noun
         intro = _intro(
-            "Aşağıdaki " + acc + " kabul ettiniz ve üzerinde çalışmaya "
-            "başladınız:"
+            "You accepted the " + noun + " below and started working on it:"
         )
     else:  # complete
-        title_line = acc.capitalize() + " tamamladınız"
+        title_line = "You completed the " + noun
         intro = _intro(
-            "Aşağıdaki " + acc + " <strong>başarıyla tamamladınız</strong>:"
+            "You <strong>successfully completed</strong> the " + noun
+            + " below:"
         )
     return _shell(title_line, intro, _task_card_html(task), app_base_url, task)
 
@@ -464,39 +559,45 @@ def _status_assigner_email_html(
     task: dict, assignee_name: str, event: str, app_base_url: str
 ) -> str:
     """E-mail to the assigner when their assigned item is accepted/done."""
-    t = _ttype(task)
-    acc = _TYPE_ACC[t]
-    poss = _TYPE_POSS[t]
+    noun = _TYPE_NOUN[_ttype(task)]
     who = "<strong>" + _esc(assignee_name) + "</strong>"
     if event == "accept":
-        title_line = poss.capitalize() + " kabul edildi"
+        title_line = "Your " + noun + " was accepted"
         intro = _intro(
-            who + ", verdiğiniz aşağıdaki " + acc + " <strong>kabul etti"
-            "</strong> ve tamamlanma sürecine aldı:"
+            who + " <strong>accepted</strong> the " + noun
+            + " you assigned and started working on it:"
         )
     else:  # complete
-        title_line = poss.capitalize() + " tamamlandı"
+        title_line = "Your " + noun + " was completed"
         intro = _intro(
-            who + ", verdiğiniz aşağıdaki " + acc + " "
-            "<strong>başarıyla tamamladı</strong>:"
+            who + " <strong>successfully completed</strong> the " + noun
+            + " you assigned:"
         )
     return _shell(title_line, intro, _task_card_html(task), app_base_url, task)
 
 
 def _assigner_group_email_html(
-    sample_task: dict, assignee_names: List[str], app_base_url: str
+    sample_task: dict,
+    assignee_names: List[str],
+    app_base_url: str,
+    group_names: Optional[List[str]] = None,
 ) -> str:
-    t = _ttype(sample_task)
-    noun = _TYPE_NOUN[t]
-    acc = _TYPE_ACC[t]
-    names = ", ".join(_esc(n) for n in assignee_names if n)
-    count = len([n for n in assignee_names if n])
+    """Single summary to the assigner for a multi-target assignment."""
+    noun = _TYPE_NOUN[_ttype(sample_task)]
+    names = [n for n in assignee_names if n]
+    count = len(names)
+    gtxt = (
+        ' to the <strong>“' + _esc("”, “".join(group_names)) + '”</strong> group'
+        if group_names
+        else ''
+    )
     intro = _intro(
-        '<strong>' + str(count) + ' kişiye</strong> aynı ' + acc
-        + ' atadınız: ' + names
+        'You assigned the same ' + noun + gtxt + ' — <strong>'
+        + str(count) + ' people</strong> in total: '
+        + ", ".join(_esc(n) for n in names)
     )
     return _shell(
-        "Bir gruba " + noun + " atadınız",
+        "You assigned a " + noun + " to " + str(count) + " people",
         intro,
         _task_card_html(sample_task),
         app_base_url,
@@ -533,6 +634,7 @@ async def send_assignment_notifications(
     token: str,
     tasks: List[dict],
     assigner_user_id: str,
+    assignment_context: Optional[dict] = None,
 ) -> None:
     """Send assignment notifications for one create action.
 
@@ -583,21 +685,57 @@ async def send_assignment_notifications(
         )
 
         assigner = users.get(str(assigner_user_id), {})
-        assigner_name = assigner.get("full_name") or "Bir kullanıcı"
+        assigner_name = assigner.get("full_name") or "A user"
 
-        # 1) Notify each assignee.
+        # ── Ekip baglami (Sprint 8) ──────────────────────────────────
+        # Isim listesi, alicilarla AYNI kaynaktan turetilir: olusturma
+        # aninda fan-out edilmis `tasks` satirlari. Ayri bir uyelik
+        # sorgusu YAPILMAZ — sonradan degisen grup uyeligi e-postayi
+        # etkileyemez (snapshot kurali) ve yaris olusmaz.
+        ctx = assignment_context or {}
+        group_names = [g for g in (ctx.get("group_names") or []) if g]
+        direct_ids = {str(u) for u in (ctx.get("direct_user_ids") or [])}
+
+        seen_ids: set = set()
+        assignee_entries: List[tuple] = []
+        for aid in assignee_ids:
+            if aid in seen_ids:
+                continue  # ayni kullaniciya cift satir → tek giris
+            seen_ids.add(aid)
+            info = users.get(aid) or {}
+            assignee_entries.append(
+                (aid, info.get("full_name") or info.get("email") or "Unknown user")
+            )
+        # Deterministik sira: gorunen ada gore (esitlikte stabil id).
+        assignee_entries.sort(key=lambda e: (e[1].casefold(), e[0]))
+
+        # 1) Notify each assignee — one INDIVIDUAL e-mail per recipient
+        #    (addresses are never pooled), each carrying the same team
+        #    context. `sent_to` guards against duplicate rows producing
+        #    duplicate mail.
+        sent_to: set = set()
         for t in tasks:
             aid = str(t.get("assignee_user_id") or "")
+            if aid in sent_to:
+                continue
             info = users.get(aid)
             if not info or not info.get("email"):
                 continue
-            title = t.get("title") or "Görev"
+            sent_to.add(aid)
+            title = t.get("title") or "Task"
             noun = _TYPE_NOUN[_ttype(t)]
             await _send(
                 sender,
                 info["email"],
-                f"Yeni {noun}: {title}",
-                _assignee_email_html(t, assigner_name, app_url),
+                f"[Hermes] {noun.capitalize()} assigned: {title}",
+                _assignee_email_html(
+                    t,
+                    assigner_name,
+                    app_url,
+                    assignee_entries=assignee_entries,
+                    direct_ids=direct_ids,
+                    group_names=group_names,
+                ),
             )
 
         # 2) Notify the assigner (single summary).
@@ -607,29 +745,30 @@ async def send_assignment_notifications(
                 aid = str(t.get("assignee_user_id") or "")
                 assignee_name = (
                     (users.get(aid, {}) or {}).get("full_name")
-                    or "bir kullanıcı"
+                    or "a user"
                 )
                 noun = _TYPE_NOUN[_ttype(t)]
                 await _send(
                     sender,
                     assigner["email"],
-                    f"{noun.capitalize()} atadınız: {t.get('title') or 'Görev'}",
+                    f"[Hermes] You assigned a {noun}: "
+                    f"{t.get('title') or 'Task'}",
                     _assigner_single_email_html(t, assignee_name, app_url),
                 )
             else:
-                assignee_names = [
-                    (users.get(str(t.get("assignee_user_id")), {}) or {}).get(
-                        "full_name"
-                    )
-                    or ""
-                    for t in tasks
-                ]
+                # Ayni deterministik isim listesi (ekip baglami ile bire bir).
+                assignee_names = [name for _uid, name in assignee_entries]
                 noun = _TYPE_NOUN[_ttype(tasks[0])]
                 await _send(
                     sender,
                     assigner["email"],
-                    f"Gruba {noun} atadınız: {tasks[0].get('title') or 'Görev'}",
-                    _assigner_group_email_html(tasks[0], assignee_names, app_url),
+                    f"[Hermes] You assigned a {noun} to "
+                    f"{len(assignee_entries)} people: "
+                    f"{tasks[0].get('title') or 'Task'}",
+                    _assigner_group_email_html(
+                        tasks[0], assignee_names, app_url,
+                        group_names=group_names,
+                    ),
                 )
     except Exception as exc:  # noqa: BLE001 — must never escape the BackgroundTask
         print(f"[notif] EXCEPTION: {exc!r}", flush=True)
@@ -666,7 +805,7 @@ async def send_status_notifications(
 
         sender = settings.NOTIF_MAIL_SENDER
         app_url = settings.APP_BASE_URL
-        title = task.get("title") or "Görev"
+        title = task.get("title") or "Task"
 
         assignee_id = str(task.get("assignee_user_id") or "")
         wanted = {assignee_id, str(assigner_user_id)}
@@ -675,17 +814,16 @@ async def send_status_notifications(
 
         assignee = users.get(assignee_id, {})
         assigner = users.get(str(assigner_user_id), {})
-        assignee_name = assignee.get("full_name") or "Bir kullanıcı"
+        assignee_name = assignee.get("full_name") or "A user"
         ttype = _ttype(task)
-        acc_cap = _TYPE_ACC[ttype].capitalize()
-        poss_cap = _TYPE_POSS[ttype].capitalize()
+        noun = _TYPE_NOUN[ttype]
 
         # 1) The assignee (actor) — "you accepted/completed this item".
         if assignee.get("email"):
             subject = (
-                f"{acc_cap} kabul ettiniz: {title}"
+                f"[Hermes] You accepted the {noun}: {title}"
                 if event == "accept"
-                else f"{acc_cap} tamamladınız: {title}"
+                else f"[Hermes] You completed the {noun}: {title}"
             )
             await _send(
                 sender,
@@ -697,9 +835,9 @@ async def send_status_notifications(
         # 2) The assigner — "your assigned item was accepted/completed".
         if settings.NOTIF_NOTIFY_ASSIGNER and assigner.get("email"):
             subject = (
-                f"{poss_cap} kabul edildi: {title}"
+                f"[Hermes] Your {noun} was accepted: {title}"
                 if event == "accept"
-                else f"{poss_cap} tamamlandı: {title}"
+                else f"[Hermes] Your {noun} was completed: {title}"
             )
             await _send(
                 sender,

@@ -56,7 +56,7 @@ class CustomerService(BaseCRUDService[Customer, CustomerCreate, CustomerUpdate])
             if data.contract_duration_days < 1:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="Sözleşme süresi en az 1 gün olmalıdır.",
+                    detail="The contract period must be at least 1 day.",
                 )
             # Logic: "ne zaman girilmişse o an başlangıç olacak"
             data.contract_start_date = datetime.now(timezone.utc)

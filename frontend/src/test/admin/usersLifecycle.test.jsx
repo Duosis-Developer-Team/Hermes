@@ -234,7 +234,7 @@ describe('cift gonderim ve hata mesaji', () => {
         renderUsers()
         const d = await openEdit(user, 'ada@x.com')
         await user.click(within(d).getByRole('button', { name: /Update/ }))
-        expect(await screen.findByText(/roller uygulanamadı/i)).toBeInTheDocument()
+        expect(await screen.findByText(/roles could not be applied/i)).toBeInTheDocument()
     })
 
     it('sunucu hatasi ANLAMLI metne cevrilir — "Error" degil', async () => {

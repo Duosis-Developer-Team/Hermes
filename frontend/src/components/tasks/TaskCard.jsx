@@ -64,10 +64,10 @@ export function TaskDueBadge({ task, compact = false }) {
 }
 
 const STATUS_LABELS = {
-    pending: 'Beklemede',
-    in_progress: 'Devam ediyor',
-    completed: 'Tamamlandı',
-    rejected: 'Reddedildi',
+    pending: 'Pending',
+    in_progress: 'In Progress',
+    completed: 'Completed',
+    rejected: 'Rejected',
 }
 
 function TaskCard({
@@ -198,8 +198,8 @@ function TaskCard({
                        basligi, durumu ve onceligi tasir. */
                     aria-label={
                         `${task.task_code ? task.task_code + ' ' : ''}${task.title}`
-                        + ` — ${STATUS_LABELS[task.status] || task.status || 'bilinmiyor'}`
-                        + (task.priority ? `, öncelik ${task.priority}` : '')
+                        + ` — ${STATUS_LABELS[task.status] || task.status || 'unknown'}`
+                        + (task.priority ? `, priority ${task.priority}` : '')
                     }
                     onClick={(e) => {
                         /*

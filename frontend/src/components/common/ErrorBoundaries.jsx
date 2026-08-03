@@ -58,8 +58,8 @@ export function AppErrorBoundary({ children }) {
     return (
         <BaseBoundary
             level="app"
-            title="Hermes beklenmeyen bir hatayla karşılaştı"
-            subtitle="Sayfayı yenilemek genellikle çözer. Sorun sürerse yöneticinize bildirin."
+            title="Hermes ran into an unexpected error"
+            subtitle="Refreshing the page usually fixes this. If it persists, contact your administrator."
         >
             {children}
         </BaseBoundary>
@@ -71,8 +71,8 @@ export function RouteErrorBoundary({ resetKey, children }) {
         <BaseBoundary
             level="route"
             resetKey={resetKey}
-            title="Bu sayfa yüklenirken bir hata oluştu"
-            subtitle="Diğer sayfalar çalışmaya devam ediyor. Tekrar deneyebilirsiniz."
+            title="Something went wrong while loading this page"
+            subtitle="Other pages keep working. You can try again."
         >
             {children}
         </BaseBoundary>

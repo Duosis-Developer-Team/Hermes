@@ -56,7 +56,24 @@
     gap: 24px;
 }
 
+/*
+ * Sprint 8 — List/Timesheet gorunum degistiricisi.
+ *
+ * KOK NEDEN: kontrol (dogru olarak) gercek <button role="tab">'a
+ * cevrilmisti ama tarayicinin VARSAYILAN buton kromu hic sifirlanmamisti;
+ * acik renkli, kenarlikli iki native kutu gorunuyordu ve temadan tamamen
+ * kopuktu. Tasarim niyeti zaten metin-tab + ince accent alt cizgiydi —
+ * krom sifirlanarak o niyet gorunur kilindi. Semantik (tablist/tab,
+ * aria-selected) ve state/veri davranisi DEGISMEDI.
+ */
 .view-link {
+    /* Native buton kromu sifirlanir: yuzey TRANSPARAN. */
+    background: none;
+    border: 0;
+    font: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
@@ -70,20 +87,31 @@
     color: var(--text-primary);
 }
 
+.view-link:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+    border-radius: 4px;
+}
+
+/* Aktif gorunum: guclu metin + accent alt cizgi (durum yalniz renkle
+   anlatilmaz — cizgi sekil olarak da ayirir). */
 .view-link.active {
     color: var(--color-primary);
+    font-weight: 600;
 }
 
 .view-link.active::after {
     content: '';
     position: absolute;
     bottom: -1px;
-    /* Align with border-bottom of header? Or just below text */
-    /* Actually header has padding, so maybe just visual indicator */
     left: 0;
     right: 0;
     height: 2px;
+    border-radius: 2px;
     background: var(--color-primary);
+    /* Cok hafif glow — dark temada zarif vurgu, dikkat dagitmaz.
+       Ham rgba yerine temanin primary renginden turetilir. */
+    box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 35%, transparent);
 }
 
 /* ==========================================================================

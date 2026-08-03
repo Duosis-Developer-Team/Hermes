@@ -85,18 +85,8 @@ function WeeklyListView({
     // Bugünün tarihi
     const today = dayjs().format('YYYY-MM-DD')
 
-    // Haftalık toplam saat
-    const weekTotalHours = workLogs.reduce((sum, log) => sum + (parseFloat(log.duration_hours) || 0), 0)
-    const weekTargetHours = 40
-
-    // 0.75 → "45m", 2.75 → "2h 45m", 2.0 → "2h"
-    const formatDuration = (decimal) => {
-        if (!decimal) return '0h'
-        const h = Math.floor(decimal)
-        const m = Math.round((decimal - h) * 60)
-        if (m > 0) return `${h}h ${m}m`
-        return `${h}h`
-    }
+    /* Sprint 8: haftalik toplam/hedef/formatDuration burada HESAPLANMIYOR
+       artik — ozet bandi kaldirildi, ayni bilgi WeekNavigator'da. */
 
     return (
         <div className="weekly-list-view">
@@ -118,13 +108,12 @@ function WeeklyListView({
                 </div>
             )}
 
-            {/* Hafta özeti */}
-            <div className="weekly-list-summary">
-                <span>Week: </span>
-                <strong>{formatDuration(weekTotalHours)}</strong>
-                <span className="weekly-target"> / {weekTargetHours}h</span>
-            </div>
-
+            {/*
+             * Sprint 8: buradaki ikinci "Week: Xh / 40h" bandi KALDIRILDI.
+             * Ayni bilgi hemen ustteki WeekNavigator'da zaten var; iki
+             * ust uste gri bant ekran goruntusundeki "kutu yigini"
+             * gorunumunun ana nedenlerindendi. Bilgi kaybi yok.
+             */}
             {/* Günlük kolonlar */}
             <div className="weekly-list-columns">
                 {weekDays.map(day => {

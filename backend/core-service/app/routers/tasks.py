@@ -445,6 +445,11 @@ async def create_task(
             token=_extract_token(request),
             tasks=[_notif_payload(serialized)],
             assigner_user_id=str(current_user.id),
+            # Tek dogrudan atama: e-posta kisisel anlatimini korur.
+            assignment_context={
+                "direct_user_ids": [str(serialized.assignee_user_id)],
+                "group_names": [],
+            },
         )
     return serialized
 
@@ -494,11 +499,24 @@ async def create_tasks_for_group(
         due_date=serialized[0].due_date,
         event="assignment",
     ):
+        # Sprint 8: e-posta ekip baglami. Grup adi TEK sorguyla cozulur;
+        # uye listesi ISE fan-out satirlarindan gelir (olusturma anindaki
+        # snapshot — sonradan degisen uyelik e-postayi etkilemez).
+        from ..models.user_group import UserGroup
+        group_name = (
+            db.query(UserGroup.name)
+            .filter(UserGroup.id == payload.assignee_group_id)
+            .scalar()
+        )
         background_tasks.add_task(
             send_assignment_notifications,
             token=_extract_token(request),
             tasks=[_notif_payload(s) for s in serialized],
             assigner_user_id=str(current_user.id),
+            assignment_context={
+                "direct_user_ids": [],
+                "group_names": [group_name] if group_name else [],
+            },
         )
     return TaskGroupCreateResponse(
         assignment_batch_id=batch_id,
@@ -550,11 +568,28 @@ async def create_tasks_bulk(
         due_date=serialized[0].due_date,
         event="assignment",
     ):
+        # Sprint 8: ekip baglami — grup adlari tek IN sorgusuyla.
+        from ..models.user_group import UserGroup
+        group_names = (
+            [
+                row[0]
+                for row in db.query(UserGroup.name)
+                .filter(UserGroup.id.in_(payload.assignee_group_ids))
+                .order_by(UserGroup.name.asc())
+                .all()
+            ]
+            if payload.assignee_group_ids
+            else []
+        )
         background_tasks.add_task(
             send_assignment_notifications,
             token=_extract_token(request),
             tasks=[_notif_payload(s) for s in serialized],
             assigner_user_id=str(current_user.id),
+            assignment_context={
+                "direct_user_ids": [str(u) for u in payload.assignee_user_ids],
+                "group_names": group_names,
+            },
         )
     return serialized
 

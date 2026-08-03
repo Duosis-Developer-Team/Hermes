@@ -56,8 +56,8 @@ function WorkLogCard({
                    de bildirilir (renk korlugu / ekran okuyucu — CTO §5). */
                 aria-label={
                     `${project_name || 'Project'}, ${formatHours(duration_hours)}`
-                    + (isCopied ? ' — panoya kopyalandi' : '')
-                    + (isSelected ? ' — secili' : '')
+                    + (isCopied ? ' — copied to clipboard' : '')
+                    + (isSelected ? ' — selected' : '')
                 }
                 onClick={(e) => {
                     // Kok da ayni islemi tetikler; tekrari onle.
@@ -94,7 +94,7 @@ function WorkLogCard({
                 <Tooltip title="Edit">
                     <button
                         className="worklog-action-btn"
-                        aria-label="Kaydı düzenle"
+                        aria-label="Edit log"
                         onClick={(e) => { e.stopPropagation(); onEdit?.(workLog) }}
                     >
                         <EditOutlined />
@@ -103,7 +103,7 @@ function WorkLogCard({
                 <Tooltip title="Delete">
                     <button
                         className="worklog-action-btn delete"
-                        aria-label="Kaydı sil"
+                        aria-label="Delete log"
                         onClick={(e) => { e.stopPropagation(); onDelete?.(workLog) }}
                     >
                         <DeleteOutlined />
@@ -118,7 +118,7 @@ function WorkLogCard({
                         'worklog-selected-badge'
                         + (isCopied ? ' is-copied' : '')
                     }
-                    title={isCopied ? 'Panoda — hedef gün seçip Ctrl+V' : 'Ctrl+C ile kopyala'}
+                    title={isCopied ? 'On clipboard — pick a target day and press Ctrl+V' : 'Copy with Ctrl+C'}
                 >
                     {isCopied ? 'COPIED' : 'C'}
                 </div>

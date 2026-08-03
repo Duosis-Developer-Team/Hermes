@@ -105,6 +105,26 @@
 
   /* --- 3.2 Semantic tokens — DARK (varsayilan Hermes kimligi) --- */
   --h-bg-canvas: var(--hp-neutral-950);
+  /*
+   * Sprint 8 — sayfa kabugu arka plani. Duz canvas yerine cok hafif
+   * mavi/mor ton gecisli sabit bir gradient: dekoratif ama dikkat
+   * dagitmayan seviyede. ANIMASYONSUZ; kartlarin uzerine ayri gradient
+   * KONMAZ. Degerler paletten turetildi (rastgele hex yok): mavi ucu
+   * hp-blue-500'un, mor ucu hp-purple-500'un dusuk-alfa izdusumu.
+   */
+  --h-bg-page: radial-gradient(
+      1200px 640px at 78% -8%,
+      rgba(56, 139, 255, 0.055),
+      transparent 62%
+    ),
+    radial-gradient(
+      900px 560px at -10% 108%,
+      rgba(143, 126, 231, 0.045),
+      transparent 60%
+    ),
+    var(--hp-neutral-950);
+  /* Hafta sonu kolonu: asiri koyu blok yerine cok hafif cokme tonu. */
+  --h-bg-weekend: rgba(0, 0, 0, 0.16);
   --h-bg-surface: var(--hp-neutral-900);
   --h-bg-elevated: var(--hp-neutral-850);
   --h-bg-hover: var(--hp-neutral-800);
@@ -134,6 +154,19 @@
 /* --- 3.2 Semantic tokens — LIGHT ------------------------------------- */
 :root[data-theme='light'] {
   --h-bg-canvas: var(--hp-neutral-50);
+  /* Acik tema: temiz, cok dusuk kontrastli ayni desen. */
+  --h-bg-page: radial-gradient(
+      1200px 640px at 78% -8%,
+      rgba(12, 102, 228, 0.035),
+      transparent 62%
+    ),
+    radial-gradient(
+      900px 560px at -10% 108%,
+      rgba(143, 126, 231, 0.03),
+      transparent 60%
+    ),
+    var(--hp-neutral-50);
+  --h-bg-weekend: rgba(9, 30, 66, 0.035);
   --h-bg-surface: var(--hp-neutral-0);
   --h-bg-elevated: var(--hp-neutral-0);
   --h-bg-hover: var(--hp-neutral-100);

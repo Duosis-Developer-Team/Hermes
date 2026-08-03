@@ -85,7 +85,7 @@ async def list_work_logs(
             if not user_has(current_user, Perm.WORKLOGS_ADMIN):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Başkasına ait zaman girişlerini görme yetkiniz yok"
+                    detail="You do not have permission to view other users' time entries"
                 )
         target_user_id = user_id
     
@@ -189,7 +189,7 @@ async def get_work_log(
         if str(work_log.user_id) != current_user.id and not user_has(current_user, Perm.WORKLOGS_ADMIN):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Bu zaman girişini görme yetkiniz yok"
+                detail="You do not have permission to view this time entry"
             )
         
         return service.to_response(work_log)

@@ -38,42 +38,42 @@ const { Text } = Typography
 
 // Izin kodu → Turkce etiket (UI-yerel; katalog backend'de).
 const PERMISSION_LABELS = {
-    'users.manage': 'Kullanıcı yönetimi',
-    'roles.manage': 'Rol yönetimi',
-    'groups.manage': 'Grup yönetimi',
-    'tasks.admin': 'Task modülü tam yetki',
-    'tasks.permissions.manage': 'Task izin/hiyerarşi yönetimi',
+    'users.manage': 'User management',
+    'roles.manage': 'Role management',
+    'groups.manage': 'Group management',
+    'tasks.admin': 'Full task module access',
+    'tasks.permissions.manage': 'Task permission & hierarchy management',
     'api.manage': 'API Management (Developer Platform)',
-    'reports.view': 'Şirket geneli raporlar',
-    'plans.manage': 'Plan/süre yönetimi',
-    'worklogs.admin': 'Başkası adına work log',
-    'meetings.admin': 'Tüm toplantılar + sync',
-    'customers.manage': 'Müşteri yönetimi',
-    'projects.manage': 'Proje yönetimi',
+    'reports.view': 'Company-wide reports',
+    'plans.manage': 'Plan & schedule management',
+    'worklogs.admin': 'Work logs on behalf of others',
+    'meetings.admin': 'All meetings + sync',
+    'customers.manage': 'Customer management',
+    'projects.manage': 'Project management',
     'reference.manage': 'Referans verisi (work types vb.)',
 }
 
 // Kod onekine gore grup basligi.
 const GROUP_LABELS = {
-    users: 'Yönetim',
-    roles: 'Yönetim',
-    groups: 'Yönetim',
-    api: 'Yönetim',
-    tasks: 'Görev Modülü',
+    users: 'Administration',
+    roles: 'Administration',
+    groups: 'Administration',
+    api: 'Administration',
+    tasks: 'Task Module',
     reports: 'Raporlama',
     plans: 'Zaman & Plan',
     worklogs: 'Zaman & Plan',
     meetings: 'Zaman & Plan',
-    customers: 'Konfigürasyon',
-    projects: 'Konfigürasyon',
-    reference: 'Konfigürasyon',
+    customers: 'Configuration',
+    projects: 'Configuration',
+    reference: 'Configuration',
 }
 
 function groupCatalog(catalog) {
     const groups = new Map()
     for (const p of catalog) {
         const prefix = p.code.split('.')[0]
-        const label = GROUP_LABELS[prefix] || 'Diğer'
+        const label = GROUP_LABELS[prefix] || 'Other'
         if (!groups.has(label)) groups.set(label, [])
         groups.get(label).push(p)
     }
@@ -122,18 +122,18 @@ function RolesTab() {
 
     const createMutation = useMutation({
         mutationFn: rbacService.createRole,
-        onSuccess: () => { message.success('Rol oluşturuldu'); close(); invalidate() },
+        onSuccess: () => { message.success('Role created.'); close(); invalidate() },
         onError: showFormError,
     })
     const updateMutation = useMutation({
         mutationFn: ({ id, data }) => rbacService.updateRole(id, data),
-        onSuccess: () => { message.success('Rol güncellendi'); close(); invalidate() },
+        onSuccess: () => { message.success('Role updated.'); close(); invalidate() },
         onError: showFormError,
     })
     const deactivateMutation = useMutation({
         mutationFn: rbacService.deactivateRole,
         onSuccess: () => {
-            message.success('Rol pasifleştirildi — izinleri artık geçerli değil')
+            message.success('Role deactivated — its permissions no longer apply.')
             setDeactivating(null); invalidate()
         },
         onError: (e) => {
@@ -199,7 +199,7 @@ function RolesTab() {
             title: 'Rol', dataIndex: 'name', key: 'name',
             render: (name, r) => (
                 <Space>
-                    {r.is_system && <LockOutlined title="Sistem rolü" />}
+                    {r.is_system && <LockOutlined title="System role" />}
                     <span>{name}</span>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         {r.code}
@@ -208,13 +208,13 @@ function RolesTab() {
             ),
         },
         {
-            title: 'İzinler', dataIndex: 'permissions', key: 'permissions',
+            title: 'Permissions', dataIndex: 'permissions', key: 'permissions',
             render: (perms) => (
                 <Text type="secondary">{perms.length} izin</Text>
             ),
         },
         {
-            title: 'Üye', dataIndex: 'member_count', key: 'member_count',
+            title: 'Members', dataIndex: 'member_count', key: 'member_count',
             width: 80,
         },
         {
@@ -227,7 +227,7 @@ function RolesTab() {
             ),
         },
         {
-            title: 'İşlem', key: 'actions', width: 120,
+            title: 'Actions', key: 'actions', width: 120,
             render: (_, r) => (
                 <Space>
                     {/* Ikon-only aksiyonlar HANGI rolu hedefledigini soyler. */}
@@ -296,19 +296,19 @@ function RolesTab() {
                 {systemLocked && (
                     <Alert
                         type="info" showIcon style={{ marginBottom: 16 }}
-                        message="Sistem rolü kilitlidir"
-                        description="Ad, izinler ve aktiflik değiştirilemez; izin seti katalogla otomatik senkron tutulur. Yalnızca açıklama düzenlenebilir."
+                        message="System role is locked"
+                        description="Name, permissions and active state cannot be changed; the permission set stays in sync with the catalog automatically. Only the description is editable."
                     />
                 )}
                 <Form form={form} layout="vertical" onFinish={submit}>
                     {!editing && (
                         <Form.Item
-                            name="code" label="Code (kalıcı, değiştirilemez)"
+                            name="code" label="Code (permanent, cannot be changed)"
                             rules={[
                                 { required: true, message: 'Code gerekli' },
                                 {
                                     pattern: /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/,
-                                    message: 'küçük harf/rakam/tire, 3-64',
+                                    message: 'lowercase letters/digits/hyphens, 3-64 chars',
                                 },
                             ]}
                         >
@@ -324,7 +324,7 @@ function RolesTab() {
                     <Form.Item name="description" label="Description">
                         <Input.TextArea rows={2} />
                     </Form.Item>
-                    <Form.Item name="permissions" label="İzinler">
+                    <Form.Item name="permissions" label="Permissions">
                         <Checkbox.Group
                             style={{ width: '100%' }}
                             disabled={systemLocked}

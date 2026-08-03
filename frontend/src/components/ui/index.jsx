@@ -182,8 +182,8 @@ export function AppModal({ pending = false, ...rest }) {
 /** Onay diyalogu: yikici eylemler danger'la isaretlenir; pending'te
  *  kapanma kilitli, buton etiketi anlamini korur (§7 UX sozlesmesi). */
 export function ConfirmDialog({
-    open, title, description, confirmText = 'Onayla',
-    cancelText = 'Vazgeç', danger = false, pending = false,
+    open, title, description, confirmText = 'Confirm',
+    cancelText = 'Cancel', danger = false, pending = false,
     onConfirm, onCancel, children,
 }) {
     return (
@@ -211,7 +211,7 @@ export function ConfirmDialog({
             {children}
             {pending && (
                 <div className="h-inline" style={{ gap: 'var(--h-space-2)', marginTop: 'var(--h-space-3)' }}>
-                    <Spin size="small" /> <span>İşleniyor…</span>
+                    <Spin size="small" /> <span>Processing…</span>
                 </div>
             )}
         </AppModal>

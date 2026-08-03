@@ -41,7 +41,7 @@ def _check_project_membership(
     if not membership:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Bu projeye erişim yetkiniz yok",
+            detail="You do not have access to this project",
         )
 
 

@@ -92,6 +92,6 @@ async def delete_customer(
         if "integrityerror" in str(e).lower() or "foreign key constraint" in str(e).lower():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, 
-                detail="Bu müşteriye ait kayıtlar olduğu için silinemiyor. Önce ilgili iş kayıtlarını ve projeleri silmelisiniz."
+                detail="This customer cannot be deleted because it has related records. Delete the related work logs and projects first."
             )
         raise e

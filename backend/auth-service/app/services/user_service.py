@@ -70,7 +70,7 @@ class UserService:
         existing_user = self.get_by_email(user_data.email)
         if existing_user:
             raise ConflictError(
-                message="Bu e-posta adresi zaten kullanılıyor",
+                message="This e-mail address is already in use",
                 field="email"
             )
         
@@ -113,7 +113,7 @@ class UserService:
         except IntegrityError:
             self.db.rollback()
             raise ConflictError(
-                message="Kullanıcı oluşturulurken bir çakışma oluştu",
+                message="A conflict occurred while creating the user",
                 field="email"
             )
     
@@ -148,7 +148,7 @@ class UserService:
         """
         user = self.get_by_id(user_id)
         if not user:
-            raise NotFoundError("Kullanıcı", user_id)
+            raise NotFoundError("User", user_id)
         return user
     
     def get_by_email(self, email: str) -> Optional[User]:
@@ -234,7 +234,7 @@ class UserService:
             existing = self.get_by_email(update_data["email"])
             if existing:
                 raise ConflictError(
-                    message="Bu e-posta adresi başka bir kullanıcı tarafından kullanılıyor",
+                    message="This e-mail address is used by another user",
                     field="email"
                 )
         

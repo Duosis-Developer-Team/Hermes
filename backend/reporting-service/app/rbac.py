@@ -79,7 +79,7 @@ def require_reports_view():
             logger.warning("rbac me status=%s", resp.status_code)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Bu işlem için yetkiniz yok.",
+                detail="You do not have permission to do this.",
             )
         perms = set(resp.json().get("permissions") or [])
         if Perm.REPORTS_VIEW not in perms:

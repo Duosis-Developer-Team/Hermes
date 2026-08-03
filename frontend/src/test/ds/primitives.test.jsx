@@ -114,7 +114,7 @@ describe('overlay primitifleri', () => {
             />
         )
         // Vazgec disabled; onay butonu hala "Sil" der (loading'te bile)
-        expect(screen.getByRole('button', { name: 'Vazgeç' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled()
         expect(screen.getByRole('button', { name: /Sil/ })).toBeInTheDocument()
         // X kapatma butonu pending'te yok
         expect(document.querySelector('.ant-modal-close')).toBeNull()

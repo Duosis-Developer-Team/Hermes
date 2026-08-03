@@ -5,7 +5,12 @@
 .day-column {
     flex: 1;
     min-width: 160px;
-    background: var(--bg-secondary);
+    /*
+     * Sprint 8: her kolon ayri gri blok olmaktan cikti — sayfa
+     * gradientiyle butunlesir. Islevsel grid ayrimi KENARLIKLARDA
+     * (takvim hucresi sinifi korunur), yuzey renginde degil.
+     */
+    background: transparent;
     border-right: 1px solid var(--border-default);
     display: flex;
     flex-direction: column;
@@ -18,7 +23,9 @@
 
 /* Weekend days — subtle darker tint, muted text */
 .day-column-weekend {
-    background: var(--bg-primary);
+    /* Hafta sonu: koyu ayri blok DEGIL, cok hafif cokme tonu.
+       (Gun adi/numarasindaki soluk renk ayrimi da zaten var.) */
+    background: var(--h-bg-weekend);
 }
 
 .day-column-weekend .day-name,

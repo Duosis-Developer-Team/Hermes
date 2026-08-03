@@ -246,6 +246,28 @@ function MainLayout() {
     })
     const navItems = withPrefetch(menuItems)
 
+    /*
+     * Sprint 8 — collapsed sidebar'da MANAGEMENT/CONFIGURATION bug'inin
+     * KOK NEDENI: AntD Menu, `type: 'group'` basliklarini collapsed
+     * modda da render eder ve 72px'e sigmayan buyuk harfli metin
+     * kirpilmis gri bloklar olarak gorunur. `overflow: hidden` ile
+     * SAKLANMADI — collapsed durumda gruplar DOM seviyesinde duzlestirilir:
+     * baslik kalkar, bolum ayrimi dusuk kontrastli mevcut divider ile
+     * verilir, ogeler ve tooltip davranislari aynen kalir. Drawer her
+     * zaman genis oldugu icin duzlestirilmemis `navItems` kullanmaya
+     * devam eder.
+     */
+    const flattenGroups = (items) => items.flatMap((it, i) => {
+        if (it?.type !== 'group') return [it]
+        // Ust uste cift divider uretme: onceki oge zaten divider ise
+        // (menu, gruplardan once bir tane koyuyor) yenisi eklenmez;
+        // listenin en basindaki grup da onde divider tasimaz.
+        const prev = items[i - 1]
+        const sep = !prev || prev.type === 'divider' ? [] : [{ type: 'divider' }]
+        return [...sep, ...(it.children || [])]
+    })
+    const siderItems = collapsed ? flattenGroups(navItems) : navItems
+
     // User dropdown menu
     const userMenuItems = [
 
@@ -310,7 +332,7 @@ function MainLayout() {
                     className="logo-container"
                     onClick={() => navigate('/time-entry')}
                     role="link"
-                    aria-label="Ana sayfa"
+                    aria-label="Home"
                 >
                     <img
                         src={isLight ? logoFullLight : logoFullDark}
@@ -330,7 +352,7 @@ function MainLayout() {
                     theme={isLight ? 'light' : 'dark'}
                     mode="inline"
                     selectedKeys={[selectedKey]}
-                    items={navItems}
+                    items={siderItems}
                     onClick={handleMenuClick}
                     className="main-menu"
                 />
@@ -371,7 +393,7 @@ function MainLayout() {
                     {/* Tema: kisa ikon crossfade/rotate'li buton (§11);
                         reduced-motion global kuralla durur. */}
                     <IconButton
-                        label={isLight ? 'Koyu temaya geç' : 'Açık temaya geç'}
+                        label={isLight ? 'Switch to dark theme' : 'Switch to light theme'}
                         icon={
                             <span className="theme-toggle-icon" data-mode={isLight ? 'light' : 'dark'}>
                                 {isLight ? <BulbFilled /> : <BulbOutlined />}
@@ -405,7 +427,7 @@ function MainLayout() {
                     dusurmez; route degisince kendini sifirlar. */}
                 {offline && (
                     <div className="offline-banner" role="status">
-                        Bağlantı koptu — yeniden bağlanınca kaldığınız yerden devam eder.
+                        Connection lost — your work will resume when you are back online.
                     </div>
                 )}
                 <Content

@@ -30,7 +30,7 @@ export function toApiError(error) {
             const field = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : 'form'
             fieldErrors[field] = d.msg
         }
-        message = 'Lütfen işaretli alanları düzeltin.'
+        message = 'Please fix the highlighted fields.'
     } else if (typeof detail === 'string') {
         message = detail
     }
@@ -48,11 +48,11 @@ export function toApiError(error) {
 }
 
 const DEFAULT_MESSAGES = {
-    validation: 'Gönderilen veri doğrulanamadı.',
-    unauthorized: 'Oturumunuz geçersiz veya süresi doldu.',
-    forbidden: 'Bu işlem için yetkiniz yok.',
-    notFound: 'Kayıt bulunamadı.',
-    conflict: 'Bu işlem mevcut durumla çakışıyor.',
-    network: 'Sunucuya ulaşılamadı. Bağlantınızı kontrol edin.',
-    server: 'Beklenmeyen bir sunucu hatası oluştu.',
+    validation: 'The submitted data could not be validated.',
+    unauthorized: 'Your session is invalid or has expired.',
+    forbidden: 'You do not have permission to do this.',
+    notFound: 'Record not found.',
+    conflict: 'This conflicts with the current state.',
+    network: 'Cannot reach the server. Check your connection.',
+    server: 'An unexpected server error occurred.',
 }

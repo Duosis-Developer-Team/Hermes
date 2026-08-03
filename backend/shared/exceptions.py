@@ -62,7 +62,7 @@ class ValidationError(HermesException):
     
     def __init__(
         self,
-        message: str = "Geçersiz veri",
+        message: str = "Invalid data",
         field: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None
     ):
@@ -93,7 +93,7 @@ class UnauthorizedError(HermesException):
     
     def __init__(
         self,
-        message: str = "Kimlik doğrulama başarısız",
+        message: str = "Authentication failed",
         details: Optional[Dict[str, Any]] = None
     ):
         super().__init__(
@@ -121,7 +121,7 @@ class ForbiddenError(HermesException):
     
     def __init__(
         self,
-        message: str = "Bu işlem için yetkiniz bulunmuyor",
+        message: str = "You do not have permission to do this",
         details: Optional[Dict[str, Any]] = None
     ):
         super().__init__(
@@ -154,9 +154,9 @@ class NotFoundError(HermesException):
         resource_id: Optional[Any] = None,
         details: Optional[Dict[str, Any]] = None
     ):
-        message = f"{resource_name} bulunamadı"
+        message = f"{resource_name} not found"
         if resource_id:
-            message = f"{resource_name} bulunamadı (ID: {resource_id})"
+            message = f"{resource_name} not found (ID: {resource_id})"
         
         error_details = details or {}
         if resource_id:
@@ -189,7 +189,7 @@ class ConflictError(HermesException):
     
     def __init__(
         self,
-        message: str = "Kaynak çakışması",
+        message: str = "Resource conflict",
         field: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None
     ):

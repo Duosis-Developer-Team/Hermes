@@ -24,11 +24,14 @@
     opacity: 1;
 }
 
-/* Title - Proje adı */
+/* Title - Proje adı
+   Sprint 8: sabit `white` yerine tema token'i — acik temada beyaz metin
+   gri kart uzerinde okunmuyordu. (Baslik butonundaki `color: inherit`
+   bunu zaten ortuyordu; kaynak da artik dogru soyluyor.) */
 .worklog-card-title {
     font-size: 14px;
     font-weight: 600;
-    color: white;
+    color: var(--c-text-strong);
     margin-bottom: 4px;
     line-height: 1.3;
 }
@@ -69,11 +72,12 @@
     color: white;
 }
 
-/* Duration */
+/* Duration — Sprint 8: acik temada gorunmez kalan sabit `white` yerine
+   tema token'i (QA ekran goruntusunde yakalandi). */
 .worklog-card-duration {
     font-size: 14px;
     font-weight: 600;
-    color: white;
+    color: var(--c-text-strong);
 }
 
 /* Hover Actions */
@@ -93,7 +97,8 @@
     border: none;
     background: rgba(var(--overlay-rgb), 0.1);
     border-radius: var(--h-radius-control);
-    color: white;
+    /* Sprint 8: overlay zaten temaya gore donuyor; ikon rengi de donmeli. */
+    color: var(--c-text-strong);
     cursor: pointer;
     display: flex;
     align-items: center;

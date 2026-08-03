@@ -151,7 +151,7 @@ class WorkLogService:
         """ID ile zaman girişi getirir, yoksa hata fırlatır."""
         obj = self.get_by_id(id)
         if not obj:
-            raise NotFoundError("Zaman Girişi", id)
+            raise NotFoundError("Time entry", id)
         return obj
     
     def get_user_logs(
@@ -360,7 +360,7 @@ class WorkLogService:
             Customer.is_active == True  # noqa: E712
         ).first()
         if not customer:
-            raise NotFoundError("Müşteri", customer_id)
+            raise NotFoundError("Customer", customer_id)
         
         # Proje kontrolü
         project = self.db.query(Project).filter(
@@ -368,7 +368,7 @@ class WorkLogService:
             Project.is_active == True  # noqa: E712
         ).first()
         if not project:
-            raise NotFoundError("Proje", project_id)
+            raise NotFoundError("Project", project_id)
         
         # İş tipi kontrolü
         work_type = self.db.query(WorkType).filter(
@@ -376,7 +376,7 @@ class WorkLogService:
             WorkType.is_active == True  # noqa: E712
         ).first()
         if not work_type:
-            raise NotFoundError("İş Tipi", work_type_id)
+            raise NotFoundError("Work type", work_type_id)
             
         # Activity Type check
         if activity_type_id:

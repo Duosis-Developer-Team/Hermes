@@ -153,6 +153,10 @@ async def create_task(
                 token="",
                 tasks=[_notif_payload(serialized)],
                 assigner_user_id=actor.id,
+                assignment_context={
+                    "direct_user_ids": [str(serialized.assignee_user_id)],
+                    "group_names": [],
+                },
             )
         return 201, _dump(serialize_task(task))
 
@@ -225,6 +229,16 @@ async def create_task_group(
         )
 
         serialized = [_serialize_task(t) for t in tasks]
+
+        # Servis 404 yukselttigi icin bu noktada grup kesinlikle vardir.
+        # (Sprint 8: sorgu bildirimden ONCE alinir — ad hem e-posta ekip
+        # baglaminda hem response'ta kullanilir; IKINCI sorgu yok.)
+        group = (
+            db.query(UserGroup)
+            .filter(UserGroup.id == payload.assignee_group_id)
+            .first()
+        )
+
         # Ic grup ucuyla ayni bildirim zinciri: her uyeye atama e-postasi,
         # atayana tek grup ozeti. Fan-out satirlarinin tipi/onceligi/
         # termini ayni oldugu icin tek gate kontrolu yeterli.
@@ -240,14 +254,11 @@ async def create_task_group(
                 token="",
                 tasks=[_notif_payload(s) for s in serialized],
                 assigner_user_id=actor.id,
+                assignment_context={
+                    "direct_user_ids": [],
+                    "group_names": [group.name] if group else [],
+                },
             )
-
-        # Servis 404 yukselttigi icin bu noktada grup kesinlikle vardir.
-        group = (
-            db.query(UserGroup)
-            .filter(UserGroup.id == payload.assignee_group_id)
-            .first()
-        )
         result = PublicTaskGroupResult(
             assignment_batch_id=batch_id,
             group_id=payload.assignee_group_id,

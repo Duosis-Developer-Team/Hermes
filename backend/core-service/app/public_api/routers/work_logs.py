@@ -49,10 +49,13 @@ router = APIRouter(prefix="/v1", tags=["Work Logs"])
 
 # Internal NotFoundError.resource_name → public alan adi. Aktif olmayan
 # kayit da "yok" sayilir (var/yok ifsasi tek zarfta birlesir).
+# Sprint 8: internal entity adlari Ingilizce'ye cevrildi — anahtarlar
+# birebir onlari izler; public zarf mesaji ("Referenced X not found.")
+# DEGISMEDI.
 _REF_FIELD = {
-    "Müşteri": "customer_id",
-    "Proje": "project_id",
-    "İş Tipi": "work_type_id",
+    "Customer": "customer_id",
+    "Project": "project_id",
+    "Work type": "work_type_id",
     "Activity Type": "activity_type_id",
     "Platform": "platform_id",
     "Work Line": "work_line_id",

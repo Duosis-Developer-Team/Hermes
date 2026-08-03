@@ -102,6 +102,6 @@ async def delete_activity_type(
         if "integrityerror" in str(e).lower() or "foreign key constraint" in str(e).lower():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, 
-                detail="Bu aktivite tipini kullanan kayıtlar olduğu için silinemiyor. Önce ilgili iş kayıtlarını güncellemelisiniz."
+                detail="This activity type cannot be deleted because it is used by existing records. Update the related work logs first."
             )
         raise e
