@@ -1,0 +1,104 @@
+/* =============================================================================
+   Assignee status badge — TEK kaynak (Board / List / Explorer ortak)
+   =============================================================================
+   Renkler semantic tokenlardan gelir; sayfa-ozel ham hex YOK. Durum
+   yalniz renkle degil, isaret + metin ile de anlatilir (§8/§16).
+   ========================================================================== */
+
+.h-assignee-roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.h-assignee-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  line-height: 18px;
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: default;
+  transition:
+    border-color var(--h-motion-fast) var(--h-ease-standard),
+    background var(--h-motion-fast) var(--h-ease-standard);
+}
+
+.h-assignee-badge__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.h-assignee-badge__status {
+  opacity: 0.75;
+  font-weight: 500;
+}
+
+.h-assignee-badge__mark {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.h-assignee-badge:focus-visible {
+  outline: 2px solid var(--h-focus);
+  outline-offset: 2px;
+}
+
+/* --- Durum tonlari --------------------------------------------------- */
+.h-assignee-badge--pending {
+  background: var(--h-surface-subtle);
+  border-color: var(--h-border-subtle);
+  color: var(--h-text-secondary);
+}
+.h-assignee-badge--in_progress {
+  background: color-mix(in srgb, var(--h-warning) 16%, transparent);
+  border-color: color-mix(in srgb, var(--h-warning) 40%, transparent);
+  color: var(--h-warning);
+}
+.h-assignee-badge--completed {
+  background: color-mix(in srgb, var(--h-success) 16%, transparent);
+  border-color: color-mix(in srgb, var(--h-success) 40%, transparent);
+  color: var(--h-success);
+}
+.h-assignee-badge--rejected {
+  background: color-mix(in srgb, var(--h-danger) 16%, transparent);
+  border-color: color-mix(in srgb, var(--h-danger) 40%, transparent);
+  color: var(--h-danger);
+}
+.h-assignee-badge--cancelled {
+  background: var(--h-surface-subtle);
+  border-color: var(--h-border-subtle);
+  color: var(--h-text-muted);
+  text-decoration: line-through;
+}
+
+/* `+N`: gercek bir eylem — tiklanabilir ve odaklanabilir. */
+.h-assignee-badge--more {
+  background: color-mix(in srgb, var(--h-brand) 12%, transparent);
+  border-color: color-mix(in srgb, var(--h-brand) 35%, transparent);
+  color: var(--h-brand);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+}
+.h-assignee-badge--more:hover {
+  background: color-mix(in srgb, var(--h-brand) 20%, transparent);
+  border-color: var(--h-brand);
+}
+
+/* Mobil: dokunma hedefi buyur, ad daha erken kirpilir. */
+@media (max-width: 768px) {
+  .h-assignee-badge {
+    padding: 6px 10px;
+    line-height: 20px;
+  }
+  .h-assignee-badge__name { max-width: 96px; }
+}
