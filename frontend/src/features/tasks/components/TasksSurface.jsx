@@ -20,6 +20,9 @@ import TasksBoardView from '../../../components/tasks/TasksBoardView'
 import TasksListView from '../../../components/tasks/TasksListView'
 import TaskDetailPanel from '../../../components/tasks/TaskDetailPanel'
 import TasksExplorerView from './TasksExplorerView'
+import {
+    groupIntoLogicalItems, logicalKeyOf, userLabel,
+} from '../model/grouping'
 
 function TasksSurface({
     isLoading,
@@ -66,6 +69,17 @@ function TasksSurface({
         onToggleCompletion, completionLoading, onOpenPanel,
     ])
 
+    /* Acik paneldeki gorevin ait oldugu logical work item'in TUM
+       gorunur assignment'lari — detayda eksiksiz roster gosterilir
+       (§12). Gruplama tek kaynaktan gelir. */
+    const panelAssignments = useMemo(() => {
+        if (!panelTask) return null
+        const key = logicalKeyOf(panelTask)
+        const item = groupIntoLogicalItems(tasks, (id) => userLabel(id, userMap))
+            .find((i) => i.key === key)
+        return item ? item.assignments : null
+    }, [panelTask, tasks, userMap])
+
     const explorerBoardProps = useMemo(() => ({
         ...shared,
         onCreate,
@@ -110,6 +124,7 @@ function TasksSurface({
             {panelTask && (
                 <TaskDetailPanel
                     task={panelTask}
+                    assignments={panelAssignments}
                     userMap={userMap}
                     currentUserId={currentUserId}
                     isAdmin={isAdmin}

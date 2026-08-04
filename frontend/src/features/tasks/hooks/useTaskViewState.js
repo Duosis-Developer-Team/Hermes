@@ -12,15 +12,38 @@
  * =============================================================================
  */
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { currentWeekStart } from '../model/dates'
-import { DEFAULT_TASK_LAYOUT } from '../model/constants'
+import { DEFAULT_TASK_LAYOUT, isValidTaskLayout } from '../model/constants'
 
 export function useTaskViewState({ canViewAssignedByMe }) {
     const [weekStart, setWeekStart] = useState(() => currentWeekStart())
-    // §6.1: Explorer VARSAYILAN gorunumdur. Ilk render'da dogrudan
-    // Explorer cizilir — once Board gosterip sonra gecis YOK.
-    const [viewLayout, setViewLayout] = useState(DEFAULT_TASK_LAYOUT)
+    /*
+     * GORUNUM URL'DE YASAR (§6.1) — tek kaynak.
+     *   /project-management/tasks                → Explorer (varsayilan)
+     *   /project-management/tasks?view=board     → Board
+     *   /project-management/tasks?view=list      → List
+     *
+     * Yerel state TUTULMAZ: ikisi birden olsaydi ilk render'da Board
+     * cizilip hemen Explorer'a gecen bir GORSEL FLASH olusurdu. Deger
+     * dogrudan URL'den okundugu icin ilk boyama zaten dogru gorunumdur.
+     * Gecersiz/eski bir deger sessizce varsayilana duser.
+     *
+     * setSearchParams PUSH yapar → tarayici geri/ileri tuslari gorunum
+     * degisikliklerinde dogru calisir.
+     */
+    const [searchParams, setSearchParams] = useSearchParams()
+    const urlView = searchParams.get('view')
+    const viewLayout = isValidTaskLayout(urlView) ? urlView : DEFAULT_TASK_LAYOUT
+
+    const setViewLayout = (next) => {
+        const params = new URLSearchParams(searchParams)
+        // Varsayilan gorunum URL'i KIRLETMEZ.
+        if (next === DEFAULT_TASK_LAYOUT) params.delete('view')
+        else params.set('view', next)
+        setSearchParams(params)
+    }
     const [rangeMode, setRangeMode] = useState('all')
     const [groupByAssignee, setGroupByAssignee] = useState(false)
     const [taskScope, setTaskScope] = useState('my-tasks')

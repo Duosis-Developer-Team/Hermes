@@ -17,6 +17,8 @@ import { CloseOutlined, EyeOutlined } from '@ant-design/icons'
 
 import { ActivityTimeline } from '../modals/TaskReviewModal'
 import TaskCommentsThread from './TaskCommentsThread'
+import { AssignmentRoster } from '../../features/tasks/components/AssigneeStatusBadge'
+import { aggregateStatus } from '../../features/tasks/model/grouping'
 
 const PRIORITY_COLOR = {
     low: 'default',
@@ -54,7 +56,14 @@ function Row({ label, children }) {
     )
 }
 
-function DetailsBody({ task, userMap }) {
+function DetailsBody({ task, userMap, assignments }) {
+    /*
+     * §12: coklu atamada detay, BUTUN assignee'leri ve her birinin
+     * BIREYSEL durumunu eksiksiz gostermeli. Aggregate durum ayrica
+     * gorunur — kartin hangi sutunda durdugu buradan da anlasilir.
+     * Tek atamada onceki gorunum aynen korunur.
+     */
+    const isGrouped = Array.isArray(assignments) && assignments.length > 1
     return (
         <div className="tdp-tab-body">
             <Row label="Customer">{task.customer_name || '—'}</Row>
@@ -65,9 +74,15 @@ function DetailsBody({ task, userMap }) {
             <Row label="Assigner">
                 {userLabel(task.assigner_user_id, userMap)}
             </Row>
-            <Row label="Assignee">
-                {userLabel(task.assignee_user_id, userMap)}
-            </Row>
+            {isGrouped ? (
+                <Row label={`Assignees (${assignments.length})`}>
+                    <AssignmentRoster assignments={assignments} />
+                </Row>
+            ) : (
+                <Row label="Assignee">
+                    {userLabel(task.assignee_user_id, userMap)}
+                </Row>
+            )}
             <Row label="Scheduled">{task.scheduled_date || '—'}</Row>
             {task.due_date && <Row label="Due">{task.due_date}</Row>}
             <Row label="Priority">
@@ -75,9 +90,20 @@ function DetailsBody({ task, userMap }) {
                     {task.priority}
                 </Tag>
             </Row>
-            <Row label="Status">
-                <Tag color={STATUS_COLOR[task.status] || 'default'}>
-                    {STATUS_LABEL[task.status] || task.status}
+            <Row label={isGrouped ? 'Aggregate status' : 'Status'}>
+                <Tag
+                    color={
+                        STATUS_COLOR[
+                            isGrouped ? aggregateStatus(assignments) : task.status
+                        ] || 'default'
+                    }
+                >
+                    {(() => {
+                        const v = isGrouped
+                            ? aggregateStatus(assignments)
+                            : task.status
+                        return STATUS_LABEL[v] || v
+                    })()}
                 </Tag>
             </Row>
             {task.description && (
@@ -97,6 +123,8 @@ function TaskDetailPanel({
     isAdmin = false,
     onClose,
     onOpenReview,
+    /** Coklu atamali logical work item'in TUM gorunur assignment'lari. */
+    assignments = null,
 }) {
     if (!task) return null
     return (
@@ -144,7 +172,13 @@ function TaskDetailPanel({
                     {
                         key: 'details',
                         label: 'Details',
-                        children: <DetailsBody task={task} userMap={userMap} />,
+                        children: (
+                            <DetailsBody
+                                task={task}
+                                userMap={userMap}
+                                assignments={assignments}
+                            />
+                        ),
                     },
                     {
                         key: 'activity',
