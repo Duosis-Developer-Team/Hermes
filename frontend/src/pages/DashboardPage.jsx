@@ -9,8 +9,8 @@
 import { useState } from 'react'
 import { Card, Row, Col, Spin, Button } from 'antd'
 import {
-    
-    LeftOutlined, RightOutlined
+    BarChartOutlined, FolderOpenOutlined, LeftOutlined, RightOutlined,
+    TeamOutlined, UserOutlined,
 } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
@@ -102,7 +102,7 @@ function DashboardPage() {
                     fontSize: 13,
                 }}
             >
-                <span aria-hidden="true" style={{ fontSize: 22, opacity: 0.5 }}>📊</span>
+                <BarChartOutlined aria-hidden="true" style={{ fontSize: 20, opacity: 0.45 }} />
                 {state === 'empty'
                     ? 'No data for the selected date range.'
                     : 'Records exist but no hours were logged in this range.'}
@@ -147,7 +147,9 @@ function DashboardPage() {
                         <p>Team performance and time distribution</p>
                     </Col>
                     <Col>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--c-chip)', padding: '4px 8px', borderRadius: 6, border: '1px solid var(--c-border)' }}>
+                        {/* Premium: buyuk gri segmented kutu yerine baslik
+                            hizasinda sade inline date navigator. */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <Button type="text" aria-label="Previous month" icon={<LeftOutlined />} onClick={goToPreviousMonth} style={{ color: 'var(--c-text)' }} />
                             <span style={{ color: 'var(--c-text)', fontWeight: 500, minWidth: 160, textAlign: 'center' }}>
                                 {dateRange[0].format('DD MMM')} - {dateRange[1].format('DD MMM, YYYY')}
@@ -160,39 +162,33 @@ function DashboardPage() {
                 </Row>
             </div>
 
-            {/* KPI Cards */}
-            <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12} lg={6}>
-                    <div className="stat-card">
-                        <div className="stat-value">{summary.totalHours}</div>
-                        <div className="stat-label">Total Hours</div>
-                    </div>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <div className="stat-card">
-                        <div className="stat-value">{summary.customerCount}</div>
-                        <div className="stat-label">Customers</div>
-                    </div>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <div className="stat-card">
-                        <div className="stat-value">{summary.projectCount}</div>
-                        <div className="stat-label">Projects</div>
-                    </div>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <div className="stat-card">
-                        <div className="stat-value">{summary.memberCount}</div>
-                        <div className="stat-label">Active Members</div>
-                    </div>
-                </Col>
-            </Row>
+            {/* Premium: dort gri KPI karti yerine TEK kesintisiz metric
+                strip — buyuk deger + kucuk label, ince dikey ayiricilar. */}
+            <div className="h-metric-strip" role="group" aria-label="Summary metrics">
+                <div className="h-metric-strip__item h-metric-strip__item--accent">
+                    <span className="h-metric-strip__accent" aria-hidden="true" />
+                    <div className="h-metric-strip__value">{summary.totalHours}</div>
+                    <div className="h-metric-strip__label">Total Hours</div>
+                </div>
+                <div className="h-metric-strip__item">
+                    <div className="h-metric-strip__value">{summary.customerCount}</div>
+                    <div className="h-metric-strip__label">Customers</div>
+                </div>
+                <div className="h-metric-strip__item">
+                    <div className="h-metric-strip__value">{summary.projectCount}</div>
+                    <div className="h-metric-strip__label">Projects</div>
+                </div>
+                <div className="h-metric-strip__item">
+                    <div className="h-metric-strip__value">{summary.memberCount}</div>
+                    <div className="h-metric-strip__label">Active Members</div>
+                </div>
+            </div>
 
             {/* Charts */}
             <Row gutter={[24, 24]}>
                 {/* By Customer - Pie Chart */}
                 <Col xs={24} lg={12}>
-                    <Card title="🏢 By Customer">
+                    <Card variant="borderless" title={<span className="h-section__head" style={{ margin: 0 }}><span className="h-section__icon"><TeamOutlined /></span><span className="h-section__title">By Customer</span></span>}>
                         <ChartFrame series={customerData}>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={customerData} layout="vertical">
@@ -209,7 +205,7 @@ function DashboardPage() {
 
                 {/* By Project - Bar Chart */}
                 <Col xs={24} lg={12}>
-                    <Card title="📁 By Project">
+                    <Card variant="borderless" title={<span className="h-section__head" style={{ margin: 0 }}><span className="h-section__icon"><FolderOpenOutlined /></span><span className="h-section__title">By Project</span></span>}>
                         <ChartFrame series={projectData}>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={projectData} layout="vertical">
@@ -226,7 +222,7 @@ function DashboardPage() {
 
                 {/* By User - Bar Chart */}
                 <Col xs={24}>
-                    <Card title="👥 By User">
+                    <Card variant="borderless" title={<span className="h-section__head" style={{ margin: 0 }}><span className="h-section__icon"><UserOutlined /></span><span className="h-section__title">By User</span></span>}>
                         <ChartFrame series={userData}>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={userData}>

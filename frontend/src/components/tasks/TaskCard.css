@@ -81,16 +81,18 @@
     letter-spacing: 0.04em;
 }
 
-.task-card-priority-low      { background: #475569; color: var(--c-text); }
-.task-card-priority-medium   { background: #1d4ed8; color: #dbeafe; }
-.task-card-priority-high     { background: #b45309; color: #fed7aa; }
-.task-card-priority-urgent   { background: #b91c1c; color: #fee2e2; }
+/* Premium redesign: dolu koyu rozetler yerine soft tonal tint + guclu
+   metin — kart yuzeyi sakin kalir, durum yine bir bakista okunur. */
+.task-card-priority-low      { background: var(--h-bg-hover); color: var(--h-text-secondary); }
+.task-card-priority-medium   { background: color-mix(in srgb, var(--h-brand) 14%, transparent); color: var(--h-brand); }
+.task-card-priority-high     { background: color-mix(in srgb, var(--h-warning) 16%, transparent); color: var(--h-warning); }
+.task-card-priority-urgent   { background: color-mix(in srgb, var(--h-danger) 16%, transparent); color: var(--h-danger); }
 
-.task-card-status-pending     { background: var(--c-border-strong); color: var(--c-text); }
-.task-card-status-in_progress { background: #1e3a8a; color: #bfdbfe; }
-.task-card-status-completed   { background: #166534; color: #bbf7d0; }
-.task-card-status-cancelled   { background: #6b21a8; color: #e9d5ff; }
-.task-card-status-rejected    { background: #b91c1c; color: #fee2e2; }
+.task-card-status-pending     { background: var(--h-bg-hover); color: var(--h-text-secondary); }
+.task-card-status-in_progress { background: color-mix(in srgb, var(--h-brand) 14%, transparent); color: var(--h-brand); }
+.task-card-status-completed   { background: color-mix(in srgb, var(--h-success) 14%, transparent); color: var(--h-success); }
+.task-card-status-cancelled   { background: color-mix(in srgb, var(--hp-purple-500) 16%, transparent); color: var(--hp-purple-300); }
+.task-card-status-rejected    { background: color-mix(in srgb, var(--h-danger) 14%, transparent); color: var(--h-danger); }
 
 .task-card-code {
     color: var(--c-text-muted);
@@ -203,12 +205,13 @@
 
 /* ── Completed state ─────────────────────────────────────────── */
 .task-card-completed {
-    background: rgba(22, 101, 52, 0.18);
-    border: 1px solid rgba(34, 197, 94, 0.32);
+    /* Premium: agir yesil dolgu yerine cok hafif semantic tint. */
+    background: color-mix(in srgb, var(--h-success) 7%, var(--h-bg-surface));
+    border: 1px solid color-mix(in srgb, var(--h-success) 28%, transparent);
 }
 
 .task-card-completed:hover {
-    background: rgba(22, 101, 52, 0.26);
+    background: color-mix(in srgb, var(--h-success) 11%, var(--h-bg-surface));
 }
 
 .task-card-completed .task-card-title {
@@ -223,10 +226,11 @@
 /* List view — completed row tinted green so it visually echoes the
    calendar/card variant. */
 .task-row-completed > td {
-    background: rgba(22, 101, 52, 0.18) !important;
+    /* Premium: agir yesil dolgu yerine soft semantic tint. */
+    background: color-mix(in srgb, var(--h-success) 6%, transparent);
 }
 .task-row-completed:hover > td {
-    background: rgba(22, 101, 52, 0.26) !important;
+    background: color-mix(in srgb, var(--h-success) 10%, transparent);
 }
 
 /* ── Light-mode legibility: the amber/cream due text was tuned for a

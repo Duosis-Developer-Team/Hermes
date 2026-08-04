@@ -364,19 +364,12 @@ function BillableHoursPage() {
     }
 
     return (
-        <div style={{ padding: '24px', maxWidth: 1400, margin: '0 auto', color: 'var(--c-text-strong)' }}>
+        <div className="billable-page" style={{ padding: '24px', maxWidth: 1400, margin: '0 auto', color: 'var(--c-text-strong)' }}>
 
             {/* Header Section */}
             <div className="bh-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
                 <div>
-                    <h1 style={{
-                        margin: 0,
-                        fontSize: '2rem',
-                        background: 'linear-gradient(to right, var(--c-text-strong), var(--c-text-muted))',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        fontWeight: 800
-                    }}>
+                    <h1 style={{ margin: 0, fontSize: 24, fontWeight: 680, color: 'var(--h-text-primary)' }}>
                         Billable Hours
                     </h1>
                     <Text style={{ color: 'var(--c-text-faint)', fontSize: '1rem' }}>
@@ -387,7 +380,7 @@ function BillableHoursPage() {
                 <div className="bh-header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <div style={{ textAlign: 'right', paddingRight: 16, borderRight: '1px solid var(--c-chip)' }}>
                         <div style={{ fontSize: 12, color: 'var(--c-text-muted)', letterSpacing: 1 }}>TOTAL</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#4ade80' }}>
+                        <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--h-success)', fontVariantNumeric: 'tabular-nums' }}>
                             {formatDecimalToHM(totalHours)}
                         </div>
                     </div>
@@ -418,18 +411,9 @@ function BillableHoursPage() {
                 </div>
             </div>
 
-            {/* Toolbar / Filter Bar */}
-            <div className="bh-toolbar" style={{
-                background: 'rgba(var(--overlay-rgb), 0.03)',
-                backdropFilter: 'blur(10px)',
-                padding: '12px 20px',
-                borderRadius: 16,
-                marginBottom: 24,
-                border: '1px solid rgba(var(--overlay-rgb), 0.08)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-            }}>
+            {/* Premium: buyuk gri tarih seridi KALKTI — baslik altinda
+                sade inline hafta navigasyonu (Time Entry ailesi). */}
+            <div className="bh-toolbar h-inline-toolbar" style={{ justifyContent: 'space-between' }}>
                 <Space size={16}>
                     <Button
                         aria-label="Previous week"
@@ -439,7 +423,7 @@ function BillableHoursPage() {
                         style={{ color: 'var(--c-text-strong)' }}
                     />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <CalendarOutlined style={{ color: '#1677ff' }} />
+                        <CalendarOutlined style={{ color: 'var(--h-brand)' }} />
                         <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--c-text-strong)' }}>
                             {weekLabel}
                         </span>
@@ -453,7 +437,7 @@ function BillableHoursPage() {
                     />
                 </Space>
 
-                <Button onClick={goToToday} style={{ borderRadius: 20 }}>
+                <Button type="text" onClick={goToToday}>
                     Current Week
                 </Button>
             </div>
@@ -462,12 +446,8 @@ function BillableHoursPage() {
             <Card
                 variant="borderless"
                 styles={{ body: { padding: 0 } }}
-                style={{
-                    background: 'var(--c-surface-2)',
-                    borderRadius: 16,
-                    overflow: 'hidden',
-                    border: '1px solid var(--c-border)'
-                }}
+                className="h-dataview"
+                style={{ background: 'transparent' }}
             >
                 <AdminErrorAlert
                     error={logsError ? logsErrObj : null}

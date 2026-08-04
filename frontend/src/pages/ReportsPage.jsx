@@ -9,12 +9,10 @@
 
 import { useState, useMemo } from 'react'
 import {
-    DatePicker, Button, Select, Row, Col, Table, message, Tag, Empty, Spin
+    DatePicker, Button, Select, Table, message, Tag, Empty, Spin
 } from 'antd'
 import {
     DownloadOutlined,
-    BarChartOutlined,
-    PieChartOutlined,
     CloseCircleOutlined,
     CalendarOutlined
 } from '@ant-design/icons'
@@ -63,6 +61,7 @@ function ReportsPage() {
     const permissionsLoaded = Array.isArray(permissions)
 
     // ── Filter State ──────────────────────────────────────────────────────────
+    const [moreFiltersOpen, setMoreFiltersOpen] = useState(false)
     const [dateRange, setDateRange] = useState([
         dayjs().startOf('month'),
         dayjs().endOf('month')
@@ -174,14 +173,10 @@ function ReportsPage() {
                 )}
             </div>
 
-            {/* ── Tempo Filter Bar ─────────────────────────────────────────── */}
-            <div style={{
-                marginBottom: 24,
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-lg)',
-                padding: '20px 24px'
-            }}>
+            {/* Premium: buyuk gri filtre paneli KALKTI — en sik kullanilan
+                filtreler tek satirlik hafif toolbar; digerleri "More
+                filters" ile acilir. Davranis/sorgu sozlesmesi ayni. */}
+            <div style={{ marginBottom: 24 }}>
                 {/* Row 1: Date Range + Users + Customers */}
                 <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
 
@@ -229,14 +224,22 @@ function ReportsPage() {
                     </FilterBlock>
                 </div>
 
-                {/* Row 2: Projects + Types (+ divider) */}
+                <Button
+                    type="text"
+                    size="small"
+                    onClick={() => setMoreFiltersOpen((v) => !v)}
+                    aria-expanded={moreFiltersOpen}
+                    style={{ color: 'var(--h-text-secondary)', paddingLeft: 0 }}
+                >
+                    {moreFiltersOpen ? 'Hide filters' : 'More filters'}
+                </Button>
+                {moreFiltersOpen && (
                 <div style={{
                     display: 'flex',
                     gap: 20,
                     flexWrap: 'wrap',
                     alignItems: 'flex-end',
-                    paddingTop: 16,
-                    borderTop: '1px solid var(--border-subtle)'
+                    paddingTop: 12
                 }}>
                     {/* Projects */}
                     <FilterBlock label="Projects" count={selectedProjects.length}>
@@ -286,6 +289,7 @@ function ReportsPage() {
                         />
                     </FilterBlock>
                 </div>
+                )}
             </div>
 
             {/* ── Main Dashboard ────────────────────────────────────────────── */}
@@ -554,82 +558,38 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
     return (
         <div className="fade-in">
 
-            {/* ── KPI Cards ─────────────────────────────────────────────────── */}
-            <Row gutter={[20, 20]} style={{ marginBottom: 20 }}>
-                <Col xs={24} sm={8}>
-                    <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                            <BarChartOutlined style={{ color: 'var(--Green400)', fontSize: 15 }} />
-                            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
-                                Total Hours
-                            </span>
-                        </div>
-                        <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-                            {formatDuration(totalHours)}
-                        </div>
-                    </div>
-                </Col>
-                <Col xs={24} sm={8}>
-                    <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                            <PieChartOutlined style={{ color: 'var(--Blue400)', fontSize: 15 }} />
-                            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
-                                Entries
-                            </span>
-                        </div>
-                        <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-                            {entryCount}
-                        </div>
-                    </div>
-                </Col>
-                <Col xs={24} sm={8}>
-                    {/*
-                      * Birincil aksiyon `<div onClick>` idi: klavyeyle
-                      * ERISILEMIYOR, ekran okuyucuya buton olarak
-                      * gorunmuyor ve adi yoktu. Gorsel duzen aynen
-                      * korunarak gercek bir butona cevrildi.
-                      */}
-                    <button
-                        type="button"
-                        className="stat-card"
+            {/* Premium: uc ayri stat-card yerine TEK metric strip + kompakt
+                download aksiyonu. CSV sozlesmesi ve export akisi AYNI
+                (ayni exportCsv, ayni erisilebilir ad). */}
+            <div className="h-metric-strip" style={{ alignItems: 'center' }}>
+                <div className="h-metric-strip__item h-metric-strip__item--accent">
+                    <span className="h-metric-strip__accent" aria-hidden="true" />
+                    <div className="h-metric-strip__value">{formatDuration(totalHours)}</div>
+                    <div className="h-metric-strip__label">Total Hours</div>
+                </div>
+                <div className="h-metric-strip__item">
+                    <div className="h-metric-strip__value">{entryCount}</div>
+                    <div className="h-metric-strip__label">Entries</div>
+                </div>
+                <div className="h-metric-strip__item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                    <Button
+                        type="primary"
+                        icon={<DownloadOutlined />}
                         onClick={exportCsv}
-                        disabled={exportLoading}
-                        aria-busy={exportLoading}
+                        loading={exportLoading}
                         aria-label="Download CSV — exports the current filter view"
-                        style={{
-                            border: '1px solid var(--Blue500)',
-                            font: 'inherit',
-                            textAlign: 'left',
-                            width: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 12,
-                            cursor: exportLoading ? 'not-allowed' : 'pointer',
-                            borderColor: 'var(--Blue500)',
-                            background: 'rgba(56,139,255,0.06)',
-                            flexDirection: 'row',
-                            height: '100%'
-                        }}
                     >
-                        {exportLoading
-                            ? <Spin size="small" />
-                            : <DownloadOutlined style={{ fontSize: 22, color: 'var(--Blue400)' }} />
-                        }
-                        <div>
-                            <div style={{ color: 'var(--Blue400)', fontWeight: 600, fontSize: 14 }}>Download CSV</div>
-                            <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 2 }}>Exports current filter view</div>
-                        </div>
-                    </button>
-                </Col>
-            </Row>
+                        Download CSV
+                    </Button>
+                </div>
+            </div>
 
             {/* ── Data Table ────────────────────────────────────────────────── */}
             <AdminErrorAlert error={isError ? error : null} onRetry={refetch} />
 
             <div className="content-card">
                 {logs.length === 0 && !isLoading && !isError ? (
-                    <div style={{ padding: 60, textAlign: 'center' }}>
+                    <div style={{ padding: '28px 0', textAlign: 'center' }}>
                         <Empty
                             description={
                                 <span style={{ color: 'var(--text-muted)' }}>No entries match the current filters</span>

@@ -22,23 +22,17 @@ function TaskFilterBar({
     onSubProjectChange, onClear,
 }) {
     return (
-        /* Premium UI: gri Card paneli KALKTI — filtreler toolbar'la
-           butunlesen seffaf, ince-ayircili bir serit. Kontrollerin
-           yuzeyi merkezi input sisteminden gelir (premium.css). */
-        <div
-            style={{
-                marginBottom: 16,
-                paddingBottom: 12,
-                borderBottom: '1px solid var(--h-border-subtle)',
-            }}
-        >
-            <Space wrap>
+        /* Premium redesign: bu blok artik surekli acik bir serit DEGIL —
+           TasksPage'deki "Filters" aksiyonunun actigi drawer'in icidir.
+           Kontroller dikey akar; genislikler drawer'a uyar. */
+        <div className="task-filterbar">
+            <Space direction="vertical" size={12} style={{ width: '100%' }}>
                 <FilterOutlined style={{ color: 'var(--c-text-muted)' }} />
                 <Select
                     allowClear
                     aria-label="Filter by status"
                     placeholder="Status"
-                    style={{ width: 140 }}
+                    style={{ width: '100%' }}
                     value={filters.status}
                     onChange={onStatusChange}
                     options={STATUS_OPTIONS}
@@ -47,7 +41,7 @@ function TaskFilterBar({
                     allowClear
                     aria-label="Filter by priority"
                     placeholder="Priority"
-                    style={{ width: 140 }}
+                    style={{ width: '100%' }}
                     value={filters.priority}
                     onChange={onPriorityChange}
                     options={PRIORITY_OPTIONS}
@@ -57,7 +51,7 @@ function TaskFilterBar({
                     showSearch
                     aria-label="Filter by customer"
                     placeholder="Customer"
-                    style={{ width: 200 }}
+                    style={{ width: '100%' }}
                     value={filters.customer}
                     onChange={onCustomerChange}
                     optionFilterProp="label"
@@ -68,7 +62,7 @@ function TaskFilterBar({
                     showSearch
                     aria-label="Filter by project"
                     placeholder="Project"
-                    style={{ width: 200 }}
+                    style={{ width: '100%' }}
                     value={filters.project}
                     disabled={!filters.customer}
                     onChange={onProjectChange}
@@ -80,14 +74,14 @@ function TaskFilterBar({
                     showSearch
                     aria-label="Filter by sub project"
                     placeholder="Sub Project"
-                    style={{ width: 200 }}
+                    style={{ width: '100%' }}
                     value={filters.subProject}
                     disabled={!filters.project}
                     onChange={onSubProjectChange}
                     optionFilterProp="label"
                     options={subProjects.map((s) => ({ value: s.id, label: s.name }))}
                 />
-                <Button onClick={onClear}>Clear</Button>
+                <Button onClick={onClear} block>Clear</Button>
             </Space>
         </div>
     )

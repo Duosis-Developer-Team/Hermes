@@ -86,16 +86,24 @@
 .tasks-board {
     display: grid;
     grid-template-columns: repeat(4, minmax(260px, 1fr));
-    gap: 12px;
+    gap: 20px;
     align-items: start;
+}
+/* Kolonlar arasi cok ince dikey ayirici (kutu degil). */
+.tasks-board-column + .tasks-board-column {
+    border-left: 1px solid var(--h-border-subtle);
+    padding-left: 20px;
+    margin-left: -10px;
 }
 
 .tasks-board-column {
-    /* Premium UI: agir gri kart yerine canvas'la butunlesen subtle
-       yuzey; ayrim ince border + baslik accent'iyle. */
-    background: var(--h-surface-subtle);
-    border: 1px solid var(--h-border-subtle);
-    border-radius: 8px;
+    /* Premium redesign: kolon ZEMINSIZ — buyuk gri dikdortgen yok.
+       Ayrim; kolonlar arasi bosluk + baslik alt-cizgi accent'i +
+       aradaki ince dikey ayiricidir. Kartlar zaten kendi yuzeyini
+       tasir (gercek icerik nesnesi). */
+    background: transparent;
+    border: 0;
+    border-radius: 0;
     display: flex;
     flex-direction: column;
     max-height: calc(100vh - 280px);
@@ -144,12 +152,12 @@
     font-style: italic;
 }
 
-/* Column accents — mirror status pill colours so the surface has
-   the same dark Hermes palette but each column is glance-able. */
-.tasks-board-column-pending     .tasks-board-column-header { border-bottom-color: var(--c-border-strong); }
-.tasks-board-column-in_progress .tasks-board-column-header { border-bottom-color: #1e3a8a; }
-.tasks-board-column-completed   .tasks-board-column-header { border-bottom-color: #166534; }
-.tasks-board-column-rejected    .tasks-board-column-header { border-bottom-color: #b91c1c; }
+/* Premium redesign: kolon durumu KUCUK bir accent cizgisiyle anlatilir —
+   dolu renk blogu/bagiran cizgi yok; tokenlardan dusuk-alfa turetim. */
+.tasks-board-column-pending     .tasks-board-column-header { border-bottom-color: var(--h-border-default); }
+.tasks-board-column-in_progress .tasks-board-column-header { border-bottom-color: color-mix(in srgb, var(--h-brand) 45%, transparent); }
+.tasks-board-column-completed   .tasks-board-column-header { border-bottom-color: color-mix(in srgb, var(--h-success) 45%, transparent); }
+.tasks-board-column-rejected    .tasks-board-column-header { border-bottom-color: color-mix(in srgb, var(--h-danger) 35%, transparent); }
 
 /* ── Drag & drop ──────────────────────────────────────────────────── */
 .tasks-board-draggable {

@@ -23,6 +23,7 @@
  * =============================================================================
  */
 
+import { useState } from 'react'
 import { Empty, message } from 'antd'
 
 import { useAuthStore } from '../stores/authStore'
@@ -43,6 +44,8 @@ import TasksHeader from '../features/tasks/components/TasksHeader'
 import TaskQuickFilters from '../features/tasks/components/TaskQuickFilters'
 import TaskRangeBar from '../features/tasks/components/TaskRangeBar'
 import TaskFilterBar from '../features/tasks/components/TaskFilterBar'
+import { Badge, Button as AntButton, Drawer } from 'antd'
+import { FilterOutlined } from '@ant-design/icons'
 import TasksSurface from '../features/tasks/components/TasksSurface'
 import TaskDeleteModal from '../features/tasks/modals/TaskDeleteModal'
 import TaskStatusConfirmModal from '../features/tasks/modals/TaskStatusConfirmModal'
@@ -196,6 +199,14 @@ function TasksPage() {
             (taskPerms.assignableUserIds.length > 0 ||
                 taskPerms.assignableGroupIds.length > 0))
 
+    // Premium: gelismis filtreler artik surekli acik bir serit degil —
+    // tek "Filters" aksiyonuyla acilan drawer (mobilde bottom sheet).
+    const [filtersOpen, setFiltersOpen] = useState(false)
+    const activeFilterCount = [
+        filters.status, filters.priority, filters.customer,
+        filters.project, filters.subProject,
+    ].filter(Boolean).length
+
     if (!canAccessAny) {
         return (
             <div style={{ padding: 24 }}>
@@ -247,18 +258,44 @@ function TasksPage() {
             )}
 
             <div className="tasks-body">
-                <TaskFilterBar
-                    filters={filters}
-                    customers={directory.customers}
-                    projects={directory.filteredProjects}
-                    subProjects={directory.subProjects}
-                    onStatusChange={filterActions.setStatus}
-                    onPriorityChange={filterActions.setPriority}
-                    onCustomerChange={filterActions.setCustomer}
-                    onProjectChange={filterActions.setProject}
-                    onSubProjectChange={filterActions.setSubProject}
-                    onClear={clearFilters}
-                />
+                <div className="tasks-filters-row">
+                    <Badge count={activeFilterCount} size="small" offset={[-2, 2]}>
+                        <AntButton
+                            icon={<FilterOutlined />}
+                            onClick={() => setFiltersOpen(true)}
+                            aria-label="Filters"
+                        >
+                            Filters
+                        </AntButton>
+                    </Badge>
+                    {activeFilterCount > 0 && (
+                        <AntButton type="text" onClick={clearFilters}>
+                            Clear
+                        </AntButton>
+                    )}
+                </div>
+                <Drawer
+                    title="Filters"
+                    open={filtersOpen}
+                    onClose={() => setFiltersOpen(false)}
+                    placement={typeof window !== 'undefined' && window.innerWidth < 768 ? 'bottom' : 'right'}
+                    height="auto"
+                    width={360}
+                    className="task-filters-drawer"
+                >
+                    <TaskFilterBar
+                        filters={filters}
+                        customers={directory.customers}
+                        projects={directory.filteredProjects}
+                        subProjects={directory.subProjects}
+                        onStatusChange={filterActions.setStatus}
+                        onPriorityChange={filterActions.setPriority}
+                        onCustomerChange={filterActions.setCustomer}
+                        onProjectChange={filterActions.setProject}
+                        onSubProjectChange={filterActions.setSubProject}
+                        onClear={clearFilters}
+                    />
+                </Drawer>
 
                 <TasksSurface
                     isLoading={isLoading}

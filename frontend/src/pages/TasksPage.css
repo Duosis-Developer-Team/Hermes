@@ -479,3 +479,11 @@
         padding: 12px 16px 16px;
     }
 }
+
+/* Premium redesign: filtre aksiyon satiri — hafif, toolbar hizasinda. */
+.tasks-page .tasks-filters-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 24px 10px;
+}
