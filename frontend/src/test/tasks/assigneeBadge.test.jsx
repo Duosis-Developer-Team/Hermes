@@ -13,7 +13,7 @@ import {
     AssigneeStatusBadge,
     AssignmentRoster,
 } from '../../features/tasks/components/AssigneeStatusBadge'
-import { UNKNOWN_ASSIGNEE_LABEL } from '../../features/tasks/model/assigneeLabel'
+import { UNKNOWN_ASSIGNEE_LABEL } from '../../features/tasks/model/grouping'
 
 const a = (id, name, status) => ({ id, assigneeUserId: `u-${id}`, assigneeName: name, status })
 

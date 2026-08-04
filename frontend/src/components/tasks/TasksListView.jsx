@@ -29,6 +29,8 @@ import { TaskDueBadge } from './TaskCard'
 import {
     canDragTaskStatus, canEditTask,
 } from '../../features/tasks/model/permissions'
+import { groupIntoLogicalItems } from '../../features/tasks/model/grouping'
+import { AssignmentRoster } from '../../features/tasks/components/AssigneeStatusBadge'
 import { typeMeta } from '../../utils/workItemType'
 
 const PRIORITY_RANK = { low: 0, medium: 1, high: 2, urgent: 3 }
@@ -101,6 +103,21 @@ function TasksListView({
         { text: 'Cancelled', value: 'cancelled' },
         { text: 'Rejected', value: 'rejected' },
     ]
+
+    /*
+     * LISTE ARTIK LOGICAL WORK ITEM SATIRI CIZER (§10): ayni is bes
+     * kisiye atandiysa bes satir degil BIR satir gorunur. Satir verisi
+     * temsilci task'in KENDISIDIR (mevcut kolonlar/aksiyonlar ham task
+     * bekler) + `__item` ile logical baglam. Gruplama ve aggregate
+     * status tek kaynaktan gelir; burada tekrar yazilmaz.
+     */
+    const rows = useMemo(
+        () =>
+            groupIntoLogicalItems(tasks, (id) => userLabel(id, userMap)).map(
+                (item) => ({ ...item.representative, __key: item.key, __item: item })
+            ),
+        [tasks, userMap]
+    )
 
     const columns = [
         {
@@ -185,26 +202,44 @@ function TasksListView({
             ),
         },
         {
-            title: 'Assignee',
+            title: 'Assignees',
             dataIndex: 'assignee_user_id',
             key: 'assignee',
             filters: assigneeFilters,
-            onFilter: (value, record) => record.assignee_user_id === value,
-            render: (val) => userLabel(val, userMap),
+            // Secilen kisinin assignment'ini ICEREN logical is eslesir —
+            // ayni is filtre sonucunda TEKRAR satir uretmez (§10).
+            onFilter: (value, record) =>
+                (record.__item?.assignments || []).some(
+                    (a) => a.assigneeUserId === value
+                ),
+            render: (_, record) => (
+                <AssignmentRoster
+                    assignments={record.__item?.assignments || []}
+                    compact
+                />
+            ),
         },
         {
             title: 'Status',
             dataIndex: 'status',
             key: 'status',
             filters: statusFilters,
-            onFilter: (value, record) => record.status === value,
+            // Sozlesme (§10): gorunur assignment'lardan EN AZ BIRI secili
+            // statusteyse satir eslesir. Kolonda gosterilen deger ise
+            // AGGREGATE status'tur (kartin hangi sutuna ait oldugu).
+            onFilter: (value, record) =>
+                (record.__item?.assignments || []).some((a) => a.status === value),
             sorter: (a, b) =>
-                (STATUS_RANK[a.status] ?? 99) - (STATUS_RANK[b.status] ?? 99),
-            render: (val) => (
-                <Tag color={STATUS_COLOR[val] || 'default'}>
-                    {val === 'in_progress' ? 'in progress' : val}
-                </Tag>
-            ),
+                (STATUS_RANK[a.__item?.aggregateStatus ?? a.status] ?? 99)
+                - (STATUS_RANK[b.__item?.aggregateStatus ?? b.status] ?? 99),
+            render: (_, record) => {
+                const val = record.__item?.aggregateStatus ?? record.status
+                return (
+                    <Tag color={STATUS_COLOR[val] || 'default'}>
+                        {val === 'in_progress' ? 'in progress' : val}
+                    </Tag>
+                )
+            },
         },
         {
             title: 'Priority',
@@ -305,9 +340,9 @@ function TasksListView({
 
     return (
         <Table
-            rowKey="id"
+            rowKey="__key"
             columns={columns}
-            dataSource={tasks}
+            dataSource={rows}
             rowClassName={(record) =>
                 record.status === 'completed' ? 'task-row-completed' : ''
             }

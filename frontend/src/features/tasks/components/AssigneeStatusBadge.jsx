@@ -15,7 +15,7 @@
  * =============================================================================
  */
 import { Tooltip } from 'antd'
-import { assigneeLabelOf } from '../model/assigneeLabel'
+import { assigneeLabelOf } from '../model/grouping'
 import './assigneeStatus.css'
 
 const STATUS_LABEL = {

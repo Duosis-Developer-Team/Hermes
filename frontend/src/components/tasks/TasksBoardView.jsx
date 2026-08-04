@@ -41,6 +41,7 @@ import {
 
 import TaskCard from './TaskCard'
 import { canDragTaskStatus } from '../../features/tasks/model/permissions'
+import { groupIntoLogicalItems } from '../../features/tasks/model/grouping'
 import { typeMeta } from '../../utils/workItemType'
 import './TasksBoardView.css'
 
@@ -131,6 +132,10 @@ function TasksBoardView({
     groupByAssignee = false,
     allowStatusDrag = false,
     onCardDrop,
+    /** Birden fazla DEGISTIRILEBILIR assignment varken surukleme: sessiz
+        toplu guncelleme YAPILMAZ (§11) — ust katman acik bir secim/onay
+        arayuzu acar. */
+    onMultiAssignmentDrop,
     // Card body click → open the docked detail panel. The Review (eye)
     // hover button still opens the full modal via onOpenReview.
     onOpenPanel,
@@ -158,12 +163,35 @@ function TasksBoardView({
             allowStatusDrag, task: t, currentUserId, isTaskAdmin: isAdmin,
         })
 
-    // Status buckets (flat board).
+    /*
+     * DUZ BOARD ARTIK LOGICAL WORK ITEM CIZER (§9): ayni is bes kisiye
+     * atandiysa bes kart degil, BIR kart + bes assignee badge'i gorunur.
+     * Gruplama ve aggregate status tek kaynaktan gelir (model/grouping);
+     * bu dosya kendi algoritmasini YAZMAZ.
+     *
+     * Swimlane (groupByAssignee) yolu BILINCLI olarak ham satirlarda
+     * kalir: o duzen zaten KISI BASINA satir gostermek icin vardir ve
+     * her hucre tek bir (assignee, status) ciftidir.
+     */
+    const logicalItems = useMemo(
+        () => groupIntoLogicalItems(tasks, (id) => userLabel(id, userMap)),
+        [tasks, userMap]
+    )
+
+    const itemsByKey = useMemo(() => {
+        const m = {}
+        for (const i of logicalItems) m[i.key] = i
+        return m
+    }, [logicalItems])
+
+    // Status buckets (flat board) — AGGREGATE status'e gore.
     const buckets = useMemo(() => {
         const map = { pending: [], in_progress: [], completed: [], rejected: [] }
-        for (const t of tasks) if (map[t.status]) map[t.status].push(t)
+        for (const item of logicalItems) {
+            if (map[item.aggregateStatus]) map[item.aggregateStatus].push(item)
+        }
         return map
-    }, [tasks])
+    }, [logicalItems])
 
     // Swimlane rows — one per distinct assignee present in the current
     // task set, sorted by display name. Each row keeps its own status
@@ -193,7 +221,12 @@ function TasksBoardView({
             .sort((a, b) => a.label.localeCompare(b.label))
     }, [groupByAssignee, tasks, userMap])
 
-    const activeTask = activeId ? tasksById[activeId] : null
+    const activeTask = activeId
+        ? (itemsByKey[activeId]?.representative ?? tasksById[activeId] ?? null)
+        : null
+    const activeAssignments = activeId
+        ? (itemsByKey[activeId]?.assignments ?? null)
+        : null
 
     const handleDragStart = (event) => setActiveId(event.active.id)
     const handleDragCancel = () => setActiveId(null)
@@ -202,13 +235,43 @@ function TasksBoardView({
         const { active, over } = event
         setActiveId(null)
         if (!over) return
-        const task = tasksById[active.id]
+        // Duz board'da surukleyen sey bir LOGICAL ITEM, swimlane'de ham
+        // satirdir.
+        const item = itemsByKey[active.id]
+        const task = item ? item.representative : tasksById[active.id]
         if (!task) return
         const target = parseCellId(over.id)
         if (!target) return
         // Guard against a malformed/unexpected droppable id reaching the
         // mutation layer — only the four known columns are valid targets.
         if (target.status && !VALID_STATUSES.has(target.status)) return
+
+        if (item) {
+            /*
+             * COKLU ATAMA GUVENLIGI (§11): kartin arkasinda birden fazla
+             * assignment olabilir. Sessiz toplu guncelleme YAPILMAZ.
+             *   - Degistirilebilir assignment YOKSA: islem yok.
+             *   - TAM OLARAK BIR tane varsa: mevcut tek-gorev akisi
+             *     (optimistic update / rollback / mutation lock /
+             *     Completed → Log Time) aynen calisir.
+             *   - BIRDEN FAZLA varsa: ust katman acik bir secim/onay
+             *     arayuzu acar; buradan istek GONDERILMEZ.
+             * Yetki karari tek kaynaktan gelir; burada tekrarlanmaz.
+             */
+            const changeable = item.assignments
+                .map((a) => a.task)
+                .filter((t) => canDragStatus(t) && t.status !== target.status)
+            if (changeable.length === 0) return
+            if (changeable.length === 1) {
+                onCardDrop?.(changeable[0], { newStatus: target.status })
+                return
+            }
+            onMultiAssignmentDrop?.(item, {
+                newStatus: target.status,
+                candidates: changeable,
+            })
+            return
+        }
 
         // Status-change only — moving a card between columns sets status.
         // (Assignee is fixed at creation; there is no drag-to-reassign.)
@@ -219,6 +282,33 @@ function TasksBoardView({
         onCardDrop?.(task, { newStatus: target.status })
     }
 
+    /** Duz board karti — logical work item. */
+    const renderItem = (item) => {
+        const t = item.representative
+        // Kart, en az BIR assignment'i degistirilebiliyorsa suruklenebilir.
+        const draggable = item.assignments.some((a) => canDragStatus(a.task))
+        return (
+            <DraggableCard key={item.key} id={item.key} disabled={!draggable}>
+                <TaskCard
+                    task={t}
+                    assignments={item.assignments}
+                    userMap={userMap}
+                    currentUserId={currentUserId}
+                    isAdmin={isAdmin}
+                    onSelect={() => onOpenPanel?.(t)}
+                    onEdit={onEditTask}
+                    onDelete={onDeleteTask}
+                    onOpenReview={onOpenReview}
+                    onOpenLogTime={onOpenLogTime}
+                    onToggleCompletion={onToggleCompletion}
+                    canToggleCompletion={canDragStatus(t)}
+                    completionLoading={completionLoading}
+                />
+            </DraggableCard>
+        )
+    }
+
+    /** Swimlane karti — ham satir (o duzen zaten kisi basinadir). */
     const renderCard = (t) => {
         const canToggle = canDragStatus(t)
         return (
@@ -374,7 +464,7 @@ function TasksBoardView({
                                                 No {typeMeta(taskType).lowerPlural}
                                             </div>
                                         ) : (
-                                            list.map(renderCard)
+                                            list.map(renderItem)
                                         )}
                                     </DroppableColumn>
                                 </div>
@@ -388,6 +478,7 @@ function TasksBoardView({
                         <div className="tasks-board-drag-overlay">
                             <TaskCard
                                 task={activeTask}
+                                assignments={activeAssignments}
                                 userMap={userMap}
                                 currentUserId={currentUserId}
                                 isAdmin={isAdmin}

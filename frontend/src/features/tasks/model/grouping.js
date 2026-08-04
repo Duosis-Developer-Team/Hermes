@@ -41,6 +41,16 @@
  * =============================================================================
  */
 
+/**
+ * Assignee'nin GORUNUR adi. Ad cozulemediyse (yetki yok / dizin
+ * yuklenmedi) ham kimlik EKRANA BASILMAZ — notr yer tutucu doner
+ * (§13: badge/tooltip uzerinden kimlik sizintisi olmamali).
+ */
+export const UNKNOWN_ASSIGNEE_LABEL = 'Unknown user'
+
+export const assigneeLabelOf = (assignment) =>
+    assignment?.assigneeName || UNKNOWN_ASSIGNEE_LABEL
+
 /** Bir gorunur assignment'in status'u — bilinmeyen deger 'pending' sayilir
  *  (kart bir sutunda MUTLAKA yer almali; sessizce kaybolmamali). */
 const KNOWN_STATUSES = new Set([

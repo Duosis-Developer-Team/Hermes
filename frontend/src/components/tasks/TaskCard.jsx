@@ -32,6 +32,7 @@ import dayjs from 'dayjs'
 import { taskDueState } from '../../features/tasks/model/taskDueState'
 import { canEditTask } from '../../features/tasks/model/permissions'
 import { typeMeta } from '../../utils/workItemType'
+import { AssignmentRoster } from '../../features/tasks/components/AssigneeStatusBadge'
 import './TaskCard.css'
 
 function userLabel(id, userMap) {
@@ -92,8 +93,16 @@ function TaskCard({
     onToggleCompletion,
     canToggleCompletion,
     completionLoading = false,
+    /** Gruplanmis logical work item'in TUM gorunur assignment'lari.
+        Verildiginde (birden fazlaysa) tek-assignee ipucu yerine roster
+        cizilir — ayni is kisi basina TEKRAR kart uretmez (§8/§9).
+        Tek assignment'ta mevcut gorunum aynen korunur. */
+    assignments = null,
 }) {
     const isCompleted = task.status === 'completed'
+    // Coklu atama: roster cizilir. Tek atamada eski gorunum korunur —
+    // bu bir GORUNUM karari, yetki karari degil.
+    const isGrouped = Array.isArray(assignments) && assignments.length > 1
     // GORUNUM karari (hangi satir gosterilecek) — yetki DEGIL.
     const showAssignee = task.assignee_user_id !== currentUserId
     // YETKI karari tek kaynaktan gelir (features/tasks/model/permissions).
@@ -260,12 +269,16 @@ function TaskCard({
                     </div>
                 )}
 
-                {showAssignee && task.assignee_user_id && (
+                {isGrouped ? (
+                    <div className="task-card-roster">
+                        <AssignmentRoster assignments={assignments} compact />
+                    </div>
+                ) : showAssignee && task.assignee_user_id ? (
                     <div className="task-card-assignee-hint">
                         Assignee: {userLabel(task.assignee_user_id, userMap)}
                     </div>
-                )}
-                {!showAssignee && task.assigner_user_id && (
+                ) : null}
+                {!isGrouped && !showAssignee && task.assigner_user_id && (
                     <div className="task-card-assignee-hint">
                         Assigned by: {userLabel(task.assigner_user_id, userMap)}
                     </div>

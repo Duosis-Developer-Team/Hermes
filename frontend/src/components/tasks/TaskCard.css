@@ -312,3 +312,12 @@
     outline-offset: 2px;
     border-radius: 4px;
 }
+
+/* Coklu atama roster'i: kart icinde badge satiri (TEK kaynak bilesen).
+   Kart yuksekligini kontrollu buyutur; bes badge tek kartta gorunur. */
+.task-card-roster {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
