@@ -59,6 +59,9 @@ function BillableHoursPage() {
     const { user } = useAuthStore()
     // RBAC R3: sayfa yetkisi reports.view iznine bakar.
     const canViewReports = useAuthStore((s) => s.can)('reports.view')
+    // Baskasinin zaman girislerini gorme yetkisi: backend'in
+    // list_work_logs ucunda uyguladigi izinle AYNI (worklogs.admin).
+    const canViewOtherUsers = useAuthStore((s) => s.can)('worklogs.admin')
     const permissions = useAuthStore((s) => s.permissions)
     /*
      * `can()` izinler HENUZ YUKLENMEMISKEN (null) de `false` doner. Bu
@@ -92,11 +95,26 @@ function BillableHoursPage() {
     // ==========================================================================
     // Data Fetching
     // ==========================================================================
-    // Fetch all users (Admin only)
+    /*
+     * Kullanici listesi: EN AZ AYRICALIKLI uc.
+     *
+     * KAPATILAN KUSUR: RBAC cutover'inda (f6882f1) sayfa kapisi
+     * `is_admin` yerine `reports.view` oldu, ama liste hala
+     * `GET /api/v1/auth/users` (users.manage ZORUNLU) ucundan
+     * geliyordu. `reports.view` olup `users.manage` olmayan kullanicida
+     * istek 403 donuyor, liste bos kaliyor ve AntD Select secili
+     * degeri eslestirecek option bulamayinca HAM UUID basiyordu.
+     * `/users/lookup` her kimligi dogrulanmis kullaniciya aciktir,
+     * yalniz (id, ad, e-posta) doner ve 100 kayitlik sayfalama
+     * tavani yoktur.
+     */
     const { data: usersResponse, isLoading: usersLoading } = useQuery({
-        queryKey: ['users-list'],
-        queryFn: () => authService.getUsers(),
-        enabled: !!canViewReports,
+        queryKey: ['users-lookup'],
+        queryFn: () => authService.lookupUsers(),
+        // Yalniz baskasini secebilen kullanici icin cekilir; aksi
+        // halde tek secenek zaten kullanicinin kendisidir.
+        enabled: !!canViewReports && !!canViewOtherUsers,
+        staleTime: 5 * 60 * 1000,
     })
 
     // Fetch Customers
@@ -128,8 +146,26 @@ function BillableHoursPage() {
         enabled: !!selectedUserId,
     })
 
-    // Lists & Maps
-    const usersList = usersResponse?.data || []
+    /*
+     * Secili kullanici HER ZAMAN bir option'a sahip olmali. Liste
+     * yuklenmemis, bos donmus veya istek basarisiz olmus olabilir;
+     * bu durumlarin hicbirinde kullaniciya ham bir kimlik (UUID)
+     * gosterilmez — en kotu durumda kendi adiyla kendini gorur.
+     * `/users/lookup` duz dizi doner; zarfli sekil de tolere edilir.
+     */
+    const usersList = useMemo(() => {
+        const list = Array.isArray(usersResponse)
+            ? usersResponse
+            : (usersResponse?.data || [])
+        const byId = new Map(list.map((u) => [u.id, u]))
+        if (user?.id && !byId.has(user.id)) {
+            byId.set(user.id, {
+                id: user.id,
+                full_name: user.full_name || user.email,
+            })
+        }
+        return [...byId.values()]
+    }, [usersResponse, user])
 
     // Create maps for fast lookup
     const customersMap = useMemo(() => {
@@ -393,18 +429,30 @@ function BillableHoursPage() {
                         style={{ width: 280 }}
                         size="large"
                         loading={usersLoading}
+                        /* Baskasinin kayitlarini gormek worklogs.admin
+                           ister (backend'in uyguladigi kural). Izin yoksa
+                           tek secenek kullanicinin KENDISIDIR — garanti
+                           403 dogurmayan bir secim sunulmaz. */
+                        disabled={!canViewOtherUsers}
+                        aria-label="Select user"
+                        /* label DUZ METIN: arama bunun uzerinden calisir.
+                           Onceki hali option.label.props.children[1]
+                           okuyordu; adi olmayan bir kayitta patlardi. */
                         options={usersList.map(u => ({
-                            label: (
-                                <Space>
-                                    <Avatar size="small" style={{ backgroundColor: 'var(--c-chip)' }}>{u.full_name?.[0]}</Avatar>
-                                    {u.full_name}
-                                </Space>
-                            ),
-                            value: u.id
+                            label: u.full_name || u.email || 'Unknown user',
+                            value: u.id,
                         }))}
+                        optionRender={(option) => (
+                            <Space>
+                                <Avatar size="small" style={{ backgroundColor: 'var(--c-chip)' }}>
+                                    {String(option.label)[0]}
+                                </Avatar>
+                                {option.label}
+                            </Space>
+                        )}
                         showSearch
                         filterOption={(input, option) =>
-                            option.label.props.children[1].toLowerCase().includes(input.toLowerCase())
+                            String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                         }
                         styles={{ popup: { backgroundColor: 'var(--c-surface-2)' } }}
                     />

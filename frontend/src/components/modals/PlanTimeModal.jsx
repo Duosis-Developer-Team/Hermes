@@ -51,13 +51,17 @@ function PlanTimeModal({
         enabled: open,
     })
 
+    /* Katilimci secimi yalniz ad gosterir → en az ayricalikli dizin
+       ucu. Admin-only uc, plan olusturabilen ama users.manage'i olmayan
+       kullanicida listeyi bos birakiyordu. */
     const { data: usersResponse } = useQuery({
-        queryKey: ['users-list'],
-        queryFn: () => authService.getUsers(),
+        queryKey: ['users-lookup'],
+        queryFn: () => authService.lookupUsers(),
         enabled: open,
     })
     // Planı oluşturan kişiyi listeden çıkar — creator otomatik ekleniyor
-    const usersList = (usersResponse?.data || []).filter(u => u.id !== currentUserId)
+    const usersList = (Array.isArray(usersResponse) ? usersResponse : (usersResponse?.data || []))
+        .filter(u => u.id !== currentUserId)
 
     // Seçilen müşterinin projeleri
     const filteredProjects = allProjects.filter(

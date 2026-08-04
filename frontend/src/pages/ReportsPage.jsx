@@ -34,6 +34,7 @@ import {
     platformService
 } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
+import { queryKeys } from '../query/queryKeys'
 
 const { RangePicker } = DatePicker
 
@@ -76,13 +77,17 @@ function ReportsPage() {
     const [selectedPlatforms, setSelectedPlatforms] = useState([])
 
     // ── Dropdown Data ─────────────────────────────────────────────────────────
+    /* Kullanici filtresi yalniz AD gosterir. Admin-only /auth/users
+       ucu (users.manage) `reports.view` yetkisiyle gelen kullanicida
+       403 doner ve filtre SESSIZCE bos kalirdi — en az ayricalikli
+       dizin ucu bu esitsizligi kapatir (duz dizi doner). */
     const { data: usersData } = useQuery({
-        queryKey: ['users-list'],
-        queryFn: () => authService.getUsers(),
+        queryKey: queryKeys.users.lookup,
+        queryFn: () => authService.lookupUsers(),
         enabled: !!canViewReports,
         staleTime: 5 * 60 * 1000
     })
-    const users = useMemo(() => (usersData?.data || []).sort((a, b) =>
+    const users = useMemo(() => (Array.isArray(usersData) ? usersData : (usersData?.data || [])).sort((a, b) =>
         (a.full_name || '').localeCompare(b.full_name || '', 'en')
     ), [usersData])
 

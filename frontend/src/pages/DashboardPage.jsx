@@ -6,7 +6,7 @@
  * =============================================================================
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Card, Row, Col, Spin, Button } from 'antd'
 import {
     BarChartOutlined, FolderOpenOutlined, LeftOutlined, RightOutlined,
@@ -53,11 +53,17 @@ function DashboardPage() {
         enabled: !!dateRange[0] && !!dateRange[1],
     })
 
-    const { data: usersResponse = {} } = useQuery({
-        queryKey: queryKeys.users.all,
-        queryFn: () => authService.getUsers(),
+    /* Yalniz "By User" serisindeki kimlikleri ADA cevirmek icin. Eskiden
+       admin-only /auth/users ucundan geliyordu; users.manage olmayan
+       kullanicida 403 donuyor ve tum satirlar "—" oluyordu. */
+    const { data: usersResponse } = useQuery({
+        queryKey: queryKeys.users.lookup,
+        queryFn: () => authService.lookupUsers(),
     })
-    const users = usersResponse.data || []
+    const users = useMemo(
+        () => (Array.isArray(usersResponse) ? usersResponse : (usersResponse?.data || [])),
+        [usersResponse]
+    )
 
     // Donusumler TEST EDILEBILIR adaptorden gelir (features/dashboard/
     // model): sayisal olmayan degerler NaN olarak grafige gitmez, ham

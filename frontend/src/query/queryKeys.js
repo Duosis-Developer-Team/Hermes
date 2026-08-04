@@ -65,7 +65,11 @@ export const queryKeys = {
      *  ['taskPermissions'] degeri hicbir yerde kullanilmiyordu ve
      *  invalidation'i sessizce iskalardi. */
     taskPermissions: { all: ['task-permissions'] },
-    users: { all: ['users'] },
+    // `all` = admin kullanici YONETIMI (zarfli, users.manage ister).
+    // `lookup` = yalniz ad gostermek icin en az ayricalikli dizin
+    // (duz dizi). Ayri anahtar SART: ayni anahtar altinda iki farkli
+    // sekil birbirini ezer.
+    users: { all: ['users'], lookup: ['users-lookup'] },
     userGroups: { all: ['userGroups'] },
     rbacRoles: {
         all: ['rbac-roles'],
