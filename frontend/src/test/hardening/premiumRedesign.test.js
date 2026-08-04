@@ -83,9 +83,13 @@ describe('buyuk gri seritler ve panel yiginlari kalkti', () => {
     })
 
     it('Reports filtre paneli dolu Card zemini kullanmiyor', () => {
+        // NOT: bu kilit ilk yazildiginda filtreler "More filters" arkasina
+        // alinmisti; o karar KULLANICI TARAFINDAN REDDEDILDI (temel
+        // filtreler gorunmez kaliyordu). Kalan sozlesme: panel dolu gri
+        // zemin kullanmaz ve filtreler hafif toolbar'da yasar.
         const jsx = noComments(read('pages/ReportsPage.jsx'))
         expect(jsx).not.toMatch(/background:\s*'var\(--bg-secondary\)'/)
-        expect(jsx).toContain('More filters')
+        expect(jsx).toContain('reports-filter-toolbar')
     })
 
     it('PM Config bolumleri Card degil section-row', () => {
@@ -139,5 +143,90 @@ describe('ikonografi', () => {
         const jsx = read('pages/admin/RolesTab.jsx')
         expect(jsx).not.toMatch(/title: '(ROL|DURUM)'/)
         expect(jsx).not.toMatch(/'(Aktif|Pasif)'/)
+    })
+})
+
+describe('duzeltme turu (2026-08-04) kilitleri', () => {
+    it('Reports temel filtreleri gizleyen "More filters" GERI GELMEZ', () => {
+        const jsx = noComments(read('pages/ReportsPage.jsx'))
+        expect(jsx).not.toContain('More filters')
+        expect(jsx).not.toContain('moreFiltersOpen')
+        // Uc filtre de erisilebilir ad tasir (placeholder ad DEGILDIR).
+        for (const n of ['Filter by project', 'Filter by type', 'Filter by platform']) {
+            expect(jsx, n).toContain(n)
+        }
+    })
+
+    it('ortak create-action primitive TEK kaynakta ve TE "+" dilini tasir', () => {
+        const css = read('components/ui/ui.css')
+        expect(css).toContain('.h-create-action')
+        expect(css).toContain('.h-inline-action')
+        // Hover'da ince mavi ring; dolu parlak mavi zemin YOK.
+        const block = css.slice(css.indexOf('.ant-btn.h-create-action {'),
+                                css.indexOf('.ant-btn.h-create-action:focus-visible'))
+        expect(block).toContain('background: transparent')
+        expect(block).toMatch(/border-color:[^;]*h-brand|border: 1px solid var\(--h-border-default\)/)
+    })
+
+    it('PM Configurations ve API Management sayfa aksiyonlari solid mavi DEGIL', () => {
+        for (const f of ['pages/admin/TaskManagementPage.jsx',
+                         'pages/admin/ApiManagementPage.jsx',
+                         'pages/admin/AssignmentHierarchyTab.jsx']) {
+            const jsx = noComments(read(f))
+            // Modal Save/Confirm haric sayfa/section aksiyonlarinda
+            // type="primary" kalmamali.
+            const primaries = (jsx.match(/type="primary"/g) || []).length
+            const submits = (jsx.match(/htmlType="submit"/g) || []).length
+            expect(primaries, `${f}: primary=${primaries} submit=${submits}`)
+                .toBeLessThanOrEqual(submits)
+            expect(jsx).toContain('h-create-action')
+        }
+    })
+
+    it('collapsed logo kutusu belirgin sekilde buyuk (>=60px)', () => {
+        const css = read('components/layout/MainLayout.css')
+        const block = css.slice(css.indexOf('.sidebar-logo--icon {'),
+                                css.indexOf('.ant-layout-sider-collapsed .sidebar-logo--full'))
+        const w = parseInt(block.match(/width:\s*(\d+)px/)?.[1] ?? '0', 10)
+        expect(w).toBeGreaterThanOrEqual(60)
+    })
+
+    it('genel modal govdesi kirpilmaz (yalniz uzun listeli modal scroll eder)', () => {
+        const css = noComments(read('styles/premium.css'))
+        expect(css).toContain('.h-modal-scroll .ant-modal-body')
+        // Kapsamsiz (tum modallara giden) max-height kurali OLMAMALI.
+        expect(css).not.toMatch(/:root \.ant-modal \.ant-modal-body \{\s*max-height: min/)
+    })
+
+    it('Timesheet gorunumu gri levha kullanmaz', () => {
+        const css = noComments(read('components/time-entry/TimesheetView.css'))
+        const block = css.slice(css.indexOf('.timesheet-view {'), css.indexOf('.timesheet-table'))
+        expect(block).toContain('background: transparent')
+        expect(css).not.toContain('background: var(--bg-secondary)')
+    })
+
+    it('Mail Notifications satir tabanli (kart yigini degil)', () => {
+        const css = noComments(read('pages/admin/TaskManagementPage.css'))
+        const block = css.slice(css.indexOf('.tm-notif-row {'), css.indexOf('.tm-notif-head'))
+        expect(block).toContain('background: transparent')
+        expect(block).toContain('border-top')
+    })
+
+    it('performans: sabit-arkaplan repaint ve margin animasyonu kaldirildi', () => {
+        const css = noComments(read('components/layout/MainLayout.css'))
+        const block = css.slice(css.indexOf('.main-content {'), css.indexOf('.main-content::before'))
+        expect(block).not.toContain('background-attachment: fixed')
+        expect(block).not.toContain('transition: margin-left')
+        // Cift giris animasyonu: .fade-in artik animasyon calistirmaz.
+        const idx = read('index.css')
+        expect(idx).toMatch(/\.fade-in \{\s*animation: none;/)
+    })
+
+    it('idle route prefetch izin filtreli ve tek seferlik', () => {
+        const jsx = read('components/layout/MainLayout.jsx')
+        expect(jsx).toContain('idlePrefetchDone')
+        expect(jsx).toContain('requestIdleCallback')
+        // Yalniz izin filtresinden gecmis menu listeleri kullanilir.
+        expect(jsx).toMatch(/\[\.\.\.managementItems, \.\.\.configurationItems\]/)
     })
 })

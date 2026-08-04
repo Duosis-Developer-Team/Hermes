@@ -218,6 +218,17 @@
   --h-shadow-modal: 0 16px 48px rgba(23, 32, 45, 0.22);
 }
 
+/* Tema degisimi suresince (tek frame) TUM gecisler durur — aksi halde
+   binlerce ogenin es zamanli renk animasyonu ana ipligi kilitliyor.
+   `!important` burada RM kuralindaki gibi BILINCLI bir istisnadir:
+   bilesenlerin kendi transition'larini kesin biçimde susturmak gerekir. */
+:root.theme-switching *,
+:root.theme-switching *::before,
+:root.theme-switching *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
 /* --- 7. Reduced motion (paket sablonu; app'e scope'lu) ---------------- */
 @media (prefers-reduced-motion: reduce) {
   #root *,

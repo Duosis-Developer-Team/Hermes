@@ -345,8 +345,12 @@ body {
   }
 }
 
+/* PERFORMANS: route icerigi ZATEN `.route-transition` ile bir kez
+   animasyonlaniyordu; sayfa koklerindeki `.fade-in` ikinci bir animasyon
+   katmani ekleyip her gecise gereksiz is bindiriyordu. Sinif markup'ta
+   kaliyor (test/DOM sozlesmesi bozulmaz) ama animasyon TEK yerde. */
 .fade-in {
-  animation: fadeIn 0.2s ease;
+  animation: none;
 }
 
 /* ==========================================================================

@@ -41,8 +41,11 @@ function walk(dir, exts, out = []) {
 
 const read = (f) => readFileSync(f, 'utf8')
 
-/** CSS blogunu secip govdesini dondurur (ilk eslesen selector). */
-const cssBlock = (css, selector) => {
+/** CSS blogunu secip govdesini dondurur (ilk eslesen selector).
+    Yorumlar DUSURULUR: aciklama metninde gecen bir ozellik adi
+    "kural var" sayilmamali (yanlis pozitif). */
+const cssBlock = (raw, selector) => {
+    const css = raw.replace(/\/\*[\s\S]*?\*\//g, '')
     const i = css.indexOf(selector)
     expect(i).toBeGreaterThan(-1)
     const open = css.indexOf('{', i)
@@ -58,8 +61,9 @@ describe('collapsed logo kutusu (§A)', () => {
 
         const w = parseInt(block.match(/width:\s*(\d+)px/)?.[1] ?? '0', 10)
         const h = parseInt(block.match(/height:\s*(\d+)px/)?.[1] ?? '0', 10)
-        // Kok neden: dosya 714x349 (~2:1 yatay). Kare/kucuk kutu = bug geri geldi.
-        expect(w).toBeGreaterThanOrEqual(48)
+        // Kok neden: dosya 714x349 (~2:1 yatay). Kare/kucuk kutu = bug geri
+        // geldi. 2026-08-04: kullanici "hala cok kucuk" dedi → taban 60px.
+        expect(w).toBeGreaterThanOrEqual(60)
         expect(w).toBeGreaterThan(h)
     })
 })
@@ -99,11 +103,15 @@ describe('sayfa arka plani tokenlari (§C)', () => {
         expect(day).toContain('var(--h-bg-weekend)')
     })
 
-    it('.main-content token uzerinden boyanir ve arka plan ANIMASYONSUZ', () => {
+    it('sayfa gradyani token uzerinden gelir ve ANIMASYONSUZ', () => {
+        /* 2026-08-04 performans duzeltmesi: gradient artik `.main-content`
+           uzerinde `background-attachment: fixed` ile DEGIL, sabit tek bir
+           pseudo-katmanda (scroll'da repaint yok). Token sozlesmesi ayni. */
         const css = read(join(SRC, 'components/layout/MainLayout.css'))
-        const block = cssBlock(css, '.main-content {')
-        expect(block).toContain('var(--h-bg-page')
-        expect(block).not.toContain('animation')
+        const layer = cssBlock(css, '.main-content::before')
+        expect(layer).toContain('var(--h-bg-page')
+        expect(layer).not.toContain('animation')
+        expect(cssBlock(css, '.main-content {')).not.toContain('background-attachment: fixed')
     })
 })
 

@@ -27,8 +27,23 @@ function readInitialTheme() {
 }
 
 function applyTheme(theme) {
-    if (typeof document !== 'undefined') {
-        document.documentElement.setAttribute('data-theme', theme)
+    if (typeof document === 'undefined') return
+    const root = document.documentElement
+    /*
+     * PERFORMANS (olcumlu): tema degisince renk tasiyan HER kontrol
+     * (buton, input, tablo hucresi…) kendi transition'ini ayni anda
+     * baslatiyordu — 4x CPU'da gecis ~600 ms suruyordu. Gecis suresince
+     * animasyonlar kapatilir, iki frame sonra geri acilir: renk aninda
+     * doner, hover/focus animasyonlari korunur.
+     */
+    root.classList.add('theme-switching')
+    root.setAttribute('data-theme', theme)
+    if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => root.classList.remove('theme-switching'))
+        })
+    } else {
+        root.classList.remove('theme-switching')
     }
 }
 

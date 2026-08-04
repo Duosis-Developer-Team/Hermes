@@ -26,6 +26,15 @@ vi.mock('../../routes/loaders', () => {
             taskManagement: stub('STUB-TM'), apiManagement: stub('STUB-AM'),
             developerPortal: stub('STUB-DEV'),
         },
+        // MainLayout hover-prefetch ve (2026-08-04) idle-prefetch icin
+        // bu haritayi okur. Mock'ta bulunmayinca ESM erisimde patliyordu;
+        // stub map davranis sozlesmesini degistirmez.
+        loaderByPath: {
+            '/dashboard': stub('STUB-DASH'),
+            '/management/reports': stub('STUB-REPORTS'),
+            '/api-management': stub('STUB-API'),
+            '/users': stub('STUB-USERS'),
+        },
     }
 })
 
