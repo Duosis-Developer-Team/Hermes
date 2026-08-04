@@ -297,7 +297,14 @@ function TasksBoardView({
                     onOpenReview={onOpenReview}
                     onOpenLogTime={onOpenLogTime}
                     onToggleCompletion={onToggleCompletion}
-                    canToggleCompletion={canDragStatus(t)}
+                    /* Gruplanmis kartta TEK onay kutusu belirsizdir —
+                       hangi atamayi tamamladigi anlasilmaz ve baskasi
+                       adina tamamlama log-time sozlesmesini bozar (§11).
+                       Bu yuzden yalniz tek atamali kartta gosterilir;
+                       coklu atamada yol surukleme + acik onaydir. */
+                    canToggleCompletion={
+                        item.assignments.length === 1 && canDragStatus(t)
+                    }
                     completionLoading={completionLoading}
                 />
             </DraggableCard>

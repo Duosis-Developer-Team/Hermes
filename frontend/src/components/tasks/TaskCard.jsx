@@ -33,6 +33,7 @@ import { taskDueState } from '../../features/tasks/model/taskDueState'
 import { canEditTask } from '../../features/tasks/model/permissions'
 import { typeMeta } from '../../utils/workItemType'
 import { AssignmentRoster } from '../../features/tasks/components/AssigneeStatusBadge'
+import { aggregateStatus } from '../../features/tasks/model/grouping'
 import './TaskCard.css'
 
 function userLabel(id, userMap) {
@@ -99,10 +100,18 @@ function TaskCard({
         Tek assignment'ta mevcut gorunum aynen korunur. */
     assignments = null,
 }) {
-    const isCompleted = task.status === 'completed'
     // Coklu atama: roster cizilir. Tek atamada eski gorunum korunur —
     // bu bir GORUNUM karari, yetki karari degil.
     const isGrouped = Array.isArray(assignments) && assignments.length > 1
+    /*
+     * KARTIN DURUMU: gruplanmis kartta TEMSILCI satirin durumu DEGIL,
+     * AGGREGATE durum gosterilir. Aksi halde kart "In Progress"
+     * sutununda dururken uzerinde "COMPLETED" etiketi ve ustu cizili
+     * baslik gorunuyordu (gorsel QA'de yakalandi) — cunku temsilci
+     * satir tamamlanmisti. Aggregate tek kaynaktan gelir.
+     */
+    const cardStatus = isGrouped ? aggregateStatus(assignments) : task.status
+    const isCompleted = cardStatus === 'completed'
     // GORUNUM karari (hangi satir gosterilecek) — yetki DEGIL.
     const showAssignee = task.assignee_user_id !== currentUserId
     // YETKI karari tek kaynaktan gelir (features/tasks/model/permissions).
@@ -254,11 +263,11 @@ function TaskCard({
                         {task.priority}
                     </span>
                     <span
-                        className={`task-card-status task-card-status-${task.status}`}
+                        className={`task-card-status task-card-status-${cardStatus}`}
                     >
-                        {task.status === 'in_progress'
+                        {cardStatus === 'in_progress'
                             ? 'in progress'
-                            : task.status}
+                            : cardStatus}
                     </span>
                     <TaskDueBadge task={task} />
                 </div>

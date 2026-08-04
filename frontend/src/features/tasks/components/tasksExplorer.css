@@ -207,3 +207,38 @@
 @media (prefers-reduced-motion: reduce) {
   .tx-row { transition: none; }
 }
+
+/* -----------------------------------------------------------------------
+   MOBIL calisma alani (§6.6): dort Kanban sutunu YATAY birakilmaz.
+   Explorer BAGLAMINA OZEL kural — bagimsiz Board gorunumunun kendi
+   mobil davranisi degismez. Sutunlar dikey status BOLUMLERINE doner;
+   kart bileseni ve surukleme motoru AYNI kalir.
+   ----------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  /* Board'un mobil kurali `display:flex; overflow-x:auto` ile YATAY
+     panel seridi kurar; Explorer baglaminda o seridi DIKEY bolumlere
+     ceviriyoruz (yalnizca duzen; kart ve surukleme ayni). */
+  .tx--mobile .tasks-board {
+    display: flex;
+    flex-direction: column;
+    overflow-x: visible;
+    gap: 8px;
+  }
+  .tx--mobile .tasks-board .tasks-board-column {
+    flex: 1 1 auto;
+    width: 100%;
+    max-height: none;
+  }
+  .tx--mobile .tasks-board-column + .tasks-board-column {
+    border-left: 0;
+    padding-left: 0;
+    margin-left: 0;
+    border-top: 1px solid var(--h-border-subtle);
+    padding-top: 10px;
+  }
+  /* Bos sutunlar mobilde yer kaplamasin — dort bos baslik yerine
+     yalnizca isi olan bolumler gorunur. */
+  .tx--mobile .tasks-board-column:has(.tasks-board-column-empty) {
+    display: none;
+  }
+}
