@@ -20,9 +20,13 @@ import {
     DEFAULT_TASK_LAYOUT, TASK_LAYOUTS, isValidTaskLayout,
 } from '../../features/tasks/model/constants'
 
-const wrapperFor = (initial) => ({ children }) => (
-    <MemoryRouter initialEntries={[initial]}>{children}</MemoryRouter>
-)
+const wrapperFor = (initial) => {
+    const Wrapper = ({ children }) => (
+        <MemoryRouter initialEntries={[initial]}>{children}</MemoryRouter>
+    )
+    Wrapper.displayName = 'RouterWrapper'
+    return Wrapper
+}
 
 const renderView = (initial = '/project-management/tasks') =>
     renderHook(

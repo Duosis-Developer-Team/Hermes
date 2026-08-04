@@ -19,7 +19,7 @@
  * =============================================================================
  */
 import { memo, useMemo, useState } from 'react'
-import { Empty, Input, Tooltip } from 'antd'
+import { Empty, Input, Segmented, Tooltip } from 'antd'
 import {
     FolderOpenOutlined,
     FolderOutlined,
@@ -30,10 +30,11 @@ import {
 
 import TasksBoardView from '../../../components/tasks/TasksBoardView'
 import useIsMobile from '../../../hooks/useIsMobile'
-import { groupIntoLogicalItems } from '../model/grouping'
+import { groupIntoLogicalItems, userLabel } from '../model/grouping'
 import {
     breadcrumbFor,
     buildHierarchy,
+    buildUserHierarchy,
     itemsForNode,
     matchesSearch,
     reconcileSelection,
@@ -86,15 +87,32 @@ function FolderRow({
     )
 }
 
-function TasksExplorerView({ tasks = [], boardProps = {} }) {
+function TasksExplorerView({ tasks = [], boardProps = {}, canGroupByUser = false }) {
     const isMobile = useIsMobile()
     const [search, setSearch] = useState('')
+    /*
+     * GRUPLAMA EKSENI: musteri mi, kisi mi?
+     * Kisi ekseni yalnizca "Assigned by Me" kapsaminda ANLAMLIDIR —
+     * "My Tasks"ta zaten tek kisi vardir (kullanicinin kendisi), o yuzden
+     * secenek orada hic GOSTERILMEZ ve eksen musteride kalir.
+     */
+    const [groupMode, setGroupMode] = useState('customer')
+    const mode = canGroupByUser ? groupMode : 'customer'
     const [expanded, setExpanded] = useState(() => new Set())
     const [rawSelection, setRawSelection] = useState({})
 
+    /* Ad cozumu dizin haritasindan gelir — Board ile AYNI kural
+       (userLabel tek kaynak). Onceki hali var olmayan bir prop'u
+       okuyordu ve kisi ekseninde tum klasorler "Unknown user"
+       olurdu. */
+    const resolveName = useMemo(() => {
+        const map = boardProps.userMap
+        return (id) => (map ? userLabel(id, map) : null)
+    }, [boardProps.userMap])
+
     const logicalItems = useMemo(
-        () => groupIntoLogicalItems(tasks, boardProps.resolveUserName),
-        [tasks, boardProps.resolveUserName]
+        () => groupIntoLogicalItems(tasks, resolveName),
+        [tasks, resolveName]
     )
 
     // Arama ITEM duzeyinde uygulanir; klasorler turetilmis oldugu icin
@@ -104,7 +122,12 @@ function TasksExplorerView({ tasks = [], boardProps = {} }) {
         [logicalItems, search]
     )
 
-    const tree = useMemo(() => buildHierarchy(visibleItems), [visibleItems])
+    const tree = useMemo(
+        () => (mode === 'user'
+            ? buildUserHierarchy(visibleItems)
+            : buildHierarchy(visibleItems)),
+        [visibleItems, mode]
+    )
 
     // Filtre degisince gecersiz kalan secim guvenli sekilde ust seviyeye
     // duser — bos sayfa olusmaz (§14).
@@ -128,6 +151,13 @@ function TasksExplorerView({ tasks = [], boardProps = {} }) {
             return next
         })
 
+    const switchMode = (next) => {
+        // Eksen degisince eski secim ARTIK GECERLI DEGIL; koke doneriz
+        // (reconcileSelection zaten korurdu, ama niyet acik olsun).
+        setRawSelection({})
+        setGroupMode(next)
+    }
+
     const selectCustomer = (node) => setRawSelection({ customerId: node.id })
     const selectProject = (cId, node) =>
         setRawSelection({ customerId: cId, projectId: node.id })
@@ -135,6 +165,7 @@ function TasksExplorerView({ tasks = [], boardProps = {} }) {
         setRawSelection({ customerId: cId, projectId: pId, subProjectId: node.id })
 
     const totalCount = tree.reduce((n, c) => n + c.count, 0)
+    const rootLabel = mode === 'user' ? 'All users' : 'All customers'
 
     /* --- Bos durumlar AYRI (§6.5): "klasor bos" ile "filtreye uyan is
        yok" ayni mesaj DEGILDIR. */
@@ -189,10 +220,23 @@ function TasksExplorerView({ tasks = [], boardProps = {} }) {
                         </button>
                     )}
                     <span className="tx-mobile-path">
-                        {crumbs.length ? crumbs.map((c) => c.label).join(' / ') : 'All customers'}
+                        {crumbs.length ? crumbs.map((c) => c.label).join(' / ') : rootLabel}
                     </span>
                 </div>
 
+                {canGroupByUser && (
+                    <Segmented
+                        className="tx-mode"
+                        block
+                        value={mode}
+                        onChange={switchMode}
+                        options={[
+                            { label: 'By customer', value: 'customer' },
+                            { label: 'By user', value: 'user' },
+                        ]}
+                        aria-label="Group folders by"
+                    />
+                )}
                 <Input
                     allowClear
                     prefix={<SearchOutlined />}
@@ -243,6 +287,20 @@ function TasksExplorerView({ tasks = [], boardProps = {} }) {
     return (
         <div className="tx">
             <aside className="tx-tree" aria-label="Work item folders">
+                {canGroupByUser && (
+                    <Segmented
+                        className="tx-mode"
+                        block
+                        size="small"
+                        value={mode}
+                        onChange={switchMode}
+                        options={[
+                            { label: 'By customer', value: 'customer' },
+                            { label: 'By user', value: 'user' },
+                        ]}
+                        aria-label="Group folders by"
+                    />
+                )}
                 <Input
                     allowClear
                     prefix={<SearchOutlined />}
@@ -259,11 +317,11 @@ function TasksExplorerView({ tasks = [], boardProps = {} }) {
                             type="button"
                             className="tx-row__label"
                             aria-current={!selection.customerId ? 'true' : undefined}
-                            aria-label={`All customers, ${totalCount} work items`}
+                            aria-label={`${rootLabel}, ${totalCount} work items`}
                             onClick={() => setRawSelection({})}
                         >
                             <FolderOpenOutlined />
-                            <span className="tx-row__text">All customers</span>
+                            <span className="tx-row__text">{rootLabel}</span>
                             <span className="tx-row__count">{totalCount}</span>
                         </button>
                     </div>
@@ -314,7 +372,7 @@ function TasksExplorerView({ tasks = [], boardProps = {} }) {
             <section className="tx-work" aria-label="Work items in selected folder">
                 <nav className="tx-crumbs" aria-label="Folder path">
                     <button type="button" className="tx-crumb" onClick={() => setRawSelection({})}>
-                        All customers
+                        {rootLabel}
                     </button>
                     {crumbs.map((c) => (
                         <span key={`${c.level}-${c.id}`} className="tx-crumb-part">

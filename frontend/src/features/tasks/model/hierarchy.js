@@ -208,3 +208,64 @@ export const matchesSearch = (item, term) => {
     ]
     return haystack.some((v) => v && String(v).toLocaleLowerCase('en').includes(q))
 }
+
+/**
+ * KISI BAZLI AGAC: User → Customer → Project (§ kullanici istegi,
+ * 2026-08-05). "Assigned by Me" kapsaminda atayan kisi, kimin neyi
+ * yaptigini kisi klasorlerine tiklayarak izler.
+ *
+ * Coklu atamali bir is, atandigi HER kisinin altinda gorunur — bu
+ * dogrudur: o kisinin gercekten bir atamasi vardir. Sayaclar yine
+ * LOGICAL work item sayar.
+ *
+ * Ad cozulemezse ham kimlik BASILMAZ; notr etiket kullanilir ve o
+ * kayitlar tek bir "Unknown user" klasorunde toplanir.
+ */
+export const NO_ASSIGNEE = '__no_assignee__'
+
+export function buildUserHierarchy(items) {
+    const users = new Map()
+
+    for (const item of items || []) {
+        for (const a of item.assignments || []) {
+            const uid = a.assigneeUserId || NO_ASSIGNEE
+            if (!users.has(uid)) {
+                users.set(uid, {
+                    id: uid,
+                    label: a.assigneeName || 'Unknown user',
+                    isVirtual: !a.assigneeUserId,
+                    items: [],
+                })
+            }
+            // Ayni logical is ayni kisi altinda BIR KEZ.
+            const bucket = users.get(uid)
+            if (!bucket.items.some((i) => i.key === item.key)) {
+                bucket.items.push(item)
+            }
+        }
+    }
+
+    return [...users.values()]
+        .map((u) => {
+            // Kisinin altinda AYNI musteri/proje kirilimi kullanilir —
+            // agac bileseni tek bir sekil bekler, ikinci bir duzen yok.
+            const inner = buildHierarchy(u.items)
+            const projects = inner.flatMap((c) =>
+                c.children.map((p) => ({
+                    ...p,
+                    label: `${c.label} · ${p.label}`,
+                }))
+            )
+            return {
+                id: u.id,
+                label: u.label,
+                isVirtual: u.isVirtual,
+                children: projects,
+                count: u.items.length,
+            }
+        })
+        .sort((a, b) => {
+            if (a.isVirtual !== b.isVirtual) return a.isVirtual ? 1 : -1
+            return a.label.localeCompare(b.label, 'en')
+        })
+}

@@ -242,3 +242,6 @@
     display: none;
   }
 }
+
+/* Gruplama ekseni secici (Customer | User) — agacin ustunde, ince. */
+.tx-mode { margin-bottom: 10px; }

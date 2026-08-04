@@ -26,6 +26,7 @@
 import { useState } from 'react'
 import { Empty, message } from 'antd'
 import useMultiAssignmentDrop from '../features/tasks/hooks/useMultiAssignmentDrop'
+import useAssigneeScope from '../features/tasks/hooks/useAssigneeScope'
 import MultiAssignmentConfirm from '../features/tasks/components/MultiAssignmentConfirm'
 
 import { useAuthStore } from '../stores/authStore'
@@ -118,6 +119,13 @@ function TasksPage() {
         },
     })
 
+    // Kisi ekseni: secenekler + istemci tarafi daraltma (hook'ta).
+    const { isAssignedByMe, assigneeOptions, visibleTasks } = useAssigneeScope({
+        tasks,
+        taskScope: view.taskScope,
+        userMap: directory.userMap,
+        assigneeFilter: filters.assignee,
+    })
     const status = useTaskStatusMutation()
     const workLog = useTaskWorkLog()
 
@@ -302,6 +310,8 @@ function TasksPage() {
                         onCustomerChange={filterActions.setCustomer}
                         onProjectChange={filterActions.setProject}
                         onSubProjectChange={filterActions.setSubProject}
+                        assigneeOptions={assigneeOptions}
+                        onAssigneeChange={filterActions.setAssignee}
                         onClear={clearFilters}
                     />
                 </Drawer>
@@ -309,7 +319,8 @@ function TasksPage() {
                 <TasksSurface
                     isLoading={isLoading}
                     viewLayout={view.viewLayout}
-                    tasks={tasks}
+                    tasks={visibleTasks}
+                    canGroupByUser={isAssignedByMe}
                     userMap={directory.userMap}
                     currentUserId={user?.id}
                     isAdmin={isTaskAdmin}

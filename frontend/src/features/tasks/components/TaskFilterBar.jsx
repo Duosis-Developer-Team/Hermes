@@ -19,6 +19,7 @@ import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '../model/constants'
 function TaskFilterBar({
     filters, customers, projects, subProjects,
     onStatusChange, onPriorityChange, onCustomerChange, onProjectChange,
+    assigneeOptions = null, onAssigneeChange,
     onSubProjectChange, onClear,
 }) {
     return (
@@ -28,6 +29,22 @@ function TaskFilterBar({
         <div className="task-filterbar">
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
                 <FilterOutlined style={{ color: 'var(--c-text-muted)' }} />
+                {/* Kisi filtresi YALNIZ "Assigned by Me" kapsaminda
+                    anlamlidir; ust katman secenek listesini yalnizca o
+                    kapsamda verir (My Tasks'ta zaten tek kisi vardir). */}
+                {assigneeOptions && (
+                    <Select
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        aria-label="Filter by user"
+                        placeholder="User"
+                        style={{ width: '100%' }}
+                        value={filters.assignee || undefined}
+                        onChange={(v) => onAssigneeChange?.(v ?? null)}
+                        options={assigneeOptions}
+                    />
+                )}
                 <Select
                     allowClear
                     aria-label="Filter by status"

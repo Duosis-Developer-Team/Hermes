@@ -45,6 +45,7 @@ function TasksSurface({
     onCreate,
     onCardDrop,
     onMultiAssignmentDrop,
+    canGroupByUser = false,
     onOpenPanel,
     onClosePanel,
 }) {
@@ -108,6 +109,7 @@ function TasksSurface({
                     <TasksExplorerView
                         tasks={tasks}
                         boardProps={explorerBoardProps}
+                        canGroupByUser={canGroupByUser}
                     />
                 ) : (
                     <TasksBoardView
