@@ -18,6 +18,7 @@ import { Spin } from 'antd'
 import TasksBoardView from '../../../components/tasks/TasksBoardView'
 import TasksListView from '../../../components/tasks/TasksListView'
 import TaskDetailPanel from '../../../components/tasks/TaskDetailPanel'
+import TasksExplorerView from './TasksExplorerView'
 
 function TasksSurface({
     isLoading,
@@ -39,6 +40,7 @@ function TasksSurface({
     onToggleCompletion,
     onCreate,
     onCardDrop,
+    onMultiAssignmentDrop,
     onOpenPanel,
     onClosePanel,
 }) {
@@ -66,6 +68,21 @@ function TasksSurface({
                     </div>
                 ) : viewLayout === 'list' ? (
                     <TasksListView {...shared} allowStatusChange={allowStatusChange} />
+                ) : viewLayout === 'explorer' ? (
+                    /* Explorer, calisma alaninda AYNI Board'u kullanir —
+                       ikinci bir drag engine veya ikinci bir kart dili
+                       olusmaz (§6.4). */
+                    <TasksExplorerView
+                        tasks={tasks}
+                        boardProps={{
+                            ...shared,
+                            onCreate,
+                            canCreate,
+                            allowStatusDrag: allowStatusChange,
+                            onCardDrop,
+                            onMultiAssignmentDrop,
+                        }}
+                    />
                 ) : (
                     <TasksBoardView
                         {...shared}
@@ -74,6 +91,7 @@ function TasksSurface({
                         groupByAssignee={groupByAssignee}
                         allowStatusDrag={allowStatusChange}
                         onCardDrop={onCardDrop}
+                        onMultiAssignmentDrop={onMultiAssignmentDrop}
                     />
                 )}
             </div>

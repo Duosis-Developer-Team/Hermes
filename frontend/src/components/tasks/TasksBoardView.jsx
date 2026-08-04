@@ -41,7 +41,7 @@ import {
 
 import TaskCard from './TaskCard'
 import { canDragTaskStatus } from '../../features/tasks/model/permissions'
-import { groupIntoLogicalItems } from '../../features/tasks/model/grouping'
+import { groupIntoLogicalItems, userLabel } from '../../features/tasks/model/grouping'
 import { typeMeta } from '../../utils/workItemType'
 import './TasksBoardView.css'
 
@@ -73,10 +73,6 @@ function parseCellId(id) {
     return { assigneeId: id.slice(0, sep), status: id.slice(sep + 2) }
 }
 
-function userLabel(id, userMap) {
-    const u = userMap?.[id]
-    return u?.full_name || u?.email || 'Unknown'
-}
 
 // ── Draggable wrapper around a TaskCard ─────────────────────────────────
 function DraggableCard({ id, disabled, children }) {

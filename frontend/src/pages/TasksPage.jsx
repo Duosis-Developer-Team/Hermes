@@ -25,6 +25,8 @@
 
 import { useState } from 'react'
 import { Empty, message } from 'antd'
+import useMultiAssignmentDrop from '../features/tasks/hooks/useMultiAssignmentDrop'
+import MultiAssignmentConfirm from '../features/tasks/components/MultiAssignmentConfirm'
 
 import { useAuthStore } from '../stores/authStore'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
@@ -175,6 +177,13 @@ function TasksPage() {
         if (result.ok && newStatus === 'completed') workLog.openLogTime(task)
     }
 
+    // Coklu atama surukleme onayi — kural ve durum hook'ta (§11).
+    const multi = useMultiAssignmentDrop({
+        currentUserId: user?.id,
+        applyDrop: handleCardDrop,
+        notify: (text) => message.info(text),
+    })
+
     const handleReviewReopen = async (task) => {
         if (task.status === 'completed') {
             // Yanlislikla tamamlamayi geri al → In Progress (kendi isini
@@ -323,6 +332,7 @@ function TasksPage() {
                     onToggleCompletion={dialogs.requestToggle}
                     onCreate={dialogs.openCreate}
                     onCardDrop={handleCardDrop}
+                    onMultiAssignmentDrop={multi.start}
                     onOpenPanel={dialogs.openPanel}
                     onClosePanel={dialogs.closePanel}
                 />
@@ -411,6 +421,14 @@ function TasksPage() {
                 prefillTask={workLog.logTimeTask}
                 initialDate={workLog.logTimeTask?.scheduled_date || null}
                 loading={workLog.isLoggingTime}
+            />
+
+            <MultiAssignmentConfirm
+                pending={multi.pending}
+                userMap={directory.userMap}
+                onToggle={multi.toggle}
+                onCancel={multi.cancel}
+                onConfirm={multi.confirm}
             />
         </div>
     )

@@ -1,0 +1,209 @@
+/* =============================================================================
+   Explorer — hiyerarsi agaci + secili klasorun calisma alani
+   =============================================================================
+   Borderless premium dil: buyuk gri Card yiginlari YOK, agac ile icerik
+   arasinda tek ince ayirici. Animasyonlar 160-200ms bandinda ve yalniz
+   renk/opacity uzerinde; toptan gecis (her ozellik), blur veya buyuk
+   golge KULLANILMAZ.
+   ========================================================================== */
+
+.tx {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 0;
+  align-items: start;
+  min-height: 0;
+}
+
+/* --- Agac ------------------------------------------------------------- */
+.tx-tree {
+  border-right: 1px solid var(--h-border-subtle);
+  padding: 0 12px 12px 0;
+  min-width: 0;
+}
+
+.tx-search { margin-bottom: 10px; }
+
+.tx-tree-scroll {
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.tx-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 8px;
+  min-width: 0;
+  transition:
+    background var(--h-motion-fast) var(--h-ease-standard),
+    color var(--h-motion-fast) var(--h-ease-standard);
+}
+.tx-row:hover { background: var(--h-bg-hover); }
+.tx-row.is-selected { background: var(--h-bg-selected); }
+
+.tx-row__toggle {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 28px;
+  background: none;
+  border: 0;
+  appearance: none;
+  cursor: pointer;
+  color: var(--h-text-muted);
+  font-size: 11px;
+  line-height: 1;
+}
+.tx-row__toggle:disabled { cursor: default; opacity: 0; }
+.tx-row__toggle:focus-visible,
+.tx-row__label:focus-visible {
+  outline: 2px solid var(--h-focus);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.tx-row__label {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 5px 8px 5px 2px;
+  background: none;
+  border: 0;
+  appearance: none;
+  cursor: pointer;
+  color: var(--h-text-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+
+.tx-row__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tx-row__count {
+  flex: 0 0 auto;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--h-surface-subtle);
+  color: var(--h-text-secondary);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.tx-row.is-selected .tx-row__count {
+  background: color-mix(in srgb, var(--h-brand) 20%, transparent);
+  color: var(--h-brand);
+}
+
+.tx-row--root .tx-row__label { font-weight: 600; }
+.tx-tree-empty {
+  padding: 16px 8px;
+  color: var(--h-text-muted);
+  font-size: 13px;
+}
+
+/* --- Calisma alani ---------------------------------------------------- */
+.tx-work {
+  padding-left: 16px;
+  min-width: 0;
+}
+
+.tx-crumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--h-text-secondary);
+}
+.tx-crumb {
+  background: none;
+  border: 0;
+  appearance: none;
+  padding: 2px 4px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.tx-crumbs button.tx-crumb:hover { color: var(--h-brand); }
+.tx-crumb:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 1px; }
+.tx-crumb-sep { opacity: 0.5; padding: 0 2px; }
+
+.tx-empty { padding: 40px 0; }
+
+/* --- Mobil: drill-down ------------------------------------------------ */
+.tx--mobile { display: block; }
+
+.tx-mobile-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  min-height: 44px;
+}
+.tx-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  background: none;
+  border: 1px solid var(--h-border-subtle);
+  border-radius: 8px;
+  color: var(--h-text-primary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tx-mobile-path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--h-text-secondary);
+  font-size: 13px;
+}
+
+.tx-mobile-list { display: flex; flex-direction: column; }
+.tx-mobile-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Dokunma hedefi >= 44px (§16). */
+  min-height: 44px;
+  padding: 8px 4px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--h-border-subtle);
+  appearance: none;
+  color: var(--h-text-primary);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.tx-mobile-row:focus-visible { outline: 2px solid var(--h-focus); outline-offset: -2px; }
+
+.tx-mobile-items { margin-top: 12px; }
+
+@media (max-width: 768px) {
+  .tx { grid-template-columns: 1fr; }
+  .tx-tree { border-right: 0; padding-right: 0; }
+  .tx-work { padding-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tx-row { transition: none; }
+}

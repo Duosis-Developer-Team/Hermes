@@ -14,10 +14,13 @@
 import { useState } from 'react'
 
 import { currentWeekStart } from '../model/dates'
+import { DEFAULT_TASK_LAYOUT } from '../model/constants'
 
 export function useTaskViewState({ canViewAssignedByMe }) {
     const [weekStart, setWeekStart] = useState(() => currentWeekStart())
-    const [viewLayout, setViewLayout] = useState('board')
+    // §6.1: Explorer VARSAYILAN gorunumdur. Ilk render'da dogrudan
+    // Explorer cizilir — once Board gosterip sonra gecis YOK.
+    const [viewLayout, setViewLayout] = useState(DEFAULT_TASK_LAYOUT)
     const [rangeMode, setRangeMode] = useState('all')
     const [groupByAssignee, setGroupByAssignee] = useState(false)
     const [taskScope, setTaskScope] = useState('my-tasks')

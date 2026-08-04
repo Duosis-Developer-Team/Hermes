@@ -110,3 +110,14 @@ export const canEditTask = ({ task, currentUserId, isTaskAdmin = false }) => {
     return task.assigner_user_id === currentUserId
 }
 
+
+/**
+ * Bu satir kullanicinin KENDI atamasi mi?
+ *
+ * Coklu atamali bir logical work item'da "kimin durumu degisecek"
+ * sorusu bir YETKI sorusudur; sayfa veya hook icinde ham alan
+ * karsilastirmasi yapmak izin katmanini asan ikinci bir kural olurdu
+ * (kilit: featureStructure "durum degistirme kurali TEK yerde").
+ */
+export const isOwnAssignment = ({ task, currentUserId }) =>
+    Boolean(task?.assignee_user_id) && task.assignee_user_id === currentUserId

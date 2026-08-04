@@ -51,6 +51,13 @@ export const UNKNOWN_ASSIGNEE_LABEL = 'Unknown user'
 export const assigneeLabelOf = (assignment) =>
     assignment?.assigneeName || UNKNOWN_ASSIGNEE_LABEL
 
+/** Dizin haritasindan kullanicinin gorunur adi. TEK kaynak: Board,
+ *  List ve sayfa ayni kurali kullanir, kopya tutulmaz. */
+export const userLabel = (id, userMap) => {
+    const u = userMap?.[id]
+    return u?.full_name || u?.email || 'Unknown'
+}
+
 /** Bir gorunur assignment'in status'u — bilinmeyen deger 'pending' sayilir
  *  (kart bir sutunda MUTLAKA yer almali; sessizce kaybolmamali). */
 const KNOWN_STATUSES = new Set([

@@ -55,9 +55,18 @@ export const TASK_QUICK_FILTERS = [
 // Layout axis — the old Calendar (weekly) layout was removed as it was
 // not usable for task management. Board is the default surface.
 export const TASK_LAYOUTS = [
+    { value: 'explorer', label: 'Explorer' },
     { value: 'board', label: 'Board' },
     { value: 'list', label: 'List' },
 ]
+
+/** Tasks sayfasinin VARSAYILAN gorunumu (§6.1). Gecersiz/eski bir
+ *  deger geldiginde de buraya duselir — Board gosterip hemen Explorer'a
+ *  gecerek gorsel flash olusturulmaz. */
+export const DEFAULT_TASK_LAYOUT = 'explorer'
+
+export const isValidTaskLayout = (value) =>
+    TASK_LAYOUTS.some((l) => l.value === value)
 
 // Time range axis — 'all' (default): date-independent kanban showing
 // every visible item regardless of dates. 'week': the classic weekly

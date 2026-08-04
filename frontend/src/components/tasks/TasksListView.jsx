@@ -29,7 +29,7 @@ import { TaskDueBadge } from './TaskCard'
 import {
     canDragTaskStatus, canEditTask,
 } from '../../features/tasks/model/permissions'
-import { groupIntoLogicalItems } from '../../features/tasks/model/grouping'
+import { groupIntoLogicalItems, userLabel } from '../../features/tasks/model/grouping'
 import { AssignmentRoster } from '../../features/tasks/components/AssigneeStatusBadge'
 import { typeMeta } from '../../utils/workItemType'
 
@@ -58,11 +58,6 @@ const STATUS_COLOR = {
     rejected: 'red',
 }
 
-function userLabel(id, userMap) {
-    if (!id) return '—'
-    const u = userMap?.[id]
-    return u?.full_name || u?.email || id
-}
 
 function TasksListView({
     tasks = [],
