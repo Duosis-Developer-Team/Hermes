@@ -14,32 +14,84 @@
    modal/dropdown. Gri yalniz ikincil metin/divider duzeyinde.
    ========================================================================== */
 
-/* --- 1. Butonlar ------------------------------------------------------- */
-/* Primary: kontrollu marka gradyani + hover isik kaymasi + dogal basilma.
-   Eski duz mavi AntD gorunumu tamamen kalkar. */
-:root .ant-btn-primary:not(:disabled):not(.ant-btn-dangerous) {
-  background: var(--h-grad-primary);
-  background-size: 140% 140%;
-  background-position: 0% 50%;
-  border: none;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+/* --- 1. Butonlar — TEK PREMIUM DIL ------------------------------------
+   KULLANICI KARARI (2026-08-04): uygulamadaki parlak duz mavi butonlar
+   tamamen kalkti. Artik TEK dil var ve her sayfada aynidir:
+     - zemin: arka planla uyumlu, koyu-mavi tonal yuzey (neon yok)
+     - cerceve: ince mavi hairline
+     - hover: yumusak gradient parlama + hafif yukselme
+     - active: dogal basilma
+     - focus-visible: belirgin halka
+   `type="primary"`, `.h-create-action` ve section aksiyonlari ayni
+   goruntuyu verir — bir sayfa digerinden farkli gorunmez. */
+:root .ant-btn-primary:not(:disabled):not(.ant-btn-dangerous),
+:root .ant-btn.h-create-action:not(:disabled) {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--h-brand) 22%, transparent),
+      color-mix(in srgb, var(--h-brand) 10%, transparent)
+    ),
+    var(--h-bg-surface);
+  border: 1px solid color-mix(in srgb, var(--h-brand) 45%, transparent);
+  color: var(--h-brand);
+  font-weight: 550;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10);
   transition:
-    background-position var(--h-motion-base) var(--h-ease-standard),
+    border-color var(--h-motion-fast) var(--h-ease-standard),
     box-shadow var(--h-motion-fast) var(--h-ease-standard),
+    color var(--h-motion-fast) var(--h-ease-standard),
     transform var(--h-motion-instant) var(--h-ease-standard);
 }
-:root .ant-btn-primary:not(:disabled):not(.ant-btn-dangerous):hover {
-  background: var(--h-grad-primary-hover);
-  background-size: 140% 140%;
-  background-position: 60% 50%;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+/* Hover: ince bir isik yatay gecer (yalniz opacity/transform). */
+:root .ant-btn-primary:not(:disabled):not(.ant-btn-dangerous)::after,
+:root .ant-btn.h-create-action:not(:disabled)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 20%,
+    color-mix(in srgb, var(--h-brand) 20%, transparent) 50%,
+    transparent 80%
+  );
+  transform: translateX(-120%);
+  opacity: 0;
+  transition:
+    transform var(--h-motion-base) var(--h-ease-standard),
+    opacity var(--h-motion-fast) var(--h-ease-standard);
+  pointer-events: none;
 }
-:root .ant-btn-primary:not(:disabled):not(.ant-btn-dangerous):active {
-  transform: translateY(0.5px) scale(0.985);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+:root .ant-btn-primary:not(:disabled):not(.ant-btn-dangerous):hover::after,
+:root .ant-btn.h-create-action:not(:disabled):hover::after {
+  transform: translateX(120%);
+  opacity: 1;
+}
+:root .ant-btn-primary:not(:disabled):not(.ant-btn-dangerous):hover,
+:root .ant-btn.h-create-action:not(:disabled):hover {
+  border-color: var(--h-brand);
+  color: var(--h-brand-hover);
+  box-shadow:
+    0 2px 10px color-mix(in srgb, var(--h-brand) 18%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+:root .ant-btn-primary:not(:disabled):not(.ant-btn-dangerous):active,
+:root .ant-btn.h-create-action:not(:disabled):active {
+  transform: translateY(0) scale(0.985);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+:root .ant-btn-primary:disabled,
+:root .ant-btn.h-create-action[disabled] {
+  background: transparent;
+  border-color: var(--h-border-subtle);
+  color: var(--h-text-muted);
+  box-shadow: none;
 }
 
-/* Secondary/default: seffaf ghost — buyuk gri dolgu yok. */
+/* Secondary/default: ayni ailenin sessiz uyesi. */
 :root .ant-btn-default:not(:disabled) {
   background: transparent;
   border-color: var(--h-border-default);
@@ -50,12 +102,11 @@
     transform var(--h-motion-instant) var(--h-ease-standard);
 }
 :root .ant-btn-default:not(:disabled):hover {
-  background: var(--h-bg-hover);
-  border-color: var(--h-border-strong);
+  background: color-mix(in srgb, var(--h-brand) 7%, transparent);
+  border-color: color-mix(in srgb, var(--h-brand) 45%, transparent);
+  color: var(--h-brand);
 }
-:root .ant-btn-default:not(:disabled):active {
-  transform: scale(0.985);
-}
+:root .ant-btn-default:not(:disabled):active { transform: scale(0.985); }
 
 /* Danger: gradient DEGIL — olculu tonal kirmizi. */
 :root .ant-btn-dangerous:not(:disabled) {
@@ -218,6 +269,10 @@
 /* Tam sutun boyamasi YASAK. Gun basligina kucuk, cift cizgili capraz
    sancak: light'ta koyu tonal, dark'ta acik tonal. Renk tek basina
    anlam tasimasin diye aria-current="date" ile birlikte kullanilir. */
+/* BUGUN SANCAGI (2026-08-04, kullanici karari): capraz cizgiler yerine
+   DIKEY iki ince cizgi — gun basligindan asagi inen kucuk bir sancak/
+   direk hissi. Marka mavisinin daha doygun ucu kullanilir; ust uc
+   yuvarlatilir, alt uc inceltilerek "asili" gorunum verilir. */
 .h-today-flag {
   position: relative;
 }
@@ -225,16 +280,19 @@
 .h-today-flag::after {
   content: '';
   position: absolute;
-  top: 2px;
-  width: 14px;
-  height: 2px;
+  top: 1px;
+  width: 2px;
+  height: 15px;
   border-radius: 1px;
-  background: color-mix(in srgb, var(--h-brand) 75%, var(--h-text-primary));
-  transform: rotate(-45deg);
+  background: linear-gradient(
+    180deg,
+    var(--h-brand) 0%,
+    color-mix(in srgb, var(--h-brand) 45%, transparent) 100%
+  );
   pointer-events: none;
 }
-.h-today-flag::before { right: -2px; }
-.h-today-flag::after { right: -7px; top: 7px; }
+.h-today-flag::before { right: 0; }
+.h-today-flag::after  { right: 5px; height: 11px; opacity: 0.65; }
 
 /* Bugun etiketi: kucuk, zarif accent metin (renk tek basina anlam
    tasimasin — sancak + etiket + aria-current birlikte). */
@@ -366,10 +424,21 @@
 :root .users-page .ant-tabs-tab { padding: 8px 2px; }
 :root .users-page .ant-tabs-ink-bar { background: var(--h-grad-primary); height: 2px; }
 
-/* Modal cilasi: ust hairline gradient + yumusak ayirici. */
+/* Modal kabugu: arka planla uyumlu koyu yuzey + koyu-mavi detaylar. */
 :root .ant-modal .ant-modal-content {
   border-radius: 16px;
   overflow: hidden;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--h-brand) 6%, transparent),
+      transparent 180px
+    ),
+    var(--h-surface-overlay);
+  border: 1px solid color-mix(in srgb, var(--h-brand) 18%, var(--h-border-subtle));
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.45),
+    0 0 0 1px color-mix(in srgb, var(--h-brand) 8%, transparent);
 }
 :root .ant-modal .ant-modal-content::before {
   content: '';
@@ -379,7 +448,12 @@
   opacity: 0.85;
 }
 :root .ant-modal .ant-modal-header { border-bottom-color: transparent; padding-bottom: var(--h-space-2); }
-:root .ant-modal .ant-modal-footer { border-top-color: var(--h-border-subtle); }
+:root .ant-modal .ant-modal-footer {
+  border-top-color: color-mix(in srgb, var(--h-brand) 14%, var(--h-border-subtle));
+}
+:root .ant-drawer .ant-drawer-header {
+  border-bottom-color: color-mix(in srgb, var(--h-brand) 14%, var(--h-border-subtle));
+}
 
 /* Billable Hours: kesintisiz data-list (dis kutu ve gri baslik yok). */
 :root .billable-page .ant-table-wrapper .ant-table-thead > tr > th {
@@ -425,19 +499,36 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--h-text-muted);
 }
-/* KULLANICI BULGUSU (2026-08-04): genel modal govdesine konan
-   `max-height: 66vh` uzun formlari (orn. Log Time) YARIM aciyordu —
-   kullanici formu doldurmak icin ic scroll'a mecbur kaliyordu. Kural
-   artik YALNIZ gercekten uzun/liste tipi govdelere uygulanir; normal
-   modallar iceriginin tamamini gosterir ve gerekirse SAYFA scroll'u
-   devreye girer. */
-:root .ant-modal.h-modal-scroll .ant-modal-body {
-  max-height: min(66vh, 620px);
-  overflow-y: auto;
+/* MODAL SOZLESMESI (2026-08-04, kullanici karari): her modal TEK PARCA
+   acilir — ic scroll'a mecbur birakmaz. Govde yuksekligi viewport'a
+   gore sinirlanir ve icerik SIGMAZSA yalnizca o zaman kayar; boylece
+   uzun formlar (Log Time, Task) tam gorunur, kisa modallar da ortada
+   dengeli durur. Ayrica koyu-mavi detay katmani: ust hairline gradient,
+   yumusak kenar isigi ve tonal ayiricilar. */
+:root .ant-modal {
+  top: 16px;
+  padding-bottom: 16px;
 }
-/* Modal genel: viewport'a gore daha yukaridan baslar, daha uzun acilir. */
-:root .ant-modal { top: 32px; padding-bottom: 32px; }
-:root .ant-modal .ant-modal-body { max-height: none; }
+/* Govde: ekrana SIGACAK kadar genis pencere — formlar tek parca acilir,
+   yalnizca gercekten tasan icerikte kayar (ic scroll son care). */
+:root .ant-modal .ant-modal-body {
+  max-height: calc(100vh - 158px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+:root .ant-modal.h-modal-scroll .ant-modal-body {
+  max-height: calc(100vh - 158px);
+}
+/* Form yogunlugu: satirlar arasi bosluk sikilastirilir ki uzun formlar
+   (Log Time, Create Task) tek ekranda tamamlansin. */
+:root .ant-modal .ant-form-item { margin-bottom: 14px; }
+:root .ant-modal .ant-modal-header { padding-bottom: var(--h-space-2); }
+/* Govde kaydirma cubugu: ince ve tonal (kaba gri bar degil). */
+:root .ant-modal .ant-modal-body::-webkit-scrollbar { width: 8px; }
+:root .ant-modal .ant-modal-body::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--h-brand) 26%, transparent);
+  border-radius: 999px;
+}
 
 /* --- Responsive: mobil davranis (premium redesign) --------------------- */
 @media (max-width: 768px) {

@@ -340,3 +340,68 @@
         min-width: 0;
     }
 }
+
+
+/* --- Mail Notifications: RBAC-benzeri toggle cip satirlari ------------ */
+.tm-notif-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.tm-notif-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 12px 5px 10px;
+    border-radius: var(--h-radius-pill);
+    border: 1px solid var(--h-border-subtle);
+    background: transparent;
+    color: var(--h-text-secondary);
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+    transition:
+        border-color var(--h-motion-fast) var(--h-ease-standard),
+        background var(--h-motion-fast) var(--h-ease-standard),
+        color var(--h-motion-fast) var(--h-ease-standard);
+}
+.tm-notif-chip-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--h-border-strong);
+    transition: background var(--h-motion-fast) var(--h-ease-standard),
+        box-shadow var(--h-motion-fast) var(--h-ease-standard);
+}
+.tm-notif-chip:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--h-brand) 40%, transparent);
+    color: var(--h-text-primary);
+}
+.tm-notif-chip:focus-visible {
+    outline: 2px solid var(--h-focus);
+    outline-offset: 2px;
+}
+.tm-notif-chip.is-on {
+    border-color: color-mix(in srgb, var(--h-brand) 50%, transparent);
+    background: color-mix(in srgb, var(--h-brand) 12%, transparent);
+    color: var(--h-brand);
+    font-weight: 600;
+}
+.tm-notif-chip.is-on .tm-notif-chip-dot {
+    background: var(--h-brand);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--h-brand) 18%, transparent);
+}
+.tm-notif-chip:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* --- Hierarchy: kisiler arasi PREMIUM ayirici ------------------------- */
+/* Kullanici bulgusu: assigner satirlari arasinda ayrim yoktu. Ince,
+   arka planla uyumlu koyu-mavi hairline satirlari ayirir. */
+.tm-assigner-card + .tm-assigner-card {
+    border-top: 1px solid color-mix(in srgb, var(--h-brand) 22%, var(--h-border-subtle));
+}
+.tm-assigner-card > .ant-card-body > div:first-child {
+    transition: background var(--h-motion-fast) var(--h-ease-standard);
+}
+.tm-assigner-card > .ant-card-body > div:first-child:hover {
+    background: color-mix(in srgb, var(--h-brand) 5%, transparent);
+}

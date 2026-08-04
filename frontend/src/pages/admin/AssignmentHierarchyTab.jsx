@@ -68,10 +68,13 @@ function AssignerCard({
     const groupCount = groupRelations.length
 
     return (
+        /* Kullanici bulgusu: assigner satirlari arasinda ayrim yoktu.
+           Kart yerine, aralarinda ince koyu-mavi hairline bulunan
+           premium satirlar. */
         <Card
             size="small"
-            style={{ marginBottom: 12 }}
-            /* AntD 5.x: bodyStyle deprecated → styles.body. */
+            className="tm-assigner-card"
+            style={{ marginBottom: 0 }}
             styles={{ body: { padding: 0 } }}
         >
             <div

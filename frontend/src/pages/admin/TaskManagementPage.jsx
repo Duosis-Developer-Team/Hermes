@@ -564,23 +564,33 @@ function MailNotificationsTab() {
                         <div className="tm-notif-controls">
                             <div className="tm-notif-field">
                                 <span className="tm-notif-label">Events</span>
-                                <Space wrap size={12}>
-                                    {NOTIF_EVENTS.map((ev) => (
-                                        <Checkbox
-                                            key={ev.key}
-                                            checked={!!row[ev.key]}
-                                            disabled={disabled}
-                                            onChange={(e) =>
-                                                save(row, {
-                                                    [ev.key]:
-                                                        e.target.checked,
-                                                })
-                                            }
-                                        >
-                                            {ev.label}
-                                        </Checkbox>
-                                    ))}
-                                </Space>
+                                {/*
+                                  * Kullanici karari (2026-08-04): dagini k
+                                  * checkbox'lar yerine RBAC izin satirlarindaki
+                                  * gibi TIKLANABILIR TOGGLE CIP'ler — secili
+                                  * olan tonal accent tasir, secili olmayan
+                                  * sessiz kalir. Davranis/kaydetme AYNI.
+                                  */}
+                                <div className="tm-notif-chips">
+                                    {NOTIF_EVENTS.map((ev) => {
+                                        const on = !!row[ev.key]
+                                        return (
+                                            <button
+                                                key={ev.key}
+                                                type="button"
+                                                className={`tm-notif-chip${on ? ' is-on' : ''}`}
+                                                aria-pressed={on}
+                                                disabled={disabled}
+                                                onClick={() =>
+                                                    save(row, { [ev.key]: !on })
+                                                }
+                                            >
+                                                <span className="tm-notif-chip-dot" aria-hidden="true" />
+                                                {ev.label}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
                             </div>
                             <div className="tm-notif-field">
                                 <span className="tm-notif-label">

@@ -779,3 +779,13 @@
         gap: 6px 16px;
     }
 }
+
+/* Adim icindeki aksiyonlar: metinden ayri, nefes payli bir satir. */
+.dp-step-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 14px 0 4px;
+    padding-top: 12px;
+    border-top: 1px solid color-mix(in srgb, var(--h-brand) 14%, var(--h-border-subtle));
+}

@@ -78,11 +78,16 @@ function GettingStartedSection({ isAdmin, goTo }) {
                         your integration needs.
                     </p>
                     {isAdmin ? (
-                        <Link to="/api-management">
-                            <Button type="primary" icon={<ApiOutlined />}>
-                                Open API Management
-                            </Button>
-                        </Link>
+                        /* Kullanici bulgusu: aksiyon metne yapisikti ve
+                           parlak maviydi. Artik kendi nefes payi olan bir
+                           aksiyon satirinda ve ortak premium dilde. */
+                        <div className="dp-step-actions">
+                            <Link to="/api-management">
+                                <Button className="h-create-action" icon={<ApiOutlined />}>
+                                    Open API Management
+                                </Button>
+                            </Link>
+                        </div>
                     ) : (
                         <Alert
                             type="info"
