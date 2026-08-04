@@ -551,8 +551,9 @@ function ApiManagementPage() {
                 onToggle={() => toggle('clients')}
             >
                 <div className="am-clients-toolbar">
+                    {/* Section toolbar'ina bagli kompakt create aksiyonu. */}
                     <Button
-                        type="primary"
+                        className="h-create-action"
                         icon={<PlusOutlined />}
                         onClick={() => setClientModal({ editing: null })}
                     >
@@ -594,8 +595,12 @@ function ApiManagementPage() {
                             </Tag>
                             <span className="am-client-spacer" />
                             <Space wrap>
+                                {/* Uc esit agirlikta dolu buton yerine:
+                                    Edit ghost, New Token create-action,
+                                    Disable kontrollu danger (hover'da). */}
                                 <Button
                                     size="small"
+                                    className="h-inline-action"
                                     onClick={() =>
                                         setClientModal({ editing: c })
                                     }
@@ -604,6 +609,7 @@ function ApiManagementPage() {
                                 </Button>
                                 <Button
                                     size="small"
+                                    className="h-create-action"
                                     icon={<KeyOutlined />}
                                     disabled={c.status !== 'active'}
                                     onClick={() =>
@@ -614,7 +620,8 @@ function ApiManagementPage() {
                                 </Button>
                                 <Button
                                     size="small"
-                                    danger={c.status === 'active'}
+                                    className="h-inline-action h-inline-action--danger"
+                                    danger={false}
                                     onClick={() =>
                                         setConfirm({
                                             kind:

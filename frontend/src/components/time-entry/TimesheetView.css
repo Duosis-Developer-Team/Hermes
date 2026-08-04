@@ -3,9 +3,11 @@
  */
 
 .timesheet-view {
-    background: var(--bg-secondary);
-    border-radius: var(--radius-md);
-    overflow: hidden;
+    /* Premium: gri levha DEGIL — sayfa tuvaliyle butunlesir (List
+       gorunumuyle ayni dil). Ayrimlar ince divider'larla kurulur. */
+    background: transparent;
+    border-radius: 0;
+    overflow: visible;
     position: relative;
 }
 
@@ -18,10 +20,10 @@
 }
 
 .timesheet-table .ant-table-thead>tr>th {
-    background: var(--bg-tertiary) !important;
-    border-bottom: 1px solid var(--border-default) !important;
-    border-right: 1px solid var(--border-default) !important;
-    color: var(--text-secondary) !important;
+    background: transparent;
+    border-bottom: 1px solid var(--h-border-default);
+    border-right: 1px solid var(--h-border-subtle);
+    color: var(--h-text-muted);
     font-weight: 600;
     font-size: 11px;
     padding: 8px 10px !important;
@@ -33,10 +35,10 @@
 }
 
 .timesheet-table .ant-table-tbody>tr>td {
-    border-bottom: 1px solid var(--border-default) !important;
-    border-right: 1px solid var(--border-default) !important;
-    padding: 6px 10px !important;
-    background: var(--bg-secondary) !important;
+    border-bottom: 1px solid var(--h-border-subtle);
+    border-right: 1px solid var(--h-border-subtle);
+    padding: 6px 10px;
+    background: transparent;
 }
 
 .timesheet-table .ant-table-tbody>tr>td:last-child {
@@ -44,7 +46,7 @@
 }
 
 .timesheet-table .ant-table-tbody>tr:hover>td {
-    background: var(--bg-tertiary) !important;
+    background: color-mix(in srgb, var(--h-brand) 5%, transparent);
 }
 
 .timesheet-row {
@@ -147,7 +149,7 @@
 }
 
 .timesheet-day-cell.weekend {
-    background: rgba(0, 0, 0, 0.1) !important;
+    background: var(--h-bg-weekend);
 }
 
 /* Premium UI: bugun hucre/kolon BOYANMAZ — baslik sancagi yeterli
@@ -185,13 +187,13 @@
    ========================================================================== */
 
 .timesheet-total-row {
-    background: var(--bg-tertiary) !important;
+    background: transparent;
     font-weight: 600;
     border-top: 2px solid var(--border-default);
 }
 
 .timesheet-total-row td {
-    background: var(--bg-tertiary) !important;
+    background: transparent;
     border-bottom: none !important;
     padding: 10px 10px !important;
 }
@@ -217,7 +219,7 @@
 }
 
 .timesheet-total-day.weekend {
-    background: rgba(0, 0, 0, 0.05) !important;
+    background: color-mix(in srgb, var(--h-brand) 4%, transparent);
     color: var(--text-muted);
 }
 

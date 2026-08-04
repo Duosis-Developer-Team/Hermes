@@ -425,8 +425,19 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--h-text-muted);
 }
-/* Modal govdesi uzun listede kendi icinde scroll etsin (footer sticky). */
-:root .ant-modal .ant-modal-body { max-height: min(66vh, 620px); overflow-y: auto; }
+/* KULLANICI BULGUSU (2026-08-04): genel modal govdesine konan
+   `max-height: 66vh` uzun formlari (orn. Log Time) YARIM aciyordu —
+   kullanici formu doldurmak icin ic scroll'a mecbur kaliyordu. Kural
+   artik YALNIZ gercekten uzun/liste tipi govdelere uygulanir; normal
+   modallar iceriginin tamamini gosterir ve gerekirse SAYFA scroll'u
+   devreye girer. */
+:root .ant-modal.h-modal-scroll .ant-modal-body {
+  max-height: min(66vh, 620px);
+  overflow-y: auto;
+}
+/* Modal genel: viewport'a gore daha yukaridan baslar, daha uzun acilir. */
+:root .ant-modal { top: 32px; padding-bottom: 32px; }
+:root .ant-modal .ant-modal-body { max-height: none; }
 
 /* --- Responsive: mobil davranis (premium redesign) --------------------- */
 @media (max-width: 768px) {

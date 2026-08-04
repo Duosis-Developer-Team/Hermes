@@ -277,3 +277,60 @@
   border-bottom: 1px solid var(--h-border-subtle);
   margin-bottom: var(--h-space-4);
 }
+
+/* --- Create/inline action (ORTAK) --------------------------------------
+   GORSEL REFERANS: Time Entry gun kolonundaki "+" ekleme aksiyonu
+   (.day-column-add-btn). Sayfa/section uzerindeki create/add/token
+   aksiyonlari artik parlak dolu mavi buton DEGIL; notr yuzey + hover'da
+   ince mavi ring dili kullanir. Modal icindeki Save/Confirm gibi
+   birincil onay aksiyonlari bu kapsamda DEGILDIR. */
+:root .ant-btn.h-create-action {
+  background: transparent;
+  border: 1px solid var(--h-border-default);
+  color: var(--h-text-primary);
+  box-shadow: none;
+  font-weight: 500;
+  transition:
+    border-color var(--h-motion-fast) var(--h-ease-standard),
+    background-color var(--h-motion-fast) var(--h-ease-standard),
+    color var(--h-motion-fast) var(--h-ease-standard),
+    transform var(--h-motion-instant) var(--h-ease-standard);
+}
+:root .ant-btn.h-create-action:hover {
+  border-color: color-mix(in srgb, var(--h-brand) 55%, transparent);
+  background: color-mix(in srgb, var(--h-brand) 8%, transparent);
+  color: var(--h-brand);
+}
+:root .ant-btn.h-create-action:focus-visible {
+  outline: 2px solid var(--h-focus);
+  outline-offset: 2px;
+}
+:root .ant-btn.h-create-action:active {
+  transform: scale(0.985);
+  background: color-mix(in srgb, var(--h-brand) 12%, transparent);
+}
+:root .ant-btn.h-create-action[disabled] {
+  color: var(--h-text-muted);
+  border-color: var(--h-border-subtle);
+  background: transparent;
+}
+/* Ikincil satir aksiyonu: cerceve bile yok, yalniz hover tonal. */
+:root .ant-btn.h-inline-action {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--h-text-secondary);
+}
+:root .ant-btn.h-inline-action:hover {
+  background: var(--h-bg-hover);
+  color: var(--h-text-primary);
+}
+:root .ant-btn.h-inline-action.h-inline-action--danger:hover {
+  background: var(--h-surface-danger);
+  color: var(--h-danger);
+}
+/* Dokunma hedefi: mobilde en az 44x44. */
+@media (max-width: 768px) {
+  :root .ant-btn.h-create-action,
+  :root .ant-btn.h-inline-action { min-height: 44px; min-width: 44px; }
+}

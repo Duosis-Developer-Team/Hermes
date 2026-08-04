@@ -116,7 +116,7 @@ function AssignerCard({
                       */}
                     <Button
                         size="small"
-                        type="primary"
+                        className="h-create-action"
                         icon={<PlusOutlined />}
                         aria-label={`Add assignment rule for ${userLabel(assigner)}`}
                         onClick={(e) => {
@@ -691,7 +691,7 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
                     style={{ maxWidth: 320 }}
                 />
                 <Button
-                    type="primary"
+                    className="h-create-action"
                     icon={<PlusOutlined />}
                     /* Kart icindeki ayni metinli butondan AYRI ad: bu
                        hicbir assigner'i on-secmez. */

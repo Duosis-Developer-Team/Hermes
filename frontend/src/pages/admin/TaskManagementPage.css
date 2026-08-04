@@ -242,15 +242,19 @@
     line-height: 1.6;
 }
 
+/* Premium redesign (2026-08-04): Mail Notifications artik "kart yigini"
+   degil — her tur, tuvale oturan bir SATIR. Ayrim: ince divider + kucuk
+   tonal accent; kutu/dolgu yok. Kapali turde satir sonmus gorunur. */
 .tm-notif-row {
-    border: 1px solid var(--c-border);
-    border-left: 3px solid var(--notif-accent, var(--color-primary));
-    border-radius: 10px;
-    background: var(--c-surface);
-    padding: 14px 16px;
-    margin-bottom: 12px;
-    transition: opacity 0.15s ease;
+    border: 0;
+    border-top: 1px solid var(--h-border-subtle);
+    border-radius: 0;
+    background: transparent;
+    padding: 16px 4px;
+    margin-bottom: 0;
+    transition: opacity var(--h-motion-fast) var(--h-ease-standard);
 }
+.tm-notif-row:first-of-type { border-top: 0; }
 
 .tm-notif-row.is-off .tm-notif-controls {
     opacity: 0.45;
@@ -263,18 +267,19 @@
     margin-bottom: 12px;
 }
 
+/* Tur isareti: buyuk renkli nokta yerine ince accent cubugu. */
 .tm-notif-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 999px;
-    background: var(--notif-accent, var(--color-primary));
+    width: 3px;
+    height: 16px;
+    border-radius: 2px;
+    background: var(--notif-accent, var(--h-brand));
     flex-shrink: 0;
 }
 
 .tm-notif-name {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--c-text-strong);
+    font-size: var(--h-font-body);
+    font-weight: 650;
+    color: var(--h-text-primary);
     margin-right: auto;
 }
 
@@ -294,20 +299,23 @@
 
 .tm-notif-label {
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
+    font-weight: 600;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--c-text-muted);
+    color: var(--h-text-muted);
 }
 
 /* Checkbox labels follow the theme — AntD's default is near-black, which
    is unreadable on the dark surface. The variable flips in light mode. */
 .tm-notif-row .ant-checkbox-wrapper {
-    color: var(--c-text-strong);
+    color: var(--h-text-primary);
 }
 .tm-notif-row .ant-checkbox-wrapper-disabled {
-    color: var(--c-text-muted);
+    color: var(--h-text-muted);
 }
+/* Kapali tur: satirin tamami sakinleşir (kutu rengi degistirmeden). */
+.tm-notif-row.is-off .tm-notif-name { color: var(--h-text-secondary); }
+.tm-notif-row.is-off .tm-notif-dot { opacity: 0.35; }
 
 .tm-notif-priorities {
     min-width: 240px;

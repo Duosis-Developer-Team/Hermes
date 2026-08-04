@@ -9,17 +9,19 @@
 
 import { useState, useMemo } from 'react'
 import {
-    DatePicker, Button, Select, Table, message, Tag, Empty, Spin
+    DatePicker, Button, Drawer, Select, Table, message, Tag, Empty, Spin
 } from 'antd'
 import {
     DownloadOutlined,
     CloseCircleOutlined,
-    CalendarOutlined
+    CalendarOutlined,
+    FilterOutlined
 } from '@ant-design/icons'
 import { keepPreviousData, useQuery, useMutation } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 
 import { normalizeApiError } from '../features/admin/shared/normalizeApiError'
+import useIsMobile from '../hooks/useIsMobile'
 import {
     AdminErrorAlert, AdminRefreshHint,
 } from '../features/admin/shared/AdminListStates'
@@ -61,7 +63,8 @@ function ReportsPage() {
     const permissionsLoaded = Array.isArray(permissions)
 
     // ── Filter State ──────────────────────────────────────────────────────────
-    const [moreFiltersOpen, setMoreFiltersOpen] = useState(false)
+    const [filterSheetOpen, setFilterSheetOpen] = useState(false)
+    const isMobile = useIsMobile()
     const [dateRange, setDateRange] = useState([
         dayjs().startOf('month'),
         dayjs().endOf('month')
@@ -141,6 +144,9 @@ function ReportsPage() {
         return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>Access Restricted</div>
     }
 
+    const activeFilterCount =
+        selectedUsers.length + selectedCustomers.length + selectedProjects.length +
+        selectedTypes.length + selectedPlatforms.length
     const hasActiveFilters = selectedUsers.length > 0 || selectedCustomers.length > 0 ||
         selectedProjects.length > 0 || selectedTypes.length > 0 || selectedPlatforms.length > 0
 
@@ -177,8 +183,33 @@ function ReportsPage() {
                 filtreler tek satirlik hafif toolbar; digerleri "More
                 filters" ile acilir. Davranis/sorgu sozlesmesi ayni. */}
             <div style={{ marginBottom: 24 }}>
-                {/* Row 1: Date Range + Users + Customers */}
-                <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
+                {/*
+                  * REGRESYON DUZELTMESI: onceki turda Project/Type/Platform
+                  * "More filters" arkasina alinmisti — filtreler silinmedi
+                  * ama GORUNMEZ oldu. Artik TUM temel filtreler tek kaynakta
+                  * tanimli ve masaustunde DOGRUDAN gorunur; mobilde ayni
+                  * kontroller Filters sheet'inde render edilir (ayni
+                  * erisilebilir adin iki kez DOM'da bulunmamasi icin
+                  * render seviyesinde ayrilir).
+                  */}
+                {isMobile ? (
+                    <>
+                        <Button
+                            icon={<FilterOutlined />}
+                            onClick={() => setFilterSheetOpen(true)}
+                            aria-label="Filters"
+                        >
+                            Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                        </Button>
+                        <Drawer
+                            title="Filters"
+                            placement="bottom"
+                            height="auto"
+                            open={filterSheetOpen}
+                            onClose={() => setFilterSheetOpen(false)}
+                            className="reports-filter-sheet"
+                        >
+                            <div style={{ display: 'grid', gap: 16 }}>
 
                     {/* Date Range */}
                     <FilterBlock label="Date Range" icon={<CalendarOutlined />}>
@@ -196,6 +227,7 @@ function ReportsPage() {
                         <Select
                             mode="multiple"
                             placeholder="All users"
+                            aria-label="Filter by user"
                             value={selectedUsers}
                             onChange={setSelectedUsers}
                             options={users.map(u => ({ value: u.id, label: u.full_name || u.email }))}
@@ -212,6 +244,7 @@ function ReportsPage() {
                         <Select
                             mode="multiple"
                             placeholder="All customers"
+                            aria-label="Filter by customer"
                             value={selectedCustomers}
                             onChange={setSelectedCustomers}
                             options={customers.map(c => ({ value: c.id, label: c.name }))}
@@ -222,30 +255,14 @@ function ReportsPage() {
                             style={{ minWidth: 240, width: 260 }}
                         />
                     </FilterBlock>
-                </div>
 
-                <Button
-                    type="text"
-                    size="small"
-                    onClick={() => setMoreFiltersOpen((v) => !v)}
-                    aria-expanded={moreFiltersOpen}
-                    style={{ color: 'var(--h-text-secondary)', paddingLeft: 0 }}
-                >
-                    {moreFiltersOpen ? 'Hide filters' : 'More filters'}
-                </Button>
-                {moreFiltersOpen && (
-                <div style={{
-                    display: 'flex',
-                    gap: 20,
-                    flexWrap: 'wrap',
-                    alignItems: 'flex-end',
-                    paddingTop: 12
-                }}>
+
                     {/* Projects */}
                     <FilterBlock label="Projects" count={selectedProjects.length}>
                         <Select
                             mode="multiple"
                             placeholder="All projects"
+                            aria-label="Filter by project"
                             value={selectedProjects}
                             onChange={setSelectedProjects}
                             options={projects.map(p => ({ value: p.id, label: p.name }))}
@@ -262,6 +279,7 @@ function ReportsPage() {
                         <Select
                             mode="multiple"
                             placeholder="All types"
+                            aria-label="Filter by type"
                             value={selectedTypes}
                             onChange={setSelectedTypes}
                             options={workTypes.map(t => ({ value: t.id, label: t.name }))}
@@ -278,6 +296,7 @@ function ReportsPage() {
                         <Select
                             mode="multiple"
                             placeholder="All platforms"
+                            aria-label="Filter by platform"
                             value={selectedPlatforms}
                             onChange={setSelectedPlatforms}
                             options={platforms.map(p => ({ value: p.id, label: p.name }))}
@@ -288,7 +307,109 @@ function ReportsPage() {
                             style={{ minWidth: 200, width: 240 }}
                         />
                     </FilterBlock>
-                </div>
+                            </div>
+                        </Drawer>
+                    </>
+                ) : (
+                    <div className="reports-filter-toolbar h-inline-toolbar" style={{ alignItems: 'flex-end', gap: 20 }}>
+
+                    {/* Date Range */}
+                    <FilterBlock label="Date Range" icon={<CalendarOutlined />}>
+                        <RangePicker
+                            value={dateRange}
+                            onChange={setDateRange}
+                            allowClear={false}
+                            style={{ width: 260 }}
+                            format="DD MMM YYYY"
+                        />
+                    </FilterBlock>
+
+                    {/* Users */}
+                    <FilterBlock label="Users" count={selectedUsers.length}>
+                        <Select
+                            mode="multiple"
+                            placeholder="All users"
+                            aria-label="Filter by user"
+                            value={selectedUsers}
+                            onChange={setSelectedUsers}
+                            options={users.map(u => ({ value: u.id, label: u.full_name || u.email }))}
+                            allowClear
+                            showSearch
+                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+                            maxTagCount={2}
+                            style={{ minWidth: 260, width: 280 }}
+                        />
+                    </FilterBlock>
+
+                    {/* Customers */}
+                    <FilterBlock label="Customers" count={selectedCustomers.length}>
+                        <Select
+                            mode="multiple"
+                            placeholder="All customers"
+                            aria-label="Filter by customer"
+                            value={selectedCustomers}
+                            onChange={setSelectedCustomers}
+                            options={customers.map(c => ({ value: c.id, label: c.name }))}
+                            allowClear
+                            showSearch
+                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+                            maxTagCount={2}
+                            style={{ minWidth: 240, width: 260 }}
+                        />
+                    </FilterBlock>
+
+
+                    {/* Projects */}
+                    <FilterBlock label="Projects" count={selectedProjects.length}>
+                        <Select
+                            mode="multiple"
+                            placeholder="All projects"
+                            aria-label="Filter by project"
+                            value={selectedProjects}
+                            onChange={setSelectedProjects}
+                            options={projects.map(p => ({ value: p.id, label: p.name }))}
+                            allowClear
+                            showSearch
+                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+                            maxTagCount={2}
+                            style={{ minWidth: 260, width: 300 }}
+                        />
+                    </FilterBlock>
+
+                    {/* Types */}
+                    <FilterBlock label="Types" count={selectedTypes.length}>
+                        <Select
+                            mode="multiple"
+                            placeholder="All types"
+                            aria-label="Filter by type"
+                            value={selectedTypes}
+                            onChange={setSelectedTypes}
+                            options={workTypes.map(t => ({ value: t.id, label: t.name }))}
+                            allowClear
+                            showSearch
+                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+                            maxTagCount={3}
+                            style={{ minWidth: 200, width: 240 }}
+                        />
+                    </FilterBlock>
+
+                    {/* Platforms */}
+                    <FilterBlock label="Platforms" count={selectedPlatforms.length}>
+                        <Select
+                            mode="multiple"
+                            placeholder="All platforms"
+                            aria-label="Filter by platform"
+                            value={selectedPlatforms}
+                            onChange={setSelectedPlatforms}
+                            options={platforms.map(p => ({ value: p.id, label: p.name }))}
+                            allowClear
+                            showSearch
+                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+                            maxTagCount={3}
+                            style={{ minWidth: 200, width: 240 }}
+                        />
+                    </FilterBlock>
+                    </div>
                 )}
             </div>
 

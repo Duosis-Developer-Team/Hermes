@@ -327,7 +327,7 @@ function RealMembersTable({ group, allUsersById, users }) {
                 </span>
                 <Button
                     size="small"
-                    type="primary"
+                    className="h-create-action"
                     icon={<UserAddOutlined />}
                     onClick={(e) => {
                         e.stopPropagation()
@@ -564,7 +564,7 @@ function UserGroupsTab() {
                 }}
             >
                 <Button
-                    type="primary"
+                    className="h-create-action"
                     icon={<PlusOutlined />}
                     onClick={() => {
                         setEditingGroup(null)

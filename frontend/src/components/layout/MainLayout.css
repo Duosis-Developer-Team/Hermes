@@ -230,10 +230,31 @@
     margin-left: 240px;
     padding: 24px;
     min-height: calc(100vh - 56px);
-    /* Sprint 8: duz canvas yerine sayfa-kabugu gradient tokeni. */
+    /*
+     * PERFORMANS (2026-08-04, olcumlu):
+     *  a) `background-attachment: fixed` + cok katmanli radial-gradient
+     *     her scroll frame'inde gorunur alanin TAMAMINI yeniden boyatir
+     *     (fixed arka plan compositing'e alinamaz). Gradient artik sabit
+     *     bir pseudo-katmanda yasiyor; icerik scroll ederken repaint YOK.
+     *  b) `margin-left` bir LAYOUT ozelligidir: sidebar acilip kapanirken
+     *     her frame'de tum icerik agaci reflow oluyordu (kullanicinin
+     *     "sidebar takiliyor" dedigi durum). Gecis kaldirildi; sider
+     *     kendi genislik animasyonunu yapar, icerik aninda yerlesir.
+     */
+    background: var(--h-bg-canvas);
+    position: relative;
+    isolation: isolate;
+}
+
+/* Ambient gradient: TEK statik katman, scroll'dan bagimsiz, boyanmasi
+   ucuz (compositor'da kalir). Route degisiminde yeniden baslamaz. */
+.main-content::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
     background: var(--h-bg-page, var(--h-bg-canvas));
-    background-attachment: fixed;
-    transition: margin-left var(--h-motion-base) var(--h-ease-standard);
 }
 
 /* Collapsed state */
@@ -323,16 +344,39 @@
     top: 50%;
     transform: translate(-50%, -50%);
     /*
-     * Sprint 8: ikon logo dosyalari 714x349 (≈2:1 YATAY). Onceki 36x36
-     * kare kutu + `contain`, gorunur resmi 36x17 px'e dusuruyordu — logo
-     * collapsed sidebar'da kayboluyordu. Kutu, dosyanin GERCEK oranina
-     * gore genisletildi: 72px sider icinde 56px genislik, gorunur
-     * yukseklik ~27px. Oran bozulmaz, kirpilma olmaz (`contain`).
+     * Ikon logo dosyalari 714x349 (≈2:1 YATAY) — `contain` ile gorunur
+     * yukseklik daima genisligin ~yarisidir.
+     *
+     * Sprint 8: 56x44 kutu → gorunur ~56x27.
+     * KULLANICI BULGUSU (2026-08-04): bu hala marka isareti olarak
+     * algilanmiyordu. Collapsed rail 72px; yatay padding 4px'e
+     * indirilerek kullanilabilir genislik 64px'e cikti ve kutu
+     * 64x34'e buyudu → gorunur cizme ~64x31 (onceki ~56x27'ye gore
+     * belirgin buyume). Oran korunur, kirpilma yok, sider genisligi
+     * DEGISMEDI. Mobil drawer logosu bu kuraldan etkilenmez (asagida
+     * ayri kural).
      */
-    width: 56px;
-    height: 44px;
+    width: 64px;
+    height: 34px;
     object-fit: contain;
+    /*
+     * Logo dosyasi kendi icinde belirgin bos kenar payi tasiyor; bu
+     * yuzden 64px'lik kutuda GORUNUR cizme ~40px'te kaliyordu. Kutu
+     * degil GORUNTU olceklenir: kutu yerinde durur (yerlesim/ortalama
+     * bozulmaz), isaret gorsel olarak ~52-56px genislige cikar. Rail
+     * `overflow: hidden` ile tasma kirpilir.
+     */
+    transform: translate(-50%, -50%) scale(1.35);
     opacity: 0;
+}
+
+/* Collapsed rail: logo icin yatay nefes payi azaltilir (sider genisligi
+   sabit kalir), boylece isaret mumkun olan en buyuk dengeli olcuye
+   ulasir ve tam ortalanir. */
+.ant-layout-sider-collapsed .logo-container {
+    padding-left: 4px;
+    padding-right: 4px;
+    overflow: hidden;
 }
 .ant-layout-sider-collapsed .sidebar-logo--full { opacity: 0; }
 .ant-layout-sider-collapsed .sidebar-logo--icon { opacity: 1; }
@@ -396,7 +440,8 @@
 
 /* Route girisi (§6): opacity + 4px; height collapse yok */
 .route-transition {
-    animation: h-route-enter var(--h-motion-base) var(--h-ease-enter);
+    /* 220ms → 150ms: gecis hissi korunur, algilanan gecikme azalir. */
+    animation: h-route-enter 150ms var(--h-ease-enter);
 }
 @keyframes h-route-enter {
     from { opacity: 0; transform: translateY(4px); }

@@ -301,8 +301,10 @@ export function SubProjectsTab() {
                         }))}
                     />
                 </Space>
+                {/* Ortak create-action dili (TE "+" referansi): notr yuzey,
+                    hover'da ince mavi ring. Aksiyon section toolbar'inda. */}
                 <Button
-                    type="primary"
+                    className="h-create-action"
                     icon={<PlusOutlined />}
                     onClick={handleOpenCreate}
                 >

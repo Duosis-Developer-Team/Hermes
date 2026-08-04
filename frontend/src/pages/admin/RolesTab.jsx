@@ -309,6 +309,7 @@ function RolesTab() {
             </Card>
 
             <Modal
+                className="h-modal-scroll"
                 title={editing ? `Edit Role — ${editing.name}` : 'New Role'}
                 open={modalOpen} onCancel={close} footer={null} width={640}
                 closable={!isSaving}
