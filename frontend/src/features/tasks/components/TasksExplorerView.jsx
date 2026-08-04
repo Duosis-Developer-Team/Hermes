@@ -18,7 +18,7 @@
  * Project listesi → Sub Project → isler; ustte geri/breadcrumb.
  * =============================================================================
  */
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { Empty, Input, Tooltip } from 'antd'
 import {
     FolderOpenOutlined,
@@ -332,4 +332,11 @@ function TasksExplorerView({ tasks = [], boardProps = {} }) {
     )
 }
 
-export default TasksExplorerView
+/*
+ * PERFORMANS (§15): Explorer agac + Kanban'i birlikte cizer. Sayfa
+ * seviyesindeki her state degisimi (modal alanlari, secimler) bu alt
+ * agaci yeniden cizmemeli — prop'lari degismediyse render ATLANIR.
+ * Ust katman `boardProps`i memoize eder, aksi halde bu kapi hic
+ * kapanmaz (her render yeni nesne = yeni prop).
+ */
+export default memo(TasksExplorerView)

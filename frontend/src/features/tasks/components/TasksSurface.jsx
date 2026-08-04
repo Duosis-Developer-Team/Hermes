@@ -13,6 +13,7 @@
  *   - Edit/Delete admin VEYA atayan icin gorunur (karti ciziyor).
  * =============================================================================
  */
+import { useMemo } from 'react'
 import { Spin } from 'antd'
 
 import TasksBoardView from '../../../components/tasks/TasksBoardView'
@@ -44,7 +45,9 @@ function TasksSurface({
     onOpenPanel,
     onClosePanel,
 }) {
-    const shared = {
+    /* Referans kararliligi: alt agaclar memo'lu oldugu icin bu nesne
+       her render'da yeniden uretilirse memo hicbir zaman tutmaz. */
+    const shared = useMemo(() => ({
         tasks,
         userMap,
         currentUserId,
@@ -57,7 +60,23 @@ function TasksSurface({
         onToggleCompletion,
         completionLoading,
         onOpenPanel,
-    }
+    }), [
+        tasks, userMap, currentUserId, isAdmin, taskType,
+        onEditTask, onDeleteTask, onOpenReview, onOpenLogTime,
+        onToggleCompletion, completionLoading, onOpenPanel,
+    ])
+
+    const explorerBoardProps = useMemo(() => ({
+        ...shared,
+        onCreate,
+        canCreate,
+        allowStatusDrag: allowStatusChange,
+        onCardDrop,
+        onMultiAssignmentDrop,
+    }), [
+        shared, onCreate, canCreate, allowStatusChange, onCardDrop,
+        onMultiAssignmentDrop,
+    ])
 
     return (
         <div className="tasks-view-row">
@@ -74,14 +93,7 @@ function TasksSurface({
                        olusmaz (§6.4). */
                     <TasksExplorerView
                         tasks={tasks}
-                        boardProps={{
-                            ...shared,
-                            onCreate,
-                            canCreate,
-                            allowStatusDrag: allowStatusChange,
-                            onCardDrop,
-                            onMultiAssignmentDrop,
-                        }}
+                        boardProps={explorerBoardProps}
                     />
                 ) : (
                     <TasksBoardView
