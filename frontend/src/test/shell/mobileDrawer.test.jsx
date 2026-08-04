@@ -23,6 +23,25 @@ vi.mock('../../services/api', () => ({
     rbacService: { getMyPermissions: vi.fn() },
 }))
 
+vi.mock('../../routes/loaders', () => {
+    // Idle prefetch GERCEK sayfa modullerini dinamik import ediyordu; bu
+    // import'lar test dosyasi bitmis olsa da cozulmeye devam eder ve is
+    // ortam yikildiktan SONRA React'e dokunabilir (CI'da run dusuruldu).
+    // Stub harita prefetch kod yolunu AYNEN kosturur (izin filtresi,
+    // sirali idle adimlari) — yalnizca agir modul yuklemesini keser.
+    // Bu dosya haritanin ICERIGINE dair bir sey iddia etmez; o sozlesme
+    // shell.test.jsx'te GERCEK modulle dogrulanir.
+    const stub = () => Promise.resolve({ default: () => null })
+    return {
+        routeLoaders: {},
+        loaderByPath: {
+            '/time-entry': stub,
+            '/management/reports': stub,
+            '/users': stub,
+        },
+    }
+})
+
 import MainLayout from '../../components/layout/MainLayout'
 import { useAuthStore } from '../../stores/authStore'
 import { makeTestQueryClient, resetAuthStore } from '../utils'

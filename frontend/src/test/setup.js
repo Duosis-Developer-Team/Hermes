@@ -34,10 +34,27 @@ if (typeof window !== 'undefined') {
     // (bir kez denendi; toast'lar tamamen kayboldu). Dogru yol resmi
     // destroy API'sidir.
     const { message, notification } = await import('antd')
-    afterEach(() => {
+    afterEach(async () => {
         cleanup()
         message.destroy()
         notification.destroy()
+        // Unmount/destroy'un ZAMANLADIGI is (antd singleton kokleri,
+        // rc-motion'in cikis animasyonlari) bir sonraki makrotaskta
+        // commit eder. Vitest ortami dosya bitince YIKAR; is o andan
+        // sonra kosarsa React `window`u bulamaz ve vitest bunu
+        // "unhandled error" sayip TUM kosuyu dusurur — testler gecse
+        // bile (CI run 30936666818: 699/699 gecti, exit 1).
+        //
+        // Bu bir MASKELEME DEGILDIR: assertion'lar coktan kosmustur,
+        // hicbir hata yutulmaz ve gercekten kirilan test yine kirmizi
+        // kalir. Yalnizca bekleyen isin ortam DURURKEN bosalmasini
+        // saglar. Yerelde yaris hic olusmuyordu (exit 0); 2 cekirdekli
+        // kosucuda ayni dosyanin testleri ~8x yavas kosuyor ve is
+        // yikimin oteki tarafina tasiyordu.
+        await new Promise((resolve) => { setTimeout(resolve, 0) })
+        if (typeof requestAnimationFrame === 'function') {
+            await new Promise((resolve) => { requestAnimationFrame(() => resolve()) })
+        }
     })
 
     // jsdom matchMedia saglamaz; MainLayout (mobil sorgusu) ve theme
