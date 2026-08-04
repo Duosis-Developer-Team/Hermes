@@ -344,7 +344,7 @@ function CreateTaskModal({
             cancelText="Cancel"
             confirmLoading={loading}
             onOk={() => form.submit()}
-            width={640}
+            width={880}
             /* Pending'te kapanma kilidi (§7): kayit sunucuya giderken
                mask/Escape/X ile cikip yarim durum birakilamaz. */
             closable={!loading}
@@ -370,6 +370,8 @@ function CreateTaskModal({
                     />
                 )}
 
+                {/* Customer | Project: eslenmis satir (bkz. .h-modal-row) */}
+                <div className="h-modal-row">
                 <Form.Item
                     label="Customer"
                     name="customer_id"
@@ -404,6 +406,10 @@ function CreateTaskModal({
                     />
                 </Form.Item>
 
+                </div>
+
+                {/* Sub Project | Assignees */}
+                <div className="h-modal-row">
                 <Form.Item
                     label="Sub Project"
                     name="sub_project_id"
@@ -493,6 +499,8 @@ function CreateTaskModal({
                     />
                 </Form.Item>
 
+                </div>
+
                 <Form.Item
                     label={`${typeLabel} Title`}
                     name="title"
@@ -530,7 +538,7 @@ function CreateTaskModal({
                     ]}
                 >
                     <Input.TextArea
-                        rows={4}
+                        rows={3}
                         placeholder={`${typeLabel} instructions and context for the assignee`}
                     />
                 </Form.Item>
@@ -538,7 +546,7 @@ function CreateTaskModal({
                 {/* wrap: on narrow phones the two date pickers stack
                     instead of overflowing; no effect on desktop where
                     both fit side by side. */}
-                <Space size="middle" style={{ display: 'flex' }} wrap>
+                <div className="h-modal-row h-modal-row--3">
                     <Form.Item
                         label="Scheduled Date"
                         name="scheduled_date"
@@ -553,15 +561,15 @@ function CreateTaskModal({
                     <Form.Item label="Due Date" name="due_date" style={{ flex: 1 }}>
                         <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
                     </Form.Item>
-                </Space>
 
-                <Form.Item
-                    label="Priority"
-                    name="priority"
-                    rules={[{ required: true }]}
-                >
-                    <Select options={PRIORITY_OPTIONS} />
-                </Form.Item>
+                    <Form.Item
+                        label="Priority"
+                        name="priority"
+                        rules={[{ required: true }]}
+                    >
+                        <Select options={PRIORITY_OPTIONS} />
+                    </Form.Item>
+                </div>
             </Form>
         </Modal>
     )

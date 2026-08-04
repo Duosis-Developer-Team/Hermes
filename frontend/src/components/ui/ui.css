@@ -334,3 +334,22 @@
   :root .ant-btn.h-create-action,
   :root .ant-btn.h-inline-action { min-height: 44px; min-width: 44px; }
 }
+
+/* =============================================================================
+   MODAL SATIRI — form alanlarini yatayda esler
+   =============================================================================
+   Modal yuksekligini belirleyen sey dikey YIGIN'dir. Iliskili alanlar
+   yan yana gelince modal kisa ekranlarda da TEK PARCA acilir (olcum:
+   Create Task govdesi 816px → 1440x900'de bile kayiyordu).
+   Dar ekranda tek kolona duser. */
+.h-modal-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+.h-modal-row--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.h-modal-row > .ant-form-item { min-width: 0; }
+@media (max-width: 720px) {
+  .h-modal-row,
+  .h-modal-row--3 { grid-template-columns: 1fr; }
+}

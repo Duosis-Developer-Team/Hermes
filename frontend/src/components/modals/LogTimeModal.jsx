@@ -343,7 +343,7 @@ function LogTimeModal({
             open={open}
             onCancel={handleClose}
             footer={null}
-            width={480}
+            width={720}
             className="log-time-modal"
             /* Diyalog ADI (§8): rc-dialog aria-labelledby'yi YALNIZCA
                title verildiginde yazar ve dialog element'ine aria-*
@@ -514,7 +514,9 @@ function LogTimeModal({
                             />
                         </Form.Item>
 
-                        {/* Work Type */}
+                        {/* Work Type + Activity Type: tek satir (iki kolon).
+                            Dikey yigin, modali kisa ekranlarda kaydiriyordu. */}
+                        <div className="form-row">
                         <Form.Item
                             name="work_type_id"
                             label="Work Type"
@@ -532,7 +534,6 @@ function LogTimeModal({
                             />
                         </Form.Item>
 
-                        {/* Activity Type */}
                         <Form.Item
                             name="activity_type_id"
                             label="Activity Type"
@@ -551,7 +552,10 @@ function LogTimeModal({
                             />
                         </Form.Item>
 
-                        {/* Platform */}
+                        </div>
+
+                        {/* Platform + Work Line: tek satir (iki kolon). */}
+                        <div className="form-row">
                         <Form.Item
                             name="platform_id"
                             label="Platform"
@@ -570,7 +574,6 @@ function LogTimeModal({
                             />
                         </Form.Item>
 
-                        {/* Work Line */}
                         <Form.Item
                             name="work_line_id"
                             label="Work Line"
@@ -587,6 +590,8 @@ function LogTimeModal({
                                     .map(w => ({ value: w.id, label: w.name }))}
                             />
                         </Form.Item>
+
+                        </div>
 
                         {/* Show hidden fields link */}
                         <div className="show-hidden-fields">

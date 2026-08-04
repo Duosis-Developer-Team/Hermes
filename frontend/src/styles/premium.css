@@ -448,6 +448,9 @@
 :root .ant-modal .ant-modal-header { border-bottom-color: transparent; padding-bottom: var(--h-space-2); }
 :root .ant-modal .ant-modal-footer {
   border-top-color: color-mix(in srgb, var(--h-brand) 14%, var(--h-border-subtle));
+  /* Altlik payi: govdeden calinan her piksel scroll'a yaklastirir. */
+  margin-top: 12px;
+  padding-top: 12px;
 }
 :root .ant-drawer .ant-drawer-header {
   border-bottom-color: color-mix(in srgb, var(--h-brand) 14%, var(--h-border-subtle));
@@ -504,22 +507,44 @@
    dengeli durur. Ayrica koyu-mavi detay katmani: ust hairline gradient,
    yumusak kenar isigi ve tonal ayiricilar. */
 :root .ant-modal {
-  top: 16px;
-  padding-bottom: 16px;
+  /* Ust/alt bosluk: modal ne kadar dar olursa govdeye o kadar cok
+     yukseklik kalir. 16 → 12 (olcum: Create Task 1280x720'de 2px
+     tasiyordu). */
+  top: 12px;
+  padding-bottom: 12px;
 }
-/* Govde: ekrana SIGACAK kadar genis pencere — formlar tek parca acilir,
-   yalnizca gercekten tasan icerikte kayar (ic scroll son care). */
+/*
+ * YUKSEKLIK YAPISAL OLARAK COZULUR — sihirli sayi ile DEGIL.
+ *
+ * Onceki sozlesme govdeye sabit `max-height: calc(100vh - 158px)`
+ * veriyordu. 158px "baslik + altlik + bosluk" varsayimidir; Log Time
+ * gibi baslik/altligi OLMAYAN modallerde bu 126px'i BOSA harciyor ve
+ * ekrana rahat sigan bir icerigi bile kaydiriyordu (olcum, 1366x768:
+ * govde 688px, tavan 610px → ic scroll).
+ *
+ * Dogrusu: icerik kutusu viewport'a gore sinirlanir ve DIKEY FLEX
+ * olur; baslik ile altlik dogal yuksekliklerini alir, govde geri
+ * kalanin TAMAMINI alir. Boylece her modal — baslikli, altlikli,
+ * ciplak — kendi geometrisine gore azami alani kullanir ve icerik
+ * gercekten sigmadiginda kayar.
+ */
+:root .ant-modal .ant-modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 32px);
+}
+:root .ant-modal .ant-modal-header,
+:root .ant-modal .ant-modal-footer { flex: 0 0 auto; }
 :root .ant-modal .ant-modal-body {
-  max-height: calc(100vh - 158px);
+  /* min-height:0 olmadan flex cocugu kucultulemez ve tasma disari
+     sizar (flexbox varsayilani min-height:auto). */
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-:root .ant-modal.h-modal-scroll .ant-modal-body {
-  max-height: calc(100vh - 158px);
-}
 /* Form yogunlugu: satirlar arasi bosluk sikilastirilir ki uzun formlar
    (Log Time, Create Task) tek ekranda tamamlansin. */
-:root .ant-modal .ant-form-item { margin-bottom: 14px; }
+:root .ant-modal .ant-form-item { margin-bottom: 12px; }
 :root .ant-modal .ant-modal-header { padding-bottom: var(--h-space-2); }
 /* Govde kaydirma cubugu: ince ve tonal (kaba gri bar degil). */
 :root .ant-modal .ant-modal-body::-webkit-scrollbar { width: 8px; }

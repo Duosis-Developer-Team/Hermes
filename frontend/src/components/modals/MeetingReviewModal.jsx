@@ -173,7 +173,7 @@ function MeetingReviewModal({
                                 padding: 10,
                                 marginTop: 4,
                                 whiteSpace: 'pre-wrap',
-                                maxHeight: 160,
+                                maxHeight: 132,
                                 overflowY: 'auto',
                             }}
                         >
@@ -192,7 +192,7 @@ function MeetingReviewModal({
                                 border: '1px solid var(--c-border)',
                                 borderRadius: 6,
                                 padding: 8,
-                                maxHeight: 140,
+                                maxHeight: 116,
                                 overflowY: 'auto',
                                 display: 'flex',
                                 flexDirection: 'column',

@@ -191,11 +191,35 @@ describe('duzeltme turu (2026-08-04) kilitleri', () => {
         expect(w).toBeGreaterThanOrEqual(60)
     })
 
-    it('genel modal govdesi kirpilmaz (yalniz uzun listeli modal scroll eder)', () => {
+    it('modal yuksekligi YAPISAL cozulur — sihirli sayi ile degil', () => {
+        /*
+         * 2026-08-04 (ikinci tur, olcumle): govdeye verilen sabit
+         * `max-height: calc(100vh - 158px)` yanlisti. 158px "baslik +
+         * altlik" varsayimidir; baslik/altligi olmayan modallerde
+         * (Log Time) 126px'i BOSA harciyor ve sigan icerigi bile
+         * kaydiriyordu. Dogru cozum: icerik kutusu dikey flex olur,
+         * viewport'a gore sinirlanir; govde kalan alani alir.
+         */
         const css = noComments(read('styles/premium.css'))
-        expect(css).toContain('.h-modal-scroll .ant-modal-body')
-        // Kapsamsiz (tum modallara giden) max-height kurali OLMAMALI.
-        expect(css).not.toMatch(/:root \.ant-modal \.ant-modal-body \{\s*max-height: min/)
+        const content = css.slice(css.indexOf(':root .ant-modal .ant-modal-content {\n  display: flex'))
+        expect(content).toContain('flex-direction: column')
+        expect(content).toMatch(/max-height:\s*calc\(100vh - 32px\)/)
+        // Govde flex cocugu olarak KUCULEBILMELI (min-height:0 sart).
+        expect(css).toMatch(/:root \.ant-modal \.ant-modal-body \{[^}]*min-height:\s*0/)
+        // Sabit "govde tavani" varsayimi GERI GELMEZ.
+        expect(css).not.toMatch(/\.ant-modal-body \{[^}]*max-height:\s*calc\(100vh - 1\d\dpx\)/)
+    })
+
+    it('form-yogun modallar eslenmis satir primitifini kullanir', () => {
+        // Dikey yigin, modal yuksekligini belirleyen seydir: Create Task
+        // govdesi 816px olcumlenmisti (1440x900'de bile kayiyordu).
+        const ui = read('components/ui/ui.css')
+        expect(ui).toContain('.h-modal-row')
+        expect(ui).toContain('.h-modal-row--3')
+        const task = noComments(read('components/modals/CreateTaskModal.jsx'))
+        expect(task).toContain('h-modal-row')
+        const log = noComments(read('components/modals/LogTimeModal.jsx'))
+        expect((log.match(/className="form-row"/g) || []).length).toBeGreaterThanOrEqual(3)
     })
 
     it('Timesheet gorunumu gri levha kullanmaz', () => {
