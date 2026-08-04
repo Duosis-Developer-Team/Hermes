@@ -13,6 +13,7 @@
 :root {
   /* --- 3.1 Primitive palette (ton adlari; kullanim amaci TASIMAZ) --- */
   --hp-neutral-0: #FFFFFF;
+  --hp-neutral-25: #FAFBFD; /* near-white premium tuval (light) */
   --hp-neutral-50: #F5F7FA;
   --hp-neutral-100: #F0F3F7;
   --hp-neutral-200: #E8EDF3;
@@ -169,7 +170,8 @@
 
 /* --- 3.2 Semantic tokens — LIGHT ------------------------------------- */
 :root[data-theme='light'] {
-  --h-bg-canvas: var(--hp-neutral-50);
+  /* Premium redesign: gri levha yerine beyaza cok yakin temiz tuval. */
+  --h-bg-canvas: var(--hp-neutral-25);
   /* Acik tema: temiz, cok dusuk kontrastli ayni desen. */
   --h-bg-page: radial-gradient(
       1200px 640px at 78% -8%,
@@ -181,7 +183,7 @@
       rgba(143, 126, 231, 0.03),
       transparent 60%
     ),
-    var(--hp-neutral-50);
+    var(--hp-neutral-25);
   --h-bg-weekend: rgba(9, 30, 66, 0.035);
   --h-bg-surface: var(--hp-neutral-0);
   --h-bg-elevated: var(--hp-neutral-0);

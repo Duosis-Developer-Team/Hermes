@@ -25,7 +25,7 @@ export const SEMANTIC = {
         info: '#85B8FF',
     },
     light: {
-        canvas: '#F5F7FA', surface: '#FFFFFF', elevated: '#FFFFFF',
+        canvas: '#FAFBFD', surface: '#FFFFFF', elevated: '#FFFFFF',
         hover: '#F0F3F7', textPrimary: '#17202D', textSecondary: '#526174',
         borderSubtle: '#E8EDF3', borderDefault: '#D9E1EA',
         brand: '#0C66E4', brandHover: '#388BFF',
@@ -87,9 +87,9 @@ export function buildAntdTheme(mode = 'dark') {
                (headerBg burada da dusuk alfa: sticky header'da zemin
                kaybolmasin diye canvas ustune binen deger premium.css'te.) */
             Table: {
-                headerBg: mode === 'light'
-                    ? 'rgba(9, 30, 66, 0.025)'
-                    : 'rgba(255, 255, 255, 0.025)', /* --h-surface-subtle */
+                /* Premium redesign: gri baslik SERIDI yok — kolon etiketi
+                   kucuk/muted, ayrim ince divider. */
+                headerBg: 'transparent',
                 rowHoverBg: mode === 'light'
                     ? 'rgba(12, 102, 228, 0.05)'
                     : 'rgba(87, 157, 255, 0.05)',
@@ -104,10 +104,11 @@ export function buildAntdTheme(mode = 'dark') {
             /* Kartlar: koyu/gri levha degil — canvas'la butunlesen
                subtle yuzey (Dashboard bolumleri dahil). */
             Card: {
-                colorBgContainer: mode === 'light'
-                    ? 'rgba(9, 30, 66, 0.025)'
-                    : 'rgba(255, 255, 255, 0.025)', /* --h-surface-subtle */
+                /* Card artik gorsel bir KUTU degil: icerik tuvalde yasar. */
+                colorBgContainer: 'transparent',
                 headerBg: 'transparent',
+                colorBorderSecondary: 'transparent',
+                paddingLG: 0,
             },
         },
     }

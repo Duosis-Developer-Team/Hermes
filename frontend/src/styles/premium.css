@@ -246,3 +246,258 @@
   color: var(--h-brand);
   line-height: 1.4;
 }
+
+/* =============================================================================
+   PREMIUM REDESIGN (2026-08-04) — kesintisiz tuval: Card cozunmesi ve
+   borderless veri gorunumu.
+   -----------------------------------------------------------------------------
+   Karar: "dis Card + ic tablo kutusu + gri baslik seridi" yigini KALKAR.
+   Card markup'i erisilebilirlik/test yapisini bozmamak icin yerinde
+   kalabilir; GORSEL kabuk burada cozulur — icerik dogrudan tuvalde
+   yasar (Time Entry referansi). Kapsam bilincli olarak sayfa koku
+   siniflariyla sinirlidir; AntD global olarak kirilmaz.
+   ========================================================================== */
+
+:root .admin-page .ant-card,
+:root .users-page .ant-card,
+:root .customers-page .ant-card,
+:root .projects-page .ant-card,
+:root .work-types-page .ant-card,
+:root .contract-status-page .ant-card,
+:root .reports-page .ant-card,
+:root .dashboard-page .ant-card,
+:root .meetings-page .ant-card,
+:root .tasks-page .ant-card {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+:root .admin-page .ant-card > .ant-card-head,
+:root .users-page .ant-card > .ant-card-head,
+:root .customers-page .ant-card > .ant-card-head,
+:root .projects-page .ant-card > .ant-card-head,
+:root .work-types-page .ant-card > .ant-card-head,
+:root .contract-status-page .ant-card > .ant-card-head,
+:root .reports-page .ant-card > .ant-card-head,
+:root .dashboard-page .ant-card > .ant-card-head,
+:root .meetings-page .ant-card > .ant-card-head {
+  background: transparent;
+  border-bottom: 1px solid var(--h-border-subtle);
+  padding: 0 0 var(--h-space-3);
+  margin-bottom: var(--h-space-3);
+  min-height: 0;
+}
+:root .admin-page .ant-card > .ant-card-body,
+:root .users-page .ant-card > .ant-card-body,
+:root .customers-page .ant-card > .ant-card-body,
+:root .projects-page .ant-card > .ant-card-body,
+:root .work-types-page .ant-card > .ant-card-body,
+:root .contract-status-page .ant-card > .ant-card-body,
+:root .reports-page .ant-card > .ant-card-body,
+:root .dashboard-page .ant-card > .ant-card-body,
+:root .meetings-page .ant-card > .ant-card-body {
+  padding: 0;
+}
+/* Card basligi artik section heading tipografisidir. */
+:root .admin-page .ant-card-head-title,
+:root .users-page .ant-card-head-title,
+:root .customers-page .ant-card-head-title,
+:root .projects-page .ant-card-head-title,
+:root .work-types-page .ant-card-head-title,
+:root .contract-status-page .ant-card-head-title,
+:root .reports-page .ant-card-head-title {
+  font-size: var(--h-font-section-title);
+  font-weight: 650;
+  padding: 0;
+}
+
+/* Borderless tablo: gri baslik SERIDI de kalkar — kucuk muted kolon
+   etiketi + ince divider yeterli (yonetim tablolarinin yeni dili). */
+:root .admin-page .ant-table-wrapper .ant-table-thead > tr > th,
+:root .users-page .ant-table-wrapper .ant-table-thead > tr > th,
+:root .customers-page .ant-table-wrapper .ant-table-thead > tr > th,
+:root .projects-page .ant-table-wrapper .ant-table-thead > tr > th,
+:root .work-types-page .ant-table-wrapper .ant-table-thead > tr > th,
+:root .contract-status-page .ant-table-wrapper .ant-table-thead > tr > th {
+  background: transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 11px;
+  color: var(--h-text-muted);
+  border-bottom: 1px solid var(--h-border-default);
+  padding-top: 6px;
+  padding-bottom: 8px;
+}
+
+/* Yonetim satir aksiyonlari: surekli kutulu/dolu gorunum yerine ghost
+   ikon; danger rengi yalniz hover/focus'ta belirginlesir. */
+:root .admin-page .ant-table-tbody .ant-btn,
+:root .users-page .ant-table-tbody .ant-btn,
+:root .customers-page .ant-table-tbody .ant-btn,
+:root .projects-page .ant-table-tbody .ant-btn,
+:root .work-types-page .ant-table-tbody .ant-btn {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--h-text-secondary);
+}
+:root .admin-page .ant-table-tbody .ant-btn:hover,
+:root .users-page .ant-table-tbody .ant-btn:hover,
+:root .customers-page .ant-table-tbody .ant-btn:hover,
+:root .projects-page .ant-table-tbody .ant-btn:hover,
+:root .work-types-page .ant-table-tbody .ant-btn:hover {
+  background: var(--h-bg-hover);
+  color: var(--h-text-primary);
+}
+:root .admin-page .ant-table-tbody .ant-btn-dangerous,
+:root .users-page .ant-table-tbody .ant-btn-dangerous {
+  color: var(--h-text-secondary);
+  background: transparent;
+  border-color: transparent;
+}
+:root .admin-page .ant-table-tbody .ant-btn-dangerous:hover,
+:root .users-page .ant-table-tbody .ant-btn-dangerous:hover {
+  color: var(--h-danger);
+  background: var(--h-surface-danger);
+}
+
+/* Sekmeler: metin + accent underline (kutu yok). */
+:root .users-page .ant-tabs-nav::before { border-bottom-color: var(--h-border-subtle); }
+:root .users-page .ant-tabs-tab { padding: 8px 2px; }
+:root .users-page .ant-tabs-ink-bar { background: var(--h-grad-primary); height: 2px; }
+
+/* Modal cilasi: ust hairline gradient + yumusak ayirici. */
+:root .ant-modal .ant-modal-content {
+  border-radius: 16px;
+  overflow: hidden;
+}
+:root .ant-modal .ant-modal-content::before {
+  content: '';
+  display: block;
+  height: 2px;
+  background: var(--h-grad-primary);
+  opacity: 0.85;
+}
+:root .ant-modal .ant-modal-header { border-bottom-color: transparent; padding-bottom: var(--h-space-2); }
+:root .ant-modal .ant-modal-footer { border-top-color: var(--h-border-subtle); }
+
+/* Billable Hours: kesintisiz data-list (dis kutu ve gri baslik yok). */
+:root .billable-page .ant-table-wrapper .ant-table-thead > tr > th {
+  background: transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 11px;
+  color: var(--h-text-muted);
+  border-bottom: 1px solid var(--h-border-default);
+}
+:root .billable-page .ant-table {
+  background: transparent;
+}
+
+/* --- Rol izin modali: gruplu, taranabilir, secili satir accent'li ------ */
+.role-perm-group { margin-bottom: var(--h-space-4); }
+.role-perm-group__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--h-text-muted);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--h-border-subtle);
+  margin-bottom: 6px;
+}
+.role-perm-group__items { display: grid; gap: 2px; }
+:root .ant-checkbox-wrapper.role-perm-item {
+  display: flex;
+  align-items: center;
+  gap: var(--h-space-2);
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: var(--h-radius-control);
+  transition: background var(--h-motion-fast) var(--h-ease-standard);
+}
+:root .ant-checkbox-wrapper.role-perm-item:hover { background: var(--h-bg-hover); }
+:root .ant-checkbox-wrapper-checked.role-perm-item { background: var(--h-bg-selected); }
+.role-perm-item__label { color: var(--h-text-primary); }
+.role-perm-item__code {
+  margin-left: auto;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--h-text-muted);
+}
+/* Modal govdesi uzun listede kendi icinde scroll etsin (footer sticky). */
+:root .ant-modal .ant-modal-body { max-height: min(66vh, 620px); overflow-y: auto; }
+
+/* --- Responsive: mobil davranis (premium redesign) --------------------- */
+@media (max-width: 768px) {
+  /* Metric strip: mobilde iki sutun, yatay kaymaz. */
+  .h-metric-strip { flex-wrap: wrap; }
+  .h-metric-strip__item { flex: 1 1 45%; min-width: 45%; }
+  .h-metric-strip__item:nth-child(odd) { border-left: 0; }
+  .h-metric-strip__item { border-top: 1px solid var(--h-border-subtle); }
+  .h-metric-strip__item:nth-child(-n+2) { border-top: 0; }
+
+  /* PM Config metric strip ayni kurala uyar. */
+  .tm-stats { grid-template-columns: repeat(2, 1fr); }
+  .tm-stat:nth-child(odd) { border-left: 0; }
+  .tm-stat:nth-child(n+3) { border-top: 1px solid var(--h-border-subtle); }
+
+  /* Tasks board: mobilde tek kolon akisi + yatay kaydirma yerine dikey. */
+  .tasks-board { grid-template-columns: 1fr; gap: 8px; }
+  .tasks-board-column + .tasks-board-column {
+    border-left: 0;
+    border-top: 1px solid var(--h-border-subtle);
+    padding-left: 0;
+    margin-left: 0;
+    padding-top: 12px;
+  }
+
+  /* Yonetim tablolari: sikisik masaustu tablosu yerine stacked satir. */
+  :root .admin-page .ant-table-thead,
+  :root .users-page .ant-table-thead,
+  :root .customers-page .ant-table-thead,
+  :root .projects-page .ant-table-thead,
+  :root .work-types-page .ant-table-thead { display: none; }
+  :root .admin-page .ant-table-tbody > tr,
+  :root .users-page .ant-table-tbody > tr,
+  :root .customers-page .ant-table-tbody > tr,
+  :root .projects-page .ant-table-tbody > tr,
+  :root .work-types-page .ant-table-tbody > tr {
+    display: block;
+    border-bottom: 1px solid var(--h-border-subtle);
+    padding: 6px 0;
+  }
+  :root .admin-page .ant-table-tbody > tr > td,
+  :root .users-page .ant-table-tbody > tr > td,
+  :root .customers-page .ant-table-tbody > tr > td,
+  :root .projects-page .ant-table-tbody > tr > td,
+  :root .work-types-page .ant-table-tbody > tr > td {
+    display: block;
+    border-bottom: 0;
+    padding: 2px 0;
+  }
+
+  /* Modal: viewport'a sigar, footer gorunur kalir. */
+  :root .ant-modal { max-width: calc(100vw - 16px); margin: 8px auto; }
+  :root .ant-modal .ant-modal-body { max-height: 62vh; }
+}
+
+/* Tasks List: satir aksiyonlari ghost (kutulu/dolu degil) + tamamlanan
+   satirda soft semantic tint (agir yesil dolgu yok). */
+:root .tasks-page .ant-table-tbody .ant-btn {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--h-text-secondary);
+}
+:root .tasks-page .ant-table-tbody .ant-btn:hover {
+  background: var(--h-bg-hover);
+  color: var(--h-text-primary);
+}
+:root .tasks-page .ant-table-tbody .ant-btn-dangerous:hover {
+  background: var(--h-surface-danger);
+  color: var(--h-danger);
+}
+:root .tasks-page .ant-table-tbody tr.task-row-completed > td {
+  background: color-mix(in srgb, var(--h-success) 6%, transparent);
+}

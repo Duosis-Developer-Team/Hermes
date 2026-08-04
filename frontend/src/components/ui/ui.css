@@ -168,3 +168,112 @@
   outline: 2px solid var(--h-focus);
   outline-offset: 2px;
 }
+
+/* =============================================================================
+   PREMIUM REDESIGN (2026-08-04) — kesintisiz sayfa primitifleri
+   -----------------------------------------------------------------------------
+   Time Entry referansi: icerik genis tuvalde yasar; bolumler kutuyla degil
+   bosluk + tipografi + ince divider ile ayrilir. Bu primitifler TEK
+   kaynaktir; sayfalara kopya stil yazilmaz.
+   ========================================================================== */
+
+/* --- MetricStrip: KPI kartlari yerine tek kesintisiz serit ------------- */
+.h-metric-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0;
+  margin: var(--h-space-2) 0 var(--h-space-6);
+}
+.h-metric-strip__item {
+  flex: 1 1 0;
+  min-width: 140px;
+  padding: var(--h-space-2) var(--h-space-5);
+  position: relative;
+}
+.h-metric-strip__item + .h-metric-strip__item {
+  border-left: 1px solid var(--h-border-subtle);
+}
+.h-metric-strip__value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--h-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.h-metric-strip__label {
+  margin-top: 2px;
+  font-size: var(--h-font-label);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--h-text-secondary);
+}
+.h-metric-strip__accent {
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--h-grad-primary);
+}
+.h-metric-strip__item:first-child { padding-left: var(--h-space-4); }
+.h-metric-strip__item:first-child .h-metric-strip__accent { display: block; }
+.h-metric-strip__item .h-metric-strip__accent { display: none; }
+.h-metric-strip__item--accent .h-metric-strip__accent { display: block; }
+
+/* --- SectionRow: dev Card/accordion yerine satir-bolum ----------------- */
+.h-section {
+  border-top: 1px solid var(--h-border-subtle);
+  padding: var(--h-space-4) 0 var(--h-space-5);
+}
+.h-section:first-of-type { border-top: 0; }
+.h-section__head {
+  display: flex;
+  align-items: center;
+  gap: var(--h-space-3);
+  margin-bottom: var(--h-space-3);
+}
+.h-section__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--h-radius-control);
+  color: var(--h-brand);
+  background: var(--h-bg-selected);
+  font-size: 14px;
+}
+.h-section__title {
+  font-size: var(--h-font-section-title);
+  font-weight: 650;
+  color: var(--h-text-primary);
+  margin: 0;
+}
+.h-section__meta {
+  font-size: var(--h-font-meta);
+  color: var(--h-text-secondary);
+}
+.h-section__spacer { flex: 1; }
+
+/* --- Data list: "tablo kutu icinde kutu" yerine kesintisiz liste ------- */
+.h-dataview .ant-table-wrapper .ant-table,
+.h-dataview .ant-table {
+  background: transparent;
+}
+.h-dataview .ant-table-container {
+  border: 0;
+}
+
+/* --- Inline toolbar (buyuk gri serit yerine) --------------------------- */
+.h-inline-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--h-space-3);
+  flex-wrap: wrap;
+  padding: var(--h-space-2) 0 var(--h-space-3);
+  border-bottom: 1px solid var(--h-border-subtle);
+  margin-bottom: var(--h-space-4);
+}
