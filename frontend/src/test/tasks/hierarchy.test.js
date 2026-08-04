@@ -11,7 +11,7 @@
 import { describe, expect, it } from 'vitest'
 import { groupIntoLogicalItems } from '../../features/tasks/model/grouping'
 import {
-    NO_CUSTOMER, NO_PROJECT, NO_SUB_PROJECT,
+    NO_CUSTOMER, NO_PROJECT,
     breadcrumbFor, buildHierarchy, itemsForNode, matchesSearch,
     reconcileSelection,
 } from '../../features/tasks/model/hierarchy'
@@ -107,10 +107,30 @@ describe('bos/eksik iliskiler kaybolmaz (§6.5)', () => {
         expect(tree[0].count).toBe(1)
     })
 
-    it('project yoksa No Project, sub project yoksa No Sub Project', () => {
+    it('project yoksa No Project sanal klasoru acilir', () => {
         const tree = treeOf([t({ project_id: null, project_name: null })])
         expect(tree[0].children[0].id).toBe(NO_PROJECT)
-        expect(tree[0].children[0].children[0].id).toBe(NO_SUB_PROJECT)
+    })
+
+    it('ALT PROJE yoksa SAHTE seviye ACILMAZ — is projede kalir', () => {
+        const tree = treeOf([t({ sub_project_id: null, sub_project_name: null })])
+        const project = tree[0].children[0]
+        expect(project.children).toHaveLength(0)
+        expect(project.items).toHaveLength(1)
+        expect(project.count).toBe(1)
+        expect(JSON.stringify(tree)).not.toContain('No Sub Project')
+    })
+
+    it('alt proje VARSA seviye acilir ve sayilir', () => {
+        const tree = treeOf([
+            t({ sub_project_id: 's1', sub_project_name: 'API' }),
+            t({ sub_project_id: null, sub_project_name: null }),
+        ])
+        const project = tree[0].children[0]
+        expect(project.children.map((s) => s.label)).toEqual(['API'])
+        // Dogrudan projeye bagli is + alt projedeki is = 2
+        expect(project.count).toBe(2)
+        expect(project.items).toHaveLength(1)
     })
 
     it('sanal klasorler listenin SONUNDA durur', () => {

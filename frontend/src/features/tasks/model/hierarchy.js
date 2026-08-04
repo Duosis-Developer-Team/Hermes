@@ -23,13 +23,20 @@
 
 export const NO_CUSTOMER = '__no_customer__'
 export const NO_PROJECT = '__no_project__'
-export const NO_SUB_PROJECT = '__no_sub_project__'
 
 export const VIRTUAL_LABEL = {
     [NO_CUSTOMER]: 'No Customer',
     [NO_PROJECT]: 'No Project',
-    [NO_SUB_PROJECT]: 'No Sub Project',
 }
+
+/*
+ * ALT PROJE OPSIYONELDIR (kullanici karari, 2026-08-05).
+ * Alt projesi olmayan is, "No Sub Project" diye SAHTE bir seviye
+ * ACMAZ — projede kalir ve agac orada biter. Sahte seviye her projeyi
+ * bir tik daha derinlestiriyor, tiklanacak fazladan bir dugum
+ * uretiyordu. Customer/Project icin durum FARKLIDIR: onlar gercekten
+ * bos olabilir ve kayit kaybolmasin diye sanal klasor SART.
+ */
 
 /** Silinmis/pasif referans ya da yetki nedeniyle ad yoksa: kimlik
  *  sizdirmayan notr etiket (id EKRANA BASILMAZ). */
@@ -57,7 +64,6 @@ export function buildHierarchy(items) {
     for (const item of items || []) {
         const cId = item.customerId || NO_CUSTOMER
         const pId = item.projectId || NO_PROJECT
-        const sId = item.subProjectId || NO_SUB_PROJECT
 
         if (!customers.has(cId)) {
             customers.set(cId, {
@@ -75,15 +81,24 @@ export function buildHierarchy(items) {
                 label: labelFor(item.projectId, item.projectName, NO_PROJECT),
                 isVirtual: !item.projectId,
                 subProjects: new Map(),
+                // Dogrudan bu projeye bagli (alt projesiz) isler.
+                items: [],
             })
         }
         const project = customer.projects.get(pId)
 
+        // Alt projesi YOKSA is dogrudan projeye asilir; alt seviye
+        // olusturulmaz.
+        if (!item.subProjectId) {
+            project.items.push(item)
+            continue
+        }
+        const sId = item.subProjectId
         if (!project.subProjects.has(sId)) {
             project.subProjects.set(sId, {
                 id: sId,
-                label: labelFor(item.subProjectId, item.subProjectName, NO_SUB_PROJECT),
-                isVirtual: !item.subProjectId,
+                label: item.subProjectName || UNNAMED,
+                isVirtual: false,
                 items: [],
             })
         }
@@ -115,7 +130,10 @@ export function buildHierarchy(items) {
                         label: p.label,
                         isVirtual: p.isVirtual,
                         children: subProjects,
-                        count: subProjects.reduce((n, s) => n + s.count, 0),
+                        // Projeye DOGRUDAN bagli isler (alt projesiz).
+                        items: p.items,
+                        count: p.items.length
+                            + subProjects.reduce((n, s) => n + s.count, 0),
                     }
                 })
                 .sort(byLabel)
@@ -133,20 +151,22 @@ export function buildHierarchy(items) {
 /** Bir dugumun (customer / project / sub project) altindaki TUM logical
  *  work item'lar — secili klasorun calisma alanini besler. */
 export function itemsForNode(tree, selection) {
+    // Proje dugumu, alt projelerinin isleriyle BIRLIKTE kendisine
+    // dogrudan bagli isleri de kapsar.
+    const ofProject = (p) => [...p.items, ...p.children.flatMap((s) => s.items)]
+
     if (!selection?.customerId) {
-        return (tree || []).flatMap((c) =>
-            c.children.flatMap((p) => p.children.flatMap((s) => s.items))
-        )
+        return (tree || []).flatMap((c) => c.children.flatMap(ofProject))
     }
     const customer = (tree || []).find((c) => c.id === selection.customerId)
     if (!customer) return []
     if (!selection.projectId) {
-        return customer.children.flatMap((p) => p.children.flatMap((s) => s.items))
+        return customer.children.flatMap(ofProject)
     }
     const project = customer.children.find((p) => p.id === selection.projectId)
     if (!project) return []
     if (!selection.subProjectId) {
-        return project.children.flatMap((s) => s.items)
+        return ofProject(project)
     }
     const sub = project.children.find((s) => s.id === selection.subProjectId)
     return sub ? sub.items : []
