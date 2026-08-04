@@ -25,10 +25,13 @@ import {
 // Recharts SVG attribute'lari CSS degiskenini dogrudan kabul ettigi icin
 // var(--...) referansi yeterli — tema degisiminde renk kendiliginde
 // dogru tarafa gecer.
+// Seriler ayri bir CHART paletinden gelir: iki temada da ayni canlilik
+// ve birbirinden ayrisan tonlar (semantic tokenlar durum icindir, veri
+// gorsellestirme icin degil).
 const CHART_SERIES_COLOR = {
-    customer: 'var(--h-success)',
-    project: 'var(--h-brand)',
-    user: 'var(--h-info)',
+    customer: 'var(--h-chart-2)',
+    project: 'var(--h-chart-1)',
+    user: 'var(--h-chart-3)',
 }
 
 function DashboardPage() {
@@ -114,14 +117,14 @@ function DashboardPage() {
         if (active && payload && payload.length) {
             return (
                 <div style={{
-                    backgroundColor: 'var(--c-surface-2)',
-                    border: '1px solid var(--c-border)',
-                    borderRadius: '4px',
+                    background: 'var(--h-surface-overlay)',
+                    border: '1px solid color-mix(in srgb, var(--h-brand) 20%, var(--h-border-subtle))',
+                    borderRadius: 10,
                     padding: '8px 12px',
-                    color: 'var(--c-text)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                    color: 'var(--h-text-primary)',
+                    boxShadow: 'var(--h-shadow-dropdown)'
                 }}>
-                    <p style={{ margin: 0, fontWeight: 600, color: 'var(--c-text-strong)' }}>{label}</p>
+                    <p style={{ margin: 0, fontWeight: 600, color: 'var(--h-text-primary)' }}>{label}</p>
                     <p style={{ margin: 0 }}>{`${payload[0].value} h`}</p>
                 </div>
             )
@@ -192,9 +195,9 @@ function DashboardPage() {
                         <ChartFrame series={customerData}>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={customerData} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--N700)" />
-                                <XAxis type="number" stroke="var(--N400)" />
-                                <YAxis dataKey="name" type="category" width={100} stroke="var(--N400)" tick={{ fontSize: 12 }} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--h-chart-grid)" />
+                                <XAxis type="number" stroke="var(--h-chart-axis)" />
+                                <YAxis dataKey="name" type="category" width={100} stroke="var(--h-chart-axis)" tick={{ fontSize: 12 }} />
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
                                 <Bar dataKey="hours" fill={CHART_SERIES_COLOR.customer} radius={[0, 4, 4, 0]} />
                             </BarChart>
@@ -209,9 +212,9 @@ function DashboardPage() {
                         <ChartFrame series={projectData}>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={projectData} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--N700)" />
-                                <XAxis type="number" stroke="var(--N400)" />
-                                <YAxis dataKey="name" type="category" width={100} stroke="var(--N400)" tick={{ fontSize: 12 }} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--h-chart-grid)" />
+                                <XAxis type="number" stroke="var(--h-chart-axis)" />
+                                <YAxis dataKey="name" type="category" width={100} stroke="var(--h-chart-axis)" tick={{ fontSize: 12 }} />
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
                                 <Bar dataKey="hours" fill={CHART_SERIES_COLOR.project} radius={[0, 4, 4, 0]} />
                             </BarChart>
@@ -226,9 +229,9 @@ function DashboardPage() {
                         <ChartFrame series={userData}>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={userData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--N700)" />
-                                <XAxis dataKey="name" stroke="var(--N400)" />
-                                <YAxis stroke="var(--N400)" />
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--h-chart-grid)" />
+                                <XAxis dataKey="name" stroke="var(--h-chart-axis)" />
+                                <YAxis stroke="var(--h-chart-axis)" />
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
                                 <Legend />
                                 <Bar dataKey="hours" name="Hours" fill={CHART_SERIES_COLOR.user} radius={[4, 4, 0, 0]} />

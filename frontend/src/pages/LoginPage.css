@@ -6,13 +6,30 @@
  * =============================================================================
  */
 
+/* Premium giris (2026-08-04): siyah/gri duz zemin yerine uygulamanin
+   KENDI tuvali — ayni ambient gradient, ayni token ailesi. */
 .login-page {
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-primary);
+    background: var(--h-bg-page, var(--h-bg-canvas));
     padding: 20px;
+    position: relative;
+    isolation: isolate;
+}
+/* Kartin arkasinda cok hafif marka isigi — dekoratif, animasyonsuz. */
+.login-page::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(
+        620px 420px at 50% 38%,
+        color-mix(in srgb, var(--h-brand) 10%, transparent),
+        transparent 70%
+    );
 }
 
 /* Theme toggle — fixed top-right, mirrors the app header position */
@@ -48,10 +65,20 @@
 
 /* Login Card */
 .login-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-lg);
+    background:
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--h-brand) 6%, transparent),
+            transparent 160px
+        ),
+        var(--h-surface-overlay);
+    border: 1px solid color-mix(in srgb, var(--h-brand) 18%, var(--h-border-subtle));
+    border-radius: 16px;
     padding: 32px;
+    /* Golge temaya gore: sabit siyah golge light tuvalde agir duruyordu. */
+    box-shadow:
+        var(--h-shadow-modal),
+        0 0 0 1px color-mix(in srgb, var(--h-brand) 8%, transparent);
 }
 
 /* Form Header */
@@ -74,29 +101,41 @@
 }
 
 /* Primary Microsoft button — the default sign-in path */
-.ms-login-btn.ant-btn {
-    height: 52px !important;
-    font-size: 16px !important;
-    font-weight: 600 !important;
-    background: #2f2f2f !important;
-    border: 1px solid #2f2f2f !important;
-    color: #fff !important;
-    border-radius: var(--radius-md) !important;
+/* Ham #2f2f2f/#1f1f1f KALKTI: buton artik uygulamanin aksiyon dilini
+   kullanir (dark'ta notr koyu, light'ta temiz acik yuzey). */
+:root .login-card .ms-login-btn.ant-btn {
+    height: 52px;
+    font-size: 16px;
+    font-weight: 600;
+    background: var(--h-action-bg);
+    border: 1px solid var(--h-action-border);
+    color: var(--h-action-text);
+    border-radius: var(--h-radius-standard);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    box-shadow: var(--shadow-md);
+    gap: 8px;
+    box-shadow: var(--h-action-shadow);
+    transition:
+        background var(--h-motion-fast) var(--h-ease-standard),
+        border-color var(--h-motion-fast) var(--h-ease-standard),
+        box-shadow var(--h-motion-fast) var(--h-ease-standard),
+        transform var(--h-motion-instant) var(--h-ease-standard);
 }
 
-.ms-login-btn.ant-btn:hover,
-.ms-login-btn.ant-btn:focus {
-    background: #1f1f1f !important;
-    border-color: #1f1f1f !important;
-    color: #fff !important;
-}
+:root .login-card .ms-login-btn.ant-btn .anticon { color: var(--h-action-icon); }
 
-.ms-login-btn .anticon {
+:root .login-card .ms-login-btn.ant-btn:hover,
+:root .login-card .ms-login-btn.ant-btn:focus {
+    background: var(--h-action-bg-hover);
+    border-color: var(--h-action-border-hover);
+    color: var(--h-action-text);
+    box-shadow: var(--h-action-shadow-hover);
+    transform: translateY(-1px);
+}
+:root .login-card .ms-login-btn.ant-btn:active { transform: translateY(0) scale(0.99); }
+
+:root .login-card .ms-login-btn .anticon {
     font-size: 18px;
 }
 
@@ -120,8 +159,8 @@
 }
 
 .login-email-toggle:hover {
-    color: var(--text-primary);
-    background: var(--bg-tertiary);
+    color: var(--h-brand);
+    background: color-mix(in srgb, var(--h-brand) 8%, transparent);
 }
 
 .login-email-toggle .anticon {

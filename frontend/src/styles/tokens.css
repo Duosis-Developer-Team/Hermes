@@ -146,6 +146,32 @@
   /* Gradient primary buton (marka ailesinden; neon YOK). */
   --h-grad-primary: linear-gradient(135deg, var(--hp-blue-400), var(--hp-blue-600));
   --h-grad-primary-hover: linear-gradient(135deg, var(--hp-blue-300), var(--hp-blue-500));
+  /*
+   * AKSIYON YUZEYI (2026-08-04, kullanici karari): create/add butonlari
+   * DARK temada MAVI degil — arka planla ayni ailenin bir ton acigi.
+   * Marka rengi yalniz ince bir ipucu (kenarlik/ikon) olarak kalir.
+   */
+  --h-action-bg: linear-gradient(180deg, var(--hp-neutral-800), var(--hp-neutral-850));
+  --h-action-bg-hover: linear-gradient(180deg, var(--hp-neutral-750), var(--hp-neutral-800));
+  --h-action-border: var(--hp-neutral-700);
+  --h-action-border-hover: #46586E;
+  --h-action-text: var(--h-text-primary);
+  --h-action-icon: var(--hp-blue-300);
+  --h-action-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --h-action-shadow-hover: 0 4px 14px rgba(0, 0, 0, 0.45);
+  /*
+   * GRAFIK SERILERI (2026-08-04, kullanici karari): dark tema light
+   * kadar CANLI olmali. Onceki durumda seriler semantic tokenlardan
+   * geliyordu; dark'ta iki seri (brand/info) neredeyse AYNI maviydi ve
+   * koyu zeminde sonuk kaliyordu. Artik ayri, doygun ve BIRBIRINDEN
+   * AYRISAN bir palet var; grid cizgisi de temaya gore ayarli.
+   */
+  --h-chart-1: #4C9AFF;   /* mavi   */
+  --h-chart-2: #57D9A3;   /* yesil  */
+  --h-chart-3: #B8ACF6;   /* mor    */
+  --h-chart-4: #FFC44D;   /* amber  */
+  --h-chart-grid: rgba(255, 255, 255, 0.07);
+  --h-chart-axis: var(--hp-neutral-400);
   --h-text-primary: #F4F7FB;
   --h-text-secondary: var(--hp-neutral-400);
   --h-text-muted: var(--hp-neutral-500);
@@ -195,6 +221,22 @@
   --h-surface-danger: rgba(201, 55, 44, 0.08);
   --h-grad-primary: linear-gradient(135deg, var(--hp-blue-500), var(--hp-blue-700));
   --h-grad-primary-hover: linear-gradient(135deg, var(--hp-blue-400), var(--hp-blue-600));
+  /* Light: ayni rol, KENDI rengi — beyaza yakin temiz yuzey, koyu metin. */
+  --h-action-bg: linear-gradient(180deg, var(--hp-neutral-0), var(--hp-neutral-100));
+  --h-action-bg-hover: linear-gradient(180deg, var(--hp-neutral-0), var(--hp-neutral-200));
+  --h-action-border: var(--hp-neutral-300);
+  --h-action-border-hover: #A9B6C6;
+  --h-action-text: var(--h-text-primary);
+  --h-action-icon: var(--hp-blue-600);
+  --h-action-shadow: 0 1px 2px rgba(23, 32, 45, 0.08);
+  --h-action-shadow-hover: 0 4px 14px rgba(23, 32, 45, 0.12);
+  /* Light: AYNI canlilik, acik zeminde okunacak doygunlukta. */
+  --h-chart-1: #2478F0;
+  --h-chart-2: #1FA97A;
+  --h-chart-3: #8F7EE7;
+  --h-chart-4: #E5A00D;
+  --h-chart-grid: rgba(9, 30, 66, 0.08);
+  --h-chart-axis: var(--hp-neutral-600);
   --h-text-primary: var(--hp-neutral-ink);
   --h-text-secondary: var(--hp-neutral-600);
   --h-text-muted: #7C8999;
