@@ -263,8 +263,8 @@ export function UsersTab() {
         <>
             <AdminErrorAlert error={isError ? error : null} onRetry={refetch} />
 
-            <Card
-                title={`📋 User List (${filteredUsers.length})`}
+            <Card variant="borderless"
+                title={`Users (${filteredUsers.length})`}
                 extra={
                     <Space wrap>
                         <Input
@@ -301,7 +301,7 @@ export function UsersTab() {
                 />
                 <AdminRefreshHint isFetching={isFetching} hasData={users.length > 0} />
             </Card>
-            <Modal title={editingId ? '✏️ Edit User' : '➕ New User'} open={modalOpen} onCancel={handleCloseModal} footer={null}>
+            <Modal title={editingId ? 'Edit User' : 'New User'} open={modalOpen} onCancel={handleCloseModal} footer={null}>
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email', message: 'Enter a valid email' }]}>
                         <Input placeholder="example@company.com" disabled={!!editingId} />

@@ -304,8 +304,8 @@ function ProjectsPage() {
 
             <AdminErrorAlert error={isError ? error : null} onRetry={refetch} />
 
-            <Card
-                title={`📋 Project List (${filteredProjects.length})`}
+            <Card variant="borderless"
+                title={`Projects (${filteredProjects.length})`}
                 extra={
                     <Space wrap>
                         <Input
@@ -347,7 +347,7 @@ function ProjectsPage() {
                 />
             </Card>
 
-            <Modal title={editingId ? '✏️ Edit Project' : '➕ New Project'} open={modalOpen} onCancel={handleCloseModal} footer={null}>
+            <Modal title={editingId ? 'Edit Project' : 'New Project'} open={modalOpen} onCancel={handleCloseModal} footer={null}>
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <Form.Item name="name" label="Project Name" rules={[{ required: true, message: 'Project name is required' }]}>
                         <Input placeholder="e.g. E-Commerce Platform" />

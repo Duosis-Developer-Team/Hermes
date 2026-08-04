@@ -224,7 +224,7 @@ function RolesTab() {
 
     const columns = [
         {
-            title: 'Rol', dataIndex: 'name', key: 'name',
+            title: 'Role', dataIndex: 'name', key: 'name',
             render: (name, r) => (
                 <Space>
                     {r.is_system && <LockOutlined title="System role" />}
@@ -246,11 +246,11 @@ function RolesTab() {
             width: 80,
         },
         {
-            title: 'Durum', dataIndex: 'is_active', key: 'is_active',
+            title: 'Status', dataIndex: 'is_active', key: 'is_active',
             width: 100,
             render: (a) => (
                 <Tag color={a ? 'success' : 'default'}>
-                    {a ? 'Aktif' : 'Pasif'}
+                    {a ? 'Active' : 'Inactive'}
                 </Tag>
             ),
         },
@@ -291,8 +291,8 @@ function RolesTab() {
                     }
                 />
             )}
-            <Card
-                title={`🛡️ Roles (${roles.length})`}
+            <Card variant="borderless"
+                title={`Roles (${roles.length})`}
                 extra={
                     <Button type="primary" icon={<PlusOutlined />}
                             onClick={() => open()}>
@@ -361,23 +361,21 @@ function RolesTab() {
                             style={{ width: '100%' }}
                             disabled={systemLocked}
                         >
+                            {/* Premium redesign: kesintisiz checkbox dokumu
+                                yerine ACIK grup basliklari + secili satirda
+                                soft accent wash. Davranis/degerler AYNI. */}
                             {grouped.map(([groupLabel, perms]) => (
-                                <div key={groupLabel}
-                                     style={{ marginBottom: 12 }}>
-                                    <Text strong>{groupLabel}</Text>
-                                    <div style={{
-                                        display: 'grid', gap: 4,
-                                        marginTop: 4,
-                                    }}>
+                                <div key={groupLabel} className="role-perm-group">
+                                    <div className="role-perm-group__title">{groupLabel}</div>
+                                    <div className="role-perm-group__items">
                                         {perms.map((p) => (
                                             <Checkbox key={p.code}
-                                                      value={p.code}>
-                                                {PERMISSION_LABELS[p.code]
-                                                    || p.code}{' '}
-                                                <Text type="secondary"
-                                                      style={{ fontSize: 11 }}>
-                                                    {p.code}
-                                                </Text>
+                                                      value={p.code}
+                                                      className="role-perm-item">
+                                                <span className="role-perm-item__label">
+                                                    {PERMISSION_LABELS[p.code] || p.code}
+                                                </span>
+                                                <span className="role-perm-item__code">{p.code}</span>
                                             </Checkbox>
                                         ))}
                                     </div>

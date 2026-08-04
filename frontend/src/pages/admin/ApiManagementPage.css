@@ -13,12 +13,14 @@
     margin-bottom: 14px;
 }
 
+/* Premium redesign: nested panel yerine ince divider'li satir. */
 .am-client {
-    border: 1px solid var(--c-border);
-    border-radius: 10px;
-    background: var(--c-surface);
-    padding: 14px 16px;
-    margin-bottom: 12px;
+    border: 0;
+    border-bottom: 1px solid var(--h-border-subtle);
+    border-radius: 0;
+    background: transparent;
+    padding: 14px 4px;
+    margin-bottom: 0;
 }
 
 .am-client.is-disabled {
@@ -186,14 +188,16 @@
     gap: 12px;
 }
 
+/* Dokuman baglantilari: Card grid yerine editorial satir. */
 .am-doc-card {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    border: 1px solid var(--c-border);
-    border-radius: 10px;
-    background: var(--c-surface);
-    padding: 14px 16px;
+    border: 0;
+    border-bottom: 1px solid var(--h-border-subtle);
+    border-radius: 0;
+    background: transparent;
+    padding: 12px 4px;
     color: inherit;
     text-decoration: none;
     transition: border-color 0.15s ease, background 0.15s ease;

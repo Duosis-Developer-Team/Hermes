@@ -267,8 +267,8 @@ function CustomersPage() {
 
             <AdminErrorAlert error={isError ? error : null} onRetry={refetch} />
 
-            <Card
-                title={`📋 Customer List (${filteredCustomers.length})`}
+            <Card variant="borderless"
+                title={`Customers (${filteredCustomers.length})`}
             >
                 <Table
                     dataSource={filteredCustomers}
@@ -297,7 +297,7 @@ function CustomersPage() {
 
             {/* Edit/Create Modal */}
             <Modal
-                title={editingId ? '✏️ Edit Customer' : '➕ New Customer'}
+                title={editingId ? 'Edit Customer' : 'New Customer'}
                 open={modalOpen}
                 onCancel={handleCloseModal}
                 footer={null}

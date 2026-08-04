@@ -173,8 +173,8 @@ function WorkTypesPage() {
             </div>
             <AdminErrorAlert error={isError ? error : null} onRetry={refetch} />
 
-            <Card
-                title={`📋 Work Type List (${filteredWorkTypes.length})`}
+            <Card variant="borderless"
+                title={`Work Types (${filteredWorkTypes.length})`}
                 extra={
                     <Space wrap>
                         <Input

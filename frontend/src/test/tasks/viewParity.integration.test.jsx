@@ -98,9 +98,12 @@ describe('gorunum degisiminde baglam KORUNUR', () => {
         renderTasksPage()
         await screen.findByText('Bekleyen gorev')
 
+        // Premium redesign: gelismis filtreler drawer'a tasindi —
+        // once "Filters" aksiyonu acilir (davranis sozlesmesi ayni).
+        await user.click(screen.getByRole('button', { name: /Filters/ }))
         // Capraz filtre: Status = In Progress
         await user.click(
-            screen.getByRole('combobox', { name: 'Filter by status' })
+            await screen.findByRole('combobox', { name: 'Filter by status' })
         )
         await user.click(await screen.findByTitle('In Progress'))
         // Ikincil filtre: Overdue

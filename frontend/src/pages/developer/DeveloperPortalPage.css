@@ -486,8 +486,21 @@
     white-space: nowrap;
 }
 
+/* Premium redesign: gri arama kutusu yerine hafif, cizgi-alti kontrol. */
 .dp-search {
     margin-bottom: 8px;
+}
+.dp-search .ant-input-affix-wrapper,
+.dp-search .ant-input {
+    background: transparent;
+    border-color: transparent;
+    border-bottom: 1px solid var(--h-border-subtle);
+    border-radius: 0;
+    padding-left: 0;
+}
+.dp-search .ant-input-affix-wrapper:focus-within {
+    border-bottom-color: var(--h-brand);
+    box-shadow: none;
 }
 
 .dp-nav-empty {

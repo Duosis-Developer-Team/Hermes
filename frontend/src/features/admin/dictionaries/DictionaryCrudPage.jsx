@@ -265,7 +265,7 @@ function DictionaryCrudPage({
                 />
             )}
 
-            <Card
+            <Card variant="borderless"
                 title={title}
                 extra={
                     <Space wrap>
