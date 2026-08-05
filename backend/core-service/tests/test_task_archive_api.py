@@ -67,7 +67,7 @@ def http(world, pg_session):
     app.dependency_overrides.pop(get_current_user, None)
 
 
-def _task(world, *, status="rejected", assignee=WORKER, batch=None,
+def _task(world, *, status="completed", assignee=WORKER, batch=None,
           archived=False, closed_days_ago=1, **over):
     s = world["s"]
     closed_at = (
@@ -183,7 +183,8 @@ def test_archived_count_does_not_leak(world, http):
 
 
 def test_assigner_can_archive_terminal_item(world, http):
-    t = _task(world, status="rejected")
+    t = _task(world, status="completed")
+    _log_time(world, t)
     res = http(ASSIGNER).post(f"/api/v1/core/tasks/{t.id}/archive")
     assert res.status_code == 200, res.text
     body = res.json()
@@ -193,7 +194,7 @@ def test_assigner_can_archive_terminal_item(world, http):
 
 
 def test_plain_assignee_cannot_archive(world, http):
-    t = _task(world, status="rejected", assignee=WORKER)
+    t = _task(world, status="completed", assignee=WORKER)
     res = http(WORKER).post(f"/api/v1/core/tasks/{t.id}/archive")
     assert res.status_code == 403
 
@@ -206,7 +207,7 @@ def test_active_item_cannot_be_archived(world, http):
 
 def test_mixed_group_cannot_be_archived(world, http):
     batch = uuid.uuid4()
-    a = _task(world, status="rejected", batch=batch)
+    a = _task(world, status="completed", batch=batch)
     _task(world, status="pending", batch=batch)
     res = http(ASSIGNER).post(f"/api/v1/core/tasks/{a.id}/archive")
     assert res.status_code == 409
@@ -228,7 +229,9 @@ def test_completed_with_log_time_can_be_archived(world, http):
 
 def test_archiving_one_row_archives_whole_group(world, http):
     batch = uuid.uuid4()
-    rows = [_task(world, status="rejected", batch=batch) for _ in range(3)]
+    rows = [_task(world, status="completed", batch=batch) for _ in range(3)]
+    for r in rows:
+        _log_time(world, r)
     res = http(ASSIGNER).post(f"/api/v1/core/tasks/{rows[0].id}/archive")
     assert res.status_code == 200
     world["s"].expire_all()
@@ -238,7 +241,8 @@ def test_archiving_one_row_archives_whole_group(world, http):
 
 
 def test_archive_is_idempotent(world, http):
-    t = _task(world, status="rejected")
+    t = _task(world, status="completed")
+    _log_time(world, t)
     first = http(ASSIGNER).post(f"/api/v1/core/tasks/{t.id}/archive")
     second = http(ASSIGNER).post(f"/api/v1/core/tasks/{t.id}/archive")
     assert first.status_code == 200 and second.status_code == 200
@@ -268,8 +272,8 @@ def test_archive_never_deletes_rows_or_work_logs(world, http):
 
 def test_restore_reopens_only_selected_assignment(world, http):
     batch = uuid.uuid4()
-    a = _task(world, status="rejected", batch=batch, archived=True)
-    b = _task(world, status="rejected", batch=batch, archived=True)
+    a = _task(world, status="completed", batch=batch, archived=True)
+    b = _task(world, status="completed", batch=batch, archived=True)
     res = http(ASSIGNER).post(
         f"/api/v1/core/tasks/{a.id}/restore",
         json={"assignment_task_id": str(a.id), "target_status": "in_progress"},
@@ -278,13 +282,13 @@ def test_restore_reopens_only_selected_assignment(world, http):
     world["s"].expire_all()
     assert world["s"].query(Task).get(a.id).status == "in_progress"
     # Secilmeyen sibling DEGISMEDI.
-    assert world["s"].query(Task).get(b.id).status == "rejected"
+    assert world["s"].query(Task).get(b.id).status == "completed"
 
 
 def test_restore_clears_archive_for_whole_group(world, http):
     batch = uuid.uuid4()
-    a = _task(world, status="rejected", batch=batch, archived=True)
-    b = _task(world, status="rejected", batch=batch, archived=True)
+    a = _task(world, status="completed", batch=batch, archived=True)
+    b = _task(world, status="completed", batch=batch, archived=True)
     http(ASSIGNER).post(
         f"/api/v1/core/tasks/{a.id}/restore",
         json={"assignment_task_id": str(a.id), "target_status": "pending"},
@@ -298,14 +302,14 @@ def test_restore_clears_archive_for_whole_group(world, http):
 
 
 def test_restore_requires_assignment_selection(world, http):
-    t = _task(world, status="rejected", archived=True)
+    t = _task(world, status="completed", archived=True)
     res = http(ASSIGNER).post(f"/api/v1/core/tasks/{t.id}/restore", json={})
     assert res.status_code == 422
 
 
 def test_restore_rejects_foreign_assignment(world, http):
-    t = _task(world, status="rejected", archived=True)
-    other = _task(world, status="rejected", archived=True)
+    t = _task(world, status="completed", archived=True)
+    other = _task(world, status="completed", archived=True)
     res = http(ASSIGNER).post(
         f"/api/v1/core/tasks/{t.id}/restore",
         json={"assignment_task_id": str(other.id), "target_status": "pending"},
@@ -314,7 +318,7 @@ def test_restore_rejects_foreign_assignment(world, http):
 
 
 def test_restore_rejects_invalid_target_status(world, http):
-    t = _task(world, status="rejected", archived=True)
+    t = _task(world, status="completed", archived=True)
     res = http(ASSIGNER).post(
         f"/api/v1/core/tasks/{t.id}/restore",
         json={"assignment_task_id": str(t.id), "target_status": "completed"},
@@ -323,7 +327,7 @@ def test_restore_rejects_invalid_target_status(world, http):
 
 
 def test_restore_creates_no_work_log(world, http):
-    t = _task(world, status="rejected", archived=True)
+    t = _task(world, status="completed", archived=True)
     before = world["s"].query(WorkLog).count()
     http(ASSIGNER).post(
         f"/api/v1/core/tasks/{t.id}/restore",
@@ -334,7 +338,7 @@ def test_restore_creates_no_work_log(world, http):
 
 
 def test_restored_item_returns_to_active_list(world, http):
-    t = _task(world, status="rejected", archived=True)
+    t = _task(world, status="completed", archived=True)
     http(ASSIGNER).post(
         f"/api/v1/core/tasks/{t.id}/restore",
         json={"assignment_task_id": str(t.id), "target_status": "in_progress"},

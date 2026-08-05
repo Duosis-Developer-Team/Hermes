@@ -40,7 +40,6 @@ const STATUS_RANK = {
     in_progress: 1,
     completed: 2,
     cancelled: 3,
-    rejected: 4,
 }
 
 const PRIORITY_COLOR = {
@@ -55,7 +54,6 @@ const STATUS_COLOR = {
     in_progress: 'blue',
     completed: 'green',
     cancelled: 'magenta',
-    rejected: 'red',
 }
 
 
@@ -96,7 +94,6 @@ function TasksListView({
         { text: 'In Progress', value: 'in_progress' },
         { text: 'Completed', value: 'completed' },
         { text: 'Cancelled', value: 'cancelled' },
-        { text: 'Rejected', value: 'rejected' },
     ]
 
     /*

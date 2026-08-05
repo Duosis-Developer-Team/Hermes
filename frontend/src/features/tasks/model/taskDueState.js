@@ -14,14 +14,14 @@ import dayjs from 'dayjs'
 
 /**
  * Returns the due-date severity bucket for a task, or null when the
- * task does not warrant any badge. Completed/rejected tasks never
+ * task does not warrant any badge. Completed tasks never
  * surface as overdue — they're done business, the due date is moot.
  *
  * Exposed for reuse by list and board views.
  */
 export function taskDueState(task) {
     if (!task?.due_date) return null
-    if (task.status === 'completed' || task.status === 'rejected') return null
+    if (task.status === 'completed') return null
     const today = dayjs().startOf('day')
     const due = dayjs(task.due_date).startOf('day')
     const diffDays = due.diff(today, 'day')

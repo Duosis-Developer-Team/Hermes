@@ -83,7 +83,7 @@ describe('Board: coklu atama tek kart (§9)', () => {
         const { container } = renderBoard()
         const inProgress = container.querySelector('.tasks-board-column-in_progress')
         expect(within(inProgress).getByText('API rate limit')).toBeInTheDocument()
-        for (const s of ['pending', 'completed', 'rejected']) {
+        for (const s of ['pending', 'completed']) {
             const col = container.querySelector(`.tasks-board-column-${s}`)
             expect(within(col).queryByText('API rate limit')).toBeNull()
         }

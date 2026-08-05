@@ -60,11 +60,11 @@ describe('dates — gun anahtarlari yerel kalir', () => {
 describe('quickFilterParams', () => {
     const weekStart = dayjs('2026-08-31').startOf('isoWeek')
 
-    it('due-this-week: hafta penceresi + biten/reddedilen HARIC', () => {
+    it('due-this-week: hafta penceresi + bitenler HARIC', () => {
         expect(quickFilterParams('due-this-week', { weekStart })).toEqual({
             due_from: '2026-08-31',
             due_to: '2026-09-06',
-            status_exclude: ['completed', 'rejected'],
+            status_exclude: ['completed'],
         })
     })
 
@@ -74,7 +74,7 @@ describe('quickFilterParams', () => {
         })
         expect(p).toEqual({
             due_to: '2026-08-30',
-            status_exclude: ['completed', 'rejected'],
+            status_exclude: ['completed'],
         })
         expect(p.due_from).toBeUndefined()
     })

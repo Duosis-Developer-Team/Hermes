@@ -53,7 +53,7 @@ _CANDIDATE_SQL = """
 SELECT COALESCE(assignment_batch_id::text, 'task:' || id::text) AS logical_key
 FROM tasks
 GROUP BY COALESCE(assignment_batch_id::text, 'task:' || id::text)
-HAVING bool_and(status IN ('completed', 'rejected'))
+HAVING bool_and(status = 'completed')
    AND bool_and(archived_at IS NULL)
    AND bool_and(closed_at IS NOT NULL)
    AND max(closed_at) <= :cutoff

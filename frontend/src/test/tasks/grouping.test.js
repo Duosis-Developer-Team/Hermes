@@ -84,9 +84,10 @@ describe('aggregate status sozlesmesi (§5)', () => {
         expect(agg('completed', 'completed', 'completed', 'completed', 'completed'))
             .toBe('completed')
     })
-    it('hepsi Rejected → Rejected', () => {
-        expect(agg('rejected', 'rejected', 'rejected', 'rejected', 'rejected'))
-            .toBe('rejected')
+    it('rejected URUNDEN KALKTI → bilinmeyen sayilir, pending e duser', () => {
+        // Gecmiste kalmis satirlar ekrandan KAYBOLMAZ; Pending sutununda
+        // gorunur ve yeniden ele alinabilir.
+        expect(agg('rejected', 'rejected')).toBe('pending')
     })
     it('hepsi In Progress → In Progress', () => {
         expect(agg('in_progress', 'in_progress')).toBe('in_progress')
@@ -99,12 +100,12 @@ describe('aggregate status sozlesmesi (§5)', () => {
     it('2 Completed + 1 Pending → In Progress', () => {
         expect(agg('completed', 'completed', 'pending')).toBe('in_progress')
     })
-    it('1 Rejected + 2 Pending → In Progress', () => {
-        expect(agg('rejected', 'pending', 'pending')).toBe('in_progress')
+    it('legacy rejected + Pending → Pending (ikisi de pending sayilir)', () => {
+        expect(agg('rejected', 'pending', 'pending')).toBe('pending')
     })
 
     it('tek assignment kendi statusunu tasir', () => {
-        for (const s of ['pending', 'in_progress', 'completed', 'rejected', 'cancelled']) {
+        for (const s of ['pending', 'in_progress', 'completed', 'cancelled']) {
             expect(agg(s)).toBe(s)
         }
     })

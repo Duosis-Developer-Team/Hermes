@@ -115,7 +115,7 @@ describe('salt okunurluk ve yetki', () => {
     })
 
     it('yalniz TERMINAL logical item arsivlenebilir', () => {
-        const terminal = { assignments: [{ status: 'completed' }, { status: 'rejected' }] }
+        const terminal = { assignments: [{ status: 'completed' }, { status: 'completed' }] }
         const open = { assignments: [{ status: 'completed' }, { status: 'in_progress' }] }
         expect(isArchivable(terminal)).toBe(true)
         expect(isArchivable(open)).toBe(false)
@@ -123,7 +123,7 @@ describe('salt okunurluk ve yetki', () => {
 
     it('normal assignee arsivleyemez; atayan ve admin arsivleyebilir', () => {
         const item = {
-            assignments: [{ status: 'rejected' }], assignerUserId: 'boss',
+            assignments: [{ status: 'completed' }], assignerUserId: 'boss',
         }
         expect(canArchiveWorkItem({ item, currentUserId: 'worker' })).toBe(false)
         expect(canArchiveWorkItem({ item, currentUserId: 'boss' })).toBe(true)

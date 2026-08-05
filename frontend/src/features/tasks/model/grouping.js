@@ -60,8 +60,11 @@ export const userLabel = (id, userMap) => {
 
 /** Bir gorunur assignment'in status'u — bilinmeyen deger 'pending' sayilir
  *  (kart bir sutunda MUTLAKA yer almali; sessizce kaybolmamali). */
+/* `rejected` katalogdan cikarildi (kullanici karari). Gecmiste kalmis
+   bir kayit BILINMEYEN sayilir ve 'pending'e duser — yani ekrandan
+   KAYBOLMAZ, yeniden ele alinabilir hale gelir. */
 const KNOWN_STATUSES = new Set([
-    'pending', 'in_progress', 'completed', 'cancelled', 'rejected',
+    'pending', 'in_progress', 'completed', 'cancelled',
 ])
 
 export const normalizeStatus = (status) =>

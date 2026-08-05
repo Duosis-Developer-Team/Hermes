@@ -2,7 +2,7 @@
  * =============================================================================
  * HERMES - Tasks Board View (dynamic assignment kanban)
  * =============================================================================
- * Status-grouped kanban: Pending · In Progress · Completed · Rejected.
+ * Status-grouped kanban: Pending · In Progress · Completed.
  *
  * Dynamic assignment features:
  *   1. Drag-and-drop status change — drag a card between columns. On drop
@@ -49,14 +49,12 @@ const COLUMNS = [
     { status: 'pending', label: 'Pending' },
     { status: 'in_progress', label: 'In Progress' },
     { status: 'completed', label: 'Completed' },
-    { status: 'rejected', label: 'Rejected' },
 ]
 
 const VALID_STATUSES = new Set([
     'pending',
     'in_progress',
     'completed',
-    'rejected',
 ])
 
 // Droppable cell id encoding. Without swimlanes the id is just the
@@ -182,7 +180,7 @@ function TasksBoardView({
 
     // Status buckets (flat board) — AGGREGATE status'e gore.
     const buckets = useMemo(() => {
-        const map = { pending: [], in_progress: [], completed: [], rejected: [] }
+        const map = { pending: [], in_progress: [], completed: [] }
         for (const item of logicalItems) {
             if (map[item.aggregateStatus]) map[item.aggregateStatus].push(item)
         }
@@ -202,7 +200,6 @@ function TasksBoardView({
                     pending: [],
                     in_progress: [],
                     completed: [],
-                    rejected: [],
                 })
             }
             const b = byAssignee.get(key)

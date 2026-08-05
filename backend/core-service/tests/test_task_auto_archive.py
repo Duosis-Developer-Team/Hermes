@@ -87,7 +87,7 @@ def _set_policy(world, days):
 
 def test_closed_six_days_23h_is_not_archived(world):
     _set_policy(world, 7)
-    t = _task(world, "rejected", closed_days_ago=0)
+    t = _task(world, "completed", closed_days_ago=0)
     t.closed_at = datetime.now(timezone.utc) - timedelta(days=6, hours=23)
     world["s"].commit()
 
@@ -100,7 +100,7 @@ def test_closed_six_days_23h_is_not_archived(world):
 
 def test_closed_seven_days_is_archived(world):
     _set_policy(world, 7)
-    t = _task(world, "rejected", closed_days_ago=7)
+    t = _task(world, "completed", closed_days_ago=7)
     summary = run_auto_archive(world["s"])
     world["s"].expire_all()
     assert summary["logical_items_archived"] == 1
@@ -150,7 +150,7 @@ def test_whole_group_archived_together(world):
     batch = uuid.uuid4()
     rows = [
         _task(world, "completed", closed_days_ago=10, batch=batch),
-        _task(world, "rejected", closed_days_ago=10, batch=batch),
+        _task(world, "completed", closed_days_ago=10, batch=batch),
         _task(world, "completed", closed_days_ago=10, batch=batch),
     ]
     summary = run_auto_archive(world["s"])
@@ -166,7 +166,7 @@ def test_batch_limit_never_splits_a_group(world):
     _set_policy(world, 7)
     batch = uuid.uuid4()
     for _ in range(5):
-        _task(world, "rejected", closed_days_ago=10, batch=batch)
+        _task(world, "completed", closed_days_ago=10, batch=batch)
     # Batch 1 olsa bile grup BOLUNMEZ: batch logical anahtar bazindadir.
     summary = run_auto_archive(world["s"], batch_size=1)
     world["s"].expire_all()
@@ -185,7 +185,7 @@ def test_batch_limit_never_splits_a_group(world):
 
 def test_never_policy_skips_safely(world):
     _set_policy(world, None)
-    t = _task(world, "rejected", closed_days_ago=999)
+    t = _task(world, "completed", closed_days_ago=999)
     summary = run_auto_archive(world["s"])
     world["s"].expire_all()
     assert summary["ok"] is True
@@ -226,7 +226,7 @@ def test_policy_is_singleton_at_db_level(world):
 
 def test_dry_run_changes_nothing(world):
     _set_policy(world, 7)
-    t = _task(world, "rejected", closed_days_ago=10)
+    t = _task(world, "completed", closed_days_ago=10)
     summary = run_auto_archive(world["s"], dry_run=True)
     world["s"].expire_all()
     assert summary["dry_run"] is True
@@ -237,7 +237,7 @@ def test_dry_run_changes_nothing(world):
 
 def test_second_run_is_idempotent(world):
     _set_policy(world, 7)
-    _task(world, "rejected", closed_days_ago=10)
+    _task(world, "completed", closed_days_ago=10)
     first = run_auto_archive(world["s"])
     second = run_auto_archive(world["s"])
     assert first["logical_items_archived"] == 1
@@ -246,7 +246,7 @@ def test_second_run_is_idempotent(world):
 
 def test_advisory_lock_blocks_concurrent_run(world):
     _set_policy(world, 7)
-    _task(world, "rejected", closed_days_ago=10)
+    _task(world, "completed", closed_days_ago=10)
     engine = world["s"].get_bind()
     other = engine.connect()
     try:
@@ -272,7 +272,7 @@ def test_advisory_lock_blocks_concurrent_run(world):
 
 def test_no_row_is_ever_deleted(world):
     _set_policy(world, 7)
-    _task(world, "rejected", closed_days_ago=10)
+    _task(world, "completed", closed_days_ago=10)
     _task(world, "pending")
     before = world["s"].query(Task).count()
     run_auto_archive(world["s"])
@@ -308,7 +308,7 @@ def test_work_logs_are_untouched(world):
 
 def test_audit_uses_archive_terminology(world):
     _set_policy(world, 7)
-    t = _task(world, "rejected", closed_days_ago=10)
+    t = _task(world, "completed", closed_days_ago=10)
     run_auto_archive(world["s"])
     world["s"].expire_all()
     kinds = {
@@ -324,7 +324,7 @@ def test_audit_uses_archive_terminology(world):
 
 def test_summary_has_no_business_data(world):
     _set_policy(world, 7)
-    t = _task(world, "rejected", closed_days_ago=10)
+    t = _task(world, "completed", closed_days_ago=10)
     t.title = "Gizli baslik"
     world["s"].commit()
     summary = run_auto_archive(world["s"])

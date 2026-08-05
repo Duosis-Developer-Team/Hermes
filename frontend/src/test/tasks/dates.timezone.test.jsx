@@ -143,12 +143,12 @@ describe('hizli filtrelerin tarih parametreleri', () => {
         return taskService.list.mock.calls.at(-1)[0]
     }
 
-    it('Overdue: due_to = DUN (yerel), tamamlanan/reddedilen haric', async () => {
+    it('Overdue: due_to = DUN (yerel), tamamlananlar haric', async () => {
         setTZ('Europe/Istanbul')
         freezeAt('2026-03-01T00:30:00Z') // Istanbul'da 01 Mart 03:30
         const p = await clickChip('Overdue')
         expect(p.due_to).toBe('2026-02-28')
-        expect(p.status_exclude).toEqual(['completed', 'rejected'])
+        expect(p.status_exclude).toEqual(['completed'])
         expect(p.due_from).toBeUndefined()
     })
 
@@ -273,12 +273,14 @@ describe('due-date rozeti gun sinirinda dogru okur', () => {
             .toBe('overdue')
     })
 
-    it('tamamlanmis/reddedilmis gorev ASLA overdue gostermez', () => {
+    it('tamamlanmis gorev ASLA overdue gostermez', () => {
         setTZ('UTC')
         freezeAt('2026-03-01T12:00:00Z')
         expect(taskDueState({ due_date: '2026-01-01', status: 'completed' }))
             .toBeNull()
+        // `rejected` urunden kaldirildi: gecmiste kalmis bir satir artik
+        // ACIK is sayilir, dolayisiyla gecikmis rozetini HAK EDER.
         expect(taskDueState({ due_date: '2026-01-01', status: 'rejected' }))
-            .toBeNull()
+            .toBe('overdue')
     })
 })

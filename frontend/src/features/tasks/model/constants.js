@@ -8,12 +8,18 @@
  * =============================================================================
  */
 
+/*
+ * KULLANICI KARARI (2026-08-05): `rejected` UGRUNDEN KALDIRILDI.
+ * Atanmis bir is reddedilmez; akis Pending → In Progress → Completed.
+ * Veritabanindaki CHECK kisiti DEGISTIRILMEDI (destructive migration
+ * yok): gecmiste kalmis bir kayit varsa gecersiz hale gelmez, ekranda
+ * Pending olarak gorunur ve kaybolmaz.
+ */
 export const STATUS_OPTIONS = [
     { value: 'pending', label: 'Pending' },
     { value: 'in_progress', label: 'In Progress' },
     { value: 'completed', label: 'Completed' },
     { value: 'cancelled', label: 'Cancelled' },
-    { value: 'rejected', label: 'Rejected' },
 ]
 
 export const PRIORITY_OPTIONS = [

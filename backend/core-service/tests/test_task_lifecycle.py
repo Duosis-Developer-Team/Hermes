@@ -95,13 +95,15 @@ def test_singleton_completed_gets_closed_at(world):
     assert t.closed_at is not None
 
 
-def test_singleton_rejected_gets_closed_at(world):
+def test_legacy_rejected_is_not_terminal(world):
+    """`rejected` urunden kaldirildi: gecmiste kalmis bir satir terminal
+    SAYILMAZ, kapanmaz ve otomatik arsivlenmez — Active havuzda kalir."""
     t = _task(world, "rejected")
     lc.recompute_closure(world["s"], t)
-    assert t.closed_at is not None
+    assert t.closed_at is None
 
 
-@pytest.mark.parametrize("status", ["pending", "in_progress", "cancelled"])
+@pytest.mark.parametrize("status", ["pending", "in_progress", "cancelled", "rejected"])
 def test_non_terminal_never_closes(world, status):
     t = _task(world, status)
     lc.recompute_closure(world["s"], t)
@@ -127,7 +129,9 @@ def test_group_closes_when_last_assignment_turns_terminal(world):
     lc.recompute_closure(world["s"], a)
     assert a.closed_at is None
 
-    b.status = "rejected"
+    b.status = "completed"
+    b.completed_at = datetime.now(timezone.utc)
+    b.completed_by_user_id = b.assignee_user_id
     world["s"].flush()
     lc.recompute_closure(world["s"], a)
     world["s"].flush()
@@ -142,12 +146,8 @@ def test_terminal_to_terminal_does_not_reset_closed_at(world):
     first = t.closed_at
     assert first is not None
 
-    # Urunun kendi gecisi gibi: rejected'a gecerken completion alanlari
-    # temizlenir (chk_tasks_completion_consistency). Test bu gercek
-    # davranisi taklit eder.
-    t.status = "rejected"
-    t.completed_at = None
-    t.completed_by_user_id = None
+    # Ayni terminal durumda kalmak sureyi SIFIRLAMAZ.
+    t.description = "x"
     world["s"].flush()
     lc.recompute_closure(world["s"], t)
     assert t.closed_at == first
@@ -156,7 +156,7 @@ def test_terminal_to_terminal_does_not_reset_closed_at(world):
 def test_reopen_clears_closure_and_archive_for_whole_group(world):
     batch = uuid.uuid4()
     a = _task(world, "completed", batch, completed_at=datetime.now(timezone.utc))
-    b = _task(world, "rejected", batch)
+    b = _task(world, "completed", batch, completed_at=datetime.now(timezone.utc))
     world["s"].flush()
     lc.recompute_closure(world["s"], a)
     lc.archive_group(world["s"], a, reason=lc.ARCHIVE_REASON_AUTO,
@@ -165,6 +165,8 @@ def test_reopen_clears_closure_and_archive_for_whole_group(world):
     assert a.archived_at is not None and b.archived_at is not None
 
     b.status = "in_progress"
+    b.completed_at = None
+    b.completed_by_user_id = None
     world["s"].flush()
     lc.recompute_closure(world["s"], b)
     world["s"].flush()
@@ -206,14 +208,16 @@ def test_completed_with_work_log_closes(world):
     assert t.closed_at is not None
 
 
-def test_rejected_needs_no_work_log(world):
-    t = _task(world, "rejected")
+def test_completed_needs_work_log(world):
+    """Tek terminal durum completed oldugu icin Log Time kilidi artik
+    HER kapanisin on kosuludur."""
+    t = _task(world, "completed", completed_at=datetime.now(timezone.utc))
     lc.recompute_closure(world["s"], t, require_work_log=True)
-    assert t.closed_at is not None
+    assert t.closed_at is None
 
 
 def test_archiving_never_touches_work_logs(world):
-    t = _task(world, "rejected")
+    t = _task(world, "completed", completed_at=datetime.now(timezone.utc))
     wl = _work_log(world, t, duration_hours=2, billable_duration_hours=2,
                    description="keep me")
     world["s"].add(wl)
@@ -234,7 +238,7 @@ def test_archiving_never_touches_work_logs(world):
 
 def test_archive_group_stamps_every_sibling(world):
     batch = uuid.uuid4()
-    rows = [_task(world, "rejected", batch) for _ in range(3)]
+    rows = [_task(world, "completed", batch, completed_at=datetime.now(timezone.utc)) for _ in range(3)]
     world["s"].flush()
     lc.archive_group(world["s"], rows[0], reason=lc.ARCHIVE_REASON_AUTO,
                      actor_user_id=None)
@@ -246,7 +250,7 @@ def test_archive_group_stamps_every_sibling(world):
 
 
 def test_manual_archive_records_actor(world):
-    t = _task(world, "rejected")
+    t = _task(world, "completed", completed_at=datetime.now(timezone.utc))
     lc.archive_group(world["s"], t, reason=lc.ARCHIVE_REASON_MANUAL,
                      actor_user_id=ASSIGNER)
     world["s"].flush()
@@ -255,7 +259,7 @@ def test_manual_archive_records_actor(world):
 
 
 def test_archive_is_idempotent(world):
-    t = _task(world, "rejected")
+    t = _task(world, "completed", completed_at=datetime.now(timezone.utc))
     lc.archive_group(world["s"], t, reason=lc.ARCHIVE_REASON_AUTO,
                      actor_user_id=None)
     world["s"].flush()
@@ -269,7 +273,7 @@ def test_archive_is_idempotent(world):
 
 
 def test_restore_clears_archive_but_not_status(world):
-    t = _task(world, "rejected")
+    t = _task(world, "completed", completed_at=datetime.now(timezone.utc))
     lc.recompute_closure(world["s"], t)
     lc.archive_group(world["s"], t, reason=lc.ARCHIVE_REASON_MANUAL,
                      actor_user_id=ASSIGNER)
@@ -281,7 +285,7 @@ def test_restore_clears_archive_but_not_status(world):
     assert t.archived_by_user_id is None
     # Status'a DOKUNULMAZ — hangi assignment'in acilacagi cagiranin
     # ACIK kullanici secimidir.
-    assert t.status == "rejected"
+    assert t.status == "completed"
 
 
 # ── Logical kimlik ─────────────────────────────────────────────────────

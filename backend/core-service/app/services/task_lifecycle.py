@@ -20,8 +20,9 @@ Baslik/aciklama/tarih/assignee BENZERLIGI ile gruplama YAPILMAZ.
 -----------------------------------------------------------------------
 KAPANIS (closed_at) SOZLESMESI
 -----------------------------------------------------------------------
-Terminal durumlar: completed, rejected.
-Terminal OLMAYAN: pending, in_progress, cancelled.
+Terminal durum: completed.
+Terminal OLMAYAN: pending, in_progress, cancelled
+(ve gecmiste kalmis rejected satirlar).
 
   - Herhangi bir assignment terminal degilse      → closed_at = NULL
   - Hepsi terminal ve closed_at NULL ise          → closed_at = terminal
@@ -61,7 +62,15 @@ from sqlalchemy.orm import Session
 
 from ..models.task import Task
 
-TERMINAL_STATUSES = frozenset({"completed", "rejected"})
+# KULLANICI KARARI (2026-08-05): `rejected` URUNDEN KALDIRILDI. Atanmis
+# bir is reddedilmez; akis Pending → In Progress → Completed. Tek
+# terminal durum bu yuzden `completed`.
+#
+# Veritabanindaki CHECK kisiti DEGISTIRILMEDI (destructive migration
+# yok). Gecmiste kalmis bir `rejected` satir varsa: terminal SAYILMAZ,
+# dolayisiyla kapanmaz ve otomatik arsivlenmez — Active havuzda kalir
+# ve ekranda Pending olarak gorunur. Hicbir kayit kaybolmaz.
+TERMINAL_STATUSES = frozenset({"completed"})
 
 #: Additive, idempotent sema ifadeleri. TEK KAYNAK: uygulama startup'i
 #: (main._migrate_tasks_lifecycle) ve test kurulumu (conftest) AYNI
@@ -132,7 +141,7 @@ WITH row_moment AS (
 groups AS (
     SELECT
         r.logical_key,
-        bool_and(r.status IN ('completed', 'rejected')) AS all_terminal,
+        bool_and(r.status = 'completed') AS all_terminal,
         max(r.moment) AS closed_moment
     FROM row_moment r
     GROUP BY r.logical_key

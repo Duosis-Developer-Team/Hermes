@@ -55,12 +55,12 @@ export function quickFilterParams(kind, { weekStart, yesterday }) {
             return {
                 due_from: week.from,
                 due_to: week.to,
-                status_exclude: ['completed', 'rejected'],
+                status_exclude: ['completed'],
             }
         case 'overdue':
             return {
                 due_to: yesterday,
-                status_exclude: ['completed', 'rejected'],
+                status_exclude: ['completed'],
             }
         case 'completed-this-week':
             return {

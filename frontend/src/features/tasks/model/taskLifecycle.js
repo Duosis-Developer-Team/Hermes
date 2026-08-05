@@ -21,8 +21,9 @@ export const DEFAULT_ARCHIVE_STATE = 'active'
 export const isValidArchiveState = (value) =>
     ARCHIVE_STATES.some((s) => s.value === value)
 
-/** Terminal durumlar — arsivlenebilirligin on kosulu. */
-export const TERMINAL_STATUSES = new Set(['completed', 'rejected'])
+/** Terminal durum — arsivlenebilirligin on kosulu. `rejected`
+ *  urunden kaldirildigi icin tek terminal durum `completed`. */
+export const TERMINAL_STATUSES = new Set(['completed'])
 
 /**
  * Logical work item arsivlenebilir mi? (GORUNUM karari)

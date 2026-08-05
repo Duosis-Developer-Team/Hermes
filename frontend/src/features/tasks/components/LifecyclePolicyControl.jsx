@@ -55,7 +55,7 @@ function LifecyclePolicyControl() {
         <div className="tm-policy-row">
             <div className="tm-policy-text">
                 <div className="tm-policy-label">
-                    Auto-archive completed and rejected work items after
+                    Auto-archive completed work items after
                 </div>
                 <div className="tm-policy-hint">
                     Pending and In Progress work stays in Active regardless of
