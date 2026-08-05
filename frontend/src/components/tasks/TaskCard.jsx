@@ -35,6 +35,7 @@ import { taskDueState } from '../../features/tasks/model/taskDueState'
 import { canEditTask } from '../../features/tasks/model/permissions'
 import { typeMeta } from '../../utils/workItemType'
 import { AssignmentRoster } from '../../features/tasks/components/AssigneeStatusBadge'
+import ArchivedTaskMeta from '../../features/tasks/components/ArchivedTaskMeta'
 import { aggregateStatus } from '../../features/tasks/model/grouping'
 import './TaskCard.css'
 
@@ -280,6 +281,17 @@ function TaskCard({
                     </div>
                 )}
 
+                {/* Arsiv baglami: tarih + sebep ERISILEBILIR metinle
+                    gosterilir (yalniz renk degil). Aktif kartta hic
+                    cizilmez. */}
+                {task.archived_at && (
+                    <div className="task-card-archived">
+                        <ArchivedTaskMeta
+                            archivedAt={task.archived_at}
+                            reason={task.archive_reason}
+                        />
+                    </div>
+                )}
                 {isGrouped ? (
                     <div className="task-card-roster">
                         <AssignmentRoster assignments={assignments} compact />

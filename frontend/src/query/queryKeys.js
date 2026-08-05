@@ -37,6 +37,8 @@ export const queryKeys = {
     /** Time Entry'nin donem durumu ailesi — Tasks'tan Log Time sonrasi
      *  da tazelenir (ayni core_db kaydi yazilir). */
     periodStatus: { all: ['periodStatus'] },
+    /** Work item lifecycle (otomatik arsiv) politikasi — tekil ayar. */
+    taskLifecyclePolicy: { all: ['task-lifecycle-policy'] },
     tasks: {
         all: ['tasks'],
         list: (filters) => ['tasks', 'list', stableFilters(filters)],

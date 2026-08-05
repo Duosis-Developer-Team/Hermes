@@ -35,6 +35,7 @@ import {
     ApartmentOutlined,
     FolderOpenOutlined,
     TeamOutlined,
+    InboxOutlined,
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -49,6 +50,7 @@ import {
 } from '../../services/api'
 import './TaskManagementPage.css'
 import AssignmentHierarchyTab from './AssignmentHierarchyTab'
+import LifecyclePolicyControl from '../../features/tasks/components/LifecyclePolicyControl'
 import DangerConfirmModal from '../../components/common/DangerConfirmModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import { resetAndFill } from '../../features/admin/shared/formLifecycle'
@@ -667,6 +669,7 @@ function Section({ icon, title, subtitle, count, accent, open, onToggle, childre
 function TaskManagementPage() {
     // Multiple sections can be open at once (accordion felt restrictive).
     const [open, setOpen] = useState({
+        lifecycle: false,
         hierarchy: true,
         issueHierarchy: false,
         sub: false,
@@ -735,6 +738,17 @@ function TaskManagementPage() {
                     accent="#22a06b"
                 />
             </div>
+
+            <Section
+                icon={<InboxOutlined />}
+                title="Work Item Lifecycle"
+                subtitle="When completed and rejected work is archived"
+                accent="#38bdf8"
+                open={open.lifecycle}
+                onToggle={() => toggle('lifecycle')}
+            >
+                <LifecyclePolicyControl />
+            </Section>
 
             <Section
                 icon={<ApartmentOutlined />}

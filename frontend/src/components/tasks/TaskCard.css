@@ -321,3 +321,19 @@
     flex-wrap: wrap;
     gap: 4px;
 }
+
+/* Arsiv rozeti: sessiz, ikincil bir baglam satiri. */
+.task-card-archived {
+    margin-top: 6px;
+}
+.h-archived-meta {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--h-surface-subtle);
+    border: 1px solid var(--h-border-subtle);
+    color: var(--h-text-secondary);
+    font-size: 11px;
+    line-height: 18px;
+}

@@ -180,6 +180,8 @@ def _serialize_task(task: Task) -> TaskResponse:
         updated_at=task.updated_at,
         archived_at=task.archived_at,
         assignment_batch_id=task.assignment_batch_id,
+        closed_at=task.closed_at,
+        archive_reason=task.archive_reason,
     )
 
 

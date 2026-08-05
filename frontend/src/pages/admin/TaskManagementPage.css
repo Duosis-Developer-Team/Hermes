@@ -405,3 +405,25 @@
 .tm-assigner-card > .ant-card-body > div:first-child:hover {
     background: color-mix(in srgb, var(--h-brand) 5%, transparent);
 }
+
+/* Lifecycle politika satiri: bolum icinde tek satirlik ayar. */
+.tm-policy-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 12px 0;
+    flex-wrap: wrap;
+}
+.tm-policy-label {
+    color: var(--h-text-primary);
+    font-size: 14px;
+    font-weight: 550;
+}
+.tm-policy-hint {
+    margin-top: 4px;
+    max-width: 60ch;
+    color: var(--h-text-secondary);
+    font-size: 12px;
+    line-height: 1.5;
+}

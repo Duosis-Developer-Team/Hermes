@@ -392,6 +392,10 @@ class TaskResponse(BaseModel):
     updated_at: datetime
     archived_at: Optional[datetime] = None
     assignment_batch_id: Optional[UUID] = None
+    # Lifecycle: arsiv gorunumu tarihi ve sebebi gosterir; closed_at
+    # retention geri sayiminin baslangicidir.
+    closed_at: Optional[datetime] = None
+    archive_reason: Optional[str] = None
 
 
 # =============================================================================

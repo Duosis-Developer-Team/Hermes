@@ -40,7 +40,19 @@ export function useTaskInvalidation() {
         queryClient.invalidateQueries({ queryKey: queryKeys.taskActivity.all })
     }
 
-    return { queryClient, invalidateTaskFamilies, invalidateWorkLogFamilies }
+    /** Lifecycle politikasi degisti → yalniz o ayar tazelenir. */
+    const invalidateLifecyclePolicy = () => {
+        queryClient.invalidateQueries({
+            queryKey: queryKeys.taskLifecyclePolicy.all,
+        })
+    }
+
+    return {
+        queryClient,
+        invalidateTaskFamilies,
+        invalidateWorkLogFamilies,
+        invalidateLifecyclePolicy,
+    }
 }
 
 export default useTaskInvalidation
