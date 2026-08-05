@@ -20,6 +20,7 @@ from sqlalchemy import and_
 
 from ..models.customer import Customer
 from ..models.project import Project
+from . import task_lifecycle
 from ..models.task import (
     Task,
     TaskAssignmentGroupRelation,
@@ -2037,6 +2038,10 @@ def update_task_status(
             detail="You are not allowed to update this task status.",
         )
     notif = _apply_status_change(db, task, user, new_status)
+    # Kapanis/arsiv alanlari MERKEZI sozlesmeden gelir (task_lifecycle):
+    # hepsi terminal olunca closed_at baslar, biri geri acilinca TUM
+    # grubun kapanis ve arsiv izleri silinir. Burada kural TEKRARLANMAZ.
+    task_lifecycle.recompute_closure(db, task, require_work_log=True)
     db.commit()
     db.refresh(task)
     # Transient flag (not a column) for the router to decide whether to
@@ -2067,6 +2072,7 @@ def reject_task(
             detail="You are not allowed to reject this task.",
         )
     _apply_status_change(db, task, user, "rejected")
+    task_lifecycle.recompute_closure(db, task, require_work_log=True)
     db.commit()
     db.refresh(task)
     return task
@@ -2108,6 +2114,7 @@ def update_task_completion(
         notif = None
         if task.status == "completed":
             notif = _apply_status_change(db, task, user, "in_progress")
+    task_lifecycle.recompute_closure(db, task, require_work_log=True)
     db.commit()
     db.refresh(task)
     task._status_notif = notif

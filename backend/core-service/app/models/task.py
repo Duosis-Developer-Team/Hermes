@@ -333,6 +333,17 @@ class Task(Base):
     # the UI without changing the per-row task semantics.
     assignment_batch_id = Column(UUID(as_uuid=True), nullable=True, index=True)
 
+    # --- Lifecycle / arsiv ------------------------------------------------
+    # closed_at: logical work item'in KESINTISIZ bicimde tamamen terminal
+    # (completed/rejected) hale geldigi an. `updated_at` retention
+    # baslangici DEGILDIR — aciklama/priority degisikligi sureyi
+    # sifirlamaz. Grup icindeki tum satirlarda AYNI degeri tasir.
+    closed_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    # Arsivin sebebi: auto_retention | manual | legacy
+    archive_reason = Column(String(20), nullable=True)
+    # Manuel arsivde islemi yapan; otomatikte NULL (sistem).
+    archived_by_user_id = Column(UUID(as_uuid=True), nullable=True)
+
     customer = relationship("Customer")
     project = relationship("Project")
     sub_project = relationship("TaskSubProject")

@@ -112,6 +112,16 @@ def pg_engine():
                 "assign_task_type_number()"
             )
         )
+    # Additive migration'lar: create_all eksik TABLO yaratir ama mevcut
+    # tabloya eksik KOLON EKLEMEZ. Uretimde bu isi startup migration'i
+    # yapar; test semasi da AYNI tek kaynaktan beslenir, yoksa testte
+    # gecip uretimde patlayan bir kayma olusur.
+    from app.services.task_lifecycle import LIFECYCLE_SCHEMA_STATEMENTS
+
+    with engine.begin() as conn:
+        for stmt in LIFECYCLE_SCHEMA_STATEMENTS:
+            conn.execute(sa_text(stmt))
+
     yield engine
     engine.dispose()
 

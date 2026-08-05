@@ -189,6 +189,37 @@ def _migrate_tasks_task_number() -> None:
         db.close()
 
 
+def _migrate_tasks_lifecycle() -> None:
+    """Idempotent additive migration: work item lifecycle alanlari.
+
+    Ifadeler task_lifecycle.LIFECYCLE_SCHEMA_STATEMENTS'ten gelir (tek
+    kaynak; test kurulumu ayni listeyi kosar). HICBIR satir silinmez,
+    hicbir PK/FK degismez, `updated_at` DEGISTIRILMEZ.
+    """
+    from sqlalchemy import text
+
+    from app.services.task_lifecycle import (
+        LIFECYCLE_BACKFILL_SQL, LIFECYCLE_SCHEMA_STATEMENTS,
+    )
+
+    db = SessionLocal()
+    try:
+        for stmt in LIFECYCLE_SCHEMA_STATEMENTS:
+            db.execute(text(stmt))
+        # Tarihsel kayitlarin kapanis zamani (idempotent: yalniz
+        # closed_at BOS olanlara yazar).
+        filled = db.execute(text(LIFECYCLE_BACKFILL_SQL)).rowcount
+        db.commit()
+        if filled:
+            print(f"✅ lifecycle backfill: {filled} satır closed_at aldı")
+        print("✅ tasks lifecycle alanlari hazır")
+    except Exception as e:  # noqa: BLE001
+        db.rollback()
+        print(f"⚠️  tasks lifecycle migration hatası: {e}")
+    finally:
+        db.close()
+
+
 def _migrate_work_logs_task_id() -> None:
     """
     Idempotent additive migration: add work_logs.task_id (nullable FK
@@ -667,6 +698,7 @@ async def lifespan(app: FastAPI):
     print("✅ Veritabanı tabloları hazır")
     _migrate_billable_hours()
     _migrate_tasks_assignment_batch_id()
+    _migrate_tasks_lifecycle()
     _migrate_tasks_status_rejected()
     _migrate_tasks_task_number()
     _migrate_work_logs_task_id()

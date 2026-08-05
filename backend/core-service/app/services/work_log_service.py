@@ -18,7 +18,7 @@ from ..models.task import Task
 from ..models.meeting import Meeting
 from ..schemas.work_log import WorkLogCreate, WorkLogUpdate
 from shared.exceptions import NotFoundError, ForbiddenError
-from . import task_service
+from . import task_lifecycle, task_service
 
 
 class WorkLogService:
@@ -130,6 +130,18 @@ class WorkLogService:
                 duration_hours=float(db_obj.duration_hours),
                 date_worked=db_obj.date_worked,
             )
+            # Log Time BASARIYLA olustu → ilgili logical work item'in
+            # kapanisi yeniden hesaplanir. "completed ama saati
+            # girilmemis" is, bu an gelene kadar KAPANMIS sayilmaz ve
+            # otomatik arsiv sirasina girmez. Work log kaydinin
+            # KENDISINE bu akista asla dokunulmaz.
+            linked = (
+                self.db.query(Task).filter(Task.id == linked_task_id).first()
+            )
+            if linked is not None:
+                task_lifecycle.recompute_closure(
+                    self.db, linked, require_work_log=True
+                )
 
         self.db.commit()
         self.db.refresh(db_obj)
