@@ -15,7 +15,7 @@
  *               useTaskDialogs
  *   components/ TasksHeader · TaskQuickFilters · TaskRangeBar
  *               TaskFilterBar · TasksSurface
- *   modals/     TaskDeleteModal · TaskStatusConfirmModal
+ *   modals/     TaskArchiveModal · TaskRestoreModal · TaskStatusConfirmModal
  *
  * TEK bir "mega hook" YOKTUR: her hook tek bir soruyu cevaplar ve tek
  * basina test edilebilir. Burada kalan is, aralarindaki AKISI kurmak —
@@ -27,6 +27,9 @@ import { useState } from 'react'
 import { Empty, message } from 'antd'
 import useMultiAssignmentDrop from '../features/tasks/hooks/useMultiAssignmentDrop'
 import useAssigneeScope from '../features/tasks/hooks/useAssigneeScope'
+import useTaskArchiveWorkspace from '../features/tasks/hooks/useTaskArchiveWorkspace'
+import TaskLifecycleSwitcher from '../features/tasks/components/TaskLifecycleSwitcher'
+import TaskArchiveDialogs from '../features/tasks/components/TaskArchiveDialogs'
 import MultiAssignmentConfirm from '../features/tasks/components/MultiAssignmentConfirm'
 
 import { useAuthStore } from '../stores/authStore'
@@ -46,11 +49,10 @@ import useTaskDialogs from '../features/tasks/hooks/useTaskDialogs'
 import TasksHeader from '../features/tasks/components/TasksHeader'
 import TaskQuickFilters from '../features/tasks/components/TaskQuickFilters'
 import TaskRangeBar from '../features/tasks/components/TaskRangeBar'
-import TaskFilterBar from '../features/tasks/components/TaskFilterBar'
-import { Badge, Button as AntButton, Drawer } from 'antd'
+import TaskFiltersDrawer from '../features/tasks/components/TaskFiltersDrawer'
+import { Badge, Button as AntButton } from 'antd'
 import { FilterOutlined } from '@ant-design/icons'
 import TasksSurface from '../features/tasks/components/TasksSurface'
-import TaskDeleteModal from '../features/tasks/modals/TaskDeleteModal'
 import TaskStatusConfirmModal from '../features/tasks/modals/TaskStatusConfirmModal'
 import CreateTaskModal from '../components/modals/CreateTaskModal'
 import TaskReviewModal from '../components/modals/TaskReviewModal'
@@ -87,6 +89,10 @@ function TasksPage() {
         isTaskAdmin, selectedUserId: view.selectedUserId, currentUserId: user?.id,
     })
 
+    // Active | Archive ekseni URL'de yasar; arsiv havuzu SALT OKUNUR.
+    const archive = useTaskArchiveWorkspace()
+    const { archiveState, readOnly } = archive
+
     const { tasks, isLoading } = useTasksQuery({
         enabled: taskPerms.canAccessScope,
         taskType,
@@ -96,6 +102,7 @@ function TasksPage() {
         weekStart: view.weekStart,
         quickFilter: view.quickFilter,
         filters,
+        archiveState,
     })
 
     const directory = useTaskDirectory({
@@ -120,6 +127,7 @@ function TasksPage() {
     })
 
     // Kisi ekseni: secenekler + istemci tarafi daraltma (hook'ta).
+
     const { isAssignedByMe, assigneeOptions, visibleTasks } = useAssigneeScope({
         tasks,
         taskScope: view.taskScope,
@@ -234,6 +242,10 @@ function TasksPage() {
 
     return (
         <div className="tasks-page">
+            <TaskLifecycleSwitcher
+                value={archiveState}
+                onChange={archive.setArchiveState}
+            />
             <TasksHeader
                 user={user}
                 isTaskAdmin={isTaskAdmin}
@@ -291,30 +303,26 @@ function TasksPage() {
                         </AntButton>
                     )}
                 </div>
-                <Drawer
-                    title="Filters"
+                <TaskFiltersDrawer
                     open={filtersOpen}
                     onClose={() => setFiltersOpen(false)}
-                    placement={typeof window !== 'undefined' && window.innerWidth < 768 ? 'bottom' : 'right'}
-                    height="auto"
-                    width={360}
-                    className="task-filters-drawer"
-                >
-                    <TaskFilterBar
-                        filters={filters}
-                        customers={directory.customers}
-                        projects={directory.filteredProjects}
-                        subProjects={directory.subProjects}
-                        onStatusChange={filterActions.setStatus}
-                        onPriorityChange={filterActions.setPriority}
-                        onCustomerChange={filterActions.setCustomer}
-                        onProjectChange={filterActions.setProject}
-                        onSubProjectChange={filterActions.setSubProject}
-                        assigneeOptions={assigneeOptions}
-                        onAssigneeChange={filterActions.setAssignee}
-                        onClear={clearFilters}
-                    />
-                </Drawer>
+                    placement={
+                        typeof window !== 'undefined' && window.innerWidth < 768
+                            ? 'bottom' : 'right'
+                    }
+                    filters={filters}
+                    customers={directory.customers}
+                    projects={directory.filteredProjects}
+                    subProjects={directory.subProjects}
+                    assigneeOptions={assigneeOptions}
+                    onStatusChange={filterActions.setStatus}
+                    onPriorityChange={filterActions.setPriority}
+                    onCustomerChange={filterActions.setCustomer}
+                    onProjectChange={filterActions.setProject}
+                    onSubProjectChange={filterActions.setSubProject}
+                    onAssigneeChange={filterActions.setAssignee}
+                    onClear={clearFilters}
+                />
 
                 <TasksSurface
                     isLoading={isLoading}
@@ -327,10 +335,10 @@ function TasksPage() {
                     taskType={taskType}
                     /* Durum degisikligi atanana aittir ve kendi "My Tasks"
                        gorunumunde yapilir; "Assigned by Me" salt izleme. */
-                    allowStatusChange={view.taskScope === 'my-tasks'}
+                    allowStatusChange={!readOnly && view.taskScope === 'my-tasks'}
                     /* Gorev olusturmak = birine ATAMAK; yalnizca
                        "Assigned by Me" kapsaminda anlamlidir. */
-                    canCreate={canCreateTask && view.taskScope === 'assigned-by-me'}
+                    canCreate={!readOnly && canCreateTask && view.taskScope === 'assigned-by-me'}
                     groupByAssignee={
                         view.groupByAssignee && view.taskScope === 'assigned-by-me'
                     }
@@ -407,19 +415,10 @@ function TasksPage() {
                 onConfirm={handleConfirmToggle}
             />
 
-            <TaskDeleteModal
-                task={dialogs.deletingTask}
-                loading={mutations.deleteMutation.isPending}
-                onCancel={dialogs.closeDelete}
-                onConfirm={() => {
-                    // Cift silme kilidi KAYNAKTA.
-                    if (mutations.deleteMutation.isPending) return
-                    if (dialogs.deletingTask) {
-                        mutations.deleteMutation.mutate(dialogs.deletingTask.id, {
-                            onSuccess: dialogs.closeDelete,
-                        })
-                    }
-                }}
+            <TaskArchiveDialogs
+                workspace={archive}
+                dialogs={dialogs}
+                deleteMutation={mutations.deleteMutation}
             />
 
             {/* Log Time modal — opens automatically after a task is

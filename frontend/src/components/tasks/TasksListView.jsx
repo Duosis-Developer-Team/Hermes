@@ -19,7 +19,7 @@
 import { useMemo } from 'react'
 import { Button, Checkbox, Space, Table, Tag, Tooltip } from 'antd'
 import {
-    DeleteOutlined,
+    InboxOutlined,
     EditOutlined,
     EyeOutlined,
     FieldTimeOutlined,
@@ -316,12 +316,12 @@ function TasksListView({
                                         onClick={() => onEditTask?.(record)}
                                     />
                                 </Tooltip>
-                                <Tooltip title="Delete">
+                                <Tooltip title="Archive">
                                     <Button
                                         size="small"
                                         danger
-                                        icon={<DeleteOutlined />}
-                                        aria-label={`Delete — ${record.title}`}
+                                        icon={<InboxOutlined />}
+                                        aria-label={`Archive — ${record.title}`}
                                         onClick={() => onDeleteTask?.(record)}
                                     />
                                 </Tooltip>

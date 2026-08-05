@@ -22,7 +22,7 @@ import { buildTaskListParams } from '../model/taskQuery'
 
 export function useTasksQuery({
     enabled, taskType, taskScope, viewedUserId, rangeMode, weekStart,
-    quickFilter, filters,
+    quickFilter, filters, archiveState = 'active',
 }) {
     const params = useMemo(
         () =>
@@ -41,10 +41,11 @@ export function useTasksQuery({
                     weekStart,
                     yesterday: yesterdayKey(),
                 }),
+                archiveState,
             }),
         [
             taskType, filters, taskScope, viewedUserId, rangeMode, weekStart,
-            quickFilter,
+            quickFilter, archiveState,
         ]
     )
 

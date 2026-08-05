@@ -109,9 +109,16 @@ describe('Tasks yuzeyi', () => {
     })
 
     it('gelismis filtreler drawer icinde (surekli acik serit degil)', () => {
+        /* Kilidin NIYETI degismedi: filtreler surekli acik bir serit
+           degil, bir drawer icinde yasar. Drawer, TasksPage'den ayri bir
+           bilesene TASINDI (sayfa <450 satir yapisal kilidi) — bu yuzden
+           kontrol o bilesende yapilir ve sayfanin ONU KULLANDIGI ayrica
+           dogrulanir. */
+        const drawer = noComments(read('features/tasks/components/TaskFiltersDrawer.jsx'))
+        expect(drawer).toContain('<Drawer')
+        expect(drawer).toMatch(/Filters/)
         const jsx = noComments(read('pages/TasksPage.jsx'))
-        expect(jsx).toContain('<Drawer')
-        expect(jsx).toMatch(/Filters/)
+        expect(jsx).toContain('<TaskFiltersDrawer')
     })
 
     it('durum/oncelik rozetleri tonal (koyu dolu hex yok)', () => {

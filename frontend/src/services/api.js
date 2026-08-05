@@ -883,6 +883,44 @@ export const taskService = {
         const response = await coreApi.delete(`/api/v1/core/tasks/${taskId}`)
         return response.data
     },
+
+    /** Logical work item'in TAMAMINI arsivler (kalici silme DEGIL).
+     *  Kosullar sunucuda yeniden dogrulanir. */
+    archive: async (taskId) => {
+        const response = await coreApi.post(
+            `/api/v1/core/tasks/${taskId}/archive`
+        )
+        return response.data
+    },
+
+    /** Arsivden cikarir VE ACIKCA secilen assignment'i yeniden acar.
+     *  `assignment_task_id` zorunludur — sessiz toplu reopen yoktur. */
+    restore: async (taskId, { assignmentTaskId, targetStatus }) => {
+        const response = await coreApi.post(
+            `/api/v1/core/tasks/${taskId}/restore`,
+            {
+                assignment_task_id: assignmentTaskId,
+                target_status: targetStatus,
+            }
+        )
+        return response.data
+    },
+
+    /** Work item lifecycle (otomatik arsiv) politikasi. */
+    getLifecyclePolicy: async () => {
+        const response = await coreApi.get(
+            '/api/v1/core/admin/lifecycle-policy'
+        )
+        return response.data
+    },
+
+    setLifecyclePolicy: async (retentionDays) => {
+        const response = await coreApi.put(
+            '/api/v1/core/admin/lifecycle-policy',
+            { retention_days: retentionDays }
+        )
+        return response.data
+    },
 }
 
 // =============================================================================

@@ -4,10 +4,12 @@
  * =============================================================================
  * Mirrors WorkLogCard interaction model:
  *   - Body click toggles selection for the copy/paste workflow.
- *   - Hover shows Edit (pencil) and Delete (trash) actions in the
+ *   - Hover shows Edit (pencil) and Archive (inbox) actions in the
  *     top-right corner — same placement and style as Time Entry.
  *   - Edit opens the existing CreateTaskModal in edit mode.
- *   - Delete fires a confirmation flow handled by the parent page.
+ *   - Archive fires a confirmation flow handled by the parent page.
+ *     GERCEK SILME DEGILDIR: backend archived_at yazar, kayit
+ *     korunur ve geri alinabilir.
  *   - The completion checkbox stays on the left.
  *
  * Receives a `userMap` prop (id → user object) populated by the parent
@@ -22,7 +24,7 @@
 
 import { Checkbox, Tooltip } from 'antd'
 import {
-    DeleteOutlined,
+    InboxOutlined,
     EditOutlined,
     EyeOutlined,
     FieldTimeOutlined,
@@ -334,14 +336,14 @@ function TaskCard({
                                 <EditOutlined />
                             </button>
                         </Tooltip>
-                        <Tooltip title="Delete">
+                        <Tooltip title="Archive">
                             <button
                                 type="button"
                                 className="task-card-action-btn delete"
-                                aria-label={`Delete — ${task.title}`}
+                                aria-label={`Archive — ${task.title}`}
                                 onClick={handleDeleteClick}
                             >
-                                <DeleteOutlined />
+                                <InboxOutlined />
                             </button>
                         </Tooltip>
                     </>

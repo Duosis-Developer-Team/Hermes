@@ -105,10 +105,10 @@ const openEdit = async (user) => {
 const openDelete = async (user) => {
     await screen.findByText('Gorev basligi')
     const trigger = inCard('TASK-1').getByRole('button', {
-        name: 'Delete — Gorev basligi',
+        name: 'Archive — Gorev basligi',
     })
     await user.click(trigger)
-    await screen.findByText('Are you sure you want to delete this task?')
+    await screen.findByText(/Archive this work item\?/)
     return trigger
 }
 
@@ -146,14 +146,14 @@ describe('erisilebilir diyalog adi', () => {
         ).toBeInTheDocument()
     })
 
-    it('Delete onay modali adlandirilmistir', async () => {
+    it('Archive onay modali adlandirilmistir', async () => {
         const user = setupUser()
         renderTasksPage()
         await openDelete(user)
         // Ozel gorunumlu modal: gorunur baslik govdede, DIYALOG ADI ise
         // gorsel olarak gizli baslikla verilir (rc-dialog aria-* prop'u
         // gecirmez).
-        const dialog = screen.getByRole('dialog', { name: /Delete Task/ })
+        const dialog = screen.getByRole('dialog', { name: /Archive Task/ })
         expect(dialog).toHaveAttribute('aria-modal', 'true')
     })
 
@@ -186,14 +186,14 @@ describe('acilista makul ilk focus', () => {
         )
     })
 
-    it('Delete onay modali acilinca focus modalin ICINE gecer', async () => {
+    it('Archive onay modali acilinca focus modalin ICINE gecer', async () => {
         const user = setupUser()
         renderTasksPage()
         await openDelete(user)
         await waitFor(() =>
             expect(
                 focusIsInside(
-                    modalContaining('Are you sure you want to delete this task?')
+                    modalContaining('Archive this work item?')
                 )
             ).toBe(true)
         )
@@ -228,19 +228,19 @@ describe('Escape ile kapanma ve PENDING kilidi', () => {
         expect(workLogService.create).not.toHaveBeenCalled()
     })
 
-    it('Delete onay modali Escape ile kapanir', async () => {
+    it('Archive onay modali Escape ile kapanir', async () => {
         const user = setupUser()
         renderTasksPage()
         await openDelete(user)
         pressEscape(
-            modalContaining('Are you sure you want to delete this task?')
+            modalContaining('Archive this work item?')
         )
         // Rol sorgusu GORUNURLUK bilir: bu modal kapaninca icerigini
         // DOM'dan sokmez (wrapper display:none olur), bu yuzden metin
         // sorgusu yanlis pozitif verir.
         await waitFor(() =>
             expect(
-                screen.queryByRole('dialog', { name: /Delete Task/ })
+                screen.queryByRole('dialog', { name: /Archive Task/ })
             ).not.toBeInTheDocument()
         )
         expect(taskService.delete).not.toHaveBeenCalled()
@@ -252,13 +252,13 @@ describe('Escape ile kapanma ve PENDING kilidi', () => {
         const user = setupUser()
         renderTasksPage()
         await openDelete(user)
-        const modal = modalContaining('Are you sure you want to delete this task?')
-        await user.click(within(modal).getByRole('button', { name: /Delete/ }))
+        const modal = modalContaining('Archive this work item?')
+        await user.click(within(modal).getByRole('button', { name: /Archive/ }))
         await waitFor(() => expect(taskService.delete).toHaveBeenCalled())
 
         pressEscape(modal)
         expect(
-            screen.getByText('Are you sure you want to delete this task?')
+            screen.getByText(/Archive this work item\?/)
         ).toBeInTheDocument()
         gate.resolve({ ok: true })
     })
@@ -326,8 +326,8 @@ describe('PENDING sirasinda aksiyon dugmesinin durumu', () => {
         const user = setupUser()
         renderTasksPage()
         await openDelete(user)
-        const modal = modalContaining('Are you sure you want to delete this task?')
-        const btn = within(modal).getByRole('button', { name: /Delete/ })
+        const modal = modalContaining('Archive this work item?')
+        const btn = within(modal).getByRole('button', { name: /Archive/ })
         await user.click(btn)
         await waitFor(() => expect(taskService.delete).toHaveBeenCalled())
         await waitFor(() =>
@@ -370,14 +370,14 @@ describe('kapanista focus GERCEK tetikleyiciye doner', () => {
         renderTasksPage()
         const trigger = await openDelete(user)
         pressEscape(
-            modalContaining('Are you sure you want to delete this task?')
+            modalContaining('Archive this work item?')
         )
         // Rol sorgusu GORUNURLUK bilir: bu modal kapaninca icerigini
         // DOM'dan sokmez (wrapper display:none olur), bu yuzden metin
         // sorgusu yanlis pozitif verir.
         await waitFor(() =>
             expect(
-                screen.queryByRole('dialog', { name: /Delete Task/ })
+                screen.queryByRole('dialog', { name: /Archive Task/ })
             ).not.toBeInTheDocument()
         )
         await waitFor(() => expect(document.activeElement).toBe(trigger))
@@ -403,7 +403,7 @@ describe('yapisal erisilebilirlik', () => {
         await openDelete(user)
         expect(
             nestedInteractive(
-                modalContaining('Are you sure you want to delete this task?')
+                modalContaining('Archive this work item?')
             )
         ).toEqual([])
     })

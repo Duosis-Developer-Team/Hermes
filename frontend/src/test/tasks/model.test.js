@@ -118,6 +118,9 @@ describe('buildTaskListParams', () => {
             status: undefined, priority: undefined, task_type: 'task',
             customer_id: undefined, project_id: undefined,
             sub_project_id: undefined, assignee_user_id: 'u1',
+            // Arsiv havuzu her istegin PARCASIDIR (varsayilan active);
+            // Active ve Archive cache'leri boylece karismaz.
+            archive_state: 'active',
         })
     })
 

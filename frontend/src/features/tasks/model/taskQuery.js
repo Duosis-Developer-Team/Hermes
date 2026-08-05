@@ -43,6 +43,7 @@ export function buildTaskListParams({
     rangeMode = 'all',
     weekStart,
     quickFilter = null,
+    archiveState = 'active',
 }) {
     const base = {
         status: statusFilter || undefined,
@@ -52,6 +53,9 @@ export function buildTaskListParams({
         project_id: projectFilter || undefined,
         sub_project_id: subProjectFilter || undefined,
         ...scopeParams(taskScope, viewedUserId),
+        // Arsiv havuzu sorgu anahtarinin PARCASIDIR: Active ve Archive
+        // cache'leri birbirine karismaz.
+        archive_state: archiveState,
     }
     if (quickFilter) return { ...base, ...quickFilter }
     if (rangeMode === 'week') {

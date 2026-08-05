@@ -345,19 +345,17 @@ describe('DELETE', () => {
     /** Onay modalinin kendi Delete butonu (karttaki aksiyon DEGIL). */
     const confirmDeleteButton = () => {
         const modal = Array.from(document.querySelectorAll('.ant-modal')).find(
-            (m) => m.textContent.includes(
-                'Are you sure you want to delete this task?'
-            )
+            (m) => m.textContent.includes('Archive this work item?')
         )
-        return within(modal).getByRole('button', { name: /Delete/ })
+        return within(modal).getByRole('button', { name: /Archive/ })
     }
 
     const openDelete = async (user) => {
         await screen.findByText('Gorev basligi')
         await user.click(inCard('TASK-1').getByRole('button', {
-            name: 'Delete — Gorev basligi',
+            name: 'Archive — Gorev basligi',
         }))
-        await screen.findByText('Are you sure you want to delete this task?')
+        await screen.findByText(/Archive this work item\?/)
         return confirmDeleteButton()
     }
 
@@ -395,7 +393,7 @@ describe('DELETE', () => {
         expect(await screen.findByText('Delete refused.')).toBeInTheDocument()
         // Modal ACIK: kullanici tekrar deneyebilir.
         expect(
-            screen.getByText('Are you sure you want to delete this task?')
+            screen.getByText(/Archive this work item\?/)
         ).toBeInTheDocument()
         expect(invalidatedFamilies(invalidateSpy)).toEqual([])
     })
@@ -433,9 +431,9 @@ describe('etkilesim cakismalari', () => {
         renderTasksPage()
         await screen.findByText('Gorev basligi')
         await user.click(inCard('TASK-1').getByRole('button', {
-            name: 'Delete — Gorev basligi',
+            name: 'Archive — Gorev basligi',
         }))
-        await screen.findByText('Are you sure you want to delete this task?')
+        await screen.findByText(/Archive this work item\?/)
         expect(document.querySelector('.task-detail-panel')).toBeNull()
         expect(taskService.delete).not.toHaveBeenCalled()
     })
@@ -476,7 +474,7 @@ describe('izin gorunurlugu', () => {
             inCard('TASK-2').queryByRole('button', { name: /^Edit — / })
         ).toBeNull()
         expect(
-            inCard('TASK-2').queryByRole('button', { name: /^Delete — / })
+            inCard('TASK-2').queryByRole('button', { name: /^Archive — / })
         ).toBeNull()
         // Kendi atadigi gorevde ise gorunur.
         expect(
