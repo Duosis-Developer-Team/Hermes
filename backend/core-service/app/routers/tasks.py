@@ -43,6 +43,7 @@ from ..schemas.task import (
     TaskSubProjectCreate,
     TaskSubProjectResponse,
     TaskUpdate,
+    TaskRestoreRequest,
 )
 from ..services import task_service
 from ..services.task_notifications import (
@@ -413,7 +414,17 @@ async def list_tasks(
     due_to: Optional[date] = Query(None),
     completed_from: Optional[date] = Query(None),
     completed_to: Optional[date] = Query(None),
-    include_archived: bool = Query(False),
+    include_archived: bool = Query(
+        False,
+        description=(
+            "DEPRECATED — geriye uyumluluk. Yeni istemciler "
+            "`archive_state` kullanir."
+        ),
+    ),
+    archive_state: Optional[str] = Query(
+        None,
+        description="active (varsayilan) | archived | all",
+    ),
     include_due_in_range: bool = Query(
         False,
         description=(
@@ -427,6 +438,17 @@ async def list_tasks(
     task_service.require_task_access(
         db, current_user, task_service.perm_scope_for_type(task_type)
     )
+    if archive_state is not None and archive_state not in (
+        "active", "archived", "all"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="archive_state must be active, archived or all.",
+        )
+    # Eski `include_archived` YALNIZ admin icin etkiliydi; o davranis
+    # aynen korunur. `archive_state` ise HERKESE aciktir — gorunurluk
+    # zaten sorgu seviyesinde RBAC ile kirpilir, yani kullanici yalniz
+    # KENDI gorebildigi arsiv kayitlarini gorur.
     effective_include_archived = bool(include_archived) and task_service.is_task_admin(current_user)
     tasks = task_service.list_tasks_for_user(
         db,
@@ -449,6 +471,7 @@ async def list_tasks(
         completed_to=completed_to,
         include_archived=effective_include_archived,
         include_due_in_range=bool(include_due_in_range),
+        archive_state=archive_state,
     )
     return [_serialize_task(t) for t in tasks]
 
@@ -871,3 +894,43 @@ async def delete_comment(
     task_service.require_task_access(db, current_user)
     task_service.delete_task_comment(db, current_user, task_id, comment_id)
     return {"deleted": True}
+
+
+# =============================================================================
+# Arsiv yasam dongusu (§11, §14, §15)
+# =============================================================================
+@router.post("/{task_id}/archive", status_code=200)
+async def archive_work_item(
+    task_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Logical work item'in TAMAMINI arsivler (kalici silme DEGIL).
+
+    Kosullar sunucuda yeniden dogrulanir: butun assignment'lar terminal
+    olmali ve gerekli Log Time islemleri tamamlanmis olmali.
+    """
+    task_service.require_task_access(db, current_user)
+    return task_service.archive_work_item(db, current_user, task_id)
+
+
+@router.post("/{task_id}/restore", status_code=200)
+async def restore_work_item(
+    task_id: UUID,
+    payload: TaskRestoreRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Arsivden cikarir VE ACIKCA secilen assignment'i yeniden acar.
+
+    Sessiz toplu reopen YOKTUR: hangi assignment'in acilacagi cagiranin
+    acik secimidir; secilmeyen sibling'larin durumu degismez.
+    """
+    task_service.require_task_access(db, current_user)
+    return task_service.restore_work_item(
+        db,
+        current_user,
+        task_id,
+        assignment_task_id=payload.assignment_task_id,
+        target_status=payload.target_status,
+    )

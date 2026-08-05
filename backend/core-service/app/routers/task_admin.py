@@ -32,6 +32,7 @@ from ..schemas.task import (
     TaskSubProjectCreate,
     TaskSubProjectResponse,
     TaskSubProjectUpdate,
+    TaskLifecyclePolicyUpdate,
 )
 from ..services import task_service
 from ..routers.tasks import _serialize_sub_project
@@ -367,3 +368,59 @@ async def update_notification_setting(
         due_date_rule=row.due_date_rule,
         updated_at=row.updated_at,
     )
+
+
+# =============================================================================
+# Work item lifecycle policy (§9)
+# =============================================================================
+# Yetki: mevcut PM Configurations yonetim izni (TASK_PERMISSIONS_MANAGE).
+# YENI bir hard-coded admin kontrolu OLUSTURULMAZ; merkezi katman
+# kullanilir. Frontend gizlemesine GUVENILMEZ — kapi burada.
+@router.get("/lifecycle-policy")
+async def get_lifecycle_policy(
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
+    db: Session = Depends(get_db),
+):
+    from ..services import task_lifecycle
+
+    policy = task_lifecycle.get_policy(db)
+    db.commit()
+    return {
+        "retention_days": policy.retention_days,
+        "allowed_values": list(task_lifecycle.ALLOWED_RETENTION_DAYS),
+        "updated_at": policy.updated_at,
+        "updated_by_user_id": policy.updated_by_user_id,
+    }
+
+
+@router.put("/lifecycle-policy")
+async def update_lifecycle_policy(
+    payload: TaskLifecyclePolicyUpdate,
+    admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
+    db: Session = Depends(get_db),
+):
+    from fastapi import HTTPException, status as http_status
+
+    from ..services import task_lifecycle
+
+    try:
+        policy = task_lifecycle.set_policy(
+            db,
+            retention_days=payload.retention_days,
+            actor_user_id=UUID(admin.id),
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "retention_days must be one of "
+                f"{list(task_lifecycle.ALLOWED_RETENTION_DAYS)} or null "
+                "for Never."
+            ),
+        )
+    db.commit()
+    return {
+        "retention_days": policy.retention_days,
+        "updated_at": policy.updated_at,
+        "updated_by_user_id": policy.updated_by_user_id,
+    }

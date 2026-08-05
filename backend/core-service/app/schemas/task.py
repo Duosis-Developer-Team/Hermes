@@ -424,3 +424,24 @@ class TaskGroupCreateResponse(BaseModel):
     assignment_batch_id: UUID
     assignee_group_id: UUID
     tasks: List[TaskResponse]
+
+
+class TaskRestoreRequest(BaseModel):
+    """Arsivden geri alma: HANGI assignment yeniden acilacak.
+
+    Alan ZORUNLUDUR — sessiz toplu reopen'i yapisal olarak imkansiz
+    kilar.
+    """
+
+    assignment_task_id: UUID
+    target_status: str = "in_progress"
+
+
+class TaskLifecyclePolicyUpdate(BaseModel):
+    """Otomatik arsiv retention politikasi.
+
+    `retention_days=None` → "Never" (otomatik arsiv kapali). Sihirli
+    -1 gibi belirsiz deger KULLANILMAZ; yokluk acikca null'dir.
+    """
+
+    retention_days: Optional[int] = None

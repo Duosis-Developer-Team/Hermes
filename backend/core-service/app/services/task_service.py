@@ -1163,11 +1163,28 @@ def list_tasks_for_user(
     completed_to: Optional[date] = None,
     include_archived: bool = False,
     include_due_in_range: bool = False,
+    archive_state: Optional[str] = None,
 ) -> List[Task]:
     query = db.query(Task)
 
-    if not include_archived:
+    # ARSIV DURUMU SOZLESMESI
+    # -----------------------------------------------------------------
+    #   archive_state=active   → archived_at IS NULL   (parametresiz de bu)
+    #   archive_state=archived → archived_at IS NOT NULL
+    #   archive_state=all      → izinle gorulebilen active + archived
+    #
+    # Eski `include_archived` consumer'lari KIRILMAZ: parametre verilmisse
+    # 'all' gibi davranir. Yeni UI archive_state kullanir.
+    #
+    # KRITIK: bu filtre GORUNURLUK filtresinin YERINE GECMEZ. Asagidaki
+    # RBAC kirpmasi her iki durumda da aynen uygulanir — arsiv gorunumu
+    # yeni bir sizinti yuzeyi ACMAZ.
+    state = archive_state or ("all" if include_archived else "active")
+    if state == "active":
         query = query.filter(Task.archived_at.is_(None))
+    elif state == "archived":
+        query = query.filter(Task.archived_at.isnot(None))
+    # 'all' → arsiv filtresi UYGULANMAZ
 
     if not is_task_admin(user):
         user_uuid = UUID(user.id)
@@ -2369,3 +2386,160 @@ def record_log_time_event(
             "date_worked": date_worked.isoformat() if date_worked else None,
         },
     )
+
+
+# =============================================================================
+# Manuel arsiv / geri alma (§11, §14)
+# =============================================================================
+def _require_archive_authority(db: Session, user: CurrentUser, task: Task) -> None:
+    """Arsivleme yetkisi: admin VEYA isin atayani.
+
+    Normal assignee, YALNIZCA kendisine atanmis olmasi nedeniyle logical
+    item'i arsivleyemez — mevcut delete_task sozlesmesiyle ayni kural,
+    tek kaynaktan.
+    """
+    if is_task_admin(user):
+        return
+    if str(task.assigner_user_id) == str(user.id):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="You are not allowed to archive this work item.",
+    )
+
+
+def archive_work_item(
+    db: Session, user: CurrentUser, task_id: UUID, *, reason: str = "manual",
+) -> dict:
+    """Logical work item'in TAMAMINI arsivler.
+
+    Kosullar SUNUCUDA yeniden dogrulanir (istemci kontrolune guvenilmez):
+      - butun assignment'lar terminal (completed/rejected),
+      - gerekli Log Time islemleri tamamlanmis.
+    Bir task id'sinden cagrilsa bile TUM canonical grup arsivlenir.
+    Ayni item ikinci kez arsivlenirse idempotent cevap doner.
+    """
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task or not _user_can_update_status(user, task):
+        # Gorunurluk fallback'i: var olmayan kayitla AYNI zarf.
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found."
+        )
+    _require_archive_authority(db, user, task)
+
+    rows = task_lifecycle.sibling_rows(db, task)
+    if not task_lifecycle.all_terminal(rows):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "This work item still has active assignments. Only fully "
+                "completed or rejected work items can be archived."
+            ),
+        )
+    # Kapanis (ve Log Time kilidi) merkezi sozlesmeden gecer.
+    task_lifecycle.recompute_closure(db, task, require_work_log=True)
+    if any(r.closed_at is None for r in rows):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Log Time is still required for at least one completed "
+                "assignment before this work item can be archived."
+            ),
+        )
+
+    already = all(r.archived_at is not None for r in rows)
+    actor = None if reason == task_lifecycle.ARCHIVE_REASON_AUTO else UUID(user.id)
+    task_lifecycle.archive_group(db, task, reason=reason, actor_user_id=actor)
+    if not already:
+        for row in rows:
+            _record_task_event(
+                db,
+                task_id=row.id,
+                actor_user_id=UUID(user.id),
+                event_type="task_archived_manual",
+                event_data={"reason": reason},
+            )
+    db.commit()
+    db.refresh(task)
+    return {
+        "logical_work_item_id": str(
+            task.assignment_batch_id or task.id
+        ),
+        "archived_at": task.archived_at,
+        "archive_reason": task.archive_reason,
+        # Sayim YALNIZ kullanicinin GORDUGU assignment'lar uzerinden —
+        # gizli kisi sayisi bu alandan sizmaz (§15).
+        "assignment_count": sum(
+            1 for r in rows if _user_can_update_status(user, r)
+        ),
+    }
+
+
+def restore_work_item(
+    db: Session,
+    user: CurrentUser,
+    task_id: UUID,
+    *,
+    assignment_task_id: UUID,
+    target_status: str,
+) -> dict:
+    """Arsivden cikarir VE secilen assignment'i yeniden acar.
+
+    Yalniz archived_at temizlemek YETMEZ: is terminal kalirsa job bir
+    sonraki kosuda onu yeniden arsivler. Bu yuzden cagiran ACIKCA bir
+    assignment secer ve o assignment terminal olmayan bir duruma gecer.
+    Secilmeyen sibling'larin status'u DEGISMEZ.
+    """
+    if target_status not in ("pending", "in_progress"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="target_status must be pending or in_progress.",
+        )
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task or not _user_can_update_status(user, task):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found."
+        )
+    _require_archive_authority(db, user, task)
+
+    rows = task_lifecycle.sibling_rows(db, task)
+    target = next((r for r in rows if r.id == assignment_task_id), None)
+    if target is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Selected assignment does not belong to this work item.",
+        )
+    if not _user_can_update_status(user, target):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found."
+        )
+
+    before = {r.id: r.status for r in rows}
+    _apply_status_change(db, target, user, target_status)
+    # Arsiv izleri TUM grup icin temizlenir; kapanis merkezi sozlesmeden
+    # yeniden hesaplanir (artik terminal degil → closed_at NULL).
+    task_lifecycle.restore_group(db, task)
+    task_lifecycle.recompute_closure(db, task, require_work_log=True)
+    for row in rows:
+        _record_task_event(
+            db,
+            task_id=row.id,
+            actor_user_id=UUID(user.id),
+            event_type="task_restored",
+            event_data={"reopened_assignment": str(target.id)},
+        )
+    db.commit()
+    db.refresh(task)
+
+    # Secilmeyen sibling'lar DEGISMEDI — sozlesme burada da dogrulanir.
+    for row in rows:
+        if row.id != target.id and row.status != before[row.id]:  # pragma: no cover
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Restore changed an unselected assignment.",
+            )
+    return {
+        "logical_work_item_id": str(task.assignment_batch_id or task.id),
+        "reopened_assignment_id": str(target.id),
+        "target_status": target_status,
+    }
