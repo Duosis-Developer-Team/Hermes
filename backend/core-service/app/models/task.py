@@ -443,3 +443,51 @@ class TaskNotificationSetting(Base):
 #   - TaskGroupPermission           (per-group task access/assign defaults)
 #   - TaskGroupMemberOverride       (per-member tri-state overrides)
 # =============================================================================
+
+
+# =============================================================================
+# Work item lifecycle policy (global, TEKIL satir)
+# =============================================================================
+class TaskLifecyclePolicy(Base):
+    """Otomatik arsiv retention politikasi — Hermes genelinde TEK kayit.
+
+    `retention_days`:
+      - NULL  → "Never": otomatik arsiv KAPALI (sihirli -1 gibi belirsiz
+        deger KULLANILMAZ; yokluk acikca NULL'dir).
+      - >0    → kapanistan (closed_at) bu kadar gun sonra otomatik arsiv.
+
+    Tekil olmasi DB seviyesinde garanti edilir: `singleton` sutunu
+    sabit TRUE ve UNIQUE — ikinci bir aktif politika satiri yazilamaz.
+    Bu bir uygulama sozlesmesi degil, kisittir.
+    """
+
+    __tablename__ = "task_lifecycle_policy"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Tekillik kilidi: her zaman TRUE, UNIQUE.
+    singleton = Column(Boolean, nullable=False, default=True)
+    # DIKKAT: burada Python tarafi `default=7` KULLANILMAZ. Kullanilirsa
+    # acikca verilen None ("Never") INSERT sirasinda sessizce 7'ye
+    # donusur — yani kullanicinin "Never" secimi ilk kayitta kaybolur
+    # (test yakaladi). Varsayilan TEK kapida uygulanir:
+    # task_lifecycle.get_policy().
+    retention_days = Column(Integer, nullable=True)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_by_user_id = Column(UUID(as_uuid=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("singleton", name="uq_task_lifecycle_policy_single"),
+        CheckConstraint("singleton IS TRUE", name="chk_task_lifecycle_singleton"),
+        # Makul sinir: negatif/sifir gun anlamsizdir, ust sinir kazayla
+        # "hic arsivlenmez"e donusen devasa degerleri engeller.
+        CheckConstraint(
+            "retention_days IS NULL OR (retention_days > 0 "
+            "AND retention_days <= 3650)",
+            name="chk_task_lifecycle_retention_days",
+        ),
+    )

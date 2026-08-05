@@ -74,6 +74,19 @@ LIFECYCLE_SCHEMA_STATEMENTS = (
     "CREATE INDEX IF NOT EXISTS idx_tasks_closed_at ON tasks(closed_at)",
     "CREATE INDEX IF NOT EXISTS idx_tasks_retention "
     "ON tasks(closed_at, archived_at)",
+    # Politika tablosu: create_all yaratir, ama mevcut DB'de tabloyu
+    # garanti etmek icin burada da idempotent olarak aciklanir.
+    "CREATE TABLE IF NOT EXISTS task_lifecycle_policy ("
+    "  id UUID PRIMARY KEY, singleton BOOLEAN NOT NULL DEFAULT TRUE, "
+    "  retention_days INTEGER, "
+    "  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), "
+    "  updated_by_user_id UUID, "
+    "  CONSTRAINT uq_task_lifecycle_policy_single UNIQUE (singleton), "
+    "  CONSTRAINT chk_task_lifecycle_singleton CHECK (singleton IS TRUE), "
+    "  CONSTRAINT chk_task_lifecycle_retention_days CHECK ("
+    "    retention_days IS NULL OR (retention_days > 0 "
+    "    AND retention_days <= 3650))"
+    ")",
     # Onceden arsivlenmis kayitlarin sebebi BILINMIYOR — uydurulmaz,
     # 'legacy' olarak siniflanir. Yalniz BOS olanlar doldurulur.
     "UPDATE tasks SET archive_reason = 'legacy' "
@@ -133,6 +146,10 @@ WHERE t.id = r.id
   AND g.all_terminal
   AND g.closed_moment IS NOT NULL
 """
+
+#: Varsayilan retention (gun). UI secenekleri: 1 / 7 / 14 / 30 / Never.
+DEFAULT_RETENTION_DAYS = 7
+ALLOWED_RETENTION_DAYS = (1, 7, 14, 30)
 
 ARCHIVE_REASON_AUTO = "auto_retention"
 ARCHIVE_REASON_MANUAL = "manual"
@@ -282,3 +299,50 @@ def restore_group(db: Session, task: Task) -> List[Task]:
         row.archive_reason = None
         row.archived_by_user_id = None
     return rows
+
+
+# =============================================================================
+# Politika erisimi
+# =============================================================================
+def get_policy(db: Session):
+    """Tekil politika satirini dondurur; yoksa varsayilanla OLUSTURUR.
+
+    Cagiran her yerde ayni varsayilani tekrar yazmasin diye tek kapi.
+    """
+    from ..models.task import TaskLifecyclePolicy
+
+    row = db.query(TaskLifecyclePolicy).first()
+    if row is None:
+        # Varsayilan YALNIZ burada uygulanir (model tarafinda degil —
+        # orada bir default, acikca verilen None'i ezerdi).
+        row = TaskLifecyclePolicy(
+            singleton=True, retention_days=DEFAULT_RETENTION_DAYS
+        )
+        db.add(row)
+        db.flush()
+    return row
+
+
+def set_policy(db: Session, *, retention_days: Optional[int], actor_user_id):
+    """Politikayi gunceller. `retention_days=None` → Never (otomatik
+    arsiv kapali). Gecerlilik kontrolu CAGIRANDA degil burada yapilir."""
+    if retention_days is not None and retention_days not in ALLOWED_RETENTION_DAYS:
+        raise ValueError("unsupported retention_days")
+    row = get_policy(db)
+    row.retention_days = retention_days
+    row.updated_by_user_id = actor_user_id
+    return row
+
+
+def retention_cutoff(policy, now: Optional[datetime] = None):
+    """Politikaya gore kapanis kesme noktasi.
+
+    `Never` ise None doner — cagiran otomatik arsivi ATLAR.
+    """
+    from datetime import timedelta
+
+    if policy.retention_days is None:
+        return None
+    return (now or datetime.now(timezone.utc)) - timedelta(
+        days=policy.retention_days
+    )

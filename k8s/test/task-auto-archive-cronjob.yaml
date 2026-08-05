@@ -1,0 +1,55 @@
+# =============================================================================
+# HERMES - Work item otomatik arşiv CronJob (hermes-test)
+# =============================================================================
+# Kapanmış (closed_at dolu) logical work item'ları, PM Configurations'taki
+# retention süresi dolunca Archive havuzuna alır.
+#
+# KALICI SİLME YAPMAZ: yalnızca lifecycle metadata'sı yazar. work_logs
+# tablosuna dokunmaz. Politika "Never" ise güvenle skip eder.
+#
+# CD bu manifesti UYGULAMAZ. Bu dosya HAZIRDIR ama hermes-test'e
+# UYGULANMAMIŞTIR — kullanıcı onayı olmadan apply edilmez.
+# =============================================================================
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: task-auto-archive
+  namespace: hermes-test
+spec:
+  # Günlük, UTC 02:30 — api-cleanup ile çakışmayan sakin bir saat.
+  schedule: "30 2 * * *"
+  timeZone: "UTC"
+  # Aynı anda ikinci bir çalışan başlatılmaz. Servis ayrıca PostgreSQL
+  # advisory lock kullanır (ikinci savunma).
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 600
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          restartPolicy: Never
+          imagePullSecrets:
+            - name: ghcr-secret
+          containers:
+            - name: task-auto-archive
+              # Çalışan core-service ile AYNI image; deploy sırasında
+              # immutable SHA'ya pinlenir.
+              image: ghcr.io/duosis-developer-team/hermes-core-service:test
+              imagePullPolicy: IfNotPresent
+              command: ["python", "-m", "app.jobs.task_auto_archive"]
+              envFrom:
+                - configMapRef:
+                    name: hermes-config
+                - secretRef:
+                    name: hermes-secrets
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "300m"
+                  memory: "512Mi"
