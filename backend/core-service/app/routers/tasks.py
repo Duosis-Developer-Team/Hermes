@@ -20,7 +20,9 @@ from datetime import date
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
+from fastapi import (
+    APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status,
+)
 from sqlalchemy.orm import Session
 
 from ..database import get_db
