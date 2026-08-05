@@ -2058,7 +2058,7 @@ def update_task_status(
     # Kapanis/arsiv alanlari MERKEZI sozlesmeden gelir (task_lifecycle):
     # hepsi terminal olunca closed_at baslar, biri geri acilinca TUM
     # grubun kapanis ve arsiv izleri silinir. Burada kural TEKRARLANMAZ.
-    task_lifecycle.recompute_closure(db, task, require_work_log=True)
+    task_lifecycle.recompute_closure(db, task)
     db.commit()
     db.refresh(task)
     # Transient flag (not a column) for the router to decide whether to
@@ -2089,7 +2089,7 @@ def reject_task(
             detail="You are not allowed to reject this task.",
         )
     _apply_status_change(db, task, user, "rejected")
-    task_lifecycle.recompute_closure(db, task, require_work_log=True)
+    task_lifecycle.recompute_closure(db, task)
     db.commit()
     db.refresh(task)
     return task
@@ -2131,7 +2131,7 @@ def update_task_completion(
         notif = None
         if task.status == "completed":
             notif = _apply_status_change(db, task, user, "in_progress")
-    task_lifecycle.recompute_closure(db, task, require_work_log=True)
+    task_lifecycle.recompute_closure(db, task)
     db.commit()
     db.refresh(task)
     task._status_notif = notif
@@ -2436,16 +2436,10 @@ def archive_work_item(
                 "completed or rejected work items can be archived."
             ),
         )
-    # Kapanis (ve Log Time kilidi) merkezi sozlesmeden gecer.
-    task_lifecycle.recompute_closure(db, task, require_work_log=True)
-    if any(r.closed_at is None for r in rows):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "Log Time is still required for at least one completed "
-                "assignment before this work item can be archived."
-            ),
-        )
+    # Kapanis merkezi sozlesmeden gecer. Log Time ARTIK arsivin on
+    # kosulu DEGILDIR (kullanici karari) — aksi halde saati girilmemis
+    # isler Active'te sonsuza kadar kalirdi.
+    task_lifecycle.recompute_closure(db, task)
 
     already = all(r.archived_at is not None for r in rows)
     actor = None if reason == task_lifecycle.ARCHIVE_REASON_AUTO else UUID(user.id)
@@ -2519,7 +2513,7 @@ def restore_work_item(
     # Arsiv izleri TUM grup icin temizlenir; kapanis merkezi sozlesmeden
     # yeniden hesaplanir (artik terminal degil → closed_at NULL).
     task_lifecycle.restore_group(db, task)
-    task_lifecycle.recompute_closure(db, task, require_work_log=True)
+    task_lifecycle.recompute_closure(db, task)
     for row in rows:
         _record_task_event(
             db,

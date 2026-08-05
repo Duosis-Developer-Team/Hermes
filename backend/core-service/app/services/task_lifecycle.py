@@ -219,10 +219,17 @@ def recompute_closure(
     basari akisindan SONRA cagrilir. Grup icindeki BUTUN satirlara ayni
     degerleri yazar — parcali (bir kismi kapali) grup olusmaz.
 
-    `require_work_log=True` iken: completed bir assignment'in kanonik
-    Log Time kaydi henuz yoksa grup KAPANMIS SAYILMAZ. Boylece
-    "completed ama saati girilmemis" isler otomatik arsiv sirasina
-    girmez.
+    KULLANICI KARARI (2026-08-06): Log Time kilidi KALDIRILDI.
+    Gerekce: tek terminal durum `completed` olunca kilit her kapanisin
+    on kosuluna donusuyordu; saatini girmeyen birinin isi Active'te
+    SONSUZA KADAR kalir ve hicbir zaman arsivlenmezdi. Artik completed
+    olan is, saati girilmis olsun olmasin retention geri sayimina
+    girer.
+
+    `require_work_log` parametresi GERIYE UYUMLULUK icin duruyor ama
+    varsayilani False; cagiranlar artik True gecmez. Saat kaydi
+    zorunlulugu gerekirse AYRI ve acik bir urun kurali olarak geri
+    getirilmelidir — sessiz bir arsiv engeli olarak DEGIL.
     """
     now = now or datetime.now(timezone.utc)
     rows = sibling_rows(db, task)

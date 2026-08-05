@@ -213,11 +213,15 @@ def test_mixed_group_cannot_be_archived(world, http):
     assert res.status_code == 409
 
 
-def test_completed_without_log_time_cannot_be_archived(world, http):
+def test_completed_without_log_time_can_still_be_archived(world, http):
+    """KULLANICI KARARI (2026-08-06): Log Time arsivin ON KOSULU DEGIL.
+
+    Kilit kalsaydi saatini girmeyen birinin isi Active'te SONSUZA KADAR
+    kalir ve hicbir zaman arsivlenmezdi.
+    """
     t = _task(world, status="completed")
     res = http(ASSIGNER).post(f"/api/v1/core/tasks/{t.id}/archive")
-    assert res.status_code == 409
-    assert "Log Time" in res.json()["detail"]
+    assert res.status_code == 200, res.text
 
 
 def test_completed_with_log_time_can_be_archived(world, http):

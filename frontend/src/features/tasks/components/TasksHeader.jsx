@@ -13,6 +13,7 @@ import { Avatar, Select, Switch } from 'antd'
 import { UserOutlined } from '@ant-design/icons'
 
 import TasksSearchBar from '../../../components/tasks/TasksSearchBar'
+import TaskLifecycleSwitcher from './TaskLifecycleSwitcher'
 import {
     TASK_LAYOUTS, TASK_SCOPES, TASK_TYPES, typeMetaFor,
 } from '../model/constants'
@@ -24,6 +25,8 @@ function TasksHeader({
     selectedUserId,
     onSelectUser,
     userSelectorOptions,
+    archiveState,
+    onArchiveStateChange,
     usersLoaded,
     taskType,
     onSelectType,
@@ -150,6 +153,12 @@ function TasksHeader({
                         </span>
                     ))}
                 </div>
+                <div className="tasks-tabs-divider" />
+                {/* Arsiv anahtari: baslik satirinin saginda tek dugme. */}
+                <TaskLifecycleSwitcher
+                    value={archiveState}
+                    onChange={onArchiveStateChange}
+                />
                 <div
                     className="tasks-groupby-slot"
                     aria-hidden={!showGroupBy}

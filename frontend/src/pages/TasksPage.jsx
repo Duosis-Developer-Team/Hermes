@@ -28,7 +28,6 @@ import { Empty, message } from 'antd'
 import useMultiAssignmentDrop from '../features/tasks/hooks/useMultiAssignmentDrop'
 import useAssigneeScope from '../features/tasks/hooks/useAssigneeScope'
 import useTaskArchiveWorkspace from '../features/tasks/hooks/useTaskArchiveWorkspace'
-import TaskLifecycleSwitcher from '../features/tasks/components/TaskLifecycleSwitcher'
 import TaskArchiveDialogs from '../features/tasks/components/TaskArchiveDialogs'
 import MultiAssignmentConfirm from '../features/tasks/components/MultiAssignmentConfirm'
 
@@ -242,11 +241,9 @@ function TasksPage() {
 
     return (
         <div className="tasks-page">
-            <TaskLifecycleSwitcher
-                value={archiveState}
-                onChange={archive.setArchiveState}
-            />
             <TasksHeader
+                archiveState={archiveState}
+                onArchiveStateChange={archive.setArchiveState}
                 user={user}
                 isTaskAdmin={isTaskAdmin}
                 canViewAssignedByMe={taskPerms.canViewAssignedByMe}

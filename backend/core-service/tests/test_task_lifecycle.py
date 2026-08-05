@@ -194,10 +194,14 @@ def test_metadata_edit_does_not_reset_retention(world):
 # ── Log Time kilidi ────────────────────────────────────────────────────
 
 
-def test_completed_without_work_log_does_not_close(world):
+def test_work_log_lock_is_opt_in_only(world):
+    """Parametre geriye uyumluluk icin duruyor ama VARSAYILAN DEGIL;
+    cagiranlar artik True gecmez."""
     t = _task(world, "completed", completed_at=datetime.now(timezone.utc))
     lc.recompute_closure(world["s"], t, require_work_log=True)
     assert t.closed_at is None
+    lc.recompute_closure(world["s"], t)
+    assert t.closed_at is not None
 
 
 def test_completed_with_work_log_closes(world):
@@ -208,12 +212,13 @@ def test_completed_with_work_log_closes(world):
     assert t.closed_at is not None
 
 
-def test_completed_needs_work_log(world):
-    """Tek terminal durum completed oldugu icin Log Time kilidi artik
-    HER kapanisin on kosuludur."""
+def test_completed_closes_without_work_log(world):
+    """Log Time kilidi KALDIRILDI (kullanici karari): saati girilmemis
+    completed is de retention geri sayimina girer — aksi halde Active'te
+    sonsuza kadar kalirdi."""
     t = _task(world, "completed", completed_at=datetime.now(timezone.utc))
-    lc.recompute_closure(world["s"], t, require_work_log=True)
-    assert t.closed_at is None
+    lc.recompute_closure(world["s"], t)
+    assert t.closed_at is not None
 
 
 def test_archiving_never_touches_work_logs(world):

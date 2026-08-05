@@ -139,9 +139,7 @@ class WorkLogService:
                 self.db.query(Task).filter(Task.id == linked_task_id).first()
             )
             if linked is not None:
-                task_lifecycle.recompute_closure(
-                    self.db, linked, require_work_log=True
-                )
+                task_lifecycle.recompute_closure(self.db, linked)
 
         self.db.commit()
         self.db.refresh(db_obj)

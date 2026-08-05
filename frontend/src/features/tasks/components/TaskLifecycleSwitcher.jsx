@@ -1,26 +1,37 @@
 /**
  * =============================================================================
- * HERMES - Active | Archive gecisi
+ * HERMES - Arsiv anahtari (tek dugme)
  * =============================================================================
- * Ust seviye yasam dongusu ekseni. Gorunum (Explorer/Board/List) ve
- * kapsam eksenlerinden BAGIMSIZDIR: havuz degistirmek gorunum tercihini
- * sifirlamaz.
+ * KULLANICI KARARI (2026-08-06): ust seviye "Active | Archive" seridi
+ * KALDIRILDI — ayri bir satir isgal ediyor ve calisma alanini asagi
+ * itiyordu. Yerine baslik satirinin sagindaki TEK ikon dugme:
+ *
+ *   kapali  → notr cerceve, arsiv gorunumu KAPALI (Active)
+ *   acik    → marka mavisi cerceve + tonal zemin, Archive gorunumu
+ *
+ * Durum yalniz renkle anlatilmaz: `aria-pressed` ve erisilebilir ad
+ * (Show/Hide archived work items) durumu acikca bildirir.
  * =============================================================================
  */
-import { Segmented } from 'antd'
+import { InboxOutlined } from '@ant-design/icons'
+import { Tooltip } from 'antd'
 
-import { ARCHIVE_STATES } from '../model/taskLifecycle'
+import './lifecycleSwitch.css'
 
 function TaskLifecycleSwitcher({ value, onChange }) {
+    const on = value === 'archived'
     return (
-        <Segmented
-            className="h-lifecycle-switch"
-            size="small"
-            value={value}
-            onChange={onChange}
-            options={ARCHIVE_STATES}
-            aria-label="Work item pool"
-        />
+        <Tooltip title={on ? 'Hide archive' : 'Show archive'}>
+            <button
+                type="button"
+                className={`h-archive-toggle${on ? ' is-on' : ''}`}
+                aria-pressed={on}
+                aria-label={on ? 'Hide archived work items' : 'Show archived work items'}
+                onClick={() => onChange(on ? 'active' : 'archived')}
+            >
+                <InboxOutlined />
+            </button>
+        </Tooltip>
     )
 }
 
