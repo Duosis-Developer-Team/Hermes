@@ -22,6 +22,21 @@ spec:
         - name: ghcr-secret
       containers:
       - name: core-service
+        # DIKKAT — BU ETIKET YALNIZCA ILK KURULUM ICINDIR.
+        # Calisan Deployment her zaman IMMUTABLE SHA'ya pinlenir; bunu
+        # CD yapar (`kubectl set image`, bkz. .github/workflows/cd-*.yml).
+        # Bu dosyayi OLDUGU GIBI `kubectl apply` etmek, calisan surumu
+        # buradaki mutable etikete GERI DONDURUR — 2026-08-06'da canli
+        # diff'te yakalandi.
+        #
+        # Bu yuzden: yalniz bir alani degistirmek gerekiyorsa APPLY DEGIL
+        # PATCH kullanin, orn.
+        #   kubectl -n <ns> patch deployment core-service --type=json \
+        #     -p='[{"op":"replace",
+        #           "path":"/spec/template/spec/containers/0/resources/limits/cpu",
+        #           "value":"1500m"}]'
+        # Tam apply gerekiyorsa ardindan CD'yi yeniden calistirin ya da
+        # `set image` ile SHA'yi tekrar pinleyin.
         image: ghcr.io/duosis-developer-team/hermes-core-service:test
         imagePullPolicy: Always
         ports:
@@ -37,7 +52,6 @@ spec:
             secretKeyRef:
               name: hermes-s2s
               key: HERMES_S2S_TOKEN_CURRENT
-              optional: true
         # Database
         - name: CORE_DB_HOST
           valueFrom:
