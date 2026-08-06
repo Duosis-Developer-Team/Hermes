@@ -31,7 +31,7 @@ router = APIRouter(prefix="/work-logs", tags=["Work Logs"])
 # =============================================================================
 
 @router.post("", response_model=WorkLogResponse, status_code=status.HTTP_201_CREATED)
-async def create_work_log(
+def create_work_log(
     data: WorkLogCreate,
     target_user_id: Optional[UUID] = Query(None, description="Admin: create log on behalf of this user"),
     current_user: CurrentUser = Depends(get_current_user),
@@ -59,7 +59,7 @@ async def create_work_log(
 # =============================================================================
 
 @router.get("", response_model=WorkLogListResponse)
-async def list_work_logs(
+def list_work_logs(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     start_date: Optional[date] = Query(None, description="Başlangıç tarihi"),
@@ -106,7 +106,7 @@ async def list_work_logs(
 
 
 @router.get("/billable-summary")
-async def get_billable_summary(
+def get_billable_summary(
     admin: CurrentUser = Depends(require_permissions(Perm.WORKLOGS_ADMIN)),
     db: Session = Depends(get_db)
 ):
@@ -127,7 +127,7 @@ async def get_billable_summary(
 
 
 @router.get("/all", response_model=WorkLogListResponse)
-async def list_all_work_logs(
+def list_all_work_logs(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     start_date: Optional[date] = Query(None),
@@ -170,7 +170,7 @@ async def list_all_work_logs(
 
 
 @router.get("/{work_log_id}", response_model=WorkLogResponse)
-async def get_work_log(
+def get_work_log(
     work_log_id: int,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -202,7 +202,7 @@ async def get_work_log(
 # =============================================================================
 
 @router.put("/{work_log_id}", response_model=WorkLogResponse)
-async def update_work_log(
+def update_work_log(
     work_log_id: int,
     data: WorkLogUpdate,
     current_user: CurrentUser = Depends(get_current_user),
@@ -234,7 +234,7 @@ async def update_work_log(
 # =============================================================================
 
 @router.delete("/{work_log_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_work_log(
+def delete_work_log(
     work_log_id: int,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)

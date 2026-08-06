@@ -22,7 +22,7 @@ router = APIRouter(prefix="/work-types", tags=["Work Types"])
 
 
 @router.post("", response_model=WorkTypeResponse, status_code=status.HTTP_201_CREATED)
-async def create_work_type(
+def create_work_type(
     data: WorkTypeCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.REFERENCE_MANAGE)),
     db: Session = Depends(get_db)
@@ -33,7 +33,7 @@ async def create_work_type(
 
 
 @router.get("", response_model=List[WorkTypeResponse])
-async def list_work_types(
+def list_work_types(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     include_inactive: bool = Query(False),
@@ -46,7 +46,7 @@ async def list_work_types(
 
 
 @router.get("/{work_type_id}", response_model=WorkTypeResponse)
-async def get_work_type(
+def get_work_type(
     work_type_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -60,7 +60,7 @@ async def get_work_type(
 
 
 @router.put("/{work_type_id}", response_model=WorkTypeResponse)
-async def update_work_type(
+def update_work_type(
     work_type_id: UUID,
     data: WorkTypeUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.REFERENCE_MANAGE)),
@@ -75,7 +75,7 @@ async def update_work_type(
 
 
 @router.delete("/{work_type_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_work_type(
+def delete_work_type(
     work_type_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.REFERENCE_MANAGE)),
     db: Session = Depends(get_db)

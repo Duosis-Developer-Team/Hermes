@@ -19,7 +19,7 @@ router = APIRouter(prefix="/work-lines", tags=["Work Lines"])
 
 
 @router.get("", response_model=List[WorkLineResponse])
-async def get_all_work_lines(
+def get_all_work_lines(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -33,7 +33,7 @@ async def get_all_work_lines(
 
 
 @router.get("/{item_id}", response_model=WorkLineResponse)
-async def get_work_line(
+def get_work_line(
     item_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -45,7 +45,7 @@ async def get_work_line(
 
 
 @router.post("", response_model=WorkLineResponse, dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
-async def create_work_line(
+def create_work_line(
     data: WorkLineCreate,
     db: Session = Depends(get_db)
 ):
@@ -63,7 +63,7 @@ async def create_work_line(
 
 
 @router.put("/{item_id}", response_model=WorkLineResponse, dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
-async def update_work_line(
+def update_work_line(
     item_id: UUID,
     data: WorkLineUpdate,
     db: Session = Depends(get_db)
@@ -83,7 +83,7 @@ async def update_work_line(
 
 
 @router.delete("/{item_id}", dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
-async def delete_work_line(
+def delete_work_line(
     item_id: UUID,
     db: Session = Depends(get_db)
 ):

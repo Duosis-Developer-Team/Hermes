@@ -19,7 +19,7 @@ router = APIRouter(prefix="/activity-types", tags=["Activity Types"])
 
 
 @router.get("", response_model=List[ActivityTypeResponse])
-async def get_all_activity_types(
+def get_all_activity_types(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -33,7 +33,7 @@ async def get_all_activity_types(
 
 
 @router.get("/{item_id}", response_model=ActivityTypeResponse)
-async def get_activity_type(
+def get_activity_type(
     item_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -45,7 +45,7 @@ async def get_activity_type(
 
 
 @router.post("", response_model=ActivityTypeResponse, dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
-async def create_activity_type(
+def create_activity_type(
     data: ActivityTypeCreate,
     db: Session = Depends(get_db)
 ):
@@ -63,7 +63,7 @@ async def create_activity_type(
 
 
 @router.put("/{item_id}", response_model=ActivityTypeResponse, dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
-async def update_activity_type(
+def update_activity_type(
     item_id: UUID,
     data: ActivityTypeUpdate,
     db: Session = Depends(get_db)
@@ -83,7 +83,7 @@ async def update_activity_type(
 
 
 @router.delete("/{item_id}", dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
-async def delete_activity_type(
+def delete_activity_type(
     item_id: UUID,
     db: Session = Depends(get_db)
 ):

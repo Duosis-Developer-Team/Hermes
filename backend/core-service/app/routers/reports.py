@@ -277,7 +277,7 @@ async def export_excel(
         raise e
 
 @router.get("/export/global/detailed")
-async def export_global_detailed(
+def export_global_detailed(
     month: str = Query(..., description="YYYY-MM fortmatında ay"),
     current_user: CurrentUser = Depends(require_permissions(Perm.REPORTS_VIEW)), # Admin Only
     db: Session = Depends(get_db),

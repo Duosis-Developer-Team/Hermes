@@ -91,7 +91,7 @@ def _client_response(db: Session, client: ApiClient) -> ApiClientResponse:
 
 
 @router.get("/api-clients", response_model=List[ApiClientResponse])
-async def list_api_clients(
+def list_api_clients(
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
 ):
@@ -103,7 +103,7 @@ async def list_api_clients(
     response_model=ApiClientResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_api_client(
+def create_api_client(
     data: ApiClientCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
@@ -113,7 +113,7 @@ async def create_api_client(
 
 
 @router.get("/api-clients/{client_id}", response_model=ApiClientResponse)
-async def get_api_client(
+def get_api_client(
     client_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
@@ -122,7 +122,7 @@ async def get_api_client(
 
 
 @router.patch("/api-clients/{client_id}", response_model=ApiClientResponse)
-async def update_api_client(
+def update_api_client(
     client_id: UUID,
     data: ApiClientUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
@@ -134,7 +134,7 @@ async def update_api_client(
 
 
 @router.delete("/api-clients/{client_id}", response_model=ApiClientResponse)
-async def disable_api_client(
+def disable_api_client(
     client_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
@@ -150,7 +150,7 @@ async def disable_api_client(
     "/api-clients/{client_id}/bindings",
     response_model=List[AccessBindingResponse],
 )
-async def replace_api_client_bindings(
+def replace_api_client_bindings(
     client_id: UUID,
     data: AccessBindingsUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
@@ -174,7 +174,7 @@ async def replace_api_client_bindings(
     response_model=ApiTokenCreatedResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_api_token(
+def create_api_token(
     client_id: UUID,
     data: ApiTokenCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
@@ -198,7 +198,7 @@ async def create_api_token(
 
 
 @router.get("/api-tokens", response_model=List[ApiTokenResponse])
-async def list_api_tokens(
+def list_api_tokens(
     client_id: Optional[UUID] = Query(None),
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
@@ -218,7 +218,7 @@ async def list_api_tokens(
 @router.post(
     "/api-tokens/{token_id}/revoke", response_model=ApiTokenResponse
 )
-async def revoke_api_token(
+def revoke_api_token(
     token_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
@@ -232,7 +232,7 @@ async def revoke_api_token(
     response_model=ApiTokenCreatedResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def rotate_api_token(
+def rotate_api_token(
     token_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
     db: Session = Depends(get_db),
@@ -250,7 +250,7 @@ async def rotate_api_token(
 
 
 @router.patch("/api-tokens/{token_id}", response_model=ApiTokenResponse)
-async def update_api_token_expiry(
+def update_api_token_expiry(
     token_id: UUID,
     data: ApiTokenExpiryUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
@@ -268,7 +268,7 @@ async def update_api_token_expiry(
 @router.get(
     "/api-request-logs", response_model=List[ApiRequestLogResponse]
 )
-async def list_api_request_logs(
+def list_api_request_logs(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     client_id: Optional[UUID] = Query(None),

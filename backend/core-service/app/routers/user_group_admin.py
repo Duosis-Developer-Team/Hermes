@@ -74,7 +74,7 @@ def _serialize_member(member) -> UserGroupMemberResponse:
     "/user-groups",
     response_model=List[UserGroupResponse],
 )
-async def list_user_groups(
+def list_user_groups(
     include_inactive: bool = Query(False),
     admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
     db: Session = Depends(get_db),
@@ -94,7 +94,7 @@ async def list_user_groups(
     response_model=UserGroupResponse,
     status_code=201,
 )
-async def create_user_group(
+def create_user_group(
     data: UserGroupCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
     db: Session = Depends(get_db),
@@ -109,7 +109,7 @@ async def create_user_group(
     "/user-groups/{group_id}",
     response_model=UserGroupResponse,
 )
-async def update_user_group(
+def update_user_group(
     group_id: UUID,
     data: UserGroupUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
@@ -124,7 +124,7 @@ async def update_user_group(
     "/user-groups/{group_id}",
     response_model=UserGroupResponse,
 )
-async def deactivate_user_group(
+def deactivate_user_group(
     group_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
     db: Session = Depends(get_db),
@@ -145,7 +145,7 @@ async def deactivate_user_group(
     "/user-groups/{group_id}/members",
     response_model=List[UserGroupMemberResponse],
 )
-async def list_group_members(
+def list_group_members(
     group_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
     db: Session = Depends(get_db),
@@ -159,7 +159,7 @@ async def list_group_members(
     response_model=UserGroupMemberResponse,
     status_code=201,
 )
-async def add_group_member(
+def add_group_member(
     group_id: UUID,
     data: UserGroupMemberCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
@@ -173,7 +173,7 @@ async def add_group_member(
     "/user-groups/{group_id}/members/{member_id}",
     response_model=UserGroupMemberResponse,
 )
-async def update_group_member(
+def update_group_member(
     group_id: UUID,
     member_id: UUID,
     data: UserGroupMemberUpdate,
@@ -188,7 +188,7 @@ async def update_group_member(
     "/user-groups/{group_id}/members/{member_id}",
     status_code=200,
 )
-async def remove_group_member(
+def remove_group_member(
     group_id: UUID,
     member_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),

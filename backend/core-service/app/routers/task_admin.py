@@ -67,14 +67,14 @@ def _legacy_gone() -> None:
 
 
 @router.get("/task-permissions/users")
-async def list_task_permission_rows(
+def list_task_permission_rows(
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
 ):
     _legacy_gone()
 
 
 @router.put("/task-permissions/users/{user_id}")
-async def update_task_permission(
+def update_task_permission(
     user_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
 ):
@@ -82,7 +82,7 @@ async def update_task_permission(
 
 
 @router.get("/task-permissions/effective")
-async def list_effective_permissions(
+def list_effective_permissions(
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
 ):
     _legacy_gone()
@@ -93,7 +93,7 @@ async def list_effective_permissions(
 # =============================================================================
 
 @router.post("/task-permissions/rbac-backfill")
-async def rbac_backfill(
+def rbac_backfill(
     dry_run: bool = Query(True),
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
@@ -118,7 +118,7 @@ async def rbac_backfill(
     "/task-assignment-relations",
     response_model=List[TaskAssignmentRelationResponse],
 )
-async def list_assignment_relations(
+def list_assignment_relations(
     scope: str = Query("task"),
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
@@ -142,7 +142,7 @@ async def list_assignment_relations(
     response_model=List[TaskAssignmentRelationResponse],
     status_code=201,
 )
-async def create_assignment_relations(
+def create_assignment_relations(
     data: TaskAssignmentRelationCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
@@ -170,7 +170,7 @@ async def create_assignment_relations(
     "/task-assignment-relations/{relation_id}",
     status_code=200,
 )
-async def delete_assignment_relation(
+def delete_assignment_relation(
     relation_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
@@ -187,7 +187,7 @@ async def delete_assignment_relation(
     "/task-assignment-group-relations",
     response_model=List[TaskAssignmentGroupRelationResponse],
 )
-async def list_assignment_group_relations(
+def list_assignment_group_relations(
     scope: str = Query("task"),
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
@@ -211,7 +211,7 @@ async def list_assignment_group_relations(
     response_model=TaskAssignmentGroupRelationResponse,
     status_code=201,
 )
-async def create_assignment_group_relation(
+def create_assignment_group_relation(
     data: TaskAssignmentGroupRelationCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
@@ -233,7 +233,7 @@ async def create_assignment_group_relation(
     "/task-assignment-group-relations/{relation_id}",
     status_code=200,
 )
-async def delete_assignment_group_relation(
+def delete_assignment_group_relation(
     relation_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
@@ -251,7 +251,7 @@ async def delete_assignment_group_relation(
     response_model=TaskSubProjectResponse,
     status_code=201,
 )
-async def create_sub_project(
+def create_sub_project(
     data: TaskSubProjectCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
@@ -264,7 +264,7 @@ async def create_sub_project(
     "/tasks/sub-projects/{sub_project_id}",
     response_model=TaskSubProjectResponse,
 )
-async def update_sub_project(
+def update_sub_project(
     sub_project_id: UUID,
     data: TaskSubProjectUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
@@ -278,7 +278,7 @@ async def update_sub_project(
     "/tasks/sub-projects/{sub_project_id}",
     status_code=200,
 )
-async def delete_sub_project(
+def delete_sub_project(
     sub_project_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
@@ -296,14 +296,14 @@ async def delete_sub_project(
 
 
 @router.get("/task-permissions/groups")
-async def list_task_group_permissions(
+def list_task_group_permissions(
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
 ):
     _legacy_gone()
 
 
 @router.put("/task-permissions/groups/{group_id}")
-async def upsert_task_group_permission(
+def upsert_task_group_permission(
     group_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
 ):
@@ -311,7 +311,7 @@ async def upsert_task_group_permission(
 
 
 @router.get("/task-permissions/groups/{group_id}/member-overrides")
-async def list_task_group_member_overrides(
+def list_task_group_member_overrides(
     group_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
 ):
@@ -319,7 +319,7 @@ async def list_task_group_member_overrides(
 
 
 @router.put("/task-permissions/groups/{group_id}/member-overrides/{user_id}")
-async def upsert_task_group_member_override(
+def upsert_task_group_member_override(
     group_id: UUID,
     user_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
@@ -335,7 +335,7 @@ async def upsert_task_group_member_override(
     "/notification-settings",
     response_model=List[NotificationSettingRow],
 )
-async def list_notification_settings(
+def list_notification_settings(
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
@@ -351,7 +351,7 @@ async def list_notification_settings(
     "/notification-settings/{task_type}",
     response_model=NotificationSettingRow,
 )
-async def update_notification_setting(
+def update_notification_setting(
     task_type: str,
     data: NotificationSettingUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
@@ -377,7 +377,7 @@ async def update_notification_setting(
 # YENI bir hard-coded admin kontrolu OLUSTURULMAZ; merkezi katman
 # kullanilir. Frontend gizlemesine GUVENILMEZ — kapi burada.
 @router.get("/lifecycle-policy")
-async def get_lifecycle_policy(
+def get_lifecycle_policy(
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),
 ):
@@ -394,7 +394,7 @@ async def get_lifecycle_policy(
 
 
 @router.put("/lifecycle-policy")
-async def update_lifecycle_policy(
+def update_lifecycle_policy(
     payload: TaskLifecyclePolicyUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
     db: Session = Depends(get_db),

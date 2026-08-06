@@ -89,7 +89,7 @@ def _serialize_plan_time(pt: PlanTime, user_status: Optional[str] = None) -> dic
 # =============================================================================
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_plan_time(
+def create_plan_time(
     data: PlanTimeCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.PLANS_MANAGE)),
     db: Session = Depends(get_db)
@@ -147,7 +147,7 @@ async def create_plan_time(
 # =============================================================================
 
 @router.get("/my")
-async def get_my_plan_times(
+def get_my_plan_times(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     current_user: CurrentUser = Depends(get_current_user),
@@ -192,7 +192,7 @@ async def get_my_plan_times(
 # =============================================================================
 
 @router.get("")
-async def get_all_plan_times(
+def get_all_plan_times(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     admin: CurrentUser = Depends(require_permissions(Perm.PLANS_MANAGE)),
@@ -226,7 +226,7 @@ async def get_all_plan_times(
 # =============================================================================
 
 @router.patch("/{plan_time_id}/respond")
-async def respond_to_plan_time(
+def respond_to_plan_time(
     plan_time_id: UUID,
     payload: RespondPayload,
     current_user: CurrentUser = Depends(get_current_user),
@@ -278,7 +278,7 @@ async def respond_to_plan_time(
 # =============================================================================
 
 @router.patch("/{plan_time_id}")
-async def update_plan_time(
+def update_plan_time(
     plan_time_id: UUID,
     data: PlanTimeUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.PLANS_MANAGE)),
@@ -349,7 +349,7 @@ async def update_plan_time(
 # =============================================================================
 
 @router.delete("/{plan_time_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_plan_time(
+def delete_plan_time(
     plan_time_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.PLANS_MANAGE)),
     db: Session = Depends(get_db)

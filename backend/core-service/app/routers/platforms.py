@@ -19,7 +19,7 @@ router = APIRouter(prefix="/platforms", tags=["Platforms"])
 
 
 @router.get("", response_model=List[PlatformResponse])
-async def get_all_platforms(
+def get_all_platforms(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -33,7 +33,7 @@ async def get_all_platforms(
 
 
 @router.get("/{item_id}", response_model=PlatformResponse)
-async def get_platform(
+def get_platform(
     item_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -45,7 +45,7 @@ async def get_platform(
 
 
 @router.post("", response_model=PlatformResponse, dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
-async def create_platform(
+def create_platform(
     data: PlatformCreate,
     db: Session = Depends(get_db)
 ):
@@ -63,7 +63,7 @@ async def create_platform(
 
 
 @router.put("/{item_id}", response_model=PlatformResponse, dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
-async def update_platform(
+def update_platform(
     item_id: UUID,
     data: PlatformUpdate,
     db: Session = Depends(get_db)
@@ -83,7 +83,7 @@ async def update_platform(
 
 
 @router.delete("/{item_id}", dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
-async def delete_platform(
+def delete_platform(
     item_id: UUID,
     db: Session = Depends(get_db)
 ):

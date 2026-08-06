@@ -125,6 +125,10 @@ spec:
             port: 8001
           initialDelaySeconds: 30
           periodSeconds: 20
+          # Varsayilan 1 sn cok agresifti: anlik bir yavaslamada probe
+          # dusuyor ve kubelet pod'u olduruyordu (canli olay:
+          # "Liveness probe failed: context deadline exceeded").
+          timeoutSeconds: 5
           failureThreshold: 5
         readinessProbe:
           httpGet:
@@ -132,14 +136,15 @@ spec:
             port: 8001
           initialDelaySeconds: 15
           periodSeconds: 10
+          timeoutSeconds: 5
 
         resources:
           requests:
             memory: "128Mi"
-            cpu: "100m"
+            cpu: "250m"
           limits:
             memory: "512Mi"
-            cpu: "500m"
+            cpu: "1500m"
 ---
 apiVersion: v1
 kind: Service

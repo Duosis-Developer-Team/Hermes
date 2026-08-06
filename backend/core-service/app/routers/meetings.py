@@ -73,7 +73,7 @@ def _serialize_meeting(m: Meeting) -> MeetingResponse:
 
 
 @router.get("", response_model=List[MeetingResponse])
-async def list_meetings(
+def list_meetings(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     user_ids: Optional[str] = Query(
@@ -246,7 +246,7 @@ async def sync_user_meetings_admin(
 
 
 @router.get("/{meeting_id}", response_model=MeetingResponse)
-async def get_meeting(
+def get_meeting(
     meeting_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),

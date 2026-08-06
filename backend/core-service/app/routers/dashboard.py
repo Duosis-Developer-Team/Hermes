@@ -18,7 +18,7 @@ from shared.permissions import Perm
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.get("", response_model=DashboardStats)
-async def get_dashboard_stats(
+def get_dashboard_stats(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     admin: CurrentUser = Depends(require_permissions(Perm.REPORTS_VIEW)),

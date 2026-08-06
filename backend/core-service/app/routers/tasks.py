@@ -190,7 +190,7 @@ def _serialize_task(task: Task) -> TaskResponse:
 # =============================================================================
 
 @router.get("/permissions/me", response_model=TaskPermissionMeResponse)
-async def get_my_task_permissions(
+def get_my_task_permissions(
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -279,7 +279,7 @@ async def get_my_task_permissions(
 # =============================================================================
 
 @router.get("/assignable-groups")
-async def list_assignable_groups(
+def list_assignable_groups(
     scope: str = Query("task"),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -340,7 +340,7 @@ async def list_assignable_groups(
 # =============================================================================
 
 @router.get("/sub-projects", response_model=List[TaskSubProjectResponse])
-async def list_sub_projects(
+def list_sub_projects(
     customer_id: Optional[UUID] = Query(None),
     project_id: Optional[UUID] = Query(None),
     include_inactive: bool = Query(False),
@@ -372,7 +372,7 @@ async def list_sub_projects(
     response_model=TaskSubProjectResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_sub_project_as_assigner(
+def create_sub_project_as_assigner(
     data: TaskSubProjectCreate,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -401,7 +401,7 @@ async def create_sub_project_as_assigner(
 # =============================================================================
 
 @router.get("", response_model=List[TaskResponse])
-async def list_tasks(
+def list_tasks(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     assignee_user_id: Optional[UUID] = Query(None),
@@ -481,7 +481,7 @@ async def list_tasks(
 
 
 @router.post("", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
-async def create_task(
+def create_task(
     payload: TaskCreate,
     background_tasks: BackgroundTasks,
     request: Request,
@@ -522,7 +522,7 @@ async def create_task(
     response_model=TaskGroupCreateResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_tasks_for_group(
+def create_tasks_for_group(
     payload: TaskCreateForGroup,
     background_tasks: BackgroundTasks,
     request: Request,
@@ -593,7 +593,7 @@ async def create_tasks_for_group(
     response_model=List[TaskResponse],
     status_code=status.HTTP_201_CREATED,
 )
-async def create_tasks_bulk(
+def create_tasks_bulk(
     payload: TaskCreateBulk,
     background_tasks: BackgroundTasks,
     request: Request,
@@ -661,7 +661,7 @@ async def create_tasks_bulk(
 # matches in declaration order and would otherwise treat "search" as
 # a task_id and 422 the request.
 @router.get("/search", response_model=List[TaskResponse])
-async def search_tasks(
+def search_tasks(
     q: Optional[str] = Query(None, description="Free-text search."),
     task_status: Optional[str] = Query(None, alias="status"),
     priority: Optional[str] = Query(None),
@@ -701,7 +701,7 @@ async def search_tasks(
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
-async def get_task(
+def get_task(
     task_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -712,7 +712,7 @@ async def get_task(
 
 
 @router.put("/{task_id}", response_model=TaskResponse)
-async def update_task(
+def update_task(
     task_id: UUID,
     payload: TaskUpdate,
     background_tasks: BackgroundTasks,
@@ -728,7 +728,7 @@ async def update_task(
 
 
 @router.patch("/{task_id}/note", response_model=TaskResponse)
-async def update_task_note(
+def update_task_note(
     task_id: UUID,
     payload: TaskNoteUpdate,
     current_user: CurrentUser = Depends(get_current_user),
@@ -740,7 +740,7 @@ async def update_task_note(
 
 
 @router.patch("/{task_id}/status", response_model=TaskResponse)
-async def update_task_status(
+def update_task_status(
     task_id: UUID,
     payload: TaskStatusUpdate,
     background_tasks: BackgroundTasks,
@@ -756,7 +756,7 @@ async def update_task_status(
 
 
 @router.patch("/{task_id}/complete", response_model=TaskResponse)
-async def complete_task(
+def complete_task(
     task_id: UUID,
     payload: TaskCompleteUpdate,
     background_tasks: BackgroundTasks,
@@ -774,7 +774,7 @@ async def complete_task(
 
 
 @router.patch("/{task_id}/reject", response_model=TaskResponse)
-async def reject_task(
+def reject_task(
     task_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -786,7 +786,7 @@ async def reject_task(
 
 
 @router.delete("/{task_id}", status_code=200)
-async def delete_task(
+def delete_task(
     task_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -801,7 +801,7 @@ async def delete_task(
     "/{task_id}/activity",
     response_model=List[TaskActivityEventResponse],
 )
-async def list_task_activity(
+def list_task_activity(
     task_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -842,7 +842,7 @@ def _serialize_comment(c) -> TaskCommentResponse:
     "/{task_id}/comments",
     response_model=List[TaskCommentResponse],
 )
-async def list_comments(
+def list_comments(
     task_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -857,7 +857,7 @@ async def list_comments(
     response_model=TaskCommentResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_comment(
+def create_comment(
     task_id: UUID,
     payload: TaskCommentCreate,
     current_user: CurrentUser = Depends(get_current_user),
@@ -874,7 +874,7 @@ async def create_comment(
     "/{task_id}/comments/{comment_id}",
     response_model=TaskCommentResponse,
 )
-async def update_comment(
+def update_comment(
     task_id: UUID,
     comment_id: UUID,
     payload: TaskCommentUpdate,
@@ -889,7 +889,7 @@ async def update_comment(
 
 
 @router.delete("/{task_id}/comments/{comment_id}", status_code=200)
-async def delete_comment(
+def delete_comment(
     task_id: UUID,
     comment_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
@@ -904,7 +904,7 @@ async def delete_comment(
 # Arsiv yasam dongusu (§11, §14, §15)
 # =============================================================================
 @router.post("/{task_id}/archive", status_code=200)
-async def archive_work_item(
+def archive_work_item(
     task_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -919,7 +919,7 @@ async def archive_work_item(
 
 
 @router.post("/{task_id}/restore", status_code=200)
-async def restore_work_item(
+def restore_work_item(
     task_id: UUID,
     payload: TaskRestoreRequest,
     current_user: CurrentUser = Depends(get_current_user),

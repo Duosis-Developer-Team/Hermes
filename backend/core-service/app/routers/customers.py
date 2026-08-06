@@ -22,7 +22,7 @@ router = APIRouter(prefix="/customers", tags=["Customers"])
 
 
 @router.post("", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
-async def create_customer(
+def create_customer(
     data: CustomerCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.CUSTOMERS_MANAGE)),
     db: Session = Depends(get_db)
@@ -33,7 +33,7 @@ async def create_customer(
 
 
 @router.get("", response_model=List[CustomerResponse])
-async def list_customers(
+def list_customers(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     include_inactive: bool = Query(False),
@@ -47,7 +47,7 @@ async def list_customers(
 
 
 @router.get("/{customer_id}", response_model=CustomerResponse)
-async def get_customer(
+def get_customer(
     customer_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -61,7 +61,7 @@ async def get_customer(
 
 
 @router.put("/{customer_id}", response_model=CustomerResponse)
-async def update_customer(
+def update_customer(
     customer_id: UUID,
     data: CustomerUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.CUSTOMERS_MANAGE)),
@@ -76,7 +76,7 @@ async def update_customer(
 
 
 @router.delete("/{customer_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_customer(
+def delete_customer(
     customer_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.CUSTOMERS_MANAGE)),
     db: Session = Depends(get_db)

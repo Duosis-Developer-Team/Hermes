@@ -22,7 +22,7 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 
 
 @router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
-async def create_project(
+def create_project(
     data: ProjectCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.PROJECTS_MANAGE)),
     db: Session = Depends(get_db)
@@ -37,7 +37,7 @@ async def create_project(
 
 
 @router.get("", response_model=List[ProjectResponse])
-async def list_projects(
+def list_projects(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     include_inactive: bool = Query(False),
@@ -57,7 +57,7 @@ async def list_projects(
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
-async def get_project(
+def get_project(
     project_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -72,7 +72,7 @@ async def get_project(
 
 
 @router.put("/{project_id}", response_model=ProjectResponse)
-async def update_project(
+def update_project(
     project_id: UUID,
     data: ProjectUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.PROJECTS_MANAGE)),
@@ -88,7 +88,7 @@ async def update_project(
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_project(
+def delete_project(
     project_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.PROJECTS_MANAGE)),
     db: Session = Depends(get_db)
