@@ -44,6 +44,7 @@ from app.routers import (
     meetings_router,
 )
 from shared.exceptions import HermesException
+from shared.metrics import setup_metrics, start_metrics_server
 
 
 def _migrate_billable_hours() -> None:
@@ -691,6 +692,9 @@ async def lifespan(app: FastAPI):
     """Uygulama yaşam döngüsü yönetimi."""
     settings = get_settings()
     print(f"🚀 {settings.SERVICE_NAME} v{settings.SERVICE_VERSION} başlatılıyor...")
+    # Prometheus /metrics ayri portta (bkz. shared/metrics.py). Middleware
+    # import aninda takilir; soket YALNIZCA burada acilir.
+    start_metrics_server()
     # create_all()'dan önce: tasks tablosunun default'unun bağlı olduğu
     # sequence'i garanti et (taze/backup DB'de create_all aksi halde patlar).
     _ensure_prerequisite_objects()
@@ -759,6 +763,13 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["Content-Disposition"],
 )
+
+# Prometheus (Drake sozlesmesi): service etiketi burada SABIT verilir —
+# ayarlardan turetilmez, cunku dashboard'lar bu degere bagli. Middleware
+# CORS'tan SONRA eklenir: add_middleware son ekleneni disa alir, boylece
+# olcum tum zinciri (CORS dahil) kapsar. Mount edilmis /api/public
+# alt-uygulamasi da ayni ASGI agacindan gectigi icin sayilir.
+setup_metrics(app, service="core-service")
 
 
 @app.exception_handler(HermesException)

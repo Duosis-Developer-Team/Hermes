@@ -17,6 +17,14 @@ spec:
       labels:
         app: core-service
         environment: test
+      # Prometheus hedef kesfi POD annotation'larindan yapilir — Service
+      # uzerine konursa metrik toplanir ama HICBIR ekranda gorunmez
+      # (bkz. HERMES_METRICS.md). Port 9090 = uygulama portundan AYRI,
+      # yalnizca kume ici; ingress bu porta hicbir yol tasimaz.
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
     spec:
       imagePullSecrets:
         - name: ghcr-secret
@@ -41,7 +49,13 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8001
+        - containerPort: 9090
+          name: metrics
         env:
+        # Metrik etiketi 'environment' = KATALOG ANAHTARI ('test'),
+        # namespace ('hermes-test') DEGIL.
+        - name: HERMES_ENVIRONMENT
+          value: "test"
         # Stage 5 promotion: PUBLIC_API_ENV=live → test YALNIZCA
         # hms_live_ token kabul eder (dev token'lari yapisal red).
         # S2S: test'e OZEL hermes-s2s Secret'i (dev degerleri ASLA).

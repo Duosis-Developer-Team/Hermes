@@ -11,6 +11,11 @@ pydantic-settings==2.1.0
 pytest==7.4.4
 pytest-asyncio==0.23.3
 httpx==0.26.0
+# Test-only: k8s manifest sozlesme kilidi (tests/test_metrics_contract.py)
+# scrape annotation'larini ve environment degerlerini YAML'den dogrular.
+pyyaml==6.0.2
 python-dotenv==1.0.0
+# Prometheus metrikleri (Drake sozlesmesi — shared/metrics.py)
+prometheus-client==0.20.0
 pandas==2.2.0
 openpyxl==3.1.2

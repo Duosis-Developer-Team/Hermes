@@ -33,3 +33,6 @@ httpx==0.26.0
 
 # Utilities
 python-dotenv==1.0.0
+
+# Observability — Prometheus metrikleri (Drake sozlesmesi, shared/metrics.py)
+prometheus-client==0.20.0

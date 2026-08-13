@@ -2,3 +2,6 @@
 mcp>=1.28,<2
 httpx>=0.27
 uvicorn[standard]>=0.30
+# Prometheus metrikleri (Drake sozlesmesi). hermes_mcp shared/ import
+# EDEMEZ; sozlesme metrics.py'de bagimsiz uygulanir.
+prometheus-client>=0.20,<1

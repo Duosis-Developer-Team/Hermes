@@ -27,6 +27,7 @@ from app.config import get_settings
 from app.database import init_db
 from app.routers import auth_router, users_router
 from shared.exceptions import HermesException
+from shared.metrics import setup_metrics, start_metrics_server
 
 
 # =============================================================================
@@ -49,7 +50,11 @@ async def lifespan(app: FastAPI):
     # Startup
     settings = get_settings()
     print(f"🚀 {settings.SERVICE_NAME} v{settings.SERVICE_VERSION} başlatılıyor...")
-    
+
+    # Prometheus /metrics ayri portta (bkz. shared/metrics.py). Middleware
+    # import aninda takilir; soket YALNIZCA burada acilir.
+    start_metrics_server()
+
     # Veritabanı tablolarını oluştur
     init_db()
     print("✅ Veritabanı tabloları hazır")
@@ -114,6 +119,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Prometheus (Drake sozlesmesi): service etiketi SABIT — dashboard'lar
+# bu degere bagli. CORS'tan SONRA eklenir ki olcum tum zinciri kapsasin.
+setup_metrics(app, service="auth-service")
 
 
 # =============================================================================

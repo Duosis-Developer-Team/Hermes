@@ -17,6 +17,12 @@ spec:
       labels:
         app: auth-service
         environment: test
+      # Prometheus hedef kesfi POD annotation'larindan yapilir (Service
+      # uzerinde ETKISIZ olur — bkz. HERMES_METRICS.md).
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
     spec:
       imagePullSecrets:
         - name: ghcr-secret
@@ -26,7 +32,13 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
+        - containerPort: 9090
+          name: metrics
         env:
+        # Metrik etiketi 'environment' = KATALOG ANAHTARI ('test'),
+        # namespace ('hermes-test') DEGIL.
+        - name: HERMES_ENVIRONMENT
+          value: "test"
         # Stage 5 promotion: internal directory S2S (test'e OZEL secret).
         - name: HERMES_S2S_TOKEN_CURRENT
           valueFrom:

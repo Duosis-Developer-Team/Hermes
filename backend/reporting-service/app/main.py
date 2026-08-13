@@ -15,12 +15,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from app.config import get_settings
 from app.routers import dashboard_router, export_router
 from shared.exceptions import HermesException
+from shared.metrics import setup_metrics, start_metrics_server
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
     print(f"🚀 {settings.SERVICE_NAME} v{settings.SERVICE_VERSION} başlatılıyor...")
+    # Prometheus /metrics ayri portta (bkz. shared/metrics.py). Middleware
+    # import aninda takilir; soket YALNIZCA burada acilir.
+    start_metrics_server()
     print("📊 Raporlama servisi hazır (stateless - veritabanı yok)")
     yield
     print(f"👋 {settings.SERVICE_NAME} kapatılıyor...")
@@ -51,6 +55,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Prometheus (Drake sozlesmesi): service etiketi SABIT — dashboard'lar
+# bu degere bagli. CORS'tan SONRA eklenir ki olcum tum zinciri kapsasin.
+setup_metrics(app, service="reporting-service")
 
 
 @app.exception_handler(HermesException)

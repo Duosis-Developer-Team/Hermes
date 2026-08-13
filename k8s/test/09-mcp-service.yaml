@@ -28,6 +28,13 @@ spec:
     metadata:
       labels:
         app: hermes-mcp
+      # Prometheus hedef kesfi POD annotation'larindan (bkz.
+      # HERMES_METRICS.md). 9090 kume ici kalir: 09-mcp-ingress yalnizca
+      # /mcp + PRM yollarini tasir, metrik ucu disari CIKMAZ.
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
     spec:
       automountServiceAccountToken: false   # K8s API izni GEREKMEZ
       imagePullSecrets:
@@ -38,7 +45,13 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8010
+            - containerPort: 9090
+              name: metrics
           env:
+            # Metrik etiketi 'environment' = KATALOG ANAHTARI ('test'),
+            # namespace ('hermes-test') DEGIL.
+            - name: HERMES_ENVIRONMENT
+              value: "test"
             - name: HERMES_PUBLIC_API_BASE
               value: "http://core-service/api/public/v1"
             # KAYNAK KIMLIGI (RFC 9728) — PRM 'resource' alani birebir

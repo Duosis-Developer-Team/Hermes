@@ -15,12 +15,14 @@ import logging
 
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from starlette.applications import Starlette
+from starlette.middleware import Middleware
 from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
 
 from . import config
 from .auth import current_token, token_from_headers
 from .discovery import www_authenticate
+from .metrics import PrometheusMiddleware, preinit_series, start_metrics_server
 from .server import server
 from .upstream import close_client
 
@@ -164,6 +166,10 @@ _mcp_asgi = _RawAsgiEndpoint(mcp_endpoint)
 
 @contextlib.asynccontextmanager
 async def lifespan(app):
+    # Prometheus /metrics AYRI portta (bkz. metrics.py): uygulama portu
+    # ve ingress'e dokunmaz. Soket yalnizca burada acilir — import
+    # (ve test) tarafi soketsiz kalir.
+    start_metrics_server()
     async with session_manager.run():
         yield
     await close_client()
@@ -192,5 +198,11 @@ app = Starlette(
         ),
         Mount("/mcp", app=_mcp_asgi),
     ],
+    # Olcum katmani EN DISTA: /mcp'nin ham ASGI ucu dahil tum HTTP
+    # trafigi sayilir, hicbir yanit degistirilmez.
+    middleware=[Middleware(PrometheusMiddleware)],
     lifespan=lifespan,
 )
+
+# Bos ortamda sorgular 'veri yok' yerine 0 dondursun diye sifir seriler.
+preinit_series()

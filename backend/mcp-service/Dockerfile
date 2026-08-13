@@ -26,6 +26,8 @@ ENV PATH="/opt/venv/bin:$PATH" \
 
 USER 10001
 EXPOSE 8010
+# Prometheus /metrics (kume ici; ingress'e ASLA baglanmaz)
+EXPOSE 9090
 
 # --proxy-headers + --forwarded-allow-ips: ingress arkasinda X-Forwarded-
 # Proto/For'a guven (aksi halde uretilen URL'ler http:// oluyordu — canli

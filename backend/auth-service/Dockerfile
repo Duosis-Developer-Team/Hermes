@@ -39,6 +39,8 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
 EXPOSE 8000
+# Prometheus /metrics (kume ici; ingress'e ASLA baglanmaz)
+EXPOSE 9090
 
 # Create and switch to non-root user
 RUN groupadd -r appuser && useradd -r -g appuser appuser

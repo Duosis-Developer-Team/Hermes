@@ -14,6 +14,12 @@ spec:
     metadata:
       labels:
         app: reporting-service
+      # Prometheus hedef kesfi POD annotation'larindan yapilir (Service
+      # uzerinde ETKISIZ olur — bkz. HERMES_METRICS.md).
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
     spec:
       imagePullSecrets:
         - name: ghcr-secret
@@ -23,7 +29,13 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8002
+        - containerPort: 9090
+          name: metrics
         env:
+        # Metrik etiketi 'environment' = KATALOG ANAHTARI ('dev'),
+        # namespace DEGIL (ConfigMap'teki ENVIRONMENT burada "production").
+        - name: HERMES_ENVIRONMENT
+          value: "dev"
         # Service URLs
         - name: AUTH_SERVICE_URL
           valueFrom:

@@ -11,3 +11,5 @@ pydantic-settings==2.1.0
 pytest==7.4.4
 pytest-asyncio==0.23.3
 python-dotenv==1.0.0
+# Prometheus metrikleri (Drake sozlesmesi — shared/metrics.py)
+prometheus-client==0.20.0
