@@ -176,26 +176,37 @@ def test_migration_is_idempotent_and_preserves_rows(disposable_db):
     engine = create_engine(disposable_db)
     customer_id = uuid.uuid4()
     project_id = uuid.uuid4()
+    # Enforce fazindan sonra tenant_id ZORUNLUDUR — bu testin veri
+    # kurulumu da gercek uretim davranisini yansitir.
+    tenant_id = uuid.uuid4()
     try:
         with engine.begin() as conn:
             conn.execute(text(
-                "INSERT INTO customers (id, name, is_active, created_at) "
-                "VALUES (:id, 'Musteri', true, now())"
-            ), {"id": customer_id})
+                "INSERT INTO tenant_registry (tenant_id, slug, status, "
+                "placement_key, source_version, provisioned_at, "
+                "updated_at) VALUES (:t, 'idem-test', 'active', "
+                "'shared-default', 1, now(), now())"
+            ), {"t": tenant_id})
             conn.execute(text(
-                "INSERT INTO projects (id, customer_id, name, is_active, "
-                "created_at) VALUES (:id, :cid, 'Proje', true, now())"
-            ), {"id": project_id, "cid": customer_id})
+                "INSERT INTO customers (id, tenant_id, name, is_active, "
+                "created_at) VALUES (:id, :t, 'Musteri', true, now())"
+            ), {"id": customer_id, "t": tenant_id})
+            conn.execute(text(
+                "INSERT INTO projects (id, tenant_id, customer_id, name, "
+                "is_active, created_at) "
+                "VALUES (:id, :t, :cid, 'Proje', true, now())"
+            ), {"id": project_id, "t": tenant_id, "cid": customer_id})
             for title, ttype in (("Gorev", "task"), ("Talep", "suggestion")):
                 conn.execute(text(
-                    "INSERT INTO tasks (id, customer_id, project_id, title, "
-                    "assignee_user_id, assigner_user_id, scheduled_date, "
-                    "task_type, priority, status, created_at, updated_at) "
-                    "VALUES (gen_random_uuid(), :cid, :pid, :t, "
+                    "INSERT INTO tasks (id, tenant_id, customer_id, "
+                    "project_id, title, assignee_user_id, "
+                    "assigner_user_id, scheduled_date, task_type, "
+                    "priority, status, created_at, updated_at) "
+                    "VALUES (gen_random_uuid(), :t, :cid, :pid, :ttl, "
                     "gen_random_uuid(), gen_random_uuid(), current_date, "
                     ":tt, 'medium', 'pending', now(), now())"
-                ), {"cid": customer_id, "pid": project_id, "t": title,
-                    "tt": ttype})
+                ), {"t": tenant_id, "cid": customer_id, "pid": project_id,
+                    "ttl": title, "tt": ttype})
 
         snapshot_sql = text(
             "SELECT task_type, task_number, type_number FROM tasks "
