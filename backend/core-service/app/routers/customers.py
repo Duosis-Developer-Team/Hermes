@@ -9,7 +9,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..schemas.customer import CustomerCreate, CustomerUpdate, CustomerResponse
 from ..services.customer_service import CustomerService
 from shared.auth import CurrentUser, get_current_user
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/customers", tags=["Customers"])
 def create_customer(
     data: CustomerCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.CUSTOMERS_MANAGE)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Yeni müşteri oluşturur (Admin)."""
     service = CustomerService(db)
@@ -38,7 +38,7 @@ def list_customers(
     limit: int = Query(100, ge=1, le=500),
     include_inactive: bool = Query(False),
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Müşterileri listeler (Authenticated Users)."""
     service = CustomerService(db)
@@ -50,7 +50,7 @@ def list_customers(
 def get_customer(
     customer_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Müşteri detaylarını getirir (Authenticated Users)."""
     service = CustomerService(db)
@@ -65,7 +65,7 @@ def update_customer(
     customer_id: UUID,
     data: CustomerUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.CUSTOMERS_MANAGE)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Müşteriyi günceller (Admin)."""
     service = CustomerService(db)
@@ -79,7 +79,7 @@ def update_customer(
 def delete_customer(
     customer_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.CUSTOMERS_MANAGE)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Müşteriyi siler - soft delete (Admin)."""
     service = CustomerService(db)

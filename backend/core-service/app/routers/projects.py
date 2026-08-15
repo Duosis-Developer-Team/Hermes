@@ -9,7 +9,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
 from ..services.project_service import ProjectService
 from shared.auth import CurrentUser, get_current_user
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 def create_project(
     data: ProjectCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.PROJECTS_MANAGE)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Yeni proje oluşturur (Admin)."""
     service = ProjectService(db)
@@ -43,7 +43,7 @@ def list_projects(
     include_inactive: bool = Query(False),
     customer_id: UUID = Query(None, description="Müşteriye göre filtrele"),
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Projeleri listeler (Authenticated Users)."""
     service = ProjectService(db)
@@ -60,7 +60,7 @@ def list_projects(
 def get_project(
     project_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Proje detaylarını getirir (Authenticated Users)."""
     service = ProjectService(db)
@@ -76,7 +76,7 @@ def update_project(
     project_id: UUID,
     data: ProjectUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.PROJECTS_MANAGE)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Projeyi günceller (Admin)."""
     service = ProjectService(db)
@@ -91,7 +91,7 @@ def update_project(
 def delete_project(
     project_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.PROJECTS_MANAGE)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Projeyi siler - soft delete (Admin)."""
     service = ProjectService(db)

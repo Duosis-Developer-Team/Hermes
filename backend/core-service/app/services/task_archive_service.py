@@ -73,10 +73,15 @@ WHERE COALESCE(assignment_batch_id::text, 'task:' || id::text) = :logical_key
 #: Audit: her arsivlenen satir icin bir olay. Mevcut `task_deleted`
 #: terminolojisi YENI islemlerde URETILMEZ; tarihsel olaylar da
 #: silinmez/yeniden yazilmaz.
+# WS5: `tenant_id` tasinir. Kolon NOT NULL oldugu icin eksikligi
+# INSERT'i patlatirdi — ve bu, arsivin sessizce "partial_failure"
+# donmesi demekti (hicbir satir arsivlenmez, hicbir istisna yukselmez).
+# Tenant, ARSIVLENEN SATIRDAN alinir; boylece audit olayi her zaman
+# kaynak satirla ayni tenant'a duser.
 _AUDIT_SQL = """
-INSERT INTO task_activity_events (id, task_id, actor_user_id, event_type,
-                                  event_data, created_at)
-SELECT gen_random_uuid(), id, NULL, 'task_archived_auto',
+INSERT INTO task_activity_events (id, tenant_id, task_id, actor_user_id,
+                                  event_type, event_data, created_at)
+SELECT gen_random_uuid(), tenant_id, id, NULL, 'task_archived_auto',
        jsonb_build_object('reason', 'auto_retention'), :now
 FROM tasks
 WHERE COALESCE(assignment_batch_id::text, 'task:' || id::text) = :logical_key

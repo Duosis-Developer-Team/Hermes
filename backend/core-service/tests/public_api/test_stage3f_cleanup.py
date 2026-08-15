@@ -21,6 +21,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text as sa_text
 
 from app.database import get_db
+from app.tenant_db import get_tenant_db
 from app.models.api_client import (
     ApiClient,
     ApiCleanupRun,
@@ -102,7 +103,7 @@ def test_cutoffs_delete_old_keep_recent(pg_session):
     _key(s, c.id, age_hours=24.5)
     s.commit()
 
-    result = cleanup.run_cleanup(s, SETTINGS)
+    result = cleanup.run_cleanup(s, SETTINGS, tenant_id=TEST_TENANT_ID)
 
     assert result["ok"] is True
     assert result["status"] == "success"
@@ -123,7 +124,7 @@ def test_configured_retention_values_honored(pg_session):
     _key(s, c.id, age_hours=2)   # default 25h'te KALIR
     s.commit()
 
-    assert cleanup.run_cleanup(s, SETTINGS)["status"] == "success"
+    assert cleanup.run_cleanup(s, SETTINGS, tenant_id=TEST_TENANT_ID)["status"] == "success"
     assert _counts(s) == (1, 1)  # defaults: dokunulmadi
 
     tight = cleanup.CleanupSettings(
@@ -132,7 +133,7 @@ def test_configured_retention_values_honored(pg_session):
         idempotency_retention_hours=1,
         batch_size=100,
     )
-    result = cleanup.run_cleanup(s, tight)
+    result = cleanup.run_cleanup(s, tight, tenant_id=TEST_TENANT_ID)
     assert result["request_logs_deleted"] == 1
     assert result["idempotency_keys_deleted"] == 1
     assert _counts(s) == (0, 0)
@@ -142,8 +143,8 @@ def test_rerun_is_idempotent(pg_session):
     s = pg_session
     _log(s, age_days=100)
     s.commit()
-    assert cleanup.run_cleanup(s, SETTINGS)["request_logs_deleted"] == 1
-    again = cleanup.run_cleanup(s, SETTINGS)
+    assert cleanup.run_cleanup(s, SETTINGS, tenant_id=TEST_TENANT_ID)["request_logs_deleted"] == 1
+    again = cleanup.run_cleanup(s, SETTINGS, tenant_id=TEST_TENANT_ID)
     assert again["status"] == "success"
     assert again["request_logs_deleted"] == 0
 
@@ -162,7 +163,7 @@ def test_batch_deletion_avoids_single_transaction(pg_session):
         idempotency_retention_hours=25,
         batch_size=3,
     )
-    result = cleanup.run_cleanup(s, small)
+    result = cleanup.run_cleanup(s, small, tenant_id=TEST_TENANT_ID)
     assert result["request_logs_deleted"] == 7
     assert result["batches"] == 3  # 3 + 3 + 1
     assert _counts(s)[0] == 0
@@ -182,7 +183,7 @@ def test_advisory_lock_skips_concurrent_run(pg_session):
             sa_text("SELECT pg_advisory_lock(:k)"),
             {"k": cleanup.ADVISORY_LOCK_KEY},
         )
-        result = cleanup.run_cleanup(s, SETTINGS)
+        result = cleanup.run_cleanup(s, SETTINGS, tenant_id=TEST_TENANT_ID)
         assert result["ok"] is True  # hata degil — yarisi kaybetmek normal
         assert result["status"] == "skipped_already_running"
         assert _counts(s)[0] == 1  # hicbir sey silinmedi
@@ -195,7 +196,7 @@ def test_advisory_lock_skips_concurrent_run(pg_session):
         holder.close()
 
     # Kilit birakilinca normal calisir (kilit sizdirilmemis).
-    assert cleanup.run_cleanup(s, SETTINGS)["request_logs_deleted"] == 1
+    assert cleanup.run_cleanup(s, SETTINGS, tenant_id=TEST_TENANT_ID)["request_logs_deleted"] == 1
 
 
 # ── Hata izolasyonu ─────────────────────────────────────────────────────
@@ -206,11 +207,11 @@ def test_failure_is_isolated_and_sanitized(pg_session, monkeypatch):
     _log(s, age_days=100)
     s.commit()
 
-    def boom(conn, table, cutoff, limit):
+    def boom(conn, table, cutoff, limit, **_kw):
         raise RuntimeError("SECRET SQL DETAIL must never leak")
 
     monkeypatch.setattr(cleanup, "_delete_batch", boom)
-    result = cleanup.run_cleanup(s, SETTINGS)  # exception FIRLATMAZ
+    result = cleanup.run_cleanup(s, SETTINGS, tenant_id=TEST_TENANT_ID)  # exception FIRLATMAZ
 
     assert result["ok"] is False
     assert result["status"] == "failed"
@@ -290,7 +291,7 @@ def test_business_and_credential_tables_untouched(pg_session):
         "tasks": s.query(Task).count(),
         "work_logs": s.query(WorkLog).count(),
     }
-    result = cleanup.run_cleanup(s, SETTINGS)
+    result = cleanup.run_cleanup(s, SETTINGS, tenant_id=TEST_TENANT_ID)
     assert result["request_logs_deleted"] == 1
     after = {
         "clients": s.query(ApiClient).count(),
@@ -315,7 +316,7 @@ def test_dry_run_counts_but_deletes_nothing(pg_session):
     _key(s, c.id, age_hours=30)
     s.commit()
 
-    result = cleanup.run_cleanup(s, SETTINGS, dry_run=True)
+    result = cleanup.run_cleanup(s, SETTINGS, dry_run=True, tenant_id=TEST_TENANT_ID)
     assert result["status"] == "success"
     assert result["dry_run"] is True
     assert result["request_logs_deleted"] == 1  # aday sayisi
@@ -334,7 +335,7 @@ def test_disabled_cleanup_is_noop(pg_session):
         idempotency_retention_hours=25,
         batch_size=5000,
     )
-    result = cleanup.run_cleanup(s, off)
+    result = cleanup.run_cleanup(s, off, tenant_id=TEST_TENANT_ID)
     assert result["ok"] is True  # calisma hatasi degil — bilincli kapali
     assert result["status"] == "disabled"
     assert _counts(s)[0] == 1
@@ -370,10 +371,13 @@ def admin_http(pg_session):
         else frozenset()
     )
     app.dependency_overrides[get_db] = lambda: pg_session
+    # Internal router'lar tenant baglamli session kullanir.
+    app.dependency_overrides[get_tenant_db] = lambda: pg_session
     app.dependency_overrides[get_current_user] = lambda: ADMIN
     http = TestClient(app, raise_server_exceptions=False)
     yield http
     app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_tenant_db, None)
     app.dependency_overrides.pop(get_current_user, None)
     authz_client.effective_permissions = _orig_resolve
 
@@ -408,12 +412,15 @@ def test_admin_cleanup_requires_admin(pg_session):
     from app.main import app
 
     app.dependency_overrides[get_db] = lambda: pg_session
+    # Internal router'lar tenant baglamli session kullanir.
+    app.dependency_overrides[get_tenant_db] = lambda: pg_session
     try:
         http = TestClient(app, raise_server_exceptions=False)
         assert http.get(f"{BASE}/api-cleanup").status_code in (401, 403)
         assert http.post(f"{BASE}/api-cleanup/run").status_code in (401, 403)
     finally:
         app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_tenant_db, None)
 
 
 def test_admin_manual_trigger_failure_returns_500_sanitized(
@@ -424,7 +431,7 @@ def test_admin_manual_trigger_failure_returns_500_sanitized(
     _log(pg_session, age_days=100)
     pg_session.commit()
 
-    def boom(conn, table, cutoff, limit):
+    def boom(conn, table, cutoff, limit, **_kw):
         raise RuntimeError("SECRET SQL DETAIL must never leak")
 
     monkeypatch.setattr(cleanup, "_delete_batch", boom)

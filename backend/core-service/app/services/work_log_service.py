@@ -141,7 +141,7 @@ class WorkLogService:
             if linked is not None:
                 task_lifecycle.recompute_closure(self.db, linked)
 
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(db_obj)
         return db_obj
     
@@ -318,7 +318,7 @@ class WorkLogService:
         for field, value in update_data.items():
             setattr(db_obj, field, value)
         
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(db_obj)
         return db_obj
     
@@ -346,7 +346,7 @@ class WorkLogService:
             raise ForbiddenError("Bu zaman girişini silme yetkiniz yok")
         
         self.db.delete(db_obj)
-        self.db.commit()
+        self.db.flush()
         return True
     
     # =========================================================================

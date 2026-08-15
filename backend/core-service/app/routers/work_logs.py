@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..models.work_log import WorkLog
 from ..schemas.work_log import WorkLogCreate, WorkLogUpdate, WorkLogResponse, WorkLogListResponse
 from ..services.work_log_service import WorkLogService
@@ -35,7 +35,7 @@ def create_work_log(
     data: WorkLogCreate,
     target_user_id: Optional[UUID] = Query(None, description="Admin: create log on behalf of this user"),
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Yeni zaman girişi oluşturur.
@@ -66,7 +66,7 @@ def list_work_logs(
     end_date: Optional[date] = Query(None, description="Bitiş tarihi"),
     user_id: Optional[UUID] = Query(None, description="Kullanıcı ID (Sadece Admin)"),
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Kullanıcının kendi zaman girişlerini listeler.
@@ -108,7 +108,7 @@ def list_work_logs(
 @router.get("/billable-summary")
 def get_billable_summary(
     admin: CurrentUser = Depends(require_permissions(Perm.WORKLOGS_ADMIN)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Tüm projeler için toplam billable saat özetini döner (Admin).
@@ -136,7 +136,7 @@ def list_all_work_logs(
     project_id: Optional[UUID] = Query(None),
     user_id: Optional[UUID] = Query(None),
     admin: CurrentUser = Depends(require_permissions(Perm.WORKLOGS_ADMIN)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Tüm zaman girişlerini listeler (Admin).
@@ -173,7 +173,7 @@ def list_all_work_logs(
 def get_work_log(
     work_log_id: int,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Zaman girişi detaylarını getirir.
@@ -206,7 +206,7 @@ def update_work_log(
     work_log_id: int,
     data: WorkLogUpdate,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Zaman girişini günceller.
@@ -237,7 +237,7 @@ def update_work_log(
 def delete_work_log(
     work_log_id: int,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Zaman girişini siler.

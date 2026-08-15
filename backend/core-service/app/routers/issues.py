@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..models import Issue, Project
 from ..models.project_membership import ProjectMembership
 from ..schemas.issue import IssueCreate, IssueUpdate, IssueResponse
@@ -48,7 +48,7 @@ def _check_project_membership(
 @router.post("", response_model=IssueResponse, status_code=status.HTTP_201_CREATED)
 def create_issue(
     issue_in: IssueCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
     # Proje var mı kontrol et
@@ -70,14 +70,14 @@ def create_issue(
 
     new_issue = Issue(**issue_in.model_dump())
     db.add(new_issue)
-    db.commit()
+    db.flush()
     db.refresh(new_issue)
     return new_issue
 
 @router.get("", response_model=List[IssueResponse])
 def get_issues(
     project_id: Optional[UUID] = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
     query = db.query(Issue)
@@ -90,7 +90,7 @@ def get_issues(
 @router.get("/{issue_id}", response_model=IssueResponse)
 def get_issue(
     issue_id: UUID,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
     issue = db.query(Issue).filter(Issue.id == issue_id).first()
@@ -104,7 +104,7 @@ def get_issue(
 def update_issue(
     issue_id: UUID,
     issue_in: IssueUpdate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
     issue = db.query(Issue).filter(Issue.id == issue_id).first()
@@ -118,14 +118,14 @@ def update_issue(
     for field, value in update_data.items():
         setattr(issue, field, value)
 
-    db.commit()
+    db.flush()
     db.refresh(issue)
     return issue
 
 @router.delete("/{issue_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_issue(
     issue_id: UUID,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     admin: CurrentUser = Depends(require_permissions(Perm.PROJECTS_MANAGE)),  # [KRİTİK-5] Silme yalnızca Admin
 ):
     issue = db.query(Issue).filter(Issue.id == issue_id).first()
@@ -133,4 +133,4 @@ def delete_issue(
         raise HTTPException(status_code=404, detail="Issue not found")
 
     db.delete(issue)
-    db.commit()
+    db.flush()

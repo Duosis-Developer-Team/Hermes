@@ -71,30 +71,40 @@ def _cutoffs(settings: CleanupSettings, now: datetime) -> dict:
     }
 
 
-def _count_candidates(conn, table: str, cutoff: datetime) -> int:
+def _count_candidates(conn, table: str, cutoff: datetime,
+                      *, tenant_id) -> int:
     assert table in _TARGETS
     # Her islem kendi kisa transaction'inda: SQLAlchemy 2.x'te ciplak
     # execute implicit transaction acar ve sonraki begin()'i kirar.
     with conn.begin():
         return conn.execute(
             sa_text(
-                f"SELECT count(*) FROM {table} WHERE created_at < :cutoff"
+                f"SELECT count(*) FROM {table} "
+                "WHERE created_at < :cutoff AND tenant_id = :tenant"
             ),
-            {"cutoff": cutoff},
+            {"cutoff": cutoff, "tenant": tenant_id},
         ).scalar()
 
 
-def _delete_batch(conn, table: str, cutoff: datetime, limit: int) -> int:
-    """Tek batch siler ve HEMEN commit eder (kendi transaction'i)."""
+def _delete_batch(conn, table: str, cutoff: datetime, limit: int,
+                  *, tenant_id) -> int:
+    """Tek batch siler ve HEMEN commit eder (kendi transaction'i).
+
+    Silme YALNIZCA verilen tenant'in satirlarini kapsar — is bu
+    baglantida RLS'ten bagimsiz olarak da dogru olmalidir (job
+    baglantisi tenant GUC'unu kurar, ama filtre acikca yazilir:
+    savunma derinligi).
+    """
     assert table in _TARGETS
     with conn.begin():
         result = conn.execute(
             sa_text(
                 f"DELETE FROM {table} WHERE id IN ("
                 f"  SELECT id FROM {table}"
-                f"  WHERE created_at < :cutoff LIMIT :lim)"
+                f"  WHERE created_at < :cutoff AND tenant_id = :tenant"
+                f"  LIMIT :lim)"
             ),
-            {"cutoff": cutoff, "lim": limit},
+            {"cutoff": cutoff, "lim": limit, "tenant": tenant_id},
         )
         return result.rowcount or 0
 
@@ -103,11 +113,20 @@ def run_cleanup(
     db: Session,
     settings: Optional[CleanupSettings] = None,
     *,
+    tenant_id,
     dry_run: bool = False,
     trigger: str = "manual",
 ) -> dict:
-    """Temizligi calistirir ve sanitize edilmis ozet dondurur. ASLA
-    exception firlatmaz (cagiran ana API olabilir)."""
+    """TEK BIR TENANT icin temizligi calistirir.
+
+    ASLA exception firlatmaz (cagiran ana API olabilir).
+
+    WS5/WS7: `tenant_id` ZORUNLUDUR ve varsayilani YOKTUR. Onceden bu is
+    tum kurulumu tarayan global bir silme idi; cok-tenantli dunyada bu,
+    bir tenant'in temizlik penceresinin BASKA bir tenant'in kayitlarini
+    silmesi demekti. Silme ifadeleri ve sonuc kaydi artik tenant'a
+    baglidir; tenant listesi uzerinde donen kosucu `run_cleanup_all`dir.
+    """
     settings = settings or CleanupSettings.from_app_settings()
     now = datetime.now(timezone.utc)
 
@@ -148,12 +167,13 @@ def run_cleanup(
             for table in _TARGETS:
                 if dry_run:
                     deleted[table] = _count_candidates(
-                        conn, table, cutoffs[table]
+                        conn, table, cutoffs[table], tenant_id=tenant_id
                     )
                     continue
                 while True:
                     n = _delete_batch(
-                        conn, table, cutoffs[table], settings.batch_size
+                        conn, table, cutoffs[table], settings.batch_size,
+                        tenant_id=tenant_id,
                     )
                     if n == 0:
                         break
@@ -171,6 +191,7 @@ def run_cleanup(
         completed = datetime.now(timezone.utc)
         _record_run(
             conn,
+            tenant_id=tenant_id,
             started_at=now,
             completed_at=completed,
             dry_run=dry_run,
@@ -228,6 +249,7 @@ def run_cleanup(
 def _record_run(
     conn,
     *,
+    tenant_id,
     started_at,
     completed_at,
     dry_run,
@@ -242,6 +264,9 @@ def _record_run(
     with conn.begin():
         conn.execute(
             ApiCleanupRun.__table__.insert().values(
+                # WS5: Core-level insert ORM before_flush damgasini
+                # ALMAZ; tenant acikca yazilir (kolon NOT NULL).
+                tenant_id=tenant_id,
                 started_at=started_at,
                 completed_at=completed_at,
                 dry_run=dry_run,

@@ -98,7 +98,7 @@ def create_token(
     )
     db.add(row)
     if commit:
-        db.commit()
+        db.flush()
         db.refresh(row)
     else:
         db.flush()
@@ -111,7 +111,7 @@ def revoke_token(db: Session, token: ApiToken, *, commit: bool = True) -> ApiTok
         token.status = "revoked"
         token.revoked_at = _now()
     if commit:
-        db.commit()
+        db.flush()
         db.refresh(token)
     return token
 
@@ -141,7 +141,7 @@ def rotate_token(
             commit=False,
         )
         revoke_token(db, token, commit=False)
-        db.commit()
+        db.flush()
     except HTTPException:
         db.rollback()
         raise
@@ -233,7 +233,7 @@ def create_client(
                     target_id=b.target_id,
                 )
             )
-        db.commit()
+        db.flush()
     except IntegrityError:
         db.rollback()
         raise HTTPException(
@@ -268,7 +268,7 @@ def update_client(
     if data.rate_limit_per_min is not None:
         client.rate_limit_per_min = data.rate_limit_per_min
     try:
-        db.commit()
+        db.flush()
     except IntegrityError:
         db.rollback()
         raise HTTPException(
@@ -284,7 +284,7 @@ def disable_client(db: Session, client: ApiClient) -> ApiClient:
     status'unu her istekte kontrol ettigi icin client'in TUM token'lari
     ANINDA gecersizlesir (amendment #3)."""
     client.status = "disabled"
-    db.commit()
+    db.flush()
     db.refresh(client)
     return client
 
@@ -318,7 +318,7 @@ def replace_bindings(
                     target_id=b.target_id,
                 )
             )
-        db.commit()
+        db.flush()
     except IntegrityError:
         db.rollback()
         raise HTTPException(
@@ -344,7 +344,7 @@ def update_token_expiry(
             detail="expires_at must be in the future.",
         )
     token.expires_at = expires_at
-    db.commit()
+    db.flush()
     db.refresh(token)
     return token
 

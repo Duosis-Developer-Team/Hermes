@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..models.meeting import Meeting, MeetingAttendee
 from ..schemas.meeting import (
     MeetingAttendeeResponse,
@@ -87,7 +87,7 @@ def list_meetings(
     ),
     include_cancelled: bool = Query(False),
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     target_user_ids: Optional[List[UUID]] = None
     if user_ids:
@@ -202,7 +202,7 @@ async def _sync_one_calendar(
 async def sync_my_meetings(
     payload: SyncMeRequest,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Sync ONLY the calling user's own Microsoft Graph calendar for a
     date range (defaults to the current ISO week).
@@ -227,7 +227,7 @@ async def sync_my_meetings(
 async def sync_user_meetings_admin(
     payload: SyncUserRequest,
     admin: CurrentUser = Depends(require_permissions(Perm.MEETINGS_ADMIN)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Admin only — sync ONE specific user's calendar (the user the
     admin is viewing in the Meetings selector). The frontend passes the
@@ -249,7 +249,7 @@ async def sync_user_meetings_admin(
 def get_meeting(
     meeting_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     meeting = meeting_service.get_meeting_for_user(
         db, current_user, meeting_id

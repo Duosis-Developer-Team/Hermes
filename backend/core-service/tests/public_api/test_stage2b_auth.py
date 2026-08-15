@@ -29,6 +29,7 @@ class FakeSession:
     def __init__(self):
         self.commits = 0
         self.rollbacks = 0
+        self.flushes = 0
         self.added = []
 
     def add(self, obj):
@@ -41,7 +42,7 @@ class FakeSession:
         self.rollbacks += 1
 
     def flush(self):
-        pass
+        self.flushes += 1
 
     def refresh(self, obj):
         pass
@@ -335,14 +336,25 @@ def test_revoke_is_idempotent():
 
 
 def test_rotate_is_transactional_single_commit():
-    """Amendment #4: rotate = yeni token + eski revoke, TEK commit."""
+    """Amendment #4: rotate = yeni token + eski revoke, TEK is birimi.
+
+    WS4/WS5: atomiklik ayni kaldi ama SINIRI degisti. Servis artik
+    commit ETMEZ — `flush` eder ve transaction'i istek sonunda
+    `get_tenant_db` kapatir. Servis ici commit, tenant baglamini
+    (`SET LOCAL app.tenant_id`) dusurur ve isteğin geri kalani RLS
+    altinda sifir satir gorurdu. Bu yuzden testin bekledigi sey artik
+    "tek commit" degil "HIC commit yok, tek flush".
+    """
     db = FakeSession()
     client = make_client()
     token, old_plain = make_token(client)
     new_plain, new_row = svc.rotate_token(
         db, token, client, created_by=uuid.uuid4()
     )
-    assert db.commits == 1  # atomik
+    # Servis transaction'i KAPATMAZ: hem yeni token hem revoke ayni
+    # is biriminde kalir ve istek sonunda birlikte kalicilasir.
+    assert db.commits == 0
+    assert db.rollbacks == 0
     assert token.status == "revoked"
     assert new_row.status == "active"
     assert new_row.rotated_from_token_id == token.id

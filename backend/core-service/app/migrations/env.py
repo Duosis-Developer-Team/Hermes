@@ -43,8 +43,16 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    from shared.migration_runner import migration_connect_args
+
     engine = create_engine(
-        _database_url(), poolclass=pool.NullPool, future=True
+        _database_url(),
+        poolclass=pool.NullPool,
+        future=True,
+        # DDL kilit bekleyisini SINIRLA: unutulmus bir "idle in
+        # transaction" baglanti, ALTER TABLE'i sinirsiz bekletir ve
+        # arkasina normal trafigi kuyruklar. Fail-fast daha iyidir.
+        connect_args=migration_connect_args(),
     )
     try:
         with engine.connect() as connection:

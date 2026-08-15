@@ -84,7 +84,7 @@ def create_user_group(
         created_by_user_id=created_by_user_id,
     )
     db.add(group)
-    db.commit()
+    db.flush()
     db.refresh(group)
     return group
 
@@ -126,7 +126,7 @@ def update_user_group(
         if group.is_active and group.deactivated_at is not None:
             group.deactivated_at = None
 
-    db.commit()
+    db.flush()
     db.refresh(group)
     return group
 
@@ -137,7 +137,7 @@ def deactivate_user_group(db: Session, group_id: UUID) -> UserGroup:
     group.is_active = False
     if group.deactivated_at is None:
         group.deactivated_at = datetime.now(timezone.utc)
-    db.commit()
+    db.flush()
     db.refresh(group)
     return group
 
@@ -205,7 +205,7 @@ def add_group_member(
         duplicate.is_active = True
         if data.title is not None:
             duplicate.title = (data.title or "").strip() or None
-        db.commit()
+        db.flush()
         db.refresh(duplicate)
         return duplicate
 
@@ -217,7 +217,7 @@ def add_group_member(
         is_active=True,
     )
     db.add(member)
-    db.commit()
+    db.flush()
     db.refresh(member)
     return member
 
@@ -236,7 +236,7 @@ def update_group_member(
         title = data.title.strip()
         member.title = title or None
 
-    db.commit()
+    db.flush()
     db.refresh(member)
     return member
 
@@ -258,7 +258,7 @@ def remove_group_member(db: Session, group_id: UUID, member_id: UUID) -> None:
     ).delete(synchronize_session=False)
 
     db.delete(member)
-    db.commit()
+    db.flush()
 
 
 # =============================================================================

@@ -30,6 +30,7 @@ from shared.permissions import (
 )
 
 from app.database import get_db
+from app.tenant_db import get_tenant_db
 from app.models.customer import Customer
 from app.models.project import Project
 from app.models.task import TaskAssignmentRelation, TaskUserPermission
@@ -120,6 +121,8 @@ def _http(pg_session, user_id):
     from app.main import app
 
     app.dependency_overrides[get_db] = lambda: pg_session
+    # Internal router'lar tenant baglamli session kullanir.
+    app.dependency_overrides[get_tenant_db] = lambda: pg_session
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id=str(user_id), email="u@x.com", is_admin=False
     , tenant_id=TEST_TENANT_ID)
@@ -139,6 +142,7 @@ def http_for(pg_session):
     from app.main import app
 
     app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_tenant_db, None)
     app.dependency_overrides.pop(get_current_user, None)
 
 

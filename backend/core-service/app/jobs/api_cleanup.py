@@ -13,19 +13,24 @@
 import json
 import sys
 
-from ..database import SessionLocal
 from ..services.api_cleanup_service import run_cleanup
+from .tenant_runner import run_for_each_tenant
 
 
 def main() -> int:
+    """WS5/WS7: temizlik artik TENANT BASINA kosar.
+
+    Onceden tek bir global tarama vardi; RLS altinda bu ya sifir satir
+    gorurdu ya da bir tenant'in penceresi baskasinin kayitlarini
+    silerdi. Kosucu aktif tenant'lari dolasir, her biri icin
+    transaction-local baglam kurar ve hatalari BAGIMSIZ raporlar.
+    """
     dry_run = "--dry-run" in sys.argv[1:]
-    db = SessionLocal()
-    try:
-        summary = run_cleanup(db, dry_run=dry_run, trigger="cron")
-    finally:
-        db.close()
+    summary = run_for_each_tenant(
+        "api_cleanup", run_cleanup, dry_run=dry_run, trigger="cron"
+    )
     print(json.dumps(summary, default=str))
-    # ok=false (gercek calisma hatasi) → exit 1; success/skip/disabled → 0.
+    # Herhangi bir tenant gercek hata verdiyse exit 1.
     return 0 if summary.get("ok", False) else 1
 
 

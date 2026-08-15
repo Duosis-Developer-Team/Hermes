@@ -20,7 +20,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..models.api_client import ApiClient
 from ..schemas.api_admin import (
     AccessBindingResponse,
@@ -93,7 +93,7 @@ def _client_response(db: Session, client: ApiClient) -> ApiClientResponse:
 @router.get("/api-clients", response_model=List[ApiClientResponse])
 def list_api_clients(
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     return [_client_response(db, c) for c in svc.list_clients(db)]
 
@@ -106,7 +106,7 @@ def list_api_clients(
 def create_api_client(
     data: ApiClientCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     client = svc.create_client(db, data, created_by=UUID(admin.id))
     return _client_response(db, client)
@@ -116,7 +116,7 @@ def create_api_client(
 def get_api_client(
     client_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     return _client_response(db, svc.get_client(db, client_id))
 
@@ -126,7 +126,7 @@ def update_api_client(
     client_id: UUID,
     data: ApiClientUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     client = svc.get_client(db, client_id)
     client = svc.update_client(db, client, data)
@@ -137,7 +137,7 @@ def update_api_client(
 def disable_api_client(
     client_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """SOFT disable — veri silinmez; client'in tum token'lari dogrulama
     zincirindeki client-status kontrolu sayesinde ANINDA gecersizlesir."""
@@ -154,7 +154,7 @@ def replace_api_client_bindings(
     client_id: UUID,
     data: AccessBindingsUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     client = svc.get_client(db, client_id)
     bindings = svc.replace_bindings(db, client, data.access)
@@ -178,7 +178,7 @@ def create_api_token(
     client_id: UUID,
     data: ApiTokenCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Plaintext token YALNIZCA bu yanitta gorunur."""
     client = svc.get_client(db, client_id)
@@ -201,7 +201,7 @@ def create_api_token(
 def list_api_tokens(
     client_id: Optional[UUID] = Query(None),
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     if client_id is not None:
         svc.get_client(db, client_id)  # 404 kontrolu
@@ -221,7 +221,7 @@ def list_api_tokens(
 def revoke_api_token(
     token_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     token = svc.get_token(db, token_id)
     return _token_response(svc.revoke_token(db, token))
@@ -235,7 +235,7 @@ def revoke_api_token(
 def rotate_api_token(
     token_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Transactional rotate: yeni token + eski revoke tek commit'te.
     Plaintext YALNIZCA bu yanitta gorunur."""
@@ -254,7 +254,7 @@ def update_api_token_expiry(
     token_id: UUID,
     data: ApiTokenExpiryUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     token = svc.get_token(db, token_id)
     return _token_response(
@@ -277,7 +277,7 @@ def list_api_request_logs(
     created_to: Optional[datetime] = Query(None),
     request_id: Optional[str] = Query(None, max_length=64),
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     rows = svc.list_request_logs(
         db,
@@ -317,7 +317,7 @@ def list_api_request_logs(
 @router.get("/api-cleanup")
 def cleanup_status(
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Retention politikasi + son calisma ozeti (admin panel karti)."""
     from ..services import api_cleanup_service as cleanup
@@ -359,7 +359,7 @@ def cleanup_status(
 def run_cleanup_now(
     dry_run: bool = Query(False),
     admin: CurrentUser = Depends(require_permissions(Perm.API_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Manuel temizlik tetigi (admin onay modali arkasinda). dry_run=true
     hicbir sey silmez, aday sayilarini dondurur.
@@ -372,7 +372,10 @@ def run_cleanup_now(
 
     from ..services import api_cleanup_service as cleanup
 
-    result = cleanup.run_cleanup(db, dry_run=dry_run, trigger="manual")
+    result = cleanup.run_cleanup(
+        db, dry_run=dry_run, trigger="manual",
+        tenant_id=admin.tenant_id,
+    )
     if not result.get("ok", False):
         return JSONResponse(status_code=500, content=result)
     return result

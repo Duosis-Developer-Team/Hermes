@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..models.work_line import WorkLine
 from ..schemas.work_line import WorkLineCreate, WorkLineUpdate, WorkLineResponse
 from shared.auth import get_current_user
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/work-lines", tags=["Work Lines"])
 def get_all_work_lines(
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: object = Depends(get_current_user)
 ):
     """Get all work lines"""
@@ -35,7 +35,7 @@ def get_all_work_lines(
 @router.get("/{item_id}", response_model=WorkLineResponse)
 def get_work_line(
     item_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Get work line by ID"""
     item = db.query(WorkLine).filter(WorkLine.id == item_id).first()
@@ -47,7 +47,7 @@ def get_work_line(
 @router.post("", response_model=WorkLineResponse, dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
 def create_work_line(
     data: WorkLineCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Create new work line (admin only)"""
     # Check for duplicate code
@@ -57,7 +57,7 @@ def create_work_line(
     
     item = WorkLine(**data.model_dump())
     db.add(item)
-    db.commit()
+    db.flush()
     db.refresh(item)
     return item
 
@@ -66,7 +66,7 @@ def create_work_line(
 def update_work_line(
     item_id: UUID,
     data: WorkLineUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Update work line (admin only)"""
     item = db.query(WorkLine).filter(WorkLine.id == item_id).first()
@@ -77,7 +77,7 @@ def update_work_line(
     for key, value in update_data.items():
         setattr(item, key, value)
     
-    db.commit()
+    db.flush()
     db.refresh(item)
     return item
 
@@ -85,7 +85,7 @@ def update_work_line(
 @router.delete("/{item_id}", dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
 def delete_work_line(
     item_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Soft delete work line (admin only)"""
     item = db.query(WorkLine).filter(WorkLine.id == item_id).first()
@@ -93,5 +93,5 @@ def delete_work_line(
         raise HTTPException(status_code=404, detail="Work line not found")
     
     db.delete(item)
-    db.commit()
+    db.flush()
     return {"message": "Work line deleted"}

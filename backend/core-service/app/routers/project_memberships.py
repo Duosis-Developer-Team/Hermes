@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..models import ProjectMembership, Project
 from ..schemas.project_membership import ProjectMembershipCreate, ProjectMembershipUpdate, ProjectMembershipResponse
 from shared.auth import get_current_user, CurrentUser
@@ -22,7 +22,7 @@ router = APIRouter(
 @router.post("", response_model=ProjectMembershipResponse, status_code=status.HTTP_201_CREATED)
 def create_membership(
     mem_in: ProjectMembershipCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     admin: CurrentUser = Depends(require_permissions(Perm.PROJECTS_MANAGE)),  # [KRİTİK-5] Sadece Admin
 ):
     # Proje var mı?
@@ -41,7 +41,7 @@ def create_membership(
 
     new_mem = ProjectMembership(**mem_in.model_dump())
     db.add(new_mem)
-    db.commit()
+    db.flush()
     db.refresh(new_mem)
     return new_mem
 
@@ -49,7 +49,7 @@ def create_membership(
 def get_memberships(
     project_id: Optional[UUID] = None,
     user_id: Optional[UUID] = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
     query = db.query(ProjectMembership)
@@ -62,7 +62,7 @@ def get_memberships(
 @router.delete("/{mem_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_membership(
     mem_id: UUID,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     admin: CurrentUser = Depends(require_permissions(Perm.PROJECTS_MANAGE)),  # [KRİTİK-5] Sadece Admin
 ):
     mem = db.query(ProjectMembership).filter(ProjectMembership.id == mem_id).first()
@@ -70,4 +70,4 @@ def delete_membership(
         raise HTTPException(status_code=404, detail="Membership not found")
 
     db.delete(mem)
-    db.commit()
+    db.flush()

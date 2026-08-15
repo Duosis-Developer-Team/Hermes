@@ -21,7 +21,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..schemas.task import (
     NotificationSettingRow,
     NotificationSettingUpdate,
@@ -96,7 +96,7 @@ def list_effective_permissions(
 def rbac_backfill(
     dry_run: bool = Query(True),
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Legacy efektif izinlerin RBAC komponent rollerine backfill'i.
 
@@ -121,7 +121,7 @@ def rbac_backfill(
 def list_assignment_relations(
     scope: str = Query("task"),
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     relations = task_service.list_assignment_relations(db, scope)
     return [
@@ -145,7 +145,7 @@ def list_assignment_relations(
 def create_assignment_relations(
     data: TaskAssignmentRelationCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     relations = task_service.create_assignment_relations(
         db,
@@ -173,7 +173,7 @@ def create_assignment_relations(
 def delete_assignment_relation(
     relation_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     task_service.delete_assignment_relation(db, relation_id)
     return {"deleted": True}
@@ -190,7 +190,7 @@ def delete_assignment_relation(
 def list_assignment_group_relations(
     scope: str = Query("task"),
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     relations = task_service.list_assignment_group_relations(db, scope)
     return [
@@ -214,7 +214,7 @@ def list_assignment_group_relations(
 def create_assignment_group_relation(
     data: TaskAssignmentGroupRelationCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     relation = task_service.create_assignment_group_relation(
         db, data.assigner_user_id, data.assignee_group_id, data.scope
@@ -236,7 +236,7 @@ def create_assignment_group_relation(
 def delete_assignment_group_relation(
     relation_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     task_service.delete_assignment_group_relation(db, relation_id)
     return {"deleted": True}
@@ -254,7 +254,7 @@ def delete_assignment_group_relation(
 def create_sub_project(
     data: TaskSubProjectCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     sub = task_service.create_sub_project(db, data, UUID(admin.id))
     return _serialize_sub_project(sub)
@@ -268,7 +268,7 @@ def update_sub_project(
     sub_project_id: UUID,
     data: TaskSubProjectUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     sub = task_service.update_sub_project(db, sub_project_id, data)
     return _serialize_sub_project(sub)
@@ -281,7 +281,7 @@ def update_sub_project(
 def delete_sub_project(
     sub_project_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     task_service.delete_sub_project(db, sub_project_id)
     return {"deleted": True}
@@ -337,7 +337,7 @@ def upsert_task_group_member_override(
 )
 def list_notification_settings(
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """One row per work-item type (task / issue / suggestion). Types that
     were never configured come back with the defaults (everything ON)."""
@@ -355,7 +355,7 @@ def update_notification_setting(
     task_type: str,
     data: NotificationSettingUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     row = task_service.upsert_notification_setting(db, task_type, data)
     return NotificationSettingRow(
@@ -379,12 +379,12 @@ def update_notification_setting(
 @router.get("/lifecycle-policy")
 def get_lifecycle_policy(
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     from ..services import task_lifecycle
 
     policy = task_lifecycle.get_policy(db)
-    db.commit()
+    db.flush()
     return {
         "retention_days": policy.retention_days,
         "allowed_values": list(task_lifecycle.ALLOWED_RETENTION_DAYS),
@@ -397,7 +397,7 @@ def get_lifecycle_policy(
 def update_lifecycle_policy(
     payload: TaskLifecyclePolicyUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.TASK_PERMISSIONS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     from fastapi import HTTPException, status as http_status
 
@@ -418,7 +418,7 @@ def update_lifecycle_policy(
                 "for Never."
             ),
         )
-    db.commit()
+    db.flush()
     return {
         "retention_days": policy.retention_days,
         "updated_at": policy.updated_at,

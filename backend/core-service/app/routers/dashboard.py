@@ -5,7 +5,7 @@ from typing import Optional
 from datetime import date
 from uuid import UUID
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..models.work_log import WorkLog
 from ..models.customer import Customer
 from ..models.project import Project
@@ -22,7 +22,7 @@ def get_dashboard_stats(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     admin: CurrentUser = Depends(require_permissions(Perm.REPORTS_VIEW)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Dashboard istatistiklerini getirir (Sadece Admin).

@@ -5,7 +5,7 @@ from typing import List, Optional
 import uuid
 from datetime import date, datetime
 
-from app.database import get_db
+from app.tenant_db import get_tenant_db
 from app.models.timesheet import TimesheetSubmission, TimesheetStatus
 from app.models.work_log import WorkLog
 from app.schemas.timesheet import TimesheetSubmissionCreate, TimesheetSubmissionResponse, PeriodStatus, TimesheetSubmissionUpdate
@@ -19,7 +19,7 @@ router = APIRouter(
 @router.get("/period-status", response_model=PeriodStatus)
 def get_period_status(
     date_val: date = Query(..., alias="date"),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: CurrentUser = Depends(get_current_user)
 ):
     """
@@ -89,7 +89,7 @@ def get_period_status(
 @router.post("/submit", response_model=TimesheetSubmissionResponse)
 def submit_timesheet(
     submission_in: TimesheetSubmissionCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: CurrentUser = Depends(get_current_user)
 ):
     if submission_in.reviewer_id and str(submission_in.reviewer_id) == str(current_user.id):
@@ -108,7 +108,7 @@ def submit_timesheet(
         existing.submitted_at = datetime.now()
         existing.reviewer_id = submission_in.reviewer_id
         existing.submitter_note = submission_in.submitter_note
-        db.commit()
+        db.flush()
         db.refresh(existing)
         return existing
     
@@ -124,6 +124,6 @@ def submit_timesheet(
         submitted_at=datetime.now()
     )
     db.add(new_submission)
-    db.commit()
+    db.flush()
     db.refresh(new_submission)
     return new_submission

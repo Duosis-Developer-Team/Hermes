@@ -27,6 +27,9 @@ import httpx  # noqa: E402
 import pytest  # noqa: E402
 from starlette.testclient import TestClient  # noqa: E402
 
+# WS3/WS5: her test satiri bir tenant'a aittir.
+TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
+
 TEST_DB_URL = os.environ.get(
     "HERMES_TEST_DATABASE_URL",
     "postgresql://hermes:hermes@localhost:55433/hermes_test",
@@ -48,9 +51,24 @@ def pg_engine():
     # tekrarlaniyordu; her eksik ifade "testte gecer, uretimde
     # patlar" kaymasi demekti.
     from app.migrations.baseline_ddl import apply_all
+    from app.migrations.tenant_enforce import apply_enforce
+    from app.models.mixins import tenant_owned_tables
 
     with engine.begin() as conn:
         apply_all(conn)
+        for table in tenant_owned_tables():
+            conn.execute(sa_text(
+                f"UPDATE {table} SET tenant_id = CAST(:t AS uuid) "
+                "WHERE tenant_id IS NULL"
+            ), {"t": TEST_TENANT_ID})
+        conn.execute(sa_text(
+            "INSERT INTO tenant_registry (tenant_id, slug, status, "
+            "placement_key, source_version, provisioned_at, updated_at) "
+            "VALUES (CAST(:t AS uuid), 'test-tenant', 'active', "
+            "'shared-default', 1, now(), now()) "
+            "ON CONFLICT (tenant_id) DO NOTHING"
+        ), {"t": TEST_TENANT_ID})
+        apply_enforce(conn)
 
     yield engine
     engine.dispose()
@@ -70,6 +88,12 @@ def pg_session(pg_engine):
         )
     )
     s.commit()
+    # WS5: yeni satirlar `tenant_id` damgasini session baglamindan alir
+    # (app/tenant_db.py before_flush). Uretimde damgayi isteğin
+    # dogrulanmis principal'i belirler.
+    from app.tenant_db import mark_session_tenant
+
+    mark_session_tenant(s, TEST_TENANT_ID)
     yield s
     s.rollback()
     s.close()
@@ -212,10 +236,6 @@ def mcp_http(core_asgi_app):
     )
     with TestClient(mcp_app, raise_server_exceptions=False) as client:
         yield client
-
-
-# WS3: CurrentUser/ApiClient artik tenant baglami ZORUNLU tasir.
-TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
 
 
 # ── API client/token kurulumu (core test kalibinin kopyasi) ────────────

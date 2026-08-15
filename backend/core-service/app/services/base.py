@@ -72,7 +72,7 @@ class BaseCRUDService(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """
         db_obj = self.model(**data.model_dump())
         self.db.add(db_obj)
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(db_obj)
         return db_obj
     
@@ -132,7 +132,7 @@ class BaseCRUDService(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         for field, value in update_data.items():
             setattr(db_obj, field, value)
         
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(db_obj)
         return db_obj
     
@@ -153,9 +153,9 @@ class BaseCRUDService(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         
         if soft and hasattr(self.model, 'is_active'):
             db_obj.is_active = False
-            self.db.commit()
+            self.db.flush()
         else:
             self.db.delete(db_obj)
-            self.db.commit()
+            self.db.flush()
         
         return True

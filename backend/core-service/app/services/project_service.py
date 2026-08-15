@@ -77,7 +77,7 @@ class ProjectService(BaseCRUDService[Project, ProjectCreate, ProjectUpdate]):
         project = self.get_by_id_or_404(id)
         for field, value in update_data.items():
             setattr(project, field, value)
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(project)
         return project
     

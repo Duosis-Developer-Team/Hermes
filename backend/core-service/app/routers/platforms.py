@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..models.platform import Platform
 from ..schemas.platform import PlatformCreate, PlatformUpdate, PlatformResponse
 from shared.auth import get_current_user
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/platforms", tags=["Platforms"])
 def get_all_platforms(
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: object = Depends(get_current_user)
 ):
     """Get all platforms"""
@@ -35,7 +35,7 @@ def get_all_platforms(
 @router.get("/{item_id}", response_model=PlatformResponse)
 def get_platform(
     item_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Get platform by ID"""
     item = db.query(Platform).filter(Platform.id == item_id).first()
@@ -47,7 +47,7 @@ def get_platform(
 @router.post("", response_model=PlatformResponse, dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
 def create_platform(
     data: PlatformCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Create new platform (admin only)"""
     # Check for duplicate code
@@ -57,7 +57,7 @@ def create_platform(
     
     item = Platform(**data.model_dump())
     db.add(item)
-    db.commit()
+    db.flush()
     db.refresh(item)
     return item
 
@@ -66,7 +66,7 @@ def create_platform(
 def update_platform(
     item_id: UUID,
     data: PlatformUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Update platform (admin only)"""
     item = db.query(Platform).filter(Platform.id == item_id).first()
@@ -77,7 +77,7 @@ def update_platform(
     for key, value in update_data.items():
         setattr(item, key, value)
     
-    db.commit()
+    db.flush()
     db.refresh(item)
     return item
 
@@ -85,7 +85,7 @@ def update_platform(
 @router.delete("/{item_id}", dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
 def delete_platform(
     item_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Soft delete platform (admin only)"""
     item = db.query(Platform).filter(Platform.id == item_id).first()
@@ -93,5 +93,5 @@ def delete_platform(
         raise HTTPException(status_code=404, detail="Platform not found")
     
     db.delete(item)
-    db.commit()
+    db.flush()
     return {"message": "Platform deleted"}

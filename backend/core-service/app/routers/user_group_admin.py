@@ -21,7 +21,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..schemas.user_group import (
     UserGroupCreate,
     UserGroupMemberCreate,
@@ -77,7 +77,7 @@ def _serialize_member(member) -> UserGroupMemberResponse:
 def list_user_groups(
     include_inactive: bool = Query(False),
     admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     groups = user_group_service.list_user_groups(
         db, include_inactive=include_inactive
@@ -97,7 +97,7 @@ def list_user_groups(
 def create_user_group(
     data: UserGroupCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     group = user_group_service.create_user_group(
         db, data, created_by_user_id=UUID(admin.id)
@@ -113,7 +113,7 @@ def update_user_group(
     group_id: UUID,
     data: UserGroupUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     group = user_group_service.update_user_group(db, group_id, data)
     counts = user_group_service.get_member_count_map(db)
@@ -127,7 +127,7 @@ def update_user_group(
 def deactivate_user_group(
     group_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Soft delete — sets is_active=false + deactivated_at. Group rows
     and their memberships are preserved for rollback safety.
@@ -148,7 +148,7 @@ def deactivate_user_group(
 def list_group_members(
     group_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     members = user_group_service.list_group_members(db, group_id)
     return [_serialize_member(m) for m in members]
@@ -163,7 +163,7 @@ def add_group_member(
     group_id: UUID,
     data: UserGroupMemberCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     member = user_group_service.add_group_member(db, group_id, data)
     return _serialize_member(member)
@@ -178,7 +178,7 @@ def update_group_member(
     member_id: UUID,
     data: UserGroupMemberUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     member = user_group_service.update_group_member(db, group_id, member_id, data)
     return _serialize_member(member)
@@ -192,7 +192,7 @@ def remove_group_member(
     group_id: UUID,
     member_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.GROUPS_MANAGE)),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Removes group membership only. Does not touch the user account or
     any business data (tasks, work logs, etc.). Any task override for

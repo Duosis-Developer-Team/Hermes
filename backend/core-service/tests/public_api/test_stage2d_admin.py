@@ -14,6 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.database import get_db
+from app.tenant_db import get_tenant_db
 from app.models.api_client import ApiRequestLog
 from shared.auth import CurrentUser, get_current_user
 
@@ -51,12 +52,15 @@ def admin_http(pg_session):
         if getattr(r, "path", "") == "/api/public"
     )
     app.dependency_overrides[get_db] = lambda: pg_session
+    # Internal router'lar tenant baglamli session kullanir.
+    app.dependency_overrides[get_tenant_db] = lambda: pg_session
     app.dependency_overrides[get_current_user] = lambda: ADMIN
     public_app.dependency_overrides[get_db] = lambda: pg_session
 
     http = TestClient(app, raise_server_exceptions=False)
     yield http
     app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_tenant_db, None)
     app.dependency_overrides.pop(get_current_user, None)
     authz_client.effective_permissions = _orig_resolve
     public_app.dependency_overrides.pop(get_db, None)

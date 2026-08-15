@@ -13,7 +13,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..models.plan_time import PlanTime, PlanTimeAssignment
 from shared.auth import get_current_user, CurrentUser
 # RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
@@ -92,7 +92,7 @@ def _serialize_plan_time(pt: PlanTime, user_status: Optional[str] = None) -> dic
 def create_plan_time(
     data: PlanTimeCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.PLANS_MANAGE)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Admin: Yeni Plan Time olayı oluşturur ve kullanıcılara atar.
@@ -136,7 +136,7 @@ def create_plan_time(
         )
         db.add(assignment)
 
-    db.commit()
+    db.flush()
     db.refresh(plan)
 
     return {"success": True, "data": _serialize_plan_time(plan)}
@@ -151,7 +151,7 @@ def get_my_plan_times(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Kullanıcının atandığı plan time olaylarını getirir.
@@ -196,7 +196,7 @@ def get_all_plan_times(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     admin: CurrentUser = Depends(require_permissions(Perm.PLANS_MANAGE)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Admin: Tüm plan time olaylarını getirir.
@@ -230,7 +230,7 @@ def respond_to_plan_time(
     plan_time_id: UUID,
     payload: RespondPayload,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Kullanıcı kendi atamasına yanıt verir (accept/reject).
@@ -260,7 +260,7 @@ def respond_to_plan_time(
         )
 
     assignment.status = payload.status
-    db.commit()
+    db.flush()
     db.refresh(assignment)
 
     return {
@@ -282,7 +282,7 @@ def update_plan_time(
     plan_time_id: UUID,
     data: PlanTimeUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.PLANS_MANAGE)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Admin: Plan time olayını günceller (tarih, saat, recurrence, açıklama).
@@ -338,7 +338,7 @@ def update_plan_time(
             if uid not in new_ids:
                 db.delete(assignment)
 
-    db.commit()
+    db.flush()
     db.refresh(plan)
 
     return {"success": True, "data": _serialize_plan_time(plan)}
@@ -352,7 +352,7 @@ def update_plan_time(
 def delete_plan_time(
     plan_time_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.PLANS_MANAGE)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Admin: Plan time olayını siler. Cascade ile tüm atamalar da silinir.
@@ -366,4 +366,4 @@ def delete_plan_time(
         )
 
     db.delete(plan)
-    db.commit()
+    db.flush()

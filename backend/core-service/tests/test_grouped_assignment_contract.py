@@ -28,6 +28,7 @@ from shared.auth import CurrentUser, get_current_user
 from shared.permissions import Perm
 
 from app.database import get_db
+from app.tenant_db import get_tenant_db
 from app.main import app
 from app.models.customer import Customer
 from app.models.project import Project
@@ -81,6 +82,8 @@ def world(pg_session, authz_grants):
 @pytest.fixture()
 def http(world, pg_session):
     app.dependency_overrides[get_db] = lambda: pg_session
+    # Internal router'lar tenant baglamli session kullanir.
+    app.dependency_overrides[get_tenant_db] = lambda: pg_session
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id=str(ASSIGNER), email="assigner@x.com", full_name="Assigner",
         is_admin=False,
@@ -88,6 +91,7 @@ def http(world, pg_session):
     client = TestClient(app, raise_server_exceptions=False)
     yield client
     app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_tenant_db, None)
     app.dependency_overrides.pop(get_current_user, None)
 
 

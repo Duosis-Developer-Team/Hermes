@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..models.activity_type import ActivityType
 from ..schemas.activity_type import ActivityTypeCreate, ActivityTypeUpdate, ActivityTypeResponse
 from shared.auth import get_current_user
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/activity-types", tags=["Activity Types"])
 def get_all_activity_types(
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: object = Depends(get_current_user) # Allow any authenticated user
 ):
     """Get all activity types"""
@@ -35,7 +35,7 @@ def get_all_activity_types(
 @router.get("/{item_id}", response_model=ActivityTypeResponse)
 def get_activity_type(
     item_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Get activity type by ID"""
     item = db.query(ActivityType).filter(ActivityType.id == item_id).first()
@@ -47,7 +47,7 @@ def get_activity_type(
 @router.post("", response_model=ActivityTypeResponse, dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
 def create_activity_type(
     data: ActivityTypeCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Create new activity type (admin only)"""
     # Check for duplicate code
@@ -57,7 +57,7 @@ def create_activity_type(
     
     item = ActivityType(**data.model_dump())
     db.add(item)
-    db.commit()
+    db.flush()
     db.refresh(item)
     return item
 
@@ -66,7 +66,7 @@ def create_activity_type(
 def update_activity_type(
     item_id: UUID,
     data: ActivityTypeUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Update activity type (admin only)"""
     item = db.query(ActivityType).filter(ActivityType.id == item_id).first()
@@ -77,7 +77,7 @@ def update_activity_type(
     for key, value in update_data.items():
         setattr(item, key, value)
     
-    db.commit()
+    db.flush()
     db.refresh(item)
     return item
 
@@ -85,7 +85,7 @@ def update_activity_type(
 @router.delete("/{item_id}", dependencies=[Depends(require_permissions(Perm.REFERENCE_MANAGE))])
 def delete_activity_type(
     item_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Soft delete activity type (admin only)"""
     item = db.query(ActivityType).filter(ActivityType.id == item_id).first()
@@ -94,7 +94,7 @@ def delete_activity_type(
     
     try:
         db.delete(item)
-        db.commit()
+        db.flush()
         return {"message": "Activity type deleted"}
     except Exception as e:
         db.rollback()

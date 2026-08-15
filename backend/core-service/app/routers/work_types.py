@@ -9,7 +9,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..schemas.work_type import WorkTypeCreate, WorkTypeUpdate, WorkTypeResponse
 from ..services.work_type_service import WorkTypeService
 from shared.auth import CurrentUser, get_current_user
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/work-types", tags=["Work Types"])
 def create_work_type(
     data: WorkTypeCreate,
     admin: CurrentUser = Depends(require_permissions(Perm.REFERENCE_MANAGE)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """Yeni iş tipi oluşturur (Admin)."""
     service = WorkTypeService(db)
@@ -38,7 +38,7 @@ def list_work_types(
     limit: int = Query(100, ge=1, le=500),
     include_inactive: bool = Query(False),
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """İş tiplerini listeler (Authenticated Users)."""
     service = WorkTypeService(db)
@@ -49,7 +49,7 @@ def list_work_types(
 def get_work_type(
     work_type_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """İş tipi detaylarını getirir (Authenticated Users)."""
     service = WorkTypeService(db)
@@ -64,7 +64,7 @@ def update_work_type(
     work_type_id: UUID,
     data: WorkTypeUpdate,
     admin: CurrentUser = Depends(require_permissions(Perm.REFERENCE_MANAGE)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """İş tipini günceller (Admin)."""
     service = WorkTypeService(db)
@@ -78,7 +78,7 @@ def update_work_type(
 def delete_work_type(
     work_type_id: UUID,
     admin: CurrentUser = Depends(require_permissions(Perm.REFERENCE_MANAGE)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """İş tipini siler - soft delete (Admin)."""
     service = WorkTypeService(db)

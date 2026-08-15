@@ -324,7 +324,7 @@ async def sync_user_meetings(
             summary["attendees_upserted"] += upserted
             if meeting.is_cancelled:
                 summary["meetings_cancelled"] += 1
-        db.commit()
+        db.flush()
         summary["ok"] = True
     except GraphConfigError as e:
         db.rollback()

@@ -50,6 +50,11 @@ TEST_DB_URL = os.environ.get(
     "postgresql://hermes:hermes@localhost:55433/hermes_test",
 )
 
+# WS3/WS4: her test satiri bir tenant'a aittir. Tek bir sabit tenant
+# yeterlidir — capraz-tenant izolasyonu ayri bir dosyada, gercek bir
+# NOBYPASSRLS rolüyle sinaniyor (tests/test_rls_isolation.py).
+TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
+
 
 @pytest.fixture(scope="session")
 def pg_engine():
@@ -61,15 +66,38 @@ def pg_engine():
             pass
     except Exception:
         pytest.skip("test database unavailable (see conftest for setup)")
-    # Test semasi ile URETIM semasi TEK kaynaktan gelir (WS1): burasi
-    # Alembic 0001_baseline'in cagirdigi ayni modulu kosar. Onceden bu
-    # fixture semanin bir BOLUMUNU (create_all + type_number trigger'i +
-    # lifecycle ifadeleri) elle tekrarliyordu; eksik kalan her ifade
-    # "testte gecer, uretimde patlar" kaymasi demekti.
+    # Test semasi ile URETIM semasi TEK kaynaktan gelir (WS1/WS4):
+    # burasi Alembic revizyonlarinin cagirdigi ayni modulleri kosar.
+    # Onceden bu fixture semanin bir BOLUMUNU elle tekrarliyordu; eksik
+    # kalan her ifade "testte gecer, uretimde patlar" kaymasiydi.
+    from sqlalchemy import text as sa_text
+
     from app.migrations.baseline_ddl import apply_all
+    from app.migrations.tenant_enforce import apply_enforce
+    from app.models.mixins import tenant_owned_tables
 
     with engine.begin() as conn:
         apply_all(conn)
+        # Onceki kosulardan kalan tenant'siz satirlar enforce'u
+        # bloklar; test tenant'ina baglayip devam ediyoruz.
+        for table in tenant_owned_tables():
+            conn.execute(sa_text(
+                f"UPDATE {table} SET tenant_id = CAST(:t AS uuid) "
+                "WHERE tenant_id IS NULL"
+            ), {"t": TEST_TENANT_ID})
+        conn.execute(sa_text(
+            "INSERT INTO tenant_registry (tenant_id, slug, status, "
+            "placement_key, source_version, provisioned_at, updated_at) "
+            "VALUES (CAST(:t AS uuid), 'test-tenant', 'active', "
+            "'shared-default', 1, now(), now()) "
+            "ON CONFLICT (tenant_id) DO NOTHING"
+        ), {"t": TEST_TENANT_ID})
+        # NOT NULL + tenant-qualified kisitlar + FORCE RLS.
+        # NOT: testler superuser ile baglanir, yani RLS'i ASAR. Gercek
+        # izolasyon kaniti tests/test_rls_isolation.py'dedir (orada
+        # gercek bir NOBYPASSRLS rol acilir). Burada enforce'un amaci,
+        # test semasinin uretimle AYNI kisitlari tasimasidir.
+        apply_enforce(conn)
 
     yield engine
     engine.dispose()
@@ -92,6 +120,17 @@ def pg_session(pg_engine):
         )
     )
     s.commit()
+    # Tenant baglami: yeni satirlar `tenant_id` damgasini buradan alir
+    # (app/tenant_db.py before_flush hook'u). Uretimde bu damgayi
+    # istegin dogrulanmis principal'i belirler.
+    #
+    # `bind_tenant` DEGIL `mark_session_tenant`: ilki set_config
+    # calistirip transaction ACAR ve paylasilan test session'i, ikinci
+    # bir baglanti kullanan testlerle (orn. advisory-lock testi) kilit
+    # bekleyisine girerdi.
+    from app.tenant_db import mark_session_tenant
+
+    mark_session_tenant(s, TEST_TENANT_ID)
     yield s
     s.rollback()
     s.close()

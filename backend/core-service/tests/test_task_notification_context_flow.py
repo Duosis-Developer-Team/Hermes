@@ -21,6 +21,7 @@ from fastapi.testclient import TestClient
 from shared.auth import CurrentUser, get_current_user
 
 from app.database import get_db
+from app.tenant_db import get_tenant_db
 from app.models.customer import Customer
 from app.models.project import Project
 from app.models.task import (
@@ -129,12 +130,15 @@ def internal_http(pg_session):
     from app.main import app
 
     app.dependency_overrides[get_db] = lambda: pg_session
+    # Internal router'lar tenant baglamli session kullanir.
+    app.dependency_overrides[get_tenant_db] = lambda: pg_session
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id=str(BU), email="assigner@x.com", is_admin=False
     , tenant_id=TEST_TENANT_ID)
     c = TestClient(app, raise_server_exceptions=False)
     yield c
     app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_tenant_db, None)
     app.dependency_overrides.pop(get_current_user, None)
 
 

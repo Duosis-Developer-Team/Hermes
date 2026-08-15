@@ -25,7 +25,7 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..models.task import Task, TaskSubProject
 from ..schemas.task import (
     TaskActivityEventResponse,
@@ -192,7 +192,7 @@ def _serialize_task(task: Task) -> TaskResponse:
 @router.get("/permissions/me", response_model=TaskPermissionMeResponse)
 def get_my_task_permissions(
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Returns task capability flags + assignable user IDs for the current user.
 
@@ -282,7 +282,7 @@ def get_my_task_permissions(
 def list_assignable_groups(
     scope: str = Query("task"),
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Returns minimal info for groups the current user may target with
     Create-Task-for-Group:
@@ -345,7 +345,7 @@ def list_sub_projects(
     project_id: Optional[UUID] = Query(None),
     include_inactive: bool = Query(False),
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     # Sub projects are shared by all work-item types; access in either
     # the task or the issue scope is enough to list them.
@@ -375,7 +375,7 @@ def list_sub_projects(
 def create_sub_project_as_assigner(
     data: TaskSubProjectCreate,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Create a sub project at task-assignment time.
 
@@ -437,7 +437,7 @@ def list_tasks(
         ),
     ),
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(
         db, current_user, task_service.perm_scope_for_type(task_type)
@@ -486,7 +486,7 @@ def create_task(
     background_tasks: BackgroundTasks,
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     scope = task_service.perm_scope_for_type(payload.task_type)
     task_service.require_task_access(db, current_user, scope)
@@ -527,7 +527,7 @@ def create_tasks_for_group(
     background_tasks: BackgroundTasks,
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Fan a single create-task action out to every active member of a
     group. One Task row per member; all rows share the same
@@ -598,7 +598,7 @@ def create_tasks_bulk(
     background_tasks: BackgroundTasks,
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Create the same task for multiple assignees (users and/or groups) in
     one action. Returns the created task rows; fires a single notification
@@ -674,7 +674,7 @@ def search_tasks(
     due_to: Optional[date] = Query(None),
     limit: int = Query(50, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Visibility-bound free-text task search.
 
@@ -704,7 +704,7 @@ def search_tasks(
 def get_task(
     task_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
     task = task_service.get_task_for_user(db, current_user, task_id)
@@ -718,7 +718,7 @@ def update_task(
     background_tasks: BackgroundTasks,
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
     task = task_service.update_task(db, current_user, task_id, payload)
@@ -732,7 +732,7 @@ def update_task_note(
     task_id: UUID,
     payload: TaskNoteUpdate,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
     task = task_service.update_task_note(db, current_user, task_id, payload)
@@ -746,7 +746,7 @@ def update_task_status(
     background_tasks: BackgroundTasks,
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
     task = task_service.update_task_status(db, current_user, task_id, payload.status)
@@ -762,7 +762,7 @@ def complete_task(
     background_tasks: BackgroundTasks,
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
     task = task_service.update_task_completion(
@@ -777,7 +777,7 @@ def complete_task(
 def reject_task(
     task_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Mark a task as rejected (assignee/assigner/admin)."""
     task_service.require_task_access(db, current_user)
@@ -789,7 +789,7 @@ def reject_task(
 def delete_task(
     task_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Soft delete — sets archived_at, the row is preserved."""
     task_service.require_task_access(db, current_user)
@@ -804,7 +804,7 @@ def delete_task(
 def list_task_activity(
     task_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Newest-first activity feed for a task. Visible to admin, the
     assignee, or the assigner."""
@@ -845,7 +845,7 @@ def _serialize_comment(c) -> TaskCommentResponse:
 def list_comments(
     task_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
     comments = task_service.list_task_comments(db, current_user, task_id)
@@ -861,7 +861,7 @@ def create_comment(
     task_id: UUID,
     payload: TaskCommentCreate,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
     comment = task_service.create_task_comment(
@@ -879,7 +879,7 @@ def update_comment(
     comment_id: UUID,
     payload: TaskCommentUpdate,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
     comment = task_service.update_task_comment(
@@ -893,7 +893,7 @@ def delete_comment(
     task_id: UUID,
     comment_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
     task_service.delete_task_comment(db, current_user, task_id, comment_id)
@@ -907,7 +907,7 @@ def delete_comment(
 def archive_work_item(
     task_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Logical work item'in TAMAMINI arsivler (kalici silme DEGIL).
 
@@ -923,7 +923,7 @@ def restore_work_item(
     task_id: UUID,
     payload: TaskRestoreRequest,
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Arsivden cikarir VE ACIKCA secilen assignment'i yeniden acar.
 

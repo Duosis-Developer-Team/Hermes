@@ -9,7 +9,7 @@ import io
 import httpx
 import os
 
-from ..database import get_db
+from ..tenant_db import get_tenant_db
 from ..models.work_log import WorkLog
 from ..models.customer import Customer
 from ..models.project import Project
@@ -162,7 +162,7 @@ async def export_excel(
     work_type_ids: Optional[List[UUID]] = Query(None),
     platform_ids: Optional[List[UUID]] = Query(None),
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     import traceback
     try:
@@ -280,7 +280,7 @@ async def export_excel(
 def export_global_detailed(
     month: str = Query(..., description="YYYY-MM fortmatında ay"),
     current_user: CurrentUser = Depends(require_permissions(Perm.REPORTS_VIEW)), # Admin Only
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """
     Rapor 2: Aylık Detaylı Global Rapor (.csv)
@@ -294,7 +294,7 @@ async def export_global_detailed_v2(
     request: Request,
     month: str = Query(..., description="YYYY-MM"),
     current_user: CurrentUser = Depends(require_permissions(Perm.REPORTS_VIEW)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     # Extract token from header or cookie
     auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
@@ -375,7 +375,7 @@ async def export_global_matrix(
     start_date: date = Query(...),
     end_date: date = Query(...),
     current_user: CurrentUser = Depends(require_permissions(Perm.REPORTS_VIEW)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Rapor 3: Customer x User Matrix (.csv)
@@ -452,7 +452,7 @@ async def get_user_logs_json(
     work_type_ids: Optional[List[UUID]] = Query(None),
     platform_ids: Optional[List[UUID]] = Query(None),
     current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Returns User Work Logs as JSON for the Tempo-style dashboard.
@@ -543,7 +543,7 @@ async def get_global_detailed_json(
     request: Request,
     month: str = Query(..., description="YYYY-MM"),
     current_user: CurrentUser = Depends(require_permissions(Perm.REPORTS_VIEW)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Returns Global Detailed Logs as JSON.
@@ -606,7 +606,7 @@ async def get_matrix_json(
     start_date: date = Query(...),
     end_date: date = Query(...),
     current_user: CurrentUser = Depends(require_permissions(Perm.REPORTS_VIEW)),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_tenant_db)
 ):
     """
     Returns Matrix Data as Pivot-Ready JSON.

@@ -121,6 +121,35 @@ def migration_lock(connection, service: str) -> Iterator[None]:
         logger.info("migration lock birakildi", extra={"service": service})
 
 
+# ALTER TABLE, tabloya ACCESS EXCLUSIVE kilidi ister. Uzun suren tek bir
+# transaction (orn. unutulmus "idle in transaction" baglanti) migration'i
+# SINIRSIZ bekletebilir — ve o sirada ALTER, arkasina normal trafigi de
+# kuyruklar; yani "yavas deploy" sessizce "kilitli veritabani"na doner.
+# Fail-fast tercih ediyoruz: bekleyip kuyruk buyutmektense hata verip
+# CD'yi durdurmak, hem teshis edilebilir hem geri alinabilir.
+LOCK_TIMEOUT = os.getenv("HERMES_MIGRATION_LOCK_TIMEOUT", "10s")
+STATEMENT_TIMEOUT = os.getenv("HERMES_MIGRATION_STATEMENT_TIMEOUT", "300s")
+
+
+def migration_connect_args() -> dict:
+    """Timeout'lari BAGLANTI acilirken uygular (libpq `options`).
+
+    Neden `SET` DEGIL: SQLAlchemy 2.0'da `connection.execute("SET ...")`
+    ortuk bir transaction ACAR. Alembic'in kendi transaction yonetimi
+    bunun ustune biner ve baglanti commit edilmeden kapandigi icin TUM
+    DDL sessizce geri alinir — migration "basarili" gorunur ama tek bir
+    tablo bile yaratilmaz. (Bu tuzaga bir kez dusuldu; testler yakaladi.)
+
+    Baglanti secenegi olarak verilince transaction durumu hic etkilenmez.
+    """
+    return {
+        "options": (
+            f"-c lock_timeout={LOCK_TIMEOUT} "
+            f"-c statement_timeout={STATEMENT_TIMEOUT}"
+        )
+    }
+
+
 # =============================================================================
 # Alembic kosumu
 # =============================================================================

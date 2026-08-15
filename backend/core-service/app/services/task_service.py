@@ -628,7 +628,7 @@ def upsert_notification_setting(
     row.notify_complete = bool(data.notify_complete)
     row.priorities = list(data.priorities)
     row.due_date_rule = data.due_date_rule
-    db.commit()
+    db.flush()
     db.refresh(row)
     return row
 
@@ -758,7 +758,7 @@ def create_assignment_relations(
             continue
         created_or_existing.append(relation)
 
-    db.commit()
+    db.flush()
     for r in created_or_existing:
         db.refresh(r)
     return created_or_existing
@@ -776,7 +776,7 @@ def delete_assignment_relation(db: Session, relation_id: UUID) -> None:
             detail="Assignment mapping not found.",
         )
     db.delete(relation)
-    db.commit()
+    db.flush()
 
 
 # =============================================================================
@@ -840,7 +840,7 @@ def create_assignment_group_relation(
         scope=scope,
     )
     db.add(relation)
-    db.commit()
+    db.flush()
     db.refresh(relation)
     return relation
 
@@ -857,7 +857,7 @@ def delete_assignment_group_relation(db: Session, relation_id: UUID) -> None:
             detail="Group assignment mapping not found.",
         )
     db.delete(relation)
-    db.commit()
+    db.flush()
 
 
 # =============================================================================
@@ -987,7 +987,7 @@ def create_sub_project(
         created_by_user_id=created_by_user_id,
     )
     db.add(sub)
-    db.commit()
+    db.flush()
     db.refresh(sub)
     return sub
 
@@ -1042,7 +1042,7 @@ def update_sub_project(
         if sub.is_active and sub.archived_at is not None:
             sub.archived_at = None
 
-    db.commit()
+    db.flush()
     db.refresh(sub)
     return sub
 
@@ -1089,7 +1089,7 @@ def delete_sub_project(db: Session, sub_project_id: UUID) -> None:
     ).update({Task.sub_project_id: None}, synchronize_session=False)
 
     db.delete(sub)
-    db.commit()
+    db.flush()
 
 
 # =============================================================================
@@ -1464,7 +1464,7 @@ def create_task(
             "priority": task.priority,
         },
     )
-    db.commit()
+    db.flush()
     db.refresh(task)
     return task
 
@@ -1622,7 +1622,7 @@ def create_tasks_for_group(
                 "assignment_batch_id": str(batch_id),
             },
         )
-    db.commit()
+    db.flush()
     for row in created:
         db.refresh(row)
     return batch_id, created
@@ -1773,7 +1773,7 @@ def create_tasks_bulk(
                 "assignment_batch_id": str(batch_id),
             },
         )
-    db.commit()
+    db.flush()
     for row in created:
         db.refresh(row)
     return batch_id, created
@@ -1959,7 +1959,7 @@ def update_task(
             event_data={"changes": changes},
         )
 
-    db.commit()
+    db.flush()
     db.refresh(task)
     task._status_notif = status_notif
     return task
@@ -1974,7 +1974,7 @@ def _record_task_event(
     event_data: Optional[dict] = None,
 ) -> None:
     """Append a row to task_activity_events. Caller is responsible for
-    db.commit() — we deliberately don't commit here so the event lands
+    db.flush() — we deliberately don't commit here so the event lands
     in the same transaction as the task change it describes."""
     event = TaskActivityEvent(
         task_id=task_id,
@@ -2076,7 +2076,7 @@ def update_task_status(
     # hepsi terminal olunca closed_at baslar, biri geri acilinca TUM
     # grubun kapanis ve arsiv izleri silinir. Burada kural TEKRARLANMAZ.
     task_lifecycle.recompute_closure(db, task)
-    db.commit()
+    db.flush()
     db.refresh(task)
     # Transient flag (not a column) for the router to decide whether to
     # fire a one-time accept/complete e-mail. Set after refresh so it
@@ -2107,7 +2107,7 @@ def reject_task(
         )
     _apply_status_change(db, task, user, "rejected")
     task_lifecycle.recompute_closure(db, task)
-    db.commit()
+    db.flush()
     db.refresh(task)
     return task
 
@@ -2149,7 +2149,7 @@ def update_task_completion(
         if task.status == "completed":
             notif = _apply_status_change(db, task, user, "in_progress")
     task_lifecycle.recompute_closure(db, task)
-    db.commit()
+    db.flush()
     db.refresh(task)
     task._status_notif = notif
     return task
@@ -2173,7 +2173,7 @@ def update_task_note(
             detail="Only the assignee can edit the task note.",
         )
     task.assignee_note = data.assignee_note
-    db.commit()
+    db.flush()
     db.refresh(task)
     return task
 
@@ -2204,7 +2204,7 @@ def delete_task(db: Session, user: CurrentUser, task_id: UUID) -> None:
             event_type="task_deleted",
             event_data=None,
         )
-        db.commit()
+        db.flush()
 
 
 def list_task_activity(
@@ -2299,7 +2299,7 @@ def create_task_comment(
         event_type="comment_added",
         event_data={"comment_id": str(comment.id)},
     )
-    db.commit()
+    db.flush()
     db.refresh(comment)
     return comment
 
@@ -2341,7 +2341,7 @@ def update_task_comment(
         event_type="comment_updated",
         event_data={"comment_id": str(comment.id)},
     )
-    db.commit()
+    db.flush()
     db.refresh(comment)
     return comment
 
@@ -2378,7 +2378,7 @@ def delete_task_comment(
         event_type="comment_deleted",
         event_data={"comment_id": str(comment.id)},
     )
-    db.commit()
+    db.flush()
 
 
 def record_log_time_event(
@@ -2470,7 +2470,7 @@ def archive_work_item(
                 event_type="task_archived_manual",
                 event_data={"reason": reason},
             )
-    db.commit()
+    db.flush()
     db.refresh(task)
     return {
         "logical_work_item_id": str(
@@ -2539,7 +2539,7 @@ def restore_work_item(
             event_type="task_restored",
             event_data={"reopened_assignment": str(target.id)},
         )
-    db.commit()
+    db.flush()
     db.refresh(task)
 
     # Secilmeyen sibling'lar DEGISMEDI — sozlesme burada da dogrulanir.

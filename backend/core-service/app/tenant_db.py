@@ -42,6 +42,59 @@ logger = logging.getLogger("hermes.tenant_db")
 # runtime ayni ismi kullanmak zorunda.
 TENANT_GUC = "app.tenant_id"
 
+# Session.info icinde tenant'i tasiyan anahtar.
+SESSION_TENANT_KEY = "hermes_tenant_id"
+
+
+# =============================================================================
+# Yeni satirlara tenant damgasi
+# =============================================================================
+# `tenant_id` NOT NULL oldugu icin her INSERT onu tasimak zorunda. Bunu
+# 100'den fazla create cagrisinda ELLE yazmak, bir tanesini unutmak
+# demekti — ve unutulan yer 500 hatasi verirdi.
+#
+# ONEMLI AYRIM: bu bir IZOLASYON mekanizmasi DEGILDIR (pack 04 §7:
+# "no automatic ORM query hook as the primary isolation mechanism").
+# Okuma tarafinda hicbir otomatik filtre yok; izolasyonun otoritesi
+# RLS'tir. Bu hook yalnizca YAZMA kolaylığidir ve yanlis damgalarsa
+# RLS'in WITH CHECK'i zaten reddeder.
+#
+# Nesne zaten bir tenant_id tasiyorsa DOKUNULMAZ: platform/bakim
+# yollari bilincli olarak baska bir tenant adina yazabilir ve bu
+# durumda karari RLS verir.
+
+def _stamp_tenant(session: Session, flush_context, instances) -> None:
+    from .models.mixins import TenantOwnedMixin
+
+    tenant_id = session.info.get(SESSION_TENANT_KEY)
+    if not tenant_id:
+        return
+    for obj in session.new:
+        if isinstance(obj, TenantOwnedMixin) and obj.tenant_id is None:
+            obj.tenant_id = tenant_id
+
+
+def install_tenant_stamping() -> None:
+    """before_flush dinleyicisini bir kez kaydeder."""
+    from sqlalchemy import event
+    from sqlalchemy.orm import Session as _Session
+
+    if not event.contains(_Session, "before_flush", _stamp_tenant):
+        event.listen(_Session, "before_flush", _stamp_tenant)
+
+
+install_tenant_stamping()
+
+
+def mark_session_tenant(db: Session, tenant_id: str) -> None:
+    """Session'i bir tenant'a isaretler — SQL CALISTIRMAZ.
+
+    Yalnizca `before_flush` damgasinin okudugu `Session.info` girdisini
+    yazar. `bind_tenant`ten farki: transaction ACMAZ. Bu ayrim, henuz
+    isi olmayan bir session'in bosuna kilit tutmasini onler.
+    """
+    db.info[SESSION_TENANT_KEY] = str(tenant_id)
+
 
 def bind_tenant(db: Session, tenant_id: str) -> None:
     """Acik transaction'a tenant baglamini yazar (transaction-local).
@@ -49,7 +102,11 @@ def bind_tenant(db: Session, tenant_id: str) -> None:
     Parametre BAGLIDIR (string interpolasyonu YOK): tenant_id
     dogrulanmis bir token'dan gelse de, GUC degerini SQL metnine
     gommek gereksiz bir enjeksiyon yuzeyidir.
+
+    Ayrica tenant, session'in `info` sozlugune yazilir; yeni nesnelerin
+    `tenant_id` damgalanmasi (asagidaki before_flush) bunu okur.
     """
+    db.info[SESSION_TENANT_KEY] = str(tenant_id)
     db.execute(
         text("SELECT set_config(:name, :value, true)"),
         {"name": TENANT_GUC, "value": str(tenant_id)},
