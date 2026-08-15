@@ -33,6 +33,7 @@ from .api_client import (
 )
 from .task_activity import TaskActivityEvent
 from .task_comment import TaskComment
+from .tenancy import TenantCounter, TenantRegistry
 from .meeting import Meeting, MeetingAttendee
 from .user_group import (
     UserGroup,
@@ -80,4 +81,7 @@ __all__ = [
     "UserGroupMember",
     "TaskGroupPermission",
     "TaskGroupMemberOverride",
+    # Tenant projeksiyonu + sayaclar (WS2) — tenant OTORITESI auth_db'dir.
+    "TenantRegistry",
+    "TenantCounter",
 ]

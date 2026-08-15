@@ -25,8 +25,8 @@ def _database_url() -> str:
 
 def _target_metadata():
     """Autogenerate icin model metadata'si (uygulama modelleri)."""
+    import app.models  # noqa: F401 — tum modelleri Base'e kaydeder
     from app.database import Base
-    from app.models import rbac, user  # noqa: F401 — Base'e kaydeder
 
     return Base.metadata
 

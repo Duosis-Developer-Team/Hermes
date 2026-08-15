@@ -349,6 +349,11 @@ def _backfill_type_number(conn) -> None:
 # Genel giris noktasi
 # =============================================================================
 
+# Cutover ile GELEN tablolar — 0001 baseline'a AIT DEGILDIR.
+# (0001 "bugunku sema"yi tarif eder; tenant nesneleri 0002'de gelir.)
+POST_BASELINE_TABLES = ("tenant_registry", "tenant_counters")
+
+
 def apply_baseline(conn) -> None:
     """Cutover oncesi semanin tamamini idempotent olarak uygular.
 
@@ -361,7 +366,14 @@ def apply_baseline(conn) -> None:
     for stmt in PREREQUISITE_STATEMENTS:
         conn.execute(text(stmt))
 
-    Base.metadata.create_all(bind=conn, checkfirst=True)
+    Base.metadata.create_all(
+        bind=conn,
+        tables=[
+            table for name, table in Base.metadata.tables.items()
+            if name not in POST_BASELINE_TABLES
+        ],
+        checkfirst=True,
+    )
 
     for stmt in post_create_statements():
         conn.execute(text(stmt))
@@ -375,3 +387,31 @@ def apply_baseline(conn) -> None:
     # Trigger EN SON: backfill'in "trigger yoksa" kosulu bozulmasin.
     for stmt in _TYPE_NUMBER_TRIGGER:
         conn.execute(text(stmt))
+
+
+# =============================================================================
+# 4) WS2 — tenant projeksiyonu ve sayaclari
+# =============================================================================
+
+def apply_tenant_projection(conn) -> None:
+    """`tenant_registry` + `tenant_counters` (0002).
+
+    Bu tablolar tenant-OWNED DEGILDIR: `tenant_registry` kontrol duzlemi
+    projeksiyonudur ve `tenant_counters` her tenant icin tek satir tutar.
+    Ikisi de RLS politikasi ALMAZ; erisimleri repository/rol siniriyla
+    korunur (05_POSTGRES_RLS_AND_TENANT_CONTEXT.md §6 ile ayni gerekce).
+    """
+    import app.models  # noqa: F401 — modelleri Base'e kaydeder
+    from app.database import Base
+
+    Base.metadata.create_all(
+        bind=conn,
+        tables=[Base.metadata.tables[name] for name in POST_BASELINE_TABLES],
+        checkfirst=True,
+    )
+
+
+def apply_all(conn) -> None:
+    """Testler icin: bugunku head semasinin tamami."""
+    apply_baseline(conn)
+    apply_tenant_projection(conn)

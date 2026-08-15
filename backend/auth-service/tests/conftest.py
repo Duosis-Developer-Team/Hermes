@@ -42,10 +42,15 @@ def pg_engine():
             pass
     except Exception:
         pytest.skip("test database unavailable")
-    from app.database import Base
-    from app.models import rbac, user  # noqa: F401
+    # Test semasi ile URETIM semasi TEK kaynaktan gelir (WS1/WS2).
+    # Duz create_all yetmez: mevcut bir test veritabanina EKSIK KOLON
+    # EKLEMEZ, dolayisiyla yeni bir expand kolonu eklendiginde testler
+    # eski semayla kosar ve uretimdeki davranisi dogrulamaz.
+    from app.migrations.baseline_ddl import apply_all
 
-    Base.metadata.create_all(bind=engine)
+    with engine.begin() as conn:
+        apply_all(conn)
+
     yield engine
     engine.dispose()
 

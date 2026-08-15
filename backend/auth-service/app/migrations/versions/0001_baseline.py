@@ -22,10 +22,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    from app.database import Base
-    from app.models import rbac, user  # noqa: F401 — Base'e kaydeder
+    # DIKKAT: baseline YALNIZCA cutover oncesi uc tabloyu kurar. Tenant
+    # kontrol duzlemi tablolari 0002'de gelir — burada tum modelleri
+    # create_all etmek, 0002'yi anlamsiz kilardi.
+    from app.migrations.baseline_ddl import apply_baseline
 
-    Base.metadata.create_all(bind=op.get_bind(), checkfirst=True)
+    apply_baseline(op.get_bind())
 
 
 def downgrade() -> None:

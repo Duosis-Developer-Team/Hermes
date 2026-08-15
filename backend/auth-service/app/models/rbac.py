@@ -36,13 +36,28 @@ def _now():
 
 
 class RbacRole(Base):
-    """Dinamik rol: izin kumesi tasiyan, runtime'da yonetilen kayit."""
+    """Dinamik rol: izin kumesi tasiyan, runtime'da yonetilen kayit.
+
+    WS2'den itibaren rol TENANT'A AITTIR. `system-admin` artik "global
+    Hermes yoneticisi" degil, o tenant'in yoneticisidir; Platform Super
+    Admin AYRI bir guvenlik duzlemidir (`platform_admins`).
+    """
 
     __tablename__ = "rbac_roles"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # WS2 expand fazinda NULLABLE: mevcut satirlarin tenant'i 0003
+    # backfill'inde yazilir, NOT NULL 0004'te verilir.
+    #
+    # FK modelde BILEREK tanimli DEGIL: sema fazlari (expand → backfill
+    # → enforce) migration'larda yasar. FK'yi modele koymak, cutover
+    # ONCESI semayi kuran 0001_baseline'i henuz var olmayan `tenants`
+    # tablosuna bagimli kilardi. Gercek kisit 0004'te eklenir.
+    tenant_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     # Stabil, degismez slug — programatik esletirmelerin tek anahtari.
-    code = Column(String(64), nullable=False, unique=True, index=True)
+    # Benzersizlik TENANT ICINDEDIR (uq_rbac_roles_tenant_code, 0004);
+    # ayni `system-admin` kodu her tenant'ta ayri bir satirdir.
+    code = Column(String(64), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     # shared/permissions.py katalogundan kod listesi. Katalog disi
@@ -62,6 +77,11 @@ class RbacUserRole(Base):
     __tablename__ = "rbac_user_roles"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Atama da tenant-scoped'tir: ayni kimlik A'da admin, B'de member
+    # olabilir. 0004'te (tenant_id, user_id) uyelige composite FK ile
+    # baglanir — baska tenant'in uyesine rol verilemez. FK'nin modelde
+    # olmama gerekcesi icin RbacRole.tenant_id notuna bakin.
+    tenant_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
@@ -79,6 +99,9 @@ class RbacUserRole(Base):
     created_by = Column(UUID(as_uuid=True), nullable=True)
 
     __table_args__ = (
-        UniqueConstraint("user_id", "role_id",
-                         name="uq_rbac_user_roles_user_role"),
+        # Tenant-qualified benzersizlik (0004'te eski global kisit
+        # dusurulur): ayni kullanici, ayni rolu iki kez alamaz — ama
+        # bu kural her tenant icinde AYRI isler.
+        UniqueConstraint("tenant_id", "user_id", "role_id",
+                         name="uq_rbac_user_roles_tenant_user_role"),
     )

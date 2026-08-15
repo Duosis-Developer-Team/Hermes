@@ -243,6 +243,12 @@ def test_schema_guard_rejects_unmigrated_database(disposable_db):
             verify_schema_compatibility("core", engine)
 
         _run_migration(disposable_db)
-        assert verify_schema_compatibility("core", engine) == "0001_baseline"
+        # head revizyon adi degistikce test kirilmasin.
+        from alembic.script import ScriptDirectory
+
+        heads = ScriptDirectory(
+            str(_ROOT / "app" / "migrations")
+        ).get_heads()
+        assert verify_schema_compatibility("core", engine) in heads
     finally:
         engine.dispose()

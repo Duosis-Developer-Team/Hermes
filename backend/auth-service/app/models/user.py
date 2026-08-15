@@ -18,7 +18,7 @@
 
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Boolean, DateTime, Enum
+from sqlalchemy import Column, String, Boolean, DateTime, Enum, Integer
 from sqlalchemy.dialects.postgresql import UUID
 import enum
 
@@ -135,6 +135,21 @@ class User(Base):
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
         comment="Hesap oluşturulma tarihi"
+    )
+
+    # ==========================================================================
+    # Oturum iptali (WS2)
+    # ==========================================================================
+    # Uyelik kaldirildiginda, tenant askiya alindiginda veya sifre
+    # sifirlandiginda artirilir. Token yenileme aninda karsilastirilir;
+    # eskimis surum tasiyan oturum kabul edilmez. Erisim token'inin
+    # kendisi kisa omurludur — belgelenmis azami iptal gecikmesi budur.
+    session_version = Column(
+        Integer,
+        default=1,
+        server_default="1",
+        nullable=False,
+        comment="Oturum iptal sayaci (artarsa mevcut oturumlar duser)"
     )
     
     # ==========================================================================

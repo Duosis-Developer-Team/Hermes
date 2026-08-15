@@ -47,10 +47,10 @@ def pg_engine():
     # Onceden burada create_all + type_number trigger'i elle
     # tekrarlaniyordu; her eksik ifade "testte gecer, uretimde
     # patlar" kaymasi demekti.
-    from app.migrations.baseline_ddl import apply_baseline
+    from app.migrations.baseline_ddl import apply_all
 
     with engine.begin() as conn:
-        apply_baseline(conn)
+        apply_all(conn)
 
     yield engine
     engine.dispose()
