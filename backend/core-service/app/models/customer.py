@@ -23,10 +23,11 @@ from sqlalchemy import Column, String, Boolean, DateTime, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
+from .mixins import TenantOwnedMixin
 from ..database import Base
 
 
-class Customer(Base):
+class Customer(TenantOwnedMixin, Base):
     """
     Müşteri modeli.
     

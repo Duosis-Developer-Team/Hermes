@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Date, Integer, ForeignKey, Text, Enum, DateTime, UUID
 from sqlalchemy.sql import func
 from app.database import Base
+from app.models.mixins import TenantOwnedMixin
 import enum
 
 class TimesheetStatus(str, enum.Enum):
@@ -9,7 +10,7 @@ class TimesheetStatus(str, enum.Enum):
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
 
-class TimesheetSubmission(Base):
+class TimesheetSubmission(TenantOwnedMixin, Base):
     __tablename__ = "timesheet_submissions"
 
     id = Column(String, primary_key=True, index=True)

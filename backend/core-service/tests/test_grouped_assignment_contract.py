@@ -33,6 +33,9 @@ from app.models.customer import Customer
 from app.models.project import Project
 from app.models.task import Task, TaskAssignmentRelation
 
+# WS3: CurrentUser artik tenant baglami ZORUNLU tasir.
+TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
+
 ASSIGNER = uuid.UUID("00000000-0000-4000-8000-0000000000a1")
 U1 = uuid.UUID("00000000-0000-4000-8000-0000000000b1")
 U2 = uuid.UUID("00000000-0000-4000-8000-0000000000b2")
@@ -81,7 +84,7 @@ def http(world, pg_session):
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id=str(ASSIGNER), email="assigner@x.com", full_name="Assigner",
         is_admin=False,
-    )
+    tenant_id=TEST_TENANT_ID)
     client = TestClient(app, raise_server_exceptions=False)
     yield client
     app.dependency_overrides.pop(get_db, None)
@@ -212,7 +215,7 @@ def test_status_change_does_not_touch_siblings(http, world, pg_session):
     # U1 kendi atamasinin status'unu degistirir.
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id=str(U1), email="u1@x.com", full_name="U1", is_admin=False
-    )
+    , tenant_id=TEST_TENANT_ID)
     res = http.patch(
         f"/api/v1/core/tasks/{target['id']}/status",
         json={"status": "in_progress"},
@@ -244,7 +247,7 @@ def test_list_endpoint_exposes_batch_id(http, world):
     )
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id=str(U1), email="u1@x.com", full_name="U1", is_admin=False
-    )
+    , tenant_id=TEST_TENANT_ID)
     res = http.get("/api/v1/core/tasks")
     assert res.status_code == 200, res.text
     rows = res.json()

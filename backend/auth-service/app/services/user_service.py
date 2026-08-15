@@ -45,7 +45,7 @@ class UserService:
     # CREATE Operations
     # =========================================================================
     
-    def create(self, user_data: UserCreate) -> User:
+    def create(self, user_data: UserCreate, *, tenant_id) -> User:
         """
         Yeni kullanıcı oluşturur.
         
@@ -105,7 +105,8 @@ class UserService:
                 from .rbac_service import sync_admin_role_from_legacy_flag
 
                 sync_admin_role_from_legacy_flag(
-                    self.db, user_id=db_user.id, is_admin=True
+                    self.db, user_id=db_user.id, is_admin=True,
+                    tenant_id=tenant_id,
                 )
             self.db.commit()
             self.db.refresh(db_user)
@@ -208,7 +209,9 @@ class UserService:
     # UPDATE Operations
     # =========================================================================
     
-    def update(self, user_id: UUID, user_data: UserUpdate) -> User:
+    def update(
+        self, user_id: UUID, user_data: UserUpdate, *, tenant_id
+    ) -> User:
         """
         Kullanıcı bilgilerini günceller.
         
@@ -272,6 +275,7 @@ class UserService:
                 self.db,
                 user_id=db_user.id,
                 is_admin=bool(update_data["is_admin"]),
+                tenant_id=tenant_id,
             )
 
         # Kaydet
@@ -283,7 +287,9 @@ class UserService:
     # DELETE Operations
     # =========================================================================
     
-    def delete(self, user_id: UUID, soft: bool = False) -> bool:
+    def delete(
+        self, user_id: UUID, soft: bool = False, *, tenant_id
+    ) -> bool:
         """
         Kullanıcıyı siler.
         
@@ -304,7 +310,9 @@ class UserService:
         if db_user.is_admin:
             from .rbac_service import enforce_last_admin_guard
 
-            enforce_last_admin_guard(self.db, losing_user_id=db_user.id)
+            enforce_last_admin_guard(
+                self.db, losing_user_id=db_user.id, tenant_id=tenant_id
+            )
 
         if soft:
             # Soft delete - sadece pasif yap

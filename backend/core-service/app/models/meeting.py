@@ -37,10 +37,11 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
+from .mixins import TenantOwnedMixin
 from ..database import Base
 
 
-class Meeting(Base):
+class Meeting(TenantOwnedMixin, Base):
     __tablename__ = "meetings"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -115,7 +116,7 @@ class Meeting(Base):
     )
 
 
-class MeetingAttendee(Base):
+class MeetingAttendee(TenantOwnedMixin, Base):
     __tablename__ = "meeting_attendees"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

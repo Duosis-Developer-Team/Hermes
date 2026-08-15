@@ -60,9 +60,14 @@ class FakeSession:
         return _Q()
 
 
+TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
+
+
 def make_client(**kw):
     base = dict(
         id=uuid.uuid4(),
+        # WS3: her API client TEK bir tenant'a baglidir.
+        tenant_id=TEST_TENANT_ID,
         name="Test Client",
         client_type="service",
         environment="dev",

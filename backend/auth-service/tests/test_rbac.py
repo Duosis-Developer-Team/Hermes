@@ -17,15 +17,39 @@ from fastapi.testclient import TestClient
 from shared.auth import CurrentUser, get_current_user
 from shared.permissions import ALL_PERMISSIONS, PERMISSION_DESCRIPTIONS, Perm
 
+# WS3: CurrentUser artik tenant baglami ZORUNLU tasir.
+TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
+
 BASE = "/api/v1/auth/rbac"
 
 
 # ── Yardimcilar ────────────────────────────────────────────────────────
 
 
+def ensure_tenant(db):
+    """Test tenant'ini garanti eder (idempotent).
+
+    WS3: RBAC cozumu artik (tenant, uyelik) uzerinden gecer; tenant
+    satiri olmadan hicbir izin cozulmez.
+    """
+    from sqlalchemy import text as _t
+
+    db.execute(_t(
+        "INSERT INTO tenants (id, slug, display_name, status, "
+        "default_locale, timezone, placement_mode, placement_key, "
+        "version, created_at, updated_at) VALUES "
+        "(CAST(:id AS uuid), 'test-tenant', 'Test Tenant', 'active', "
+        "'tr-TR', 'Europe/Istanbul', 'shared', 'shared-default', 1, "
+        "now(), now()) ON CONFLICT (id) DO NOTHING"
+    ), {"id": TEST_TENANT_ID})
+    db.commit()
+
+
 def mk_user(db, *, email=None, is_admin=False, active=True):
+    from app.models.tenancy import TenantMembership
     from app.models.user import User
 
+    ensure_tenant(db)
     u = User(
         id=uuid.uuid4(),
         email=email or f"u-{uuid.uuid4().hex[:8]}@x.com",
@@ -35,14 +59,23 @@ def mk_user(db, *, email=None, is_admin=False, active=True):
         is_active=active,
     )
     db.add(u)
+    db.flush()
+    # Aktif uyelik: pasif kullanicinin uyeligi de 'active' birakilir ki
+    # "pasif kullanici -> bos izin" kuralini uyelik degil KULLANICI
+    # durumunun sagladigi test edilebilsin.
+    db.add(TenantMembership(
+        tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=u.id, status="active",
+    ))
     db.commit()
     return u
 
 
 def run_bootstrap(db):
-    from app.services.rbac_service import bootstrap
+    from app.services.rbac_service import bootstrap_tenant
 
-    bootstrap(db)
+    ensure_tenant(db)
+    bootstrap_tenant(db, tenant_id=uuid.UUID(TEST_TENANT_ID))
+    db.commit()
 
 
 @pytest.fixture()
@@ -58,7 +91,7 @@ def rbac_http(pg_session):
     client = TestClient(app, raise_server_exceptions=False)
     client.as_user = lambda u: holder.__setitem__(
         "user",
-        CurrentUser(id=str(u.id), email=u.email, is_admin=u.is_admin),
+        CurrentUser(id=str(u.id), email=u.email, is_admin=u.is_admin, tenant_id=TEST_TENANT_ID),
     )
     yield client
     app.dependency_overrides.pop(get_db, None)
@@ -70,13 +103,17 @@ def grant_role(db, user, *perms, code=None):
     from app.models.rbac import RbacRole, RbacUserRole
 
     role = RbacRole(
+        tenant_id=uuid.UUID(TEST_TENANT_ID),
         code=code or f"r-{uuid.uuid4().hex[:8]}",
         name="Test Role",
         permissions=sorted(perms),
     )
     db.add(role)
     db.flush()
-    db.add(RbacUserRole(user_id=user.id, role_id=role.id))
+    db.add(RbacUserRole(
+        user_id=user.id, role_id=role.id,
+        tenant_id=uuid.UUID(TEST_TENANT_ID),
+    ))
     db.commit()
     return role
 
@@ -118,16 +155,16 @@ def test_bootstrap_creates_roles_and_migrates_admins(pg_session):
     plain_u = mk_user(pg_session)
     run_bootstrap(pg_session)
 
-    admin_role = svc.get_role_by_code(pg_session, svc.SYSTEM_ADMIN_CODE)
+    admin_role = svc.get_role_by_code(pg_session, svc.SYSTEM_ADMIN_CODE, tenant_id=uuid.UUID(TEST_TENANT_ID))
     assert admin_role is not None
     assert admin_role.is_system and admin_role.is_active
     assert sorted(admin_role.permissions) == list(ALL_PERMISSIONS)
-    assert svc.get_role_by_code(pg_session, svc.MEMBER_CODE) is not None
+    assert svc.get_role_by_code(pg_session, svc.MEMBER_CODE, tenant_id=uuid.UUID(TEST_TENANT_ID)) is not None
 
-    assert svc.effective_permissions(pg_session, admin_u.id) == frozenset(
+    assert svc.effective_permissions(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=admin_u.id) == frozenset(
         ALL_PERMISSIONS
     )
-    assert svc.effective_permissions(pg_session, plain_u.id) == frozenset()
+    assert svc.effective_permissions(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=plain_u.id) == frozenset()
 
 
 def test_bootstrap_is_idempotent(pg_session):
@@ -148,12 +185,12 @@ def test_bootstrap_syncs_catalog_additions_to_system_admin(pg_session):
     from app.services import rbac_service as svc
 
     run_bootstrap(pg_session)
-    role = svc.get_role_by_code(pg_session, svc.SYSTEM_ADMIN_CODE)
+    role = svc.get_role_by_code(pg_session, svc.SYSTEM_ADMIN_CODE, tenant_id=uuid.UUID(TEST_TENANT_ID))
     role.permissions = [p for p in role.permissions if p != Perm.API_MANAGE]
     pg_session.commit()
 
     run_bootstrap(pg_session)
-    role = svc.get_role_by_code(pg_session, svc.SYSTEM_ADMIN_CODE)
+    role = svc.get_role_by_code(pg_session, svc.SYSTEM_ADMIN_CODE, tenant_id=uuid.UUID(TEST_TENANT_ID))
     assert Perm.API_MANAGE in role.permissions
 
 
@@ -167,13 +204,13 @@ def test_bootstrap_derives_is_admin_from_role(pg_session):
     other_admin = mk_user(pg_session, is_admin=True)
     run_bootstrap(pg_session)
 
-    role = svc.get_role_by_code(pg_session, svc.SYSTEM_ADMIN_CODE)
+    role = svc.get_role_by_code(pg_session, svc.SYSTEM_ADMIN_CODE, tenant_id=uuid.UUID(TEST_TENANT_ID))
     pg_session.query(RbacUserRole).filter(
         RbacUserRole.user_id == u.id,
         RbacUserRole.role_id == role.id,
     ).delete()
     pg_session.commit()
-    svc.sync_is_admin(pg_session, u.id)
+    svc.sync_is_admin(pg_session, u.id, tenant_id=uuid.UUID(TEST_TENANT_ID))
     pg_session.commit()
     pg_session.refresh(u)
     assert u.is_admin is False
@@ -190,7 +227,7 @@ def test_effective_permissions_is_union_of_active_roles(pg_session):
     u = mk_user(pg_session)
     grant_role(pg_session, u, Perm.REPORTS_VIEW)
     grant_role(pg_session, u, Perm.CUSTOMERS_MANAGE, Perm.REPORTS_VIEW)
-    assert effective_permissions(pg_session, u.id) == frozenset(
+    assert effective_permissions(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=u.id) == frozenset(
         {Perm.REPORTS_VIEW, Perm.CUSTOMERS_MANAGE}
     )
 
@@ -202,10 +239,10 @@ def test_inactive_role_grants_nothing(pg_session):
 
     u = mk_user(pg_session)
     role = grant_role(pg_session, u, Perm.REPORTS_VIEW)
-    assert Perm.REPORTS_VIEW in effective_permissions(pg_session, u.id)
+    assert Perm.REPORTS_VIEW in effective_permissions(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=u.id)
     role.is_active = False
     pg_session.commit()
-    assert effective_permissions(pg_session, u.id) == frozenset()
+    assert effective_permissions(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=u.id) == frozenset()
 
 
 def test_inactive_user_has_no_permissions(pg_session):
@@ -213,7 +250,7 @@ def test_inactive_user_has_no_permissions(pg_session):
 
     u = mk_user(pg_session, active=False)
     grant_role(pg_session, u, Perm.REPORTS_VIEW)
-    assert effective_permissions(pg_session, u.id) == frozenset()
+    assert effective_permissions(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=u.id) == frozenset()
 
 
 def test_unknown_permission_codes_are_filtered(pg_session):
@@ -224,14 +261,15 @@ def test_unknown_permission_codes_are_filtered(pg_session):
 
     u = mk_user(pg_session)
     role = RbacRole(
+        tenant_id=uuid.UUID(TEST_TENANT_ID),
         code="stale", name="Stale",
         permissions=[Perm.REPORTS_VIEW, "ghost.permission"],
     )
     pg_session.add(role)
     pg_session.flush()
-    pg_session.add(RbacUserRole(user_id=u.id, role_id=role.id))
+    pg_session.add(RbacUserRole(user_id=u.id, role_id=role.id, tenant_id=uuid.UUID(TEST_TENANT_ID)))
     pg_session.commit()
-    assert effective_permissions(pg_session, u.id) == frozenset(
+    assert effective_permissions(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=u.id) == frozenset(
         {Perm.REPORTS_VIEW}
     )
 
@@ -239,7 +277,7 @@ def test_unknown_permission_codes_are_filtered(pg_session):
 def test_unknown_user_resolves_empty(pg_session):
     from app.services.rbac_service import effective_permissions
 
-    assert effective_permissions(pg_session, uuid.uuid4()) == frozenset()
+    assert effective_permissions(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=uuid.uuid4()) == frozenset()
 
 
 # ── Guard'lar: claim degil DB ──────────────────────────────────────────
@@ -366,7 +404,7 @@ def test_system_role_locked(rbac_http, pg_session, role_admin):
     run_bootstrap(pg_session)
     from app.services import rbac_service as svc
 
-    role = svc.get_role_by_code(pg_session, svc.SYSTEM_ADMIN_CODE)
+    role = svc.get_role_by_code(pg_session, svc.SYSTEM_ADMIN_CODE, tenant_id=uuid.UUID(TEST_TENANT_ID))
 
     for payload in (
         {"name": "Renamed"},
@@ -393,11 +431,11 @@ def test_soft_deleted_role_stops_granting(
 
     u = mk_user(pg_session)
     role = grant_role(pg_session, u, Perm.REPORTS_VIEW, code="temp-role")
-    assert Perm.REPORTS_VIEW in effective_permissions(pg_session, u.id)
+    assert Perm.REPORTS_VIEW in effective_permissions(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=u.id)
 
     r = rbac_http.delete(f"{BASE}/roles/{role.id}")
     assert r.status_code == 200
-    assert effective_permissions(pg_session, u.id) == frozenset()
+    assert effective_permissions(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=u.id) == frozenset()
 
 
 # ── Atamalar ───────────────────────────────────────────────────────────
@@ -430,6 +468,7 @@ def test_assignment_subset_rule(rbac_http, pg_session, role_admin):
     from app.models.rbac import RbacRole
 
     strong = RbacRole(
+        tenant_id=uuid.UUID(TEST_TENANT_ID),
         code="strong", name="Strong", permissions=[Perm.API_MANAGE]
     )
     pg_session.add(strong)
@@ -447,6 +486,7 @@ def test_inactive_role_not_assignable(rbac_http, pg_session, role_admin):
     from app.models.rbac import RbacRole
 
     dead = RbacRole(
+        tenant_id=uuid.UUID(TEST_TENANT_ID),
         code="dead-role", name="Dead",
         permissions=[Perm.REPORTS_VIEW], is_active=False,
     )
@@ -470,7 +510,7 @@ def test_assigning_system_admin_derives_is_admin(rbac_http, pg_session):
     rbac_http.as_user(actor)
 
     target = mk_user(pg_session)
-    role = svc.get_role_by_code(pg_session, svc.SYSTEM_ADMIN_CODE)
+    role = svc.get_role_by_code(pg_session, svc.SYSTEM_ADMIN_CODE, tenant_id=uuid.UUID(TEST_TENANT_ID))
     r = rbac_http.put(
         f"{BASE}/users/{target.id}/roles",
         json={"role_ids": [str(role.id)]},
@@ -500,7 +540,7 @@ def test_last_admin_cannot_be_stripped(rbac_http, pg_session):
     )
     assert r.status_code == 409
     assert svc.effective_permissions(
-        pg_session, only_admin.id
+        pg_session, only_admin.id, tenant_id=uuid.UUID(TEST_TENANT_ID)
     ) == frozenset(ALL_PERMISSIONS)
 
 
@@ -513,7 +553,10 @@ def test_last_admin_cannot_be_deactivated_via_user_service(pg_session):
     run_bootstrap(pg_session)
 
     with pytest.raises(HTTPException) as exc:
-        UserService(pg_session).delete(only_admin.id, soft=True)
+        UserService(pg_session).delete(
+            only_admin.id, soft=True,
+            tenant_id=uuid.UUID(TEST_TENANT_ID),
+        )
     assert exc.value.status_code == 409
 
 
@@ -531,13 +574,19 @@ def test_legacy_is_admin_update_bridges_to_role(pg_session):
     run_bootstrap(pg_session)
 
     u = mk_user(pg_session)
-    UserService(pg_session).update(u.id, UserUpdate(is_admin=True))
-    assert svc.effective_permissions(pg_session, u.id) == frozenset(
+    UserService(pg_session).update(
+        u.id, UserUpdate(is_admin=True),
+        tenant_id=uuid.UUID(TEST_TENANT_ID),
+    )
+    assert svc.effective_permissions(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=u.id) == frozenset(
         ALL_PERMISSIONS
     )
 
-    UserService(pg_session).update(u.id, UserUpdate(is_admin=False))
-    assert svc.effective_permissions(pg_session, u.id) == frozenset()
+    UserService(pg_session).update(
+        u.id, UserUpdate(is_admin=False),
+        tenant_id=uuid.UUID(TEST_TENANT_ID),
+    )
+    assert svc.effective_permissions(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=u.id) == frozenset()
 
 
 # ── /rbac/me + katalog ucu ─────────────────────────────────────────────
@@ -568,7 +617,7 @@ def test_permission_catalog_endpoint(rbac_http, pg_session, role_admin):
 def test_s2s_resolve_requires_credential(rbac_http, pg_session):
     r = rbac_http.post(
         "/internal/authz/resolve",
-        json={"user_ids": [str(uuid.uuid4())]},
+        json={"tenant_id": TEST_TENANT_ID, "user_ids": [str(uuid.uuid4())]},
     )
     assert r.status_code == 401
 
@@ -585,7 +634,7 @@ def test_s2s_resolve_batch(rbac_http, pg_session):
     r = rbac_http.post(
         "/internal/authz/resolve",
         headers={"Authorization": f"Bearer {S2S_CURRENT}"},
-        json={"user_ids": [str(u1.id), str(u2.id), str(ghost),
+        json={"tenant_id": TEST_TENANT_ID, "user_ids": [str(u1.id), str(u2.id), str(ghost),
                            str(u1.id)]},
     )
     assert r.status_code == 200

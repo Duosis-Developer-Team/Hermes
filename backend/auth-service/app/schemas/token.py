@@ -61,6 +61,17 @@ class Token(BaseModel):
         default=None,
         description="Giriş yapan kullanıcı bilgileri"
     )
+    # WS3 — oturumun hangi organizasyonda acildigi. Frontend bunu
+    # basliktaki organizasyon adinda ve query-key namespace'inde kullanir.
+    # Yalnizca GUVENLI alanlar: plan, limit, uye sayisi burada DONMEZ.
+    tenant: Optional[Any] = Field(
+        default=None,
+        description="Oturumun acildigi tenant (id, slug, display_name)"
+    )
+    membership: Optional[Any] = Field(
+        default=None,
+        description="Kullanicinin bu tenant'taki uyeligi (id, status)"
+    )
 
 
 # =============================================================================

@@ -147,9 +147,14 @@ def public_http(pg_session):
     public_app.dependency_overrides.pop(get_db, None)
 
 
+TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
+
+
 def make_api_client(s, name, bindings, *, client_type="service",
                     bound_user_id=None, scopes=None):
     client = ApiClient(
+        # WS3: her API client TEK bir tenant'a baglidir.
+        tenant_id=TEST_TENANT_ID,
         name=name,
         client_type=client_type,
         bound_user_id=bound_user_id,

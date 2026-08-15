@@ -107,7 +107,7 @@ def rbac_backfill(
     """
     from ..services.rbac_backfill import run
 
-    return run(db, dry_run=dry_run)
+    return run(db, dry_run=dry_run, tenant_id=admin.tenant_id)
 
 
 # =============================================================================

@@ -40,6 +40,9 @@ from app.models.user_group import (
     UserGroupMember,
 )
 
+# WS3: CurrentUser artik tenant baglami ZORUNLU tasir.
+TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
+
 TASKS = "/api/v1/core/tasks"
 
 ADMIN_U = uuid.uuid4()      # tasks.admin (yalniz)
@@ -119,7 +122,7 @@ def _http(pg_session, user_id):
     app.dependency_overrides[get_db] = lambda: pg_session
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id=str(user_id), email="u@x.com", is_admin=False
-    )
+    , tenant_id=TEST_TENANT_ID)
     return TestClient(app, raise_server_exceptions=False)
 
 
@@ -381,7 +384,7 @@ def test_backfill_dry_run_does_not_push(pg_session, legacy_world, monkeypatch):
         rbac_backfill, "push_to_auth",
         lambda m: called.append(m) or {},
     )
-    summary = rbac_backfill.run(pg_session, dry_run=True)
+    summary = rbac_backfill.run(pg_session, dry_run=True, tenant_id=TEST_TENANT_ID)
     assert summary["dry_run"] is True
     assert summary["users"] == 4
     assert called == []
@@ -417,7 +420,7 @@ def test_backfill_push_sends_chunks_with_s2s(pg_session, legacy_world,
         "s2s-test-" + "x" * 40,
     )
     try:
-        summary = run(pg_session, dry_run=False)
+        summary = run(pg_session, dry_run=False, tenant_id=TEST_TENANT_ID)
     finally:
         rbac_backfill.set_client_factory(lambda: httpx.Client(timeout=10))
     assert summary["pushed"] == {

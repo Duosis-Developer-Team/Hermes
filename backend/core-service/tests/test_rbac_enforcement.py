@@ -27,6 +27,9 @@ from shared.permissions import ALL_PERMISSIONS, Perm
 
 from app.services import authz_client
 
+# WS3: CurrentUser artik tenant baglami ZORUNLU tasir.
+TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
+
 
 # ── Sahte authz upstream ───────────────────────────────────────────────
 
@@ -73,7 +76,8 @@ def fake_authz(monkeypatch):
 
 def _user(perms=None, *, is_admin_claim=False, fake_authz=None):
     u = CurrentUser(
-        id=str(uuid.uuid4()), email="t@x.com", is_admin=is_admin_claim
+        id=str(uuid.uuid4()), email="t@x.com", is_admin=is_admin_claim,
+        tenant_id=TEST_TENANT_ID,
     )
     if fake_authz is not None and perms is not None:
         fake_authz[u.id] = list(perms)
@@ -283,7 +287,10 @@ def test_permissions_are_cached_for_ttl(fake_authz):
     # cozumu tetiklememesiyle dogrulariz.
     from app.services.authz_client import _cache
 
-    assert u.id in _cache
+    # WS3: cache anahtari (tenant_id, user_id) — ayni kimligin A'daki
+    # izinleri B'de servis edilemez.
+    assert (u.tenant_id, u.id) in _cache
+    assert u.id not in _cache
 
 
 # ── 3. Sentezlenmis public-API aktoru ──────────────────────────────────
@@ -302,7 +309,7 @@ def test_public_api_actor_never_resolves_rbac(fake_authz):
         email="api-client-x@hermes.internal",
         is_admin=False,
         allow_rbac_resolution=False,
-    )
+    tenant_id=TEST_TENANT_ID)
     assert user_permissions(synthesized) == frozenset()
     assert user_has(synthesized, Perm.TASKS_ADMIN) is False
 
@@ -325,7 +332,7 @@ def test_is_task_admin_false_for_synthesized_actor(fake_authz):
     synthesized = CurrentUser(
         id=bound, email="api-client-y@hermes.internal",
         is_admin=False, allow_rbac_resolution=False,
-    )
+    tenant_id=TEST_TENANT_ID)
     assert is_task_admin(synthesized) is False
 
 
@@ -342,7 +349,7 @@ def test_synthesized_actor_uses_bound_users_operational_perms(fake_authz):
     synthesized = CurrentUser(
         id=bound, email="api-client-z@hermes.internal",
         is_admin=False, allow_rbac_resolution=False,
-    )
+    tenant_id=TEST_TENANT_ID)
     # Operasyonel yetenekler bagli kullanicidan gelir…
     assert can_access(None, synthesized, "task") is True
     assert can_assign(None, synthesized, "task") is True
@@ -354,6 +361,6 @@ def test_synthesized_actor_uses_bound_users_operational_perms(fake_authz):
     actor2 = CurrentUser(
         id=only_admin, email="api-client-q@hermes.internal",
         is_admin=False, allow_rbac_resolution=False,
-    )
+    tenant_id=TEST_TENANT_ID)
     assert can_access(None, actor2, "task") is False
     assert can_assign(None, actor2, "task") is False

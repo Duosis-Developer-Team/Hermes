@@ -12,10 +12,11 @@ from sqlalchemy import Column, String, Date, DateTime, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
+from .mixins import TenantOwnedMixin
 from ..database import Base
 
 
-class PlanTime(Base):
+class PlanTime(TenantOwnedMixin, Base):
     """
     Planlı Zaman Olayı modeli.
 
@@ -91,7 +92,7 @@ class PlanTime(Base):
         return f"<PlanTime(id={self.id}, project_id={self.project_id}, start={self.start_date})>"
 
 
-class PlanTimeAssignment(Base):
+class PlanTimeAssignment(TenantOwnedMixin, Base):
     """
     Kullanıcı başına plan time atama ve statü modeli.
 

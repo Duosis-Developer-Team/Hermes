@@ -32,10 +32,11 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
+from .mixins import TenantOwnedMixin
 from ..database import Base
 
 
-class ApiClient(Base):
+class ApiClient(TenantOwnedMixin, Base):
     """Dis entegrasyon istemcisi (service account veya user-bound).
 
     Izin modeli iki katmandir ve IKISI de client uzerinde yasar:
@@ -107,7 +108,7 @@ class ApiClient(Base):
     )
 
 
-class ApiToken(Base):
+class ApiToken(TenantOwnedMixin, Base):
     """API token credential'i. Plaintext token ("hms_env_...") YALNIZCA
     olusturma/rotate aninda bir kez gosterilir; burada yalnizca SHA-256
     hex hash'i ve gosterim icin prefix saklanir (amendment #2: indexed
@@ -152,7 +153,7 @@ class ApiToken(Base):
     )
 
 
-class ApiClientAccess(Base):
+class ApiClientAccess(TenantOwnedMixin, Base):
     """Object-level veri erisim binding'i. Satirlar UNION olusturur.
 
     Kurallar (amendment #5/#6 — service + schema katmaninda da dogrulanir):
@@ -206,7 +207,7 @@ class ApiClientAccess(Base):
     )
 
 
-class ApiRequestLog(Base):
+class ApiRequestLog(TenantOwnedMixin, Base):
     """Public API istek audit kaydi. Istek/yanit GOVDESI, Authorization
     header'i veya token degeri ASLA yazilmaz (amendment #10)."""
 
@@ -236,7 +237,7 @@ class ApiRequestLog(Base):
     )
 
 
-class ApiIdempotencyKey(Base):
+class ApiIdempotencyKey(TenantOwnedMixin, Base):
     """Public API POST idempotency kaydi (rezervasyon deseni).
 
     Akis: is mantigi CALISMADAN once (client_id, key) satiri INSERT edilir
@@ -280,7 +281,7 @@ class ApiIdempotencyKey(Base):
     )
 
 
-class ApiCleanupRun(Base):
+class ApiCleanupRun(TenantOwnedMixin, Base):
     """Stage 3F operasyonel temizlik kaydi. Admin panelinde "son temizlik"
     gorunurlugu buradan okunur. SANITIZE edilmis: SQL detayi, satir
     icerigi veya hata mesaji TASIMAZ — yalnizca sayilar + hata SINIFI."""

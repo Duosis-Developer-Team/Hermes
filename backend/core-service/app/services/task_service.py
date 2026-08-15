@@ -287,13 +287,15 @@ _RBAC_CODE = {
 }
 
 
-def _rbac_perms_for(user_id) -> frozenset:
-    """Kullanicinin efektif RBAC izinleri (S2S + 60 sn cache).
+def _rbac_perms_for(user_id, *, tenant_id) -> frozenset:
+    """Kullanicinin BU TENANT'taki efektif RBAC izinleri (S2S + cache).
     Fail-closed: cozum yoksa bos kume — yetki ACILMAZ."""
     from . import authz_client
 
     try:
-        return authz_client.effective_permissions(str(user_id))
+        return authz_client.effective_permissions(
+            str(user_id), tenant_id=str(tenant_id)
+        )
     except authz_client.AuthzUnavailable:
         return frozenset()
 
@@ -303,6 +305,7 @@ def _resolve_effective_for_user(
     user_id: UUID,
     *,
     column: str,
+    tenant_id,
     scope: str = "task",
 ) -> bool:
     """Efektif Task/Issue access-assign cozumu — TEK kaynak: RBAC.
@@ -315,7 +318,7 @@ def _resolve_effective_for_user(
       (assignee uygunlugu, fan-out) ve public aktorde admin imasi yoktur.
     `db` parametresi imza uyumu icin durur (legacy cagiran cok).
     """
-    perms = _rbac_perms_for(user_id)
+    perms = _rbac_perms_for(user_id, tenant_id=tenant_id)
     code = _RBAC_CODE[(scope, column)]
     if code not in perms:
         return False
@@ -330,7 +333,8 @@ def can_access(db: Session, user: CurrentUser, scope: str = "task") -> bool:
     if is_task_admin(user):
         return True
     return _resolve_effective_for_user(
-        db, UUID(user.id), column="access", scope=scope
+        db, UUID(user.id), column="access", scope=scope,
+        tenant_id=user.tenant_id,
     )
 
 
@@ -344,7 +348,8 @@ def can_assign(db: Session, user: CurrentUser, scope: str = "task") -> bool:
     if is_task_admin(user):
         return True
     return _resolve_effective_for_user(
-        db, UUID(user.id), column="assign", scope=scope
+        db, UUID(user.id), column="assign", scope=scope,
+        tenant_id=user.tenant_id,
     )
 
 
@@ -358,28 +363,36 @@ def can_assign_tasks(db: Session, user: CurrentUser) -> bool:
     return can_assign(db, user, "task")
 
 
-def user_has_access(db: Session, user_id: UUID, scope: str = "task") -> bool:
+def user_has_access(
+    db: Session, user_id: UUID, scope: str = "task", *, tenant_id
+) -> bool:
     """Effective access resolver for a raw UUID in `scope`. Used by the
     assignee-side validation (group fan-out filter, assignee eligibility).
     The admin-role shortcut isn't available here (no CurrentUser); admins
     still resolve True via their bootstrapped direct row.
     """
-    return _resolve_effective_for_user(db, user_id, column="access", scope=scope)
+    return _resolve_effective_for_user(
+        db, user_id, column="access", scope=scope, tenant_id=tenant_id
+    )
 
 
-def user_has_assign(db: Session, user_id: UUID, scope: str = "task") -> bool:
+def user_has_assign(
+    db: Session, user_id: UUID, scope: str = "task", *, tenant_id
+) -> bool:
     """Effective assign resolver for an arbitrary user_id in `scope`."""
-    return _resolve_effective_for_user(db, user_id, column="assign", scope=scope)
+    return _resolve_effective_for_user(
+        db, user_id, column="assign", scope=scope, tenant_id=tenant_id
+    )
 
 
-def user_has_task_access(db: Session, user_id: UUID) -> bool:
+def user_has_task_access(db: Session, user_id: UUID, *, tenant_id) -> bool:
     """Task-scope wrapper (back-compat)."""
-    return user_has_access(db, user_id, "task")
+    return user_has_access(db, user_id, "task", tenant_id=tenant_id)
 
 
-def user_has_task_assign(db: Session, user_id: UUID) -> bool:
+def user_has_task_assign(db: Session, user_id: UUID, *, tenant_id) -> bool:
     """Task-scope wrapper (back-compat)."""
-    return user_has_assign(db, user_id, "task")
+    return user_has_assign(db, user_id, "task", tenant_id=tenant_id)
 
 
 def get_assignable_user_ids(
@@ -1108,7 +1121,9 @@ def _validate_assignment(
             detail="You are not allowed to assign to this user.",
         )
 
-    if not user_has_access(db, assignee_user_id, scope):
+    if not user_has_access(
+        db, assignee_user_id, scope, tenant_id=user.tenant_id
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Selected assignee does not have access to this work item type.",
@@ -1545,7 +1560,7 @@ def create_tasks_for_group(
 
     try:
         perm_map = _authz.effective_permissions_many(
-            [str(u) for u in candidate_ids]
+            [str(u) for u in candidate_ids], tenant_id=user.tenant_id
         )
     except _authz.AuthzUnavailable:
         perm_map = {}
@@ -1668,7 +1683,9 @@ def create_tasks_bulk(
             str(u) for u in get_active_group_member_ids(db, _gid)
         )
     try:
-        perm_map = _authz.effective_permissions_many(list(warm_ids))
+        perm_map = _authz.effective_permissions_many(
+            list(warm_ids), tenant_id=user.tenant_id
+        )
     except _authz.AuthzUnavailable:
         perm_map = {}
     access_code = _RBAC_CODE[(scope, "access")]
@@ -1914,7 +1931,7 @@ def update_task(
                 )
             target_assignee = data.assignee_user_id or task.assignee_user_id
             if target_assignee and not user_has_access(
-                db, target_assignee, new_scope
+                db, target_assignee, new_scope, tenant_id=user.tenant_id
             ):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,

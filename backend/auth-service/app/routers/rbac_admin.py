@@ -107,8 +107,12 @@ def my_permissions(
 ):
     """Cagiran kullanicinin efektif izinleri + rolleri. Frontend boot'ta
     ve reporting-service yetki cozumunde kullanilir. JWT yeterli."""
-    perms = svc.effective_permissions(db, current_user.id)
-    roles = svc.user_role_rows(db, UUID(current_user.id))
+    perms = svc.effective_permissions(
+        db, current_user.id, tenant_id=current_user.tenant_id
+    )
+    roles = svc.user_role_rows(
+        db, UUID(current_user.id), tenant_id=current_user.tenant_id
+    )
     return {
         "permissions": sorted(perms),
         "roles": [
@@ -153,15 +157,18 @@ def create_role(
 ):
     svc.validate_role_code(payload.code)
     perms = svc.validate_permission_codes(payload.permissions)
-    actor_perms = svc.effective_permissions(db, actor.id)
+    actor_perms = svc.effective_permissions(db, actor.id, tenant_id=actor.tenant_id)
     svc.enforce_subset_rule(actor_perms, perms, action="grant")
 
-    if svc.get_role_by_code(db, payload.code) is not None:
+    if svc.get_role_by_code(db, payload.code, tenant_id=actor.tenant_id) is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Role code '{payload.code}' already exists.",
         )
     role = RbacRole(
+        # Rol, aktorun DOGRULANMIS tenant'ina yazilir; govdeden tenant
+        # kabul edilmez.
+        tenant_id=actor.tenant_id,
         code=payload.code,
         name=payload.name,
         description=payload.description,
@@ -225,7 +232,7 @@ def update_role(
 
     if payload.permissions is not None:
         perms = svc.validate_permission_codes(payload.permissions)
-        actor_perms = svc.effective_permissions(db, actor.id)
+        actor_perms = svc.effective_permissions(db, actor.id, tenant_id=actor.tenant_id)
         # Subset kurali YENI EKLENEN izinlere uygulanir: aktorun sahip
         # olmadigi mevcut bir izni role birakmasi serbest (dokunmuyor),
         # ama eklemesi yasak.
@@ -281,12 +288,12 @@ def get_user_roles(
 ):
     if db.query(User).filter(User.id == user_id).first() is None:
         raise HTTPException(status_code=404, detail="User not found.")
-    roles = svc.user_role_rows(db, user_id)
+    roles = svc.user_role_rows(db, user_id, tenant_id=actor.tenant_id)
     return {
         "user_id": str(user_id),
         "roles": [_role_out(r) for r in roles],
         "effective_permissions": sorted(
-            svc.effective_permissions(db, user_id)
+            svc.effective_permissions(db, user_id, tenant_id=actor.tenant_id)
         ),
     }
 
@@ -302,19 +309,20 @@ def put_user_roles(
 ):
     """Rol kumesini REPLACE eder. Subset kurali + son-admin kilidi +
     yalnizca-aktif-rol kurallari rbac_service.set_user_roles icinde."""
-    actor_perms = svc.effective_permissions(db, actor.id)
+    actor_perms = svc.effective_permissions(db, actor.id, tenant_id=actor.tenant_id)
     roles = svc.set_user_roles(
         db,
         target_user_id=user_id,
         role_ids=payload.role_ids,
         actor=actor,
         actor_perms=actor_perms,
+        tenant_id=actor.tenant_id,
     )
     db.commit()
     return {
         "user_id": str(user_id),
         "roles": [_role_out(r) for r in roles],
         "effective_permissions": sorted(
-            svc.effective_permissions(db, user_id)
+            svc.effective_permissions(db, user_id, tenant_id=actor.tenant_id)
         ),
     }

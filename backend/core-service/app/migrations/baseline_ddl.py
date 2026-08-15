@@ -411,7 +411,34 @@ def apply_tenant_projection(conn) -> None:
     )
 
 
+def apply_tenant_expand(conn) -> None:
+    """Tenant-owned tablolara NULLABLE `tenant_id` + index (0003).
+
+    Tablo listesi ELLE TUTULMAZ: `TenantOwnedMixin` tasiyan siniflardan
+    turetilir (app/models/mixins.py). Yeni bir tenant tablosu sessizce
+    kapsam disi kalamaz.
+
+    NULLABLE olmasi expand fazinin gereğidir: mevcut satirlarin tenant'i
+    henuz bilinmiyor (backfill 0004, NOT NULL 0005).
+    """
+    from app.models.mixins import tenant_owned_tables
+
+    for table in tenant_owned_tables():
+        conn.execute(text(
+            f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS tenant_id UUID"
+        ))
+        conn.execute(text(
+            f"CREATE INDEX IF NOT EXISTS idx_{table}_tenant "
+            f"ON {table}(tenant_id)"
+        ))
+
+
 def apply_all(conn) -> None:
-    """Testler icin: bugunku head semasinin tamami."""
+    """Testler icin: bugunku head semasinin tamami.
+
+    DIKKAT: duz create_all YETMEZ — MEVCUT bir test veritabanina eksik
+    KOLON eklemez. Expand ifadeleri bu yuzden acikca kosulur.
+    """
     apply_baseline(conn)
     apply_tenant_projection(conn)
+    apply_tenant_expand(conn)

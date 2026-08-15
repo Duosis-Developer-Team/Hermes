@@ -33,8 +33,11 @@ _client_factory: Callable[[], httpx.Client] = lambda: httpx.Client(
     timeout=_TIMEOUT
 )
 
-# user_id(str) -> (expires_monotonic, frozenset(permissions))
-_cache: Dict[str, Tuple[float, frozenset]] = {}
+# WS3 — cache anahtari (tenant_id, user_id). Yalnizca user_id ile
+# anahtarlamak, ayni kimligin A'daki izinlerinin B'de servis edilmesi
+# demekti (bir kullanici A'da admin, B'de member olabilir).
+# (tenant_id, user_id) -> (expires_monotonic, frozenset(permissions))
+_cache: Dict[Tuple[str, str], Tuple[float, frozenset]] = {}
 _CACHE_MAX = 5000
 
 
@@ -60,11 +63,17 @@ def _get_client() -> httpx.Client:
     return _client
 
 
-def effective_permissions(user_id: str) -> frozenset:
-    """Kullanicinin efektif RBAC izinleri (S2S, 60 sn cache)."""
+def effective_permissions(user_id: str, *, tenant_id: str) -> frozenset:
+    """Kullanicinin BIR TENANT ICINDEKI efektif RBAC izinleri.
+
+    S2S, 60 sn cache. `tenant_id` zorunludur ve cache anahtarinin
+    parcasidir.
+    """
     uid = str(user_id)
+    tid = str(tenant_id)
+    key = (tid, uid)
     now = time.monotonic()
-    hit = _cache.get(uid)
+    hit = _cache.get(key)
     if hit and hit[0] > now:
         return hit[1]
 
@@ -76,7 +85,7 @@ def effective_permissions(user_id: str) -> frozenset:
     try:
         resp = _get_client().post(
             f"{auth_service_base_url()}/internal/authz/resolve",
-            json={"user_ids": [uid]},
+            json={"tenant_id": tid, "user_ids": [uid]},
             headers={"Authorization": f"Bearer {token}"},
         )
     except Exception as exc:  # noqa: BLE001 — fail closed
@@ -87,29 +96,40 @@ def effective_permissions(user_id: str) -> frozenset:
         logger.warning("authz resolve status=%s", resp.status_code)
         raise AuthzUnavailable(f"status {resp.status_code}")
 
+    body = resp.json()
+    # Auth, cozdugu tenant'i TEKRARLAR. Uyusmazsa yanit BASKA bir
+    # tenant'a aittir — cache'lemek yerine fail-closed davraniyoruz.
+    echoed = str(body.get("tenant_id") or "")
+    if echoed and echoed != tid:
+        logger.warning("authz resolve tenant mismatch")
+        raise AuthzUnavailable("tenant mismatch")
+
     perms: frozenset = frozenset()
-    for u in resp.json().get("users") or []:
+    for u in body.get("users") or []:
         if str(u.get("id")) == uid:
             perms = frozenset(u.get("permissions") or [])
 
     if len(_cache) >= _CACHE_MAX:
         _cache.clear()  # basit sinir — dogruluk auth'ta
-    _cache[uid] = (now + POSITIVE_TTL_SECONDS, perms)
+    _cache[key] = (now + POSITIVE_TTL_SECONDS, perms)
     return perms
 
 
-def effective_permissions_many(user_ids) -> Dict[str, frozenset]:
+def effective_permissions_many(
+    user_ids, *, tenant_id: str
+) -> Dict[str, frozenset]:
     """Batch cozum: tek /internal/authz/resolve cagrisiyla birden fazla
     kullanicinin izinlerini getirir ve cache'i doldurur. Fan-out gibi
     N kullaniciyi arka arkaya soracak yerler icin — N+1 S2S YOK.
 
     Cache'te taze olanlar istege dahil edilmez. Basarisizlik →
     AuthzUnavailable (fail-closed; cagiran karar noktasi bilir)."""
+    tid = str(tenant_id)
     now = time.monotonic()
     out: Dict[str, frozenset] = {}
     missing = []
     for uid in dict.fromkeys(str(u) for u in user_ids):
-        hit = _cache.get(uid)
+        hit = _cache.get((tid, uid))
         if hit and hit[0] > now:
             out[uid] = hit[1]
         else:
@@ -128,7 +148,7 @@ def effective_permissions_many(user_ids) -> Dict[str, frozenset]:
         try:
             resp = _get_client().post(
                 f"{auth_service_base_url()}/internal/authz/resolve",
-                json={"user_ids": chunk},
+                json={"tenant_id": tid, "user_ids": chunk},
                 headers={"Authorization": f"Bearer {token}"},
             )
         except Exception as exc:  # noqa: BLE001 — fail closed
@@ -138,14 +158,19 @@ def effective_permissions_many(user_ids) -> Dict[str, frozenset]:
         if resp.status_code != 200:
             logger.warning("authz batch resolve status=%s", resp.status_code)
             raise AuthzUnavailable(f"status {resp.status_code}")
+        body = resp.json()
+        echoed = str(body.get("tenant_id") or "")
+        if echoed and echoed != tid:
+            logger.warning("authz batch resolve tenant mismatch")
+            raise AuthzUnavailable("tenant mismatch")
         got = {
             str(u.get("id")): frozenset(u.get("permissions") or [])
-            for u in resp.json().get("users") or []
+            for u in body.get("users") or []
         }
         for uid in chunk:
             perms = got.get(uid, frozenset())
             if len(_cache) >= _CACHE_MAX:
                 _cache.clear()
-            _cache[uid] = (now + POSITIVE_TTL_SECONDS, perms)
+            _cache[(tid, uid)] = (now + POSITIVE_TTL_SECONDS, perms)
             out[uid] = perms
     return out

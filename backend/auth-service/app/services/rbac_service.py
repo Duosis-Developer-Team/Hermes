@@ -65,11 +65,20 @@ _CODE_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$")
 # ── Efektif izin cozumu ────────────────────────────────────────────────
 
 
-def effective_permissions(db: Session, user_id) -> frozenset:
-    """Kullanicinin efektif izinleri: AKTIF kullanicinin AKTIF
-    rollerindeki izinlerin birlesimi ∩ katalog."""
+def effective_permissions(db: Session, user_id, *, tenant_id) -> frozenset:
+    """Kullanicinin BIR TENANT ICINDEKI efektif izinleri.
+
+    Izin = AKTIF kullanicinin, o tenant'ta AKTIF UYELIGININ, o tenant'a
+    ait AKTIF rollerindeki izinlerin birlesimi ∩ katalog.
+
+    `tenant_id` ZORUNLUDUR ve varsayilani YOKTUR: opsiyonel olsaydi
+    cagiranin unuttugu her yerde izinler tenant'lar arasi birlesirdi.
+    Ayni kimlik A'da admin, B'de member olabilir — bu fonksiyon o ayrimi
+    koruyan tek noktadir.
+    """
     try:
         uid = UUID(str(user_id))
+        tid = UUID(str(tenant_id))
     except (ValueError, TypeError):
         return frozenset()
 
@@ -79,11 +88,20 @@ def effective_permissions(db: Session, user_id) -> frozenset:
     if not active:
         return frozenset()  # bilinmeyen veya pasif kullanici → bos
 
+    # Uyelik aktif degilse rol atamasi olsa BILE izin yok: tenant'tan
+    # cikarilmis bir kullanicinin rolleri temizlenmemis olabilir.
+    from .membership_service import get_active_membership
+
+    if get_active_membership(db, tenant_id=tid, user_id=uid) is None:
+        return frozenset()
+
     rows = (
         db.query(RbacRole.permissions)
         .join(RbacUserRole, RbacUserRole.role_id == RbacRole.id)
         .filter(
             RbacUserRole.user_id == uid,
+            RbacUserRole.tenant_id == tid,
+            RbacRole.tenant_id == tid,
             RbacRole.is_active.is_(True),
         )
         .all()
@@ -94,13 +112,16 @@ def effective_permissions(db: Session, user_id) -> frozenset:
     return frozenset(perms & set(ALL_PERMISSIONS))
 
 
-def user_role_rows(db: Session, user_id: UUID):
-    """Kullanicinin rol atamalari (pasif roller isaretli gelsin diye
-    filtrelemeden doner; efektif hesap ayri)."""
+def user_role_rows(db: Session, user_id: UUID, *, tenant_id):
+    """Kullanicinin BU TENANT'taki rol atamalari (pasif roller isaretli
+    gelsin diye filtrelemeden doner; efektif hesap ayri)."""
     return (
         db.query(RbacRole)
         .join(RbacUserRole, RbacUserRole.role_id == RbacRole.id)
-        .filter(RbacUserRole.user_id == user_id)
+        .filter(
+            RbacUserRole.user_id == user_id,
+            RbacUserRole.tenant_id == tenant_id,
+        )
         .order_by(RbacRole.name.asc())
         .all()
     )
@@ -117,7 +138,10 @@ def require_permissions(*codes: str):
         current_user: CurrentUser = Depends(get_current_user),
         db: Session = Depends(get_db),
     ) -> CurrentUser:
-        perms = effective_permissions(db, current_user.id)
+        # Tenant, DOGRULANMIS token'dan gelir — istekten degil.
+        perms = effective_permissions(
+            db, current_user.id, tenant_id=current_user.tenant_id
+        )
         missing = set(codes) - perms
         if missing:
             raise HTTPException(
@@ -140,7 +164,9 @@ def require_any_permission(*codes: str):
         current_user: CurrentUser = Depends(get_current_user),
         db: Session = Depends(get_db),
     ) -> CurrentUser:
-        perms = effective_permissions(db, current_user.id)
+        perms = effective_permissions(
+            db, current_user.id, tenant_id=current_user.tenant_id
+        )
         if not (set(codes) & perms):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -210,11 +236,15 @@ def enforce_subset_rule(
 
 
 def enforce_last_admin_guard(
-    db: Session, *, losing_user_id: UUID
+    db: Session, *, losing_user_id: UUID, tenant_id
 ) -> None:
-    """Son aktif system-admin'in yetkisi dusurulemez (kilitlenme
-    korumasi — LogiSlot'un LAST_ADMIN deseninden alinan iyi fikir)."""
-    admin_role = get_role_by_code(db, SYSTEM_ADMIN_CODE)
+    """Son aktif system-admin'in yetkisi dusurulemez (kilitlenme koruma).
+
+    WS3: sayim TENANT ICINDE yapilir. Global sayim, B tenant'inda admin
+    olan birinin varligi yuzunden A tenant'inin son admininin
+    dusurulmesine izin verirdi — A kilitlenirdi.
+    """
+    admin_role = get_role_by_code(db, SYSTEM_ADMIN_CODE, tenant_id=tenant_id)
     if admin_role is None:
         return
     others = (
@@ -222,6 +252,7 @@ def enforce_last_admin_guard(
         .join(User, User.id == RbacUserRole.user_id)
         .filter(
             RbacUserRole.role_id == admin_role.id,
+            RbacUserRole.tenant_id == tenant_id,
             RbacUserRole.user_id != losing_user_id,
             User.is_active.is_(True),
         )
@@ -239,14 +270,32 @@ def enforce_last_admin_guard(
 # ── Rol / atama yardimcilari ───────────────────────────────────────────
 
 
-def get_role_by_code(db: Session, code: str) -> Optional[RbacRole]:
-    return db.query(RbacRole).filter(RbacRole.code == code).first()
+def get_role_by_code(
+    db: Session, code: str, *, tenant_id
+) -> Optional[RbacRole]:
+    """Rol kodu artik TENANT ICINDE benzersizdir.
+
+    Her tenant'in kendi `system-admin` satiri vardir; tenant'siz bir
+    arama, baska bir organizasyonun rolunu dondurebilirdi.
+    """
+    return (
+        db.query(RbacRole)
+        .filter(RbacRole.code == code, RbacRole.tenant_id == tenant_id)
+        .first()
+    )
 
 
-def sync_is_admin(db: Session, user_id: UUID) -> None:
-    """users.is_admin'i TURETILMIS degere cek: aktif system-admin
-    atamasi var mi? (Gecis donemi uyumlulugu; commit CAGIRANA aittir.)"""
-    admin_role = get_role_by_code(db, SYSTEM_ADMIN_CODE)
+def sync_is_admin(db: Session, user_id: UUID, *, tenant_id) -> None:
+    """users.is_admin'i TURETILMIS degere cek (gecis donemi uyumlulugu).
+
+    DIKKAT — coklu tenant'ta bu sutun ARTIK ANLAMLI DEGILDIR: "hangi
+    tenant'ta admin?" sorusunun tek bir bool cevabi yoktur. Sutun
+    yalnizca eski token/ekranlarin bozulmamasi icin yasar ve HICBIR
+    yetki karari onu okumaz. Deger, verilen tenant'taki system-admin
+    atamasindan turetilir; kullanicinin BASKA bir tenant'taki admin
+    olusu bu tenant'ta hicbir sey ifade etmez.
+    """
+    admin_role = get_role_by_code(db, SYSTEM_ADMIN_CODE, tenant_id=tenant_id)
     has_admin = False
     if admin_role is not None and admin_role.is_active:
         has_admin = (
@@ -254,6 +303,7 @@ def sync_is_admin(db: Session, user_id: UUID) -> None:
             .filter(
                 RbacUserRole.user_id == user_id,
                 RbacUserRole.role_id == admin_role.id,
+                RbacUserRole.tenant_id == tenant_id,
             )
             .count()
             > 0
@@ -270,6 +320,7 @@ def set_user_roles(
     role_ids: Sequence[UUID],
     actor: CurrentUser,
     actor_perms: frozenset,
+    tenant_id,
 ) -> list:
     """Kullanicinin rol kumesini REPLACE eder (LogiSlot deseni: delta
     degil tam kume). Kurallar: yalnizca aktif roller atanabilir; subset
@@ -279,9 +330,23 @@ def set_user_roles(
     if target is None:
         raise HTTPException(status_code=404, detail="User not found.")
 
+    # Hedefin BU tenant'ta aktif uyeligi olmali: baska bir
+    # organizasyonun kullanicisina rol atanamaz.
+    from .membership_service import get_active_membership
+
+    if get_active_membership(
+        db, tenant_id=tenant_id, user_id=target_user_id
+    ) is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+
     unique_ids = list(dict.fromkeys(role_ids or []))
     roles = (
-        db.query(RbacRole).filter(RbacRole.id.in_(unique_ids)).all()
+        # Rol de AYNI tenant'a ait olmali — baska tenant'in rol UUID'si
+        # gonderilse bile "bilinmeyen rol" olarak reddedilir.
+        db.query(RbacRole)
+        .filter(RbacRole.id.in_(unique_ids),
+                RbacRole.tenant_id == tenant_id)
+        .all()
         if unique_ids
         else []
     )
@@ -312,44 +377,51 @@ def set_user_roles(
 
     # Son-admin kilidi: bu replace, hedeften system-admin'i dusuruyorsa
     # ve hedef son aktif admin ise engelle.
-    admin_role = get_role_by_code(db, SYSTEM_ADMIN_CODE)
+    admin_role = get_role_by_code(db, SYSTEM_ADMIN_CODE, tenant_id=tenant_id)
     if admin_role is not None:
         had = (
             db.query(RbacUserRole)
             .filter(
                 RbacUserRole.user_id == target_user_id,
                 RbacUserRole.role_id == admin_role.id,
+                RbacUserRole.tenant_id == tenant_id,
             )
             .count()
             > 0
         )
         keeps = admin_role.id in by_id
         if had and not keeps:
-            enforce_last_admin_guard(db, losing_user_id=target_user_id)
+            enforce_last_admin_guard(
+                db, losing_user_id=target_user_id, tenant_id=tenant_id
+            )
 
+    # SILME de tenant sinirlidir: kullanicinin DIGER tenant'lardaki
+    # rolleri bu islemden etkilenmemeli.
     db.query(RbacUserRole).filter(
-        RbacUserRole.user_id == target_user_id
+        RbacUserRole.user_id == target_user_id,
+        RbacUserRole.tenant_id == tenant_id,
     ).delete(synchronize_session=False)
     for rid in unique_ids:
         db.add(
             RbacUserRole(
                 user_id=target_user_id,
                 role_id=rid,
+                tenant_id=tenant_id,
                 created_by=UUID(actor.id),
             )
         )
     db.flush()
-    sync_is_admin(db, target_user_id)
+    sync_is_admin(db, target_user_id, tenant_id=tenant_id)
     return [by_id[i] for i in unique_ids]
 
 
 def sync_admin_role_from_legacy_flag(
-    db: Session, *, user_id: UUID, is_admin: bool
+    db: Session, *, user_id: UUID, is_admin: bool, tenant_id
 ) -> None:
     """GECIS KOPRUSU: eski kullanici-yonetimi yollari (PUT /users/{id}
     is_admin=...) rol atamasina cevrilir — tek dogruluk kaynagi ROL kalir.
     is_admin=False son aktif admin'i dusurecekse 409. Commit cagirana."""
-    admin_role = get_role_by_code(db, SYSTEM_ADMIN_CODE)
+    admin_role = get_role_by_code(db, SYSTEM_ADMIN_CODE, tenant_id=tenant_id)
     if admin_role is None:  # bootstrap henuz kosmadiysa sessiz gecis
         return
     existing = (
@@ -357,37 +429,45 @@ def sync_admin_role_from_legacy_flag(
         .filter(
             RbacUserRole.user_id == user_id,
             RbacUserRole.role_id == admin_role.id,
+            RbacUserRole.tenant_id == tenant_id,
         )
         .first()
     )
     if is_admin and existing is None:
-        db.add(RbacUserRole(user_id=user_id, role_id=admin_role.id))
+        db.add(RbacUserRole(user_id=user_id, role_id=admin_role.id,
+                            tenant_id=tenant_id))
     elif not is_admin and existing is not None:
-        enforce_last_admin_guard(db, losing_user_id=user_id)
+        enforce_last_admin_guard(
+            db, losing_user_id=user_id, tenant_id=tenant_id
+        )
         db.delete(existing)
     db.flush()
-    sync_is_admin(db, user_id)
+    sync_is_admin(db, user_id, tenant_id=tenant_id)
 
 
 # ── Startup bootstrap (idempotent) ─────────────────────────────────────
 
 
-def bootstrap(db: Session) -> None:
-    """Her startup'ta kosar; yeniden kosmak guvenlidir.
+def bootstrap_tenant(db: Session, *, tenant_id) -> None:
+    """TEK BIR TENANT'in sistem rollerini kurar/senkronlar (idempotent).
+
+    Her tenant kendi rol kumesine sahiptir; `system-admin` artik "global
+    Hermes yoneticisi" degil, O TENANT'IN yoneticisidir. Platform Super
+    Admin bambaska bir duzlemdir (`platform_admins`).
 
     1. system-admin rolu: yoksa yarat; VARSA izinlerini kataloga esitle —
        kataloga eklenen yeni izin, elle data-migration YAZILMADAN bir
-       sonraki deploy'da admin'lere otomatik yayilir (LogiSlot'un
-       aebbb08f3bd8 migration'ina ihtiyac birakan zaafin cozumu).
-    2. member rolu: bos taban sablonu (kilitli degil; silinirse yeniden
-       olusur — bilincli, dokumante davranis).
-    3. is_admin=True olan her kullaniciya system-admin atamasi (gecis
-       gunu kimsenin yetkisi degismez).
-    4. is_admin sutunlarini turetilmis degere senkronla.
+       sonraki deploy'da o tenant'in admin'lerine yayilir.
+    2. member rolu: bos taban sablonu (silinirse yeniden olusur).
+    3. Komponent roller (task/issue access-assign) yoksa yaratilir.
+    4. Bu tenant'in uyeleri icin is_admin sutunu turetilir.
+
+    Commit CAGIRANA aittir.
     """
-    admin_role = get_role_by_code(db, SYSTEM_ADMIN_CODE)
+    admin_role = get_role_by_code(db, SYSTEM_ADMIN_CODE, tenant_id=tenant_id)
     if admin_role is None:
         admin_role = RbacRole(
+            tenant_id=tenant_id,
             code=SYSTEM_ADMIN_CODE,
             name="System Administrator",
             description=(
@@ -414,9 +494,10 @@ def bootstrap(db: Session) -> None:
         admin_role.is_system = True
         admin_role.is_active = True
 
-    if get_role_by_code(db, MEMBER_CODE) is None:
+    if get_role_by_code(db, MEMBER_CODE, tenant_id=tenant_id) is None:
         db.add(
             RbacRole(
+                tenant_id=tenant_id,
                 code=MEMBER_CODE,
                 name="Member",
                 description=(
@@ -437,9 +518,10 @@ def bootstrap(db: Session) -> None:
     # katalogla senkronlanmaz.
     ensured = 0
     for code, (name, perms) in TASK_COMPONENT_ROLES.items():
-        if get_role_by_code(db, code) is None:
+        if get_role_by_code(db, code, tenant_id=tenant_id) is None:
             db.add(
                 RbacRole(
+                    tenant_id=tenant_id,
                     code=code,
                     name=name,
                     description=(
@@ -458,30 +540,60 @@ def bootstrap(db: Session) -> None:
             "rbac bootstrap: %d task component role(s) created", ensured
         )
 
-    # Legacy admin'lere rol atamasi (idempotent).
+    # Legacy admin'lere rol atamasi (idempotent) — YALNIZCA bu tenant'in
+    # uyeleri icinde. Global bir tarama, baska bir organizasyonun
+    # kullanicisini bu tenant'a admin yapardi.
+    from ..models.tenancy import TenantMembership
+
+    member_ids = [
+        row[0]
+        for row in db.query(TenantMembership.user_id)
+        .filter(TenantMembership.tenant_id == tenant_id).all()
+    ]
     assigned = 0
-    admin_users = (
-        db.query(User).filter(User.is_admin.is_(True)).all()
-    )
-    existing_ids = {
-        row.user_id
-        for row in db.query(RbacUserRole.user_id)
-        .filter(RbacUserRole.role_id == admin_role.id)
-        .all()
-    }
-    for u in admin_users:
-        if u.id not in existing_ids:
-            db.add(RbacUserRole(user_id=u.id, role_id=admin_role.id))
-            assigned += 1
+    if member_ids:
+        admin_users = (
+            db.query(User)
+            .filter(User.is_admin.is_(True), User.id.in_(member_ids))
+            .all()
+        )
+        existing_ids = {
+            row.user_id
+            for row in db.query(RbacUserRole.user_id)
+            .filter(RbacUserRole.role_id == admin_role.id,
+                    RbacUserRole.tenant_id == tenant_id)
+            .all()
+        }
+        for u in admin_users:
+            if u.id not in existing_ids:
+                db.add(RbacUserRole(user_id=u.id, role_id=admin_role.id,
+                                    tenant_id=tenant_id))
+                assigned += 1
     if assigned:
         logger.info(
             "rbac bootstrap: system-admin assigned to %d legacy "
-            "admin(s)", assigned
+            "admin(s) in tenant %s", assigned, tenant_id
         )
     db.flush()
 
     # is_admin sutununu tureterek senkronla (rol → sutun yonu).
-    for u in db.query(User).all():
-        sync_is_admin(db, u.id)
+    for uid in member_ids:
+        sync_is_admin(db, uid, tenant_id=tenant_id)
 
+
+def bootstrap(db: Session) -> None:
+    """Startup bootstrap: TUM tenant'lar icin sistem rollerini kurar.
+
+    Yeni bir tenant'in rolleri normalde provisioning saga'sinda kurulur;
+    bu fonksiyon, katalog degistiginde mevcut tenant'lari da guncelleyen
+    idempotent guvenlik agidir.
+    """
+    from ..models.tenancy import Tenant
+
+    tenant_ids = [row[0] for row in db.query(Tenant.id).all()]
+    for tenant_id in tenant_ids:
+        bootstrap_tenant(db, tenant_id=tenant_id)
     db.commit()
+    if tenant_ids:
+        logger.info("rbac bootstrap: %d tenant senkronlandi",
+                    len(tenant_ids))

@@ -25,6 +25,9 @@ from app.models.task import Task
 from app.models.work_type import WorkType
 from app.models.work_log import WorkLog
 
+# WS3: CurrentUser artik tenant baglami ZORUNLU tasir.
+TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
+
 ADMIN = uuid.UUID("00000000-0000-4000-8000-00000000e001")
 ASSIGNER = uuid.UUID("00000000-0000-4000-8000-00000000e002")
 WORKER = uuid.UUID("00000000-0000-4000-8000-00000000e003")
@@ -59,7 +62,7 @@ def http(world, pg_session):
         app.dependency_overrides[get_current_user] = lambda: CurrentUser(
             id=str(user_id), email=f"{user_id}@x.com", full_name="U",
             is_admin=False,
-        )
+        tenant_id=TEST_TENANT_ID)
         return TestClient(app, raise_server_exceptions=False)
 
     yield _as

@@ -21,10 +21,11 @@ from sqlalchemy import Column, String, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
+from .mixins import TenantOwnedMixin
 from ..database import Base
 
 
-class WorkType(Base):
+class WorkType(TenantOwnedMixin, Base):
     """
     İş Tipi modeli.
     

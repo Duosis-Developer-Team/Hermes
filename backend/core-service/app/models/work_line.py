@@ -7,10 +7,11 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 
+from .mixins import TenantOwnedMixin
 from ..database import Base
 
 
-class WorkLine(Base):
+class WorkLine(TenantOwnedMixin, Base):
     """Work Line modeli - work log seçeneklerinden biri"""
     
     __tablename__ = "work_lines"

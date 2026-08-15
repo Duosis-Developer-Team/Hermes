@@ -24,10 +24,11 @@ from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
+from .mixins import TenantOwnedMixin
 from ..database import Base
 
 
-class Project(Base):
+class Project(TenantOwnedMixin, Base):
     """
     Proje/Ürün modeli.
     

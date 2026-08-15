@@ -20,6 +20,9 @@ from app.services import rbac_service as svc
 
 from .conftest import S2S_CURRENT
 
+# WS3: CurrentUser artik tenant baglami ZORUNLU tasir.
+TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
+
 BACKFILL = "/internal/authz/task-backfill"
 
 
@@ -47,10 +50,40 @@ def test_assign_with_access_accepted():
     )
 
 
+def _ensure_tenant(s):
+    """Test tenant'ini garanti eder (idempotent).
+
+    WS3: RBAC cozumu (tenant, uyelik) uzerinden gecer.
+    """
+    from sqlalchemy import text as _t
+
+    s.execute(_t(
+        "INSERT INTO tenants (id, slug, display_name, status, "
+        "default_locale, timezone, placement_mode, placement_key, "
+        "version, created_at, updated_at) VALUES "
+        "(CAST(:id AS uuid), 'test-tenant', 'Test Tenant', 'active', "
+        "'tr-TR', 'Europe/Istanbul', 'shared', 'shared-default', 1, "
+        "now(), now()) ON CONFLICT (id) DO NOTHING"
+    ), {"id": TEST_TENANT_ID})
+    s.commit()
+
+
+def _add_membership(s, user_id):
+    from app.models.tenancy import TenantMembership
+
+    s.add(TenantMembership(
+        tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=user_id,
+        status="active",
+    ))
+    s.commit()
+
+
+
 def test_role_create_endpoint_enforces_dependency(auth_http, pg_session,
                                                   monkeypatch):
     """Gercek rol yazim ucu da 422 doner (sadece servis degil)."""
-    svc.bootstrap(pg_session)
+    _ensure_tenant(pg_session)
+    svc.bootstrap_tenant(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID))
     pg_session.commit()
     admin = User(
         id=uuid.uuid4(), email="admin@x.com", full_name="Admin",
@@ -58,8 +91,11 @@ def test_role_create_endpoint_enforces_dependency(auth_http, pg_session,
     )
     pg_session.add(admin)
     pg_session.commit()
-    role = svc.get_role_by_code(pg_session, svc.SYSTEM_ADMIN_CODE)
-    pg_session.add(RbacUserRole(user_id=admin.id, role_id=role.id))
+    _add_membership(pg_session, admin.id)
+    role = svc.get_role_by_code(pg_session, svc.SYSTEM_ADMIN_CODE, tenant_id=uuid.UUID(TEST_TENANT_ID))
+    pg_session.add(RbacUserRole(
+        user_id=admin.id, role_id=role.id, tenant_id=uuid.UUID(TEST_TENANT_ID)
+    ))
     pg_session.commit()
 
     from shared.auth import CurrentUser, get_current_user
@@ -68,7 +104,7 @@ def test_role_create_endpoint_enforces_dependency(auth_http, pg_session,
 
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id=str(admin.id), email=admin.email, is_admin=True
-    )
+    , tenant_id=TEST_TENANT_ID)
     try:
         r = auth_http.post(
             "/api/v1/auth/rbac/roles",
@@ -88,7 +124,8 @@ def test_role_create_endpoint_enforces_dependency(auth_http, pg_session,
 
 
 def test_bootstrap_creates_component_roles_idempotently(pg_session):
-    svc.bootstrap(pg_session)
+    _ensure_tenant(pg_session)
+    svc.bootstrap_tenant(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID))
     pg_session.commit()
     codes = {
         r.code: r
@@ -108,9 +145,10 @@ def test_bootstrap_creates_component_roles_idempotently(pg_session):
     # Idempotent + admin duzenlemesine saygi: izni degistir, tekrar kos.
     codes["task-access"].permissions = ["tasks.access", "issues.access"]
     pg_session.commit()
-    svc.bootstrap(pg_session)
+    _ensure_tenant(pg_session)
+    svc.bootstrap_tenant(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID))
     pg_session.commit()
-    again = svc.get_role_by_code(pg_session, "task-access")
+    again = svc.get_role_by_code(pg_session, "task-access", tenant_id=uuid.UUID(TEST_TENANT_ID))
     assert sorted(again.permissions) == ["issues.access", "tasks.access"]
     assert (
         pg_session.query(RbacRole)
@@ -128,6 +166,7 @@ def _mk_user(s, email):
              is_admin=False, is_active=True)
     s.add(u)
     s.commit()
+    _add_membership(s, u.id)
     return u
 
 
@@ -137,13 +176,15 @@ def test_backfill_endpoint_is_s2s_guarded(auth_http):
 
 
 def test_backfill_assigns_idempotently(auth_http, pg_session):
-    svc.bootstrap(pg_session)
+    _ensure_tenant(pg_session)
+    svc.bootstrap_tenant(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID))
     pg_session.commit()
     u1 = _mk_user(pg_session, "u1@x.com")
     u2 = _mk_user(pg_session, "u2@x.com")
     ghost = uuid.uuid4()  # DB'de olmayan kullanici
 
     payload = {
+        "tenant_id": TEST_TENANT_ID,
         "assignments": [
             {"user_id": str(u1.id), "role_codes": ["task-assigner"]},
             {"user_id": str(u2.id),
@@ -168,9 +209,9 @@ def test_backfill_assigns_idempotently(auth_http, pg_session):
     assert b2["skipped_existing"] == 3
 
     # Efektif izinler dogru birlesir.
-    perms1 = svc.effective_permissions(pg_session, u1.id)
+    perms1 = svc.effective_permissions(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=u1.id)
     assert {"tasks.access", "tasks.assign"} <= set(perms1)
-    perms2 = svc.effective_permissions(pg_session, u2.id)
+    perms2 = svc.effective_permissions(pg_session, tenant_id=uuid.UUID(TEST_TENANT_ID), user_id=u2.id)
     assert {"tasks.access", "issues.access"} <= set(perms2)
     assert "tasks.assign" not in perms2
 

@@ -51,10 +51,22 @@ def actor_of(ctx: ApiContext) -> CurrentUser:
             "Write operations require a user-bound API client. Service "
             "clients are read-only in v1.",
         )
+    if ctx.client.tenant_id is None:
+        # Tenant'i cozulmemis bir client YAZAMAZ. Backfill'den once
+        # kalmis bir kayit olabilir; "tenant yok" ASLA "tum tenant'lar"
+        # diye yorumlanmaz (fail-closed).
+        raise PublicAPIError(
+            "resource_access_denied",
+            "This API client is not bound to a workspace.",
+        )
     return CurrentUser(
         id=str(ctx.client.bound_user_id),
         email=f"api-client-{ctx.client.id}@hermes.internal",
         is_admin=False,
+        # WS3: tenant, API token KAYDINDAN gelir — istemcinin gonderdigi
+        # hicbir degerden degil. Token zaten tek bir tenant'a baglidir.
+        tenant_id=str(ctx.client.tenant_id),
+        auth_method="api",
         # RBAC R2: sentezlenmis aktor icin izin cozumu YAPILMAZ — bagli
         # kullanici Hermes'te tasks.admin dahi olsa, API token'i uzerinden
         # hicbir RBAC yetkisi akmaz (test kilitli). Public API'nin kendi

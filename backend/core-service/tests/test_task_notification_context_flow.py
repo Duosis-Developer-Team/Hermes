@@ -34,6 +34,9 @@ from app.models.user_group import (
 
 from .public_api.test_stage3a_tasks_read import make_api_client
 
+# WS3: CurrentUser artik tenant baglami ZORUNLU tasir.
+TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
+
 BU = uuid.uuid4()   # atayan
 AS1 = uuid.uuid4()  # dogrudan atanabilir uye
 AS2 = uuid.uuid4()  # dogrudan atanabilir uye (grup DISI — karma senaryo)
@@ -128,7 +131,7 @@ def internal_http(pg_session):
     app.dependency_overrides[get_db] = lambda: pg_session
     app.dependency_overrides[get_current_user] = lambda: CurrentUser(
         id=str(BU), email="assigner@x.com", is_admin=False
-    )
+    , tenant_id=TEST_TENANT_ID)
     c = TestClient(app, raise_server_exceptions=False)
     yield c
     app.dependency_overrides.pop(get_db, None)

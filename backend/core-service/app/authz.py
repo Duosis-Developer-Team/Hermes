@@ -38,7 +38,9 @@ def user_permissions(user: CurrentUser) -> frozenset:
     if not user.allow_rbac_resolution:
         return frozenset()
     try:
-        return authz_client.effective_permissions(user.id)
+        return authz_client.effective_permissions(
+            user.id, tenant_id=user.tenant_id
+        )
     except authz_client.AuthzUnavailable:
         return frozenset()
 
@@ -61,7 +63,9 @@ def require_permissions(*codes: str):
                 detail="You do not have permission to do this.",
             )
         try:
-            perms = authz_client.effective_permissions(current_user.id)
+            perms = authz_client.effective_permissions(
+                current_user.id, tenant_id=current_user.tenant_id
+            )
         except authz_client.AuthzUnavailable:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

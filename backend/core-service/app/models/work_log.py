@@ -29,10 +29,11 @@ from sqlalchemy import Column, BigInteger, String, Date, DateTime, ForeignKey, T
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
+from .mixins import TenantOwnedMixin
 from ..database import Base
 
 
-class WorkLog(Base):
+class WorkLog(TenantOwnedMixin, Base):
     """
     Zaman Girişi / Yapılan İş modeli.
     

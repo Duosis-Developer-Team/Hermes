@@ -31,6 +31,9 @@ MAX_RESOLVE_IDS = 500
 
 
 class ResolvePermissionsRequest(BaseModel):
+    # WS3: tenant ZORUNLU. Opsiyonel olsaydi, tenant'i unutan her cagri
+    # izinleri tenant'lar arasi birlestirirdi.
+    tenant_id: UUID
     user_ids: List[UUID] = Field(..., max_length=MAX_RESOLVE_IDS)
 
 
@@ -40,8 +43,15 @@ def resolve_permissions(
     _: None = Depends(require_s2s),
     db: Session = Depends(get_db),
 ):
-    """Batch kullanici → efektif izin listesi. Siralama girdi sirasi;
-    her istenen id yanitta VARDIR (bilinmeyen/pasif → bos liste)."""
+    """Batch kullanici → BIR TENANT ICINDEKI efektif izin listesi.
+
+    Siralama girdi sirasi; her istenen id yanitta VARDIR (bilinmeyen,
+    pasif VEYA bu tenant'in uyesi olmayan → bos liste). Bos liste
+    donmek, "bu kimlik baska bir tenant'ta var" bilgisini de sizdirmaz.
+
+    Yanit, cagiranin dogrulayabilmesi icin cozulen tenant'i TEKRARLAR
+    (03_TARGET_ARCHITECTURE §5).
+    """
     seen = set()
     users = []
     for uid in payload.user_ids:
@@ -51,10 +61,14 @@ def resolve_permissions(
         users.append(
             {
                 "id": str(uid),
-                "permissions": sorted(effective_permissions(db, uid)),
+                "permissions": sorted(
+                    effective_permissions(
+                        db, uid, tenant_id=payload.tenant_id
+                    )
+                ),
             }
         )
-    return {"users": users}
+    return {"tenant_id": str(payload.tenant_id), "users": users}
 
 
 # =============================================================================
@@ -80,6 +94,9 @@ class TaskBackfillItem(BaseModel):
 
 
 class TaskBackfillRequest(BaseModel):
+    # WS3: backfill de tenant-scoped. Cagiran (core) hangi tenant'in
+    # legacy izinlerini tasidigi ACIKCA soylemek zorundadir.
+    tenant_id: UUID
     assignments: List[TaskBackfillItem] = Field(
         ..., max_length=MAX_BACKFILL_ITEMS
     )
@@ -94,21 +111,35 @@ def task_backfill(
     from ..models.rbac import RbacRole, RbacUserRole
     from ..models.user import User
 
+    from ..models.tenancy import TenantMembership
+
     roles = {
         r.code: r
         for r in db.query(RbacRole)
-        .filter(RbacRole.code.in_(_COMPONENT_CODES))
+        .filter(RbacRole.code.in_(_COMPONENT_CODES),
+                RbacRole.tenant_id == payload.tenant_id)
         .all()
     }
     wanted_users = {i.user_id for i in payload.assignments}
+    # "Bilinen kullanici" = BU TENANT'IN aktif uyesi. Global users
+    # tablosunda var olmak yetmez; aksi halde baska bir organizasyonun
+    # kullanicisina rol atanabilirdi.
     known_users = {
         row[0]
-        for row in db.query(User.id).filter(User.id.in_(wanted_users)).all()
+        for row in db.query(TenantMembership.user_id)
+        .join(User, User.id == TenantMembership.user_id)
+        .filter(
+            TenantMembership.tenant_id == payload.tenant_id,
+            TenantMembership.status == "active",
+            TenantMembership.user_id.in_(wanted_users),
+        )
+        .all()
     }
     existing = {
         (row.user_id, row.role_id)
         for row in db.query(RbacUserRole.user_id, RbacUserRole.role_id)
-        .filter(RbacUserRole.user_id.in_(known_users))
+        .filter(RbacUserRole.user_id.in_(known_users),
+                RbacUserRole.tenant_id == payload.tenant_id)
         .all()
     }
 
@@ -129,7 +160,10 @@ def task_backfill(
             if key in existing:
                 skipped_existing += 1
                 continue
-            db.add(RbacUserRole(user_id=item.user_id, role_id=role.id))
+            db.add(RbacUserRole(
+                user_id=item.user_id, role_id=role.id,
+                tenant_id=payload.tenant_id,
+            ))
             existing.add(key)
             assigned += 1
     db.commit()

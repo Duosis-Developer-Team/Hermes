@@ -14,10 +14,11 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
 
+from .mixins import TenantOwnedMixin
 from ..database import Base
 
 
-class TaskComment(Base):
+class TaskComment(TenantOwnedMixin, Base):
     __tablename__ = "task_comments"
 
     id = Column(

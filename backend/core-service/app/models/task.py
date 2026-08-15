@@ -26,6 +26,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
+from .mixins import TenantOwnedMixin
 from ..database import Base
 
 
@@ -33,7 +34,7 @@ from ..database import Base
 # task_user_permissions
 # =============================================================================
 
-class TaskUserPermission(Base):
+class TaskUserPermission(TenantOwnedMixin, Base):
     """Per-user task module permission flags."""
 
     __tablename__ = "task_user_permissions"
@@ -79,7 +80,7 @@ class TaskUserPermission(Base):
 # task_assignment_relations
 # =============================================================================
 
-class TaskAssignmentRelation(Base):
+class TaskAssignmentRelation(TenantOwnedMixin, Base):
     """Assigner -> assignee mapping (source of truth for non-admin assigners)."""
 
     __tablename__ = "task_assignment_relations"
@@ -127,7 +128,7 @@ class TaskAssignmentRelation(Base):
     )
 
 
-class TaskAssignmentGroupRelation(Base):
+class TaskAssignmentGroupRelation(TenantOwnedMixin, Base):
     """Assigner -> user_group mapping.
 
     When such a relation exists, the assigner can target the group as a
@@ -185,7 +186,7 @@ class TaskAssignmentGroupRelation(Base):
 # task_sub_projects
 # =============================================================================
 
-class TaskSubProject(Base):
+class TaskSubProject(TenantOwnedMixin, Base):
     """Task-only sub project under an existing customer/project pair."""
 
     __tablename__ = "task_sub_projects"
@@ -232,7 +233,7 @@ class TaskSubProject(Base):
 # tasks
 # =============================================================================
 
-class Task(Base):
+class Task(TenantOwnedMixin, Base):
     """Task record — assigned to a user under a customer/project/sub-project."""
 
     __tablename__ = "tasks"
@@ -381,7 +382,7 @@ class Task(Base):
 # task_notification_settings — admin-configurable e-mail rules
 # =============================================================================
 
-class TaskNotificationSetting(Base):
+class TaskNotificationSetting(TenantOwnedMixin, Base):
     """Per work-item-type e-mail notification rules, edited from the admin
     PM Configurations page.
 
@@ -448,7 +449,7 @@ class TaskNotificationSetting(Base):
 # =============================================================================
 # Work item lifecycle policy (global, TEKIL satir)
 # =============================================================================
-class TaskLifecyclePolicy(Base):
+class TaskLifecyclePolicy(TenantOwnedMixin, Base):
     """Otomatik arsiv retention politikasi — Hermes genelinde TEK kayit.
 
     `retention_days`:

@@ -150,8 +150,13 @@ def compute_legacy_mapping(
     return mapping, anomalies
 
 
-def push_to_auth(mapping: Dict[str, List[str]]) -> Dict[str, int]:
-    """Eslemeyi auth-service S2S backfill ucuna parcali gonderir."""
+def push_to_auth(
+    mapping: Dict[str, List[str]], *, tenant_id
+) -> Dict[str, int]:
+    """Eslemeyi auth-service S2S backfill ucuna parcali gonderir.
+
+    WS3: hangi tenant'in legacy izinlerinin tasindigini ACIKCA belirtir.
+    """
     settings = get_settings()
     token = settings.HERMES_S2S_TOKEN_CURRENT
     if not token:
@@ -166,7 +171,10 @@ def push_to_auth(mapping: Dict[str, List[str]]) -> Dict[str, int]:
     for i in range(0, len(items), _CHUNK):
         resp = _get_client().post(
             f"{auth_service_base_url()}/internal/authz/task-backfill",
-            json={"assignments": items[i : i + _CHUNK]},
+            json={
+                "tenant_id": str(tenant_id),
+                "assignments": items[i : i + _CHUNK],
+            },
             headers={"Authorization": f"Bearer {token}"},
         )
         if resp.status_code != 200:
@@ -177,7 +185,7 @@ def push_to_auth(mapping: Dict[str, List[str]]) -> Dict[str, int]:
     return totals
 
 
-def run(db: Session, *, dry_run: bool = True) -> dict:
+def run(db: Session, *, dry_run: bool = True, tenant_id) -> dict:
     """Backfill'i hesaplar; dry_run=False ise auth'a gonderir."""
     mapping, anomalies = compute_legacy_mapping(db)
     summary = {
@@ -188,15 +196,40 @@ def run(db: Session, *, dry_run: bool = True) -> dict:
         "pushed": None,
     }
     if not dry_run and mapping:
-        summary["pushed"] = push_to_auth(mapping)
+        summary["pushed"] = push_to_auth(mapping, tenant_id=tenant_id)
     return summary
 
 
 def run_startup_backfill(db: Session) -> None:
-    """Startup'ta otomatik, idempotent backfill. HICBIR hata yukselmez —
-    deployment yarim kalmaz; sonuc/loga yazilir."""
+    """Startup'ta otomatik, idempotent backfill (tenant basina).
+
+    HICBIR hata yukselmez — deployment yarim kalmaz; sonuc/loga yazilir.
+
+    WS3: legacy PM-izin tablolari artik tenant-owned oldugu icin backfill
+    her tenant icin AYRI kosar. Tenant listesi core'un projeksiyonundan
+    (`tenant_registry`) gelir; auth'a sorulmaz.
+    """
+    from sqlalchemy import text as _t
+
     try:
-        summary = run(db, dry_run=False)
+        tenant_ids = [
+            str(row[0])
+            for row in db.execute(_t(
+                "SELECT tenant_id FROM tenant_registry "
+                "WHERE status IN ('active', 'grace')"
+            )).all()
+        ]
+    except Exception as exc:  # noqa: BLE001 — projeksiyon henuz yoksa
+        logger.warning("rbac backfill skipped (no tenant registry): %s", exc)
+        return
+
+    for tenant_id in tenant_ids:
+        _run_startup_backfill_for_tenant(db, tenant_id)
+
+
+def _run_startup_backfill_for_tenant(db: Session, tenant_id) -> None:
+    try:
+        summary = run(db, dry_run=False, tenant_id=tenant_id)
         logger.info(
             "rbac backfill: users=%d grants=%d pushed=%s anomalies=%d",
             summary["users"],

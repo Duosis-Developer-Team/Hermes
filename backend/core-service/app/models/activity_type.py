@@ -7,10 +7,11 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 
+from .mixins import TenantOwnedMixin
 from ..database import Base
 
 
-class ActivityType(Base):
+class ActivityType(TenantOwnedMixin, Base):
     """Aktivite türü modeli - work log seçeneklerinden biri"""
     
     __tablename__ = "activity_types"

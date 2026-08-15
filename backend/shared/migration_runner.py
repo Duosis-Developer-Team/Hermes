@@ -245,14 +245,51 @@ def main(argv: Optional[list] = None) -> int:
     # bu karisikligi YAPISAL olarak imkansiz kilar.
     import subprocess
 
+    env = dict(os.environ)
     for svc in services:
         result = subprocess.run(
             [sys.executable, "-m", "shared.migration_runner", svc, revision],
             cwd=str(_backend_root()),
+            env=env,
         )
         if result.returncode != 0:
             return result.returncode
+        if svc == "auth":
+            # Ilk tenant'in kimligi auth_db'de URETILIR (0003). core'un
+            # backfill'i ayni degeri kullanmak zorunda — iki veritabani
+            # arasinda tek dogruluk kaynagi budur. Kodda UUID uydurmak
+            # veya core'da ikinci bir tenant uretmek, verinin iki farkli
+            # tenant'a bolunmesi demekti.
+            tenant_id = _read_initial_tenant_id()
+            if tenant_id:
+                env["HERMES_INITIAL_TENANT_ID"] = tenant_id
+                print(f"→ ilk tenant kimligi core'a aktarildi: {tenant_id}",
+                      flush=True)
     return 0
+
+
+def _read_initial_tenant_id() -> Optional[str]:
+    """auth_db'den ilk tenant'in UUID'sini okur (yoksa None)."""
+    from sqlalchemy import create_engine, text
+
+    slug = os.getenv("HERMES_INITIAL_TENANT_SLUG", "duosis")
+    try:
+        url = resolve_database_url("auth")
+    except Exception:  # noqa: BLE001 — ayarlar cozulemezse sessiz gec
+        return None
+
+    engine = create_engine(url, pool_pre_ping=True, future=True)
+    try:
+        with engine.connect() as conn:
+            value = conn.execute(
+                text("SELECT id FROM tenants WHERE slug = :s"),
+                {"s": slug},
+            ).scalar()
+            return str(value) if value else None
+    except Exception:  # noqa: BLE001 — tablo henuz yoksa (eski revizyon)
+        return None
+    finally:
+        engine.dispose()
 
 
 if __name__ == "__main__":  # pragma: no cover — CLI

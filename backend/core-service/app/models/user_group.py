@@ -23,6 +23,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
+from .mixins import TenantOwnedMixin
 from ..database import Base
 
 
@@ -30,7 +31,7 @@ from ..database import Base
 # user_groups
 # =============================================================================
 
-class UserGroup(Base):
+class UserGroup(TenantOwnedMixin, Base):
     """Generic, reusable user grouping (Technical Team, Operations Team, …)."""
 
     __tablename__ = "user_groups"
@@ -74,7 +75,7 @@ class UserGroup(Base):
 # user_group_members
 # =============================================================================
 
-class UserGroupMember(Base):
+class UserGroupMember(TenantOwnedMixin, Base):
     """User membership in a UserGroup with an optional in-group title."""
 
     __tablename__ = "user_group_members"
@@ -116,7 +117,7 @@ class UserGroupMember(Base):
 # task_group_permissions  (per UserGroup task defaults)
 # =============================================================================
 
-class TaskGroupPermission(Base):
+class TaskGroupPermission(TenantOwnedMixin, Base):
     """Per-group task access / assign defaults."""
 
     __tablename__ = "task_group_permissions"
@@ -160,7 +161,7 @@ class TaskGroupPermission(Base):
 # task_group_member_overrides  (tri-state per user × group)
 # =============================================================================
 
-class TaskGroupMemberOverride(Base):
+class TaskGroupMemberOverride(TenantOwnedMixin, Base):
     """Tri-state override of a member's task perm contribution.
 
         NULL  → inherit the group default

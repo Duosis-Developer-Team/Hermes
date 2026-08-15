@@ -12,6 +12,7 @@ from ..models.user import User
 from ..schemas.token import Token
 from ..config import get_settings
 from shared.auth import (
+    TENANT_AUDIENCE,
     verify_password,
     create_access_token,
     hash_password
@@ -45,45 +46,59 @@ class AuthService:
     # Authentication
     # =========================================================================
     
-    def authenticate(self, email: str, password: str) -> Token:
+    def authenticate(self, email: str, password: str, *, tenant) -> Token:
         """
-        Kullanıcıyı e-posta ve şifre ile doğrular.
-        
+        Kullanıcıyı e-posta ve şifre ile, BELIRLI BIR TENANT icinde doğrular.
+
         Args:
             email: Kullanıcı e-posta adresi
             password: Kullanıcı şifresi (plain text)
-        
+            tenant: Istekten SUNUCU TARAFINDA cozulmus ResolvedTenant.
+                Istemci govdesinden gelen hicbir tenant degeri kabul
+                EDILMEZ (aksi halde kullanici hedef organizasyonu kendi
+                secebilirdi).
+
         Returns:
             Token nesnesi (access_token, token_type, expires_in)
-        
+
         Raises:
-            UnauthorizedError: E-posta veya şifre yanlışsa veya kullanıcı pasifse
-        
-        Örnek:
-            try:
-                token = auth_service.authenticate("user@email.com", "pass123")
-                print(f"Token: {token.access_token}")
-            except UnauthorizedError:
-                print("Login başarısız")
+            UnauthorizedError: E-posta/sifre yanlissa, kullanici pasifse
+                VEYA bu tenant'ta aktif uyeligi yoksa.
+
+        Numaralandirma karsiti: dort basarisizlik da AYNI mesaji doner —
+        aksi halde login ucu "bu e-posta bu sirkette var mi?" sorusuna
+        cevap veren bir oracle olurdu.
         """
+        from . import membership_service
+
+        generic_failure = "E-posta veya şifre hatalı"
+
         # Kullanıcıyı e-posta ile bul
         user = self._get_user_by_email(email)
-        
+
         if not user:
-            # Kullanıcı bulunamadı - genel hata mesajı (güvenlik için)
-            raise UnauthorizedError("E-posta veya şifre hatalı")
-        
+            raise UnauthorizedError(generic_failure)
+
         # Kullanıcı aktif mi kontrol et
         if not user.is_active:
-            raise UnauthorizedError("Bu hesap devre dışı bırakılmış")
-        
+            raise UnauthorizedError(generic_failure)
+
         # Şifre doğrulama
         if not verify_password(password, user.hashed_password):
-            raise UnauthorizedError("E-posta veya şifre hatalı")
-        
-        # JWT token oluştur
-        access_token = self._create_token_for_user(user)
-        
+            raise UnauthorizedError(generic_failure)
+
+        # Bu TENANT'ta aktif uyelik sart. Global kimligin var olmasi
+        # tek basina hicbir organizasyona erisim vermez.
+        membership = membership_service.get_active_membership(
+            self.db, tenant_id=tenant.id, user_id=user.id
+        )
+        if membership is None:
+            raise UnauthorizedError(generic_failure)
+
+        access_token = self._create_token_for_user(
+            user, tenant=tenant, membership=membership, auth_method="local"
+        )
+
         return Token(
             access_token=access_token,
             token_type="bearer",
@@ -94,7 +109,16 @@ class AuthService:
                 "full_name": user.full_name,
                 "is_admin": user.is_admin,
                 "is_active": user.is_active
-            }
+            },
+            tenant={
+                "id": tenant.id,
+                "slug": tenant.slug,
+                "display_name": tenant.display_name,
+            },
+            membership={
+                "id": str(membership.id),
+                "status": membership.status,
+            },
         )
     
     # =========================================================================
@@ -113,59 +137,89 @@ class AuthService:
         """
         return self.db.query(User).filter(User.email == email).first()
     
-    def _create_token_for_user(self, user: User) -> str:
+    def _create_token_for_user(
+        self, user: User, *, tenant, membership, auth_method: str = "local"
+    ) -> str:
         """
-        Kullanıcı için JWT token oluşturur.
-        
+        Kullanıcı için TENANT-SCOPED JWT token oluşturur.
+
         Token payload'ı şunları içerir:
-        - user_id: Kullanıcı UUID'si
-        - email: E-posta adresi
-        - is_admin: Admin yetkisi
-        
+        - user_id, email
+        - tenant_id, membership_id  (WS3 — dogrulanmis baglam)
+        - is_admin: YALNIZCA gecis donemi uyumlulugu; hicbir yetki
+          karari bunu okumaz (izinler auth DB'sinden cozulur).
+
+        `aud=hermes-tenant` damgasi shared/auth.py tarafindan basilir;
+        platform oturumlari bu token'i KABUL ETMEZ.
+
         Args:
             user: User nesnesi
-        
+            tenant: ResolvedTenant (sunucu tarafinda cozulmus)
+            membership: TenantMembership (aktif oldugu dogrulanmis)
+            auth_method: local | microsoft
+
         Returns:
             JWT token string
         """
         token_data = {
             "user_id": str(user.id),
             "email": user.email,
-            "is_admin": user.is_admin
+            "is_admin": user.is_admin,
+            "tenant_id": str(tenant.id),
+            "membership_id": str(membership.id),
+            "auth_method": auth_method,
         }
-        
+
         expires_delta = timedelta(minutes=self.settings.JWT_EXPIRE_MINUTES)
-        
-        return create_access_token(data=token_data, expires_delta=expires_delta)
+
+        return create_access_token(
+            data=token_data,
+            expires_delta=expires_delta,
+            audience=TENANT_AUDIENCE,
+        )
     
     # =========================================================================
     # Microsoft SSO Authentication
     # =========================================================================
     
-    async def authenticate_microsoft(self, code: str, redirect_uri: str) -> Token:
+    async def authenticate_microsoft(
+        self, code: str, redirect_uri: str, *, tenant
+    ) -> Token:
         """
-        Microsoft Outlook hesabı ile giriş yapar.
-        
+        Microsoft hesabı ile BELIRLI BIR TENANT icinde giriş yapar.
+
         Args:
             code: Microsoft'tan dönen authorization code
             redirect_uri: Orijinal yönlendirme adresi
-            
+            tenant: Sunucu tarafinda cozulmus ResolvedTenant
+
         Returns:
             Token nesnesi
+
+        WS3 degisiklikleri:
+          - Kimlik dogrulandiktan SONRA bu tenant'ta aktif uyelik aranir;
+            yoksa giris reddedilir. Bir Entra dizininde hesabi olmak,
+            Hermes'te bir organizasyona uye olmak DEMEK DEGILDIR.
+          - Otomatik hesap acma (auto-provisioning) KALDIRILDI. Tenant
+            bazli auto-provision politikasi `tenant_identity_providers`
+            tablosunda yasar ve varsayilani 'disabled'dir; e-posta alan
+            adina bakip kullanici yaratmak, alan adini yetki kaynagi
+            saymak olurdu.
         """
         import httpx
-        from urllib.parse import urlparse
         from ..models.user import AuthProvider
-        
-        # [YÜKSEK-4] Validate Redirect URI against allowed CORS origins
-        is_valid_redirect = False
-        for origin in self.settings.CORS_ORIGINS:
-            if redirect_uri.startswith(origin):
-                is_valid_redirect = True
-                break
-                
-        if not is_valid_redirect:
-            raise UnauthorizedError("Geçersiz Yönlendirme Adresi (Redirect URI doğrulaması başarısız).")
+        from . import membership_service
+
+        # [YÜKSEK-4] Redirect URI dogrulamasi — TAM eslesme.
+        # `startswith` yetersizdi: "https://hermes.duosis.com.evil.tr"
+        # gibi bir adres izinli origin ile basliyor gorunur.
+        allowed_origins = {o.rstrip("/") for o in self.settings.CORS_ORIGINS}
+        parsed = httpx.URL(redirect_uri)
+        origin = f"{parsed.scheme}://{parsed.netloc.decode()}"
+        if origin not in allowed_origins:
+            raise UnauthorizedError(
+                "Geçersiz Yönlendirme Adresi (Redirect URI doğrulaması başarısız)."
+            )
         
         # 1. Exchange Code for Token
         token_url = f"https://login.microsoftonline.com/{self.settings.AZURE_TENANT_ID}/oauth2/v2.0/token"
@@ -201,38 +255,26 @@ class AuthService:
             if not email:
                 raise UnauthorizedError("No email found in Microsoft account")
                 
-        # 3. Find or Create User
+        # 3. Kimligi bul — YARATMA.
+        generic_failure = "Bu organizasyona erişiminiz bulunmuyor."
         user = self._get_user_by_email(email)
-        
-        if user:
-            # Kullanıcı zaten var
-            if not user.is_active:
-                raise UnauthorizedError("Account is disabled")
-                
-            # Eğer local hesap ise microsoft provider'a çevirmek isteyebiliriz veya
-            # sadece login olmasına izin verebiliriz. Şimdilik sadece login.
-        else:
-            # [YÜKSEK-5] Microsoft hesabı otomatik kayıt (Auto-provisioning) kısıtlaması
-            allowed_domain = getattr(self.settings, "ALLOWED_EMAIL_DOMAIN", "").strip()
-            if allowed_domain and not email.lower().endswith(f"@{allowed_domain.lower()}"):
-                raise UnauthorizedError(f"Yalnızca @{allowed_domain} uzantılı kurumsal e-postalar sisteme giriş yapabilir.")
-            
-            # Yeni kullanıcı oluştur (Auto-provisioning)
-            user = User(
-                email=email,
-                full_name=full_name,
-                hashed_password="", # SSO kullanıcıları için boş
-                is_active=True,
-                is_admin=False, # Varsayılan olarak standart kullanıcı
-                auth_provider=AuthProvider.MICROSOFT
-            )
-            self.db.add(user)
-            self.db.commit()
-            self.db.refresh(user)
-            
-        # 4. Generate Local JWT
-        jwt = self._create_token_for_user(user)
-        
+
+        if user is None or not user.is_active:
+            raise UnauthorizedError(generic_failure)
+
+        # 4. Bu tenant'ta AKTIF uyelik sart.
+        membership = membership_service.get_active_membership(
+            self.db, tenant_id=tenant.id, user_id=user.id
+        )
+        if membership is None:
+            raise UnauthorizedError(generic_failure)
+
+        # 5. Tenant-scoped JWT
+        jwt = self._create_token_for_user(
+            user, tenant=tenant, membership=membership,
+            auth_method="microsoft",
+        )
+
         return Token(
             access_token=jwt,
             token_type="bearer",
@@ -243,7 +285,16 @@ class AuthService:
                 "full_name": user.full_name,
                 "is_admin": user.is_admin,
                 "is_active": user.is_active
-            }
+            },
+            tenant={
+                "id": tenant.id,
+                "slug": tenant.slug,
+                "display_name": tenant.display_name,
+            },
+            membership={
+                "id": str(membership.id),
+                "status": membership.status,
+            },
         )
     
     # =========================================================================

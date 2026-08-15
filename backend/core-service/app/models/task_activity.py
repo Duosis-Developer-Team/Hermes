@@ -29,10 +29,11 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
+from .mixins import TenantOwnedMixin
 from ..database import Base
 
 
-class TaskActivityEvent(Base):
+class TaskActivityEvent(TenantOwnedMixin, Base):
     __tablename__ = "task_activity_events"
 
     id = Column(

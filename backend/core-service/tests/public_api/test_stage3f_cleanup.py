@@ -42,6 +42,7 @@ SETTINGS = cleanup.CleanupSettings(
 
 def _mk_client(s, name="cleanup-client"):
     c = ApiClient(
+        tenant_id=TEST_TENANT_ID,
         name=name,
         client_type="service",
         environment="dev",
@@ -342,8 +343,11 @@ def test_disabled_cleanup_is_noop(pg_session):
 
 # ── Admin endpoint'leri ─────────────────────────────────────────────────
 
+# WS3: CurrentUser artik tenant baglami ZORUNLU tasir.
+TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
 ADMIN = CurrentUser(
-    id=str(uuid.uuid4()), email="admin@test.local", is_admin=True
+    id=str(uuid.uuid4()), email="admin@test.local", is_admin=True,
+    tenant_id=TEST_TENANT_ID,
 )
 BASE = "/api/v1/core/admin"
 
@@ -361,7 +365,7 @@ def admin_http(pg_session):
     # paylastigi icin stub'i da geri alirdi (3f'te yasandi — 503).
     _orig_resolve = authz_client.effective_permissions
     authz_client.effective_permissions = (
-        lambda uid: frozenset(ALL_PERMISSIONS)
+        lambda uid, **_kw: frozenset(ALL_PERMISSIONS)
         if str(uid) == ADMIN.id
         else frozenset()
     )

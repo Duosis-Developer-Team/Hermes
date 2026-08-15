@@ -85,7 +85,9 @@ async def create_user(
     user_service = UserService(db)
     
     try:
-        user = user_service.create(user_data)
+        user = user_service.create(
+            user_data, tenant_id=admin.tenant_id
+        )
         return user
     except ConflictError as e:
         raise HTTPException(
@@ -224,7 +226,7 @@ async def lookup_users(
     from ..services.rbac_service import effective_permissions
 
     if include_inactive and Perm.USERS_MANAGE in effective_permissions(
-        db, current_user.id
+        db, current_user.id, tenant_id=current_user.tenant_id
     ):
         pass  # No filter
     else:
@@ -333,7 +335,9 @@ async def update_user(
     user_service = UserService(db)
     
     try:
-        user = user_service.update(user_id, user_data)
+        user = user_service.update(
+            user_id, user_data, tenant_id=admin.tenant_id
+        )
         return user
     except NotFoundError as e:
         raise HTTPException(
@@ -378,7 +382,9 @@ async def delete_user(
     user_service = UserService(db)
     
     try:
-        user_service.delete(user_id, soft=False)
+        user_service.delete(
+            user_id, soft=False, tenant_id=admin.tenant_id
+        )
     except NotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

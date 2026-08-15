@@ -214,6 +214,10 @@ def mcp_http(core_asgi_app):
         yield client
 
 
+# WS3: CurrentUser/ApiClient artik tenant baglami ZORUNLU tasir.
+TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
+
+
 # ── API client/token kurulumu (core test kalibinin kopyasi) ────────────
 
 
@@ -223,6 +227,8 @@ def make_api_client(s, name, bindings, *, client_type="service",
     from app.services import api_client_service as svc
 
     client = ApiClient(
+        # WS3: her API client TEK bir tenant'a baglidir.
+        tenant_id=TEST_TENANT_ID,
         name=name,
         client_type=client_type,
         bound_user_id=bound_user_id,

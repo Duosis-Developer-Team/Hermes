@@ -8,10 +8,11 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
 
+from .mixins import TenantOwnedMixin
 from ..database import Base
 
 
-class Issue(Base):
+class Issue(TenantOwnedMixin, Base):
     """
     Issue modeli.
     
