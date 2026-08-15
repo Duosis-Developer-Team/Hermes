@@ -61,66 +61,15 @@ def pg_engine():
             pass
     except Exception:
         pytest.skip("test database unavailable (see conftest for setup)")
-    import app.models  # noqa: F401 — metadata kaydi
-
-    from app.database import Base
-    from sqlalchemy import text as sa_text
-
-    # create_all onkosulu: tasks.task_number server_default'u bu sequence'i
-    # kullanir (main.py _ensure_prerequisite_objects ile ayni gereklilik).
-    with engine.begin() as conn:
-        conn.execute(
-            sa_text("CREATE SEQUENCE IF NOT EXISTS task_number_seq")
-        )
-    Base.metadata.create_all(bind=engine)
-    # Production parity: type_number trigger'i (main.py
-    # _migrate_tasks_type_number'in minimal hali — backfill'siz) olmadan
-    # public task_code lookup'lari yeni olusturulan satirlari bulamaz.
-    with engine.begin() as conn:
-        for seq in (
-            "tasks_type_seq_task",
-            "tasks_type_seq_issue",
-            "tasks_type_seq_suggestion",
-        ):
-            conn.execute(sa_text(f"CREATE SEQUENCE IF NOT EXISTS {seq}"))
-        conn.execute(
-            sa_text(
-                "CREATE OR REPLACE FUNCTION assign_task_type_number() "
-                "RETURNS trigger AS $$ BEGIN "
-                "  IF NEW.type_number IS NULL THEN "
-                "    IF NEW.task_type = 'issue' THEN "
-                "      NEW.type_number := nextval('tasks_type_seq_issue'); "
-                "    ELSIF NEW.task_type = 'suggestion' THEN "
-                "      NEW.type_number := nextval('tasks_type_seq_suggestion'); "
-                "    ELSE "
-                "      NEW.type_number := nextval('tasks_type_seq_task'); "
-                "    END IF; "
-                "  END IF; "
-                "  RETURN NEW; "
-                "END; $$ LANGUAGE plpgsql"
-            )
-        )
-        conn.execute(
-            sa_text(
-                "DROP TRIGGER IF EXISTS trg_assign_type_number ON tasks"
-            )
-        )
-        conn.execute(
-            sa_text(
-                "CREATE TRIGGER trg_assign_type_number BEFORE INSERT ON "
-                "tasks FOR EACH ROW EXECUTE PROCEDURE "
-                "assign_task_type_number()"
-            )
-        )
-    # Additive migration'lar: create_all eksik TABLO yaratir ama mevcut
-    # tabloya eksik KOLON EKLEMEZ. Uretimde bu isi startup migration'i
-    # yapar; test semasi da AYNI tek kaynaktan beslenir, yoksa testte
-    # gecip uretimde patlayan bir kayma olusur.
-    from app.services.task_lifecycle import LIFECYCLE_SCHEMA_STATEMENTS
+    # Test semasi ile URETIM semasi TEK kaynaktan gelir (WS1): burasi
+    # Alembic 0001_baseline'in cagirdigi ayni modulu kosar. Onceden bu
+    # fixture semanin bir BOLUMUNU (create_all + type_number trigger'i +
+    # lifecycle ifadeleri) elle tekrarliyordu; eksik kalan her ifade
+    # "testte gecer, uretimde patlar" kaymasi demekti.
+    from app.migrations.baseline_ddl import apply_baseline
 
     with engine.begin() as conn:
-        for stmt in LIFECYCLE_SCHEMA_STATEMENTS:
-            conn.execute(sa_text(stmt))
+        apply_baseline(conn)
 
     yield engine
     engine.dispose()

@@ -1,0 +1,88 @@
+# =============================================================================
+# HERMES — Sema migration Job'i (WS1)
+# =============================================================================
+# NEDEN AYRI BIR JOB: sema degisiklikleri artik uygulama startup'inda
+# yapilmiyor (yarisan podlar sorunu). Bu Job, rollout'tan ONCE kosar ve
+# BASARISIZ OLURSA rollout HIC BASLAMAZ.
+#
+# SABLON: bu dosya oldugu gibi apply EDILMEZ. `${IMAGE_TAG}` ve
+# `${JOB_NAME}` degiskenleri doldurulur:
+#
+#   scripts/k8s/run-migration-job.sh hermes-dev <sha>
+#
+# CD bunu otomatik yapar (.github/workflows/cd-dev.yml → `migrate` job'i).
+# Elle calistirma (Termius'tan) icin de ayni betik kullanilir.
+#
+# KIMLIK: Job, MIGRATOR rolunu kullanir (tablo sahibi, BYPASSRLS).
+# Uygulama pod'lari bu credential'i ASLA gormez — onlar NOBYPASSRLS ve
+# tablo sahibi OLMAYAN app rolunu kullanir. Bkz.
+# backend/sql_scripts/roles/00_roles.sql
+# =============================================================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${JOB_NAME}
+  namespace: ${NAMESPACE}
+  labels:
+    app: hermes-migration
+    hermes.duosis.com/component: schema-migration
+spec:
+  # Migration idempotenttir ama sinirsiz retry, bozuk bir revizyonda
+  # sonsuz dongu demektir. Iki deneme + acik hata daha iyidir.
+  backoffLimit: 2
+  # Bitmis Job'lar 24 saat sonra kendini toplar (log incelemesi icin sure).
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: hermes-migration
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: migrate
+          # core image'i hem core hem auth migration'larini icerir:
+          # `shared/` ve her iki servisin `app/migrations/` dizini
+          # image'a kopyalanir. Ayni SHA ile pinlenir ki migration ve
+          # uygulama kodu AYNI surumden gelsin.
+          image: ghcr.io/duosis-developer-team/hermes-core-service:${IMAGE_TAG}
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "shared.migration_runner", "all"]
+          env:
+            # ---------------------------------------------------------
+            # Migrator baglanti URL'leri — TAM URL secret'tan gelir.
+            # Sifre hicbir ConfigMap'te/argumanda gorunmez.
+            # ---------------------------------------------------------
+            - name: HERMES_AUTH_MIGRATION_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-db-roles
+                  key: AUTH_MIGRATION_DATABASE_URL
+            - name: HERMES_CORE_MIGRATION_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-db-roles
+                  key: CORE_MIGRATION_DATABASE_URL
+            # shared/auth.py modul yuklenirken JWT_PUBLIC_KEY yoksa
+            # sys.exit(1) yapar; migration imza dogrulamaz ama import
+            # zinciri bu anahtari ister.
+            - name: JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-jwt-public
+                  key: JWT_PUBLIC_KEY
+            - name: HERMES_ENVIRONMENT
+              value: "${HERMES_ENVIRONMENT}"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

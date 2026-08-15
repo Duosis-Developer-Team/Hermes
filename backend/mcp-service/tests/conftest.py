@@ -43,48 +43,15 @@ def pg_engine():
             pass
     except Exception:
         pytest.skip("test database unavailable (see conftest for setup)")
-    import app.models  # noqa: F401
-
-    from app.database import Base
+    # Sema TEK kaynaktan gelir (WS1): core'un Alembic baseline'i.
+    # Onceden burada create_all + type_number trigger'i elle
+    # tekrarlaniyordu; her eksik ifade "testte gecer, uretimde
+    # patlar" kaymasi demekti.
+    from app.migrations.baseline_ddl import apply_baseline
 
     with engine.begin() as conn:
-        conn.execute(sa_text("CREATE SEQUENCE IF NOT EXISTS task_number_seq"))
-    Base.metadata.create_all(bind=engine)
-    with engine.begin() as conn:
-        for seq in (
-            "tasks_type_seq_task",
-            "tasks_type_seq_issue",
-            "tasks_type_seq_suggestion",
-        ):
-            conn.execute(sa_text(f"CREATE SEQUENCE IF NOT EXISTS {seq}"))
-        conn.execute(
-            sa_text(
-                "CREATE OR REPLACE FUNCTION assign_task_type_number() "
-                "RETURNS trigger AS $$ BEGIN "
-                "  IF NEW.type_number IS NULL THEN "
-                "    IF NEW.task_type = 'issue' THEN "
-                "      NEW.type_number := nextval('tasks_type_seq_issue'); "
-                "    ELSIF NEW.task_type = 'suggestion' THEN "
-                "      NEW.type_number := "
-                "nextval('tasks_type_seq_suggestion'); "
-                "    ELSE "
-                "      NEW.type_number := nextval('tasks_type_seq_task'); "
-                "    END IF; "
-                "  END IF; "
-                "  RETURN NEW; "
-                "END; $$ LANGUAGE plpgsql"
-            )
-        )
-        conn.execute(
-            sa_text("DROP TRIGGER IF EXISTS trg_assign_type_number ON tasks")
-        )
-        conn.execute(
-            sa_text(
-                "CREATE TRIGGER trg_assign_type_number BEFORE INSERT ON "
-                "tasks FOR EACH ROW EXECUTE PROCEDURE "
-                "assign_task_type_number()"
-            )
-        )
+        apply_baseline(conn)
+
     yield engine
     engine.dispose()
 

@@ -24,7 +24,6 @@ from fastapi.responses import JSONResponse
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from app.config import get_settings
-from app.database import init_db
 from app.routers import auth_router, users_router
 from shared.exceptions import HermesException
 from shared.metrics import setup_metrics, start_metrics_server
@@ -55,9 +54,18 @@ async def lifespan(app: FastAPI):
     # import aninda takilir; soket YALNIZCA burada acilir.
     start_metrics_server()
 
-    # Veritabanı tablolarını oluştur
-    init_db()
-    print("✅ Veritabanı tabloları hazır")
+    # ------------------------------------------------------------------
+    # WS1: sema DEGISIKLIGI ARTIK BURADA YAPILMAZ.
+    # ------------------------------------------------------------------
+    # create_all() yerine versiyonlu Alembic revizyonlari
+    # (app/migrations/versions/) otoriterdir; CD'de rollout ONCESI
+    # bloklayan bir Job ile uygulanir. Pod yalnizca bekledigi sema
+    # versiyonunun var oldugunu DOGRULAR; yoksa acilmaz (fail-closed).
+    from app.database import engine
+    from shared.schema_guard import verify_schema_compatibility
+
+    revision = verify_schema_compatibility("auth", engine)
+    print(f"✅ Sema uyumlu (revision={revision})")
 
     # RBAC bootstrap (R1, idempotent): system-admin rolu katalogla
     # senkronlanir, legacy is_admin=True kullanicilara rol atanir.

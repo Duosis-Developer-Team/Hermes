@@ -75,6 +75,13 @@ else
 fi
 check_secret hermes-tls tls.crt tls.key
 check_secret hermes-jwt-auth JWT_PRIVATE_KEY JWT_PUBLIC_KEY
+# WS1 — migrator/runtime DB rol ayrimi. Migration Job MIGRATION_*
+# URL'lerini, uygulama pod'lari APP_* kimligini kullanir. Bu Secret
+# olmadan sema migration'i kosamaz ve rollout bilerek DURUR.
+check_secret hermes-db-roles \
+  AUTH_MIGRATION_DATABASE_URL CORE_MIGRATION_DATABASE_URL \
+  AUTH_APP_DB_USER AUTH_APP_DB_PASSWORD \
+  CORE_APP_DB_USER CORE_APP_DB_PASSWORD
 # Manifestte optional:true, ama RBAC izin cozumu + S2S dizin buna
 # dayanir — CURRENT zorunlu sayilir (yoklugu = admin uclari 503).
 check_secret hermes-s2s HERMES_S2S_TOKEN_CURRENT

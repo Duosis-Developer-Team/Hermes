@@ -3,6 +3,10 @@ fastapi==0.109.0
 uvicorn[standard]==0.27.0
 sqlalchemy==2.0.25
 psycopg2-binary==2.9.9
+# Versiyonlu sema migration'lari (WS1) — startup DDL'inin yerine gecer.
+# Migration'lar `python -m shared.migration_runner core` ile, CD'de
+# rollout ONCESI bloklayan bir Job olarak kosar.
+alembic==1.13.1
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.6

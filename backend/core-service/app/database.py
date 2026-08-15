@@ -55,15 +55,11 @@ def get_db() -> Generator[Session, None, None]:
 
 
 # =============================================================================
-# Database Initialization
+# Sema olusturma — BURADA DEGIL
 # =============================================================================
-
-def init_db() -> None:
-    """Veritabanı tablolarını oluşturur."""
-    from . import models  # noqa: F401
-    Base.metadata.create_all(bind=engine)
-
-
-def drop_db() -> None:
-    """UYARI: Sadece test ortamında kullanın!"""
-    Base.metadata.drop_all(bind=engine)
+# WS1'den itibaren sema otoritesi Alembic'tir:
+#   app/migrations/versions/  + shared/migration_runner.py
+# Eski `init_db()` (create_all) ve `drop_db()` yardimcilari KALDIRILDI;
+# startup'ta DDL kosan hicbir yol kalmamalidir (cok podlu rollout'ta
+# yaris riski). Testler de ayni tek kaynagi kullanir:
+#   app.migrations.baseline_ddl.apply_baseline()

@@ -77,29 +77,8 @@ def get_db() -> Generator[Session, None, None]:
 # Database Initialization
 # =============================================================================
 
-def init_db() -> None:
-    """
-    Veritabanı tablolarını oluşturur.
-    
-    Bu fonksiyon uygulama başlatıldığında çağrılır ve tanımlı tüm
-    SQLAlchemy modellerinin tablolarını veritabanında oluşturur.
-    
-    Not:
-        Mevcut tablolar varsa üzerine yazmaz (checkfirst=True default).
-        Production'da migration tool (Alembic) kullanılması önerilir.
-    """
-    # Import models to register them with Base
-    from . import models  # noqa: F401
-    
-    # Create all tables
-    Base.metadata.create_all(bind=engine)
-
-
-def drop_db() -> None:
-    """
-    Tüm veritabanı tablolarını siler.
-    
-    UYARI: Bu fonksiyon sadece test ortamında kullanılmalıdır!
-    Production'da asla çağrılmamalıdır.
-    """
-    Base.metadata.drop_all(bind=engine)
+# WS1'den itibaren sema otoritesi Alembic'tir:
+#   app/migrations/versions/  + shared/migration_runner.py
+# Eski `init_db()` (create_all) ve `drop_db()` yardimcilari KALDIRILDI;
+# startup'ta DDL kosan hicbir yol kalmamalidir (cok podlu rollout'ta
+# yaris riski).

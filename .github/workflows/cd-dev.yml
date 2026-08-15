@@ -301,10 +301,51 @@ jobs:
           cache-from: type=gha,scope=hermes-dev-${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=hermes-dev-${{ matrix.name }}
 
-  deploy:
+  # Sema migration'i — rollout'tan ONCE, BLOKLAYAN kapi (WS1).
+  # Uygulama pod'lari artik startup'ta DDL kosMAZ; bekledikleri sema
+  # versiyonu yoksa acilmazlar (fail-closed). Bu yuzden migration
+  # BASARISIZ olursa deploy job'i HIC calismaz.
+  migrate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [core_tests, auth_tests, mcp_tests, frontend_build, build_images]
+    # Migration yarim kesilmez; es zamanli kosular siraya girer.
+    concurrency:
+      group: cd-dev-migrate
+      cancel-in-progress: false
+
+    env:
+      NAMESPACE: hermes-dev
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Stale-run guard
+        # Eski bir kosu, daha yeni commit'in semasini geri alamaz.
+        run: |
+          REMOTE_SHA="$(git ls-remote origin refs/heads/dev | cut -f1)"
+          if [ -n "$REMOTE_SHA" ] && [ "$REMOTE_SHA" != "$GITHUB_SHA" ]; then
+            echo "::notice::origin/dev ilerledi; bu kosu STALE — migration atlaniyor."
+            echo "SKIP_MIGRATE=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Setup kubeconfig
+        if: env.SKIP_MIGRATE != '1'
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG_B64 }}" | base64 -d > ~/.kube/config
+
+      - name: Run schema migration job (blocking)
+        if: env.SKIP_MIGRATE != '1'
+        # Basarisizlik = deploy HIC calismaz. Migration idempotenttir;
+        # tekrar kosmak guvenlidir.
+        run: ./scripts/k8s/run-migration-job.sh "${NAMESPACE}" "${GITHUB_SHA}"
+
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [core_tests, auth_tests, mcp_tests, frontend_build, build_images, migrate]
     # Deploy ASLA yarim kesilmez; es zamanli deploy'lar siraya girer.
     concurrency:
       group: cd-dev-deploy
