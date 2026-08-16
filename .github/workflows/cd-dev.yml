@@ -409,3 +409,11 @@ jobs:
           kubectl -n "${NAMESPACE}" rollout status deployment/core-service --timeout=300s
           kubectl -n "${NAMESPACE}" rollout status deployment/reporting-service --timeout=300s
           kubectl -n "${NAMESPACE}" rollout status deployment/frontend --timeout=300s
+
+      # Rollout SONRASI tenant izolasyon dumani (WS10). Deploy'u geri
+      # ALMAZ ama yanlis bir sey canliya ciktiysa kosuyu KIRMIZI yapar:
+      # sema revizyonu, runtime rol ayrimi, RLS kapsami, backfill
+      # butunlugu, baglamsiz erisimde 0 satir ve /ready.
+      - name: Post-deploy tenant isolation smoke
+        if: env.SKIP_DEPLOY != '1'
+        run: ./scripts/k8s/post-deploy-tenant-smoke.sh "${NAMESPACE}"

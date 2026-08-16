@@ -174,9 +174,13 @@ spec:
           # "Liveness probe failed: context deadline exceeded").
           timeoutSeconds: 5
           failureThreshold: 5
+        # WS10: readiness sema uyumlulugunu DA kontrol eder.
+        # Liveness BILEREK /health'te kalir — yanlis sema pod'u
+        # yeniden baslatmaz (bu crashloop olurdu), yalnizca
+        # trafikten alir.
         readinessProbe:
           httpGet:
-            path: /health
+            path: /ready
             port: 8001
           initialDelaySeconds: 15
           periodSeconds: 10

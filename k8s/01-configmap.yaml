@@ -17,6 +17,20 @@ data:
   CORE_SERVICE_URL: "http://core-service/api/v1"
   REPORTING_SERVICE_URL: "http://reporting-service/api/v1"
   
+  # ---------------------------------------------------------------------
+  # Tenant SaaS (WS3/WS10)
+  # ---------------------------------------------------------------------
+  # Mevcut Hermes verisinin tasindigi ILK tenant. Bu degerler migration
+  # 0003 tarafindan BIR KEZ kullanilir; sonradan degistirmek mevcut
+  # veriyi TASIMAZ, yalnizca yeni bir tenant yaratir.
+  INITIAL_TENANT_SLUG: "duosis"
+  INITIAL_TENANT_NAME: "Duosis"
+  # Legacy host: eski URL'ler ve e-posta linkleri bu tenant'a cozulur.
+  INITIAL_TENANT_HOSTNAME: "hermes.duosis.com"
+  # `/w/{slug}` dev kolayligi. Production'da ASLA "true" olmamali:
+  # host disinda bir tenant secme yolu birakir.
+  HERMES_ALLOW_WORKSPACE_PATH: "false"
+
   # App Settings
   ENVIRONMENT: "production"
   LOG_LEVEL: "INFO"

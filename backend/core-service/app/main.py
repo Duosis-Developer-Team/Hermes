@@ -181,6 +181,36 @@ async def health_check():
     return {"status": "healthy", "service": settings.SERVICE_NAME, "version": settings.SERVICE_VERSION}
 
 
+@app.get("/ready", tags=["Health"])
+async def readiness_check():
+    """Readiness — trafige HAZIR miyim?
+
+    `/health` (liveness) ile farki bilinclidir:
+      - liveness: surec ayakta mi? (yeniden baslatma karari)
+      - readiness: bu pod ISTEK ALABILIR mi? (trafige alma karari)
+
+    WS10: readiness sema uyumlulugunu DA kontrol eder. Yanlis sema
+    uzerinde calisan bir pod'a trafik vermek, tenant cutover'inda
+    sessizce yanlis veri yazmak demektir.
+
+    Ayrinti SIZDIRILMAZ: yanit yalnizca hazir/degil soyler. Revizyon
+    adi, tablo adi veya hata metni disariya cikmaz (ic teshis loglarda).
+    """
+    from fastapi.responses import JSONResponse
+
+    from app.database import engine
+    from shared.schema_guard import verify_schema_compatibility
+
+    try:
+        verify_schema_compatibility("core", engine)
+    except Exception:  # noqa: BLE001 — ayrinti disariya CIKMAZ
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "service": settings.SERVICE_NAME},
+        )
+    return {"status": "ready", "service": settings.SERVICE_NAME}
+
+
 @app.get("/", tags=["Root"])
 async def root():
     return {"service": settings.SERVICE_NAME, "version": settings.SERVICE_VERSION}

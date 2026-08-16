@@ -126,9 +126,13 @@ spec:
           initialDelaySeconds: 30
           periodSeconds: 20
           failureThreshold: 5
+        # WS10: readiness sema uyumlulugunu DA kontrol eder.
+        # Liveness BILEREK /health'te kalir — yanlis sema pod'u
+        # yeniden baslatmaz (bu crashloop olurdu), yalnizca
+        # trafikten alir.
         readinessProbe:
           httpGet:
-            path: /health
+            path: /ready
             port: 8000
           initialDelaySeconds: 15
           periodSeconds: 10

@@ -1,0 +1,106 @@
+# =============================================================================
+# HERMES — Platform Super Admin bootstrap Job (WS9/WS10)
+# =============================================================================
+# ELLE calistirilir; CD BU JOB'I KOSMAZ. Ilk operator bir kez kurulur,
+# sonrasinda operatorler konsoldan yonetilir.
+#
+# SABLON: `${IMAGE_TAG}` doldurulmalidir. Ornek:
+#
+#   IMAGE_TAG=<sha> NAMESPACE=hermes-dev \
+#     envsubst '${IMAGE_TAG} ${NAMESPACE}' \
+#     < k8s/08-platform-admin-bootstrap-job.yaml | kubectl apply -f -
+#
+#   kubectl -n hermes-dev logs job/hermes-platform-bootstrap
+#
+# SIFRE (degismez CTO karari, pack 06 §8):
+#   - Bu dosyada, hicbir ConfigMap'te veya SQL'de sifre BULUNMAZ.
+#   - Varsayilan davranis: betik guclu bir sifre URETIR ve Job
+#     loglarina BIR KEZ yazar. Operator onu parola yoneticisine alir ve
+#     ilk giriste degistirir. Log okunduktan sonra Job SILINMELIDIR:
+#       kubectl -n <ns> delete job hermes-platform-bootstrap
+#   - Belirli bir sifre gerekiyorsa (kurtarma), once gecici bir Secret
+#     olusturup asagidaki `env` blogunu acin — ve isiniz bitince Secret'i
+#     SILIN.
+# =============================================================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hermes-platform-bootstrap
+  namespace: ${NAMESPACE}
+  labels:
+    app: hermes-platform-bootstrap
+    hermes.duosis.com/component: bootstrap
+spec:
+  backoffLimit: 1
+  # Log okunabilsin diye kisa sure durur; sonra kendini toplar.
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: hermes-platform-bootstrap
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: bootstrap
+          image: ghcr.io/duosis-developer-team/hermes-auth-service:${IMAGE_TAG}
+          imagePullPolicy: IfNotPresent
+          command:
+            - python
+            - -m
+            - app.scripts.bootstrap_platform_admin
+            - --email
+            - superadmin@hermes.dev
+          env:
+            # Yazma islemi: MIGRATOR degil, uygulama rolu yeterli
+            # (yalnizca INSERT/UPDATE yapar, DDL yok).
+            - name: AUTH_DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: hermes-config
+                  key: DB_HOST_AUTH
+            - name: AUTH_DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: hermes-config
+                  key: DB_PORT
+            - name: AUTH_DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: hermes-config
+                  key: POSTGRES_DB_AUTH
+            - name: AUTH_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-db-roles
+                  key: AUTH_APP_DB_USER
+            - name: AUTH_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-db-roles
+                  key: AUTH_APP_DB_PASSWORD
+            - name: JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-jwt-auth
+                  key: JWT_PUBLIC_KEY
+            - name: JWT_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-jwt-auth
+                  key: JWT_PRIVATE_KEY
+            # --- Kurtarma icin acik sifre (VARSAYILAN: KAPALI) ---
+            # - name: HERMES_BOOTSTRAP_ADMIN_PASSWORD
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: hermes-platform-bootstrap   # gecici Secret
+            #       key: PASSWORD
+          resources:
+            requests: { cpu: "50m", memory: "128Mi" }
+            limits:   { cpu: "500m", memory: "512Mi" }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

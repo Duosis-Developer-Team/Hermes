@@ -74,6 +74,34 @@ spec:
                   key: JWT_PUBLIC_KEY
             - name: HERMES_ENVIRONMENT
               value: "${HERMES_ENVIRONMENT}"
+            # Ilk tenant kimligi (WS3): auth 0003 bu slug ile tenant'i
+            # BIR KEZ yaratir, runner uretilen UUID'yi core backfill'ine
+            # gecirir. Slug degistirilirse YENI bir tenant olusur —
+            # mevcut veri eskisinde kalir. Bilerek ConfigMap'ten gelir.
+            - name: HERMES_INITIAL_TENANT_SLUG
+              valueFrom:
+                configMapKeyRef:
+                  name: hermes-config
+                  key: INITIAL_TENANT_SLUG
+                  optional: true
+            - name: HERMES_INITIAL_TENANT_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: hermes-config
+                  key: INITIAL_TENANT_NAME
+                  optional: true
+            - name: HERMES_INITIAL_TENANT_HOSTNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: hermes-config
+                  key: INITIAL_TENANT_HOSTNAME
+                  optional: true
+            # Enforce fazi bu role EXECUTE/DML yetkisi verir.
+            - name: HERMES_CORE_APP_ROLE
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-db-roles
+                  key: CORE_APP_DB_USER
           resources:
             requests:
               cpu: "100m"
