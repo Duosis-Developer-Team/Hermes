@@ -29,11 +29,15 @@ def _script_head_revisions(service: str) -> Set[str]:
     """Kod tarafindaki head revizyon(lar)ini doner."""
     from alembic.script import ScriptDirectory
 
-    from .migration_runner import SCRIPT_LOCATIONS
+    # Yolu BURADA turetmiyoruz. Repo agaci ile konteyner yerlesimi
+    # farklidir (`backend/<svc>-service/app/migrations` vs `/app/app/
+    # migrations`) ve ikinci bir kopya, ikisinin ayrisabilecegi ikinci bir
+    # yer demektir. Nitekim ayristi: migration_runner duzeltildi, buradaki
+    # kopya unutuldu ve pod'lar canlida acilmadi
+    # ("Path doesn't exist: /app/core-service/app/migrations").
+    from .migration_runner import resolve_script_location
 
-    svc_dir, rel = SCRIPT_LOCATIONS[service]
-    location = Path(__file__).resolve().parent.parent / svc_dir / rel
-    script = ScriptDirectory(str(location))
+    script = ScriptDirectory(str(resolve_script_location(service)))
     return set(script.get_heads())
 
 

@@ -15,6 +15,7 @@
 
 import os
 import re
+import shutil
 import uuid
 from pathlib import Path
 
@@ -434,3 +435,78 @@ def test_adopt_script_transfers_app_objects_but_spares_extensions(pg_engine):
         "Eklenti fonksiyonu devir listesine girdi — bu, canlida "
         "TimescaleDB'yi bozardi.")
     assert "digest" not in joined, joined
+
+
+def test_migrations_path_is_derived_in_exactly_one_place():
+    """Yol turetimi TEK yerde olmali — `resolve_script_location`.
+
+    Bu test bir hatadan degil, hatanin TEKRARINDAN dogdu. Konteyner
+    yerlesimi sorunu once `migration_runner`da duzeltildi; `schema_guard`
+    yolu KENDI kopyasiyla kuruyordu ve unutuldu. Migration gecti ama
+    pod'lar acilmadi:
+
+        CommandError: Path doesn't exist: '/app/core-service/app/migrations'
+
+    Ikinci bir kopya, iki yerlesimin ayrisabilecegi ikinci bir yerdir.
+    Yeni bir modul yolu elle kurarsa bu test kirilir.
+    """
+    shared = _REPO_ROOT / "backend" / "shared"
+    offenders = []
+    for path in sorted(shared.glob("*.py")):
+        if path.name == "migration_runner.py":
+            continue          # turetimin OTORITER yeri burasi
+        # Yorumlari at: aciklama metinleri yollari ORNEK olarak anar,
+        # bu bir ihlal degildir. Ihlal, KODUN yolu kurmasidir.
+        code = "\n".join(ln for ln in path.read_text(encoding="utf-8").splitlines()
+                         if not ln.lstrip().startswith("#"))
+        if "SCRIPT_LOCATIONS" in code or "app/migrations" in code:
+            offenders.append(path.name)
+    assert not offenders, (
+        f"{offenders} migration yolunu kendisi turetiyor. "
+        "`migration_runner.resolve_script_location()` kullanin — o, repo ve "
+        "image yerlesimlerini birlikte bilir ve kimlik kanitini dogrular."
+    )
+
+
+@pytest.mark.parametrize("service,head", [
+    ("core", "0006_api_token_lookup"),
+    ("auth", "0003_initial_tenant"),
+])
+def test_schema_guard_resolves_head_in_image_layout(tmp_path, service, head):
+    """Sema muhafizi KONTEYNER yerlesiminde de head'i okuyabilmeli.
+
+    Pod'lar canlida tam burada acilmadi: guard repo yerlesimini varsayip
+    `/app/core-service/app/migrations` ariyordu; image'da migration'lar
+    `/app/app/migrations`tadir.
+
+    NEDEN SUBPROCESS: bu testin ilk hali `_backend_root`u monkeypatch
+    ediyordu ve HATAYI YAKALAYAMIYORDU — eski kod o fonksiyonu hic
+    cagirmiyor, `Path(__file__)`den gidiyordu ve repo agacinda dogru
+    dizini buluyordu. Yani test, uretimde patlayan kodu yesil gosteriyordu.
+    Tek durust yol, konteyner dosya duzenini GERCEKTEN kurup importu
+    izole bir process'te yapmaktir — Dockerfile ne kopyaliyorsa o.
+    """
+    import subprocess
+    import sys
+
+    root = tmp_path / "imgroot"
+    (root).mkdir()
+    shutil.copytree(_REPO_ROOT / "backend" / "shared", root / "shared")
+    shutil.copytree(_REPO_ROOT / "backend" / f"{service}-service" / "app",
+                    root / "app")
+    # Konteynerde `<svc>-service/` diye bir dizin YOKTUR.
+    assert not (root / f"{service}-service").exists()
+
+    proc = subprocess.run(
+        [sys.executable, "-c",
+         "from shared.schema_guard import _script_head_revisions;"
+         f"print(sorted(_script_head_revisions('{service}'))[0])"],
+        cwd=str(root),
+        env={**os.environ, "HERMES_SERVICE": service,
+             "PYTHONPATH": str(root),
+             "JWT_PUBLIC_KEY": "test-only-not-a-real-key"},
+        capture_output=True, text=True,
+    )
+    assert proc.returncode == 0, (
+        f"guard konteyner yerlesiminde head okuyamadi:\n{proc.stderr[-800:]}")
+    assert head in proc.stdout, proc.stdout
