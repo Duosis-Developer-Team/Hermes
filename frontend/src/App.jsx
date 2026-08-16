@@ -10,6 +10,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Spin } from 'antd'
 import { useAuthStore } from './stores/authStore'
+import { usePlatformAuthStore } from './stores/platformAuthStore'
 import { authService, rbacService } from './services/api'
 import { AppErrorBoundary } from './components/common/ErrorBoundaries'
 
@@ -45,6 +46,8 @@ import { routeLoaders } from './routes/loaders'
 
 const LoginPage = lazy(routeLoaders.login)
 const AuthCallbackPage = lazy(routeLoaders.authCallback)
+const PlatformLoginPage = lazy(routeLoaders.platformLogin)
+const PlatformConsole = lazy(routeLoaders.platformConsole)
 const DashboardPage = lazy(routeLoaders.dashboard)
 const TimeEntryPage = lazy(routeLoaders.timeEntry)
 const CustomersPage = lazy(routeLoaders.customers)
@@ -163,6 +166,13 @@ function App() {
     // RBAC R3: oturum AÇIK olduğu her an (boot VEYA login sonrası)
     // efektif izinleri yükle. can() fail-closed: izinler gelene dek
     // yönetim yüzeyleri görünmez; hata → boş liste (yine kapalı).
+    // WS9: platform oturumu TENANT oturumundan bagimsizdir; ayri store,
+    // ayri cerez, ayri audience. Tenant kullanicisi olmak konsola
+    // erisim VERMEZ.
+    const platformAuthenticated = usePlatformAuthStore(
+        (s) => s.isAuthenticated,
+    )
+
     const permissions = useAuthStore((s) => s.permissions)
     useEffect(() => {
         if (isAuthenticated && permissions === null) {
@@ -184,6 +194,26 @@ function App() {
         <AppErrorBoundary>
         <Suspense fallback={<CenteredLoader />}>
         <Routes>
+            {/* =================================================================
+                WS9 — Platform Admin Console (AYRI GUVENLIK DUZLEMI)
+                =================================================================
+                Tenant rota agacinin DISINDA yasar:
+                  - tenant oturumu (`isAuthenticated`) burada hicbir sey
+                    ifade etmez; kapi `usePlatformAuthStore`dur;
+                  - MainLayout/sidebar KULLANILMAZ — tenant menusu bu
+                    konsolda gorunmez, konsol da tenant menusune sizmaz;
+                  - lazy chunk: normal kullanici bu kodu indirmez.
+               ================================================================= */}
+            <Route path="/platform-admin/login" element={<PlatformLoginPage />} />
+            <Route
+                path="/platform-admin/*"
+                element={
+                    platformAuthenticated
+                        ? <PlatformConsole />
+                        : <Navigate to="/platform-admin/login" replace />
+                }
+            />
+
             {/* Public Routes */}
             <Route
                 path="/login"

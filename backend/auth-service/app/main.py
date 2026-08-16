@@ -204,6 +204,15 @@ from .routers.internal_authz import router as internal_authz_router  # noqa: E40
 
 app.include_router(internal_authz_router)
 
+# Platform Admin API (WS9) — AYRI guvenlik duzlemi.
+# Router kendi TAM yolunu tasir (/api/platform/v1): tenant API'sinin
+# prefix'i (API_PREFIX) BILEREK kullanilmaz, boylece iki duzlem yol
+# duzeyinde de karismaz. Kimlik AYRI cookie + AYRI audience ile
+# dogrulanir; tenant token'i buradan GECEMEZ (shared/auth.py).
+from .routers.platform_admin import router as platform_admin_router  # noqa: E402
+
+app.include_router(platform_admin_router)
+
 
 # =============================================================================
 # Health Check Endpoint
