@@ -26,16 +26,29 @@ logger = logging.getLogger("hermes.public_api.audit")
 
 def _persist(record: dict) -> None:
     """Tek kayit yazar. Ayri, kisa omurlu session — istegin kendi DB
-    islemlerinden bagimsiz. Testlerde monkeypatch edilir."""
-    from ..database import SessionLocal
-    from ..models.api_client import ApiRequestLog
+    islemlerinden bagimsiz. Testlerde monkeypatch edilir.
 
-    db = SessionLocal()
-    try:
+    WS6: kayit TENANT baglaminda yazilir. `api_request_logs` tenant-owned
+    ve RLS korumali; baglamsiz bir insert WITH CHECK'e takilir. Tenant,
+    dogrulanmis token'dan gelen `request.state` degeridir — istekten
+    DEGIL.
+
+    Kimlik dogrulamasi BASARISIZ olan istekler (tenant'i olmayanlar)
+    veritabanina yazilmaz; onlar zaten IP bazli sayacla sinirlaniyor ve
+    tenant'i olmayan bir denetim kaydinin sahibi de yoktur.
+    """
+    from ..models.api_client import ApiRequestLog
+    from ..tenant_db import TenantSession
+
+    tenant_id = record.get("tenant_id")
+    if not tenant_id:
+        # Kimlik dogrulamasi basarisiz olan istegin sahibi bir tenant
+        # YOKTUR; RLS altinda yazilamaz ve yazilmamalidir da. Bu
+        # istekler zaten IP bazli sayacla sinirlaniyor.
+        return
+
+    with TenantSession(str(tenant_id)) as db:
         db.add(ApiRequestLog(**record))
-        db.commit()
-    finally:
-        db.close()
 
 
 def _route_template(request) -> str:
@@ -62,6 +75,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
 
         record = {
             "request_id": getattr(request.state, "request_id", "")[:64],
+            "tenant_id": getattr(request.state, "api_tenant_id", None),
             "client_id": getattr(request.state, "api_client_id", None),
             "token_id": getattr(request.state, "api_token_id", None),
             "method": request.method[:8],

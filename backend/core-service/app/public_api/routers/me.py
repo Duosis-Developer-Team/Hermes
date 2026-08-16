@@ -16,6 +16,25 @@ from ..deps import ApiContext, get_api_context
 router = APIRouter(prefix="/v1")
 
 
+def _workspace_slug(db: Session, tenant_id) -> str | None:
+    """Tenant'in okunabilir slug'i (core projeksiyonundan).
+
+    Slug yalnizca insan icin bir KOLAYLIKTIR; hicbir yetki kararinda
+    kullanilmaz. Bu yuzden cozulemezse (projeksiyon henuz yok, sorgu
+    basarisiz) kimlik yaniti BOZULMAZ — `None` doner. Otoriter alan
+    `workspace.id`dir ve o dogrudan token kaydindan gelir.
+    """
+    from sqlalchemy import text
+
+    try:
+        return db.execute(
+            text("SELECT slug FROM tenant_registry WHERE tenant_id = :t"),
+            {"t": tenant_id},
+        ).scalar()
+    except Exception:  # noqa: BLE001 — kolaylik alani istegi bozamaz
+        return None
+
+
 @router.get(
     "/me",
     tags=["Meta"],
@@ -37,6 +56,18 @@ async def me(
         .all()
     )
     return {
+        # WS6: token'in BAGLI OLDUGU workspace. Entegrasyonlar (ve MCP)
+        # hangi organizasyona baglandiklarini dogrulayabilsin diye
+        # doner; ayrica MCP'nin gorunurluk cache'i bu degeri saklayip
+        # her istekte KARSILASTIRIR (cache'in yanlis tenant'a servis
+        # yapmasi yapisal olarak yakalanir).
+        #
+        # Yalnizca GUVENLI alanlar: plan, limit, uye sayisi, domain
+        # listesi DONMEZ.
+        "workspace": {
+            "id": str(ctx.client.tenant_id),
+            "slug": _workspace_slug(db, ctx.client.tenant_id),
+        },
         "client": {
             "id": str(ctx.client.id),
             "name": ctx.client.name,

@@ -313,6 +313,58 @@ def enable_row_level_security(conn) -> List[str]:
 
 
 # =============================================================================
+# 4b) Public API token'i icin DAR ayricalikli lookup
+# =============================================================================
+
+API_TOKEN_LOOKUP = "api_token_lookup"
+
+
+def install_api_token_lookup(conn) -> None:
+    """Tenant KESFI icin tek dar SECURITY DEFINER fonksiyonu.
+
+    Gerekce ve tasarim notlari: migration 0006_api_token_lookup.
+    Ozetle: kimlik dogrulamasi tenant'i token'i BULMADAN bilemez, ama
+    RLS altinda tenant baglamsiz sorgu sifir satir doner. Cozum RLS'i
+    genel olarak asmak DEGIL, yalnizca guvenli tanimlayicilari donen
+    tek bir dar fonksiyondur.
+    """
+    conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {SECURITY_SCHEMA}"))
+    conn.execute(text(
+        f"""
+        CREATE OR REPLACE FUNCTION {SECURITY_SCHEMA}.{API_TOKEN_LOOKUP}(
+            p_token_hash text,
+            p_environment text
+        )
+        RETURNS TABLE (
+            tenant_id           uuid,
+            token_id            uuid,
+            client_id           uuid,
+            token_status        varchar,
+            token_expires_at    timestamptz,
+            client_status       varchar,
+            environment_matches boolean
+        )
+        LANGUAGE sql
+        STABLE
+        SECURITY DEFINER
+        SET search_path = {SECURITY_SCHEMA}, public, pg_catalog
+        AS $fn$
+            SELECT t.tenant_id, t.id, t.client_id, t.status, t.expires_at,
+                   c.status, (c.environment = p_environment)
+            FROM public.api_tokens  t
+            JOIN public.api_clients c
+              ON c.id = t.client_id AND c.tenant_id = t.tenant_id
+            WHERE t.token_hash = p_token_hash
+        $fn$
+        """
+    ))
+    conn.execute(text(
+        f"REVOKE ALL ON FUNCTION {SECURITY_SCHEMA}.{API_TOKEN_LOOKUP}"
+        "(text, text) FROM PUBLIC"
+    ))
+
+
+# =============================================================================
 # 5) Runtime rol yetkileri
 # =============================================================================
 
@@ -339,6 +391,11 @@ def grant_runtime_role(conn, role_name: str) -> None:
         f"GRANT EXECUTE ON FUNCTION {SECURITY_SCHEMA}"
         f".app_current_tenant_id() TO {role_name}"
     ))
+    # Tenant kesfi fonksiyonu — YALNIZCA runtime rolune.
+    conn.execute(text(
+        f"GRANT EXECUTE ON FUNCTION {SECURITY_SCHEMA}.{API_TOKEN_LOOKUP}"
+        f"(text, text) TO {role_name}"
+    ))
     conn.execute(text(
         "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES "
         f"IN SCHEMA public TO {role_name}"
@@ -359,6 +416,7 @@ def apply_enforce(conn, *, runtime_role: str = "hermes_core_app") -> dict:
     uniques = convert_unique_constraints(conn)
     fks = convert_foreign_keys(conn)
     install_security_helpers(conn)
+    install_api_token_lookup(conn)
     tables = enable_row_level_security(conn)
     grant_runtime_role(conn, runtime_role)
 

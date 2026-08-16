@@ -20,10 +20,12 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import Depends, Request
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..database import get_db
+from ..tenant_db import bind_tenant
 from ..models.api_client import ApiClient, ApiToken
 from ..services import api_client_service
 from .errors import PublicAPIError
@@ -59,9 +61,39 @@ class ApiContext:
     scopes: frozenset = field(default_factory=frozenset)
 
 
+def discover_tenant(db: Session, digest: str, environment: str):
+    """Token'in TENANT'ini bulur — tenant baglami HENUZ YOKKEN.
+
+    RLS altinda `api_tokens` sorgusu tenant baglami olmadan sifir satir
+    doner; ama kimlik dogrulamasi tam olarak "hangi tenant?" sorusunu
+    cevaplamak zorundadir. Bu tavuk-yumurta problemi, RLS'i genel olarak
+    asarak DEGIL, tek bir dar SECURITY DEFINER fonksiyonuyla cozulur
+    (bkz. migration 0006). Fonksiyon yalnizca guvenli tanimlayicilari
+    doner; scope/binding/isim gibi hicbir icerik gormez.
+
+    Returns:
+        Satir bulunmazsa None.
+    """
+    row = db.execute(
+        text(
+            "SELECT tenant_id, token_id, client_id, token_status, "
+            "       token_expires_at, client_status, environment_matches "
+            "FROM hermes_sec.api_token_lookup(:h, :env)"
+        ),
+        {"h": digest, "env": environment},
+    ).mappings().first()
+    return row
+
+
 def _lookup_token(db: Session, digest: str):
-    """Indexed lookup (token_hash UNIQUE). Test edilebilirlik icin ayri
-    fonksiyon. (client join'i ayri sorgu — iki PK/unique lookup.)"""
+    """Tenant baglami KURULDUKTAN sonra token/client'i NORMAL RLS
+    altinda okur.
+
+    Bu ikinci okuma bilinclidir: ayricalikli fonksiyon yalnizca tenant'i
+    kesfeder; scope, binding ve durum kararlari RLS'in gordugu satirlar
+    uzerinden verilir. Boylece ayricalikli yol mumkun oldugunca dar
+    kalir.
+    """
     token = (
         db.query(ApiToken).filter(ApiToken.token_hash == digest).first()
     )
@@ -75,7 +107,15 @@ def _lookup_token(db: Session, digest: str):
 
 def _touch_last_used(db: Session, token: ApiToken, ip: Optional[str]) -> None:
     """Best-effort, throttled last-used metadata. Basarisizligi istegi
-    ASLA bozmaz."""
+    ASLA bozmaz.
+
+    WS6: yazma AYRI bir kisa oturumda yapilir. Onceden istegin kendi
+    session'inda `commit()` cagriliyordu; tenant baglami
+    (`SET LOCAL app.tenant_id`) transaction'a bagli oldugu icin bu
+    commit, isteğin GERI KALANINI tenant'siz birakirdi — ve RLS altinda
+    o noktadan sonra hicbir satir gorunmezdi. Metadata yazmak, isteğin
+    izolasyon baglamini bozmaya degmez.
+    """
     now = datetime.now(timezone.utc)
     last = token.last_used_at
     if last is not None and last.tzinfo is None:
@@ -85,12 +125,31 @@ def _touch_last_used(db: Session, token: ApiToken, ip: Optional[str]) -> None:
         and (now - last).total_seconds() < LAST_USED_UPDATE_INTERVAL_SECONDS
     ):
         return
+    # Once BELLEKTEKI nesne — kalicilastirma basarisiz olsa bile bu
+    # istegin gordugu deger tutarli olsun.
+    token.last_used_at = now
+    token.last_used_ip = ip
     try:
-        token.last_used_at = now
-        token.last_used_ip = ip
-        db.commit()
-    except Exception:  # noqa: BLE001
-        db.rollback()
+        # Baglanti, istegin KENDI engine'inden alinir (global
+        # `SessionLocal` DEGIL): testler farkli bir veritabanina baglanir
+        # ve global fabrikayi kullanmak, yapilandirilmis-ama-erisilemez
+        # bir sunucuya baglanma denemesi demektir.
+        engine = db.get_bind()
+        with engine.connect() as side:
+            with side.begin():
+                side.execute(
+                    text("SELECT set_config('app.tenant_id', :t, true)"),
+                    {"t": str(token.tenant_id)},
+                )
+                side.execute(
+                    text(
+                        "UPDATE api_tokens SET last_used_at = :now, "
+                        "last_used_ip = :ip WHERE id = :id"
+                    ),
+                    {"now": now, "ip": ip, "id": token.id},
+                )
+    except Exception:  # noqa: BLE001 — metadata asla istegi bozmaz
+        pass
 
 
 def _reject_auth(request: Request, ip: Optional[str], code: str, message: str):
@@ -140,8 +199,19 @@ async def get_api_context(
     if not raw.startswith(_VALID_PREFIXES) or len(raw) < 20:
         _reject_auth(request, ip, "invalid_token", "Invalid API token.")
 
-    # 3) SHA-256 → indexed lookup → sabit-zamanli teyit.
+    # 3) SHA-256 → TENANT KESFI (ayricalikli dar fonksiyon) → tenant
+    #    baglami → normal RLS altinda okuma → sabit-zamanli teyit.
+    settings = get_settings()
     digest = api_client_service.hash_token(raw)
+
+    discovered = discover_tenant(db, digest, settings.PUBLIC_API_ENV)
+    if discovered is None or discovered["tenant_id"] is None:
+        _reject_auth(request, ip, "invalid_token", "Invalid API token.")
+
+    # Bundan SONRAKI her sorgu bu tenant'in satirlarini gorur. Deger
+    # token KAYDINDAN gelir — istemcinin gonderdigi hicbir seyden degil.
+    bind_tenant(db, str(discovered["tenant_id"]))
+
     token, client = _lookup_token(db, digest)
     if token is None or client is None:
         _reject_auth(request, ip, "invalid_token", "Invalid API token.")
@@ -173,7 +243,6 @@ async def get_api_context(
         )
 
     # 6) Ortam eslesmesi — dev token'i live'da (ve tersi) calismaz.
-    settings = get_settings()
     if client.environment != settings.PUBLIC_API_ENV:
         _reject_auth(
             request,
@@ -184,7 +253,13 @@ async def get_api_context(
 
     # 7) Token/client rate limiti (basarili kimlik dogrulama sonrasi).
     limit = client.rate_limit_per_min or settings.PUBLIC_API_DEFAULT_RATE_LIMIT
-    rate_result = get_limiter().check(f"token:{token.id}", limit, 60)
+    # Anahtar tenant'i DE tasir: token id'leri zaten benzersiz, ama
+    # anahtar uzayini tenant'a gore bolmek, ileride paylasilan bir
+    # limiter'a (Redis) gecildiginde capraz-tenant sayac karisimini
+    # yapisal olarak imkansiz kilar.
+    rate_result = get_limiter().check(
+        f"tenant:{client.tenant_id}:token:{token.id}", limit, 60
+    )
     request.state.rate_limit = rate_result
     if not rate_result.allowed:
         request.state.rate_limited = True
@@ -203,6 +278,8 @@ async def get_api_context(
         scopes=frozenset(client.scopes or []),
     )
     # Audit / rate-limit katmanlari icin (2C) request.state'e isle.
+    # Denetim kaydi tenant'i buradan alir (istekten DEGIL).
+    request.state.api_tenant_id = str(client.tenant_id)
     request.state.api_client_id = str(client.id)
     request.state.api_token_id = str(token.id)
     return ctx

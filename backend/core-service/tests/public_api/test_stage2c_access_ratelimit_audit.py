@@ -176,6 +176,27 @@ def harness(monkeypatch):
         return t, c
 
     monkeypatch.setattr(deps, "_lookup_token", fake_lookup)
+
+    # WS6: kimlik dogrulama once TENANT KESFI yapar (ayricalikli dar
+    # SQL fonksiyonu). Sahte DB'de SQL yok; kesfi de ayni state'ten
+    # besliyoruz — davranis sozlesmesi ayni kalir.
+    def fake_discover(db, digest, environment):
+        t, c = state["token"], state["client"]
+        if t is None or t.token_hash != digest or c is None:
+            return None
+        return {
+            "tenant_id": c.tenant_id,
+            "token_id": t.id,
+            "client_id": c.id,
+            "token_status": t.status,
+            "token_expires_at": t.expires_at,
+            "client_status": c.status,
+            "environment_matches": c.environment == environment,
+        }
+
+    monkeypatch.setattr(deps, "discover_tenant", fake_discover)
+    # Sahte session'da SET LOCAL calistirilamaz.
+    monkeypatch.setattr(deps, "bind_tenant", lambda db, tenant_id: None)
     root = FastAPI()
     root.mount("/api/public", create_public_app_alias(public))
     http = TestClient(root, raise_server_exceptions=False)

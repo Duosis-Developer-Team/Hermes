@@ -57,20 +57,39 @@ def require_token() -> str:
     return token
 
 
-# Gorunurluk cache'i: sha256(token) -> (expiry, scopes, client_type).
-# Kucuk tutulur; TTL kisadir; ASLA yetki karari icin kullanilmaz.
+# Gorunurluk cache'i:
+#   sha256(token) -> (expiry, scopes, client_type, workspace_id)
+#
+# Anahtar token hash'idir; token TEK bir tenant'a bagli oldugu icin bu
+# yeterlidir. Yine de cache'lenen deger tenant'i DA saklar ve her
+# kullanimda API'nin bildirdigiyle karsilastirilir (WS6 / pack 09 §2):
+# boylece bir gun anahtar uzayi degisir veya bir hash cakisir olsa bile,
+# yanlis tenant'a gorunurluk servis etmek YAPISAL olarak yakalanir.
+#
+# Kucuk tutulur; TTL kisadir; ASLA yetki karari icin kullanilmaz —
+# yetkinin tek merci Public API'dir.
 _visibility_cache: dict = {}
 _CACHE_MAX = 256
 
 
+class TenantMismatchError(AuthError):
+    """Cache'lenen tenant ile API'nin bildirdigi tenant uyusmuyor."""
+
+
 async def resolve_visibility(token: str) -> dict:
-    """GET /v1/me ile scope + client_type cozer (tool listesi filtresi).
-    Hata → AuthError (API'nin kendi mesajiyla, sanitize)."""
+    """GET /v1/me ile scope + client_type + workspace cozer.
+
+    Hata → AuthError (API'nin kendi mesajiyla, sanitize).
+    """
     key = hashlib.sha256(token.encode()).hexdigest()
     now = time.monotonic()
     hit = _visibility_cache.get(key)
     if hit and hit[0] > now:
-        return {"scopes": hit[1], "client_type": hit[2]}
+        return {
+            "scopes": hit[1],
+            "client_type": hit[2],
+            "workspace_id": hit[3],
+        }
 
     status, body = await upstream.api_request(
         "GET", "me", token=token, tool="__visibility__"
@@ -85,14 +104,31 @@ async def resolve_visibility(token: str) -> dict:
 
     scopes = frozenset(body.get("scopes") or [])
     client_type = (body.get("client") or {}).get("type", "service")
+    workspace_id = (body.get("workspace") or {}).get("id")
+
+    # Ayni token icin BASKA bir tenant bildirildiyse cache'i temizle ve
+    # istegi reddet. Bu olmamasi gereken bir durumdur; sessizce devam
+    # etmek, gorunurlugun yanlis organizasyona servis edilmesi demekti.
+    previous = _visibility_cache.get(key)
+    if previous and previous[3] and workspace_id and previous[3] != workspace_id:
+        _visibility_cache.pop(key, None)
+        raise TenantMismatchError(
+            "Hermes token problem: workspace mismatch for this token."
+        )
+
     if len(_visibility_cache) >= _CACHE_MAX:
         _visibility_cache.clear()  # basit sinir — dogruluk API'de
     _visibility_cache[key] = (
         now + config.SCOPE_CACHE_TTL_SECONDS,
         scopes,
         client_type,
+        workspace_id,
     )
-    return {"scopes": scopes, "client_type": client_type}
+    return {
+        "scopes": scopes,
+        "client_type": client_type,
+        "workspace_id": workspace_id,
+    }
 
 
 def clear_visibility_cache() -> None:
