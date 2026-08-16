@@ -450,9 +450,31 @@ raporluyor, `mixins.LEGACY_UNMANAGED_TABLES` gerekçesiyle beyan ediyor.
    import ayrı bir process'te yapılıyor; mutasyonla doğrulandı — eski koda
    dönünce core ve auth için üretimdekiyle **birebir aynı** hatayı veriyor.
 
-**Bu dördünün ortak dersi:** üçü de yerel test yeşilken canlıda/konteynerde
+5. **Yanlış tenant hostname'i girişi tamamen kapattı** (rollout'tan sonra,
+   kullanıcı bildirdi). `hermes-dev` ConfigMap'ine **test ortamının** adresi
+   (`hermes.duosis.com`) yazılmıştı; oysa dev'e IP ile gelinir
+   (`84.247.180.172`, ingress'te host kuralı yok). Tenant çözümü Host
+   başlığına bakar ve eşleşme yoksa fail-closed 404 `workspace_not_found`
+   döner — yani şema, RLS, roller ve rollout kusursuzken **hiç kimse giriş
+   yapamıyordu**, ne parola ne Microsoft SSO (ikisi de aynı çözümden geçer).
+
+   Bu, §14.4b'de "kapanmamış tek boşluk" diye işaretlediğim yerin ta
+   kendisiydi: kimlik doğrulamalı uçtan uca akış hiç koşulmamıştı ve
+   altı duman kontrolünün hepsi yeşilken bu kusur görünmüyordu.
+
+   Düzeltme: canlı `tenant_domains` kaydı dev adresine çevrildi,
+   `k8s/01-configmap.yaml` düzeltildi (yorumda dev/test adresleri açıkça
+   ayrıldı) ve **iki yeni kapı** eklendi:
+   - Yapısal test: dev ConfigMap'i test adresini, test ConfigMap'i dev
+     adresini taşıyamaz.
+   - **Duman kontrolü 7**: giriş ucuna kasıtlı geçersiz credential
+     gönderilir; doğru cevap 401'dir. `workspace_not_found` görülürse
+     rollout kırmızıya döner. Mutasyonla doğrulandı — hostname yanlışa
+     çevrilince iki satırlık net hatayla kırıldı.
+
+**Bu beşinin ortak dersi:** üçü de yerel test yeşilken canlıda/konteynerde
 ortaya çıktı ve üçü de **fail-open** yönündeydi (sessiz boş sonuç,
-görünmez tablo, yanlış veritabanına şema). Dördü için de kapı eklendi ve
+görünmez tablo, yanlış veritabanına şema). Beşi için de kapı eklendi ve
 kapıların diş taşıdığı **mutasyonla** doğrulandı — yeşil olmaları tek
 başına kanıt sayılmadı.
 
@@ -574,7 +596,15 @@ oturumu.
 3. **Rate limiter in-memory** — tek pod doğru; yatay ölçeklemede
    paylaşılan store (Redis) gerekir. Anahtar artık tenant taşıyor.
 4. **Görsel/a11y QA turu yapılmadı** (§11).
-4b. **Kimlik doğrulamalı uçtan uca kullanıcı akışı canlıda koşulmadı.**
+4b. **Kimlik doğrulamalı uçtan uca kullanıcı akışı — kısmen kapandı.**
+   Bu boşluk gerçek bir arızaya dönüştü (§13.2.5): yanlış tenant
+   hostname'i yüzünden giriş tamamen kapalıydı. Düzeltildi ve artık
+   duman kontrolü 7 ile makine tarafından korunuyor: giriş ucu her
+   rollout'ta gerçekten çağrılıyor ve `workspace_not_found` dönerse
+   rollout kırmızı. **Hâlâ doğrulanmayan:** gerçek bir kullanıcı
+   parolasıyla giriş yapıp UI'dan görev/zaman kaydı oluşturmak —
+   credential gerekiyordu ve uydurulmadı (CTO kuralı). Tenant değiştirme
+   akışı da yalnızca testlerle kanıtlıdır, canlıda değil.
    Doğrulananlar: ingress 200, her iki servis `/ready` 200, ve uygulama
    rolüyle canlı `core_db` üzerinde bağlamsız okuma **0** / bağlamlı
    okuma tam / yazma başarılı. Doğrulanmayan: gerçek bir kullanıcı

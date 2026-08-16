@@ -510,3 +510,50 @@ def test_schema_guard_resolves_head_in_image_layout(tmp_path, service, head):
     assert proc.returncode == 0, (
         f"guard konteyner yerlesiminde head okuyamadi:\n{proc.stderr[-800:]}")
     assert head in proc.stdout, proc.stdout
+
+
+# =============================================================================
+# Ortam adresleri — yanlis hostname LOGIN'I TAMAMEN KAPATIR
+# =============================================================================
+# Tenant cozumu Host basligina bakar; eslesme yoksa fail-closed 404
+# `workspace_not_found` doner. Yani `INITIAL_TENANT_HOSTNAME` yanlissa
+# ortamda hic kimse giris YAPAMAZ — ne parola ne SSO. Canlida tam olarak
+# bu oldu: hermes-dev ConfigMap'ine test ortaminin adresi yazilmisti.
+
+_DEV_HOST = "84.247.180.172"
+_TEST_HOST = "hermes.duosis.com"
+
+
+def _configmap_value(path, key):
+    import re as _re
+    text = (_REPO_ROOT / path).read_text(encoding="utf-8")
+    m = _re.search(rf'^\s*{key}:\s*"?([^"\n]+)"?\s*$', text, _re.M)
+    return m.group(1).strip() if m else None
+
+
+def test_dev_configmap_does_not_carry_test_hostname():
+    """dev ConfigMap'i test ortaminin adresini TASIYAMAZ."""
+    value = _configmap_value("k8s/01-configmap.yaml", "INITIAL_TENANT_HOSTNAME")
+    assert value, "dev ConfigMap'inde INITIAL_TENANT_HOSTNAME yok"
+    assert value != _TEST_HOST, (
+        f"dev ConfigMap'i test adresini ({_TEST_HOST}) tasiyor. Tenant "
+        "cozumu Host'a bakar; dev'e bu adresle GELINMEZ ve login tamamen "
+        "kapanir (workspace_not_found)."
+    )
+    assert value == _DEV_HOST, (
+        f"dev icin beklenen adres {_DEV_HOST}, bulunan: {value}")
+
+
+def test_test_configmap_does_not_carry_dev_hostname():
+    """Simetrik kapi: test ConfigMap'i de dev adresini tasiyamaz.
+
+    `k8s/test/01-configmap.yaml` bu calismada DEGISTIRILMEDI; burasi
+    yalnizca ileride tenant anahtarlari oraya eklenirse yanlis ortamin
+    adresinin kopyalanmasini engeller.
+    """
+    value = _configmap_value("k8s/test/01-configmap.yaml",
+                             "INITIAL_TENANT_HOSTNAME")
+    if value is None:
+        pytest.skip("test ConfigMap'inde tenant anahtari yok (beklenen)")
+    assert value != _DEV_HOST, (
+        f"test ConfigMap'i dev adresini ({_DEV_HOST}) tasiyor.")

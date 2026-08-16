@@ -26,7 +26,17 @@ data:
   INITIAL_TENANT_SLUG: "duosis"
   INITIAL_TENANT_NAME: "Duosis"
   # Legacy host: eski URL'ler ve e-posta linkleri bu tenant'a cozulur.
-  INITIAL_TENANT_HOSTNAME: "hermes.duosis.com"
+  #
+  # BU DOSYA hermes-dev ICINDIR — deger, dev'e GERCEKTEN gelinen adres
+  # olmalidir. Tenant cozumu Host basligina bakar ve eslesme yoksa
+  # fail-closed 404 `workspace_not_found` doner; yani yanlis bir hostname
+  # LOGIN'I TAMAMEN KAPATIR. Bir kez tam olarak boyle oldu: buraya test
+  # ortaminin adresi (`hermes.duosis.com`) yazilmisti ve dev'de ne parola
+  # ne de Microsoft girisi calisti.
+  #
+  # dev  = 84.247.180.172 (ingress'te host kurali YOK, IP ile gelinir)
+  # test = hermes.duosis.com  <-- BURAYA YAZILMAZ
+  INITIAL_TENANT_HOSTNAME: "84.247.180.172"
   # `/w/{slug}` dev kolayligi. Production'da ASLA "true" olmamali:
   # host disinda bir tenant secme yolu birakir.
   HERMES_ALLOW_WORKSPACE_PATH: "false"

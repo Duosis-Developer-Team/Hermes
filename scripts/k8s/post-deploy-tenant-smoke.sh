@@ -16,6 +16,7 @@
 #   4. tenant_id NULL kalan satir var mi?
 #   5. Tenant baglami OLMADAN uygulama rolu satir gorebiliyor mu?
 #   6. Servisler /ready doner mi (sema uyumlulugu dahil)?
+#   7. Giris ucu workspace cozuyor mu (yanlis hostname = giris kapali)?
 #
 # GUVENLIK: hicbir sifre/token yazdirilmaz. psql cagrilari pod icinden
 # yapilir; kimlik bilgisi zaten pod ortamindadir.
@@ -194,6 +195,46 @@ for svc in auth-service core-service; do
     bad "$svc /ready → $code (sema uyumsuz veya pod hazir degil)"
   fi
 done
+
+note "=== 7) Giris ucu workspace cozuyor mu ==="
+# NEDEN BU KONTROL VAR: tenant cozumu Host basligina bakar ve eslesme
+# yoksa fail-closed 404 `workspace_not_found` doner. Yani yanlis bir
+# `INITIAL_TENANT_HOSTNAME` ortamda HIC KIMSENIN giris yapamamasi
+# demektir — sema, RLS ve rollout kusursuz olsa bile. Yukaridaki alti
+# kontrolun hepsi yesilken canlida tam olarak bu yasandi.
+#
+# Kasitli olarak GECERSIZ bir credential gonderiyoruz: dogru cevap 401
+# (kimlik hatali). 404/`workspace_not_found` gorursek adres kaydi yanlis.
+cfg_host="$(kubectl -n "$namespace" get cm hermes-config \
+  -o jsonpath='{.data.INITIAL_TENANT_HOSTNAME}' 2>/dev/null || true)"
+if [ -z "$cfg_host" ]; then
+  note "[SKIP] INITIAL_TENANT_HOSTNAME tanimsiz — giris kontrolu atlandi"
+else
+  # ConfigMap'teki adresin kayitli bir tenant domain'i olmasi sart.
+  domain_rows="$(q_auth "
+    SELECT count(*) FROM tenant_domains
+     WHERE hostname = lower('${cfg_host}')
+       AND verification_status = 'verified'")"
+  if [ "$domain_rows" = "1" ]; then
+    ok "tenant domain kayitli: ${cfg_host}"
+  else
+    bad "ConfigMap adresi '${cfg_host}' icin dogrulanmis tenant_domains kaydi YOK ($domain_rows) — GIRIS KAPALI olur"
+  fi
+
+  login_body="$(kubectl -n "$namespace" exec deploy/auth-service -- sh -c \
+    "curl -s -X POST http://localhost:8000/api/v1/auth/token \
+      -H 'Host: ${cfg_host}' \
+      -d 'username=smoke-invalid@invalid.invalid&password=invalid'" \
+    </dev/null 2>/dev/null || echo '')"
+  case "$login_body" in
+    *workspace_not_found*)
+      bad "giris ucu 'workspace_not_found' donuyor — ${cfg_host} hicbir tenant'a cozulmuyor; GIRIS TAMAMEN KAPALI" ;;
+    "")
+      bad "giris ucundan yanit alinamadi" ;;
+    *)
+      ok "giris ucu workspace cozuyor (gecersiz credential reddedildi)" ;;
+  esac
+fi
 
 echo
 if [ "$fail" -eq 0 ]; then
