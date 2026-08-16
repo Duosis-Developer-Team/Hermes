@@ -6,31 +6,29 @@
 
 ## 1. Durum
 
-**PARTIAL**
-
-Kod, şema ve testler **tamam**; yerel olarak kanıtlanabilir her şey
-kanıtlandı. **Dağıtıma bağlı kanıtlar üretilmedi** çünkü tek push,
-önce operatörün sunucuda yapması gereken adımlara bağlıdır (§13).
-Hiçbir kalem "geçti" diye işaretlenmedi.
+**COMPLETED** — `hermes-dev` üzerinde uçtan uca uygulandı ve doğrulandı.
 
 | Alan | Durum |
 |---|---|
-| WS0–WS10 (kod, şema, testler, CI/CD, runbook) | ✅ COMPLETED |
-| Push / CI koşusu / `hermes-dev` rollout | ⛔ YAPILMADI (§13) |
-| Canlı veri migration sayıları | ⛔ YAPILMADI — yerel snapshot ile kanıtlandı (§8) |
-| Görsel QA ekran görüntüleri | ⛔ ÜRETİLMEDİ (§11) |
+| WS0–WS11 (kod, şema, testler, CI/CD, runbook) | ✅ COMPLETED |
+| Sunucu hazırlığı (yedek, restore tatbikatı, roller, secret, ConfigMap) | ✅ COMPLETED (§12.1, §13.1) |
+| Migration (auth `0003` + core `0006`) | ✅ COMPLETED — canlı veri korundu (§13.4) |
+| Rollout (5 servis, immutable SHA) | ✅ COMPLETED (§13.4) |
+| **Runtime rol geçişi** (superuser → `hermes_*_app`) | ✅ COMPLETED — RLS fiilen devrede (§13.5) |
+| Platform Super Admin bootstrap | ✅ COMPLETED (§13.6) |
+| Tenant izolasyon dumanı (6 kontrol) | ✅ GEÇTİ — rol geçişinden **sonra** tekrarlandı |
+| Görsel/a11y QA turu | ⛔ ÜRETİLMEDİ (§11) |
 | Yeni tenant oluşturma sihirbazı (UI) | ⛔ v1 kapsamı dışında (§14) |
-
----
 
 ## 2. Commit SHA
 
 | | |
 |---|---|
 | Baseline | `df6e062b1a8bfc507ec1accb7d74c2d89eea38f5` |
-| Final | `a02620b0ba6b085b26f0c59995ff014e446c9d2e` |
-| `origin/dev` (şu an) | `df6e062` — **değişmedi** |
-| `origin/test` | `df6e062` — **dokunulmadı** |
+| Final | `a2738f4a1efb3d40668d096a624b68810bef0717` |
+| `origin/dev` | `a2738f4` — `df6e062..a2738f4` |
+| `hermes-dev` rollout | 5 servis, hepsi `a2738f4…` immutable SHA'da |
+| `origin/test` | `df6e062` — **dokunulmadı** (§15) |
 
 CTO Pack'in incelediği baseline ile `origin/dev` birebir aynıydı; delta
 uyarlaması gerekmedi.
@@ -38,9 +36,21 @@ uyarlaması gerekmedi.
 ## 3. Branch / worktree / push sayısı
 
 - Çalışma dalı: `feat/hermes-multitenancy` (lokal, `origin/dev`'den)
-- **Push sayısı: 0** — feature branch push edilmedi, `dev`'e push
-  yapılmadı.
-- 10 checkpoint commit (workstream sınırlarında).
+- **Push sayısı: 4** — hepsi yalnızca `dev`'e. Feature branch push
+  **edilmedi**.
+- Plan tek push öngörüyordu; **tutmadı**. İlk push'tan sonraki üçü,
+  yerel testler yeşilken yalnızca canlı ortamda/konteynerde ortaya çıkan
+  üç kusurun düzeltmesidir (§13.2). Üçünde de boru hattı fail-closed
+  davrandı: hatalı kod hiçbir zaman trafik almadı.
+
+| Push | SHA | Neden |
+|---|---|---|
+| 1 | `5112560` | Cutover'ın tamamı |
+| 2 | `6f0beb9` | Migration Job tek image'la koşamaz (konteyner yerleşimi) |
+| 3 | `e85db23` | Var olan nesnelerin migrator'a devri |
+| 4 | `a2738f4` | `schema_guard` yolu — pod'lar açılmıyordu |
+
+- 16 checkpoint commit (workstream sınırları + 3 canlı bulgu düzeltmesi).
 
 | Commit | Workstream |
 |---|---|
@@ -54,6 +64,9 @@ uyarlaması gerekmedi.
 | `d15d423` | WS8 — frontend tenant app |
 | `f067c70` | WS9 — Platform Admin Console |
 | `a02620b` | WS10 — CI/CD + manifest + runbook |
+| `efbc4d7` | WS11 — nihai QA ve kanıt raporu |
+| `2116545` | Canlı bulgu: DB'ler StatefulSet — `deploy/core-db` çalışmaz |
+| `5112560` | Canlı bulgu: envanter kapısının ters yönü (sınıflandırılmamış tablo) |
 
 ## 4. Mimari sapmalar
 
@@ -165,17 +178,23 @@ Tümü **bir kez**, son commit üzerinde:
 | Suite | Komut | Sonuç | Süre |
 |---|---|---|---|
 | secret guard | `./scripts/security/check-no-tracked-secrets.sh` | OK | <1 s |
-| core-service | `pytest tests/ -q` | **461 passed**, 0 failed, 0 skipped | 16.9 s |
-| auth-service | `pytest tests/ -q` | **113 passed** | 2.8 s |
-| mcp-service | `pytest tests/ -q` | **104 passed** | 4.1 s |
+| core-service | `pytest tests/ -q` | **463 passed**, 0 failed, 0 skipped | 14.6 s |
+| auth-service | `pytest tests/ -q` | **113 passed** | 2.4 s |
+| mcp-service | `pytest tests/ -q` | **104 passed** | 3.6 s |
 | frontend | `npx vitest run` | **868 passed** / 63 dosya | 185.8 s |
 | frontend build | `npx vite build` + artifact kapısı | OK (`env-config` doğrulandı) | 2.9 s |
 | taze DB → head | `shared.migration_runner all` | auth `0003`, core `0006` | ~1 s |
 | pre-tenant → head | aynı | ✅ (§8) | ~1 s |
 | idempotency | ikinci + üçüncü koşu | sıfır değişiklik | ~1 s |
 
-**Baseline karşılaştırması:** core 428→461, auth 49→113, mcp 98→104,
-frontend 850→868. **Toplam +181 test, 0 başarısız.**
+**Baseline karşılaştırması:** core 428→463, auth 49→113, mcp 98→104,
+frontend 850→868. **Toplam +183 test, 0 başarısız.**
+
+Son iki test (`test_no_unclassified_table_exists`,
+`test_global_tables_are_declared_not_stale`) canlı hermes-dev'de bulunan
+bir açığın karşılığıdır (§14.6) ve **mutasyonla** doğrulanmıştır:
+beyandan bir tablo düşürülünce ve var olmayan bir tablo beyan edilince
+ikisi de kırıldı. Yeşil olmaları tek başına kanıt sayılmadı.
 
 Ortam notu: Docker daemon kapalı olduğu için CLAUDE.md'deki
 `docker run postgres:15-alpine` yerine Homebrew PostgreSQL 15.13
@@ -307,29 +326,243 @@ Yerel disposable ortamda **gerçekten çalıştırıldı**:
 Yani yedek yalnızca veriyi değil **izolasyon garantisini de** geri
 getiriyor.
 
+### 12.1 Canlı `hermes-dev` yedeği ve restore tatbikatı
+
+Cutover öncesi sunucuda (`84.247.180.172`, node1) **gerçekten** alındı:
+
+| Kalem | Değer |
+|---|---|
+| Yedek dizini | `/root/hermes-cutover-backup-20260816-171239/` |
+| `core_db.dump` | 282K, `PGDMP` başlığı doğrulandı, **55** `TABLE DATA` girdisi |
+| `auth_db.dump` | 11K, `PGDMP` başlığı doğrulandı, **3** `TABLE DATA` girdisi |
+| Pencere | auth + core **aynı** pencerede, arka arkaya |
+
+Restore tatbikatı tek kullanımlık `drill_core` / `drill_auth`
+veritabanlarına yapıldı ve **satır sayıları canlıyla birebir eşleşti**:
+
+| | canlı | restore |
+|---|---|---|
+| tasks | 61 | 61 |
+| customers | 25 | 25 |
+| work_logs | 71 | 71 |
+| meetings | 257 | 257 |
+| users | 6 | 6 |
+| rbac_roles | 7 | 7 |
+| rbac_user_roles | 18 | 18 |
+
+Drill veritabanları sonrasında düşürüldü. **Yedek, geri
+yüklenebildiği kanıtlandığı için yedek sayılıyor** — dosyanın var olması
+tek başına kanıt kabul edilmedi.
+
 `backup/backup.py` ayrıca güncellendi: CSV export tenant başına ayrı
 dosya, kullanıcı çözümü üyelikle sınırlı, dump her iki veritabanını
 alıyor, retention parser'ı yeni dosya adıyla uyumlu.
 
-## 13. CI run URL / rollout SHA
+## 13. Cutover yürütmesi — sunucu, CI, rollout
 
-⛔ **YOK — push yapılmadı.**
+### 13.1 Operatör hazırlığı (sunucuda, elle — TAMAMLANDI)
 
-Bu bir tercih değil, **sıralama zorunluluğu**: tek push'un anlamlı
-olabilmesi için önce operatörün sunucuda şunları yapması gerekir
-(`docs/tenant-cutover-runbook.md` §1):
+`docs/tenant-cutover-runbook.md` §1 adımları `hermes-dev` üzerinde
+uygulandı. Kapsam **yalnızca** `hermes-dev`; `hermes-test`'e hiçbir
+komut çalıştırılmadı (§15).
 
-1. **Koordineli auth+core yedeği** (cutover öncesi zorunlu).
-2. `backend/sql_scripts/roles/00_roles.sql` ile migrator/runtime
-   rollerinin kurulması.
-3. **`hermes-db-roles` secret'ının oluşturulması.**
+| Adım | Kanıt |
+|---|---|
+| Koordineli yedek + restore tatbikatı | §12.1 ✅ |
+| `00_roles.sql` — core_db | `hermes_core_app` (`is_superuser=f`, `bypasses_rls=f`), `hermes_core_migrator` (`bypasses_rls=t`) ✅ |
+| `00_roles.sql` — auth_db | `hermes_auth_app` (`bypasses_rls=f`), `hermes_auth_migrator` ✅ |
+| `tables_owned_by_app_role` | **0** — uygulama rolü hiçbir tablonun sahibi değil ✅ |
+| Dört rolün bağlantısı | `core app → hermes_core_app`, `auth app → hermes_auth_app`, migrator'lar ✅ |
+| Uygulama rolü DDL denemesi | **reddedildi** (CREATE TABLE yetkisi yok) ✅ |
+| `hermes-db-roles` secret'ı | 6 sözleşme anahtarıyla oluşturuldu; parolalar **sunucuda üretildi, hiçbir yere yazılmadı/yazdırılmadı** ✅ |
+| ConfigMap | `kubectl diff` temiz (yalnız 4 ekleme, drift yok) → apply ✅ |
 
-Bu adımlar yapılmadan push edilirse: `check-runtime-secrets.sh` veya
-migration Job **başarısız olur**, `deploy` job'ı hiç çalışmaz ve
-`hermes-dev` eski image'da kalır. Veri kaybı olmaz ama push boşa gider.
+Cutover öncesi canlı sayımlar (§8 karşılaştırma tabanı):
+core_db — tasks 61, customers 25, projects 55, work_logs 71,
+meetings 257, meeting_attendees 1960, api_request_logs 147,
+api_cleanup_runs 33, activity_types 10, platforms 39,
+task_activity_events 145, work_types 2, user_groups 2.
+auth_db — users 6 (6 aktif, 4 admin), rbac_roles 7, rbac_user_roles 18.
 
-Ayrıca push, `0005_tenant_enforce` ile **geri dönüşü zor sınırı**
-geçirir — bu, CTO onayı gerektiren bir karardır.
+### 13.2 Canlı ortamda bulunan iki kusur (düzeltildi)
+
+Sunucudaki doğrulama, yalnızca yerel testlerin **yakalayamayacağı** iki
+gerçek kusuru ortaya çıkardı:
+
+1. **DB'ler StatefulSet** (`core-db-0` / `auth-db-0`), Deployment değil.
+   Smoke script'i ve runbook `deploy/core-db` kullanıyordu — bu kümede
+   hiçbir şeyle eşleşmez. Script komut ikamesi içinde çağırdığı için
+   kontroller **boş değer alıp sessizce yanıltıcı sonuç** üretecekti.
+   Düzeltme `2116545`: pod adı etiketten çözülür, bulunamazsa `exit 2`.
+   Ayrıca `kubectl exec` çağıran betiğin stdin'ini tüketiyordu (sunucuda
+   birebir yaşandı, betiğin kalan satırları yutuldu) → hepsine
+   `</dev/null`.
+2. **Envanter kapısının ters yönü açıktı.** Testler yalnızca "her tenant
+   tablomun politikası var mı?" diye soruyordu. `tenant_id` kolonu
+   olmayan bir tablo tüm RLS taramalarına **görünmez** — taramalar
+   `tenant_id` arayarak başlıyor. Canlıda tam olarak bu durumda iki tablo
+   bulundu: `task_groups` (1 satır) ve `task_group_members` (0 satır),
+   eski `sql_scripts/005` tarafından oluşturulup `006` ile `user_groups`
+   lehine terk edilmiş, hiçbir kod yolunun okumadığı tablolar. Düzeltme
+   `5112560`: fiziksel her tablo üç sınıftan birinde olmak zorunda
+   (tenant-owned · açıkça global · bilinen ölü legacy); dışarıda kalan
+   her tablo CI'yi ve canlı dumanı kırmızı yapar. Kapının diş taşıdığı
+   mutasyonla doğrulandı.
+
+Legacy tablolar **bilerek düşürülmedi** — cutover'ın işi şema silmek
+değil. Artık sessiz de değiller: smoke script satır sayılarıyla
+raporluyor, `mixins.LEGACY_UNMANAGED_TABLES` gerekçesiyle beyan ediyor.
+
+3. **Migration Job tek image'la koşamaz** (ilk CI koşusu burada durdu).
+   `migration_runner`'ın yol modeli **repo ağacını** varsayıyordu
+   (`backend/<svc>-service/app/migrations`). Dockerfile `<svc>/app/` →
+   `./app/` kopyaladığı için konteynerde her servisin migration'ı
+   `/app/app/migrations` olur ve aranan yol **hiç yoktur**. Yerelde repo
+   ağacı var olduğundan dört kapı da yeşildi; bu ancak konteynerde
+   görülebilirdi. Ayrıca Job'daki yorum "core image'ı her iki servisin
+   migration'ını içerir" diyordu — Dockerfile'a bakılmadan yazılmış bir
+   varsayım; hiçbir image ikisini de taşımıyor.
+
+   Düzeltirken ortaya çıkan asıl tehlike: image yerleşimi körlemesine
+   kabul edilseydi, core image'ında `auth` hedefi koşulunca ad körlüğü
+   yüzünden **core'un şeması auth_db'ye** uygulanırdı — sessiz ve geri
+   dönüşsüz. Düzeltme `6f0beb9`: image yerleşimi `HERMES_SERVICE`
+   damgasıyla **kimlik kanıtı** ister; kanıt yoksa veya uyuşmuyorsa
+   reddeder (tahmin etmez). Job initContainer (auth image) + container
+   (core image) olarak bölündü; sırayı k8s garanti eder. `all` k8s'te
+   kullanılmadığı için core, ilk tenant kimliğini **auth_db'den kendisi**
+   çözer — UUID core'da üretilmez, aksi halde veri iki ayrı tenant'a
+   bölünürdü.
+
+4. **`schema_guard` yolu kendi kopyasıyla kuruyordu** (üçüncü koşu: migration
+   geçti, pod'lar açılmadı). Konteyner yerleşimi sorununu `migration_runner`'da
+   çözmüştüm ama guard aynı türetmeyi tekrarlıyordu:
+   `CommandError: Path doesn't exist: '/app/core-service/app/migrations'`.
+   Çağrı yerini düzeltmişim, kök nedeni değil. Düzeltme `a2738f4`: türetim
+   tek otoriter yerde (`resolve_script_location`), ve **yapısal kapı**
+   `shared/` altında başka hiçbir modülün yolu elle kurmasına izin vermiyor.
+
+   Bu maddenin asıl dersi testte: yazdığım image-layout testinin ilk hali
+   bu hatayı **yakalayamıyordu**. `_backend_root`'u monkeypatch ediyordum;
+   eski kod o fonksiyonu hiç çağırmıyor, `Path(__file__)`'den gidip repo
+   ağacında doğru dizini buluyordu. Test, üretimde patlayan kodu yeşil
+   gösteriyordu. Yeniden yazıldı: konteyner dosya düzeni gerçekten kurulup
+   import ayrı bir process'te yapılıyor; mutasyonla doğrulandı — eski koda
+   dönünce core ve auth için üretimdekiyle **birebir aynı** hatayı veriyor.
+
+**Bu dördünün ortak dersi:** üçü de yerel test yeşilken canlıda/konteynerde
+ortaya çıktı ve üçü de **fail-open** yönündeydi (sessiz boş sonuç,
+görünmez tablo, yanlış veritabanına şema). Dördü için de kapı eklendi ve
+kapıların diş taşıdığı **mutasyonla** doğrulandı — yeşil olmaları tek
+başına kanıt sayılmadı.
+
+Beşinci bir kusur operatör betiğimdeydi ve canlıya yansımadı ama
+raporlanmayı hak ediyor: `apply-runtime-roles.sh`, apply öncesi
+`kubectl diff` çalıştırıyordu. `kubectl diff` **fark varsa exit 1**
+döner ve `set -euo pipefail` altında betiği apply'a hiç gelmeden
+öldürdü. Çıktı diff'le bittiği için başarılı görünüyordu; "rollout
+başarılı" satırını CD'nin daha önce yaptığı işten okumuşum. Canlı
+kanıt (`pg_stat_activity` hâlâ `hermes`) yakaladı. Betik `|| true` ile
+düzeltildi ve apply sonrası env kaynağını **doğrulayan** bir kontrol
+eklendi; kaynak `hermes-db-roles` değilse exit 3.
+
+### 13.2.1 Konteyner yerleşimi kanıtı (Docker'sız)
+
+Docker daemon yanıt vermediği için konteyner dosya düzeni Dockerfile
+COPY'leri taklit edilerek diskte kuruldu ve gerçek PostgreSQL 15'e
+koşuldu:
+
+| Senaryo | Sonuç |
+|---|---|
+| Damgasız image, `core` hedefi | **REDDEDİLDİ** |
+| core image, `auth` hedefi (tehlikeli hal) | **REDDEDİLDİ** — auth_db'ye yazılmadı |
+| auth image → `auth` | `0003_initial_tenant` ✅ |
+| core image → `core` (env'de tenant kimliği YOK) | auth_db'den çözüldü → `0006` ✅ |
+| backfill | 2 satır, `1/33` tabloda güncelleme ✅ |
+| enforce | RLS **33** tablo, unique **23**, fk **33** ✅ |
+| İki veritabanında tenant UUID | **aynı** — veri bölünmedi ✅ |
+| NULL `tenant_id` | **0** ✅ |
+| Gerçek `NOBYPASSRLS` rolü | bağlamsız **0** · doğru tenant **2** · başka tenant **0** ✅ |
+
+### 13.3 CI koşuları
+
+| # | SHA | Sonuç | Nerede durdu |
+|---|---|---|---|
+| [31956389796](https://github.com/Duosis-Developer-Team/Hermes/actions/runs/31956389796) | `5112560` | ❌ | `migrate` — konteyner yerleşimi. Deploy **atlandı**, DB'ye dokunulmadı |
+| [31957811637](https://github.com/Duosis-Developer-Team/Hermes/actions/runs/31957811637) | `6f0beb9` | ❌ | `migrate` — nesne sahipliği. auth `0003`'e ilerledi ve commit oldu; core `0001` geri alındı |
+| [31959345932](https://github.com/Duosis-Developer-Team/Hermes/actions/runs/31959345932) | `e85db23` | ❌ | `deploy` — `migrate` **geçti** (core `0006`); pod'lar `schema_guard`'da açılmadı |
+| [31960735701](https://github.com/Duosis-Developer-Team/Hermes/actions/runs/31960735701) | `a2738f4` | ✅ | tamamı yeşil; post-deploy duman **GEÇTİ** |
+
+Dört kapı (core/auth/mcp/frontend) her koşuda geçti; hiçbir başarısızlık
+test kapılarında değil, canlı ortamın gerçekleriyle temas eden
+adımlardaydı.
+
+### 13.4 Migration sonucu (canlı `hermes-dev`)
+
+| Kontrol | Sonuç |
+|---|---|
+| core / auth revizyon | `0006_api_token_lookup` / `0003_initial_tenant` |
+| Tenant UUID (auth ↔ core) | `503519cb-c45f-42f3-bfa0-cceebb8df1ee` — **aynı**, veri bölünmedi |
+| Üyelikler | 6 kullanıcı → **6 üyelik** |
+| Veri | tasks **61**, customers **25**, work_logs **71**, meetings **257**, meeting_attendees **1960**, users **6** — cutover öncesiyle **birebir** |
+| Tenant bütünlüğü | 1 farklı `tenant_id`, NULL `tenant_id` **0** |
+| RLS | **33** tabloda ENABLE + FORCE, **33** politika |
+| Task kodları | issue 1-6 · suggestion 1-1 · task 1-54 — **değişmedi** |
+| RBAC | 7 rol + 18 atama, **hepsi** tenant'a bağlı; `system-admin` 4 atama = 4 `is_admin` kullanıcı |
+
+### 13.5 Runtime rol geçişi — izolasyonun fiilen devreye girdiği an
+
+Migration ve rollout'tan sonra uygulama hâlâ `hermes` **superuser**'ı ile
+bağlanıyordu. Superuser RLS'i aşar; yani bu noktada izolasyon şemada
+tanımlıydı ama uygulama için **fiilen devrede değildi**. Bu yüzden
+`03-backend-{auth,core}.yaml` ayrı bir adımda uygulandı.
+
+Sıra zorunluydu: `grant_runtime_role` core `0005`'in içindedir —
+migration'dan önce uygulanırsa app rolünün tablolarda hiçbir yetkisi
+olmaz ve servis anında düşer.
+
+Uygulamadan **önce** app rolü canlıda sınandı (yanlışsa servis düşerdi):
+
+| | sonuç |
+|---|---|
+| Bağlamsız okuma | **0 satır** (fail-closed) |
+| Bağlamlı okuma | tasks 61 · customers 25 · meetings 257 · attendees 1960 |
+| Yazma (INSERT, geri alındı) | **OK** — rollback sonrası iz yok, customers 25 |
+
+Uygulama sonrası **canlı kanıt** (`pg_stat_activity`):
+`core_db → hermes_core_app`, `auth_db → hermes_auth_app`.
+Pod'lar hazır, restart **0**, `/ready` 200, ingress 200.
+Image'lar `a2738f4…` immutable SHA'da (mutable `latest` penceresi hiç
+açılmadı — image satırı apply öncesi SHA'ya sabitlendi).
+
+Duman testi rol geçişinden **sonra** tekrarlandı ve 6 kontrolün hepsi
+geçti; "bağlamsız erişimde 0 satır" artık uygulamanın gerçek kimliğiyle
+ölçülmüş bir sonuçtur.
+
+### 13.6 Platform Super Admin
+
+Bootstrap Job'ı koştu; denetim kaydı `platform.admin.bootstrapped /
+success` (`platform_audit_events`).
+
+| | |
+|---|---|
+| Kimlik | `superadmin@hermes.dev` — aktif, **MFA gerekli** |
+| İzinler | 7 adet, tamamı `platform.*` |
+| Aktif destek oturumu | **0** |
+| Tenant üyeliği | **0** |
+| `users` toplam | 7 (6 tenant kullanıcısı + 1 platform admin) |
+
+Yani Platform Super Admin, CTO kararı gereği tenant iş verisine
+**yapısal olarak** erişemiyor: ne üyeliği var, ne de açık bir destek
+oturumu.
+
+> **Tek seferlik parola raporda YOKTUR ve bu transkriptte de okunmadı.**
+> Job log'una bir kez yazıldı; hiçbir yerde saklanmıyor:
+> ```
+> kubectl -n hermes-dev logs job/hermes-platform-bootstrap
+> kubectl -n hermes-dev delete job hermes-platform-bootstrap   # okununca SİL
+> ```
+> Parola yöneticisine alın ve ilk girişte değiştirin.
 
 ## 14. Bilinen sınırlamalar ve takip işleri
 
@@ -341,6 +574,16 @@ geçirir — bu, CTO onayı gerektiren bir karardır.
 3. **Rate limiter in-memory** — tek pod doğru; yatay ölçeklemede
    paylaşılan store (Redis) gerekir. Anahtar artık tenant taşıyor.
 4. **Görsel/a11y QA turu yapılmadı** (§11).
+4b. **Kimlik doğrulamalı uçtan uca kullanıcı akışı canlıda koşulmadı.**
+   Doğrulananlar: ingress 200, her iki servis `/ready` 200, ve uygulama
+   rolüyle canlı `core_db` üzerinde bağlamsız okuma **0** / bağlamlı
+   okuma tam / yazma başarılı. Doğrulanmayan: gerçek bir kullanıcı
+   parolasıyla giriş yapıp UI'dan görev/zaman kaydı oluşturmak — bunun
+   için kullanıcı credential'ı gerekiyordu ve **uydurulmadı**
+   (CTO kuralı: kullanıcı JWT'si üretilmez). Bu, DB katmanında
+   kanıtlananın üstünde kalan tek boşluktur; ilk gerçek kullanıcı
+   girişiyle kapanır. Tenant değiştirme akışı da bu nedenle yalnızca
+   testlerle kanıtlıdır, canlıda değil.
 5. **Yeni tenant oluşturma sihirbazı (UI) yok** — provisioning saga'sı
    veri modeli hazır, `POST /tenants` ucu ve wizard v1 dışında.
 6. **Meetings/Graph tenant-başına IdP konfigürasyonu** modellendi
@@ -350,22 +593,53 @@ geçirir — bu, CTO onayı gerektiren bir karardır.
 8. `k8s/test/05-ingress.yaml` canlıdan farklı — **dokunulmadı**.
 9. Entitlement **zorlaması** (feature gate) katalog + çözüm olarak hazır;
    route seviyesinde `feature_not_entitled` kontrolü henüz bağlanmadı.
+10. **Ölü legacy tablolar `hermes-dev`'de duruyor** — `task_groups`
+    (1 satır) ve `task_group_members` (0 satır). `tenant_id` ve RLS
+    taşımıyorlar; hiçbir kod yolu okumuyor. Bilerek düşürülmediler
+    (cutover'ın işi şema silmek değil) ama artık `LEGACY_UNMANAGED_TABLES`
+    ile beyan edildikleri için envanter kapısı onları "bilinen ölü" ile
+    "yeni sınıflandırılmamış" arasında ayırt edebiliyor. **Takip:** ayrı
+    bir bakım commit'iyle düşürülmeleri (1 satırın içeriği önce
+    incelenmeli) veya canlandırılacaklarsa tenant_id + RLS almaları.
 
 ## 15. `test` / `hermes-test` dokunulmadı — açık doğrulama
 
-- `origin/test` = `df6e062` — **baseline ile aynı, değişmedi**.
+- `origin/test` = `df6e062` — **baseline ile aynı, değişmedi** (cutover
+  sonrası tekrar doğrulandı).
 - `test` branch'ine hiçbir commit/push yapılmadı; hiçbir aşamada
   checkout edilmedi.
-- `hermes-test` namespace'ine hiçbir `kubectl` komutu çalıştırılmadı.
 - Değiştirilen tüm manifest'ler `k8s/` (dev) altındadır; `k8s/test/`
-  **hiç düzenlenmedi**.
-- `cd-test.yml` **değiştirilmedi** (yalnız `cd-dev.yml`).
+  **hiç düzenlenmedi**. `cd-test.yml` **değiştirilmedi**.
 
-Doğrulama:
+`hermes-test` namespace'i, cutover tamamlandıktan **sonra** ölçüldü:
 
-```
-$ git rev-parse origin/test
-df6e062b1a8bfc507ec1accb7d74c2d89eea38f5
-$ git diff --name-only df6e062..HEAD -- k8s/test .github/workflows/cd-test.yml
-(boş)
-```
+| Kontrol | Değer | Beklenen |
+|---|---|---|
+| ConfigMap'te `INITIAL_TENANT_*` | 0 | 0 |
+| `hermes-db-roles` secret'ı | YOK | YOK |
+| `hermes_*_app` rolü | 0 | 0 |
+| `alembic_version` tablosu | 0 | 0 |
+| RLS açık tablo | **0** | 0 |
+| Çalışan image | `df6e062` | `df6e062` |
+
+Yani `hermes-test` şema, rol, secret ve image olarak cutover öncesiyle
+aynıdır — tenant modeli oraya **hiç ulaşmadı**.
+
+---
+
+## 16. Sonraki adım için not (CTO kararı)
+
+`test` promosyonu bu çalışmanın kapsamı dışındadır ve ayrı bir karardır.
+Karar verilirse, bu cutover'ın öğrettiği üç operatör adımı `hermes-test`
+için de **önkoşuldur** ve runbook'ta yerlerini almıştır:
+
+1. Koordineli yedek + **restore tatbikatı** (yedek, geri yüklendiği
+   kanıtlanana kadar yedek değildir).
+2. `00_roles.sql` **ve** `01_adopt_objects.sql` — ikincisi olmadan
+   migration "must be owner of ..." ile yarıda kırılır.
+3. Migration ve rollout'tan **sonra** `03-backend-*.yaml` ile runtime
+   rol geçişi — bu yapılmadan RLS uygulama için devrede değildir.
+
+`hermes-test` verisi kutsaldır; oradaki tablo sahiplikleri ve legacy
+nesneler dev'dekinden farklı olabilir. `run-migration-job.sh` önkoşulu
+bunu Job başlamadan raporlar.
