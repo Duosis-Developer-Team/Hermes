@@ -20,6 +20,9 @@
 
 import { create } from 'zustand'
 
+import { queryClient } from '../query/queryClient'
+import { setTenantScope } from '../query/queryKeys'
+
 export const useAuthStore = create((set, get) => ({
     // =========================================================================
     // State — Token YOK, yalnızca kullanıcı bilgisi ve oturum durumu
@@ -27,6 +30,17 @@ export const useAuthStore = create((set, get) => ({
 
     /** Veritabanından gelen kullanıcı nesnesi (id, email, is_admin, vb.) */
     user: null,
+
+    /**
+     * WS8: oturumun ACIK OLDUGU organizasyon ({id, slug, display_name}).
+     * Kaynak backend'in login/switch yanitidir; UI bunu ASLA kendi
+     * belirlemez — tenant, imzalanmis oturum cerezinin icindedir.
+     */
+    tenant: null,
+
+    /** Kullanicinin gecis yapabilecegi organizasyonlar (>1 ise secici
+     *  gosterilir). Sadece guvenli alanlar: id, slug, display_name. */
+    memberships: [],
 
     /** Kullanıcı aktif oturumda mı? */
     isAuthenticated: false,
@@ -48,9 +62,13 @@ export const useAuthStore = create((set, get) => ({
      *
      * @param {object} user - Backend'den dönen kullanıcı nesnesi
      */
-    login: (user) => {
+    login: (user, tenant = null) => {
+        // Query anahtar uzayini bu tenant'a sabitle — bundan sonraki
+        // TUM cache girisleri bu kapsamda yasar.
+        setTenantScope(tenant?.id)
         set({
             user,
+            tenant,
             isAuthenticated: true,
         })
     },
@@ -61,9 +79,47 @@ export const useAuthStore = create((set, get) => ({
      * bu fonksiyon yalnızca UI state'ini temizler.
      */
     logout: () => {
+        // Cikista da cache tamamen bosaltilir: ayni tarayicida baska
+        // bir hesapla girildiginde onceki oturumun verisi bir an bile
+        // gorunmemeli.
+        queryClient.cancelQueries()
+        queryClient.clear()
+        setTenantScope(null)
         set({
             user: null,
+            tenant: null,
+            memberships: [],
             isAuthenticated: false,
+            permissions: null,
+        })
+    },
+
+    /** Gecis yapilabilir organizasyonlari saklar (GET /auth/memberships). */
+    setMemberships: (memberships) => {
+        set({ memberships: memberships || [] })
+    },
+
+    /**
+     * WS8 — Organizasyon degistirme.
+     *
+     * SIRA ONEMLIDIR ve pack §10'un gereksinimidir:
+     *   1. ucusan sorgular IPTAL edilir (yanitlari yeni tenant'in
+     *      ekranina dusmesin — en sinsi sizinti bicimi budur);
+     *   2. cache TAMAMEN bosaltilir (mutation durumu dahil);
+     *   3. tenant kapsami degistirilir;
+     *   4. tenant'a bagli store state'i sifirlanir — izinler YENIDEN
+     *      yuklenene kadar `null` kalir, yani can() fail-closed davranir.
+     *
+     * Cagiran, backend'in POST /auth/switch-tenant yanitini (yeni cerez
+     * yazildiktan SONRA) buraya verir; UI kendi basina tenant SECEMEZ.
+     */
+    applyTenantSwitch: (tenant) => {
+        queryClient.cancelQueries()
+        queryClient.clear()
+        setTenantScope(tenant?.id)
+        set({
+            tenant,
+            // Izinler tenant'a ozguydu; yeniden cozulene kadar YOK.
             permissions: null,
         })
     },
@@ -96,6 +152,9 @@ export const useAuthStore = create((set, get) => ({
         const { user } = get()
         return user?.is_admin === true
     },
+
+    /** Birden fazla aktif uyelik var mi? (organizasyon secici kosulu) */
+    hasMultipleTenants: () => (get().memberships || []).length > 1,
 
     /** Verilen izinlerin TÜMÜ var mı? (fail-closed: yüklenmediyse false) */
     can: (...codes) => {

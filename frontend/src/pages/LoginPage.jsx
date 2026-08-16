@@ -51,8 +51,11 @@ function LoginPage() {
             // API'ye login isteği gönder
             const response = await authService.login(values.email, values.password)
 
-            // [KRİTİK-6] Token cookie olarak backend'den geldi; store'a yalnızca user kaydedilir
-            login(response.user)
+            // [KRİTİK-6] Token cookie olarak backend'den geldi; store'a
+            // yalnızca user + organizasyon özeti kaydedilir.
+            // WS8: tenant, imzalı oturum çerezinin içindedir; UI onu
+            // seçmez, yalnızca backend'in bildirdiğini gösterir.
+            login(response.user, response.tenant || null)
 
             message.success('Login successful!')
             navigate('/time-entry')

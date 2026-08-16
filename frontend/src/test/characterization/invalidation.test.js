@@ -13,8 +13,12 @@ const seed = async (qc) => {
     await qc.prefetchQuery({ queryKey: queryKeys.tasks.all, queryFn: () => 2 })
     await qc.prefetchQuery({ queryKey: queryKeys.customers.all, queryFn: () => 3 })
 }
+// WS8: anahtarlar artik ['t', <tenant>, <aile>, ...] bicimindedir.
+// Bu testin ilgilendigi sey AILE adidir; tenant oneki davranisi
+// degistirmez, yalnizca anahtar uzayini boler.
+const family = (q) => q.queryKey[2]
 const staleKeys = (qc) => qc.getQueryCache().getAll()
-    .filter((q) => q.isStale()).map((q) => q.queryKey[0]).sort()
+    .filter((q) => q.isStale()).map(family).sort()
 
 describe('hedefli invalidation (v5 object syntax)', () => {
     it('yalnizca workLogs ailesi stale olur', async () => {

@@ -407,14 +407,13 @@ async def switch_tenant(
 
 @router.get(
     "/users/me",
-    response_model=UserResponse,
     summary="Mevcut Kullanıcı Bilgisi",
     description="Cookie veya Bearer token ile doğrulanmış kullanıcının bilgilerini döner.",
 )
 async def get_current_user_info(
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> UserResponse:
+) -> dict:
     """
     JWT token'dan (cookie veya Bearer) çıkarılan kullanıcı ID'si ile
     veritabanından güncel kullanıcı bilgilerini getirir.
@@ -435,4 +434,24 @@ async def get_current_user_info(
             detail="User not found",
         )
 
-    return user
+    # WS8: sayfa yenilemesinde oturum geri yuklenirken TENANT da geri
+    # gelmeli. Aksi halde frontend ilk istekleri "anonim" query
+    # kapsaminda cache'ler ve tenant sonradan gelince ayni veriyi ikinci
+    # kez ceker. Tenant dogrulanmis token'dan okunur — istekten degil.
+    from ..models.tenancy import Tenant
+
+    payload = UserResponse.model_validate(user).model_dump()
+    tenant_row = (
+        db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    )
+    payload["tenant"] = (
+        {
+            "id": str(tenant_row.id),
+            "slug": tenant_row.slug,
+            "display_name": tenant_row.display_name,
+        }
+        if tenant_row is not None
+        else None
+    )
+    payload["membership_id"] = current_user.membership_id
+    return payload

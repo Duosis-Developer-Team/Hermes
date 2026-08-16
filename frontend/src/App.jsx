@@ -139,7 +139,11 @@ function App() {
         // görünmez; hata halinde boş liste (yine fail-closed).
         authService.getMe()
             .then(user => {
-                if (user) login(user)
+                // WS8: oturum geri yuklenirken tenant da geri yuklenir —
+                // query anahtar uzayi ilk istekten ONCE dogru tenant'a
+                // sabitlensin (aksi halde ilk sayfa anonim kapsamda
+                // cache'lenir ve tenant gelince ikinci kez cekilir).
+                if (user) login(user, user?.tenant || null)
             })
             .catch(() => {
                 // Cookie yok veya süresi dolmuş — login sayfasında kalınır

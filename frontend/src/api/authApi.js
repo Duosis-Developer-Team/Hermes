@@ -40,6 +40,30 @@ export const authService = {
     },
 
     /**
+     * WS8 — Gecis yapilabilir organizasyonlar.
+     * Yalnizca AKTIF uyeligi olan ve kullanilabilir durumdaki
+     * tenant'lar doner; baska hicbir tenant bilgisi sizmaz.
+     */
+    listMemberships: async () => {
+        const response = await authClient.get('/api/v1/auth/memberships')
+        return response.data?.memberships || []
+    },
+
+    /**
+     * WS8 — Organizasyon degistir.
+     *
+     * `tenantId` bir TALEPTIR, otorite degildir: sunucu uyeligi ve
+     * tenant durumunu yeniden dogrular, ardindan yeni oturum cerezini
+     * yazar. Basarisizlikta mevcut oturum DEGISMEZ.
+     */
+    switchTenant: async (tenantId) => {
+        const response = await authClient.post(
+            '/api/v1/auth/switch-tenant', { tenant_id: tenantId },
+        )
+        return response.data
+    },
+
+    /**
      * Oturumu kapat.
      * Backend cookie'yi siler; store logout() ile UI state temizlenir.
      */

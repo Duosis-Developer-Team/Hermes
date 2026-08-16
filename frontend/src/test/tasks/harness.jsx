@@ -292,11 +292,18 @@ export async function dragCardTo(code, targetStatus, { release = true } = {}) {
 }
 
 /** Casusa dusen TUM invalidate cagrilarinin kok key'leri (tekil, sirali). */
+// WS8: anahtarlar ['t', <tenant>, <aile>, ...] bicimindedir. Bu yardimci
+// AILE adini cikarir; tenant oneki invalidation davranisini degistirmez,
+// yalnizca anahtar uzayini tenant'a gore boler.
 export const invalidatedFamilies = (spy) =>
     Array.from(
         new Set(
             spy.mock.calls
-                .map((c) => c[0]?.queryKey?.[0])
+                .map((c) => {
+                    const key = c[0]?.queryKey
+                    if (!Array.isArray(key)) return undefined
+                    return key[0] === 't' ? key[2] : key[0]
+                })
                 .filter((k) => typeof k === 'string')
         )
     ).sort()

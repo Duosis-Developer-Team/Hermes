@@ -49,8 +49,9 @@ function AuthCallbackPage() {
                     throw new Error("Could not load user information")
                 }
 
-                // Store'a yalnızca kullanıcı bilgisi kaydedilir — token değil
-                login(user)
+                // Store'a yalnızca kullanıcı + organizasyon özeti
+                // kaydedilir — token değil.
+                login(user, user?.tenant || null)
 
                 message.success('Signed in successfully.')
                 navigate('/')

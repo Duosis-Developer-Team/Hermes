@@ -31,6 +31,7 @@ import {
     BulbFilled,
     BulbOutlined,
 } from '@ant-design/icons'
+import OrganizationSwitcher from './OrganizationSwitcher'
 import { useAuthStore } from '../../stores/authStore'
 import { useThemeStore } from '../../stores/themeStore'
 import { authService } from '../../services/api'
@@ -469,6 +470,12 @@ function MainLayout() {
                         onClick={toggleTheme}
                         className="theme-toggle-btn"
                     />
+
+                    {/* WS8: organizasyon secici — YALNIZCA birden fazla
+                        aktif uyelik varsa render eder (aksi halde null
+                        doner ve tek organizasyonlu kurulumda hicbir sey
+                        degismez). */}
+                    <OrganizationSwitcher />
 
                     {/* User Dropdown */}
                     <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
