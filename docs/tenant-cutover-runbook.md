@@ -37,9 +37,9 @@ adımlar **operatörün** işidir (CLAUDE.md kuralı).
 NS=hermes-dev
 STAMP=$(date +%Y%m%d-%H%M%S)
 
-kubectl -n $NS exec deploy/core-db -- \
+kubectl -n $NS exec core-db-0 -- \
   pg_dump -U hermes -d core_db -F c > core_db_$STAMP.dump
-kubectl -n $NS exec deploy/auth-db -- \
+kubectl -n $NS exec auth-db-0 -- \
   pg_dump -U hermes -d auth_db -F c > auth_db_$STAMP.dump
 
 ls -lh core_db_$STAMP.dump auth_db_$STAMP.dump   # boyut > 0 OLMALI
@@ -52,13 +52,13 @@ ls -lh core_db_$STAMP.dump auth_db_$STAMP.dump   # boyut > 0 OLMALI
 ### 1.2 DB rolleri
 
 ```bash
-kubectl -n $NS exec -i deploy/core-db -- psql -U hermes -d core_db \
+kubectl -n $NS exec -i core-db-0 -- psql -U hermes -d core_db \
   -v ON_ERROR_STOP=1 -v prefix=hermes_core \
   -v migrator_password="'<CORE_MIGRATOR_PW>'" \
   -v app_password="'<CORE_APP_PW>'" \
   -f - < backend/sql_scripts/roles/00_roles.sql
 
-kubectl -n $NS exec -i deploy/auth-db -- psql -U hermes -d auth_db \
+kubectl -n $NS exec -i auth-db-0 -- psql -U hermes -d auth_db \
   -v ON_ERROR_STOP=1 -v prefix=hermes_auth \
   -v migrator_password="'<AUTH_MIGRATOR_PW>'" \
   -v app_password="'<AUTH_APP_PW>'" \
@@ -126,12 +126,12 @@ Ek elle kontrol:
 
 ```bash
 # İlk tenant ve üyelikler
-kubectl -n $NS exec deploy/auth-db -- psql -U hermes -d auth_db -c \
+kubectl -n $NS exec auth-db-0 -- psql -U hermes -d auth_db -c \
   "SELECT slug, status FROM tenants;
    SELECT status, count(*) FROM tenant_memberships GROUP BY status;"
 
 # Task kodları DEĞİŞMEMİŞ olmalı
-kubectl -n $NS exec deploy/core-db -- psql -U hermes -d core_db -c \
+kubectl -n $NS exec core-db-0 -- psql -U hermes -d core_db -c \
   "SELECT task_type, min(type_number), max(type_number) FROM tasks GROUP BY task_type;"
 ```
 
@@ -159,26 +159,26 @@ Yedek, **geri yüklenebildiği kanıtlanana kadar** yedek sayılmaz.
 
 ```bash
 # 1) Tek kullanımlık hedef veritabanları
-kubectl -n $NS exec deploy/core-db -- psql -U hermes -d postgres \
+kubectl -n $NS exec core-db-0 -- psql -U hermes -d postgres \
   -c "CREATE DATABASE restore_drill_core;"
-kubectl -n $NS exec deploy/auth-db -- psql -U hermes -d postgres \
+kubectl -n $NS exec auth-db-0 -- psql -U hermes -d postgres \
   -c "CREATE DATABASE restore_drill_auth;"
 
 # 2) Geri yükle (ÇİFT olarak — aynı yedek penceresinden)
-kubectl -n $NS exec -i deploy/core-db -- \
+kubectl -n $NS exec -i core-db-0 -- \
   pg_restore -U hermes -d restore_drill_core --no-owner < core_db_$STAMP.dump
-kubectl -n $NS exec -i deploy/auth-db -- \
+kubectl -n $NS exec -i auth-db-0 -- \
   pg_restore -U hermes -d restore_drill_auth --no-owner < auth_db_$STAMP.dump
 
 # 3) Tutarlılık: her tenant üyeliğinin karşılığı var mı?
-kubectl -n $NS exec deploy/auth-db -- psql -U hermes -d restore_drill_auth -c \
+kubectl -n $NS exec auth-db-0 -- psql -U hermes -d restore_drill_auth -c \
   "SELECT (SELECT count(*) FROM tenants)  AS tenants,
           (SELECT count(*) FROM tenant_memberships) AS memberships;"
-kubectl -n $NS exec deploy/core-db -- psql -U hermes -d restore_drill_core -c \
+kubectl -n $NS exec core-db-0 -- psql -U hermes -d restore_drill_core -c \
   "SELECT count(DISTINCT tenant_id) AS tenants_with_data FROM tasks;"
 
 # 4) İzolasyon hâlâ geçerli mi? (RLS metadata restore ile gelir)
-kubectl -n $NS exec deploy/core-db -- psql -U hermes -d restore_drill_core -c \
+kubectl -n $NS exec core-db-0 -- psql -U hermes -d restore_drill_core -c \
   "SELECT count(*) AS tables_without_force_rls
      FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname='public' AND c.relkind='r'
@@ -189,9 +189,9 @@ kubectl -n $NS exec deploy/core-db -- psql -U hermes -d restore_drill_core -c \
 # Beklenen: 0
 
 # 5) Temizlik
-kubectl -n $NS exec deploy/core-db -- psql -U hermes -d postgres \
+kubectl -n $NS exec core-db-0 -- psql -U hermes -d postgres \
   -c "DROP DATABASE restore_drill_core;"
-kubectl -n $NS exec deploy/auth-db -- psql -U hermes -d postgres \
+kubectl -n $NS exec auth-db-0 -- psql -U hermes -d postgres \
   -c "DROP DATABASE restore_drill_auth;"
 ```
 

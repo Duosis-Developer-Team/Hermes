@@ -34,14 +34,29 @@ note() { printf '%s\n' "$*"; }
 ok()   { printf '[OK]   %s\n' "$*"; }
 bad()  { printf '[FAIL] %s\n' "$*" >&2; fail=1; }
 
-# psql'i core-db/auth-db pod'unda calistirir; cikti TEK satir olur.
+# DB'ler StatefulSet'tir (pod: core-db-0 / auth-db-0), Deployment DEGIL.
+# Pod adini SABIT yazmak yerine etiketten cozuyoruz: `deploy/core-db`
+# bu kumede hic eslesmez ve tum kontroller sessizce bos donerdi.
+core_pod="$(kubectl -n "$namespace" get pod -l app=core-db \
+  -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
+auth_pod="$(kubectl -n "$namespace" get pod -l app=auth-db \
+  -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
+if [ -z "$core_pod" ] || [ -z "$auth_pod" ]; then
+  echo "[FAIL] core-db/auth-db pod'u bulunamadi ($namespace)" >&2
+  exit 2
+fi
+
+# psql'i ilgili pod'da calistirir; cikti TEK satir olur.
+# `</dev/null`: kubectl exec'in bu betigin stdin'ini tuketmesini onler.
 q_core() {
-  kubectl -n "$namespace" exec deploy/core-db -- \
-    psql -U hermes -d core_db -tAc "$1" 2>/dev/null | tr -d '[:space:]'
+  kubectl -n "$namespace" exec "$core_pod" -- \
+    psql -U hermes -d core_db -tAc "$1" </dev/null 2>/dev/null \
+    | tr -d '[:space:]'
 }
 q_auth() {
-  kubectl -n "$namespace" exec deploy/auth-db -- \
-    psql -U hermes -d auth_db -tAc "$1" 2>/dev/null | tr -d '[:space:]'
+  kubectl -n "$namespace" exec "$auth_pod" -- \
+    psql -U hermes -d auth_db -tAc "$1" </dev/null 2>/dev/null \
+    | tr -d '[:space:]'
 }
 
 note "=== 1) Sema revizyonlari ==="
@@ -119,9 +134,13 @@ app_user="$(kubectl -n "$namespace" get secret hermes-db-roles \
 if [ -z "$app_user" ]; then
   note "[SKIP] hermes-db-roles bulunamadi — baglamsiz erisim testi atlandi"
 else
-  visible="$(kubectl -n "$namespace" exec deploy/core-db -- \
-    psql -U "$app_user" -d core_db -tAc \
-    "SELECT count(*) FROM customers" 2>/dev/null | tr -d '[:space:]' || echo "ERR")"
+  app_pw="$(kubectl -n "$namespace" get secret hermes-db-roles \
+    -o go-template='{{index .data "CORE_APP_DB_PASSWORD"}}' 2>/dev/null \
+    | base64 -d || true)"
+  visible="$(kubectl -n "$namespace" exec "$core_pod" -- \
+    env PGPASSWORD="$app_pw" psql -U "$app_user" -h 127.0.0.1 -d core_db \
+    -tAc "SELECT count(*) FROM customers" </dev/null 2>/dev/null \
+    | tr -d '[:space:]' || echo "ERR")"
   if [ "$visible" = "0" ]; then
     ok "tenant baglami olmadan 0 satir gorunuyor (fail-closed)"
   elif [ "$visible" = "ERR" ]; then
@@ -136,7 +155,7 @@ for svc in auth-service core-service; do
   port=8000; [ "$svc" = "core-service" ] && port=8001
   code="$(kubectl -n "$namespace" exec "deploy/$svc" -- \
     sh -c "curl -s -o /dev/null -w '%{http_code}' http://localhost:$port/ready" \
-    2>/dev/null || echo "000")"
+    </dev/null 2>/dev/null || echo "000")"
   if [ "$code" = "200" ]; then
     ok "$svc /ready → 200"
   else

@@ -26,7 +26,7 @@ Betik idempotenttir; yeniden calistirmak guvenlidir.
 
 ```bash
 # --- core_db ---
-kubectl -n hermes-dev exec -it deploy/core-db -- \
+kubectl -n hermes-dev exec -i core-db-0 -- \
   psql -U hermes -d core_db -v ON_ERROR_STOP=1 \
        -v prefix=hermes_core \
        -v migrator_password="'<CORE_MIGRATOR_PW>'" \
@@ -34,7 +34,7 @@ kubectl -n hermes-dev exec -it deploy/core-db -- \
        -f - < backend/sql_scripts/roles/00_roles.sql
 
 # --- auth_db ---
-kubectl -n hermes-dev exec -it deploy/auth-db -- \
+kubectl -n hermes-dev exec -i auth-db-0 -- \
   psql -U hermes -d auth_db -v ON_ERROR_STOP=1 \
        -v prefix=hermes_auth \
        -v migrator_password="'<AUTH_MIGRATOR_PW>'" \
