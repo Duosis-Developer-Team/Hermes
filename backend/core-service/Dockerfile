@@ -32,6 +32,13 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY shared/ ./shared/
 COPY core-service/app/ ./app/
 
+# Bu image HANGI servise ait. `shared.migration_runner` bunu KIMLIK KANITI
+# olarak kullanir: konteynerde her iki servisin migration dizini de ayni
+# yola (`/app/app/migrations`) duser, ad ayirt edilemez. Bu damga olmadan
+# runner image-yerlesimini kabul ETMEZ — yanlis servisin semasini yanlis
+# veritabanina uygulamak yerine hata verir.
+ENV HERMES_SERVICE=core
+
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 

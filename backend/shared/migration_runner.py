@@ -159,16 +159,62 @@ def _backend_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def _image_service() -> Optional[str]:
+    """Bu image HANGI servise ait — Dockerfile'daki `HERMES_SERVICE`.
+
+    Repo agacinda tanimsizdir (orada zaten iki servis de yerinde durur);
+    yalnizca konteynerde anlam tasir.
+    """
+    value = (os.getenv("HERMES_SERVICE") or "").strip().lower()
+    return value or None
+
+
+def resolve_script_location(service: str) -> Path:
+    """Servisin Alembic script dizinini IKI yerlesimde de bulur.
+
+    Repo yerlesimi:  backend/<svc>-service/app/migrations
+    Image yerlesimi: /app/app/migrations   (Dockerfile `<svc>/app/` -> `./app/`
+                     ve `shared/` -> `./shared/` kopyalar; servis adi yola
+                     GIRMEZ, iki servis de ayni yola dusar)
+
+    Image yerlesimi neden KIMLIK KANITI ister: core image'inda `auth`
+    hedefi kosulursa, ad-korlugu yuzunden CORE'un migration'lari AUTH
+    veritabanina uygulanirdi — sessiz ve geri donusu olmayan bir felaket.
+    Bu yuzden fallback yalnizca image'in gercekten o servise ait oldugu
+    `HERMES_SERVICE` ile kanitlandiginda gecerlidir. Kanit yoksa tahmin
+    ETMEYIZ; hata veririz.
+    """
+    svc_dir, rel = SCRIPT_LOCATIONS[service]
+    root = _backend_root()
+
+    repo_layout = root / svc_dir / rel
+    if repo_layout.is_dir():
+        return repo_layout
+
+    image_layout = root / rel
+    if image_layout.is_dir():
+        owner = _image_service()
+        if owner == service:
+            return image_layout
+        raise MigrationError(
+            f"'{service}' migration'lari bu image'da YOK. Image sahibi: "
+            f"{owner or '<HERMES_SERVICE tanimsiz>'}. `{root / rel}` bulundu "
+            f"ama o dizin '{owner or 'bilinmeyen'}' servisine ait — baska bir "
+            "servisin semasini yanlis veritabanina uygulamamak icin "
+            "REDDEDILDI. Her servisin migration'ini KENDI image'iyla "
+            "calistirin (bkz. k8s/07-migration-job.yaml)."
+        )
+
+    raise MigrationError(
+        f"Alembic script dizini bulunamadi: {repo_layout} veya {image_layout}"
+    )
+
+
 def build_alembic_config(service: str, database_url: str):
     """alembic.ini olmadan, programatik Config uretir."""
     from alembic.config import Config
 
-    svc_dir, rel = SCRIPT_LOCATIONS[service]
-    script_location = _backend_root() / svc_dir / rel
-    if not script_location.is_dir():
-        raise MigrationError(
-            f"Alembic script dizini bulunamadi: {script_location}"
-        )
+    script_location = resolve_script_location(service)
 
     cfg = Config()
     cfg.set_main_option("script_location", str(script_location))
@@ -227,14 +273,41 @@ def _prepare_sys_path(service: str) -> None:
     """Servisin `app` paketini import edilebilir hale getirir."""
     svc_dir, _ = SCRIPT_LOCATIONS[service]
     root = _backend_root()
+    # Image yerlesiminde `app` zaten kokte durur; repo yerlesiminde
+    # servis dizininin altindadir. Ikisini de ekliyoruz — var olmayan
+    # yol sys.path'te zararsizdir.
     for candidate in (str(root / svc_dir), str(root)):
         if candidate not in sys.path:
             sys.path.insert(0, candidate)
 
 
+def _ensure_initial_tenant_id(service: str) -> None:
+    """core tek basina kosarken ilk tenant kimligini auth_db'den cozer.
+
+    `all` hedefi bu degeri auth adimindan sonra gecirir. Ama k8s'te iki
+    servis AYRI image'larda, ayri konteynerlerde kosar (her image yalnizca
+    kendi migration'larini tasir) — yani `all` orada hic kullanilmaz ve
+    core'un kimligi kendisi bulmasi gerekir.
+
+    Kaynak yine auth_db: tenant UUID'si orada URETILIR ve tek dogruluk
+    kaynagidir. Burada UUID uretmek, verinin iki farkli tenant'a bolunmesi
+    demek olurdu.
+    """
+    if service != "core":
+        return
+    if (os.getenv("HERMES_INITIAL_TENANT_ID") or "").strip():
+        return
+    tenant_id = _read_initial_tenant_id()
+    if tenant_id:
+        os.environ["HERMES_INITIAL_TENANT_ID"] = tenant_id
+        print(f"→ ilk tenant kimligi auth_db'den cozuldu: {tenant_id}",
+              flush=True)
+
+
 def _run_single(service: str, revision: str) -> int:
     """Tek servisi BU process icinde yukseltir."""
     _prepare_sys_path(service)
+    _ensure_initial_tenant_id(service)
     print(f"→ {service}: migration basliyor (hedef={revision})", flush=True)
     try:
         upgrade(service, revision)

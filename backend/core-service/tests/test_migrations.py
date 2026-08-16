@@ -263,3 +263,94 @@ def test_schema_guard_rejects_unmigrated_database(disposable_db):
         assert verify_schema_compatibility("core", engine) in heads
     finally:
         engine.dispose()
+
+
+# =============================================================================
+# Image yerlesimi — "repoda calisir, konteynerde patlar" sinifi
+# =============================================================================
+# Bu testler CANLI bir hatadan dogdu. Migration Job'i tek image'la
+# `migration_runner all` kosuyordu; repo agacinda
+# `backend/auth-service/app/migrations` var oldugu icin her sey yesildi.
+# Konteynerde ise Dockerfile `<svc>/app/` -> `./app/` kopyaladigindan o
+# yol HIC yok ve rollout durdu. Yerel testler bu farki goremiyordu.
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _dockerfile(service: str) -> str:
+    return (_REPO_ROOT / "backend" / f"{service}-service" / "Dockerfile"
+            ).read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("service", ["auth", "core"])
+def test_dockerfile_stamps_its_service_identity(service):
+    """Her image kim oldugunu SOYLEMELI.
+
+    Konteynerde iki servisin migration dizini de ayni yola duser
+    (`/app/app/migrations`); ad ayirt edilemez. `HERMES_SERVICE` damgasi,
+    runner'in "bu dizin gercekten bu servise mi ait?" sorusunu
+    cevaplayabilmesinin TEK yoludur. Damga dusesse runner image
+    yerlesimini reddeder ve migration hic kosmaz.
+    """
+    assert f"ENV HERMES_SERVICE={service}" in _dockerfile(service)
+
+
+def test_image_layout_rejected_when_identity_mismatches(tmp_path, monkeypatch):
+    """Yanlis image'da kosum sessizce KABUL EDILMEMELI.
+
+    En tehlikeli senaryo: core image'inda `auth` hedefi kosulur, runner
+    `/app/app/migrations`'i bulur ve CORE'un semasini AUTH veritabanina
+    uygular. Geri donusu yok. Bu yuzden kimlik kaniti yoksa hata veririz —
+    tahmin etmeyiz.
+    """
+    from shared import migration_runner as mr
+
+    # Image yerlesimini taklit et: koke dogrudan `app/migrations`.
+    (tmp_path / "app" / "migrations").mkdir(parents=True)
+    monkeypatch.setattr(mr, "_backend_root", lambda: tmp_path)
+
+    # 1) Damga YOK -> reddet
+    monkeypatch.delenv("HERMES_SERVICE", raising=False)
+    with pytest.raises(mr.MigrationError, match="REDDEDILDI"):
+        mr.resolve_script_location("auth")
+
+    # 2) Damga BASKA servis -> reddet
+    monkeypatch.setenv("HERMES_SERVICE", "core")
+    with pytest.raises(mr.MigrationError, match="REDDEDILDI"):
+        mr.resolve_script_location("auth")
+
+    # 3) Damga DOGRU -> kabul
+    monkeypatch.setenv("HERMES_SERVICE", "auth")
+    assert mr.resolve_script_location("auth") == tmp_path / "app" / "migrations"
+
+
+def test_migration_job_runs_each_service_with_its_own_image():
+    """Job tek image'a `all` dedirtMEMELI — canlida boyle kirilmisti."""
+    import yaml
+
+    raw = (_REPO_ROOT / "k8s" / "07-migration-job.yaml").read_text(
+        encoding="utf-8")
+    # Sablon degiskenlerini YAML'in anlayacagi hale getir.
+    doc = yaml.safe_load(raw.replace("${", "").replace("}", ""))
+    spec = doc["spec"]["template"]["spec"]
+
+    steps = [(c["image"], c["command"][-1])
+             for c in spec.get("initContainers", []) + spec["containers"]]
+
+    assert not any(cmd == "all" for _, cmd in steps), (
+        "`all` hedefi tek image'da iki servisin migration'inin bulundugunu "
+        "varsayar; hicbir image ikisini de tasimaz."
+    )
+    for image, target in steps:
+        assert f"hermes-{target}-service" in image, (
+            f"'{target}' migration'i {image} ile kosuyor — o image bu "
+            "servisin migration'larini tasimaz."
+        )
+
+    # auth ONCE kosmali: ilk tenant auth_db'de uretilir, core backfill'i
+    # o UUID'yi kullanir.
+    assert steps[0][1] == "auth" and steps[-1][1] == "core"
+
+    # core, tenant kimligini auth_db'den sorgular -> auth URL'i sart.
+    core_env = {e["name"] for e in spec["containers"][0]["env"]}
+    assert "HERMES_AUTH_MIGRATION_DATABASE_URL" in core_env

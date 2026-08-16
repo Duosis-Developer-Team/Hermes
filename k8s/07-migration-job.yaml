@@ -40,15 +40,76 @@ spec:
       restartPolicy: Never
       imagePullSecrets:
         - name: ghcr-secret
+      # -----------------------------------------------------------------
+      # SIRA: once auth, sonra core. Ilk tenant auth_db'de URETILIR (auth
+      # 0003); core'un backfill'i (0004) o UUID'yi kullanir. initContainer
+      # bitmeden ana konteyner BASLAMAZ — sira k8s tarafindan garanti
+      # edilir, betikte degil.
+      #
+      # NEDEN IKI IMAGE: her image YALNIZCA kendi servisinin
+      # `app/migrations/` dizinini tasir (Dockerfile `<svc>/app/` -> `./app/`
+      # kopyalar). Tek image'la `all` kosmak canlida basarisiz oldu:
+      # "Alembic script dizini bulunamadi: /app/auth-service/app/migrations".
+      # Her servis KENDI image'iyla kosar; `shared.migration_runner` ayrica
+      # `HERMES_SERVICE` damgasini dogrular.
+      # -----------------------------------------------------------------
+      initContainers:
+        - name: migrate-auth
+          image: ghcr.io/duosis-developer-team/hermes-auth-service:${IMAGE_TAG}
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "shared.migration_runner", "auth"]
+          env:
+            - name: HERMES_AUTH_MIGRATION_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-db-roles
+                  key: AUTH_MIGRATION_DATABASE_URL
+            - name: JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-jwt-public
+                  key: JWT_PUBLIC_KEY
+            - name: HERMES_ENVIRONMENT
+              value: "${HERMES_ENVIRONMENT}"
+            # Ilk tenant BURADA yaratilir (auth 0003). Slug degistirilirse
+            # YENI bir tenant olusur — mevcut veri eskisinde kalir.
+            - name: HERMES_INITIAL_TENANT_SLUG
+              valueFrom:
+                configMapKeyRef:
+                  name: hermes-config
+                  key: INITIAL_TENANT_SLUG
+                  optional: true
+            - name: HERMES_INITIAL_TENANT_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: hermes-config
+                  key: INITIAL_TENANT_NAME
+                  optional: true
+            - name: HERMES_INITIAL_TENANT_HOSTNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: hermes-config
+                  key: INITIAL_TENANT_HOSTNAME
+                  optional: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
       containers:
         - name: migrate
-          # core image'i hem core hem auth migration'larini icerir:
-          # `shared/` ve her iki servisin `app/migrations/` dizini
-          # image'a kopyalanir. Ayni SHA ile pinlenir ki migration ve
-          # uygulama kodu AYNI surumden gelsin.
+          # core image'i — YALNIZCA core migration'lari. Uygulama koduyla
+          # AYNI SHA'ya pinlenir ki sema ve kod ayni surumden gelsin.
           image: ghcr.io/duosis-developer-team/hermes-core-service:${IMAGE_TAG}
           imagePullPolicy: IfNotPresent
-          command: ["python", "-m", "shared.migration_runner", "all"]
+          command: ["python", "-m", "shared.migration_runner", "core"]
           env:
             # ---------------------------------------------------------
             # Migrator baglanti URL'leri — TAM URL secret'tan gelir.
@@ -74,27 +135,15 @@ spec:
                   key: JWT_PUBLIC_KEY
             - name: HERMES_ENVIRONMENT
               value: "${HERMES_ENVIRONMENT}"
-            # Ilk tenant kimligi (WS3): auth 0003 bu slug ile tenant'i
-            # BIR KEZ yaratir, runner uretilen UUID'yi core backfill'ine
-            # gecirir. Slug degistirilirse YENI bir tenant olusur —
-            # mevcut veri eskisinde kalir. Bilerek ConfigMap'ten gelir.
+            # Ilk tenant kimligi (WS3): auth adimi tenant'i BIR KEZ
+            # yaratir; core burada onu auth_db'den SORGULAR (yukaridaki
+            # AUTH_MIGRATION_DATABASE_URL bunun icin gerekli). UUID
+            # core'da URETILMEZ — tek dogruluk kaynagi auth_db'dir.
             - name: HERMES_INITIAL_TENANT_SLUG
               valueFrom:
                 configMapKeyRef:
                   name: hermes-config
                   key: INITIAL_TENANT_SLUG
-                  optional: true
-            - name: HERMES_INITIAL_TENANT_NAME
-              valueFrom:
-                configMapKeyRef:
-                  name: hermes-config
-                  key: INITIAL_TENANT_NAME
-                  optional: true
-            - name: HERMES_INITIAL_TENANT_HOSTNAME
-              valueFrom:
-                configMapKeyRef:
-                  name: hermes-config
-                  key: INITIAL_TENANT_HOSTNAME
                   optional: true
             # Enforce fazi bu role EXECUTE/DML yetkisi verir.
             - name: HERMES_CORE_APP_ROLE
