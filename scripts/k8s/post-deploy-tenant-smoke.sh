@@ -109,6 +109,38 @@ else
   bad "$missing_policy tabloda RLS acik ama POLITIKA YOK"
 fi
 
+# TERS yon: politikasiz tablo duruyor mu? tenant_id kolonu OLMAYAN bir
+# is tablosu yukaridaki taramalarin tamamina gorunmezdir (taramalar
+# tenant_id arayarak baslar) — fail-open yonu budur. Bu yuzden fiziksel
+# her tablo ya tenant_id tasir, ya acikca global, ya da bilinen olu
+# legacy olmak zorunda. Liste `app/models/mixins.py` ile ayni.
+unclassified="$(q_core "
+  SELECT COALESCE(string_agg(c.relname, ','), '') FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname='public' AND c.relkind='r'
+    AND NOT EXISTS (SELECT 1 FROM information_schema.columns col
+                    WHERE col.table_name = c.relname
+                      AND col.column_name = 'tenant_id')
+    AND c.relname NOT IN ('alembic_version','tenant_registry',
+                          'tenant_counters','task_groups',
+                          'task_group_members')")"
+if [ -z "$unclassified" ]; then
+  ok "siniflandirilmamis tablo yok"
+else
+  bad "siniflandirilmamis tablo(lar): $unclassified — tenant_id ve RLS YOK"
+fi
+
+# Bilinen olu legacy tablolar: engellemez ama SESSIZ de kalmaz.
+legacy="$(q_core "
+  SELECT COALESCE(string_agg(c.relname || '(' ||
+           (xpath('/row/c/text()', query_to_xml(
+              format('SELECT count(*) AS c FROM %I', c.relname),
+              false, true, '')))[1]::text || ')', ', '), '')
+  FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+  WHERE n.nspname='public' AND c.relkind='r'
+    AND c.relname IN ('task_groups','task_group_members')")"
+[ -n "$legacy" ] && note "[NOT]  olu legacy tablo (005->006 ile terk edildi, kod okumaz): $legacy"
+
 note "=== 4) Backfill butunlugu ==="
 null_rows="$(q_core "
   SELECT COALESCE(sum(cnt), 0) FROM (

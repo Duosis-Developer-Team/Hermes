@@ -521,3 +521,56 @@ def test_tenant_counter_allocates_atomically(rls_db):
     # A: 1, 2   B: 1  → seriler BAGIMSIZ
     assert allocated[TENANT_A] == [1, 2]
     assert allocated[TENANT_B] == [1]
+
+
+def test_no_unclassified_table_exists(rls_db):
+    """Envanterin TERS yonu: politikasiz tablo veritabaninda duruyor mu?
+
+    `test_every_tenant_table_has_forced_rls` modelden veritabanina bakar
+    ve "tenant tablolarim korunuyor mu?" der. Bu yeterli DEGILDIR: eger
+    biri tenant_id kolonu OLMAYAN bir is tablosu eklerse, RLS taramalari
+    onu hic gormez (taramalar tenant_id arayarak baslar) ve tablo sessizce
+    tum tenant'lara acik kalir. Fail-open yonu budur.
+
+    Bu yuzden fiziksel her tablo UC sinifin birinde olmak ZORUNDA:
+    tenant-owned · acikca global · bilinen olu legacy. Disarida kalan
+    her sey testi kirar; siniflandirma bir karardir, varsayilan degil.
+    """
+    from app.models.mixins import (
+        GLOBAL_TABLES, LEGACY_UNMANAGED_TABLES, tenant_owned_tables,
+    )
+
+    with rls_db["migrator"].connect() as conn:
+        physical = {r[0] for r in conn.execute(text(
+            "SELECT c.relname FROM pg_class c "
+            "JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "WHERE n.nspname = 'public' AND c.relkind = 'r'"
+        )).all()}
+
+    classified = set(tenant_owned_tables()) | GLOBAL_TABLES | LEGACY_UNMANAGED_TABLES
+    unclassified = sorted(physical - classified)
+    assert not unclassified, (
+        f"Siniflandirilmamis tablo(lar): {unclassified}. "
+        "Tenant verisi tasiyorsa TenantOwnedMixin ekleyin (migration + RLS "
+        "otomatik gelir); tasimiyorsa mixins.GLOBAL_TABLES'a GEREKCESIYLE "
+        "yazin. Sessizce birakmak = tum tenant'lara acik tablo."
+    )
+
+
+def test_global_tables_are_declared_not_stale(rls_db):
+    """Beyan listeleri gercekle uyusmali — olu beyan da bir yalandir.
+
+    GLOBAL_TABLES'ta var olmayan bir tablo kalirsa, beyan gercek bir
+    kontrol olmaktan cikar ve sonraki okuyucuyu yaniltir.
+    """
+    from app.models.mixins import GLOBAL_TABLES
+
+    with rls_db["migrator"].connect() as conn:
+        physical = {r[0] for r in conn.execute(text(
+            "SELECT c.relname FROM pg_class c "
+            "JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "WHERE n.nspname = 'public' AND c.relkind = 'r'"
+        )).all()}
+
+    stale = sorted(GLOBAL_TABLES - physical)
+    assert not stale, f"GLOBAL_TABLES'ta artik var olmayan tablo: {stale}"

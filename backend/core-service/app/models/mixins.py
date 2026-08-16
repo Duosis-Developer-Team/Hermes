@@ -66,3 +66,39 @@ def tenant_owned_tables() -> tuple:
         if issubclass(cls, TenantOwnedMixin):
             names.add(cls.__tablename__)
     return tuple(sorted(names))
+
+
+# =============================================================================
+# Tenant'a ait OLMAYAN tablolarin acik beyani
+# =============================================================================
+# `tenant_owned_tables()` yalnizca "modelde var, politikasi var mi?"
+# sorusunu cevaplar. TERS yon — "veritabaninda politikasiz bir tablo
+# duruyor mu?" — daha tehlikelidir: tenant_id kolonu olmayan bir tablo
+# RLS taramalarinin tamamina GORUNMEZ olur, cunku taramalar tenant_id'yi
+# arayarak baslar. Bu yuzden global tablolar ELLE ve GEREKCELI beyan
+# edilir; beyan disinda kalan her tablo CI'da ve canli dumanda kirmizidir.
+
+GLOBAL_TABLES = {
+    # Alembic'in kendi defteri; is verisi tasimaz.
+    "alembic_version",
+    # tenant_id -> slug/durum projeksiyonu. RLS politikasinin KENDISI bunu
+    # okur; politikaya tabi olsaydi kendini deger.
+    "tenant_registry",
+    # Tenant basina task sayaci. Satirin ANAHTARI zaten tenant_id'dir
+    # (kolon degil), bu yuzden tenant-owned mixin'i tasimaz.
+    "tenant_counters",
+}
+
+# Eski `sql_scripts/migrations/005` tarafindan olusturulmus, `006` ile
+# `user_groups` lehine terk edilmis tablolar. ORM'de yoklar, migration
+# zinciri onlari OLUSTURMAZ; yalnizca 005'i gormus eski veritabanlarinda
+# (ornegin hermes-dev) fiziksel olarak dururlar. Hicbir kod yolu okumaz.
+#
+# BILEREK DUSURULMUYORLAR: cutover'in isi sema silmek degil. Ama sessizce
+# gormezden de gelinmiyorlar — burada adlari geciyor ki envanter kapisi
+# "bilinen olu tablo" ile "yeni sinirlandirilmamis tablo"yu ayirt edebilsin.
+# Canlandirilacaklarsa once tenant_id + RLS almalari gerekir.
+LEGACY_UNMANAGED_TABLES = {
+    "task_groups",
+    "task_group_members",
+}
