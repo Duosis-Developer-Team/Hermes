@@ -44,6 +44,75 @@ if ! kubectl -n "$namespace" get secret hermes-db-roles >/dev/null 2>&1; then
   exit 3
 fi
 
+# -----------------------------------------------------------------------------
+# Onkosul: migrator, degistirecegi nesnelerin SAHIBI olmali
+# -----------------------------------------------------------------------------
+# Eski Hermes semayi uygulama startup'inda superuser `hermes` adina
+# yaratiyordu. `00_roles.sql` semanin sahibini migrator yapar ama ONCEDEN
+# var olan nesnelerin sahipligini degistirmez. Migrator bir baskasinin
+# nesnesini degistirmeye kalkinca PostgreSQL "must be owner of ..." der ve
+# migration YARIDA kirilir (canlida birebir yasandi:
+# `must be owner of function assign_task_type_number`).
+#
+# Bunu Job basladiktan SONRA ogrenmek pahali: hangi migration'in nerede
+# durdugunu log'dan cikarmak gerekir. Burada, DDL'e dokunmadan, tek
+# sorguyla ve NET talimatla duruyoruz.
+#
+# Eklenti uyeleri (`pg_depend.deptype='e'`) haric tutulur — TimescaleDB'nin
+# 100+ fonksiyonu `public`'te yasar, sahipligi eklentiye aittir ve
+# migration onlara dokunmaz.
+check_object_ownership() {
+  local db_pod="$1" db_name="$2" migrator="$3"
+  local stray
+  stray="$(kubectl -n "$namespace" exec "$db_pod" -- psql -U hermes \
+    -d "$db_name" -tAc "
+    SELECT count(*) FROM (
+      SELECT c.oid FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname='public' AND c.relkind IN ('r','p','S','v','m')
+        AND pg_get_userbyid(c.relowner) <> '${migrator}'
+        AND NOT EXISTS (SELECT 1 FROM pg_depend d
+                        WHERE d.classid='pg_class'::regclass
+                          AND d.objid=c.oid AND d.deptype='e')
+      UNION ALL
+      SELECT p.oid FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname='public' AND p.prokind IN ('f','p')
+        AND pg_get_userbyid(p.proowner) <> '${migrator}'
+        AND NOT EXISTS (SELECT 1 FROM pg_depend d
+                        WHERE d.classid='pg_proc'::regclass
+                          AND d.objid=p.oid AND d.deptype='e')
+    ) t" </dev/null 2>/dev/null | tr -d '[:space:]')"
+
+  # Bos cikti = sorgu kosturulamadi. "0" ile ayni sayilmaz; sessizce
+  # gecmek bu kapinin tum anlamini yok ederdi.
+  if [ -z "$stray" ]; then
+    echo "[FAIL] ${db_name}: sahiplik onkosulu DOGRULANAMADI (${db_pod})." >&2
+    exit 4
+  fi
+  if [ "$stray" != "0" ]; then
+    echo "[FAIL] ${db_name}: ${stray} nesnenin sahibi ${migrator} DEGIL." >&2
+    echo "       Migration 'must be owner of ...' ile kirilir." >&2
+    echo "       Duzeltme (sunucuda, superuser ile):" >&2
+    echo "         kubectl -n ${namespace} exec -i ${db_pod} -- psql -U hermes \\" >&2
+    echo "           -d ${db_name} -v ON_ERROR_STOP=1 -v prefix=${migrator%_migrator} \\" >&2
+    echo "           -f - < backend/sql_scripts/roles/01_adopt_objects.sql" >&2
+    exit 4
+  fi
+  echo "[OK] ${db_name}: tum uygulama nesneleri ${migrator} sahipliginde"
+}
+
+core_db_pod="$(kubectl -n "$namespace" get pod -l app=core-db \
+  -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
+auth_db_pod="$(kubectl -n "$namespace" get pod -l app=auth-db \
+  -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
+if [ -z "$core_db_pod" ] || [ -z "$auth_db_pod" ]; then
+  echo "[FAIL] core-db/auth-db pod'u bulunamadi ($namespace)" >&2
+  exit 4
+fi
+check_object_ownership "$auth_db_pod" auth_db hermes_auth_migrator
+check_object_ownership "$core_db_pod" core_db hermes_core_migrator
+
 # Ayni SHA icin onceki (basarili/basarisiz) Job varsa temizle: Job spec'i
 # immutable oldugu icin yeniden apply edilemez.
 if kubectl -n "$namespace" get job "$job_name" >/dev/null 2>&1; then

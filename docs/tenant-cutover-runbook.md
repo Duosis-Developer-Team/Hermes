@@ -68,6 +68,38 @@ kubectl -n $NS exec -i auth-db-0 -- psql -U hermes -d auth_db \
 Betiğin çıktısında **`bypasses_rls = f`** ve
 **`tables_owned_by_app_role = 0`** görülmelidir.
 
+### 1.2b Var olan nesnelerin migrator'a devri — ZORUNLU
+
+`00_roles.sql` şemanın sahibini migrator yapar ama **önceden var olan**
+nesnelerin sahipliğini değiştirmez. Eski Hermes şemayı uygulama
+startup'ında superuser `hermes` adına yaratıyordu; migrator o nesnelerin
+sahibi olmadığı için migration yarıda kırılır:
+
+```
+InsufficientPrivilege: must be owner of function assign_task_type_number
+```
+
+```bash
+kubectl -n $NS exec -i core-db-0 -- psql -U hermes -d core_db \
+  -v ON_ERROR_STOP=1 -v prefix=hermes_core \
+  -f - < backend/sql_scripts/roles/01_adopt_objects.sql
+
+kubectl -n $NS exec -i auth-db-0 -- psql -U hermes -d auth_db \
+  -v ON_ERROR_STOP=1 -v prefix=hermes_auth \
+  -f - < backend/sql_scripts/roles/01_adopt_objects.sql
+```
+
+Çıktının sonundaki **`kalan = 0`** görülmelidir.
+
+> **Eklenti nesnelerine dokunulmaz.** `core_db`'de TimescaleDB kurulu ve
+> `public` şemasında 100'den fazla fonksiyonu var; betik
+> `pg_depend.deptype='e'` ile onları dışarıda bırakır. Devredilirlerse
+> eklenti ve `pg_dump` bozulur. Filtre bir iyileştirme değil, doğruluk
+> şartıdır — testle kilitli.
+
+`run-migration-job.sh` bu koşulu Job'ı başlatmadan **önce** doğrular ve
+eksikse net talimatla durur.
+
 ### 1.3 `hermes-db-roles` secret'ı
 
 Anahtar sözleşmesi: `backend/sql_scripts/roles/README.md`.

@@ -354,3 +354,83 @@ def test_migration_job_runs_each_service_with_its_own_image():
     # core, tenant kimligini auth_db'den sorgular -> auth URL'i sart.
     core_env = {e["name"] for e in spec["containers"][0]["env"]}
     assert "HERMES_AUTH_MIGRATION_DATABASE_URL" in core_env
+
+
+# =============================================================================
+# Nesne devri (01_adopt_objects.sql) — eklenti filtresi
+# =============================================================================
+# Bu betik canli bir engelden dogdu: eski Hermes semayi superuser `hermes`
+# adina yaratmisti, migrator onlarin sahibi degildi ve migration
+# "must be owner of function assign_task_type_number" ile kirildi.
+#
+# Betigin EN KRITIK parcasi eklenti filtresidir. core_db'de TimescaleDB
+# kurulu ve `public` semasinda 100'den fazla fonksiyonu var; onlari
+# devretmek eklentiyi ve `pg_dump`'i bozar. Filtre yanlissa hata canlida
+# ve geri donusu zor sekilde ortaya cikar — bu yuzden gercek bir eklentiyle
+# sinaniyor, taklitle degil.
+
+_ADOPT_SQL = (_REPO_ROOT / "backend" / "sql_scripts" / "roles"
+              / "01_adopt_objects.sql")
+
+
+def _generator_selects(migrator: str):
+    """Betikteki iki uretici SELECT'i psql meta-komutlari olmadan doner.
+
+    `\\gexec` bir psql ozelligidir; SQLAlchemy calistiramaz. Ama ASIL
+    MANTIK uretici SELECT'tedir — `\\gexec` yalnizca ciktiyi kosar. Testi
+    SELECT uzerinde kurmak, psql istemcisine bagimli olmadan tam olarak
+    dogru seyi sinar.
+    """
+    raw = _ADOPT_SQL.read_text(encoding="utf-8")
+    # Yorumlari ONCE atiyoruz: aciklama metni de `\gexec` kelimesini
+    # geciriyor ve once bolersek yanlis yerden kesiliyor.
+    code = "\n".join(ln for ln in raw.splitlines()
+                     if not ln.strip().startswith("--"))
+    selects = []
+    for chunk in code.split("\\gexec")[:2]:
+        upper = chunk.upper()
+        assert "SELECT" in upper, chunk
+        stmt = chunk[upper.index("SELECT"):]
+        selects.append(stmt.replace(":migrator_lit", f"'{migrator}'"))
+    assert len(selects) == 2, "iki uretici SELECT bekleniyor"
+    return selects
+
+
+def test_adopt_script_transfers_app_objects_but_spares_extensions(pg_engine):
+    """Uygulama nesnesi DEVREDILIR, eklenti nesnesi ASLA."""
+    from sqlalchemy import text
+
+    migrator = "adopt_test_migrator"
+    with pg_engine.connect() as conn:
+        conn.execution_options(isolation_level="AUTOCOMMIT")
+        conn.exec_driver_sql(
+            f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles "
+            f"WHERE rolname='{migrator}') THEN CREATE ROLE {migrator}; "
+            f"END IF; END $$")
+        # Gercek bir eklenti: `public` semasina onlarca fonksiyon koyar.
+        conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS pgcrypto "
+                             "WITH SCHEMA public")
+        # Uygulama nesnesi — BASKASINA ait (canlidaki `hermes` durumu).
+        conn.exec_driver_sql(
+            "CREATE OR REPLACE FUNCTION adopt_probe() RETURNS int AS "
+            "$$ SELECT 1 $$ LANGUAGE sql")
+        conn.exec_driver_sql(
+            "CREATE TABLE IF NOT EXISTS adopt_probe_tbl (id int)")
+        conn.commit()
+
+        generated = []
+        for stmt in _generator_selects(migrator):
+            generated += [r[0] for r in conn.execute(text(stmt)).all()]
+
+    joined = "\n".join(generated)
+
+    # 1) Uygulama nesneleri devredilmeli.
+    assert "adopt_probe()" in joined, joined
+    assert "adopt_probe_tbl" in joined, joined
+
+    # 2) Eklenti nesnesi ASLA devredilmemeli. pgcrypto'nun `gen_salt`i
+    #    `public`te ve sahibi migrator DEGIL — filtre olmasa listeye girerdi.
+    assert "gen_salt" not in joined, (
+        "Eklenti fonksiyonu devir listesine girdi — bu, canlida "
+        "TimescaleDB'yi bozardi.")
+    assert "digest" not in joined, joined
