@@ -71,21 +71,28 @@ def _base_and_token() -> Tuple[str, str]:
     return auth_service_base_url(), token
 
 
-def _remember(uid: str, profile: Optional[dict]) -> None:
+def _remember(tid: str, uid: str, profile: Optional[dict]) -> None:
     if len(_cache) >= _CACHE_MAX:
         _cache.clear()
     ttl = POSITIVE_TTL_SECONDS if profile else NEGATIVE_TTL_SECONDS
-    _cache[uid] = (time.monotonic() + ttl, profile)
+    # WS7: anahtar (tenant_id, user_id). Yalnizca user_id ile
+    # anahtarlamak, A'da cozulmus bir profilin B'de servis edilmesi
+    # demekti — ve bu profil e-posta adresi tasiyor.
+    _cache[(tid, uid)] = (time.monotonic() + ttl, profile)
 
 
-def resolve_users(user_ids: List[str]) -> Dict[str, dict]:
+def resolve_users(user_ids: List[str], *, tenant_id) -> Dict[str, dict]:
     """Batch ID → minimal profil ({id: profile}); bilinmeyenler yok.
-    Cache'lenmemis ID'ler TEK istekle cozulur."""
+
+    Cache'lenmemis ID'ler TEK istekle cozulur. `tenant_id` ZORUNLUDUR:
+    dizin sonucu o tenant'in AKTIF UYELERI ile sinirlidir.
+    """
+    tid = str(tenant_id)
     now = time.monotonic()
     out: Dict[str, dict] = {}
     misses: List[str] = []
     for uid in dict.fromkeys(str(u) for u in user_ids):
-        hit = _cache.get(uid)
+        hit = _cache.get((tid, uid))
         if hit and hit[0] > now:
             if hit[1] is not None:
                 out[uid] = hit[1]
@@ -99,7 +106,7 @@ def resolve_users(user_ids: List[str]) -> Dict[str, dict]:
     try:
         resp = _get_client().post(
             f"{base}/internal/directory/users/resolve",
-            json={"user_ids": misses},
+            json={"tenant_id": str(tenant_id), "user_ids": misses},
             headers={"Authorization": f"Bearer {token}"},
         )
     except Exception as exc:  # noqa: BLE001 — fail closed
@@ -113,19 +120,24 @@ def resolve_users(user_ids: List[str]) -> Dict[str, dict]:
     resolved = {u["id"]: u for u in resp.json().get("users") or []}
     for uid in misses:
         profile = resolved.get(uid)
-        _remember(uid, profile)
+        _remember(tid, uid, profile)
         if profile is not None:
             out[uid] = profile
     return out
 
 
 def list_users_global(
-    *, limit: int, offset: int, q: Optional[str] = None
+    *, tenant_id, limit: int, offset: int, q: Optional[str] = None
 ) -> Tuple[List[dict], bool]:
     """Genis aktif dizin — YALNIZCA global binding cozumunde cagrilir.
-    Sayfali; cache'siz (dizin listesi kisa omurlu olmali)."""
+
+    WS7: "global" O TENANT ICINDE global demektir; platform-genelinde
+    bir kullanici listesi hicbir cagirana donmez.
+    Sayfali; cache'siz (dizin listesi kisa omurlu olmali).
+    """
     base, token = _base_and_token()
-    params: dict = {"limit": limit, "offset": offset}
+    params: dict = {"tenant_id": str(tenant_id), "limit": limit,
+                    "offset": offset}
     if q:
         params["q"] = q
     try:

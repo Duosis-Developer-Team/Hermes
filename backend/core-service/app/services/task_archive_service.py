@@ -52,6 +52,7 @@ DEFAULT_BATCH_SIZE = 200
 _CANDIDATE_SQL = """
 SELECT COALESCE(assignment_batch_id::text, 'task:' || id::text) AS logical_key
 FROM tasks
+WHERE (:tenant_id IS NULL OR tenant_id = CAST(:tenant_id AS uuid))
 GROUP BY COALESCE(assignment_batch_id::text, 'task:' || id::text)
 HAVING bool_and(status = 'completed')
    AND bool_and(archived_at IS NULL)
@@ -68,6 +69,7 @@ SET archived_at = :now,
     archived_by_user_id = NULL
 WHERE COALESCE(assignment_batch_id::text, 'task:' || id::text) = :logical_key
   AND archived_at IS NULL
+  AND (:tenant_id IS NULL OR tenant_id = CAST(:tenant_id AS uuid))
 """
 
 #: Audit: her arsivlenen satir icin bir olay. Mevcut `task_deleted`
@@ -86,12 +88,14 @@ SELECT gen_random_uuid(), tenant_id, id, NULL, 'task_archived_auto',
 FROM tasks
 WHERE COALESCE(assignment_batch_id::text, 'task:' || id::text) = :logical_key
   AND archived_at = :now
+  AND (:tenant_id IS NULL OR tenant_id = CAST(:tenant_id AS uuid))
 """
 
 
 def run_auto_archive(
     db: Session,
     *,
+    tenant_id=None,
     dry_run: bool = False,
     batch_size: int = DEFAULT_BATCH_SIZE,
     now: Optional[datetime] = None,
@@ -99,6 +103,11 @@ def run_auto_archive(
     """Otomatik arsivi calistirir ve sanitize ozet dondurur.
 
     ASLA exception firlatmaz.
+
+    WS7: `tenant_id` verildiginde is O TENANT ile sinirlidir — aday
+    secimi, arsivleme ve audit yazimi acikca tenant'a baglanir. Job
+    yolu her zaman verir (bkz. app/jobs/tenant_runner.py); verilmezse
+    cagiranin session'indaki tenant baglami (RLS) sinirlar.
     """
     started = datetime.now(timezone.utc)
     now = now or started
@@ -124,6 +133,15 @@ def run_auto_archive(
 
     engine = db.get_bind()
     conn = engine.connect()
+    # WS7: is KENDI baglantisinda kosar; tenant baglami o baglantida da
+    # kurulmalidir. Aksi halde RLS altinda aday sorgusu sifir satir
+    # gorur ve is sessizce "hicbir sey yapilmadi" doner.
+    if tenant_id is not None:
+        with conn.begin():
+            conn.execute(
+                sa_text("SELECT set_config('app.tenant_id', :t, false)"),
+                {"t": str(tenant_id)},
+            )
     locked = False
     scanned = archived_groups = rows_updated = batches = 0
     status = "success"
@@ -148,7 +166,8 @@ def run_auto_archive(
                     r[0]
                     for r in conn.execute(
                         sa_text(_CANDIDATE_SQL),
-                        {"cutoff": cutoff, "limit": batch_size},
+                        {"cutoff": cutoff, "limit": batch_size,
+                         "tenant_id": str(tenant_id) if tenant_id else None},
                     ).fetchall()
                 ]
             if not keys:
@@ -171,11 +190,15 @@ def run_auto_archive(
                     with conn.begin():
                         n = conn.execute(
                             sa_text(_ARCHIVE_GROUP_SQL),
-                            {"now": now, "logical_key": key},
+                            {"now": now, "logical_key": key,
+                             "tenant_id": str(tenant_id) if tenant_id
+                             else None},
                         ).rowcount
                         conn.execute(
                             sa_text(_AUDIT_SQL),
-                            {"now": now, "logical_key": key},
+                            {"now": now, "logical_key": key,
+                             "tenant_id": str(tenant_id) if tenant_id
+                             else None},
                         )
                     if n:
                         archived_groups += 1

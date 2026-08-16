@@ -85,8 +85,10 @@ async def list_users(
     authorized = dir_svc.authorized_user_ids(db, ctx.client, scope)
     try:
         if authorized is None:  # global → genis dizin auth'tan sayfali
+            # "global" binding = O TENANT ICINDE global.
             rows, has_more = directory_client.list_users_global(
-                limit=params.limit, offset=params.offset, q=q
+                tenant_id=ctx.client.tenant_id,
+                limit=params.limit, offset=params.offset, q=q,
             )
             data = [serialize_user(u) for u in rows]
             return {
@@ -101,7 +103,7 @@ async def list_users(
         if not authorized:
             return paginated([], params)
         profiles = directory_client.resolve_users(
-            [str(u) for u in authorized]
+            [str(u) for u in authorized], tenant_id=ctx.client.tenant_id
         )
     except directory_client.DirectoryUnavailable as exc:
         raise _unavailable() from exc
@@ -142,7 +144,9 @@ async def get_user(
     if authorized is not None and user_id not in authorized:
         raise PublicAPIError("resource_not_found", "User not found.")
     try:
-        profiles = directory_client.resolve_users([str(user_id)])
+        profiles = directory_client.resolve_users(
+            [str(user_id)], tenant_id=ctx.client.tenant_id
+        )
     except directory_client.DirectoryUnavailable as exc:
         raise _unavailable() from exc
     profile = profiles.get(str(user_id))

@@ -26,6 +26,9 @@ import pytest
 
 from app.services import task_notifications as tn
 
+# WS7: bildirim/dizin cozumu tenant baglami ZORUNLU ister.
+TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
+
 
 # ─────────────────────────────────────────────────────────────────────────
 # Harness
@@ -79,7 +82,7 @@ def mail(monkeypatch):
     async def fake_send(sender, to_email, subject, html_body):
         sent.append({"to": to_email, "subject": subject, "html": html_body})
 
-    async def fake_resolve(token, ids):
+    async def fake_resolve(token, ids, **_kw):
         return {i: DIRECTORY[i] for i in ids if i in DIRECTORY}
 
     monkeypatch.setattr(tn, "_send", fake_send)
@@ -95,6 +98,7 @@ def _run(coro):
 
 def _notify(tasks, context=None):
     _run(tn.send_assignment_notifications(
+        tenant_id=TEST_TENANT_ID,
         token="tok",
         tasks=tasks,
         assigner_user_id="u-assigner",
@@ -254,7 +258,7 @@ def test_html_escaping_in_title_and_names(mail, monkeypatch):
         "full_name": 'Ayşe <script>alert(1)</script>', "email": "ayse@x.com",
     }
 
-    async def fake_resolve(token, ids):
+    async def fake_resolve(token, ids, **_kw):
         return {i: evil_dir[i] for i in ids if i in evil_dir}
 
     monkeypatch.setattr(tn, "_resolve_users", fake_resolve)
@@ -387,7 +391,7 @@ def test_mailer_failure_isolates_recipient_and_never_raises(monkeypatch):
                 raise RuntimeError("Graph 503")
             delivered.append(to_email)
 
-    async def fake_resolve(token, ids):
+    async def fake_resolve(token, ids, **_kw):
         return {i: DIRECTORY[i] for i in ids if i in DIRECTORY}
 
     monkeypatch.setattr(tn, "get_graph_client", lambda: _FlakyGraph())

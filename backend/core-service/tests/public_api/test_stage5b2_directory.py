@@ -30,6 +30,9 @@ from app.services import directory_client
 
 from .test_stage3a_tasks_read import make_api_client
 
+# WS7: bildirim/dizin cozumu tenant baglami ZORUNLU ister.
+TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
+
 BASE = "/api/public/v1"
 
 U_BOUND = uuid.uuid4()   # user-bound token'in kullanicisi
@@ -342,20 +345,21 @@ def test_positive_cache_avoids_second_call(
 def test_negative_cache_short_ttl(world, fake_auth, monkeypatch):
     from app.services import directory_client as dc
 
-    out = dc.resolve_users([str(U_GHOST)])
+    out = dc.resolve_users([str(U_GHOST)], tenant_id=TEST_TENANT_ID)
     assert out == {}
     n_before = sum(1 for r in fake_auth if r.url.path == RESOLVE_PATH)
-    out = dc.resolve_users([str(U_GHOST)])  # negatif cache'ten
+    out = dc.resolve_users([str(U_GHOST)], tenant_id=TEST_TENANT_ID)  # negatif cache'ten
     assert out == {}
     assert (
         sum(1 for r in fake_auth if r.url.path == RESOLVE_PATH)
         == n_before
     )
     # TTL dolunca yeniden sorulur.
-    key = str(U_GHOST)
+    # WS7: cache anahtari (tenant_id, user_id).
+    key = (TEST_TENANT_ID, str(U_GHOST))
     expires, val = dc._cache[key]
     dc._cache[key] = (0.0, val)
-    dc.resolve_users([key])
+    dc.resolve_users([key], tenant_id=TEST_TENANT_ID)
     assert (
         sum(1 for r in fake_auth if r.url.path == RESOLVE_PATH)
         == n_before + 1
@@ -402,6 +406,8 @@ def test_s2s_unconfigured_fails_closed(world, public_http, pg_session):
 def test_notification_lookup_uses_s2s_without_jwt(monkeypatch):
     """token='' olsa bile S2S varsa alicilar cozulur → API-token
     kaynakli olaylarda e-posta paritesi."""
+    import functools
+
     import anyio
 
     from app.services import task_notifications as tn
@@ -453,7 +459,12 @@ def test_notification_lookup_uses_s2s_without_jwt(monkeypatch):
         "s2s-test-" + "y" * 40,
     )
 
-    out = anyio.run(tn._resolve_users, "", [str(U_BOUND)])
+    out = anyio.run(
+        functools.partial(
+            tn._resolve_users, "", [str(U_BOUND)],
+            tenant_id=TEST_TENANT_ID,
+        )
+    )
     assert out[str(U_BOUND)]["email"] == "bound@x.com"
     # TAM adres: substring ("... in url") kontrolu yanlis prefix'li
     # adresi de gecirirdi — dizin bug'iyle ayni kor nokta.
@@ -496,7 +507,9 @@ def test_regression_directory_url_must_not_carry_api_v1_prefix(monkeypatch):
         "s2s-test-" + "z" * 40,
     )
     try:
-        out = directory_client.resolve_users([str(U_BOUND)])
+        out = directory_client.resolve_users(
+            [str(U_BOUND)], tenant_id=TEST_TENANT_ID
+        )
         assert out[str(U_BOUND)]["display_name"] == "Bound User"
         assert len(calls) == 1
         assert str(calls[0].url) == f"http://{AUTH_HOST}{RESOLVE_PATH}"

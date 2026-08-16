@@ -120,7 +120,9 @@ def _logo_img_html() -> str:
 # --------------------------------------------------------------
 
 async def _resolve_users(
-    token: str, ids: Sequence[str]
+    token: str, ids: Sequence[str],
+    *,
+    tenant_id,
 ) -> Dict[str, dict]:
     """Return {user_id: {email, full_name}} for the given ids via
     auth-service /users/lookup. Returns {} on any failure — callers
@@ -142,7 +144,11 @@ async def _resolve_users(
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.post(
                     url,
-                    json={"user_ids": unique},
+                    # WS7: alici cozumu TENANT ile sinirlidir. Bu filtre
+                    # olmasaydi, bir hata sonucu baska bir organizasyonun
+                    # calisanina e-posta gidebilirdi.
+                    json={"tenant_id": str(tenant_id),
+                          "user_ids": unique},
                     headers={"Authorization": f"Bearer {s2s}"},
                 )
             if resp.status_code == 200:
@@ -632,6 +638,7 @@ async def _send(sender: str, to_email: Optional[str], subject: str, html_body: s
 async def send_assignment_notifications(
     *,
     token: str,
+    tenant_id: str,
     tasks: List[dict],
     assigner_user_id: str,
     assignment_context: Optional[dict] = None,
@@ -677,7 +684,9 @@ async def send_assignment_notifications(
         ]
         wanted = set(assignee_ids)
         wanted.add(str(assigner_user_id))
-        users = await _resolve_users(token, list(wanted))
+        users = await _resolve_users(
+            token, list(wanted), tenant_id=tenant_id
+        )
         print(
             f"[notif] wanted={len(wanted)} resolved={len(users)} "
             f"with_email={sum(1 for u in users.values() if u.get('email'))}",
@@ -778,6 +787,7 @@ async def send_assignment_notifications(
 async def send_status_notifications(
     *,
     token: str,
+    tenant_id: str,
     task: dict,
     assigner_user_id: str,
     event: str,
@@ -809,7 +819,9 @@ async def send_status_notifications(
 
         assignee_id = str(task.get("assignee_user_id") or "")
         wanted = {assignee_id, str(assigner_user_id)}
-        users = await _resolve_users(token, list(wanted))
+        users = await _resolve_users(
+            token, list(wanted), tenant_id=tenant_id
+        )
         print(f"[notif-status] resolved={len(users)}", flush=True)
 
         assignee = users.get(assignee_id, {})

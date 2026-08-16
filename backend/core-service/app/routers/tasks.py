@@ -55,7 +55,9 @@ from ..services.task_notifications import (
 from shared.auth import CurrentUser, get_current_user
 
 
-def _maybe_status_notify(task, serialized, background_tasks, request, db) -> None:
+def _maybe_status_notify(
+    task, serialized, background_tasks, request, db, *, tenant_id
+) -> None:
     """If the status change was the FIRST accept/complete (service set the
     transient _status_notif flag), schedule the one-time e-mail to the
     assignee + assigner. No-op otherwise. Honours the admin-configured
@@ -73,6 +75,7 @@ def _maybe_status_notify(task, serialized, background_tasks, request, db) -> Non
         background_tasks.add_task(
             send_status_notifications,
             token=_extract_token(request),
+            tenant_id=tenant_id,
             task=_notif_payload(serialized),
             assigner_user_id=str(serialized.assigner_user_id),
             event=event,
@@ -216,7 +219,8 @@ def get_my_task_permissions(
             offset = 0
             while offset < 5000:  # emniyet tavani (dizin ucu limit<=100)
                 page, has_more = directory_client.list_users_global(
-                    limit=100, offset=offset
+                    tenant_id=current_user.tenant_id,
+                    limit=100, offset=offset,
                 )
                 admin_user_ids.extend(
                     UUID(str(u["id"]))
@@ -506,6 +510,7 @@ def create_task(
         background_tasks.add_task(
             send_assignment_notifications,
             token=_extract_token(request),
+            tenant_id=current_user.tenant_id,
             tasks=[_notif_payload(serialized)],
             assigner_user_id=str(current_user.id),
             # Tek dogrudan atama: e-posta kisisel anlatimini korur.
@@ -574,6 +579,7 @@ def create_tasks_for_group(
         background_tasks.add_task(
             send_assignment_notifications,
             token=_extract_token(request),
+            tenant_id=current_user.tenant_id,
             tasks=[_notif_payload(s) for s in serialized],
             assigner_user_id=str(current_user.id),
             assignment_context={
@@ -647,6 +653,7 @@ def create_tasks_bulk(
         background_tasks.add_task(
             send_assignment_notifications,
             token=_extract_token(request),
+            tenant_id=current_user.tenant_id,
             tasks=[_notif_payload(s) for s in serialized],
             assigner_user_id=str(current_user.id),
             assignment_context={
@@ -723,7 +730,7 @@ def update_task(
     task_service.require_task_access(db, current_user)
     task = task_service.update_task(db, current_user, task_id, payload)
     serialized = _serialize_task(task)
-    _maybe_status_notify(task, serialized, background_tasks, request, db)
+    _maybe_status_notify(task, serialized, background_tasks, request, db, tenant_id=current_user.tenant_id)
     return serialized
 
 
@@ -751,7 +758,7 @@ def update_task_status(
     task_service.require_task_access(db, current_user)
     task = task_service.update_task_status(db, current_user, task_id, payload.status)
     serialized = _serialize_task(task)
-    _maybe_status_notify(task, serialized, background_tasks, request, db)
+    _maybe_status_notify(task, serialized, background_tasks, request, db, tenant_id=current_user.tenant_id)
     return serialized
 
 
@@ -769,7 +776,7 @@ def complete_task(
         db, current_user, task_id, payload.completed
     )
     serialized = _serialize_task(task)
-    _maybe_status_notify(task, serialized, background_tasks, request, db)
+    _maybe_status_notify(task, serialized, background_tasks, request, db, tenant_id=current_user.tenant_id)
     return serialized
 
 

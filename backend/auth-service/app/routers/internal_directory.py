@@ -110,6 +110,10 @@ def _profile(u: User) -> dict:
 
 
 class ResolveUsersRequest(BaseModel):
+    # WS7: tenant ZORUNLU. `users` global bir tablodur; tenant filtresi
+    # olmadan bu uc, herhangi bir kimligin e-postasini cozen bir dizin
+    # olurdu — ve e-posta bildirimleri o cikti uzerinden gonderiliyor.
+    tenant_id: UUID
     user_ids: List[UUID] = Field(..., max_length=MAX_RESOLVE_IDS)
 
 
@@ -119,34 +123,63 @@ def resolve_users(
     _: None = Depends(require_s2s),
     db: Session = Depends(get_db),
 ):
-    """Batch ID → minimal profil. Bilinmeyen ID'ler sessizce atlanir
-    (cagiran zaten yetkili kumesini bilir); siralama girdi sirasidir."""
+    """Batch ID → minimal profil, TENANT UYELIGI ile sinirli.
+
+    Bu tenant'in aktif uyesi OLMAYAN kimlikler yanitta YOKTUR —
+    varliklari bile sizmaz. Bilinmeyen ID'ler sessizce atlanir; siralama
+    girdi sirasidir.
+
+    Yanit, cagiranin dogrulayabilmesi icin tenant'i TEKRARLAR.
+    """
     if not payload.user_ids:
-        return {"users": []}
-    rows = (
-        db.query(User).filter(User.id.in_(payload.user_ids)).all()
-    )
+        return {"tenant_id": str(payload.tenant_id), "users": []}
+
+    from ..services.membership_service import assert_user_ids_are_members
+
+    allowed = set(assert_user_ids_are_members(
+        db, tenant_id=payload.tenant_id, user_ids=payload.user_ids
+    ))
+    if not allowed:
+        return {"tenant_id": str(payload.tenant_id), "users": []}
+
+    rows = db.query(User).filter(User.id.in_(list(allowed))).all()
     by_id = {str(u.id): u for u in rows}
     return {
+        "tenant_id": str(payload.tenant_id),
         "users": [
             _profile(by_id[str(uid)])
             for uid in payload.user_ids
             if str(uid) in by_id
-        ]
+        ],
     }
 
 
 @router.get("/users")
 def list_users_global(
+    tenant_id: UUID = Query(...),
     q: Optional[str] = Query(None, min_length=2, max_length=100),
     limit: int = Query(25, ge=1, le=100),
     offset: int = Query(0, ge=0),
     _: None = Depends(require_s2s),
     db: Session = Depends(get_db),
 ):
-    """Genis AKTIF dizin — YALNIZCA global-binding cozumu icin cagrilir
-    (gorunurluk karari core'dadir)."""
-    query = db.query(User).filter(User.is_active.is_(True))
+    """Genis AKTIF dizin — YALNIZCA global-binding cozumu icin cagrilir.
+
+    WS7: "global" artik O TENANT ICINDE global demektir (pack 09 §1).
+    Sonuc, tenant'in aktif uyeleriyle sinirlidir; platform-genelinde bir
+    kullanici listesi HICBIR cagirana donmez.
+    """
+    from ..models.tenancy import TenantMembership
+
+    query = (
+        db.query(User)
+        .join(TenantMembership, TenantMembership.user_id == User.id)
+        .filter(
+            User.is_active.is_(True),
+            TenantMembership.tenant_id == tenant_id,
+            TenantMembership.status == "active",
+        )
+    )
     if q:
         like = f"%{q.lower()}%"
         from sqlalchemy import func, or_

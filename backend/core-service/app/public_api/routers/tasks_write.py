@@ -75,7 +75,7 @@ def _visible_task_or_404(db: Session, ctx: ApiContext, task_code: str):
 
 
 def _maybe_status_side_effects(
-    db, background_tasks, task, actor_id: str
+    db, background_tasks, task, actor_id: str, *, tenant_id
 ) -> None:
     """Internal ile ayni ilk-kabul/ilk-tamamlama bildirim zinciri (admin
     notification kurallari dahil). token="" → lookup bos doner, e-posta
@@ -95,6 +95,7 @@ def _maybe_status_side_effects(
     background_tasks.add_task(
         send_status_notifications,
         token="",
+        tenant_id=str(tenant_id),
         task=_notif_payload(serialized),
         assigner_user_id=str(serialized.assigner_user_id),
         event=event,
@@ -151,6 +152,7 @@ async def create_task(
             background_tasks.add_task(
                 send_assignment_notifications,
                 token="",
+                tenant_id=str(ctx.client.tenant_id),
                 tasks=[_notif_payload(serialized)],
                 assigner_user_id=actor.id,
                 assignment_context={
@@ -252,6 +254,7 @@ async def create_task_group(
             background_tasks.add_task(
                 send_assignment_notifications,
                 token="",
+                tenant_id=str(ctx.client.tenant_id),
                 tasks=[_notif_payload(s) for s in serialized],
                 assigner_user_id=actor.id,
                 assignment_context={
@@ -366,7 +369,10 @@ async def complete_task(
         updated = task_service.update_task_completion(
             db, actor, task.id, True
         )
-        _maybe_status_side_effects(db, background_tasks, updated, actor.id)
+        _maybe_status_side_effects(
+            db, background_tasks, updated, actor.id,
+            tenant_id=ctx.client.tenant_id,
+        )
         return 200, _dump(serialize_task(updated))
 
     return _run_idempotent(
@@ -415,7 +421,10 @@ async def change_status(
         updated = task_service.update_task_status(
             db, actor, task.id, new_status
         )
-        _maybe_status_side_effects(db, background_tasks, updated, actor.id)
+        _maybe_status_side_effects(
+            db, background_tasks, updated, actor.id,
+            tenant_id=ctx.client.tenant_id,
+        )
         return 200, _dump(serialize_task(updated))
 
     return _run_idempotent(

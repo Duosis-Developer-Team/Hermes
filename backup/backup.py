@@ -181,23 +181,57 @@ def delete_file(token: str, item_id: str, name: str):
 
 # ── DB Query ─────────────────────────────────────────────────────────────────
 
-def fetch_users() -> dict:
-    """Returns {user_id_str: {"full_name": ..., "email": ...}} from auth_db."""
+def fetch_tenants() -> list[dict]:
+    """Aktif tenant'lar (core projeksiyonundan).
+
+    WS7: export artik TENANT BASINA uretilir. Tek bir karisik CSV,
+    cok-tenantli bir kurulumda bir sirketin verisini digerinin
+    yedeginde birakirdi.
+    """
+    conn = psycopg2.connect(
+        host=DB_HOST, port=int(DB_PORT),
+        dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD
+    )
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT tenant_id, slug FROM tenant_registry "
+                "WHERE status IN ('active', 'grace') ORDER BY slug"
+            )
+            rows = cur.fetchall()
+        log.info(f"Found {len(rows)} active tenant(s) for export.")
+        return [{"id": str(r["tenant_id"]), "slug": r["slug"]} for r in rows]
+    finally:
+        conn.close()
+
+
+def fetch_users(tenant_id: str) -> dict:
+    """{user_id: {full_name, email}} — YALNIZCA bu tenant'in uyeleri.
+
+    `users` global bir tablodur; uyelik filtresi olmadan bir tenant'in
+    CSV'sine baska bir sirketin calisan adi/e-postasi girerdi.
+    """
     conn = psycopg2.connect(
         host=AUTH_DB_HOST, port=int(DB_PORT),
         dbname=AUTH_DB_NAME, user=DB_USER, password=DB_PASSWORD
     )
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("SELECT id, full_name, email FROM users")
+            cur.execute(
+                "SELECT u.id, u.full_name, u.email FROM users u "
+                "JOIN tenant_memberships m ON m.user_id = u.id "
+                "WHERE m.tenant_id = %s",
+                (tenant_id,),
+            )
             rows = cur.fetchall()
-        log.info(f"Fetched {len(rows)} users from auth_db.")
+        log.info(f"Fetched {len(rows)} member(s) for tenant {tenant_id}.")
         return {str(r["id"]): {"full_name": r["full_name"], "email": r["email"]} for r in rows}
     finally:
         conn.close()
 
 
-def fetch_weekly_logs(week_start: date, week_end: date, users: dict) -> list[dict]:
+def fetch_weekly_logs(week_start: date, week_end: date, users: dict,
+                      tenant_id: str) -> list[dict]:
     query = """
         SELECT
             wl.date_worked                          AS "Date",
@@ -218,6 +252,7 @@ def fetch_weekly_logs(week_start: date, week_end: date, users: dict) -> list[dic
         LEFT JOIN activity_types at ON at.id = wl.activity_type_id
         LEFT JOIN platforms pl      ON pl.id = wl.platform_id
         WHERE wl.date_worked BETWEEN %s AND %s
+          AND wl.tenant_id = %s
         ORDER BY wl.date_worked, wl.user_id
     """
     conn = psycopg2.connect(
@@ -226,7 +261,7 @@ def fetch_weekly_logs(week_start: date, week_end: date, users: dict) -> list[dic
     )
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(query, (week_start, week_end))
+            cur.execute(query, (week_start, week_end, tenant_id))
             rows = cur.fetchall()
         log.info(f"Fetched {len(rows)} rows for CSV ({week_start} – {week_end}).")
         result = []
@@ -282,19 +317,25 @@ def build_csv(rows: list[dict]) -> bytes:
 
 # ── DB Dump ───────────────────────────────────────────────────────────────────
 
-def create_db_dump() -> bytes:
-    """Run pg_dump and return gzipped SQL bytes."""
-    log.info("Running pg_dump...")
+def create_db_dump(db_host: str = None, db_name: str = None) -> bytes:
+    """Run pg_dump and return gzipped SQL bytes.
+
+    WS7: hangi veritabani oldugu ACIKCA verilir — kurtarma auth+core
+    ciftini birlikte ister.
+    """
+    db_host = db_host or DB_HOST
+    db_name = db_name or DB_NAME
+    log.info(f"Running pg_dump for {db_name}...")
     env = os.environ.copy()
     env["PGPASSWORD"] = DB_PASSWORD
 
     result = subprocess.run(
         [
             "pg_dump",
-            "-h", DB_HOST,
+            "-h", db_host,
             "-p", DB_PORT,
             "-U", DB_USER,
-            "-d", DB_NAME,
+            "-d", db_name,
             "--no-password",
             "-F", "p",   # plain SQL
         ],
@@ -348,8 +389,14 @@ def cleanup_old_csvs(token: str, today: date):
 
     Example: May week-1 is uploaded → all April CSVs are deleted.
 
-    Filename format: hermes_weekly_YYYY-MM-DD_YYYY-MM-DD.csv
-    Month is determined from the week_start date (first date in filename).
+    Filename format: hermes_weekly_<tenant-slug>_YYYY-MM-DD_YYYY-MM-DD.csv
+    Month is determined from the week_start date.
+
+    WS7 notu: dosya adina tenant slug'i eklendi. Ayristirma artik SONDAN
+    ikinci parcayi tarih kabul eder — sabit bir indeks kullansaydi
+    (parts[2]) her dosya "ayristirilamadi" diye ATLANIR ve eski CSV'ler
+    sonsuza kadar birikirdi. Slug'siz ESKI dosyalar da ayni mantikla
+    dogru ayristirilir.
     """
     files = list_files_in_folder(token, CSV_FOLDER)
     csvs = [f for f in files if f["name"].endswith(".csv")]
@@ -359,8 +406,8 @@ def cleanup_old_csvs(token: str, today: date):
         # Parse week_start from filename: hermes_weekly_YYYY-MM-DD_YYYY-MM-DD.csv
         try:
             parts = f["name"].replace(".csv", "").split("_")
-            # parts: ['hermes', 'weekly', 'YYYY-MM-DD', 'YYYY-MM-DD']
-            week_start_str = parts[2]
+            # parts: [..., 'YYYY-MM-DD'(week_start), 'YYYY-MM-DD'(week_end)]
+            week_start_str = parts[-2]
             file_date = date.fromisoformat(week_start_str)
             # Delete if the file belongs to any month before the current month
             if (file_date.year, file_date.month) < (today.year, today.month):
@@ -390,24 +437,46 @@ def main():
     token = get_access_token()
     ensure_folder(token, CSV_FOLDER)
     ensure_folder(token, DUMP_FOLDER)
-    users = fetch_users()
 
-    # ── 1. CSV Export ─────────────────────────────────────────────────────────
-    rows = fetch_weekly_logs(week_start, week_end, users)
-    if rows:
+    # ── 1. CSV Export — TENANT BASINA AYRI DOSYA ──────────────────────────────
+    # Tek karisik CSV, bir sirketin verisini digerinin yedeginde birakirdi.
+    # Dosya adi tenant slug'ini tasir (UUID degil: slug operatorun
+    # okuyabilecegi, tahmin edilemeyen bir tanimlayici degil ama zaten
+    # yedek deposu erisim kontrollu).
+    tenants = fetch_tenants()
+    if not tenants:
+        log.warning("No active tenant found — skipping CSV export.")
+    for tenant in tenants:
+        users = fetch_users(tenant["id"])
+        rows = fetch_weekly_logs(week_start, week_end, users, tenant["id"])
+        if not rows:
+            log.warning(
+                f"No entries for tenant {tenant['slug']} — skipping CSV."
+            )
+            continue
         csv_bytes = build_csv(rows)
-        csv_filename = f"hermes_weekly_{week_start}_{week_end}.csv"
-        upload_to_onedrive(token, CSV_FOLDER, csv_filename, csv_bytes, "text/csv; charset=utf-8")
-    else:
-        log.warning("No entries for this week — skipping CSV upload.")
+        csv_filename = (
+            f"hermes_weekly_{tenant['slug']}_{week_start}_{week_end}.csv"
+        )
+        upload_to_onedrive(
+            token, CSV_FOLDER, csv_filename, csv_bytes,
+            "text/csv; charset=utf-8",
+        )
 
     # Delete CSVs older than previous month
     cleanup_old_csvs(token, today)
 
-    # ── 2. DB Dump ────────────────────────────────────────────────────────────
-    dump_bytes = create_db_dump()
-    dump_filename = f"hermes_db_{week_end}.sql.gz"
-    upload_to_onedrive(token, DUMP_FOLDER, dump_filename, dump_bytes)
+    # ── 2. DB Dump — HER IKI VERITABANI ───────────────────────────────────────
+    # Kurtarma KOORDINELI olmalidir: tenant kayitlari/uyelikler auth_db'de,
+    # is verisi core_db'de yasar. Yalnizca core'u yedeklemek, geri
+    # yuklendiginde sahipsiz satirlar birakirdi (pack 09 §7).
+    for db_label, db_host, db_name in (
+        ("core", DB_HOST, DB_NAME),
+        ("auth", AUTH_DB_HOST, AUTH_DB_NAME),
+    ):
+        dump_bytes = create_db_dump(db_host, db_name)
+        dump_filename = f"hermes_{db_label}_db_{week_end}.sql.gz"
+        upload_to_onedrive(token, DUMP_FOLDER, dump_filename, dump_bytes)
 
     # Delete dumps from previous month
     cleanup_old_dumps(token, today)

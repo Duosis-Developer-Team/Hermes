@@ -221,7 +221,7 @@ def test_permissions_me_admin_lists_full_reach(world, http_for, monkeypatch):
 
     everyone = [str(ADMIN_U), str(ASSIGNER), str(VIEWER), str(TARGET)]
 
-    def _fake_list(*, limit, offset, q=None):
+    def _fake_list(*, limit, offset, q=None, **_kw):
         page = [{"id": i} for i in everyone][offset : offset + limit]
         return page, offset + limit < len(everyone)
 
