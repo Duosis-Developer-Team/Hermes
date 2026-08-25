@@ -348,6 +348,10 @@ class TenantUpdateRequest(BaseModel):
                                         max_length=200)
     email_domains: Optional[str] = None
     plan_code: Optional[str] = Field(default=None, max_length=50)
+    # Duzenleme ekrani, olusturma ekranindaki alanlarin AYNISINI
+    # sunmalidir. Yeni bir yonetici eklemek olusturmada mumkundu ama
+    # duzenlemede degildi.
+    owner_email: Optional[EmailStr] = None
 
 
 @router.get("/plans", summary="Plan katalogu")
@@ -459,6 +463,16 @@ def update_tenant(
             sub.plan_code = payload.plan_code
         changed["plan_code"] = payload.plan_code
 
+    # Ek yonetici: var olan tenant'a admin ekleme (olusturma paritesi).
+    one_time_password = None
+    if payload.owner_email:
+        result = provisioning.add_tenant_admin(
+            db, tenant=tenant, email=str(payload.owner_email),
+            actor_user_id=UUID(principal.id),
+        )
+        one_time_password = result["one_time_password"]
+        changed["owner_email"] = result["email"]
+
     if changed:
         # Gorunen ad core projeksiyonunu ETKILEMEZ (orada slug/status
         # tutulur); yine de surum ilerletilip projeksiyon tazelenir ki
@@ -481,7 +495,12 @@ def update_tenant(
         metadata={"changed": list(changed.keys())},
     )
     db.commit()
-    return {"tenant_id": str(tenant.id), "changed": changed}
+    return {
+        "tenant_id": str(tenant.id),
+        "changed": changed,
+        # YALNIZCA yeni kullanici yaratildiysa ve YALNIZCA bu yanitta.
+        "one_time_password": one_time_password,
+    }
 
 
 @router.post("/tenants/{tenant_id}/suspend", summary="Tenant'i askiya al")

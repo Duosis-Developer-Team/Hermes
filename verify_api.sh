@@ -12,7 +12,7 @@ echo "======================================"
 echo "[1] Authenticating (admin@hermes.com)..."
 LOGIN_RES=$(curl -s -X POST "$AUTH_URL/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=admin@hermes.dev&password=admin123")
+  -d "username=admin@duosis.com&password=admin123")
 
 # Extract Token (Basic parsing)
 TOKEN=$(echo "$LOGIN_RES" | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)

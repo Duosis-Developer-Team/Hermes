@@ -343,3 +343,71 @@ def provision_tenant(
         "one_time_password": one_time_password,
         "workspace_hint": f"/?workspace={slug}",
     }
+
+
+def add_tenant_admin(db: Session, *, tenant, email: str, actor_user_id=None):
+    """Var olan bir tenant'a YONETICI ekler (olusturma paritesi).
+
+    Duzenleme ekrani, olusturma ekranindaki alanlarin aynisini
+    sunmalidir; yonetici eklemek olusturmada mumkundu ama duzenlemede
+    degildi.
+
+    Idempotent: kisi zaten uyeyse uyelik tekrar yaratilmaz, yalnizca
+    admin rolu garanti edilir. Parola var olan kullanicilar icin ASLA
+    sifirlanmaz — baskasinin oturumunu sessizce dusurmek kabul edilemez.
+    """
+    from ..models.rbac import RbacUserRole
+    from ..models.user import AuthProvider, User
+
+    email = (email or "").strip().lower()
+    if "@" not in email:
+        raise ProvisioningError("Gecerli bir e-posta girin.")
+
+    one_time_password = None
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        from shared.auth import hash_password
+        one_time_password = _generate_password()
+        user = User(
+            email=email, full_name=email,
+            hashed_password=hash_password(one_time_password),
+            is_active=True, auth_provider=AuthProvider.LOCAL,
+        )
+        db.add(user)
+        db.flush()
+
+    membership = db.query(TenantMembership).filter(
+        TenantMembership.tenant_id == tenant.id,
+        TenantMembership.user_id == user.id,
+    ).first()
+    if membership is None:
+        db.add(TenantMembership(tenant_id=tenant.id, user_id=user.id,
+                                status="active"))
+    elif membership.status != "active":
+        membership.status = "active"
+    db.flush()
+
+    admin_role = get_role_by_code(db, SYSTEM_ADMIN_CODE, tenant_id=tenant.id)
+    if admin_role is not None:
+        has = db.query(RbacUserRole).filter(
+            RbacUserRole.tenant_id == tenant.id,
+            RbacUserRole.user_id == user.id,
+            RbacUserRole.role_id == admin_role.id,
+        ).first()
+        if has is None:
+            db.add(RbacUserRole(tenant_id=tenant.id, user_id=user.id,
+                                role_id=admin_role.id))
+    db.flush()
+
+    record_audit(
+        db,
+        action="platform.tenant.admin_added",
+        actor_user_id=actor_user_id,
+        target_tenant_id=tenant.id,
+        target_type="tenant",
+        target_id=str(tenant.id),
+        result="success",
+        metadata={"email": email, "user_created": one_time_password is not None},
+    )
+    return {"email": email, "one_time_password": one_time_password,
+            "created": one_time_password is not None}

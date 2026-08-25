@@ -46,7 +46,6 @@ import { routeLoaders } from './routes/loaders'
 
 const LoginPage = lazy(routeLoaders.login)
 const AuthCallbackPage = lazy(routeLoaders.authCallback)
-const PlatformLoginPage = lazy(routeLoaders.platformLogin)
 const PlatformConsole = lazy(routeLoaders.platformConsole)
 const DashboardPage = lazy(routeLoaders.dashboard)
 const TimeEntryPage = lazy(routeLoaders.timeEntry)
@@ -204,13 +203,16 @@ function App() {
                     konsolda gorunmez, konsol da tenant menusune sizmaz;
                   - lazy chunk: normal kullanici bu kodu indirmez.
                ================================================================= */}
-            <Route path="/platform-admin/login" element={<PlatformLoginPage />} />
             <Route
                 path="/platform-admin/*"
                 element={
                     platformAuthenticated
                         ? <PlatformConsole />
-                        : <Navigate to="/platform-admin/login" replace />
+                        /* Ayri platform giris ekrani KALDIRILDI: giris tek
+                           yerden yapilir. Oturum yoksa ana giris ekranina
+                           gidilir; orasi platform kimligini de kabul eder
+                           ve konsola yonlendirir. */
+                        : <Navigate to="/login" replace />
                 }
             />
 

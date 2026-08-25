@@ -9,7 +9,7 @@
  *      metinle soyler.
  *   3. Platform izinleri fail-closed'dir.
  */
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { render, screen } from '@testing-library/react'
@@ -263,5 +263,77 @@ describe('workspace tasima', () => {
         expect(src).not.toMatch(/workspace/)
         // Kendi axios ornegini kurar; tenant istemcisinden TUREMEZ.
         expect(src).not.toMatch(/createApiClient/)
+    })
+})
+
+/**
+ * =============================================================================
+ * Tek giris ekrani — ayri platform login sayfasi KALDIRILDI
+ * =============================================================================
+ */
+describe('tek giris ekrani', () => {
+    it('ayri PlatformLoginPage dosyasi YOKTUR', () => {
+        expect(existsSync(resolve(
+            process.cwd(), 'src/pages/platform/PlatformLoginPage.jsx'))).toBe(false)
+    })
+
+    it('hicbir yerde referansi kalmamistir', () => {
+        for (const f of ['src/App.jsx', 'src/routes/loaders.js']) {
+            const src = readFileSync(resolve(process.cwd(), f), 'utf-8')
+            expect(src).not.toMatch(/PlatformLoginPage|platformLogin\b/)
+        }
+    })
+
+    it('oturumsuz platform rotasi ANA giris ekranina gider', () => {
+        const src = readFileSync(resolve(process.cwd(), 'src/App.jsx'), 'utf-8')
+        // Ayri giris ekranina yonlendirme HICBIR yerde kalmamali.
+        expect(src).not.toMatch(/\/platform-admin\/login/)
+        // Platform rota blogunu izole edip icinde /login'e dusuldugunu
+        // dogrula (dosyanin tamaminda aramak yaniltici olur).
+        const start = src.indexOf('path="/platform-admin/*"')
+        expect(start).toBeGreaterThan(-1)
+        const block = src.slice(start, start + 600)
+        expect(block).toMatch(/platformAuthenticated/)
+        expect(block).toMatch(/Navigate to=["']\/login["']/)
+    })
+
+    it('konsoldan cikis ANA giris ekranina doner', () => {
+        const src = readFileSync(resolve(
+            process.cwd(), 'src/pages/platform/PlatformConsole.jsx'), 'utf-8')
+        expect(src).toMatch(/navigate\(['"]\/login['"],\s*\{\s*replace:\s*true\s*\}\)/)
+    })
+})
+
+/**
+ * =============================================================================
+ * Duzenleme / olusturma paritesi
+ * =============================================================================
+ * Sikayet: "yeni eklerken istenilen kisimlar editte de duzenlenebiliyor
+ * olmali". Olusturmadaki her alan duzenlemede de GORUNMELI; degistirilemeyen
+ * alan gizlenmez, neden kilitli oldugu soylenir.
+ */
+describe('duzenleme paritesi', () => {
+    const consoleSrc = () => readFileSync(resolve(
+        process.cwd(), 'src/pages/platform/PlatformConsole.jsx'), 'utf-8')
+
+    const editBlock = () => {
+        const s = consoleSrc()
+        const start = s.indexOf('function EditTenantModal')
+        return s.slice(start, s.indexOf('\nfunction ', start + 10))
+    }
+
+    it('olusturmadaki alanlarin hepsi duzenlemede de vardir', () => {
+        const edit = editBlock()
+        for (const field of ['display_name', 'email_domains', 'plan_code',
+                             'owner_email']) {
+            expect(edit).toMatch(new RegExp(`name="${field}"`))
+        }
+        // Slug degistirilemez ama GOSTERILIR.
+        expect(edit).toMatch(/Workspace address/)
+        expect(edit).toMatch(/disabled/)
+    })
+
+    it('plan duzenlemede de SECILEBILIR', () => {
+        expect(editBlock()).toMatch(/name="plan_code"[\s\S]{0,300}<Select/)
     })
 })

@@ -15,6 +15,7 @@
  * bir baglamda acilir.
  */
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
     Badge, Button, Card, Col, Descriptions, Empty, Form, Input,
     InputNumber, Modal, Row, Select, Space, Statistic, Table,
@@ -363,6 +364,7 @@ function EditTenantModal({ tenant, onClose, onDone }) {
                 display_name: tenant.display_name,
                 plan_code: tenant.plan_code || undefined,
                 email_domains: (tenant.email_domains || []).join(', '),
+                status: tenant.status,
             })
         }
     }, [tenant, form])
@@ -395,12 +397,31 @@ function EditTenantModal({ tenant, onClose, onDone }) {
                 >
                     <Input />
                 </Form.Item>
+
+                {/* Workspace adresi DEGISTIRILEMEZ: mevcut baglantilar,
+                    kayitli oturumlar ve e-posta linkleri ona bagli. Yine de
+                    GOSTERILIR — duzenleme ekrani, olusturma ekranindaki her
+                    alani icermeli; degistirilemeyen alan gizlenmez, neden
+                    kilitli oldugu SOYLENIR. */}
+                <Form.Item label="Workspace address">
+                    <Input value={tenant?.slug} disabled />
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        Cannot be changed — existing links and sessions
+                        depend on it.
+                    </Text>
+                </Form.Item>
+
                 <Form.Item
                     name="email_domains" label="E-mail domains"
-                    extra="Comma separated. Empty disables domain auto-join."
+                    extra={
+                        'Anyone with an e-mail at these domains joins this '
+                        + 'tenant on first sign-in. Comma separated; empty '
+                        + 'disables domain auto-join.'
+                    }
                 >
-                    <Input placeholder="acme.com" />
+                    <Input placeholder="acme.com, acme.co.uk" />
                 </Form.Item>
+
                 <Form.Item name="plan_code" label="Plan">
                     <Select
                         allowClear placeholder="Select a plan"
@@ -409,10 +430,32 @@ function EditTenantModal({ tenant, onClose, onDone }) {
                         }))}
                     />
                 </Form.Item>
-                <Text type="secondary">
-                    Workspace address (<Text code>{tenant?.slug}</Text>) cannot
-                    be changed — existing links and sessions depend on it.
-                </Text>
+
+                {/* Yasam dongusu: askiya alma/geri acma buradan da
+                    yapilabilir. Askiya alma YIKICI bir islemdir — ayri
+                    onay akisi (SuspendModal) korunur, burada yalnizca
+                    geri acma dogrudan sunulur. */}
+                <Form.Item label="Status">
+                    <Space>
+                        <TenantStatus status={tenant?.status} />
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            Use Suspend / Reactivate on the tenant row —
+                            suspending requires typed confirmation.
+                        </Text>
+                    </Space>
+                </Form.Item>
+
+                <Form.Item
+                    name="owner_email" label="Add another administrator"
+                    extra={
+                        'Optional. Grants this person tenant-admin rights. '
+                        + 'If they do not have an account yet, one is created '
+                        + 'and a one-time password is shown once.'
+                    }
+                    rules={[{ type: 'email', message: 'Enter a valid e-mail' }]}
+                >
+                    <Input placeholder="admin@acme.com" allowClear />
+                </Form.Item>
             </Form>
         </Modal>
     )
@@ -598,6 +641,7 @@ export default function PlatformConsole() {
     const logout = usePlatformAuthStore((s) => s.logout)
     const [supportSession, setSupportSession] = useState(null)
     const [section, setSection] = useState('overview')
+    const navigate = useNavigate()
 
     const endSupport = async () => {
         if (supportSession?.id) {
@@ -616,6 +660,10 @@ export default function PlatformConsole() {
             await platformService.logout()
         } finally {
             logout()
+            // Ayri platform giris ekrani YOK: cikista ANA giris ekranina
+            // donulur. `replace` ile gecmise yazilmaz, geri tusu kapali
+            // konsola dondurmez.
+            navigate('/login', { replace: true })
         }
     }
 

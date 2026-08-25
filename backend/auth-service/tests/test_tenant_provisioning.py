@@ -532,3 +532,88 @@ def test_unknown_slug_fails_closed_not_silently_to_host(pg_session, monkeypatch)
         resolve_request_tenant(
             pg_session, hostname="10.0.0.1", workspace_slug="yok-boyle"
         )
+
+
+# =============================================================================
+# 8) Duzenleme / olusturma PARITESI
+# =============================================================================
+
+def test_update_can_add_admin_to_existing_tenant(platform_client, pg_session):
+    """Olusturmada yapilabilen her sey duzenlemede de yapilabilmeli."""
+    from app.models.rbac import RbacRole, RbacUserRole
+
+    user, perms = _admin(pg_session)
+    platform_client.as_admin(user, perms)
+    with patch.object(prov, "_project_to_core", return_value=None):
+        created = platform_client.post(f"{BASE}/tenants", json={
+            "slug": "acme", "display_name": "Acme",
+            "owner_email": "owner@acme.com",
+        }).json()
+        resp = platform_client.patch(
+            f"{BASE}/tenants/{created['tenant']['id']}",
+            json={"owner_email": "ikinci@acme.com"},
+        )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["changed"]["owner_email"] == "ikinci@acme.com"
+    assert body["one_time_password"]        # yeni kullanici -> parola
+
+    tenant = pg_session.query(Tenant).filter(Tenant.slug == "acme").one()
+    new_user = pg_session.query(User).filter(
+        User.email == "ikinci@acme.com").one()
+    assert pg_session.query(TenantMembership).filter(
+        TenantMembership.tenant_id == tenant.id,
+        TenantMembership.user_id == new_user.id,
+        TenantMembership.status == "active",
+    ).count() == 1
+    admin_role = pg_session.query(RbacRole).filter(
+        RbacRole.tenant_id == tenant.id, RbacRole.code == "system-admin").one()
+    assert pg_session.query(RbacUserRole).filter(
+        RbacUserRole.user_id == new_user.id,
+        RbacUserRole.role_id == admin_role.id).count() == 1
+
+
+def test_adding_existing_user_never_resets_their_password(platform_client,
+                                                          pg_session):
+    """Var olan kullanicinin parolasi SIFIRLANMAZ.
+
+    Baskasinin oturumunu sessizce dusurmek kabul edilemez.
+    """
+    user, perms = _admin(pg_session)
+    platform_client.as_admin(user, perms)
+    existing = User(email="var@acme.com", full_name="Var",
+                    hashed_password="ORIJINAL-HASH", is_active=True)
+    pg_session.add(existing)
+    pg_session.commit()
+
+    with patch.object(prov, "_project_to_core", return_value=None):
+        created = platform_client.post(f"{BASE}/tenants", json={
+            "slug": "acme", "display_name": "Acme",
+            "owner_email": "owner@acme.com"}).json()
+        body = platform_client.patch(
+            f"{BASE}/tenants/{created['tenant']['id']}",
+            json={"owner_email": "var@acme.com"}).json()
+
+    assert body["one_time_password"] is None
+    pg_session.refresh(existing)
+    assert existing.hashed_password == "ORIJINAL-HASH"
+
+
+def test_adding_same_admin_twice_is_idempotent(platform_client, pg_session):
+    user, perms = _admin(pg_session)
+    platform_client.as_admin(user, perms)
+    with patch.object(prov, "_project_to_core", return_value=None):
+        created = platform_client.post(f"{BASE}/tenants", json={
+            "slug": "acme", "display_name": "Acme",
+            "owner_email": "owner@acme.com"}).json()
+        tid = created["tenant"]["id"]
+        platform_client.patch(f"{BASE}/tenants/{tid}",
+                              json={"owner_email": "ayni@acme.com"})
+        platform_client.patch(f"{BASE}/tenants/{tid}",
+                              json={"owner_email": "ayni@acme.com"})
+
+    tenant = pg_session.query(Tenant).filter(Tenant.slug == "acme").one()
+    u = pg_session.query(User).filter(User.email == "ayni@acme.com").one()
+    assert pg_session.query(TenantMembership).filter(
+        TenantMembership.tenant_id == tenant.id,
+        TenantMembership.user_id == u.id).count() == 1
