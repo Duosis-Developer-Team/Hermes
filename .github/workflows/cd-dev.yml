@@ -178,13 +178,19 @@ jobs:
   # Frontend kalite kapisi (Stage 5D-C): secret guard + TAM vitest
   # suite + prod build + env-config artifact kontrolu. Deploy, UI
   # derlenmeden ve testler gecmeden kosamaz.
-  # Frontend testleri 3 PARALEL parcaya bolunur.
+  # Frontend testleri 5 PARALEL parcaya bolunur.
   #
   # NEDEN: olculdu — `frontend_build` 12dk 49sn suruyordu ve tum boru
   # hattinin yarisindan fazlasiydi (image build'leri cache'li, ~20sn;
   # backend testleri ~1.5dk). Zamanin nerdeyse tamami 888 vitest testiydi.
-  # Testleri AZALTMAK cozum degil; paralel kosmak cozum. Yerel olcum:
-  # tam kosu 3dk45, 1/3 parca 1dk20.
+  # Testleri AZALTMAK cozum degil; paralel kosmak cozum.
+  #
+  # PARCA SAYISI OLCULEREK SECILDI. Vitest sureye gore degil DOSYAYA gore
+  # boler; en yavas 3 dosya (logTime 249sn, crud 240sn, modalA11y 179sn)
+  # toplam surenin %38'i. Ayni parcaya duserlerse o parca darbogaz olur.
+  # Olculen en agir parca: 3 parca -> 891sn, 5 parca -> 492sn,
+  # 6 parca -> 835sn. Altiya cikmak DAHA KOTU (agir dosyalar yeniden
+  # kumeleniyor); bu yuzden 5.
   #
   # `fail-fast: false`: bir parca kirilinca digerleri de kosar; boylece
   # tek koşuda TUM kirilan testler gorulur, sirayla kesfedilmez.
@@ -194,7 +200,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4, 5]
     concurrency:
       group: cd-dev-frontend-tests-${{ matrix.shard }}-${{ github.ref }}
       cancel-in-progress: true
@@ -211,7 +217,7 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
-          npx vitest run --shard=${{ matrix.shard }}/3
+          npx vitest run --shard=${{ matrix.shard }}/5
 
   frontend_build:
     runs-on: ubuntu-latest
