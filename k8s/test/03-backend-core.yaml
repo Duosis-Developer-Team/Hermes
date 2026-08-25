@@ -8,7 +8,12 @@ metadata:
     environment: test
     project: hermes
 spec:
-  replicas: 1
+  # IKI REPLIKA (2026-08-25): hermes-test production-like'dir ve gercek
+  # kullanicilari var. Tek replikada, pod yeniden baslarken (bu kumede
+  # Datadog 7 init konteyner enjekte ediyor, aciliş 5-7 dk) servis TAMAMEN
+  # kapaniyordu. Ikinci replika, bir pod yenilenirken digerinin hizmet
+  # vermesini saglar.
+  replicas: 2
   selector:
     matchLabels:
       app: core-service
@@ -157,11 +162,22 @@ spec:
             port: 8001
           initialDelaySeconds: 30
           periodSeconds: 20
-          # Varsayilan 1 sn cok agresifti: anlik bir yavaslamada probe
-          # dusuyor ve kubelet pod'u olduruyordu (canli olay:
-          # "Liveness probe failed: context deadline exceeded").
-          timeoutSeconds: 5
-          failureThreshold: 5
+          # OLCULEREK ARTIRILDI (2026-08-25). Once 1sn'di, 5sn'ye
+          # cikarilmisti; 5sn de yetmedi. hermes-test'te core-service
+          # gercek kullanici yuku altinda ~1sa45dk sonra tikandi, liveness
+          # 5 kez dustu ve kubelet pod'u OLDURDU (exitCode 137 — OOM
+          # DEGIL). Oldurmek durumu KOTULESTIRIYOR: soguk baslangic yuku
+          # artiriyor ve dongu kendini besliyor.
+          #
+          # Sebep bellek DEGILDI: 4 saatlik cgroup ornekleme (865 olcum)
+          # en yuksek 219MB/512MB gosterdi ve CPU throttle 77.000
+          # periyotta 6'ydi. Probe'un kendisi fazla agresifti.
+          #
+          # 10sn + 10 esik = gercekten olu bir surec hala yeniden
+          # baslatilir (~200sn), ama anlik bir yavaslama saglikli bir
+          # pod'u OLDURMEZ.
+          timeoutSeconds: 10
+          failureThreshold: 10
         readinessProbe:
           httpGet:
             # /ready sema uyumlulugunu da dogrular: yanlis sema uzerinde
@@ -170,7 +186,7 @@ spec:
             port: 8001
           initialDelaySeconds: 15
           periodSeconds: 10
-          timeoutSeconds: 5
+          timeoutSeconds: 10
 
         resources:
           requests:

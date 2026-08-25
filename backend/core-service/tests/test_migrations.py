@@ -710,3 +710,54 @@ def test_workflow_files_are_valid_yaml_and_complete():
         for job in doc["jobs"].values():
             for step in job.get("steps", []):
                 assert isinstance(step, dict), f"{f.name}: bozuk adim: {step!r}"
+
+
+def test_probes_declare_explicit_timeouts_that_are_not_aggressive():
+    """Probe'lar ACIK ve makul timeout tasimali.
+
+    Bu test iki kez yasanmis bir olaydan dogdu: `timeoutSeconds`
+    verilmeyince Kubernetes varsayilani 1 SANIYE'dir. Bu kumede her pod'a
+    7 Datadog init konteyneri enjekte ediliyor ve anlik yavaslamalar
+    normal; 1sn (ve sonra 5sn) fazla agresif kaldi. hermes-test'te
+    SAGLIKLI core-service pod'lari liveness'tan oldurulup servis TAMAMEN
+    kapandi (exitCode 137, OOM DEGIL).
+
+    Oldurmek durumu KOTULESTIRIR: soguk baslangic (5-7 dk) yuku artirir
+    ve dongu kendini besler. Olculen gercek: 4 saatlik ornekleme, en
+    yuksek bellek 219MB/512MB, CPU throttle 77.000 periyotta 6 — yani
+    uygulama saglikliydi, PROBE yanlisti.
+    """
+    import yaml
+
+    MIN_TIMEOUT = 5      # saniye
+    MIN_FAILURES = 3
+
+    problems = []
+    for f in sorted((_REPO_ROOT / "k8s").rglob("03-backend-*.yaml")):
+        for doc in yaml.safe_load_all(f.read_text(encoding="utf-8")):
+            if not doc or doc.get("kind") != "Deployment":
+                continue
+            for c in doc["spec"]["template"]["spec"]["containers"]:
+                for kind in ("livenessProbe", "readinessProbe"):
+                    probe = c.get(kind)
+                    if not probe:
+                        continue
+                    t = probe.get("timeoutSeconds")
+                    if t is None:
+                        problems.append(
+                            f"{f.name}/{c['name']}/{kind}: timeoutSeconds YOK "
+                            "(Kubernetes varsayilani 1sn — fazla agresif)"
+                        )
+                    elif t < MIN_TIMEOUT:
+                        problems.append(
+                            f"{f.name}/{c['name']}/{kind}: timeout {t}sn "
+                            f"< {MIN_TIMEOUT}sn"
+                        )
+                    if kind == "livenessProbe":
+                        ft = probe.get("failureThreshold", 3)
+                        if ft < MIN_FAILURES:
+                            problems.append(
+                                f"{f.name}/{c['name']}: failureThreshold {ft} "
+                                f"< {MIN_FAILURES} — tek yavaslamada oldurur"
+                            )
+    assert not problems, "Agresif probe ayari:\n  " + "\n  ".join(problems)

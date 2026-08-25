@@ -271,11 +271,22 @@ spec:
             port: 8001
           initialDelaySeconds: 30
           periodSeconds: 20
-          # Varsayilan 1 sn cok agresifti: anlik bir yavaslamada probe
-          # dusuyor ve kubelet pod'u olduruyordu (canli olay:
-          # "Liveness probe failed: context deadline exceeded").
-          timeoutSeconds: 5
-          failureThreshold: 5
+          # OLCULEREK ARTIRILDI (2026-08-25). Once 1sn'di, 5sn'ye
+          # cikarilmisti; 5sn de yetmedi. hermes-test'te core-service
+          # gercek kullanici yuku altinda ~1sa45dk sonra tikandi, liveness
+          # 5 kez dustu ve kubelet pod'u OLDURDU (exitCode 137 — OOM
+          # DEGIL). Oldurmek durumu KOTULESTIRIYOR: soguk baslangic yuku
+          # artiriyor ve dongu kendini besliyor.
+          #
+          # Sebep bellek DEGILDI: 4 saatlik cgroup ornekleme (865 olcum)
+          # en yuksek 219MB/512MB gosterdi ve CPU throttle 77.000
+          # periyotta 6'ydi. Probe'un kendisi fazla agresifti.
+          #
+          # 10sn + 10 esik = gercekten olu bir surec hala yeniden
+          # baslatilir (~200sn), ama anlik bir yavaslama saglikli bir
+          # pod'u OLDURMEZ.
+          timeoutSeconds: 10
+          failureThreshold: 10
         # WS10: readiness sema uyumlulugunu DA kontrol eder.
         # Liveness BILEREK /health'te kalir — yanlis sema pod'u
         # yeniden baslatmaz (bu crashloop olurdu), yalnizca
@@ -286,7 +297,7 @@ spec:
             port: 8001
           initialDelaySeconds: 15
           periodSeconds: 10
-          timeoutSeconds: 5
+          timeoutSeconds: 10
 
         resources:
           requests:
