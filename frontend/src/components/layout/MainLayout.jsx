@@ -2,15 +2,15 @@
  * =============================================================================
  * HERMES PLATFORM - Main Layout Component
  * =============================================================================
- * Ana sayfa düzeni. Sidebar navigation ve header içerir.
- * Ant Design Layout bileşenleri kullanılır.
+ * TENANT tarafinin layout'u. Gorsel kabuk (sidebar/header/icerik/drawer)
+ * `AppShell` bilesenindedir ve Platform Admin konsoluyla PAYLASILIR;
+ * burada yalnizca tenant'a ozel olan kurulur: izin filtreli menu, route
+ * prefetch, secili anahtar ve hesap menusu.
  * =============================================================================
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Suspense } from 'react'
+import { useEffect, useRef } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Drawer, Layout, Menu, Avatar, Dropdown, Space, Typography, Button } from 'antd'
 import {
     ApiOutlined,
     CodeOutlined,
@@ -23,31 +23,16 @@ import {
     FileTextOutlined,
     LogoutOutlined,
     FileExcelOutlined,
-    MenuFoldOutlined,
-    MenuUnfoldOutlined,
     SettingOutlined,
     CheckSquareOutlined,
     CalendarOutlined,
-    BulbFilled,
-    BulbOutlined,
 } from '@ant-design/icons'
+import AppShell from './AppShell'
 import OrganizationSwitcher from './OrganizationSwitcher'
 import { useAuthStore } from '../../stores/authStore'
-import { useThemeStore } from '../../stores/themeStore'
 import { authService } from '../../services/api'
 import { useTaskPermissions } from '../../hooks/useTaskPermissions'
 import { loaderByPath } from '../../routes/loaders'
-import { IconButton } from '../ui'
-import logoFullDark from '../../assets/logos/logo-full-dark.jpg'
-import logoFullLight from '../../assets/logos/logo-full-light.png'
-import logoIconDark from '../../assets/logos/logo-icon-dark.jpg'
-import logoIconLight from '../../assets/logos/logo-icon-light.png'
-import PageSkeleton from '../common/PageSkeleton'
-import { RouteErrorBoundary } from '../common/ErrorBoundaries'
-import './MainLayout.css'
-
-const { Header, Sider, Content } = Layout
-const { Text } = Typography
 
 /**
  * Main Layout Component
@@ -57,58 +42,14 @@ const { Text } = Typography
  * - Admin/User bazlı menü görünürlüğü
  * - User dropdown (profil, çıkış)
  */
-// Below this width the fixed Sider is hidden (see MainLayout.css) and
-// navigation moves into a slide-in Drawer.
-const MOBILE_QUERY = '(max-width: 768px)'
-
-const SIDEBAR_KEY = 'hermes-sidebar-collapsed'
-
 function MainLayout() {
-    // Sprint 3: collapse tercihi persist (paket §3 Collapsed).
-    const [collapsed, setCollapsedState] = useState(() => {
-        try { return localStorage.getItem(SIDEBAR_KEY) === '1' } catch { return false }
-    })
-    const setCollapsed = (v) => {
-        setCollapsedState(v)
-        try { localStorage.setItem(SIDEBAR_KEY, v ? '1' : '0') } catch { /* yok say */ }
-    }
-    // Header scroll durumu (§4): icerik kayarken hafif elevation.
-    const [scrolled, setScrolled] = useState(false)
-    const contentRef = useRef(null)
-    // Offline banner (§9): sakin, toast-spam'siz.
-    const [offline, setOffline] = useState(
-        typeof navigator !== 'undefined' && navigator.onLine === false
-    )
-    useEffect(() => {
-        const on = () => setOffline(false)
-        const off = () => setOffline(true)
-        window.addEventListener('online', on)
-        window.addEventListener('offline', off)
-        return () => {
-            window.removeEventListener('online', on)
-            window.removeEventListener('offline', off)
-        }
-    }, [])
-    // Mobile navigation drawer (sidebar replacement under 768px).
-    const [mobileNavOpen, setMobileNavOpen] = useState(false)
-    const [isMobile, setIsMobile] = useState(
-        () => window.matchMedia(MOBILE_QUERY).matches
-    )
+    // Kabuk durumu (collapsed / scroll / offline / mobil drawer) artik
+    // `AppShell` icinde yasar. MainLayout yalnizca TENANT tarafina ait
+    // olani kurar: izin filtreli menu, prefetch, secili anahtar ve hesap
+    // menusu.
     const navigate = useNavigate()
     const location = useLocation()
-
-    useEffect(() => {
-        const mq = window.matchMedia(MOBILE_QUERY)
-        const onChange = (e) => {
-            setIsMobile(e.matches)
-            if (!e.matches) setMobileNavOpen(false)
-        }
-        mq.addEventListener('change', onChange)
-        return () => mq.removeEventListener('change', onChange)
-    }, [])
     const { user, logout } = useAuthStore()
-    const { theme: themeMode, toggleTheme } = useThemeStore()
-    const isLight = themeMode === 'light'
 
     const isAdmin = user?.is_admin === true
     const { canAccessAny } = useTaskPermissions()
@@ -139,24 +80,6 @@ function MainLayout() {
         { key: '/work-lines', icon: <SettingOutlined />, label: 'Work Lines', perm: 'reference.manage' },
         { key: '/users', icon: <UserOutlined />, label: 'Users', perm: 'users.manage' },
     ].filter((i) => can(i.perm)).map(({ perm, ...i }) => i)
-
-    // Sprint 3 §10: drawer acikken arka plan scroll'u KILITLENIR ve
-    // kapaninca focus tetikleyiciye doner. AntD kendi kilidini gercek
-    // tarayicida uygular; burada acik ve ortamdan bagimsiz garanti
-    // veriyoruz (jsdom'da AntD hicbir sey yazmiyor — testle sabit).
-    const navTriggerRef = useRef(null)
-    useEffect(() => {
-        if (!mobileNavOpen) return undefined
-        const prev = document.body.style.overflow
-        // Ref cleanup'ta degismis olabilir — effect ICINDE yakalanir.
-        const trigger = navTriggerRef.current
-        document.body.style.overflow = 'hidden'
-        return () => {
-            document.body.style.overflow = prev
-            // Focus guvenli sekilde tetikleyiciye doner.
-            trigger?.focus?.()
-        }
-    }, [mobileNavOpen])
 
     // Sprint 3 §7: nav uzerinde kisa pointer-intent sonrasi route
     // CHUNK'i prefetch edilir (API verisi degil). Menu izin-filtreli
@@ -313,7 +236,8 @@ function MainLayout() {
         const sep = !prev || prev.type === 'divider' ? [] : [{ type: 'divider' }]
         return [...sep, ...(it.children || [])]
     })
-    const siderItems = collapsed ? flattenGroups(navItems) : navItems
+    const buildMenuItems = ({ collapsed }) =>
+        (collapsed ? flattenGroups(navItems) : navItems)
 
     // User dropdown menu
     const userMenuItems = [
@@ -337,10 +261,8 @@ function MainLayout() {
     ]
 
     const handleMenuClick = ({ key }) => {
-        if (key.startsWith('/')) {
-            navigate(key)
-            setMobileNavOpen(false)
-        }
+        // Mobil drawer'i kapatmak kabugun isi (AppShell).
+        if (key.startsWith('/')) navigate(key)
     }
 
     // Highlight the menu item whose key is the longest prefix of the current
@@ -362,198 +284,23 @@ function MainLayout() {
             )
             .sort((a, b) => b.length - a.length)[0] || location.pathname
 
-    /*
-     * PERFORMANS: `collapsed`, `scrolled` ve tema degisimi MainLayout'u
-     * yeniden render ediyor; Outlet JSX'i her seferinde YENI element
-     * uretince React tum route agacini da yeniden isliyordu (sidebar
-     * acilip kapanirken hissedilen takilmanin kaynagi). Element
-     * referansi yalniz ROTA degisince yenilenir → React bail-out.
-     */
-    // Scroll handler kimligi sabit: her render'da yeni fonksiyon uretip
-    // Content'e yeni prop gecmez.
-    const handleContentScroll = useCallback((e) => {
-        const next = e.currentTarget.scrollTop > 4
-        setScrolled((prev) => (prev === next ? prev : next))
-    }, [])
-
-    const routeContent = useMemo(() => (
-        // Sprint 3 §6: route girisi opacity+4px; shell sabit kalir.
-        <div className="route-transition" key={location.pathname}>
-            <Outlet />
-        </div>
-    ), [location.pathname])
-
     return (
-        <Layout className="main-layout">
-            {/* Sidebar */}
-            <Sider
-                trigger={null}
-                collapsible
-                collapsed={collapsed}
-                width={240}
-                collapsedWidth={72}
-                className="main-sider"
-            >
-                {/* Logo: expanded'da wordmark, collapsed'da ikon —
-                    crossfade; distortion yok (§3 Collapsed). */}
-                <div
-                    className="logo-container"
-                    onClick={() => navigate('/time-entry')}
-                    role="link"
-                    aria-label="Home"
-                >
-                    <img
-                        src={isLight ? logoFullLight : logoFullDark}
-                        alt="Hermes"
-                        className="sidebar-logo sidebar-logo--full"
-                    />
-                    <img
-                        src={isLight ? logoIconLight : logoIconDark}
-                        alt=""
-                        aria-hidden="true"
-                        className="sidebar-logo sidebar-logo--icon"
-                    />
-                </div>
-
-                {/* Navigation Menu */}
-                <Menu
-                    theme={isLight ? 'light' : 'dark'}
-                    mode="inline"
-                    selectedKeys={[selectedKey]}
-                    items={siderItems}
-                    onClick={handleMenuClick}
-                    className="main-menu"
-                />
-
-                {/* Sidebar Footer */}
-                {!collapsed && (
-                    <div className="sidebar-footer fade-in">
-                        <div className="copyright-text">Copyright © 2026 Duosis</div>
-                        <div className="rights-text">All rights reserved.</div>
-                    </div>
-                )}
-            </Sider>
-
-            {/* Main Content Area */}
-            <Layout>
-                {/* Header */}
-                <Header className="main-header" data-scrolled={scrolled || undefined}>
-                    {/* Collapse Button — on mobile the Sider is hidden, so
-                        the same button opens the navigation drawer instead. */}
-                    <Button
-                        ref={navTriggerRef}
-                        type="text"
-                        icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                        onClick={() =>
-                            isMobile
-                                ? setMobileNavOpen(true)
-                                : setCollapsed(!collapsed)
-                        }
-                        className="collapse-btn"
-                        aria-label="Toggle navigation"
-                    />
-
-
-
-                    {/* Spacer */}
-                    <div style={{ flex: 1 }} />
-
-                    {/* Tema: kisa ikon crossfade/rotate'li buton (§11);
-                        reduced-motion global kuralla durur. */}
-                    <IconButton
-                        label={isLight ? 'Switch to dark theme' : 'Switch to light theme'}
-                        icon={
-                            <span className="theme-toggle-icon" data-mode={isLight ? 'light' : 'dark'}>
-                                {isLight ? <BulbFilled /> : <BulbOutlined />}
-                            </span>
-                        }
-                        onClick={toggleTheme}
-                        className="theme-toggle-btn"
-                    />
-
-                    {/* WS8: organizasyon secici — YALNIZCA birden fazla
-                        aktif uyelik varsa render eder (aksi halde null
-                        doner ve tek organizasyonlu kurulumda hicbir sey
-                        degismez). */}
-                    <OrganizationSwitcher />
-
-                    {/* User Dropdown */}
-                    <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                        <Space className="user-dropdown">
-                            <Avatar
-                                icon={<UserOutlined />}
-                                style={{ backgroundColor: 'var(--color-primary)' }}
-                            />
-                            <div className="user-info">
-                                <Text className="user-name">{user?.full_name || user?.email}</Text>
-                                <Text className="user-role">
-                                    {isAdmin ? 'Admin' : 'User'}
-                                </Text>
-                            </div>
-                        </Space>
-                    </Dropdown>
-                </Header>
-
-                {/* Page Content — Sprint 1: route chunk'i yuklenirken
-                    SHELL AYAKTA KALIR; icerik alani sayfa iskeletiyle
-                    degisir (full-screen spinner yasak, §5.3). Route
-                    hatasi kurtarilabilir boundary'de kalir, shell'i
-                    dusurmez; route degisince kendini sifirlar. */}
-                {offline && (
-                    <div className="offline-banner" role="status">
-                        Connection lost — your work will resume when you are back online.
-                    </div>
-                )}
-                <Content
-                    className="main-content"
-                    ref={contentRef}
-                    onScroll={handleContentScroll}
-                >
-                    <RouteErrorBoundary resetKey={location.pathname}>
-                        <Suspense fallback={<PageSkeleton />}>
-                            {/* Sprint 3 §6: route girisi opacity+4px, ~200ms;
-                                shell sabit; reduced-motion'da global kural
-                                animasyonu pratik sifira indirir. */}
-                            {routeContent}
-                        </Suspense>
-                    </RouteErrorBoundary>
-                </Content>
-            </Layout>
-
-            {/* Mobile navigation drawer — replaces the hidden Sider under
-                768px. Same menu items; tapping a link navigates + closes. */}
-            <Drawer
-                open={isMobile && mobileNavOpen}
-                onClose={() => setMobileNavOpen(false)}
-                placement="left"
-                width={264}
-                closable={false}
-                className="mobile-nav-drawer"
-                styles={{ body: { padding: 0 } }}
-            >
-                <div
-                    className="logo-container"
-                    onClick={() => {
-                        navigate('/time-entry')
-                        setMobileNavOpen(false)
-                    }}
-                >
-                    <img
-                        src={isLight ? logoFullLight : logoFullDark}
-                        alt="Hermes"
-                        className="sidebar-logo"
-                    />
-                </div>
-                <Menu
-                    theme={isLight ? 'light' : 'dark'}
-                    mode="inline"
-                    selectedKeys={[selectedKey]}
-                    items={navItems}
-                    onClick={handleMenuClick}
-                    className="main-menu"
-                />
-            </Drawer>
-        </Layout>
+        <AppShell
+            menuItems={buildMenuItems}
+            mobileMenuItems={navItems}
+            selectedKey={selectedKey}
+            onMenuClick={handleMenuClick}
+            onLogoClick={() => navigate('/time-entry')}
+            accountName={user?.full_name || user?.email}
+            accountRole={isAdmin ? 'Admin' : 'User'}
+            accountMenuItems={userMenuItems}
+            /* WS8: organizasyon secici — YALNIZCA birden fazla aktif
+               uyelik varsa render eder. */
+            headerExtra={<OrganizationSwitcher />}
+            contentKey={location.pathname}
+        >
+            <Outlet />
+        </AppShell>
     )
 }
 

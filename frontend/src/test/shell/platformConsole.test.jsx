@@ -9,6 +9,9 @@
  *      metinle soyler.
  *   3. Platform izinleri fail-closed'dir.
  */
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -130,5 +133,83 @@ describe('destek oturumu banner', () => {
         )
         expect(onExpire).toHaveBeenCalled()
         expect(screen.getByText(/Support session expired/i)).toBeInTheDocument()
+    })
+})
+
+/**
+ * =============================================================================
+ * Tasarim birligi — konsol Hermes'in KENDI kabugunu kullanmali
+ * =============================================================================
+ * Konsol once kendi `Layout` + `Tabs` yapisini kullaniyordu ve Hermes'e
+ * benzemiyordu. "Benzer" yetmez: ayni bilesen ve ayni CSS kullanilmadikca
+ * iki kabuk zamanla ayrisir. Bu testler, konsolun paylasilan kabuga bagli
+ * kalmasini YAPISAL olarak zorlar.
+ */
+describe('tasarim birligi', () => {
+    const consoleSrc = () => readFileSync(resolve(process.cwd(), 'src/pages/platform/PlatformConsole.jsx'), 'utf-8')
+
+    it('paylasilan AppShell kullanir', () => {
+        const src = consoleSrc()
+        expect(src).toMatch(/from ['"][^'"]*components\/layout\/AppShell['"]/)
+        expect(src).toMatch(/<AppShell\b/)
+    })
+
+    it('KENDI layout/sekme kabugunu KURMAZ', () => {
+        const src = consoleSrc()
+        // Bunlar geri gelirse tasarim yeniden ayrisir.
+        expect(src).not.toMatch(/<Layout\b/)
+        expect(src).not.toMatch(/<Tabs\b/)
+    })
+
+    it('kabuk, tenant tarafiyla AYNI bilesendir', () => {
+        const shell = readFileSync(resolve(process.cwd(), 'src/components/layout/MainLayout.jsx'), 'utf-8')
+        expect(shell).toMatch(/from ['"]\.\/AppShell['"]/)
+        expect(shell).toMatch(/<AppShell\b/)
+    })
+
+    it('kabuk tenant store\'una DOKUNMAZ (izolasyon)', () => {
+        const shell = readFileSync(resolve(process.cwd(), 'src/components/layout/AppShell.jsx'), 'utf-8')
+        // Gorsel kabuk veri kaynagi BILMEZ; tema disinda store import etmez.
+        expect(shell).not.toMatch(/authStore/)
+        expect(shell).not.toMatch(/platformAuthStore/)
+        expect(shell).not.toMatch(/OrganizationSwitcher/)
+    })
+
+    it('konsol tenant store\'unu HIC import etmez', () => {
+        expect(consoleSrc()).not.toMatch(/stores\/authStore/)
+    })
+})
+
+/**
+ * =============================================================================
+ * Tek giris noktasi — iki duzlem, tek form
+ * =============================================================================
+ * Platform admin bir tenant kullanicisi degildir; tenant girisi onu dogru
+ * sekilde reddeder. Kullanici ayri adres ezberlemesin diye giris formu
+ * platform duzlemine DUSER. Guvenlik degismez: ayri uc, ayri cerez, ayri
+ * audience — birlesen yalnizca FORM'dur.
+ */
+describe('tek giris noktasi', () => {
+    const loginSrc = () => readFileSync(resolve(process.cwd(), 'src/pages/LoginPage.jsx'), 'utf-8')
+
+    it('tenant reddedince platform ucunu dener', () => {
+        const src = loginSrc()
+        expect(src).toMatch(/platformService\.login/)
+        expect(src).toMatch(/navigate\(['"]\/platform-admin['"]\)/)
+    })
+
+    it('platform girisi AYRI ucu kullanir (tenant ucundan turetilmez)', () => {
+        const api = readFileSync(resolve(process.cwd(), 'src/api/platformApi.js'), 'utf-8')
+        expect(api).toMatch(/\/api\/platform\/v1/)
+        // Platform istemcisi tenant API tabanini KULLANMAZ.
+        expect(api).not.toMatch(/\/api\/v1\/auth/)
+    })
+
+    it('basarisiz platform denemesi TEK ve ayni hatayi gosterir', () => {
+        const src = loginSrc()
+        // Platform hatasi yutulur; kullaniciya tenant hatasi doner —
+        // aksi halde "bu e-posta platform admin'i" bilgisi sizardi.
+        expect(src).toMatch(/catch\s*{[^}]*}/)
+        expect(src).toMatch(/errorMsg/)
     })
 })

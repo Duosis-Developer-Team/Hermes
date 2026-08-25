@@ -21,6 +21,8 @@ import {
 import { useAuthStore } from '../stores/authStore'
 import { useThemeStore } from '../stores/themeStore'
 import { authService } from '../services/api'
+import { platformService } from '../api/platformApi'
+import { usePlatformAuthStore } from '../stores/platformAuthStore'
 import logoIconDark from '../assets/logos/logo-icon-dark.jpg'
 import logoIconLight from '../assets/logos/logo-icon-light.png'
 import './LoginPage.css'
@@ -39,6 +41,7 @@ function LoginPage() {
     const [showEmail, setShowEmail] = useState(false)
     const navigate = useNavigate()
     const { login } = useAuthStore()
+    const platformLogin = usePlatformAuthStore((s) => s.login)
     // Light mode needs the dark-colored boot icon (logo-icon-light.png);
     // the white boot (logo-icon-dark.jpg) disappears on the light card.
     const isLight = useThemeStore((s) => s.theme === 'light')
@@ -60,6 +63,35 @@ function LoginPage() {
             message.success('Login successful!')
             navigate('/time-entry')
         } catch (error) {
+            /*
+             * TEK GIRIS NOKTASI — iki AYRI guvenlik duzlemi.
+             *
+             * Platform Super Admin bir tenant kullanicisi DEGILDIR (uyeligi
+             * yoktur), bu yuzden tenant girisi onu dogru sekilde reddeder.
+             * Kullanicinin ayri bir adres ezberlemesi gerekmesin diye
+             * burada platform duzlemine DUSULUR.
+             *
+             * Guvenlik degismedi: istek ayri uca (/api/platform/v1/login)
+             * gider, ayri cerez ve ayri audience (`hermes-platform-admin`)
+             * uretir. Platform token'i tenant uclarinda, tenant token'i
+             * platform uclarinda hala REDDEDILIR — birlesen yalnizca FORM.
+             *
+             * Sizinti yok: her iki uc de zaten disaridan cagrilabilir
+             * durumda; bu geri dusus yeni bir bilgi aciga cikarmaz. Yanlis
+             * credential her iki duzlemde de basarisiz olur ve kullanici
+             * TEK ve ayni hatayi gorur.
+             */
+            try {
+                const platform = await platformService.login(
+                    values.email, values.password
+                )
+                platformLogin(platform.admin, platform.permissions)
+                message.success('Signed in to Platform Administration')
+                navigate('/platform-admin')
+                return
+            } catch {
+                // Platform da reddetti — asil (tenant) hatayi gosteririz.
+            }
             const errorMsg = error.response?.data?.detail || 'Login failed. Please check your credentials.'
             message.error(errorMsg)
         } finally {

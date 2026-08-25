@@ -17,16 +17,22 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
     Badge, Button, Card, Col, Descriptions, Empty, Form, Input,
-    InputNumber, Layout, Modal, Row, Select, Space, Statistic, Table,
-    Tabs, Tag, Typography, message,
+    InputNumber, Modal, Row, Select, Space, Statistic, Table,
+    Tag, Typography, message,
 } from 'antd'
-import { SafetyCertificateOutlined } from '@ant-design/icons'
+import {
+    ApartmentOutlined,
+    DashboardOutlined,
+    FileSearchOutlined,
+    LogoutOutlined,
+    SafetyCertificateOutlined,
+} from '@ant-design/icons'
 
+import AppShell from '../../components/layout/AppShell'
 import { platformService } from '../../api/platformApi'
 import { usePlatformAuthStore } from '../../stores/platformAuthStore'
 import SupportSessionBanner from './SupportSessionBanner'
 
-const { Header, Content } = Layout
 const { Title, Text } = Typography
 
 /** Durum → renk + METIN. Renk TEK BASINA anlam tasimaz (erisilebilirlik). */
@@ -342,13 +348,29 @@ function AuditTab() {
 }
 
 // =============================================================================
-// Kabuk
+// Kabuk — Hermes'in KENDI kabugu (AppShell), tenant tarafiyla AYNI bilesen
 // =============================================================================
+// Onceden burada kendi `Layout` + `Tabs` yapisi vardi ve Hermes'e
+// benzemiyordu. "Benzer" yetmez: ayni bilesen ve ayni CSS kullanilmadikca
+// iki kabuk zamanla ayrisir. Artik tenant menusunun yerinde platform
+// bolumleri duruyor; sidebar, header, tema, collapse ve mobil drawer
+// davranisi BIREBIR ayni.
+//
+// Izolasyon korunur: bu dosya hicbir tenant store'una dokunmaz, kimlik
+// `usePlatformAuthStore`dan gelir ve istekler yalnizca /api/platform'a
+// gider.
+
+const SECTIONS = [
+    { key: 'overview', icon: <DashboardOutlined />, label: 'Overview' },
+    { key: 'tenants', icon: <ApartmentOutlined />, label: 'Tenants' },
+    { key: 'audit', icon: <FileSearchOutlined />, label: 'Audit log' },
+]
 
 export default function PlatformConsole() {
     const admin = usePlatformAuthStore((s) => s.admin)
     const logout = usePlatformAuthStore((s) => s.logout)
     const [supportSession, setSupportSession] = useState(null)
+    const [section, setSection] = useState('overview')
 
     const endSupport = async () => {
         if (supportSession?.id) {
@@ -370,45 +392,50 @@ export default function PlatformConsole() {
         }
     }
 
+    const accountMenuItems = [
+        {
+            key: 'logout',
+            icon: <LogoutOutlined />,
+            label: 'Sign out',
+            danger: true,
+            onClick: handleLogout,
+        },
+    ]
+
+    const body = section === 'tenants'
+        ? <TenantsTab onSupportStarted={setSupportSession} />
+        : section === 'audit'
+            ? <AuditTab />
+            : <OverviewTab />
+
     return (
-        <Layout style={{ minHeight: '100vh' }}>
-            {/* Destek oturumu banner'i EN USTTE ve kapatilamaz. */}
+        <>
+            {/* Destek oturumu banner'i EN USTTE ve kapatilamaz — kabugun
+                disinda durur ki hicbir sayfa onu ortemesin. */}
             <SupportSessionBanner
                 session={supportSession}
                 onEnd={endSupport}
                 onExpire={() => { /* sure doldu — banner kendi durumunu gosterir */ }}
             />
-            <Header style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                justifyContent: 'space-between',
-            }}>
-                <Space>
-                    <SafetyCertificateOutlined />
-                    <Title level={5} style={{ margin: 0, color: 'inherit' }}>
-                        Platform Administration
-                    </Title>
-                    <Tag>{import.meta.env?.MODE === 'production' ? 'LIVE' : 'DEV'}</Tag>
-                </Space>
-                <Space>
-                    <Text style={{ color: 'inherit' }}>{admin?.email}</Text>
-                    <Button size="small" onClick={handleLogout}>Sign out</Button>
-                </Space>
-            </Header>
-            <Content style={{ padding: 24 }}>
-                <Tabs
-                    defaultActiveKey="overview"
-                    items={[
-                        { key: 'overview', label: 'Overview',
-                          children: <OverviewTab /> },
-                        { key: 'tenants', label: 'Tenants',
-                          children: (
-                              <TenantsTab onSupportStarted={setSupportSession} />
-                          ) },
-                        { key: 'audit', label: 'Audit log',
-                          children: <AuditTab /> },
-                    ]}
-                />
-            </Content>
-        </Layout>
+            <AppShell
+                menuItems={SECTIONS}
+                selectedKey={section}
+                onMenuClick={({ key }) => setSection(key)}
+                onLogoClick={() => setSection('overview')}
+                accountName={admin?.full_name || admin?.email}
+                accountRole="Platform Admin"
+                accountMenuItems={accountMenuItems}
+                /* Duzlem rozeti: bu konsolun tenant arayuzu OLMADIGI her
+                   ekranda gorunur kalir. */
+                headerExtra={(
+                    <Tag icon={<SafetyCertificateOutlined />} color="purple">
+                        PLATFORM
+                    </Tag>
+                )}
+                contentKey={section}
+            >
+                {body}
+            </AppShell>
+        </>
     )
 }
