@@ -640,6 +640,69 @@ burada da geçerlidir.
 canlı gerçek kabul edilip repo ona hizalanmalı, sonra istenen
 değişiklikler ayrı adımda yapılmalı.
 
+## 13.8 Regresyon incelemesi — `df6e062` ↔ bugün
+
+hermes-test promosyonu öncesi, "tenant yapısını kurarken yanlışlıkla
+sildiğimiz bir şey var mı?" sorusuna sistematik cevap arandı.
+
+| Boyut | Sonuç |
+|---|---|
+| Silinen / yeniden adlandırılan dosya | **0** |
+| Kaybolan API ucu | **0** (184 → 204) |
+| Kaybolan fonksiyon/sınıf | **0** — 18 "kayıp"ın hepsi kasıtlı (`init_db`/`drop_db` + 13 startup `_migrate_*`) |
+| Startup DDL ifadeleri | **42/42 korunmuş** |
+| Frontend rota / sayfa / loader | **0 kayıp** (25 → 27 rota) |
+| Silinen test | **0** (1315 → 1474) |
+| Kaldırılan assertion | **0** — değişenler mekanik; `internal_directory` testi **güçlenmiş** |
+| Kaybolan DB kolonu | **0** (334 → 363) |
+| Global benzersizlik kısıtları | **18/18** tenant'lı karşılığıyla korunmuş |
+| İş router'ları | **27/27** tenant bağlamlı |
+| Arka plan job'ları | hepsi `run_for_each_tenant` döngüsünde |
+| Reporting-service | Stateless; çağıranın JWT'siyle tenant kapsamı aşağı akışta zorlanıyor |
+
+**Kod tarafında kayıp veya bozulma bulunmadı.**
+
+## 13.9 Uçtan uca denemenin bulduğu ÜÇ hata
+
+Üçü de **475 test ve tüm statik tarama yeşilken** görünmüyordu; ancak
+canlıda gerçek bir tenant açıp gerçek bir kullanıcıyla giriş denenince
+ortaya çıktılar.
+
+1. **`PlatformPrincipal.user_id` yok** → tenant oluşturma ucu **500**.
+   Provisioning testleri servisi DOĞRUDAN çağırıyor, router'ı hiç
+   koşmuyordu. Düzeltme `5f1cc3d`; uç seviyesinde 5 test eklendi.
+
+2. **`HERMES_ALLOW_WORKSPACE_PATH` pod'a hiç bağlanmamıştı.** ConfigMap'te
+   vardı, kod `os.getenv` ile okuyordu, ama hiçbir Deployment env'e
+   bağlamıyordu — ayar **baştan beri etkisizdi**. Düzeltme `86eb0db`.
+   Eklenen kapı (kodun okuduğu her `HERMES_*` bir manifest'te bağlı
+   olmalı) **bağımsız ikinci bir eksik** buldu:
+   `HERMES_INITIAL_TENANT_TIMEZONE`. Pratikte zarar yoktu (varsayılan
+   `Europe/Istanbul` zaten doğru değerdi) ama yapılandırılabilir değildi.
+
+3. **Slug/host önceliği tersti** → "workspace ile adresleme" işlevsizdi.
+   Çözücü önce host'u deniyor, slug'a yalnızca host çözülemezse
+   bakıyordu; dev tek IP'den servis edildiği için `?workspace=` HİÇ
+   değerlendirilmiyordu ve kullanıcı sessizce **yanlış organizasyona**
+   düşüyordu. Yeni sıra: açık slug > host, çözülemezse fail-closed.
+   Düzeltme `7efaaab`. **Production etkilenmez** — bayrak orada kapalı.
+
+Üçü için de yapısal kapı eklendi ve **mutasyonla** doğrulandı.
+
+## 13.10 `hermes-test` cutover hazırlığı
+
+| Adım | Sonuç |
+|---|---|
+| Cutover öncesi sayımlar | tasks **167**, work_logs **2598**, meetings **1765**, attendees **13.286**, users **16** |
+| Koordineli yedek | `/root/hermes-test-cutover-backup-20260825-122914/` — core 1.3M/53 tablo, auth 14K/3 tablo |
+| **Restore tatbikatı** | **10/10 tablo birebir** — yedek geri yüklenebilir |
+| DB rolleri | `tables_owned_by_app_role = 0` |
+| Nesne devri | 1 uygulama fonksiyonu; **TimescaleDB dokunulmadı** |
+| `hermes-db-roles` | 6 anahtar; parolalar sunucuda üretildi, yazdırılmadı |
+| ConfigMap | **cerrahi patch** — dosyayı olduğu gibi uygulamak `NOTIFICATIONS_ENABLED=true` getirecekti; bildirim ayarlarına DOKUNULMADI |
+| Ingress `/api/platform` | **her iki** ingress'e eklendi (8→9 ve 6→7, silinen yok) |
+| `cd-test.yml` | migration kapısı + duman testi eklendi (yoktu — pod'lar migrate edilmemiş DB'ye çıkardı) |
+
 ## 14. Bilinen sınırlamalar ve takip işleri
 
 1. **E-posta paritesi canlı doğrulanmadı** — kod S2S ile alıcıyı tenant
