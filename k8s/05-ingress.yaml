@@ -1,3 +1,22 @@
+# ⚠️ CANLI DRIFT UYARISI (2026-08-25 olcumu, hermes-dev):
+#   Bu dosya CANLI `hermes-ingress` ile AYNI DEGILDIR ve OLDUGU GIBI
+#   APPLY EDILMEMELIDIR. Olculen farklar:
+#     - burada `host: 84.247.180.172` var; K8s bunu REDDEDER
+#       ("must be a DNS name, not an IP address") — apply dogrulamada
+#       patlar. Canlida host YOKTUR (tum host'lar).
+#     - canlida `/api/v1/core` kurali VAR, burada YOK.
+#     - canlida `/mcp` ve `/.well-known/oauth-protected-resource`
+#       kurallari AYNI Ingress icinde; bu dosya onlarin
+#       09-mcp-ingress'e ait oldugunu varsayar.
+#   Yani blind apply MCP'yi ve core route'unu SILERDI.
+#
+#   Yeni bir route eklerken (orn. /api/integrations) CANLIYA ADDITIVE
+#   PATCH atilir:
+#     kubectl -n hermes-dev patch ingress hermes-ingress --type=json \
+#       -p '[{"op":"add","path":"/spec/rules/0/http/paths/-","value":{...}}]'
+#   Bu dosyayi canliyla uzlastirmak, davranis degistirmeyen AYRI bir
+#   bakim commit'i bekliyor (k8s/test/05-ingress.yaml ile ayni durum).
+#
 # INGRESS SAHIPLIK MODELI (Stage 5, CTO karari):
 #   BU kaynak → uygulama route'lari: / · /api/v1/auth · /api/v1/users ·
 #   /api/v1/reports · /api/v1 · /api/public · /api/integrations

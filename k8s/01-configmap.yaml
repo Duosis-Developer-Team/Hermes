@@ -71,17 +71,24 @@ data:
   # ---------------------------------------------------------------------
   # HERMES_SUPPORT_TENANT_ID = Duosis tenant'inin UUID'si. BOS BIRAKILIRSA
   # modul KAPALIDIR (fail-closed) ve hicbir canonical ticket yazilmaz.
-  # Deger koda GOMULMEZ; ortam sahibi doldurur:
+  # Deger koda GOMULMEZ, ORTAMA aittir ve ortamdan ortama DEGISIR:
   #
-  #   kubectl -n hermes-dev exec deploy/auth-service -- \
-  #     python -c "import os;print(os.environ.get('INITIAL_TENANT_SLUG'))"
-  #   # veya auth_db: SELECT id FROM tenants WHERE slug='duosis';
+  #   kubectl -n hermes-dev exec auth-db-0 -- \
+  #     psql -U hermes -d auth_db -tAc \
+  #     "SELECT id FROM tenants WHERE slug='duosis';"
+  #
+  # Buradaki deger hermes-dev'in Duosis tenant'idir. Bir sir DEGILDIR
+  # (yalnizca kimlik; yetkiyi RLS + RBAC verir) ve repo'da tutulmasi
+  # bilinclidir: bos birakilirsa canli ile repo AYRISIR ve ileride bu
+  # dosyayi apply eden biri tenant kimligini sessizce SILIP modulu
+  # kapatir. hermes-test'in UUID'si FARKLIDIR ve k8s/test altinda ayrica
+  # tanimlanmalidir.
   #
   # YANLIS bir UUID yazmak BASKA bir tenant'ta ticket acmak demektir;
   # startup dogrulamasi tenant'i `tenant_registry`de arar ve
   # bulamazsa/pasifse modulu ACMAZ.
   SUPPORT_TICKETS_ENABLED: "true"
-  HERMES_SUPPORT_TENANT_ID: ""
+  HERMES_SUPPORT_TENANT_ID: "503519cb-c45f-42f3-bfa0-cceebb8df1ee"
   SUPPORT_AUTO_CLOSE_DAYS: "7"
 
   # Attachment ozelligi. Object storage ve malware tarayici HAZIR
