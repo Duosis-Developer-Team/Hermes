@@ -391,7 +391,7 @@ def create_tenant(
             owner_full_name=payload.owner_full_name,
             email_domains=payload.email_domains,
             plan_code=payload.plan_code,
-            actor_user_id=principal.user_id,
+            actor_user_id=UUID(principal.id),
             idempotency_key=idempotency_key,
         )
     except provisioning.ProvisioningError as exc:
@@ -473,7 +473,7 @@ def update_tenant(
     svc.record_audit(
         db,
         action="platform.tenant.update",
-        actor_user_id=principal.user_id,
+        actor_user_id=UUID(principal.id),
         target_tenant_id=tenant.id,
         target_type="tenant",
         target_id=str(tenant.id),

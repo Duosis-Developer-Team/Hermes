@@ -36,7 +36,8 @@ def _clean_control_plane(pg_session):
     from sqlalchemy import text as sa_text
 
     pg_session.execute(sa_text(
-        "TRUNCATE tenants, tenant_provisioning_operations, plans CASCADE"
+        "TRUNCATE tenants, tenant_provisioning_operations, plans, "
+        "platform_audit_events CASCADE"
     ))
     pg_session.commit()
     yield
@@ -304,3 +305,148 @@ def test_plan_is_assigned_when_given(pg_session):
         TenantSubscription.tenant_id == tenant.id
     ).one()
     assert sub.plan_code == "pro" and sub.status == "active"
+
+
+# =============================================================================
+# 6) UC seviyesi — router yolu GERCEKTEN kosulur
+# =============================================================================
+# Bu blok bir uretim hatasindan dogdu: servis testleri yesildi ama uc
+# canlida 500 verdi, cunku router `principal.user_id` okuyordu ve
+# `PlatformPrincipal`da oyle bir alan YOK (`.id` var). Servisi dogrudan
+# cagiran testler router'in kendisini hic kosmuyordu.
+
+@pytest.fixture()
+def platform_client(pg_session):
+    from fastapi.testclient import TestClient
+
+    from app.database import get_db
+    from app.main import app
+    from shared.auth import PlatformPrincipal, get_platform_principal
+
+    holder = {"principal": None}
+    app.dependency_overrides[get_db] = lambda: pg_session
+    app.dependency_overrides[get_platform_principal] = (
+        lambda: holder["principal"]
+    )
+    client = TestClient(app, raise_server_exceptions=False)
+    client.as_admin = lambda u, perms: holder.__setitem__(
+        "principal",
+        PlatformPrincipal(id=str(u.id), email=u.email, permissions=perms),
+    )
+    yield client
+    app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_platform_principal, None)
+
+
+def _admin(pg_session):
+    from app.models.tenancy import PlatformAdmin
+
+    perms = ("platform.tenants.view", "platform.tenants.manage")
+    user = User(email="pa@hermes.dev", full_name="PA",
+                hashed_password="x", is_active=True)
+    pg_session.add(user)
+    pg_session.flush()
+    pg_session.add(PlatformAdmin(user_id=user.id, permissions=list(perms),
+                                 is_active=True))
+    pg_session.commit()
+    return user, perms
+
+
+BASE = "/api/platform/v1"
+
+
+def test_create_tenant_endpoint_works(platform_client, pg_session):
+    user, perms = _admin(pg_session)
+    platform_client.as_admin(user, perms)
+
+    with patch.object(prov, "_project_to_core", return_value=None):
+        resp = platform_client.post(f"{BASE}/tenants", json={
+            "slug": "acme", "display_name": "Acme Industries",
+            "owner_email": "owner@acme.com", "email_domains": "acme.com",
+        })
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["tenant"]["slug"] == "acme"
+    assert body["workspace_hint"] == "/?workspace=acme"
+    assert body["one_time_password"]      # yeni kullanici -> parola doner
+
+    assert pg_session.query(Tenant).filter(Tenant.slug == "acme").count() == 1
+
+
+def test_create_tenant_records_the_acting_admin(platform_client, pg_session):
+    """Denetim kaydi GERCEK aktoru tasimali.
+
+    `principal.id` kullanici kimligidir (token'a `user_id` yazilir).
+    Yanlis alan okunursa uc 500 verir — canlida boyle oldu.
+    """
+    from app.models.tenancy import PlatformAuditEvent
+
+    user, perms = _admin(pg_session)
+    platform_client.as_admin(user, perms)
+
+    with patch.object(prov, "_project_to_core", return_value=None):
+        platform_client.post(f"{BASE}/tenants", json={
+            "slug": "acme", "display_name": "Acme",
+            "owner_email": "owner@acme.com",
+        })
+
+    event = pg_session.query(PlatformAuditEvent).filter(
+        PlatformAuditEvent.action == "platform.tenant.provision"
+    ).one()
+    assert event.result == "success"
+    assert str(event.actor_user_id) == str(user.id)
+
+
+def test_update_tenant_endpoint_changes_plan_and_domains(platform_client,
+                                                         pg_session):
+    from app.models.tenancy import Plan
+
+    pg_session.add(Plan(code="pro", display_name="Pro", is_active=True))
+    pg_session.commit()
+    user, perms = _admin(pg_session)
+    platform_client.as_admin(user, perms)
+
+    with patch.object(prov, "_project_to_core", return_value=None):
+        created = platform_client.post(f"{BASE}/tenants", json={
+            "slug": "acme", "display_name": "Acme",
+            "owner_email": "owner@acme.com",
+        }).json()
+        resp = platform_client.patch(
+            f"{BASE}/tenants/{created['tenant']['id']}",
+            json={"display_name": "Acme Corp", "plan_code": "pro",
+                  "email_domains": "acme.com"},
+        )
+    assert resp.status_code == 200, resp.text
+    changed = resp.json()["changed"]
+    assert changed["plan_code"] == "pro"
+    assert changed["email_domains"] == ["acme.com"]
+
+    tenant = pg_session.query(Tenant).filter(Tenant.slug == "acme").one()
+    pg_session.refresh(tenant)
+    assert tenant.display_name == "Acme Corp"
+
+
+def test_create_tenant_rejects_bad_input_with_400(platform_client, pg_session):
+    user, perms = _admin(pg_session)
+    platform_client.as_admin(user, perms)
+
+    resp = platform_client.post(f"{BASE}/tenants", json={
+        "slug": "admin", "display_name": "X",
+        "owner_email": "x@y.com",
+    })
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["code"] == "provisioning_failed"
+
+
+def test_plans_endpoint_lists_active_plans(platform_client, pg_session):
+    from app.models.tenancy import Plan
+
+    pg_session.add(Plan(code="pro", display_name="Pro", is_active=True))
+    pg_session.add(Plan(code="old", display_name="Old", is_active=False))
+    pg_session.commit()
+    user, perms = _admin(pg_session)
+    platform_client.as_admin(user, perms)
+
+    plans = platform_client.get(f"{BASE}/plans").json()["plans"]
+    codes = {p["code"] for p in plans}
+    assert "pro" in codes and "old" not in codes
