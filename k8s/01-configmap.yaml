@@ -25,6 +25,7 @@ data:
   # veriyi TASIMAZ, yalnizca yeni bir tenant yaratir.
   INITIAL_TENANT_SLUG: "duosis"
   INITIAL_TENANT_NAME: "Duosis"
+  INITIAL_TENANT_TIMEZONE: "Europe/Istanbul"
   # Legacy host: eski URL'ler ve e-posta linkleri bu tenant'a cozulur.
   #
   # BU DOSYA hermes-dev ICINDIR — deger, dev'e GERCEKTEN gelinen adres

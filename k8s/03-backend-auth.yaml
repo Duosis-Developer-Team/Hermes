@@ -36,6 +36,19 @@ spec:
         # namespace DEGIL (ConfigMap'teki ENVIRONMENT burada "production").
         - name: HERMES_ENVIRONMENT
           value: "dev"
+        # Tenant cozumu: `?workspace={slug}` YALNIZCA bu acikken dikkate
+        # alinir; kapaliyken adres yalnizca Host basligindan cozulur.
+        #
+        # ConfigMap'te anahtar VARDI ama pod'a HIC baglanmamisti — yani
+        # ayar bastan beri etkisizdi ve yeni bir tenant'a ulasilamiyordu
+        # (istek sessizce varsayilan host eslesmesine dusuyordu). Uctan
+        # uca deneme olmadan gorulemezdi.
+        - name: HERMES_ALLOW_WORKSPACE_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: HERMES_ALLOW_WORKSPACE_PATH
+              optional: true
         # Database Connection
         - name: AUTH_DB_HOST
           valueFrom:

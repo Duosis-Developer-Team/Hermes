@@ -85,6 +85,14 @@ spec:
                   name: hermes-config
                   key: INITIAL_TENANT_NAME
                   optional: true
+            # Ilk tenant'in saat dilimi. Varsayilan Europe/Istanbul'dur;
+            # anahtar yoksa o kullanilir (optional).
+            - name: HERMES_INITIAL_TENANT_TIMEZONE
+              valueFrom:
+                configMapKeyRef:
+                  name: hermes-config
+                  key: INITIAL_TENANT_TIMEZONE
+                  optional: true
             - name: HERMES_INITIAL_TENANT_HOSTNAME
               valueFrom:
                 configMapKeyRef:

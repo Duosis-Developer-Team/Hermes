@@ -620,3 +620,47 @@ def test_platform_api_prefix_is_consistent_across_layers():
     assert "auth-service" in block, (
         f"'{best}' kurali auth-service'e yonlenmiyor — platform duzlemi "
         "auth-service'te yasar.")
+
+
+def test_env_settings_read_by_code_are_wired_into_manifests():
+    """Kodun okudugu her HERMES_* ayari bir Deployment'ta BAGLI olmali.
+
+    Bu test canli bir hatadan dogdu: `HERMES_ALLOW_WORKSPACE_PATH`
+    ConfigMap'te vardi, kod da `os.getenv` ile okuyordu — ama hicbir
+    Deployment onu pod'a baglamamisti. Ayar bastan beri ETKISIZDI ve
+    yeni bir tenant'a ulasilamiyordu; istek sessizce varsayilan host
+    eslesmesine dusuyordu. ConfigMap'e anahtar eklemek TEK BASINA
+    hicbir sey yapmaz.
+    """
+    import re as _re
+
+    manifests = "\n".join(
+        f.read_text(encoding="utf-8")
+        for f in (_REPO_ROOT / "k8s").rglob("*.yaml")
+    )
+
+    # Kodun GERCEKTEN okudugu ayarlar.
+    read: set = set()
+    for svc in ("auth-service", "core-service"):
+        for f in (_REPO_ROOT / "backend" / svc / "app").rglob("*.py"):
+            src = f.read_text(encoding="utf-8")
+            read |= set(_re.findall(r'os\.getenv\(\s*"(HERMES_[A-Z0-9_]+)"', src))
+            read |= set(_re.findall(r'os\.environ\[\s*"(HERMES_[A-Z0-9_]+)"', src))
+
+    # Yalnizca CD/Job tarafindan verilenler haric (pod ortaminda yasamaz).
+    runtime_only = {
+        "HERMES_INITIAL_TENANT_ID",       # migration adimlari arasi aktarim
+        "HERMES_MIGRATION_LOCK_TIMEOUT",  # migration ayari (varsayilanli)
+        "HERMES_MIGRATION_STATEMENT_TIMEOUT",
+        "HERMES_SERVICE",                 # Dockerfile ENV damgasi
+        "HERMES_BOOTSTRAP_ADMIN_PASSWORD",  # tek seferlik bootstrap
+    }
+    unwired = sorted(
+        name for name in read - runtime_only
+        if f"key: {name}" not in manifests and f"name: {name}" not in manifests
+    )
+    assert not unwired, (
+        f"Kod su ayar(lar)i okuyor ama hicbir manifest pod'a baglamiyor: "
+        f"{unwired}. ConfigMap'e anahtar yazmak yetmez — Deployment'ta "
+        "`env:` girdisi olmadan uygulama o degeri HIC gormez."
+    )

@@ -15,6 +15,7 @@ data:
   # veriyi TASIMAZ, yalnizca yeni bir tenant yaratir.
   INITIAL_TENANT_SLUG: "duosis"
   INITIAL_TENANT_NAME: "Duosis"
+  INITIAL_TENANT_TIMEZONE: "Europe/Istanbul"
   # BU DOSYA hermes-test ICINDIR — deger, test'e GERCEKTEN gelinen adres
   # olmalidir. Tenant cozumu Host basligina bakar; yanlis hostname
   # LOGIN'I TAMAMEN KAPATIR (dev'de birebir yasandi).
