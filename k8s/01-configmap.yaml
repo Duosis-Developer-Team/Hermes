@@ -37,9 +37,16 @@ data:
   # dev  = 84.247.180.172 (ingress'te host kurali YOK, IP ile gelinir)
   # test = hermes.duosis.com  <-- BURAYA YAZILMAZ
   INITIAL_TENANT_HOSTNAME: "84.247.180.172"
-  # `/w/{slug}` dev kolayligi. Production'da ASLA "true" olmamali:
-  # host disinda bir tenant secme yolu birakir.
-  HERMES_ALLOW_WORKSPACE_PATH: "false"
+  # `?workspace={slug}` ile tenant secimi.
+  #
+  # hermes-dev'de ACIK (WS12): dev tek IP uzerinden servis ediliyor ve
+  # ingress'te host kurali yok, dolayisiyla host tabanli adresleme TEK
+  # bir tenant'a yer birakir. Konsoldan acilan ikinci bir tenant'a
+  # ulasmanin baska yolu olmazdi.
+  #
+  # PRODUCTION'da ASLA "true" olmamali: host disinda bir tenant secme
+  # yolu birakir. Orada her tenant kendi hostname'iyle adreslenir.
+  HERMES_ALLOW_WORKSPACE_PATH: "true"
 
   # App Settings
   ENVIRONMENT: "production"

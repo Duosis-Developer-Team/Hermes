@@ -46,6 +46,12 @@ EXPAND_STATEMENTS: List[str] = [
     # Oturum iptali: uyelik/tenant durumu degisince artirilir.
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
     "session_version INTEGER NOT NULL DEFAULT 1",
+    # 0004: `email-domain` saglayicisinda HARICI saglayici yoktur, bu
+    # yuzden `provider_tenant_id` opsiyoneldir. Mevcut test/dev
+    # veritabanlarinin da yakinsamasi icin burada tekrarlanir — test
+    # semasi ile uretim semasi TEK kaynaktan gelmeli.
+    "ALTER TABLE tenant_identity_providers "
+    "ALTER COLUMN provider_tenant_id DROP NOT NULL",
 ]
 
 # Benzersizlik kisitlarinin TENANT-QUALIFIED hale getirilmesi.

@@ -468,11 +468,33 @@ def test_migrations_path_is_derived_in_exactly_one_place():
     )
 
 
-@pytest.mark.parametrize("service,head", [
-    ("core", "0006_api_token_lookup"),
-    ("auth", "0003_initial_tenant"),
-])
-def test_schema_guard_resolves_head_in_image_layout(tmp_path, service, head):
+def _repo_head_revision(service: str) -> str:
+    """Servisin head revizyonunu REPO'dan turetir.
+
+    Sabit yazmak cazip ama yanlis: her mesru migration testi kirardi ve
+    zamanla "guncelle gecsin" refleksine donusurdu. Head, zincirin
+    kendisinden hesaplanir — tek kaynak.
+    """
+    import re as _re
+
+    vdir = (_REPO_ROOT / "backend" / f"{service}-service" / "app"
+            / "migrations" / "versions")
+    revisions, parents = set(), set()
+    for f in vdir.glob("*.py"):
+        text = f.read_text(encoding="utf-8")
+        rev = _re.search(r'^revision = "([^"]+)"', text, _re.M)
+        down = _re.search(r'^down_revision = "([^"]+)"', text, _re.M)
+        if rev:
+            revisions.add(rev.group(1))
+        if down:
+            parents.add(down.group(1))
+    heads = revisions - parents
+    assert len(heads) == 1, f"{service}: tek head bekleniyor, bulunan {heads}"
+    return heads.pop()
+
+
+@pytest.mark.parametrize("service", ["core", "auth"])
+def test_schema_guard_resolves_head_in_image_layout(tmp_path, service):
     """Sema muhafizi KONTEYNER yerlesiminde de head'i okuyabilmeli.
 
     Pod'lar canlida tam burada acilmadi: guard repo yerlesimini varsayip
@@ -509,7 +531,7 @@ def test_schema_guard_resolves_head_in_image_layout(tmp_path, service, head):
     )
     assert proc.returncode == 0, (
         f"guard konteyner yerlesiminde head okuyamadi:\n{proc.stderr[-800:]}")
-    assert head in proc.stdout, proc.stdout
+    assert _repo_head_revision(service) in proc.stdout, proc.stdout
 
 
 # =============================================================================

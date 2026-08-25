@@ -269,7 +269,9 @@ class TenantIdentityProvider(Base):
 
     # Entra dizin (tid) kimligi — callback'te gelen token'in `tid`
     # claim'i bununla karsilastirilir.
-    provider_tenant_id = Column(String(128), nullable=False)
+    # Harici saglayicidaki tenant kimligi. `email-domain` saglayicisinda
+    # harici bir saglayici YOKTUR; bu yuzden opsiyoneldir (0004).
+    provider_tenant_id = Column(String(128), nullable=True)
     client_id = Column(String(128), nullable=True)
     # ORNEK: "k8s:hermes-dev/hermes-sso-acme#CLIENT_SECRET"
     client_secret_ref = Column(String(255), nullable=True)

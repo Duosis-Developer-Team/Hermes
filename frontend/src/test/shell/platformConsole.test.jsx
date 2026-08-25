@@ -213,3 +213,55 @@ describe('tek giris noktasi', () => {
         expect(src).toMatch(/errorMsg/)
     })
 })
+
+/**
+ * =============================================================================
+ * WS12 — Tenant yonetimi ve workspace tasima
+ * =============================================================================
+ */
+describe('tenant yonetimi', () => {
+    const consoleSrc = () => readFileSync(
+        resolve(process.cwd(), 'src/pages/platform/PlatformConsole.jsx'), 'utf-8')
+
+    it('yeni tenant ve duzenleme aksiyonlari vardir', () => {
+        const src = consoleSrc()
+        expect(src).toMatch(/New tenant/)
+        expect(src).toMatch(/CreateTenantModal/)
+        expect(src).toMatch(/EditTenantModal/)
+    })
+
+    it('plan SECILEBILIR (salt okunur etiket degil)', () => {
+        // Sikayet buydu: plan gorunuyor ama degistirilemiyor.
+        expect(consoleSrc()).toMatch(/name="plan_code"[\s\S]{0,400}<Select/)
+    })
+
+    it('tek seferlik parola YALNIZCA ekranda gosterilir, saklanmaz', () => {
+        const src = consoleSrc()
+        expect(src).toMatch(/one_time_password/)
+        // Hicbir depolamaya yazilmamali.
+        expect(src).not.toMatch(/localStorage|sessionStorage/)
+    })
+
+    it('workspace adresi kullaniciya SOYLENIR', () => {
+        // Slug ile adreslenen bir tenant, adresi gosterilmezse
+        // ulasilamaz olur.
+        expect(consoleSrc()).toMatch(/workspace_hint/)
+    })
+})
+
+describe('workspace tasima', () => {
+    it('API istemcisi adres cubugundaki workspace parametresini tasir', () => {
+        const src = readFileSync(
+            resolve(process.cwd(), 'src/api/httpClient.js'), 'utf-8')
+        expect(src).toMatch(/interceptors\.request\.use/)
+        expect(src).toMatch(/['"]workspace['"]/)
+    })
+
+    it('PLATFORM istemcisi workspace TASIMAZ (duzlem tenant\'siz)', () => {
+        const src = readFileSync(
+            resolve(process.cwd(), 'src/api/platformApi.js'), 'utf-8')
+        expect(src).not.toMatch(/workspace/)
+        // Kendi axios ornegini kurar; tenant istemcisinden TUREMEZ.
+        expect(src).not.toMatch(/createApiClient/)
+    })
+})

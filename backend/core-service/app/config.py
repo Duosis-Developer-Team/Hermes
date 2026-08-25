@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     # credential'i. Kullanici JWT'si DEGIL. Bos ise dizin ozellikleri
     # KAPALIDIR (fail closed) ve e-posta lookup'i eski (JWT) yola duser.
     HERMES_S2S_TOKEN_CURRENT: str = ""
+    # Rotasyon slotu: auth tarafiyla PARITE. Eski token hala
+    # gecerliyken yenisi dagitilabilsin diye iki slot dogrulanir.
+    HERMES_S2S_TOKEN_NEXT: str = ""
 
     API_REQUEST_LOG_RETENTION_DAYS: int = 90
     API_IDEMPOTENCY_RETENTION_HOURS: int = 25

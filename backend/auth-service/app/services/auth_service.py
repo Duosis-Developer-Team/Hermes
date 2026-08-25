@@ -93,6 +93,13 @@ class AuthService:
             self.db, tenant_id=tenant.id, user_id=user.id
         )
         if membership is None:
+            # WS12: tenant e-posta alan adiyla otomatik katilima aciksa,
+            # DOGRULANMIS kimlige uyelik verilir. Parola kontrolu yukarida
+            # yapildi; bu dal kimseyi girise almaz, yalnizca uyelik acar.
+            membership = membership_service.maybe_auto_join(
+                self.db, tenant=tenant, user=user
+            )
+        if membership is None:
             raise UnauthorizedError(generic_failure)
 
         access_token = self._create_token_for_user(

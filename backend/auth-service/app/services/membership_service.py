@@ -120,3 +120,66 @@ def assert_user_ids_are_members(
     )
     allowed = {row[0] for row in rows}
     return [uid for uid in ids if uid in allowed]
+
+
+# =============================================================================
+# E-posta alan adiyla OTOMATIK katilim (WS12)
+# =============================================================================
+
+def maybe_auto_join(db: Session, *, tenant, user):
+    """Alan adi eslesiyorsa kullaniciyi tenant'a uye yapar.
+
+    NE ZAMAN CAGRILIR: kimlik DOGRULANDIKTAN sonra, uyelik bulunamayinca.
+    Parola kontrolu bu fonksiyondan ONCE yapilir — burasi kimseyi
+    "girise" almaz, yalnizca zaten dogrulanmis bir kimlige UYELIK verir.
+
+    Kosullar (hepsi saglanmali, aksi halde None):
+      - tenant'in aktif bir 'email-domain' saglayicisi var,
+      - `auto_provision_mode == 'auto'`,
+      - kullanicinin e-posta alan adi izin listesinde.
+
+    Verilen rol MEMBER'dir; admin YAPILMAZ. Bir alan adina sahip olmak
+    o organizasyonun yoneticisi olmak anlamina gelmez.
+    """
+    from ..models.rbac import RbacRole, RbacUserRole
+    from ..models.tenancy import TenantIdentityProvider
+
+    email = (getattr(user, "email", "") or "").lower()
+    if "@" not in email:
+        return None
+    domain = email.rsplit("@", 1)[1].strip().rstrip(".")
+    if not domain:
+        return None
+
+    idp = db.query(TenantIdentityProvider).filter(
+        TenantIdentityProvider.tenant_id == tenant.id,
+        TenantIdentityProvider.provider == "email-domain",
+        TenantIdentityProvider.is_active.is_(True),
+    ).first()
+    if idp is None or idp.auto_provision_mode != "auto":
+        return None
+
+    allowed = [d.lower() for d in (idp.allowed_email_domains or [])]
+    if domain not in allowed:
+        return None
+
+    membership = TenantMembership(
+        tenant_id=tenant.id, user_id=user.id,
+        status=ACTIVE_MEMBERSHIP_STATUS,
+    )
+    db.add(membership)
+    db.flush()
+
+    # Varsayilan rol: member (varsa). Yoksa rolsuz uye kalir —
+    # izinler fail-closed oldugu icin bu guvenlidir.
+    member_role = db.query(RbacRole).filter(
+        RbacRole.tenant_id == tenant.id,
+        RbacRole.code == "member",
+        RbacRole.is_active.is_(True),
+    ).first()
+    if member_role is not None:
+        db.add(RbacUserRole(
+            tenant_id=tenant.id, user_id=user.id, role_id=member_role.id,
+        ))
+    db.commit()
+    return membership

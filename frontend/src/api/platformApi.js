@@ -55,6 +55,24 @@ export const platformService = {
     },
 
     /** Askiya alma: gerekce + yazili slug onayi ZORUNLU. */
+    // WS12 — tenant olusturma / duzenleme
+    listPlans: async () => {
+        const { data } = await platformClient.get(`${BASE}/plans`)
+        return data.plans || []
+    },
+
+    createTenant: async (payload) => {
+        const { data } = await platformClient.post(`${BASE}/tenants`, payload)
+        return data
+    },
+
+    updateTenant: async (tenantId, payload) => {
+        const { data } = await platformClient.patch(
+            `${BASE}/tenants/${tenantId}`, payload,
+        )
+        return data
+    },
+
     suspendTenant: async (tenantId, { reason, confirmSlug, version }) => {
         const { data } = await platformClient.post(
             `${BASE}/tenants/${tenantId}/suspend`,

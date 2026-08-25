@@ -22,6 +22,7 @@ import {
 } from 'antd'
 import {
     ApartmentOutlined,
+    PlusOutlined,
     DashboardOutlined,
     FileSearchOutlined,
     LogoutOutlined,
@@ -99,6 +100,8 @@ function TenantsTab({ onSupportStarted }) {
     const [loading, setLoading] = useState(true)
     const [target, setTarget] = useState(null)     // suspend hedefi
     const [supportFor, setSupportFor] = useState(null)
+    const [creating, setCreating] = useState(false)
+    const [editing, setEditing] = useState(null)
     const can = usePlatformAuthStore((s) => s.can)
 
     const reload = useCallback(() => {
@@ -140,6 +143,11 @@ function TenantsTab({ onSupportStarted }) {
                             Reactivate
                         </Button>
                     )}
+                    {can('platform.tenants.manage') && (
+                        <Button size="small" onClick={() => setEditing(row)}>
+                            Edit
+                        </Button>
+                    )}
                     {can('platform.support_access.create') && (
                         <Button size="small" onClick={() => setSupportFor(row)}>
                             Support access
@@ -168,6 +176,14 @@ function TenantsTab({ onSupportStarted }) {
 
     return (
         <>
+            <Space style={{ marginBottom: 16 }}>
+                {can('platform.tenants.manage') && (
+                    <Button type="primary" icon={<PlusOutlined />}
+                            onClick={() => setCreating(true)}>
+                        New tenant
+                    </Button>
+                )}
+            </Space>
             <Table
                 rowKey="id" columns={columns} dataSource={rows}
                 loading={loading} size="middle"
@@ -186,11 +202,222 @@ function TenantsTab({ onSupportStarted }) {
                     onSupportStarted(grant)
                 }}
             />
+            <CreateTenantModal
+                open={creating} onClose={() => setCreating(false)}
+                onDone={() => { setCreating(false); reload() }}
+            />
+            <EditTenantModal
+                tenant={editing} onClose={() => setEditing(null)}
+                onDone={() => { setEditing(null); reload() }}
+            />
         </>
     )
 }
 
 /** Askiya alma: gerekce + slug'in ELLE yazilmasi (yuksek riskli aksiyon). */
+// =============================================================================
+// Yeni tenant — SEMA YARATILMAZ
+// =============================================================================
+// Mimari karar geregi tenant basina veritabani/sema YOKTUR; izolasyonu
+// FORCE ROW LEVEL SECURITY sagliyor. Bu yuzden yeni tenant saniyeler
+// icinde hazir olur ve DDL beklemesi gerekmez.
+
+function usePlans() {
+    const [plans, setPlans] = useState([])
+    useEffect(() => {
+        platformService.listPlans()
+            .then(setPlans)
+            .catch(() => setPlans([]))   // plan katalogu yoksa alan bos kalir
+    }, [])
+    return plans
+}
+
+function CreateTenantModal({ open, onClose, onDone }) {
+    const [form] = Form.useForm()
+    const [busy, setBusy] = useState(false)
+    const [created, setCreated] = useState(null)
+    const plans = usePlans()
+
+    const submit = async () => {
+        const values = await form.validateFields()
+        setBusy(true)
+        try {
+            const result = await platformService.createTenant(values)
+            if (result.one_time_password) {
+                // Parola YALNIZCA burada, BIR KEZ gosterilir; hicbir yere
+                // kaydedilmez. Modal kapanmadan once operator kopyalamali.
+                setCreated(result)
+            } else {
+                message.success(`${values.display_name} created.`)
+                onDone()
+            }
+        } catch (err) {
+            const d = err?.response?.data?.detail
+            message.error(d?.message || d || 'Could not create tenant.')
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    // Basarili + tek seferlik parola ekrani
+    if (created) {
+        return (
+            <Modal
+                open title="Tenant created" onCancel={() => { setCreated(null); onDone() }}
+                onOk={() => { setCreated(null); onDone() }}
+                okText="I saved the password" cancelButtonProps={{ style: { display: 'none' } }}
+                closable={false} maskClosable={false}
+            >
+                <Space direction="vertical" style={{ width: '100%' }}>
+                    <Text>
+                        <strong>{created.tenant.display_name}</strong> is ready.
+                        Users reach it at{' '}
+                        <Text code>{created.workspace_hint}</Text>
+                    </Text>
+                    <Descriptions column={1} size="small" bordered>
+                        <Descriptions.Item label="Owner">
+                            {created.owner.email}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="One-time password">
+                            <Text code copyable>{created.one_time_password}</Text>
+                        </Descriptions.Item>
+                    </Descriptions>
+                    <Text type="warning">
+                        This password is shown once and is not stored anywhere.
+                        Share it securely; the owner should change it at first
+                        sign-in.
+                    </Text>
+                </Space>
+            </Modal>
+        )
+    }
+
+    return (
+        <Modal
+            open={open} title="New tenant" onCancel={onClose} onOk={submit}
+            confirmLoading={busy} okText="Create" destroyOnClose
+        >
+            <Form form={form} layout="vertical" preserve={false}>
+                <Form.Item
+                    name="display_name" label="Organization name"
+                    rules={[{ required: true, message: 'Required' }]}
+                >
+                    <Input placeholder="Acme Industries" />
+                </Form.Item>
+                <Form.Item
+                    name="slug" label="Workspace address"
+                    extra="Users reach this tenant at /?workspace=<slug>"
+                    rules={[
+                        { required: true, message: 'Required' },
+                        {
+                            pattern: /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/,
+                            message: 'Lowercase letters, digits and dashes only',
+                        },
+                    ]}
+                >
+                    <Input placeholder="acme" />
+                </Form.Item>
+                <Form.Item
+                    name="owner_email" label="Owner e-mail"
+                    extra="This person becomes the tenant's administrator."
+                    rules={[
+                        { required: true, message: 'Required' },
+                        { type: 'email', message: 'Enter a valid e-mail' },
+                    ]}
+                >
+                    <Input placeholder="admin@acme.com" />
+                </Form.Item>
+                <Form.Item name="owner_full_name" label="Owner name (optional)">
+                    <Input placeholder="Ada Lovelace" />
+                </Form.Item>
+                <Form.Item
+                    name="email_domains" label="E-mail domains (optional)"
+                    extra={
+                        'Anyone with an e-mail at these domains joins this '
+                        + 'tenant on first sign-in. Comma separated.'
+                    }
+                >
+                    <Input placeholder="acme.com, acme.co.uk" />
+                </Form.Item>
+                <Form.Item name="plan_code" label="Plan">
+                    <Select
+                        allowClear placeholder="Select a plan"
+                        options={plans.map((p) => ({
+                            value: p.code, label: p.display_name || p.code,
+                        }))}
+                    />
+                </Form.Item>
+            </Form>
+        </Modal>
+    )
+}
+
+function EditTenantModal({ tenant, onClose, onDone }) {
+    const [form] = Form.useForm()
+    const [busy, setBusy] = useState(false)
+    const plans = usePlans()
+
+    useEffect(() => {
+        if (tenant) {
+            form.setFieldsValue({
+                display_name: tenant.display_name,
+                plan_code: tenant.plan_code || undefined,
+                email_domains: (tenant.email_domains || []).join(', '),
+            })
+        }
+    }, [tenant, form])
+
+    const submit = async () => {
+        const values = await form.validateFields()
+        setBusy(true)
+        try {
+            await platformService.updateTenant(tenant.id, values)
+            message.success('Tenant updated.')
+            onDone()
+        } catch (err) {
+            const d = err?.response?.data?.detail
+            message.error(d?.message || d || 'Could not update tenant.')
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    return (
+        <Modal
+            open={!!tenant} title={`Edit ${tenant?.display_name || ''}`}
+            onCancel={onClose} onOk={submit} confirmLoading={busy}
+            okText="Save" destroyOnClose
+        >
+            <Form form={form} layout="vertical" preserve={false}>
+                <Form.Item
+                    name="display_name" label="Organization name"
+                    rules={[{ required: true, message: 'Required' }]}
+                >
+                    <Input />
+                </Form.Item>
+                <Form.Item
+                    name="email_domains" label="E-mail domains"
+                    extra="Comma separated. Empty disables domain auto-join."
+                >
+                    <Input placeholder="acme.com" />
+                </Form.Item>
+                <Form.Item name="plan_code" label="Plan">
+                    <Select
+                        allowClear placeholder="Select a plan"
+                        options={plans.map((p) => ({
+                            value: p.code, label: p.display_name || p.code,
+                        }))}
+                    />
+                </Form.Item>
+                <Text type="secondary">
+                    Workspace address (<Text code>{tenant?.slug}</Text>) cannot
+                    be changed — existing links and sessions depend on it.
+                </Text>
+            </Form>
+        </Modal>
+    )
+}
+
 function SuspendModal({ tenant, onClose, onDone }) {
     const [form] = Form.useForm()
     const [saving, setSaving] = useState(false)

@@ -18,8 +18,13 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from pydantic import BaseModel, Field
+import logging
+
+from fastapi import (
+    APIRouter, Depends, Header, HTTPException, Query, Request, Response,
+    status,
+)
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -33,11 +38,14 @@ from shared.platform_permissions import PlatformPerm
 from ..config import get_settings
 from ..database import get_db
 from ..models.tenancy import (
-    PlatformAdmin, PlatformAuditEvent, SupportAccessGrant, Tenant,
-    TenantMembership, TenantSubscription,
+    PlatformAdmin, PlatformAuditEvent, Plan, SupportAccessGrant, Tenant,
+    TenantIdentityProvider, TenantMembership, TenantSubscription,
 )
 from ..models.user import User
 from ..services import platform_service as svc
+from ..services import tenant_provisioning as provisioning
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/platform/v1", tags=["Platform"])
 
@@ -204,12 +212,20 @@ def _tenant_summary(db: Session, tenant: Tenant) -> dict:
                 TenantMembership.status == "active")
         .scalar()
     )
+    # Duzenleme ekrani mevcut alan adlarini gosterebilmeli.
+    idp = (
+        db.query(TenantIdentityProvider)
+        .filter(TenantIdentityProvider.tenant_id == tenant.id,
+                TenantIdentityProvider.provider == "email-domain")
+        .first()
+    )
     return {
         "id": str(tenant.id),
         "slug": tenant.slug,
         "display_name": tenant.display_name,
         "status": tenant.status,
         "plan_code": subscription.plan_code if subscription else None,
+        "email_domains": list(idp.allowed_email_domains or []) if idp else [],
         "active_members": active_members,
         "created_at": tenant.created_at,
         "activated_at": tenant.activated_at,
@@ -300,6 +316,172 @@ def _lifecycle(
         )
     db.commit()
     return _tenant_summary(db, tenant)
+
+
+# =============================================================================
+# Tenant OLUSTURMA ve DUZENLEME (WS12)
+# =============================================================================
+# Sema yaratilmaz: mimari karar geregi tenant basina veritabani/sema YOK,
+# izolasyonu FORCE ROW LEVEL SECURITY sagliyor. Bu yuzden yeni tenant
+# saniyeler icinde hazir olur; "provisioning" DDL degil KAYIT isidir.
+
+class TenantCreateRequest(BaseModel):
+    slug: str = Field(min_length=1, max_length=63,
+                      description="Adres icin kullanilir: /?workspace=<slug>")
+    display_name: str = Field(min_length=1, max_length=200)
+    owner_email: EmailStr = Field(
+        description="Bu kisi tenant'in system-admin'i olur."
+    )
+    owner_full_name: Optional[str] = Field(default=None, max_length=200)
+    email_domains: Optional[str] = Field(
+        default=None,
+        description=(
+            "Virgulle ayrilmis alan adlari (orn. 'acme.com'). Bu alan "
+            "adina sahip kullanicilar ILK GIRISLERINDE tenant'a katilir."
+        ),
+    )
+    plan_code: Optional[str] = Field(default=None, max_length=50)
+
+
+class TenantUpdateRequest(BaseModel):
+    display_name: Optional[str] = Field(default=None, min_length=1,
+                                        max_length=200)
+    email_domains: Optional[str] = None
+    plan_code: Optional[str] = Field(default=None, max_length=50)
+
+
+@router.get("/plans", summary="Plan katalogu")
+def list_plans(
+    principal: PlatformPrincipal = Depends(
+        svc.require_platform_permissions(PlatformPerm.TENANTS_VIEW)
+    ),
+    db: Session = Depends(get_db),
+) -> dict:
+    rows = db.query(Plan).filter(Plan.is_active.is_(True)).order_by(
+        Plan.code
+    ).all()
+    return {
+        "plans": [
+            {
+                "code": p.code,
+                "display_name": p.display_name,
+                "description": p.description,
+            }
+            for p in rows
+        ]
+    }
+
+
+@router.post("/tenants", status_code=201, summary="Yeni tenant olustur")
+def create_tenant(
+    payload: TenantCreateRequest,
+    principal: PlatformPrincipal = Depends(
+        svc.require_platform_permissions(PlatformPerm.TENANTS_MANAGE)
+    ),
+    db: Session = Depends(get_db),
+    idempotency_key: Optional[str] = Header(default=None,
+                                            alias="Idempotency-Key"),
+) -> dict:
+    try:
+        result = provisioning.provision_tenant(
+            db,
+            slug=payload.slug,
+            display_name=payload.display_name,
+            owner_email=str(payload.owner_email),
+            owner_full_name=payload.owner_full_name,
+            email_domains=payload.email_domains,
+            plan_code=payload.plan_code,
+            actor_user_id=principal.user_id,
+            idempotency_key=idempotency_key,
+        )
+    except provisioning.ProvisioningError as exc:
+        # Denetim kaydi servis icinde YAZILDI; burada onu kalici kilmak
+        # icin commit ediyoruz, ardindan hatayi kullaniciya donuyoruz.
+        db.commit()
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "provisioning_failed", "step": exc.step,
+                    "message": str(exc)},
+        ) from exc
+    db.commit()
+    return result
+
+
+@router.patch("/tenants/{tenant_id}", summary="Tenant'i duzenle")
+def update_tenant(
+    tenant_id: UUID,
+    payload: TenantUpdateRequest,
+    principal: PlatformPrincipal = Depends(
+        svc.require_platform_permissions(PlatformPerm.TENANTS_MANAGE)
+    ),
+    db: Session = Depends(get_db),
+) -> dict:
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant bulunamadi.")
+
+    changed = {}
+    if payload.display_name and payload.display_name != tenant.display_name:
+        tenant.display_name = payload.display_name.strip()
+        changed["display_name"] = tenant.display_name
+
+    if payload.email_domains is not None:
+        try:
+            domains = provisioning.normalize_domains(payload.email_domains)
+        except provisioning.ProvisioningError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        idp = db.query(TenantIdentityProvider).filter(
+            TenantIdentityProvider.tenant_id == tenant.id,
+            TenantIdentityProvider.provider == "email-domain",
+        ).first()
+        if idp is None and domains:
+            idp = TenantIdentityProvider(
+                tenant_id=tenant.id, provider="email-domain",
+                auto_provision_mode="auto", is_active=True,
+            )
+            db.add(idp)
+        if idp is not None:
+            idp.allowed_email_domains = domains
+            idp.is_active = bool(domains)
+        changed["email_domains"] = domains
+
+    if payload.plan_code:
+        sub = db.query(TenantSubscription).filter(
+            TenantSubscription.tenant_id == tenant.id,
+            TenantSubscription.status == "active",
+        ).first()
+        if sub is None:
+            db.add(TenantSubscription(
+                tenant_id=tenant.id, plan_code=payload.plan_code,
+                status="active",
+            ))
+        else:
+            sub.plan_code = payload.plan_code
+        changed["plan_code"] = payload.plan_code
+
+    if changed:
+        # Gorunen ad core projeksiyonunu ETKILEMEZ (orada slug/status
+        # tutulur); yine de surum ilerletilip projeksiyon tazelenir ki
+        # durum bilgisi iki tarafta ayrismasin.
+        tenant.version = (tenant.version or 1) + 1
+        db.flush()
+        try:
+            provisioning._project_to_core(tenant)
+        except provisioning.ProvisioningError as exc:
+            logger.warning("projeksiyon tazelenemedi: %s", exc)
+
+    svc.record_audit(
+        db,
+        action="platform.tenant.update",
+        actor_user_id=principal.user_id,
+        target_tenant_id=tenant.id,
+        target_type="tenant",
+        target_id=str(tenant.id),
+        result="success",
+        metadata={"changed": list(changed.keys())},
+    )
+    db.commit()
+    return {"tenant_id": str(tenant.id), "changed": changed}
 
 
 @router.post("/tenants/{tenant_id}/suspend", summary="Tenant'i askiya al")

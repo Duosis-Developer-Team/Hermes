@@ -146,6 +146,12 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Router Registration
 API_PREFIX = "/api/v1/core"
 
+# S2S tenant projeksiyonu (WS12): yeni tenant provision edilince auth
+# burayi cagirir. Kullaniciya donuk akislar bu ucu KULLANMAZ.
+from .routers.internal_tenants import router as internal_tenants_router  # noqa: E402
+
+app.include_router(internal_tenants_router)
+
 app.include_router(customers_router, prefix=API_PREFIX)
 app.include_router(work_types_router, prefix=API_PREFIX)
 app.include_router(projects_router, prefix=API_PREFIX)

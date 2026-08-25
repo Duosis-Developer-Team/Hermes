@@ -30,6 +30,36 @@ export const createApiClient = (baseURL) => {
         headers: { 'Content-Type': 'application/json' },
     })
 
+    /*
+     * WS12 — WORKSPACE tasima.
+     *
+     * Tenant, ISTEGIN kendisinden cozulur (Host basligi ya da
+     * `?workspace=` parametresi) — tarayicinin adres cubugundan DEGIL.
+     * Dolayisiyla kullanici `/?workspace=acme` adresindeyse, bunu her
+     * API cagrisina biz tasimaliyiz; aksi halde istek varsayilan host
+     * eslesmesine duser ve kullanici YANLIS organizasyona (ya da
+     * hicbirine) gider.
+     *
+     * Sunucu tarafi bu parametreyi YALNIZCA
+     * `HERMES_ALLOW_WORKSPACE_PATH` acikken dikkate alir; production'da
+     * kapalidir ve adres yine host'tan cozulur. Yani bu satirlar
+     * guvenlik sinirini genisletmez, var olan dev/test kolayligini
+     * kullanilabilir kilar.
+     */
+    client.interceptors.request.use((config) => {
+        try {
+            const ws = new URLSearchParams(window.location.search)
+                .get('workspace')
+            if (ws) {
+                config.params = { workspace: ws, ...(config.params || {}) }
+            }
+        } catch {
+            // Adres okunamiyorsa (test ortami) sessizce gec: istek yine
+            // host uzerinden cozulur.
+        }
+        return config
+    })
+
     client.interceptors.response.use(
         (response) => response,
         (error) => {

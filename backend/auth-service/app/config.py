@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     # endpoint'leri bunu ASLA kabul etmez. Dual-key: rotasyonda NEXT'e
     # yeni anahtar konur, istemciler gecince CURRENT'a tasinir. Bos ise
     # internal directory KAPALIDIR (fail closed).
+    # Yeni tenant provision edilince core'un projeksiyonu S2S ile
+    # guncellenir (core_db tenant otoritesi degildir ama bilinmeyen bir
+    # tenant'i reddedebilmek icin yerel kaydi olmali).
+    HERMES_CORE_INTERNAL_BASE: str = "http://core-service"
     HERMES_S2S_TOKEN_CURRENT: str = ""
     HERMES_S2S_TOKEN_NEXT: str = ""
     

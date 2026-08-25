@@ -194,9 +194,15 @@ def test_platform_api_exposes_no_business_data(platform_http, pg_session):
     tenant_id = _seed_tenant(pg_session)
 
     body = platform_http.get(f"{BASE}/tenants/{tenant_id}").json()
+    # KONTROL DUZLEMI konfigurasyonu serbesttir; IS VERISI degildir.
+    # `email_domains` tenant'in kimlik ayaridir (kimler otomatik katilir)
+    # ve platform admin'in YONETTIGI seydir — gorev/musteri/zaman kaydi
+    # gibi tenant is verisiyle karistirilmamalidir. Liste bilerek DAR
+    # tutulur: buraya yeni bir alan eklemek acik bir karardir.
     allowed = {
         "id", "slug", "display_name", "status", "plan_code",
-        "active_members", "created_at", "activated_at", "version",
+        "email_domains", "active_members", "created_at", "activated_at",
+        "version",
     }
     assert set(body.keys()) == allowed
 
