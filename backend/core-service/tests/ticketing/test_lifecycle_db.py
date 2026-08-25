@@ -603,3 +603,66 @@ def test_outbound_event_types_stay_inside_the_contract(ticket_world):
         # Internal icerik zarfin HICBIR yerinde olamaz.
         assert "IC BILGI" not in str(row.payload_json)
         assert "internal_root_cause" not in str(row.payload_json)
+
+
+# =============================================================================
+# Job surecleri: dogrulama kapisi
+# =============================================================================
+
+def test_jobs_verify_the_support_tenant_in_their_own_process(
+    ticket_world, monkeypatch
+):
+    """CronJob AYRI bir surectir ve API startup'ini CALISTIRMAZ.
+
+    Regresyon: dispatcher canlida exit 0 ile
+    `{"status": "skipped", "reason": "unverified"}` donuyordu — outbox
+    hicbir zaman gonderilmiyor, hata da verilmiyordu. Modul durumu
+    surec-global oldugu icin is, availability'yi sormadan ONCE
+    dogrulamak ZORUNDA.
+    """
+    from app.jobs import ticket_dispatcher, ticket_maintenance
+    from app.services import support_tenant
+
+    # Taze bir surec gibi: durum henuz dogrulanmamis.
+    support_tenant._force_state_for_tests("unverified")
+    assert not support_tenant.is_available()
+
+    calls = []
+    monkeypatch.setattr(
+        support_tenant, "ensure_verified",
+        lambda: (calls.append(1), support_tenant._force_state_for_tests("ok"))
+        and "ok",
+    )
+    # Isin kendisi calismasin; yalnizca kapiyi olcuyoruz.
+    monkeypatch.setattr(
+        support_tenant, "support_session",
+        lambda: (_ for _ in ()).throw(RuntimeError("stop-after-gate")),
+    )
+
+    for job in (ticket_dispatcher, ticket_maintenance):
+        calls.clear()
+        try:
+            job.run_once()
+        except RuntimeError as exc:
+            assert "stop-after-gate" in str(exc)
+        assert calls, f"{job.__name__} dogrulama yapmadan devam etti"
+
+    support_tenant._force_state_for_tests("ok")
+
+
+def test_ensure_verified_is_idempotent_when_already_ok():
+    """Durum zaten `ok` ise DB'ye DOKUNULMAZ (her dakika kosan bir is
+    icin gereksiz baglanti acmak istemiyoruz)."""
+    from app.services import support_tenant
+
+    support_tenant._force_state_for_tests("ok")
+    touched = []
+    original = support_tenant.verify_support_tenant
+    support_tenant.verify_support_tenant = (
+        lambda db: touched.append(1) or ("ok", None)
+    )
+    try:
+        assert support_tenant.ensure_verified() == "ok"
+        assert not touched
+    finally:
+        support_tenant.verify_support_tenant = original

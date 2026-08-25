@@ -34,6 +34,10 @@ LOCK_KEY = 8_140_2252
 
 
 def run_once() -> dict:
+    # Bu AYRI bir surectir: API'nin startup dogrulamasi burada
+    # KOSMAMISTIR. Once dogrula, sonra karar ver — aksi halde is her
+    # seferinde sessizce "skipped" olur.
+    support.ensure_verified()
     if not support.is_available():
         state, _ = support.module_state()
         return {"ok": True, "status": "skipped", "reason": state}

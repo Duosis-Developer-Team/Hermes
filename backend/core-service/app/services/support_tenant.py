@@ -174,6 +174,33 @@ def _force_state_for_tests(state: str, detail: Optional[str] = None) -> None:
     _state, _state_detail = state, detail
 
 
+def ensure_verified() -> str:
+    """Modul durumunu GEREKIRSE dogrular ve doner.
+
+    `_state` SUREC-GLOBALDIR ve `unverified` baslar; API pod'unda
+    `lifespan` startup'i onu doldurur. Ama CronJob'lar AYRI birer
+    surectir ve startup'i CALISTIRMAZ — dogrulama yapilmadan
+    `is_available()` her zaman False doner ve is sessizce "skipped"
+    olur. Canli kanit (2026-08-25, hermes-dev): dispatcher exit 0 ile
+    `{"status": "skipped", "reason": "unverified"}` yaziyordu; yani
+    outbox hicbir zaman gonderilmeyecekti ve hata da vermeyecekti —
+    en kotu ariza bicimi.
+
+    Idempotent: durum zaten `ok` ise DB'ye dokunmaz.
+    """
+    state, _ = module_state()
+    if state == "ok":
+        return state
+    from ..database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        state, _ = verify_support_tenant(db)
+    finally:
+        db.close()
+    return state
+
+
 @contextmanager
 def support_session():
     """Support tenant baglaminda transaction-local bir oturum.
