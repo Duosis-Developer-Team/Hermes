@@ -178,9 +178,44 @@ jobs:
   # Frontend kalite kapisi (Stage 5D-C): secret guard + TAM vitest
   # suite + prod build + env-config artifact kontrolu. Deploy, UI
   # derlenmeden ve testler gecmeden kosamaz.
+  # Frontend testleri 3 PARALEL parcaya bolunur.
+  #
+  # NEDEN: olculdu — `frontend_build` 12dk 49sn suruyordu ve tum boru
+  # hattinin yarisindan fazlasiydi (image build'leri cache'li, ~20sn;
+  # backend testleri ~1.5dk). Zamanin nerdeyse tamami 888 vitest testiydi.
+  # Testleri AZALTMAK cozum degil; paralel kosmak cozum. Yerel olcum:
+  # tam kosu 3dk45, 1/3 parca 1dk20.
+  #
+  # `fail-fast: false`: bir parca kirilinca digerleri de kosar; boylece
+  # tek koşuda TUM kirilan testler gorulur, sirayla kesfedilmez.
+  frontend_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    concurrency:
+      group: cd-dev-frontend-tests-${{ matrix.shard }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Setup Node
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Run test shard
+        working-directory: frontend
+        run: |
+          npm ci
+          npx vitest run --shard=${{ matrix.shard }}/3
+
   frontend_build:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     concurrency:
       group: cd-dev-frontend-${{ github.ref }}
       cancel-in-progress: true
@@ -200,12 +235,8 @@ jobs:
 
       - name: Build frontend
         working-directory: frontend
-        # Portal testleri build'den ONCE kosar: Developer Portal bir kez
-        # canli urunden saptigi icin durum/uyumluluk iddialari testle
-        # kilitli.
         run: |
           npm ci
-          npm test
           npx vite build
           # Build ARTIFACT kapisi (Sprint 5.1): index.html /env-config.js
           # dosyasini KOSULSUZ yukler; cikti icinde yoksa her acilis 404.
@@ -222,7 +253,7 @@ jobs:
   build_images:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [core_tests, auth_tests, mcp_tests, frontend_build]
+    needs: [core_tests, auth_tests, mcp_tests, frontend_tests, frontend_build]
     concurrency:
       group: cd-dev-build-${{ matrix.name }}-${{ github.ref }}
       cancel-in-progress: true
@@ -308,7 +339,7 @@ jobs:
   migrate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [core_tests, auth_tests, mcp_tests, frontend_build, build_images]
+    needs: [core_tests, auth_tests, mcp_tests, frontend_tests, frontend_build, build_images]
     # Migration yarim kesilmez; es zamanli kosular siraya girer.
     concurrency:
       group: cd-dev-migrate
@@ -345,7 +376,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [core_tests, auth_tests, mcp_tests, frontend_build, build_images, migrate]
+    needs: [core_tests, auth_tests, mcp_tests, frontend_tests, frontend_build, build_images, migrate]
     # Deploy ASLA yarim kesilmez; es zamanli deploy'lar siraya girer.
     concurrency:
       group: cd-dev-deploy
