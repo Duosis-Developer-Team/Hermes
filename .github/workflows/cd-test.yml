@@ -269,7 +269,7 @@ jobs:
           # yalnizca deployment VARSA image gunceller.
           if kubectl -n "${NAMESPACE}" get deployment hermes-mcp >/dev/null 2>&1; then
             kubectl -n "${NAMESPACE}" set image deployment/hermes-mcp hermes-mcp="${REGISTRY}/${OWNER}/hermes-mcp:${TAG}"
-            kubectl -n "${NAMESPACE}" rollout status deployment/hermes-mcp --timeout=300s
+            kubectl -n "${NAMESPACE}" rollout status deployment/hermes-mcp --timeout=600s
           else
       - name: Post-deploy tenant isolation smoke
         # Rollout'tan SONRA kritik tenant garantilerini CANLI dogrular:
@@ -281,7 +281,19 @@ jobs:
             echo "hermes-mcp deployment not present yet — skipping (manual first apply required)"
           fi
 
-          kubectl -n "${NAMESPACE}" rollout status deployment/auth-service --timeout=300s
-          kubectl -n "${NAMESPACE}" rollout status deployment/core-service --timeout=300s
-          kubectl -n "${NAMESPACE}" rollout status deployment/reporting-service --timeout=300s
-          kubectl -n "${NAMESPACE}" rollout status deployment/frontend --timeout=300s
+          # ROLLOUT TIMEOUT — 600s (300 DEGIL).
+          #
+          # Bu kumede bir admission webhook her pod'a 7 Datadog init
+          # konteyneri enjekte ediyor; her biri SIRAYLA kosuyor ve pod'un
+          # hazir olmasi 5-7 dakika suruyor. 300s sinirda kaliyordu:
+          # rollout GERCEKTE tamamlaniyor ama `rollout status` once
+          # zaman asimina ugrayip deploy'u YANLIS yere kirmizi yapiyordu
+          # (hermes-test'te iki kez birebir yasandi; her seferinde pod'lar
+          # birkac dakika sonra saglikli acildi).
+          #
+          # Yanlis kirmizi, gercek bir hatayi da golgeler — bu yuzden
+          # timeout gercege uyduruldu, kapinin kendisi zayiflatilmadi.
+          kubectl -n "${NAMESPACE}" rollout status deployment/auth-service --timeout=600s
+          kubectl -n "${NAMESPACE}" rollout status deployment/core-service --timeout=600s
+          kubectl -n "${NAMESPACE}" rollout status deployment/reporting-service --timeout=600s
+          kubectl -n "${NAMESPACE}" rollout status deployment/frontend --timeout=600s
