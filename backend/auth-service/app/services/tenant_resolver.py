@@ -175,12 +175,25 @@ def resolve_request_tenant(
 ) -> ResolvedTenant:
     """Bir istek icin tenant baglamini cozer.
 
-    Once host denenir (production yolu). Yalnizca host cozulemediginde ve
-    dev workspace yolu acikken slug'a bakilir.
+    Sira: ACIKCA verilmis workspace slug'i (yalnizca
+    `HERMES_ALLOW_WORKSPACE_PATH` acikken) > Host basligi.
+
+    NEDEN SLUG ONCE: onceki hali once host'u deniyor ve yalnizca host
+    COZULEMEZSE slug'a bakiyordu. Bu, ozelligi ise yaramaz kiliyordu:
+    dev tek IP uzerinden servis ediliyor, o IP her zaman ilk tenant'a
+    cozuluyor ve `?workspace=acme` HIC degerlendirilmiyordu — kullanici
+    sessizce YANLIS organizasyona dusuyordu. Canlida birebir yasandi.
+
+    Acik bir slug, cagiranin bilincli tercihidir; host'a sessizce geri
+    dusmek yerine slug cozulemezse HATA verilir (fail-closed) — yanlis
+    tenant'a dusmektense hicbir yere dusmemek dogrudur.
+
+    PRODUCTION'da bayrak KAPALIDIR: slug hic dikkate alinmaz ve host tek
+    otoritedir. Bu yuzden degisiklik production davranisini ETKILEMEZ.
+
+    Slug'in kazanmasi yetki VERMEZ: kullanici yine gecerli kimlik ve o
+    tenant'ta AKTIF UYELIK gostermek zorundadir.
     """
-    try:
-        return resolve_by_hostname(db, hostname)
-    except WorkspaceNotFound:
-        if workspace_slug and allow_workspace_path():
-            return resolve_by_slug(db, workspace_slug)
-        raise
+    if workspace_slug and allow_workspace_path():
+        return resolve_by_slug(db, workspace_slug)
+    return resolve_by_hostname(db, hostname)

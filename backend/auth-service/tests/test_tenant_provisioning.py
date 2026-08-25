@@ -450,3 +450,85 @@ def test_plans_endpoint_lists_active_plans(platform_client, pg_session):
     plans = platform_client.get(f"{BASE}/plans").json()["plans"]
     codes = {p["code"] for p in plans}
     assert "pro" in codes and "old" not in codes
+
+
+# =============================================================================
+# 7) Workspace adresleme — acik slug HOST'U EZER
+# =============================================================================
+# Canli bir hatadan dogdu: cozucu once host'u deniyor, slug'a yalnizca
+# host COZULEMEZSE bakiyordu. Dev tek IP uzerinden servis edildigi ve o
+# IP her zaman ilk tenant'a cozuldugu icin `?workspace=acme` HIC
+# degerlendirilmiyordu — kullanici sessizce YANLIS organizasyona
+# dusuyordu.
+
+def _mk_tenant(db, slug, hostname=None):
+    from app.models.tenancy import Tenant, TenantDomain
+
+    t = Tenant(slug=slug, display_name=slug.title(), status="active",
+               placement_key="shared-default", version=1)
+    db.add(t)
+    db.flush()
+    if hostname:
+        db.add(TenantDomain(tenant_id=t.id, hostname=hostname, kind="legacy",
+                            verification_status="verified", is_primary=True))
+    db.commit()
+    return t
+
+
+def test_explicit_workspace_slug_wins_over_host(pg_session, monkeypatch):
+    from app.services.tenant_resolver import resolve_request_tenant
+
+    _mk_tenant(pg_session, "duosis", hostname="10.0.0.1")
+    _mk_tenant(pg_session, "acme")
+    monkeypatch.setenv("HERMES_ALLOW_WORKSPACE_PATH", "true")
+
+    # Host duosis'e cozulur; slug ACIKCA acme der -> acme kazanmali.
+    resolved = resolve_request_tenant(
+        pg_session, hostname="10.0.0.1", workspace_slug="acme"
+    )
+    assert resolved.slug == "acme", (
+        "acik slug host'a yenildi — kullanici YANLIS organizasyona duser"
+    )
+
+
+def test_host_used_when_no_slug_given(pg_session, monkeypatch):
+    from app.services.tenant_resolver import resolve_request_tenant
+
+    _mk_tenant(pg_session, "duosis", hostname="10.0.0.1")
+    monkeypatch.setenv("HERMES_ALLOW_WORKSPACE_PATH", "true")
+
+    resolved = resolve_request_tenant(pg_session, hostname="10.0.0.1")
+    assert resolved.slug == "duosis"
+
+
+def test_slug_ignored_when_feature_disabled(pg_session, monkeypatch):
+    """PRODUCTION davranisi: bayrak kapaliyken host TEK otoritedir."""
+    from app.services.tenant_resolver import resolve_request_tenant
+
+    _mk_tenant(pg_session, "duosis", hostname="10.0.0.1")
+    _mk_tenant(pg_session, "acme")
+    monkeypatch.setenv("HERMES_ALLOW_WORKSPACE_PATH", "false")
+
+    resolved = resolve_request_tenant(
+        pg_session, hostname="10.0.0.1", workspace_slug="acme"
+    )
+    assert resolved.slug == "duosis"
+
+
+def test_unknown_slug_fails_closed_not_silently_to_host(pg_session, monkeypatch):
+    """Yanlis slug HOST'A GERI DUSMEZ.
+
+    Sessizce host'a dusmek, kullaniciyi istemedigi bir organizasyona
+    sokmak demektir — hicbir yere dusmemek dogrudur.
+    """
+    from app.services.tenant_resolver import (
+        WorkspaceNotFound, resolve_request_tenant,
+    )
+
+    _mk_tenant(pg_session, "duosis", hostname="10.0.0.1")
+    monkeypatch.setenv("HERMES_ALLOW_WORKSPACE_PATH", "true")
+
+    with pytest.raises(WorkspaceNotFound):
+        resolve_request_tenant(
+            pg_session, hostname="10.0.0.1", workspace_slug="yok-boyle"
+        )
