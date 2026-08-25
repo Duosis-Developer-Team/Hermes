@@ -1,6 +1,6 @@
 # INGRESS SAHIPLIK MODELI (Stage 5, CTO karari):
 #   BU kaynak → uygulama route'lari: / · /api/v1/auth · /api/v1/users ·
-#   /api/v1/reports · /api/v1 · /api/public
+#   /api/v1/reports · /api/v1 · /api/public · /api/integrations
 #   MCP route'lari (/mcp, /.well-known/oauth-protected-resource) BU
 #   DOSYADA YER ALMAZ — onlar 09-mcp-ingress'e aittir. ingress-nginx
 #   ayni host'un iki Ingress'ini tek server blogunda birlestirir; sart:
@@ -84,7 +84,21 @@ spec:
             name: core-service
             port:
               number: 80
-              
+
+      # Support integration API — core-service'teki izole
+      # /api/integrations alt-uygulamasi (kaynak uygulamalarin ticket
+      # ingress'i). Bu kural OLMADAN istek SPA catch-all'ina duser ve
+      # LogiSlot bir JSON yerine index.html alir — 200 donen, sessizce
+      # yanlis bir cevap. Public API'nin ayni nedenle ayri bir kurali
+      # var.
+      - path: /api/integrations
+        pathType: Prefix
+        backend:
+          service:
+            name: core-service
+            port:
+              number: 80
+
       # Frontend (Root)
       - path: /
         pathType: Prefix

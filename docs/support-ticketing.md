@@ -62,6 +62,23 @@ kubectl -n hermes-dev apply -f k8s/ticket-dispatcher-cronjob.yaml
 kubectl -n hermes-dev apply -f k8s/ticket-maintenance-cronjob.yaml
 ```
 
+## 3b. Ingress (integration API disari acilir)
+
+`/api/integrations` kurali OLMADAN istek SPA catch-all'ina duser ve
+kaynak uygulama JSON yerine `index.html` alir — 200 donen, sessizce
+YANLIS bir cevap. Kural `k8s/05-ingress.yaml`e eklendi; CD ingress'e
+DOKUNMAZ:
+
+```bash
+kubectl -n hermes-dev diff -f k8s/05-ingress.yaml    # ONCE DIFF (drift!)
+kubectl -n hermes-dev apply -f k8s/05-ingress.yaml
+curl -sk https://84.247.180.172:30772/api/integrations/v1/support/capabilities
+```
+
+`hermes-test` icin `k8s/test/05-ingress.yaml` repo'da canlidan
+FARKLIDIR (bilinen drift) — orada apply EDILMEDEN once ayri bir bakim
+karari gerekir.
+
 - **dispatcher** (dakikada bir): outbox → imzali webhook. `FOR UPDATE
   SKIP LOCKED` + advisory lock; iki kosu ayni olayi gonderemez.
 - **maintenance** (saatlik): 7 gunluk auto-close, suresi dolmus
