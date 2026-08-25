@@ -68,6 +68,32 @@ DURATION = Histogram(
     registry=REGISTRY,
 )
 
+# -----------------------------------------------------------------------------
+# Surec metrikleri (bellek/CPU/GC)
+# -----------------------------------------------------------------------------
+# Onceki yorum "CPU/bellek zaten Kubernetes'ten geliyor" diyordu ve bu
+# yuzden surec metrikleri bilerek disarida birakilmisti. BU VARSAYIM BU
+# KUMEDE GECERLI DEGIL: metrics-server kurulu degil, `kubectl top`
+# calismiyor. Sonuc: hermes-test'te core-service araliklarla tikanip
+# liveness probe tarafindan oldurulurken bellek egrisine BAKAMADIK —
+# hipotez kurup dogrulayamadik.
+#
+# Eklenenler etiketSIZdir (`process_resident_memory_bytes`,
+# `process_cpu_seconds_total`, `python_gc_*`), dolayisiyla sozlesmedeki
+# etiket disiplinini BOZMAZ: yol/pod/route gibi sinirsiz etiket yok.
+# Iki sozlesme metriginin adi ve etiketleri aynen kalir.
+try:  # pragma: no cover - surum farki startup'i DUSURMEMELI
+    from prometheus_client import GCCollector, ProcessCollector
+
+    ProcessCollector(registry=REGISTRY)
+    GCCollector(registry=REGISTRY)
+except Exception:  # noqa: BLE001
+    # Metrik toplayici eklenemezse servis yine de acilir: gozlemlenebilirlik
+    # onemlidir ama uygulamayi dusurecek kadar degil.
+    pass
+
+
+
 
 def resolve_environment() -> str:
     """Katalog anahtari ('dev' | 'test'); namespace adi DEGIL. Gecersiz
