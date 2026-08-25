@@ -472,9 +472,25 @@ raporluyor, `mixins.LEGACY_UNMANAGED_TABLES` gerekçesiyle beyan ediyor.
      rollout kırmızıya döner. Mutasyonla doğrulandı — hostname yanlışa
      çevrilince iki satırlık net hatayla kırıldı.
 
-**Bu beşinin ortak dersi:** üçü de yerel test yeşilken canlıda/konteynerde
+6. **Platform Console ingress'te yayınlanmamıştı.** `/api/platform/v1/*`
+   için hiçbir ingress kuralı yoktu; istek frontend'in nginx'ine düşüp
+   POST için **405** dönüyordu. Küme içinden login 200 veriyordu — yani
+   kod, kimlik ve izinler doğruydu, sadece dışarıya **açılmamıştı**.
+   Router (`/api/platform/v1`), frontend (`platformApi.js`) ve ingress
+   aynı öneki üç ayrı yerde tekrar ediyor; üçüncüsü unutulmuştu.
+
+   Düzeltme: `k8s/05-ingress.yaml`'a kural eklendi ve **katmanlar arası
+   tutarlılık testi** yazıldı — router prefix'i, frontend BASE'i ve
+   ingress kuralı birbirini doğruluyor; biri değişip diğeri kalırsa CI
+   kırmızı. Mutasyonla doğrulandı.
+
+   Canlıya **dosya apply edilmedi** (aşağıdaki drift nedeniyle);
+   yalnızca eksik path `kubectl patch` ile eklendi. Önce 8, sonra 9 path
+   — hiçbiri silinmedi.
+
+**Bu altısının ortak dersi:** üçü de yerel test yeşilken canlıda/konteynerde
 ortaya çıktı ve üçü de **fail-open** yönündeydi (sessiz boş sonuç,
-görünmez tablo, yanlış veritabanına şema). Beşi için de kapı eklendi ve
+görünmez tablo, yanlış veritabanına şema). Altısı için de kapı eklendi ve
 kapıların diş taşıdığı **mutasyonla** doğrulandı — yeşil olmaları tek
 başına kanıt sayılmadı.
 
@@ -578,13 +594,51 @@ Yani Platform Super Admin, CTO kararı gereği tenant iş verisine
 **yapısal olarak** erişemiyor: ne üyeliği var, ne de açık bir destek
 oturumu.
 
-> **Tek seferlik parola raporda YOKTUR ve bu transkriptte de okunmadı.**
+> **Not (2026-08-25):** bootstrap Job'ı `ttlSecondsAfterFinished: 3600`
+> ile bir saat sonra kendini sildi ve tek seferlik parola o log'la
+> birlikte kurtarılamaz oldu (hiç okunmamıştı). Operatör talebiyle
+> parola yeniden belirlendi; betik var olan kullanıcıda parolayı
+> **sıfırlıyor** (`hashed_password` güncellenir), yani Job'ı yeniden
+> koşmak veya `HERMES_BOOTSTRAP_ADMIN_PASSWORD` ile çalıştırmak geçerli
+> sıfırlama yoludur. Parola değeri bu raporda **yer almaz**.
+>
+> **Tek seferlik parola raporda YOKTUR.**
 > Job log'una bir kez yazıldı; hiçbir yerde saklanmıyor:
 > ```
 > kubectl -n hermes-dev logs job/hermes-platform-bootstrap
 > kubectl -n hermes-dev delete job hermes-platform-bootstrap   # okununca SİL
 > ```
 > Parola yöneticisine alın ve ilk girişte değiştirin.
+
+### 13.7 AÇIK BULGU — `hermes-dev` ingress drift'i (düzeltilmedi)
+
+Platform yolunu eklerken ortaya çıktı: **canlı dev ingress'i repo'daki
+`k8s/05-ingress.yaml` ile aynı değil**, üstelik iki yönde birden.
+
+| Path | Repo | Canlı |
+|---|---|---|
+| `/api/v1/auth` · `/api/v1/users` · `/api/v1` · `/api/public` · `/` | ✅ | ✅ |
+| `/api/v1/core` → core-service | ❌ **yok** | ✅ var |
+| `/api/v1/reports` → reporting-service | ✅ var | ❌ **yok** |
+| `/mcp` · `/.well-known/oauth-protected-resource` → hermes-mcp | ❌ (ayrı `09-mcp-ingress`'te) | ✅ **aynı ingress'in içinde** |
+| `host:` alanı | `84.247.180.172` | **yok** (host kuralsız) |
+
+Yani `kubectl apply -f k8s/05-ingress.yaml` çalıştırılsaydı **`/mcp`,
+`/.well-known/...` ve `/api/v1/core` silinir**, MCP dışarıya kapanırdı.
+Bu yüzden dosya apply EDİLMEDİ; `/api/platform` cerrahi bir
+`kubectl patch` ile eklendi ve öncesi/sonrası path sayısı doğrulandı
+(8 → 9, silinen yok).
+
+**Bilerek düzeltilmedi.** Drift'i kapatmak davranış değiştiren bir
+karardır (hangi taraf doğru? `/api/v1/reports` canlıda neden yok?
+MCP yolları ayrı ingress'e mi taşınacak?) ve bu çalışmanın kapsamı
+tenant cutover'ıdır. CLAUDE.md'nin `k8s/test/05-ingress.yaml` için
+koyduğu "davranış değiştirmeyen ayrı bakım commit'i bekliyor" kuralı
+burada da geçerlidir.
+
+**Takip işi:** dev ingress'i için de ayrı bir bakım commit'i — önce
+canlı gerçek kabul edilip repo ona hizalanmalı, sonra istenen
+değişiklikler ayrı adımda yapılmalı.
 
 ## 14. Bilinen sınırlamalar ve takip işleri
 

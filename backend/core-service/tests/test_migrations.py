@@ -557,3 +557,44 @@ def test_test_configmap_does_not_carry_dev_hostname():
         pytest.skip("test ConfigMap'inde tenant anahtari yok (beklenen)")
     assert value != _DEV_HOST, (
         f"test ConfigMap'i dev adresini ({_DEV_HOST}) tasiyor.")
+
+
+# =============================================================================
+# Platform duzlemi ingress'te yayinlanmis mi
+# =============================================================================
+# Router, frontend ve ingress UC AYRI yerde ayni yol onekini tekrar eder.
+# Ingress'te kural yoksa istek frontend'in nginx'ine duser ve POST icin
+# 405 doner — Platform Console tarayicidan ERISILEMEZ olur. Kod, testler
+# ve rollout kusursuzken canlida tam olarak boyle bulundu.
+
+def test_platform_api_prefix_is_consistent_across_layers():
+    """Router · frontend · ingress ayni oneki kullanmali."""
+    import re as _re
+
+    router_src = (_REPO_ROOT / "backend" / "auth-service" / "app" / "routers"
+                  / "platform_admin.py").read_text(encoding="utf-8")
+    m = _re.search(r'APIRouter\(prefix="([^"]+)"', router_src)
+    assert m, "platform router prefix'i okunamadi"
+    prefix = m.group(1)                       # ornek: /api/platform/v1
+
+    api_src = (_REPO_ROOT / "frontend" / "src" / "api" / "platformApi.js"
+               ).read_text(encoding="utf-8")
+    assert f"'{prefix}'" in api_src, (
+        f"frontend BASE'i router prefix'i ({prefix}) ile uyusmuyor")
+
+    ingress = (_REPO_ROOT / "k8s" / "05-ingress.yaml").read_text(encoding="utf-8")
+    # Ingress oneki daha KISA olabilir (Prefix eslesmesi), ama router
+    # yolunu KAPSAMALI.
+    paths = _re.findall(r'^\s*- path:\s*(\S+)', ingress, _re.M)
+    covering = [p for p in paths if prefix.startswith(p) and p != "/"]
+    assert covering, (
+        f"k8s/05-ingress.yaml '{prefix}' yolunu kapsayan bir kural "
+        f"icermiyor (bulunanlar: {paths}). Kural olmadan istek frontend'e "
+        "duser ve Platform Console erisilemez olur."
+    )
+    # En spesifik kapsayan kural auth-service'e gitmeli.
+    best = max(covering, key=len)
+    block = ingress.split(f"- path: {best}", 1)[1][:400]
+    assert "auth-service" in block, (
+        f"'{best}' kurali auth-service'e yonlenmiyor — platform duzlemi "
+        "auth-service'te yasar.")

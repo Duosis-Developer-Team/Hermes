@@ -40,6 +40,21 @@ spec:
             name: auth-service
             port:
               number: 80
+      # Platform Admin duzlemi (WS9) — AYRI guvenlik duzlemi.
+      # Tenant API'siyle ayni servise gider ama farkli audience
+      # (`hermes-platform-admin`) ve ayri cerez kullanir; tenant token'i
+      # burada, platform token'i tenant uclarinda REDDEDILIR.
+      #
+      # Bu kural olmadan istek frontend'in nginx'ine duser ve POST icin
+      # 405 doner — Platform Console tarayicidan ERISILEMEZ olur.
+      # Canlida birebir boyle bulundu.
+      - path: /api/platform
+        pathType: Prefix
+        backend:
+          service:
+            name: auth-service
+            port:
+              number: 80
               
       # Reporting Service Routes
       - path: /api/v1/reports
