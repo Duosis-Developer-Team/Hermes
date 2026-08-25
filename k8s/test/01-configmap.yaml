@@ -7,6 +7,26 @@ metadata:
     environment: test
     project: hermes
 data:
+  # ---------------------------------------------------------------------
+  # Tenant SaaS (WS3/WS10/WS12) — hermes-test
+  # ---------------------------------------------------------------------
+  # Mevcut Hermes verisinin tasindigi ILK tenant. Bu degerler migration
+  # 0003 tarafindan BIR KEZ kullanilir; sonradan degistirmek mevcut
+  # veriyi TASIMAZ, yalnizca yeni bir tenant yaratir.
+  INITIAL_TENANT_SLUG: "duosis"
+  INITIAL_TENANT_NAME: "Duosis"
+  # BU DOSYA hermes-test ICINDIR — deger, test'e GERCEKTEN gelinen adres
+  # olmalidir. Tenant cozumu Host basligina bakar; yanlis hostname
+  # LOGIN'I TAMAMEN KAPATIR (dev'de birebir yasandi).
+  #
+  # test = hermes.duosis.com
+  # dev  = 84.247.180.172   <-- BURAYA YAZILMAZ
+  INITIAL_TENANT_HOSTNAME: "hermes.duosis.com"
+  # `?workspace={slug}` ile tenant secimi. hermes-test PRODUCTION-LIKE'dir:
+  # KAPALI kalir; host disinda bir tenant secme yolu birakmaz. Yeni bir
+  # tenant burada kendi hostname'iyle adreslenir.
+  HERMES_ALLOW_WORKSPACE_PATH: "false"
+
   # Database Connection Info
   DB_HOST_AUTH: "auth-db"
   DB_HOST_CORE: "core-db"

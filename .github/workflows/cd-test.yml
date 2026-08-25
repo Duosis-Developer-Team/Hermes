@@ -222,6 +222,17 @@ jobs:
         # olusturmaz/overwrite etmez.
         run: ./scripts/k8s/check-runtime-secrets.sh hermes-test
 
+      - name: Run schema migration job (BLOCKING)
+        # PARITE (cd-dev ile ayni kapi): sema degisiklikleri artik
+        # uygulama startup'inda yapilmiyor. Bu adim BASARISIZ olursa
+        # `set image` HIC CALISMAZ ve hermes-test eski image'da kalir.
+        #
+        # Bu kapi olmadan rollout, migrate edilmemis bir veritabanina
+        # yeni pod'lar cikarirdi; sema muhafizi onlari acmaz (fail-closed)
+        # ama deploy yarim kalirdi. hermes-test verisi kutsaldir — yarim
+        # durum kabul edilemez.
+        run: ./scripts/k8s/run-migration-job.sh hermes-test "${GITHUB_SHA}"
+
       - name: Deploy (immutable SHA — tag separation hardening)
         run: |
           # IMMUTABLE SHA pinleme: calisan Deployment asla mutable tag
@@ -238,6 +249,13 @@ jobs:
             kubectl -n "${NAMESPACE}" set image deployment/hermes-mcp hermes-mcp="${REGISTRY}/${OWNER}/hermes-mcp:${TAG}"
             kubectl -n "${NAMESPACE}" rollout status deployment/hermes-mcp --timeout=300s
           else
+      - name: Post-deploy tenant isolation smoke
+        # Rollout'tan SONRA kritik tenant garantilerini CANLI dogrular:
+        # sema revizyonu, runtime rol ayrimi, RLS kapsami, backfill
+        # butunlugu, baglamsiz erisimde 0 satir, /ready ve giris ucunun
+        # workspace cozdugu. Salt-okunur; hicbir is verisi yazilmaz.
+        run: ./scripts/k8s/post-deploy-tenant-smoke.sh hermes-test
+
             echo "hermes-mcp deployment not present yet — skipping (manual first apply required)"
           fi
 
