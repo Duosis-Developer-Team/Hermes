@@ -26,12 +26,14 @@ import {
     SettingOutlined,
     CheckSquareOutlined,
     CalendarOutlined,
+    CustomerServiceOutlined,
 } from '@ant-design/icons'
 import AppShell from './AppShell'
 import OrganizationSwitcher from './OrganizationSwitcher'
 import { useAuthStore } from '../../stores/authStore'
 import { authService } from '../../services/api'
 import { useTaskPermissions } from '../../hooks/useTaskPermissions'
+import useTicketContext from '../../features/tickets/useTicketContext'
 import { loaderByPath } from '../../routes/loaders'
 
 /**
@@ -62,6 +64,10 @@ function MainLayout() {
     const can = useAuthStore((s) => s.can)
     useAuthStore((s) => s.permissions) // re-render tetikleyici
 
+    // Ticket yuzeyi: hub mu portal mi? Karar SUNUCUDA verilir.
+    const ticketContext = useTicketContext()
+    const ticketsPath = ticketContext.isPortal ? '/support' : '/tickets'
+
     const managementItems = [
         { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard', perm: 'reports.view' },
         { key: '/management/billable-hours', icon: <ClockCircleOutlined />, label: 'Billable Hours', perm: 'reports.view' },
@@ -69,6 +75,7 @@ function MainLayout() {
         { key: '/management/contracts', icon: <FileTextOutlined />, label: 'Contract Status', perm: 'reports.view' },
         { key: '/pm-configurations', icon: <CheckSquareOutlined />, label: 'PM Configurations', perm: 'tasks.permissions.manage' },
         { key: '/api-management', icon: <ApiOutlined />, label: 'API Management', perm: 'api.manage' },
+        { key: '/ticket-integrations', icon: <CustomerServiceOutlined />, label: 'Ticket Integrations', perm: 'tickets.config.manage' },
     ].filter((i) => can(i.perm)).map(({ perm, ...i }) => i)
 
     const configurationItems = [
@@ -173,6 +180,16 @@ function MainLayout() {
             icon: <CodeOutlined />,
             label: 'Developer',
         },
+
+        // Ticket Hub / Destek. Menu ogesi `tickets.access` ile gorunur;
+        // HEDEF ROTA sunucunun bildirdigi yuzeye gore secilir — tenant
+        // kimligi frontend'e GOMULMEZ. Baglam henuz yuklenmediyse
+        // /tickets kullanilir ve sayfa gerekirse /support'a yonlendirir.
+        ...(can('tickets.access') ? [{
+            key: ticketsPath,
+            icon: <CustomerServiceOutlined />,
+            label: ticketsPath === '/support' ? 'Support' : 'Tickets',
+        }] : []),
 
         // RBAC R3: yonetim gruplari, icinde GORUNUR oge varsa render
         // edilir — tek is_admin bit'i yerine oge-bazli izinler.

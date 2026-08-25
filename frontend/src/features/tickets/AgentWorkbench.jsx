@@ -1,0 +1,339 @@
+/**
+ * =============================================================================
+ * HERMES - Agent workbench (ticket detayı)
+ * =============================================================================
+ * Sol/ana kolon konuşma + composer, sağ kolon bağlam ve aksiyonlar.
+ * Mobilde tek kolona düşer.
+ *
+ * TASLAK KORUNUR: sürüm çakışması veya ağ hatası composer'daki metni
+ * SİLMEZ. Yazılmış bir yanıtı bir 409 yüzünden kaybettirmek, kullanıcının
+ * bu ekrana güvenini bitiren türden bir davranıştır.
+ */
+import { Fragment, useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Alert, Drawer, Select, Typography } from 'antd'
+
+import { ticketErrorCode, ticketHubService } from '../../api/ticketsApi'
+import {
+    Button, EmptyState, Inline, Stack, StatusBadge, Surface,
+} from '../../components/ui'
+import { queryKeys } from '../../query/queryKeys'
+import AgentComposer from './AgentComposer'
+import ResolveModal from './ResolveModal'
+import TicketTimeline from './TicketTimeline'
+import {
+    AGENT_STATUS_LABELS, CATEGORY_LABELS, IMPACT_LABELS,
+    RESOLUTION_LABELS, labelOf,
+} from './constants'
+import { TicketPriorityBadge, TicketStatusBadge } from './TicketStatusBadge'
+import './tickets.css'
+
+const { Text } = Typography
+
+function ContextPanel({ ticket, groups, onAssignGroup, canAssign, pending }) {
+    return (
+        <Surface className="h-ticket-context">
+            <Stack gap={3}>
+                <Stack gap={1}>
+                    <Text type="secondary">Status</Text>
+                    <Inline gap={2}>
+                        <TicketStatusBadge status={ticket.status} surface="hub" />
+                        <TicketPriorityBadge priority={ticket.priority} />
+                    </Inline>
+                </Stack>
+
+                <dl>
+                    <dt>Application</dt>
+                    <dd>{ticket.application?.display_name ?? '—'}</dd>
+                    <dt>Customer</dt>
+                    <dd>{ticket.source_tenant?.display_name ?? '—'}</dd>
+                    <dt>Requester</dt>
+                    <dd>{ticket.requester_display_name ?? '—'}</dd>
+                    <dt>Category</dt>
+                    <dd>{labelOf(CATEGORY_LABELS, ticket.category)}</dd>
+                    <dt>Impact</dt>
+                    <dd>{labelOf(IMPACT_LABELS, ticket.impact)}</dd>
+                    <dt>Error code</dt>
+                    <dd>{ticket.error_code || '—'}</dd>
+                    <dt>Correlation</dt>
+                    <dd>{ticket.correlation_id || '—'}</dd>
+                    <dt>First response</dt>
+                    <dd>
+                        {ticket.first_response_at
+                            ? new Date(ticket.first_response_at).toLocaleString()
+                            : 'Pending'}
+                    </dd>
+                </dl>
+
+                {ticket.impact === 'security_or_data_risk' && (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        message="A security or data risk was reported"
+                        description={'Priority stays at least "High". This '
+                            + 'is NOT an automatic security incident process; '
+                            + 'start one separately if needed.'}
+                    />
+                )}
+
+                <Stack gap={1}>
+                    <Text type="secondary">Target team</Text>
+                    <Select
+                        value={ticket.assigned_group?.id}
+                        disabled={!canAssign || pending}
+                        onChange={onAssignGroup}
+                        options={(groups ?? []).map((group) => ({
+                            value: group.id,
+                            label: `${group.name} (${group.member_count})`,
+                        }))}
+                        style={{ width: '100%' }}
+                    />
+                </Stack>
+
+                {Object.keys(ticket.client_context || {}).length > 0 && (
+                    <details>
+                        <summary>Technical context</summary>
+                        <dl>
+                            {Object.entries(ticket.client_context).map(
+                                ([key, value]) => (
+                                    <Fragment key={key}>
+                                        <dt>{key}</dt>
+                                        <dd>{String(value)}</dd>
+                                    </Fragment>
+                                ),
+                            )}
+                        </dl>
+                    </details>
+                )}
+            </Stack>
+        </Surface>
+    )
+}
+
+export default function AgentWorkbench({
+    ticketId, open, onClose, context, onChanged, onError,
+}) {
+    const queryClient = useQueryClient()
+    const [draft, setDraft] = useState('')
+    const [resolveOpen, setResolveOpen] = useState(false)
+    const [conflict, setConflict] = useState(false)
+
+    useEffect(() => {
+        setDraft('')
+        setConflict(false)
+    }, [ticketId])
+
+    const detail = useQuery({
+        queryKey: queryKeys.tickets.detail(ticketId),
+        queryFn: () => ticketHubService.get(ticketId),
+        enabled: Boolean(ticketId) && open,
+    })
+
+    const groups = useQuery({
+        queryKey: queryKeys.tickets.routingGroups,
+        queryFn: ticketHubService.routingGroups,
+        enabled: open,
+        staleTime: 300_000,
+    })
+
+    const ticket = detail.data
+
+    const refresh = () => {
+        queryClient.invalidateQueries({
+            queryKey: queryKeys.tickets.detail(ticketId),
+        })
+        onChanged?.()
+    }
+
+    // Her komut AYNI hata/tazeleme davranisini paylasir; `handlers`
+    // tek yerde tanimli. Hook'lar kosulsuz ve sabit sirada cagrilir.
+    const handlers = {
+        onSuccess: () => { setConflict(false); refresh() },
+        onError: (error) => {
+            if (ticketErrorCode(error) === 'ticket_version_conflict') {
+                // Taslak KORUNUR; yalnizca veri tazelenir ve uyari cikar.
+                setConflict(true)
+                refresh()
+            }
+            onError?.(error)
+        },
+    }
+
+    const reply = useMutation({
+        mutationFn: (payload) => ticketHubService.addMessage(ticketId, payload),
+        ...handlers,
+    })
+    const transition = useMutation({
+        mutationFn: (payload) => ticketHubService.transition(ticketId, payload),
+        ...handlers,
+    })
+    const assignGroup = useMutation({
+        mutationFn: (payload) => ticketHubService.assignGroup(ticketId, payload),
+        ...handlers,
+    })
+    const resolve = useMutation({
+        mutationFn: (payload) => ticketHubService.resolve(ticketId, payload),
+        ...handlers,
+    })
+
+    const canRespond = context?.can('tickets.respond')
+        || context?.can('tickets.admin')
+    const canResolve = context?.can('tickets.resolve')
+        || context?.can('tickets.admin')
+    const canAssign = context?.can('tickets.assign')
+        || context?.can('tickets.admin')
+
+    return (
+        <Drawer
+            open={open}
+            onClose={onClose}
+            width="min(1100px, 96vw)"
+            title={ticket
+                ? `${ticket.ticket_number} · ${ticket.title}`
+                : 'Ticket'}
+            destroyOnHidden
+        >
+            {detail.isLoading && <Text type="secondary">Loading…</Text>}
+            {detail.isError && (
+                <EmptyState
+                    title="This ticket could not be opened"
+                    description="It may no longer be in your scope."
+                />
+            )}
+            {ticket && (
+                <Stack gap={3}>
+                    {conflict && (
+                        <Alert
+                            type="warning"
+                            showIcon
+                            message="This ticket changed while you were looking at it"
+                            description="The latest version was loaded. Your text was kept — you can send it again."
+                            closable
+                            onClose={() => setConflict(false)}
+                        />
+                    )}
+
+                    <div className="h-ticket-workbench">
+                        <Stack gap={3}>
+                            {ticket.resolution && (
+                                <Stack gap={1} className="h-ticket-resolution">
+                                    <Inline gap={2}>
+                                        <StatusBadge tone="success">
+                                            ✓ Resolution #{ticket.resolution.revision}
+                                        </StatusBadge>
+                                        <Text strong>
+                                            {labelOf(
+                                                RESOLUTION_LABELS,
+                                                ticket.resolution.resolution_code,
+                                            )}
+                                        </Text>
+                                    </Inline>
+                                    <Text>{ticket.resolution.summary}</Text>
+                                    {ticket.resolution.internal_root_cause && (
+                                        <Text type="warning">
+                                            Root cause (team only):{' '}
+                                            {ticket.resolution.internal_root_cause}
+                                        </Text>
+                                    )}
+                                </Stack>
+                            )}
+
+                            <TicketTimeline
+                                messages={ticket.messages}
+                                downloadUrl={(fileId) =>
+                                    ticketHubService.downloadUrl(ticket.id, fileId)}
+                            />
+
+                            <AgentComposer
+                                canRespond={canRespond}
+                                attachmentsEnabled={context?.attachmentsEnabled}
+                                pending={reply.isPending}
+                                value={draft}
+                                onChange={setDraft}
+                                onSubmit={(payload) => reply.mutate({
+                                    ...payload,
+                                    expected_version: ticket.version,
+                                })}
+                            />
+                        </Stack>
+
+                        <Stack gap={3}>
+                            <ContextPanel
+                                ticket={ticket}
+                                groups={groups.data}
+                                canAssign={canAssign}
+                                pending={assignGroup.isPending}
+                                onAssignGroup={(groupId) => assignGroup.mutate({
+                                    group_id: groupId,
+                                    expected_version: ticket.version,
+                                })}
+                            />
+
+                            <Surface>
+                                <Stack gap={2}>
+                                    <Text type="secondary">Status actions</Text>
+                                    <Inline gap={2}>
+                                        {(ticket.allowed_transitions ?? [])
+                                            .filter((target) => target !== 'resolved')
+                                            .map((target) => (
+                                                <Button
+                                                    key={target}
+                                                    disabled={!canRespond}
+                                                    loading={transition.isPending}
+                                                    onClick={() => transition.mutate({
+                                                        to_status: target,
+                                                        expected_version: ticket.version,
+                                                        public_message:
+                                                            target === 'waiting_customer'
+                                                                ? draft || undefined
+                                                                : undefined,
+                                                        reason: target === 'cancelled'
+                                                            ? 'Cancelled by an agent'
+                                                            : undefined,
+                                                    })}
+                                                >
+                                                    {labelOf(AGENT_STATUS_LABELS, target)}
+                                                </Button>
+                                            ))}
+                                        {(ticket.allowed_transitions ?? [])
+                                            .includes('resolved') && (
+                                            <Button
+                                                variant="primary"
+                                                disabled={!canResolve}
+                                                onClick={() => setResolveOpen(true)}
+                                            >
+                                                Resolve
+                                            </Button>
+                                        )}
+                                    </Inline>
+                                    {ticket.allowed_transitions?.includes(
+                                        'waiting_customer',
+                                    ) && (
+                                        <Text type="secondary">
+                                            To move to “Waiting on customer”,
+                                            write a customer-visible message in
+                                            the composer — the request for
+                                            information is mandatory.
+                                        </Text>
+                                    )}
+                                </Stack>
+                            </Surface>
+                        </Stack>
+                    </div>
+                </Stack>
+            )}
+
+            <ResolveModal
+                open={resolveOpen}
+                ticket={ticket}
+                pending={resolve.isPending}
+                onCancel={() => setResolveOpen(false)}
+                onSubmit={(payload) => {
+                    resolve.mutate(payload, {
+                        onSuccess: () => setResolveOpen(false),
+                    })
+                }}
+            />
+        </Drawer>
+    )
+}

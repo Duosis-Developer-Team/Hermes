@@ -31,6 +31,12 @@ export const routeLoaders = {
     taskManagement: () => import('../pages/admin/TaskManagementPage'),
     apiManagement: () => import('../pages/admin/ApiManagementPage'),
     developerPortal: () => import('../pages/developer/DeveloperPortalPage'),
+    // Ticket Hub: iki AYRI chunk. Musteri portali kullanicisi
+    // agent hub kodunu HIC indirmez (ve tersi).
+    ticketHub: () => import('../pages/tickets/TicketHubPage'),
+    supportPortal: () => import('../pages/tickets/SupportPortalPage'),
+    ticketIntegrations: () =>
+        import('../pages/tickets/TicketIntegrationsPage'),
 }
 
 /** Nav path'i → loader (Sprint 3 hover/focus prefetch). YALNIZCA kodu
@@ -41,6 +47,9 @@ export const loaderByPath = {
     '/project-management': routeLoaders.tasks,
     '/meetings': routeLoaders.meetings,
     '/developer': routeLoaders.developerPortal,
+    '/tickets': routeLoaders.ticketHub,
+    '/support': routeLoaders.supportPortal,
+    '/ticket-integrations': routeLoaders.ticketIntegrations,
     '/dashboard': routeLoaders.dashboard,
     '/management/billable-hours': routeLoaders.billableHours,
     '/management/reports': routeLoaders.reports,

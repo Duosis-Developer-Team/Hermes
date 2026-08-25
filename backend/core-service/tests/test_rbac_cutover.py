@@ -65,9 +65,20 @@ def test_new_permission_keys_in_catalog():
 
 
 def test_dependency_map_single_source():
+    # Bu esitlik BILINCLI bir kapidir: yeni bir bagimlilik eklemek,
+    # burayi da guncellemeyi gerektirir. Ticket modulunun operasyonel
+    # izinleri (create/respond/resolve/assign/view_all) modul erisimini
+    # GEREKTIRIR; `tickets.admin` ve `tickets.config.manage` bilerek
+    # bagimsizdir (ilki kendi kapsamini turetir, ikincisi ticket
+    # ICERIGI vermeyen bir konfigurasyon yetkisidir).
     assert PERMISSION_REQUIRES == {
         Perm.TASKS_ASSIGN: Perm.TASKS_ACCESS,
         Perm.ISSUES_ASSIGN: Perm.ISSUES_ACCESS,
+        Perm.TICKETS_CREATE: Perm.TICKETS_ACCESS,
+        Perm.TICKETS_RESPOND: Perm.TICKETS_ACCESS,
+        Perm.TICKETS_RESOLVE: Perm.TICKETS_ACCESS,
+        Perm.TICKETS_ASSIGN: Perm.TICKETS_ACCESS,
+        Perm.TICKETS_VIEW_ALL: Perm.TICKETS_ACCESS,
     }
 
 

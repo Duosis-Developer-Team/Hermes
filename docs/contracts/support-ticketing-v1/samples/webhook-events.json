@@ -1,0 +1,156 @@
+{
+  "ticket.created.v1": {
+    "event_id": "11111111-1111-4111-8111-111111111111",
+    "event_type": "ticket.created.v1",
+    "occurred_at": "2026-08-25T09:31:00Z",
+    "application_code": "logislot",
+    "source_tenant_id": "bta",
+    "source_ticket_id": "6f0f2f9a-0b3a-4a0e-9a3a-1c2d3e4f5061",
+    "ticket_id": "1a2b3c4d-5e6f-4071-8899-aabbccddeeff",
+    "ticket_number": "TKT-000123",
+    "aggregate_version": 1,
+    "sequence": 1,
+    "data": {
+      "status": "open",
+      "category": "bug",
+      "impact": "multiple_users",
+      "title": "Randevu kaydinda hata aliyorum",
+      "assigned_group": { "name": "DevOps Team" },
+      "created_at": "2026-08-25T09:31:00Z",
+      "updated_at": "2026-08-25T09:31:00Z"
+    }
+  },
+  "ticket.status_changed.v1": {
+    "event_id": "22222222-2222-4222-8222-222222222222",
+    "event_type": "ticket.status_changed.v1",
+    "occurred_at": "2026-08-25T10:05:00Z",
+    "application_code": "logislot",
+    "source_tenant_id": "bta",
+    "source_ticket_id": "6f0f2f9a-0b3a-4a0e-9a3a-1c2d3e4f5061",
+    "ticket_id": "1a2b3c4d-5e6f-4071-8899-aabbccddeeff",
+    "ticket_number": "TKT-000123",
+    "aggregate_version": 3,
+    "sequence": 3,
+    "data": {
+      "from_status": "open",
+      "to_status": "waiting_customer",
+      "changed_at": "2026-08-25T10:05:00Z",
+      "changed_by": "support"
+    }
+  },
+  "ticket.public_message_added.v1": {
+    "event_id": "33333333-3333-4333-8333-333333333333",
+    "event_type": "ticket.public_message_added.v1",
+    "occurred_at": "2026-08-25T10:05:00Z",
+    "application_code": "logislot",
+    "source_tenant_id": "bta",
+    "source_ticket_id": "6f0f2f9a-0b3a-4a0e-9a3a-1c2d3e4f5061",
+    "ticket_id": "1a2b3c4d-5e6f-4071-8899-aabbccddeeff",
+    "ticket_number": "TKT-000123",
+    "aggregate_version": 2,
+    "sequence": 2,
+    "data": {
+      "message_id": "44444444-4444-4444-8444-444444444444",
+      "sequence": 2,
+      "author_type": "agent",
+      "author_display_name": "DevOps Team",
+      "body": "Hata kodunu ve ekran goruntusunu paylasabilir misiniz?",
+      "body_format": "plain",
+      "created_at": "2026-08-25T10:05:00Z"
+    }
+  },
+  "ticket.assignment_changed.v1": {
+    "event_id": "55555555-5555-4555-8555-555555555555",
+    "event_type": "ticket.assignment_changed.v1",
+    "occurred_at": "2026-08-25T10:20:00Z",
+    "application_code": "logislot",
+    "source_tenant_id": "bta",
+    "source_ticket_id": "6f0f2f9a-0b3a-4a0e-9a3a-1c2d3e4f5061",
+    "ticket_id": "1a2b3c4d-5e6f-4071-8899-aabbccddeeff",
+    "ticket_number": "TKT-000123",
+    "aggregate_version": 4,
+    "sequence": 4,
+    "data": {
+      "assigned_group": { "name": "Platform Team" }
+    }
+  },
+  "ticket.resolved.v1": {
+    "event_id": "66666666-6666-4666-8666-666666666666",
+    "event_type": "ticket.resolved.v1",
+    "occurred_at": "2026-08-25T12:00:00Z",
+    "application_code": "logislot",
+    "source_tenant_id": "bta",
+    "source_ticket_id": "6f0f2f9a-0b3a-4a0e-9a3a-1c2d3e4f5061",
+    "ticket_id": "1a2b3c4d-5e6f-4071-8899-aabbccddeeff",
+    "ticket_number": "TKT-000123",
+    "aggregate_version": 6,
+    "sequence": 6,
+    "data": {
+      "resolution": {
+        "revision": 1,
+        "code": "fixed",
+        "summary": "Kaydetme akisindaki dogrulama hatasi giderildi.",
+        "workaround": null,
+        "fix_version": "2026.08.25",
+        "resolved_at": "2026-08-25T12:00:00Z",
+        "resolved_by_team": "Platform Team"
+      },
+      "status": "resolved"
+    }
+  },
+  "ticket.reopened.v1": {
+    "event_id": "77777777-7777-4777-8777-777777777777",
+    "event_type": "ticket.reopened.v1",
+    "occurred_at": "2026-08-26T08:00:00Z",
+    "application_code": "logislot",
+    "source_tenant_id": "bta",
+    "source_ticket_id": "6f0f2f9a-0b3a-4a0e-9a3a-1c2d3e4f5061",
+    "ticket_id": "1a2b3c4d-5e6f-4071-8899-aabbccddeeff",
+    "ticket_number": "TKT-000123",
+    "aggregate_version": 7,
+    "sequence": 7,
+    "data": {
+      "reopened_at": "2026-08-26T08:00:00Z",
+      "reopened_by": "customer",
+      "status": "reopened",
+      "reason": "Sorun tekrar etti."
+    }
+  },
+  "ticket.closed.v1": {
+    "event_id": "88888888-8888-4888-8888-888888888888",
+    "event_type": "ticket.closed.v1",
+    "occurred_at": "2026-09-01T12:00:00Z",
+    "application_code": "logislot",
+    "source_tenant_id": "bta",
+    "source_ticket_id": "6f0f2f9a-0b3a-4a0e-9a3a-1c2d3e4f5061",
+    "ticket_id": "1a2b3c4d-5e6f-4071-8899-aabbccddeeff",
+    "ticket_number": "TKT-000123",
+    "aggregate_version": 9,
+    "sequence": 9,
+    "data": {
+      "closed_at": "2026-09-01T12:00:00Z",
+      "closed_by": "system",
+      "status": "closed"
+    }
+  },
+  "ticket.attachment_ready.v1": {
+    "event_id": "99999999-9999-4999-8999-999999999999",
+    "event_type": "ticket.attachment_ready.v1",
+    "occurred_at": "2026-08-25T09:31:05Z",
+    "application_code": "logislot",
+    "source_tenant_id": "bta",
+    "source_ticket_id": "6f0f2f9a-0b3a-4a0e-9a3a-1c2d3e4f5061",
+    "ticket_id": "1a2b3c4d-5e6f-4071-8899-aabbccddeeff",
+    "ticket_number": "TKT-000123",
+    "aggregate_version": 1,
+    "sequence": 2,
+    "data": {
+      "attachment_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "file_name": "screen.png",
+      "size_bytes": 123456,
+      "mime_type": "image/png",
+      "visibility": "public",
+      "message_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    }
+  }
+}

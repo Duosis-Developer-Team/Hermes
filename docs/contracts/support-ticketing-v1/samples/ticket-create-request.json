@@ -1,0 +1,38 @@
+{
+  "contract_version": "1.0",
+  "source_ticket_id": "6f0f2f9a-0b3a-4a0e-9a3a-1c2d3e4f5061",
+  "source_tenant": {
+    "id": "bta",
+    "slug": "bta",
+    "display_name": "BTA"
+  },
+  "route": {
+    "group_id": "9e1a7c52-6a54-4b1f-9a7f-4f8d3c2b1a09",
+    "route_version": 3
+  },
+  "requester": {
+    "id": "user-1042",
+    "display_name": "Example User",
+    "email": "user@example.com"
+  },
+  "title": "Randevu kaydinda hata aliyorum",
+  "description": "Kaydet butonundan sonra islem tamamlanmiyor ve sayfa donuyor.",
+  "category": "bug",
+  "impact": "multiple_users",
+  "reproduction_steps": "1) Randevu ekranini ac 2) Formu doldur 3) Kaydet",
+  "expected_result": "Randevu kaydedilmeli",
+  "actual_result": "Sayfa donuyor, kayit olusmuyor",
+  "error_code": "LS-API-409",
+  "correlation_id": "3c9a6f18-9d2b-4f0e-8a1d-77c0b2e4f5a6",
+  "occurred_at": "2026-08-25T09:30:00Z",
+  "client_context": {
+    "app_version": "git-sha",
+    "environment": "prod",
+    "page_path": "/appointments/new",
+    "browser": "Chrome 140",
+    "os": "Windows 11",
+    "locale": "tr-TR",
+    "timezone": "Europe/Istanbul"
+  },
+  "attachment_upload_ids": []
+}

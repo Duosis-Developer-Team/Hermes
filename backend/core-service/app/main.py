@@ -42,6 +42,9 @@ from app.routers import (
     user_group_admin_router,
     api_admin_router,
     meetings_router,
+    tickets_router,
+    support_portal_router,
+    ticket_admin_router,
 )
 from shared.exceptions import HermesException
 from shared.metrics import setup_metrics, start_metrics_server
@@ -82,6 +85,17 @@ async def lifespan(app: FastAPI):
         run_startup_backfill(_bf_db)
     finally:
         _bf_db.close()
+    # Ticket Hub: support tenant DOGRULAMASI + idempotent application
+    # seed'i. Fail-closed — dogrulanamazsa modul kapali kalir, servis
+    # acilmaya devam eder (diger moduller etkilenmez).
+    from app.services.ticket_bootstrap import run_startup as _ticket_startup
+
+    _tk_db = SessionLocal()
+    try:
+        _tk = _ticket_startup(_tk_db)
+        print(f"🎫 Ticket Hub: {_tk}")
+    finally:
+        _tk_db.close()
     yield
     print(f"👋 {settings.SERVICE_NAME} kapatılıyor...")
 
@@ -171,6 +185,12 @@ app.include_router(task_admin_router, prefix=API_PREFIX)
 app.include_router(user_group_admin_router, prefix=API_PREFIX)
 app.include_router(api_admin_router, prefix=API_PREFIX)
 app.include_router(meetings_router, prefix=API_PREFIX)
+# Ortak urun ticket platformu — Duosis hub, musteri portali ve
+# entegrasyon yonetimi. Uc router da AYNI izin katalogunu kullanir;
+# hangi yuzeyin acilacagini istegin TENANT'i belirler.
+app.include_router(tickets_router, prefix=API_PREFIX)
+app.include_router(support_portal_router, prefix=API_PREFIX)
+app.include_router(ticket_admin_router, prefix=API_PREFIX)
 
 # =============================================================================
 # Public API (dis entegrasyonlar) — /api/public altina mount edilen IZOLE
@@ -180,6 +200,21 @@ app.include_router(meetings_router, prefix=API_PREFIX)
 from .public_api.app import create_public_app  # noqa: E402
 
 app.mount("/api/public", create_public_app())
+
+# =============================================================================
+# Support integration API — kaynak uygulamalarin (LogiSlot vb.) ticket
+# ingress'i. AYRI bir izole alt-uygulama:
+#   - sozlesme hata zarfi (correlation_id + retryable) Public API'nin
+#     DONMUS zarfindan farklidir;
+#   - kimlik `hsi_` service token'idir, `hms_` public token'i DEGIL;
+#   - service client'lar burada YAZABILIR (public API'de read-only
+#     kurali korunur).
+# Sozlesme yollari `/v1/support/...` aynen korunur:
+#   /api/integrations/v1/support/tickets
+# =============================================================================
+from .support_api.app import create_support_app  # noqa: E402
+
+app.mount("/api/integrations", create_support_app())
 
 
 @app.get("/health", tags=["Health"])
@@ -210,6 +245,19 @@ async def readiness_check():
     try:
         verify_schema_compatibility("core", engine)
     except Exception:  # noqa: BLE001 — ayrinti disariya CIKMAZ
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "service": settings.SERVICE_NAME},
+        )
+
+    # Ticket attachment durusu: operator ozelligi ACIKCA actiysa,
+    # object storage ve malware tarayici yapilandirmasi TAM olmali
+    # (05 §5 "scan service yoksa production readiness fail; fail-open
+    # yapilmaz"). Ozellik kapaliyken bu kontrol calismaz — ticket metin
+    # akisi ekten bagimsiz calisir.
+    from app.services.ticket_scanner import production_posture_error
+
+    if production_posture_error():
         return JSONResponse(
             status_code=503,
             content={"status": "not_ready", "service": settings.SERVICE_NAME},

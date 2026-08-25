@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "route_stale",
+    "message": "Ticket routing configuration must be refreshed.",
+    "correlation_id": "3c9a6f18-9d2b-4f0e-8a1d-77c0b2e4f5a6",
+    "retryable": false,
+    "details": {
+      "active_route_version": 4
+    }
+  }
+}

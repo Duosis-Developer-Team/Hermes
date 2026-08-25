@@ -143,6 +143,79 @@ class Settings(BaseSettings):
     PUBLIC_API_AUTH_FAIL_LIMIT_PER_MIN: int = 30
 
     # ==========================================================================
+    # Ortak urun ticket platformu (Ticket Hub)
+    # ==========================================================================
+    # Modulun tamami KAPALI baslar degil, ama support tenant'i
+    # YAPILANDIRILMADAN hicbir canonical yazma yapilamaz: tenant kimligi
+    # koda GOMULMEZ, ortamdan gelir ve startup'ta dogrulanir. Yanlis bir
+    # UUID ile baska bir tenant'ta ticket acilmasi kabul edilemez, bu
+    # yuzden dogrulama fail-closed'dir (modul kapanir, servis ayakta
+    # kalir — diger moduller etkilenmez).
+    SUPPORT_TICKETS_ENABLED: bool = True
+    HERMES_SUPPORT_TENANT_ID: str = ""
+    # Hermes'in KENDI urun kodu (source application). Kod, application
+    # kaydinin `code` alaniyla eslesir; immutable'dir.
+    SUPPORT_HERMES_APPLICATION_CODE: str = "hermes"
+
+    # Musteri dogrulama penceresi: resolved ticket kac gun sonra
+    # otomatik kapanir ve kac gun icinde reopen edilebilir (D-007).
+    SUPPORT_AUTO_CLOSE_DAYS: int = 7
+
+    # Musteri tarafi flood korumasi (02_HERMES §7).
+    SUPPORT_CREATE_LIMIT_PER_10MIN: int = 10
+    SUPPORT_CREATE_LIMIT_PER_DAY: int = 100
+    SUPPORT_REPLY_LIMIT_PER_MIN: int = 20
+    # Integration client icin varsayilan dakikalik limit (client'ta
+    # tanimliysa o kazanir).
+    SUPPORT_INTEGRATION_DEFAULT_RATE_LIMIT: int = 120
+
+    # --- Attachment / object storage -----------------------------------
+    # KAPALI baslar: object storage ve malware tarayici HAZIR OLMADAN
+    # attachment ozelligi production-ready SAYILMAZ (pack teslim kurali).
+    # Bayrak acikken /ready, storage+scanner konfigurasyonunu dogrular.
+    TICKET_ATTACHMENTS_ENABLED: bool = False
+    # local | s3
+    TICKET_STORAGE_BACKEND: str = "local"
+    TICKET_STORAGE_LOCAL_ROOT: str = "/var/lib/hermes/ticket-attachments"
+    TICKET_S3_ENDPOINT_URL: str = ""
+    TICKET_S3_REGION: str = "us-east-1"
+    TICKET_S3_BUCKET: str = ""
+    TICKET_S3_ACCESS_KEY_ID: str = ""
+    TICKET_S3_SECRET_ACCESS_KEY: str = ""
+    TICKET_S3_FORCE_PATH_STYLE: bool = True
+    # Nesne anahtari onekleri. Karantina, temiz alandan AYRI onektedir:
+    # temizlenmemis bir nesne yanlislikla servis edilemesin.
+    TICKET_S3_QUARANTINE_PREFIX: str = "quarantine/"
+    TICKET_S3_CLEAN_PREFIX: str = "attachments/"
+
+    TICKET_ATTACHMENT_MAX_FILES: int = 5
+    TICKET_ATTACHMENT_MAX_BYTES: int = 15 * 1024 * 1024
+    TICKET_ATTACHMENT_TOTAL_MAX_BYTES: int = 50 * 1024 * 1024
+    # Upload oturumunun omru; baglanmamis nesneler bu sureden sonra
+    # temizlik isine dusler (ticket eki ASLA silinmez).
+    TICKET_ATTACHMENT_SESSION_TTL_MINUTES: int = 60
+
+    # --- Malware tarayici ----------------------------------------------
+    # clamav          → gercek tarama (uretim gereksinimi)
+    # disabled_dev_only → tarama YOK; yalnizca PUBLIC_API_ENV='dev'te
+    #                   kabul edilir. 'live' ortamda bu deger attachment
+    #                   ozelligini ACMAZ (fail-closed, startup kontrolu).
+    TICKET_SCANNER_MODE: str = "clamav"
+    TICKET_SCANNER_HOST: str = ""
+    TICKET_SCANNER_PORT: int = 3310
+    TICKET_SCANNER_TIMEOUT_SECONDS: float = 30.0
+
+    # --- Giden event teslimati -----------------------------------------
+    TICKET_WEBHOOK_TIMEOUT_SECONDS: float = 10.0
+    # HTTPS zorunlu; yalnizca yerel gelistirme icin acilir.
+    TICKET_WEBHOOK_ALLOW_INSECURE_HTTP: bool = False
+    TICKET_DISPATCH_BATCH_SIZE: int = 50
+    # Imza sirlari ortam degiskeninden gelir; DB'de ve repo'da DEGIL.
+    # Ad kalibi: HERMES_TICKET_WEBHOOK_SECRET__<APPCODE_UPPER>
+    # (rotasyon slotu: ..._NEXT). Bkz. services/ticket_delivery_service.
+    TICKET_WEBHOOK_SECRET_ENV_PREFIX: str = "HERMES_TICKET_WEBHOOK_SECRET__"
+
+    # ==========================================================================
     # CORS Configuration
     # ==========================================================================
     

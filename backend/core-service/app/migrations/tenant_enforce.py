@@ -27,7 +27,7 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 from sqlalchemy import text
 
@@ -44,19 +44,39 @@ SECURITY_SCHEMA = "hermes_sec"
 GLOBALLY_UNIQUE = {("api_tokens", "uq_api_tokens_hash")}
 
 
-def _tenant_tables() -> Tuple[str, ...]:
+def _tenant_tables(only: Optional[Iterable[str]] = None) -> Tuple[str, ...]:
+    """Politika uygulanacak tablolar.
+
+    `only` verilmezse envanterin TAMAMI — 0005'in (cutover) davranisi.
+    Verilirse envanterle KESISIMI alinir: cutover SONRASI eklenen bir
+    modul (orn. ticketing, 0007) yalnizca KENDI tablolarina dokunur ve
+    canli bir veritabaninda mevcut tablolarin uzerinden gereksiz
+    ALTER/lock gecirmez. Kesisim onemli: `only` icinde envanterde
+    olmayan bir ad varsa (yazim hatasi) sessizce politika disi kalmasin
+    diye asagida ayrica dogrulanir.
+    """
     from app.models.mixins import tenant_owned_tables
 
-    return tenant_owned_tables()
+    inventory = tenant_owned_tables()
+    if only is None:
+        return inventory
+    wanted = tuple(only)
+    unknown = [t for t in wanted if t not in inventory]
+    if unknown:
+        raise RuntimeError(
+            "tenant-owned envanterinde olmayan tablo(lar) politika icin "
+            f"istendi: {unknown}"
+        )
+    return tuple(t for t in inventory if t in set(wanted))
 
 
 # =============================================================================
 # 1) tenant_id NOT NULL
 # =============================================================================
 
-def enforce_not_null(conn) -> None:
+def enforce_not_null(conn, only: Optional[Iterable[str]] = None) -> None:
     """Backfill dogrulanmis olmali; NULL kalan satir varsa DURUR."""
-    for table in _tenant_tables():
+    for table in _tenant_tables(only):
         remaining = conn.execute(text(
             f"SELECT count(*) FROM {table} WHERE tenant_id IS NULL"
         )).scalar() or 0
@@ -74,7 +94,9 @@ def enforce_not_null(conn) -> None:
 # 2) Benzersizlikler tenant-qualified
 # =============================================================================
 
-def convert_unique_constraints(conn) -> List[str]:
+def convert_unique_constraints(
+    conn, only: Optional[Iterable[str]] = None
+) -> List[str]:
     """Her GLOBAL benzersizligin basina `tenant_id` ekler.
 
     Neden kritik: bugun `user_groups.name` global benzersiz. Iki farkli
@@ -86,7 +108,7 @@ def convert_unique_constraints(conn) -> List[str]:
     ifadeli index mi) korunur.
     """
     converted: List[str] = []
-    tables = set(_tenant_tables())
+    tables = set(_tenant_tables(only))
 
     # --- UNIQUE CONSTRAINT'ler ---
     rows = conn.execute(text(
@@ -164,7 +186,9 @@ _DELETE_ACTIONS = {
 }
 
 
-def convert_foreign_keys(conn) -> List[str]:
+def convert_foreign_keys(
+    conn, only: Optional[Iterable[str]] = None
+) -> List[str]:
     """tenant-owned → tenant-owned FK'leri (tenant_id, id)'ye tasir.
 
     Bu, uygulama bir hata yapip BASKA bir tenant'in UUID'sini yazmaya
@@ -173,7 +197,12 @@ def convert_foreign_keys(conn) -> List[str]:
 
     Onkosul: her ebeveyn tabloda `UNIQUE (tenant_id, id)`.
     """
-    tables = set(_tenant_tables())
+    # Cocuk tarafi `only` ile daraltilir; EBEVEYN tarafindaki
+    # UNIQUE (tenant_id, id) kisiti ise TUM envanter icin saglanir —
+    # yeni bir cocuk tablo, eski bir ebeveyni (orn. user_groups)
+    # referans edebilir ve o kisit yoksa composite FK kurulamaz.
+    all_tables = set(_tenant_tables())
+    tables = set(_tenant_tables(only))
     converted: List[str] = []
 
     # Ebeveyn tarafi icin (tenant_id, id) benzersizligi.
@@ -191,7 +220,7 @@ def convert_foreign_keys(conn) -> List[str]:
             "WHERE n.nspname = 'public' AND con.contype = 'u'"
         )).all()
     }
-    for table in sorted(tables):
+    for table in sorted(all_tables):
         if f"uq_{table}_tenant_id" in existing:
             continue
         conn.execute(text(
@@ -214,7 +243,12 @@ def convert_foreign_keys(conn) -> List[str]:
 
     for row in rows:
         child, parent = row["child_table"], row["parent_table"]
-        if child not in tables or parent not in tables:
+        # COCUK tarafi kapsam (`only`) ile daraltilir; EBEVEYN tarafi
+        # TUM envanterde aranir. Aksi halde yeni bir modulun ESKI bir
+        # tabloya (orn. tickets → user_groups) verdigi FK sessizce
+        # TEK KOLONLU kalirdi — yani baska bir tenant'in grubunu
+        # referans etmek veritabani seviyesinde hala mumkun olurdu.
+        if child not in tables or parent not in all_tables:
             continue
         definition = row["definition"]
         if "tenant_id" in definition:
@@ -282,7 +316,9 @@ def install_security_helpers(conn) -> None:
     ))
 
 
-def enable_row_level_security(conn) -> List[str]:
+def enable_row_level_security(
+    conn, only: Optional[Iterable[str]] = None
+) -> List[str]:
     """Her tenant tablosunda RLS'i ACAR ve ZORLAR.
 
     FORCE kritik: FORCE olmadan tablo SAHIBI politikadan muaftir ve
@@ -293,7 +329,7 @@ def enable_row_level_security(conn) -> List[str]:
     yok" icin permissive bir dal ASLA yazilmaz.
     """
     applied: List[str] = []
-    for table in _tenant_tables():
+    for table in _tenant_tables(only):
         policy = f"{table}_tenant_isolation"
         conn.execute(text(
             f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY"
@@ -410,14 +446,23 @@ def grant_runtime_role(conn, role_name: str) -> None:
 # Genel giris noktasi
 # =============================================================================
 
-def apply_enforce(conn, *, runtime_role: str = "hermes_core_app") -> dict:
-    """Enforce fazinin tamami — sirasi ONEMLIDIR."""
-    enforce_not_null(conn)
-    uniques = convert_unique_constraints(conn)
-    fks = convert_foreign_keys(conn)
+def apply_enforce(
+    conn,
+    *,
+    runtime_role: str = "hermes_core_app",
+    only: Optional[Iterable[str]] = None,
+) -> dict:
+    """Enforce fazinin tamami — sirasi ONEMLIDIR.
+
+    `only`: yalnizca bu tablolara uygula (cutover sonrasi eklenen
+    modullerin additive revizyonlari icin). Varsayilan: tum envanter.
+    """
+    enforce_not_null(conn, only)
+    uniques = convert_unique_constraints(conn, only)
+    fks = convert_foreign_keys(conn, only)
     install_security_helpers(conn)
     install_api_token_lookup(conn)
-    tables = enable_row_level_security(conn)
+    tables = enable_row_level_security(conn, only)
     grant_runtime_role(conn, runtime_role)
 
     report = {

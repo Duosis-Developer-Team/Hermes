@@ -55,6 +55,15 @@ const PERMISSION_LABELS = {
     'customers.manage': 'Customer management',
     'projects.manage': 'Project management',
     'reference.manage': 'Reference data (work types etc.)',
+    // Ortak urun ticket platformu (Ticket Hub)
+    'tickets.access': 'Support module access',
+    'tickets.create': 'Raise support tickets',
+    'tickets.respond': 'Reply and move tickets through work states',
+    'tickets.resolve': 'Resolve, reopen and close tickets',
+    'tickets.assign': 'Assign tickets to a group or agent',
+    'tickets.view_all': 'See every ticket in your workspace',
+    'tickets.admin': 'Full support authority + event delivery',
+    'tickets.config.manage': 'Support integration configuration',
 }
 
 /*
@@ -67,6 +76,13 @@ const PERMISSION_LABELS = {
 const PERMISSION_REQUIRES = {
     'tasks.assign': 'tasks.access',
     'issues.assign': 'issues.access',
+    // Ticket modulu: her operasyonel izin modul erisimini gerektirir.
+    // `tickets.admin` ve `tickets.config.manage` BILEREK bagimsizdir.
+    'tickets.create': 'tickets.access',
+    'tickets.respond': 'tickets.access',
+    'tickets.resolve': 'tickets.access',
+    'tickets.assign': 'tickets.access',
+    'tickets.view_all': 'tickets.access',
 }
 
 const applyPermissionDependencies = (next = [], prev = []) => {
@@ -95,6 +111,7 @@ const GROUP_LABELS = {
     customers: 'Configuration',
     projects: 'Configuration',
     reference: 'Configuration',
+    tickets: 'Support',
 }
 
 function groupCatalog(catalog) {

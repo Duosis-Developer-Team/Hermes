@@ -1,0 +1,11 @@
+{
+  "ticket_id": "1a2b3c4d-5e6f-4071-8899-aabbccddeeff",
+  "ticket_number": "TKT-000123",
+  "status": "open",
+  "assigned_group": {
+    "id": "9e1a7c52-6a54-4b1f-9a7f-4f8d3c2b1a09",
+    "name": "DevOps Team"
+  },
+  "created_at": "2026-08-25T09:31:00Z",
+  "version": 1
+}

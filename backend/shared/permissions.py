@@ -45,6 +45,21 @@ class Perm:
     CUSTOMERS_MANAGE = "customers.manage"
     PROJECTS_MANAGE = "projects.manage"
     REFERENCE_MANAGE = "reference.manage"
+    # -----------------------------------------------------------------
+    # Ortak urun ticket platformu (Ticket Hub — 2026-08-25)
+    # -----------------------------------------------------------------
+    # Iki YUZEY, tek katalog: normal tenant'ta musteri destek portali,
+    # Duosis support tenant'inda agent hub'i. Hangi yuzeyin acilacagini
+    # izinler DEGIL, istegin tenant'i belirler (bkz.
+    # services/support_tenant.py) — izinler "ne yapabilir"i soyler.
+    TICKETS_ACCESS = "tickets.access"
+    TICKETS_CREATE = "tickets.create"
+    TICKETS_RESPOND = "tickets.respond"
+    TICKETS_RESOLVE = "tickets.resolve"
+    TICKETS_ASSIGN = "tickets.assign"
+    TICKETS_VIEW_ALL = "tickets.view_all"
+    TICKETS_ADMIN = "tickets.admin"
+    TICKETS_CONFIG_MANAGE = "tickets.config.manage"
 
 
 # Aciklamalar (Ingilizce — API/dokuman dili). UI Turkce etiketlerini
@@ -104,6 +119,41 @@ PERMISSION_DESCRIPTIONS = {
         "Manage reference data: work types, work lines, platforms and "
         "activity types."
     ),
+    Perm.TICKETS_ACCESS: (
+        "Open the support ticket module. Data scope is decided "
+        "separately: support agents see the tickets of groups they are "
+        "an active member of; customer users see their own tickets."
+    ),
+    Perm.TICKETS_CREATE: (
+        "Raise a new support ticket on behalf of your own workspace. "
+        "Requires tickets.access."
+    ),
+    Perm.TICKETS_RESPOND: (
+        "Post public replies and internal notes and move a ticket "
+        "through its normal working states. Requires tickets.access."
+    ),
+    Perm.TICKETS_RESOLVE: (
+        "Resolve, reopen and close tickets, including writing the "
+        "customer-visible resolution. Requires tickets.access."
+    ),
+    Perm.TICKETS_ASSIGN: (
+        "Change the support group a ticket belongs to and assign it to "
+        "an agent inside that group. Requires tickets.access."
+    ),
+    Perm.TICKETS_VIEW_ALL: (
+        "See every ticket raised by your own workspace, not only your "
+        "own. Requires tickets.access."
+    ),
+    Perm.TICKETS_ADMIN: (
+        "Full support authority inside the Duosis support workspace: "
+        "see and act on every canonical ticket regardless of group "
+        "membership (audited) and operate event delivery. Does NOT "
+        "include integration configuration."
+    ),
+    Perm.TICKETS_CONFIG_MANAGE: (
+        "Manage support integration configuration: applications, source "
+        "tenant mappings, routing groups and integration credentials."
+    ),
 }
 
 
@@ -127,4 +177,26 @@ ALL_PERMISSIONS = _derive_all()
 PERMISSION_REQUIRES = {
     Perm.TASKS_ASSIGN: Perm.TASKS_ACCESS,
     Perm.ISSUES_ASSIGN: Perm.ISSUES_ACCESS,
+    # Ticket modulu: her operasyonel izin modul erisimini GEREKTIRIR.
+    # `tickets.admin` ve `tickets.config.manage` BILEREK bagimsizdir:
+    # ilki kendi genis kapsamini tasir (TICKETS_ADMIN_COVERS), ikincisi
+    # bir konfigurasyon yetkisidir ve ticket ICERIGI vermez.
+    Perm.TICKETS_CREATE: Perm.TICKETS_ACCESS,
+    Perm.TICKETS_RESPOND: Perm.TICKETS_ACCESS,
+    Perm.TICKETS_RESOLVE: Perm.TICKETS_ACCESS,
+    Perm.TICKETS_ASSIGN: Perm.TICKETS_ACCESS,
+    Perm.TICKETS_VIEW_ALL: Perm.TICKETS_ACCESS,
 }
+
+
+# `tickets.admin` sahibinin TUREVSEL olarak tasidigi operasyonel izinler.
+# Rol kaydinda gorunmeseler bile efektif kontrolde saglanir (tasks.admin
+# ile ayni desen). Katalogda YENI bir izin degildir — turetme kuralidir.
+TICKETS_ADMIN_COVERS = (
+    Perm.TICKETS_ACCESS,
+    Perm.TICKETS_CREATE,
+    Perm.TICKETS_RESPOND,
+    Perm.TICKETS_RESOLVE,
+    Perm.TICKETS_ASSIGN,
+    Perm.TICKETS_VIEW_ALL,
+)

@@ -1,0 +1,251 @@
+{
+  "api_version": "v1",
+  "client_context_allowed_keys": [
+    "app_version",
+    "environment",
+    "page_path",
+    "browser",
+    "os",
+    "device_class",
+    "locale",
+    "timezone",
+    "client_timestamp"
+  ],
+  "contract_version": "1.0",
+  "delivery": {
+    "backoff_seconds": [
+      10,
+      30,
+      120,
+      600,
+      1800,
+      7200
+    ],
+    "dead_letter_after_seconds": 86400,
+    "max_attempts": 10
+  },
+  "enums": {
+    "actor_type": [
+      "tenant_user",
+      "support_agent",
+      "platform_admin",
+      "integration_client",
+      "system_job"
+    ],
+    "application_status": [
+      "active",
+      "disabled"
+    ],
+    "attachment_scan_status": [
+      "pending_scan",
+      "clean",
+      "rejected",
+      "scan_failed"
+    ],
+    "author_type": [
+      "requester",
+      "agent",
+      "system",
+      "integration"
+    ],
+    "category": [
+      "bug",
+      "incident",
+      "improvement",
+      "question",
+      "data_correction"
+    ],
+    "delivery_status": [
+      "pending",
+      "in_flight",
+      "delivered",
+      "dead"
+    ],
+    "environment": [
+      "dev",
+      "live"
+    ],
+    "impact": [
+      "single_user",
+      "multiple_users",
+      "tenant_blocked",
+      "security_or_data_risk"
+    ],
+    "message_visibility": [
+      "public",
+      "internal"
+    ],
+    "priority": [
+      "low",
+      "normal",
+      "high",
+      "urgent"
+    ],
+    "resolution_code": [
+      "fixed",
+      "workaround",
+      "configuration",
+      "not_reproducible",
+      "duplicate",
+      "wont_fix",
+      "answered"
+    ],
+    "source_tenant_status": [
+      "active",
+      "suspended",
+      "archived"
+    ],
+    "status": [
+      "open",
+      "in_progress",
+      "waiting_customer",
+      "resolved",
+      "closed",
+      "reopened",
+      "cancelled"
+    ]
+  },
+  "errors": {
+    "attachment_not_ready": {
+      "http_status": 409,
+      "retryable": false
+    },
+    "conflict": {
+      "http_status": 409,
+      "retryable": false
+    },
+    "forbidden": {
+      "http_status": 403,
+      "retryable": false
+    },
+    "group_inactive": {
+      "http_status": 409,
+      "retryable": false
+    },
+    "idempotency_conflict": {
+      "http_status": 409,
+      "retryable": false
+    },
+    "idempotency_request_in_progress": {
+      "http_status": 409,
+      "retryable": true
+    },
+    "insufficient_scope": {
+      "http_status": 403,
+      "retryable": false
+    },
+    "integration_unavailable": {
+      "http_status": 503,
+      "retryable": true
+    },
+    "internal_error": {
+      "http_status": 500,
+      "retryable": true
+    },
+    "invalid_request": {
+      "http_status": 400,
+      "retryable": false
+    },
+    "invalid_state_transition": {
+      "http_status": 409,
+      "retryable": false
+    },
+    "not_found": {
+      "http_status": 404,
+      "retryable": false
+    },
+    "rate_limited": {
+      "http_status": 429,
+      "retryable": true
+    },
+    "route_missing": {
+      "http_status": 409,
+      "retryable": false
+    },
+    "route_stale": {
+      "http_status": 409,
+      "retryable": false
+    },
+    "source_tenant_unknown": {
+      "http_status": 404,
+      "retryable": false
+    },
+    "support_not_configured": {
+      "http_status": 503,
+      "retryable": true
+    },
+    "ticket_version_conflict": {
+      "http_status": 409,
+      "retryable": false
+    },
+    "unauthorized": {
+      "http_status": 401,
+      "retryable": false
+    },
+    "validation_error": {
+      "http_status": 422,
+      "retryable": false
+    }
+  },
+  "events": {
+    "internal_only": [
+      "ticket.internal_note_added.v1",
+      "ticket.admin_accessed.v1",
+      "ticket.priority_changed.v1",
+      "ticket.attachment_scanned.v1",
+      "ticket.attachment_downloaded.v1",
+      "ticket.delivery_replayed.v1"
+    ],
+    "outbound": [
+      "ticket.created.v1",
+      "ticket.status_changed.v1",
+      "ticket.public_message_added.v1",
+      "ticket.assignment_changed.v1",
+      "ticket.resolved.v1",
+      "ticket.reopened.v1",
+      "ticket.closed.v1",
+      "ticket.attachment_ready.v1"
+    ]
+  },
+  "limits": {
+    "attachment_allowed_mime": [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "text/plain"
+    ],
+    "attachment_max_bytes": 15728640,
+    "attachment_max_files": 5,
+    "attachment_total_max_bytes": 52428800,
+    "description_max": 10000,
+    "description_min": 20,
+    "message_max": 10000,
+    "resolution_summary_max": 10000,
+    "resolution_summary_min": 20,
+    "title_max": 160,
+    "title_min": 8
+  },
+  "scopes": {
+    "support:attachments:write": "Open attachment upload sessions and upload attachment content.",
+    "support:groups:read": "Read the Duosis support routing group catalog (names and active member counts only \u2014 never member identities).",
+    "support:tickets:read": "Read customer-visible snapshots of tickets that belong to the application's own source tenants.",
+    "support:tickets:write": "Create tickets and submit customer commands (reply, reopen, confirm-close, cancel) for the application's own source tenants."
+  },
+  "signature": {
+    "algorithm": "HMAC-SHA256",
+    "encoding": "lowercase-hex",
+    "headers": {
+      "event_id": "X-Hermes-Event-Id",
+      "key_id": "X-Hermes-Key-Id",
+      "signature": "X-Hermes-Signature",
+      "timestamp": "X-Hermes-Timestamp"
+    },
+    "max_skew_seconds": 300,
+    "signed_bytes_template": "{timestamp}.{body}"
+  },
+  "ticket_number": {
+    "pad": 6,
+    "prefix": "TKT-"
+  }
+}

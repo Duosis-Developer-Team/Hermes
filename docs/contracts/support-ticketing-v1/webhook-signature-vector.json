@@ -1,0 +1,12 @@
+{
+  "purpose": "Golden vector so both repositories compute the same signature byte for byte.",
+  "algorithm": "HMAC-SHA256",
+  "signed_bytes_template": "{timestamp}.{body}",
+  "encoding": "lowercase-hex",
+  "secret": "whsec_example_do_not_use_in_any_environment",
+  "timestamp": "1756100000",
+  "raw_body": "{\"aggregate_version\":8,\"application_code\":\"logislot\",\"data\":{},\"event_id\":\"0f5f6a2a-9f3f-4a9c-8f2e-2b4c6d8e0a11\",\"event_type\":\"ticket.resolved.v1\",\"occurred_at\":\"2026-08-25T12:00:00Z\",\"sequence\":8,\"source_tenant_id\":\"bta\",\"source_ticket_id\":\"6f0f2f9a-0b3a-4a0e-9a3a-1c2d3e4f5061\",\"ticket_id\":\"1a2b3c4d-5e6f-4071-8899-aabbccddeeff\",\"ticket_number\":\"TKT-000123\"}",
+  "expected_signature": "01efb959fdd81d034a7213862accec8ae806f21eaa249bb073907d665d786758",
+  "header": "X-Hermes-Signature",
+  "max_skew_seconds": 300
+}

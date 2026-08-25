@@ -41,6 +41,25 @@ from .user_group import (
     TaskGroupPermission,
     TaskGroupMemberOverride,
 )
+# Ortak urun ticket platformu (Ticket Hub). Tum tablolar tenant-owned;
+# RLS kapsami `TenantOwnedMixin` uzerinden OTOMATIK turetilir.
+from .ticketing import (
+    SupportApplication,
+    SupportAuditEvent,
+    SupportIntegrationClient,
+    SupportIntegrationToken,
+    SupportSourceTenant,
+    SupportTicketRoute,
+    Ticket,
+    TicketAttachment,
+    TicketDeliveryAttempt,
+    TicketEvent,
+    TicketIdempotencyRecord,
+    TicketMessage,
+    TicketOutboxEvent,
+    TicketResolution,
+    TICKETING_TABLES,
+)
 
 # NOTE: The legacy TaskGroup / TaskGroupMember classes have been removed
 # from import. Their physical tables (task_groups, task_group_members)
@@ -84,4 +103,20 @@ __all__ = [
     # Tenant projeksiyonu + sayaclar (WS2) — tenant OTORITESI auth_db'dir.
     "TenantRegistry",
     "TenantCounter",
+    # Ticket Hub
+    "SupportApplication",
+    "SupportAuditEvent",
+    "SupportIntegrationClient",
+    "SupportIntegrationToken",
+    "SupportSourceTenant",
+    "SupportTicketRoute",
+    "Ticket",
+    "TicketAttachment",
+    "TicketDeliveryAttempt",
+    "TicketEvent",
+    "TicketIdempotencyRecord",
+    "TicketMessage",
+    "TicketOutboxEvent",
+    "TicketResolution",
+    "TICKETING_TABLES",
 ]

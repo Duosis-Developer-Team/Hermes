@@ -128,4 +128,31 @@ export const queryKeys = {
     },
     reports: { get all() { return k('reports') } },
     apiClients: { get all() { return k('apiClients') } },
+    /** Ticket Hub — yuzey baglami, kuyruklar ve ticket aileleri.
+     *  `context` AYRI bir anahtar: yuzey karari degistiginde tum
+     *  ticket cache'inin gecersiz olmasi gerekmez. */
+    ticketContext: { get all() { return k('ticket-context') } },
+    tickets: {
+        get all() { return k('tickets') },
+        list: (filters) => k('tickets', 'list', stableFilters(filters)),
+        detail: (id) => k('tickets', 'detail', id),
+        audit: (id) => k('tickets', 'audit', id),
+        get queues() { return k('tickets', 'queues') },
+        get applications() { return k('tickets', 'applications') },
+        get routingGroups() { return k('tickets', 'routing-groups') },
+        groupMembers: (groupId) => k('tickets', 'group-members', groupId),
+    },
+    supportTickets: {
+        get all() { return k('support-tickets') },
+        list: (filters) => k('support-tickets', 'list', stableFilters(filters)),
+        detail: (id) => k('support-tickets', 'detail', id),
+    },
+    ticketAdmin: {
+        get all() { return k('ticket-admin') },
+        get applications() { return k('ticket-admin', 'applications') },
+        get sourceTenants() { return k('ticket-admin', 'source-tenants') },
+        get clients() { return k('ticket-admin', 'clients') },
+        get delivery() { return k('ticket-admin', 'delivery') },
+        get health() { return k('ticket-admin', 'health') },
+    },
 }

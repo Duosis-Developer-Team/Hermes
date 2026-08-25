@@ -1,0 +1,126 @@
+# =============================================================================
+# HERMES - Ticket bakim isi
+# =============================================================================
+# Saatlik. Uc DAR is:
+#   1) dogrulama penceresi dolmus `resolved` ticket'lari kapatir (7 gun);
+#   2) suresi dolmus ve HICBIR ticket'a baglanmamis staging nesnelerini
+#      bosaltir — ticket EKI ASLA silinmez;
+#   3) suresi dolmus idempotency anahtarlarini budar.
+#
+# Ticket, mesaj, cozum ve audit kayitlari HICBIR kosulda silinmez.
+#
+# NOT (deploy mekanigi): CD yalnizca set-image/restart yapar — bu
+# manifest sunucuda MANUEL
+#   kubectl apply -f k8s/ticket-maintenance-cronjob.yaml
+# ister.
+# =============================================================================
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hermes-ticket-maintenance
+  namespace: hermes-dev
+spec:
+  schedule: "17 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: ghcr-secret
+          containers:
+            - name: ticket-maintenance
+              image: ghcr.io/duosis-developer-team/hermes-core-service:dev
+              imagePullPolicy: Always
+              command: ["python", "-m", "app.jobs.ticket_maintenance"]
+              env:
+                - name: HERMES_ENVIRONMENT
+                  value: "dev"
+                - name: CORE_DB_HOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: DB_HOST_CORE
+                - name: CORE_DB_PORT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: DB_PORT
+                - name: CORE_DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-db-roles
+                      key: CORE_APP_DB_USER
+                - name: CORE_DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-db-roles
+                      key: CORE_APP_DB_PASSWORD
+                - name: CORE_DB_NAME
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: POSTGRES_DB_CORE
+                - name: JWT_PUBLIC_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-jwt-auth
+                      key: JWT_PUBLIC_KEY
+                - name: SUPPORT_TICKETS_ENABLED
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: SUPPORT_TICKETS_ENABLED
+                      optional: true
+                - name: HERMES_SUPPORT_TENANT_ID
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: HERMES_SUPPORT_TENANT_ID
+                      optional: true
+                - name: SUPPORT_AUTO_CLOSE_DAYS
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: SUPPORT_AUTO_CLOSE_DAYS
+                      optional: true
+                - name: TICKET_ATTACHMENTS_ENABLED
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: TICKET_ATTACHMENTS_ENABLED
+                      optional: true
+                - name: TICKET_STORAGE_BACKEND
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: TICKET_STORAGE_BACKEND
+                      optional: true
+                - name: TICKET_S3_ENDPOINT_URL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: TICKET_S3_ENDPOINT_URL
+                      optional: true
+                - name: TICKET_S3_BUCKET
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: TICKET_S3_BUCKET
+                      optional: true
+                - name: TICKET_S3_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-ticket-storage
+                      key: TICKET_S3_ACCESS_KEY_ID
+                      optional: true
+                - name: TICKET_S3_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-ticket-storage
+                      key: TICKET_S3_SECRET_ACCESS_KEY
+                      optional: true

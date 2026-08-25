@@ -21,6 +21,9 @@ from .task_admin import router as task_admin_router
 from .user_group_admin import router as user_group_admin_router
 from .api_admin import router as api_admin_router
 from .meetings import router as meetings_router
+from .tickets import router as tickets_router
+from .support_portal import router as support_portal_router
+from .ticket_admin import router as ticket_admin_router
 
 __all__ = [
     "customers_router",
@@ -41,4 +44,7 @@ __all__ = [
     "user_group_admin_router",
     "api_admin_router",
     "meetings_router",
+    "tickets_router",
+    "support_portal_router",
+    "ticket_admin_router",
 ]

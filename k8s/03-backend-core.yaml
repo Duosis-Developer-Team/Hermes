@@ -163,6 +163,108 @@ spec:
               key: APP_BASE_URL
               optional: true
 
+        # ------------------------------------------------------------------
+        # Ortak urun ticket platformu (Ticket Hub)
+        # ------------------------------------------------------------------
+        # HEPSI `optional: true`: anahtar henuz ConfigMap'te yoksa pod
+        # ACILIR ve modul KAPALI kalir (fail-closed). Boylece bu manifest
+        # ile secret/config uygulanmasi arasindaki sirayi kacirmak
+        # rollout'u bloklamaz.
+        #
+        # HERMES_SUPPORT_TENANT_ID bos/gecersiz ise modul kapalidir:
+        # canonical ticket YAZILAMAZ. Yanlis bir UUID ile BASKA bir
+        # tenant'a yazma ihtimali, startup dogrulamasiyla kapatilir.
+        - name: SUPPORT_TICKETS_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: SUPPORT_TICKETS_ENABLED
+              optional: true
+        - name: HERMES_SUPPORT_TENANT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: HERMES_SUPPORT_TENANT_ID
+              optional: true
+        - name: SUPPORT_AUTO_CLOSE_DAYS
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: SUPPORT_AUTO_CLOSE_DAYS
+              optional: true
+        # Attachment ozelligi: object storage + malware tarayici HAZIR
+        # OLMADAN acilmaz. Acikken /ready, yapilandirmayi dogrular ve
+        # eksikse pod trafige ALINMAZ (fail-open yok).
+        - name: TICKET_ATTACHMENTS_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: TICKET_ATTACHMENTS_ENABLED
+              optional: true
+        - name: TICKET_STORAGE_BACKEND
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: TICKET_STORAGE_BACKEND
+              optional: true
+        - name: TICKET_S3_ENDPOINT_URL
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: TICKET_S3_ENDPOINT_URL
+              optional: true
+        - name: TICKET_S3_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: TICKET_S3_REGION
+              optional: true
+        - name: TICKET_S3_BUCKET
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: TICKET_S3_BUCKET
+              optional: true
+        - name: TICKET_S3_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: hermes-ticket-storage
+              key: TICKET_S3_ACCESS_KEY_ID
+              optional: true
+        - name: TICKET_S3_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: hermes-ticket-storage
+              key: TICKET_S3_SECRET_ACCESS_KEY
+              optional: true
+        - name: TICKET_SCANNER_MODE
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: TICKET_SCANNER_MODE
+              optional: true
+        - name: TICKET_SCANNER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: TICKET_SCANNER_HOST
+              optional: true
+        # Giden webhook imzalama sirri: uygulama KODU basina bir anahtar.
+        # Secret'ta yoksa o uygulamanin olaylari GONDERILMEZ (imzasiz
+        # gonderme yolu YOKTUR) ve kuyrukta retry'da bekler.
+        - name: HERMES_TICKET_WEBHOOK_SECRET__LOGISLOT
+          valueFrom:
+            secretKeyRef:
+              name: hermes-ticket-webhooks
+              key: HERMES_TICKET_WEBHOOK_SECRET__LOGISLOT
+              optional: true
+        - name: HERMES_TICKET_WEBHOOK_SECRET__LOGISLOT_NEXT
+          valueFrom:
+            secretKeyRef:
+              name: hermes-ticket-webhooks
+              key: HERMES_TICKET_WEBHOOK_SECRET__LOGISLOT_NEXT
+              optional: true
+
         livenessProbe:
           httpGet:
             path: /health

@@ -65,3 +65,36 @@ data:
   NOTIF_NOTIFY_ASSIGNER: "true"
   # Public app URL for the "View task" button; leave empty to omit the link.
   APP_BASE_URL: ""
+
+  # ---------------------------------------------------------------------
+  # Ortak urun ticket platformu (Ticket Hub)
+  # ---------------------------------------------------------------------
+  # HERMES_SUPPORT_TENANT_ID = Duosis tenant'inin UUID'si. BOS BIRAKILIRSA
+  # modul KAPALIDIR (fail-closed) ve hicbir canonical ticket yazilmaz.
+  # Deger koda GOMULMEZ; ortam sahibi doldurur:
+  #
+  #   kubectl -n hermes-dev exec deploy/auth-service -- \
+  #     python -c "import os;print(os.environ.get('INITIAL_TENANT_SLUG'))"
+  #   # veya auth_db: SELECT id FROM tenants WHERE slug='duosis';
+  #
+  # YANLIS bir UUID yazmak BASKA bir tenant'ta ticket acmak demektir;
+  # startup dogrulamasi tenant'i `tenant_registry`de arar ve
+  # bulamazsa/pasifse modulu ACMAZ.
+  SUPPORT_TICKETS_ENABLED: "true"
+  HERMES_SUPPORT_TENANT_ID: ""
+  SUPPORT_AUTO_CLOSE_DAYS: "7"
+
+  # Attachment ozelligi. Object storage ve malware tarayici HAZIR
+  # OLMADAN "true" YAPILMAZ: acikken /ready yapilandirmayi dogrular ve
+  # eksikse pod trafige alinmaz. Ticket METIN akisi bu bayraktan
+  # bagimsiz calisir.
+  TICKET_ATTACHMENTS_ENABLED: "false"
+  # local | s3   (uretimde s3 zorunlu)
+  TICKET_STORAGE_BACKEND: "local"
+  TICKET_S3_ENDPOINT_URL: ""
+  TICKET_S3_REGION: "us-east-1"
+  TICKET_S3_BUCKET: ""
+  # clamav | disabled_dev_only  ('disabled_dev_only' YALNIZCA dev'de
+  # kabul edilir; 'live' ortamda attachment ozelligini ACMAZ)
+  TICKET_SCANNER_MODE: "disabled_dev_only"
+  TICKET_SCANNER_HOST: ""

@@ -64,6 +64,9 @@ const TaskManagementPage = lazy(routeLoaders.taskManagement)
 const ApiManagementPage = lazy(routeLoaders.apiManagement)
 const DeveloperPortalPage = lazy(routeLoaders.developerPortal)
 const MeetingsPage = lazy(routeLoaders.meetings)
+const TicketHubPage = lazy(routeLoaders.ticketHub)
+const SupportPortalPage = lazy(routeLoaders.supportPortal)
+const TicketIntegrationsPage = lazy(routeLoaders.ticketIntegrations)
 import { useTaskPermissions } from './hooks/useTaskPermissions'
 
 /**
@@ -261,6 +264,40 @@ function App() {
                         </TaskProtectedRoute>
                     }
                 />
+                {/* Ortak urun ticket platformu — IKI AYRI rota.
+                    Hangisinin acilacagina SUNUCU karar verir
+                    (`/tickets/context`); sayfalar yanlis yuzeye gelen
+                    kullaniciyi digerine yonlendirir. Ayri rota tercihi
+                    bilinclidir: RBAC ve UX amaci netlesir. */}
+                <Route
+                    path="tickets"
+                    element={
+                        <ProtectedRoute permission={'tickets.access'}>
+                            <TicketHubPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="support"
+                    element={
+                        <ProtectedRoute permission={'tickets.access'}>
+                            <SupportPortalPage />
+                        </ProtectedRoute>
+                    }
+                />
+                {/* Entegrasyon yonetimi AYRI izin uzayidir: konfigurasyon
+                    yetkisi ticket ICERIGI vermez. */}
+                <Route
+                    path="ticket-integrations"
+                    element={
+                        <ProtectedRoute
+                            permission={['tickets.config.manage', 'tickets.admin']}
+                        >
+                            <TicketIntegrationsPage />
+                        </ProtectedRoute>
+                    }
+                />
+
                 {/* Back-compat: old /tasks links (e.g. earlier e-mails). */}
                 <Route
                     path="tasks"

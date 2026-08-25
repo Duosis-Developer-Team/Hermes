@@ -1,0 +1,131 @@
+/* =============================================================================
+   HERMES - Ticket yuzeyleri
+   =============================================================================
+   YALNIZCA semantic token kullanilir (ham hex/px shadow YOK) — DS V2
+   kurali. Karanlik mod otomatik calisir cunku tokenlar tema ile doner.
+   ========================================================================== */
+
+.h-ticket-timeline { width: 100%; }
+
+.h-ticket-message {
+    border: 1px solid var(--h-border-subtle);
+    border-radius: var(--h-radius-md);
+    padding: var(--h-space-3);
+    background: var(--h-bg-elevated);
+}
+
+/* Musterinin kendi mesaji: hafif vurgulu ama sessiz. */
+.h-ticket-message--requester { background: var(--h-bg-base); }
+
+/* Ic not: amber cerceve + arka plan. Renk TEK basina anlam tasimaz;
+   yaninda kilit ikonu ve "müşteri göremez" metni bulunur. */
+.h-ticket-message--internal {
+    border-color: var(--h-warning);
+    background: color-mix(in srgb, var(--h-warning) 8%, transparent);
+}
+
+.h-ticket-message__head {
+    display: flex;
+    align-items: center;
+    gap: var(--h-space-2);
+    flex-wrap: wrap;
+    margin-bottom: var(--h-space-2);
+}
+
+.h-ticket-message__when { margin-left: auto; font-size: var(--h-font-meta); }
+
+.h-ticket-message__body { white-space: pre-wrap; word-break: break-word; }
+
+.h-ticket-attachments {
+    list-style: none;
+    margin: var(--h-space-2) 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--h-space-1);
+}
+
+.h-ticket-attachments li {
+    display: flex;
+    align-items: center;
+    gap: var(--h-space-2);
+    font-size: var(--h-font-meta);
+}
+
+.h-ticket-attachments__meta { color: var(--h-text-muted); }
+
+/* Cozulmus ticket: yesil sol kenar + check rozeti.
+   Baslik STRIKETHROUGH YAPILMAZ (okunabilirlik karari). */
+.h-ticket-row--resolved {
+    border-left: 3px solid var(--h-success);
+}
+
+.h-ticket-resolution {
+    border: 1px solid var(--h-success);
+    border-left-width: 3px;
+    border-radius: var(--h-radius-md);
+    padding: var(--h-space-3);
+    background: color-mix(in srgb, var(--h-success) 8%, transparent);
+}
+
+.h-ticket-composer--internal {
+    border: 1px solid var(--h-warning);
+    border-radius: var(--h-radius-md);
+    padding: var(--h-space-2);
+    background: color-mix(in srgb, var(--h-warning) 6%, transparent);
+}
+
+.h-ticket-composer--public {
+    border: 1px solid var(--h-border-subtle);
+    border-radius: var(--h-radius-md);
+    padding: var(--h-space-2);
+}
+
+.h-ticket-workbench {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+    gap: var(--h-space-4);
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .h-ticket-workbench { grid-template-columns: minmax(0, 1fr); }
+}
+
+.h-ticket-context dl {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--h-space-2);
+    margin: 0;
+}
+
+.h-ticket-context dt {
+    color: var(--h-text-muted);
+    font-size: var(--h-font-meta);
+}
+
+.h-ticket-context dd { margin: 0; word-break: break-word; }
+
+.h-ticket-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--h-space-1);
+    width: 100%;
+    padding: var(--h-space-4);
+    border: 1px dashed var(--h-border-subtle);
+    border-radius: var(--h-radius-md);
+    background: var(--h-bg-base);
+    color: var(--h-text-secondary);
+    cursor: pointer;
+    text-align: center;
+    font: inherit;
+}
+
+.h-ticket-dropzone:hover,
+.h-ticket-dropzone:focus-visible { border-color: var(--h-brand); }
+
+.h-ticket-dropzone--active {
+    border-color: var(--h-brand);
+    background: var(--h-bg-selected);
+}
