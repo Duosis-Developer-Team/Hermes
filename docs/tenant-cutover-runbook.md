@@ -54,19 +54,23 @@ ls -lh core_db_$STAMP.dump auth_db_$STAMP.dump   # boyut > 0 OLMALI
 ```bash
 kubectl -n $NS exec -i core-db-0 -- psql -U hermes -d core_db \
   -v ON_ERROR_STOP=1 -v prefix=hermes_core \
-  -v migrator_password="'<CORE_MIGRATOR_PW>'" \
-  -v app_password="'<CORE_APP_PW>'" \
+  -v migrator_password='<CORE_MIGRATOR_PW>' \
+  -v app_password='<CORE_APP_PW>' \
   -f - < backend/sql_scripts/roles/00_roles.sql
 
 kubectl -n $NS exec -i auth-db-0 -- psql -U hermes -d auth_db \
   -v ON_ERROR_STOP=1 -v prefix=hermes_auth \
-  -v migrator_password="'<AUTH_MIGRATOR_PW>'" \
-  -v app_password="'<AUTH_APP_PW>'" \
+  -v migrator_password='<AUTH_MIGRATOR_PW>' \
+  -v app_password='<AUTH_APP_PW>' \
   -f - < backend/sql_scripts/roles/00_roles.sql
 ```
 
 Betiğin çıktısında **`bypasses_rls = f`** ve
 **`tables_owned_by_app_role = 0`** görülmelidir.
+
+> **Şifreyi tırnaksız geçin** ve doğrulamayı **127.0.0.1 üzerinden
+> yapmayın** — gerekçeler `backend/sql_scripts/roles/README.md`'de.
+> İkisi de hermes-test'te gerçek arızaya yol açtı.
 
 ### 1.2b Var olan nesnelerin migrator'a devri — ZORUNLU
 

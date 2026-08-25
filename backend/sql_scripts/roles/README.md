@@ -29,18 +29,38 @@ Betik idempotenttir; yeniden calistirmak guvenlidir.
 kubectl -n hermes-dev exec -i core-db-0 -- \
   psql -U hermes -d core_db -v ON_ERROR_STOP=1 \
        -v prefix=hermes_core \
-       -v migrator_password="'<CORE_MIGRATOR_PW>'" \
-       -v app_password="'<CORE_APP_PW>'" \
+       -v migrator_password='<CORE_MIGRATOR_PW>' \
+       -v app_password='<CORE_APP_PW>' \
        -f - < backend/sql_scripts/roles/00_roles.sql
 
 # --- auth_db ---
 kubectl -n hermes-dev exec -i auth-db-0 -- \
   psql -U hermes -d auth_db -v ON_ERROR_STOP=1 \
        -v prefix=hermes_auth \
-       -v migrator_password="'<AUTH_MIGRATOR_PW>'" \
-       -v app_password="'<AUTH_APP_PW>'" \
+       -v migrator_password='<AUTH_MIGRATOR_PW>' \
+       -v app_password='<AUTH_APP_PW>' \
        -f - < backend/sql_scripts/roles/00_roles.sql
 ```
+
+> **SIFREYI TIRNAKSIZ GECIN.** Betik `:'migrator_password'` kullanir ve
+> psql degeri ZATEN SQL literali olarak tirnaklar. Deger icinde ayrica
+> tirnak olursa cift tirnaklanir ve gercek sifre `'abc123'` (tirnaklar
+> DAHIL) olur. Bu hata sessizdir: rol yaratilir, betik basarili gorunur,
+> ama uygulama/migration `password authentication failed` alir.
+> hermes-test'te birebir yasandi.
+
+> **DOGRULAMAYI 127.0.0.1 UZERINDEN YAPMAYIN.** `pg_hba.conf`'ta
+> localhost `trust`'tir; oradan yapilan baglanti sifreyi HIC dogrulamaz
+> ve yanlis sifreyle bile basarili olur. Gercek yol Service DNS +
+> `scram-sha-256`'dir:
+>
+> ```bash
+> kubectl -n <ns> exec deploy/auth-service -- \
+>   env PGPASSWORD="<AUTH_APP_PW>" python -c \
+>   "import os,psycopg2;psycopg2.connect(host='auth-db',port=5432,\
+>    user='hermes_auth_app',password=os.environ['PGPASSWORD'],\
+>    dbname='auth_db');print('OK')"
+> ```
 
 Betik sonunda iki dogrulama tablosu basar:
 
