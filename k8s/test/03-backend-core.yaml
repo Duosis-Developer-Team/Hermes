@@ -77,16 +77,20 @@ spec:
             configMapKeyRef:
               name: hermes-config
               key: DB_PORT
+        # RUNTIME ROL (WS1): uygulama artik veritabani superuser'i ile
+        # DEGIL, NOBYPASSRLS ve hicbir tablonun sahibi OLMAYAN
+        # `hermes_core_app` rolu ile baglanir. Bu adim yapilmadan RLS
+        # uygulama icin FIILEN DEVREDE DEGILDIR (superuser onu asar).
         - name: CORE_DB_USER
           valueFrom:
-            configMapKeyRef:
-              name: hermes-config
-              key: POSTGRES_USER
+            secretKeyRef:
+              name: hermes-db-roles
+              key: CORE_APP_DB_USER
         - name: CORE_DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: hermes-secrets
-              key: POSTGRES_PASSWORD
+              name: hermes-db-roles
+              key: CORE_APP_DB_PASSWORD
         - name: CORE_DB_NAME
           valueFrom:
             configMapKeyRef:
@@ -160,7 +164,9 @@ spec:
           failureThreshold: 5
         readinessProbe:
           httpGet:
-            path: /health
+            # /ready sema uyumlulugunu da dogrular: yanlis sema uzerinde
+            # calisan bir pod TRAFIK ALMAZ (fail-closed).
+            path: /ready
             port: 8001
           initialDelaySeconds: 15
           periodSeconds: 10

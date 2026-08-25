@@ -53,6 +53,15 @@ spec:
               key: HERMES_S2S_TOKEN_NEXT
               optional: true
         # Database Connection
+        # Tenant cozumu: hermes-test PRODUCTION-LIKE'dir, ConfigMap'te
+        # "false" tasir ve slug ile tenant secimi KAPALIDIR. Yine de
+        # acikca baglanir ki ayar gercek ve denetlenebilir olsun.
+        - name: HERMES_ALLOW_WORKSPACE_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: HERMES_ALLOW_WORKSPACE_PATH
+              optional: true
         - name: AUTH_DB_HOST
           valueFrom:
             configMapKeyRef:
@@ -63,16 +72,20 @@ spec:
             configMapKeyRef:
               name: hermes-config
               key: DB_PORT
+        # RUNTIME ROL (WS1): uygulama artik veritabani superuser'i ile
+        # DEGIL, NOBYPASSRLS ve hicbir tablonun sahibi OLMAYAN
+        # `hermes_auth_app` rolu ile baglanir. Bu adim yapilmadan RLS
+        # uygulama icin FIILEN DEVREDE DEGILDIR (superuser onu asar).
         - name: AUTH_DB_USER
           valueFrom:
-            configMapKeyRef:
-              name: hermes-config
-              key: POSTGRES_USER
+            secretKeyRef:
+              name: hermes-db-roles
+              key: AUTH_APP_DB_USER
         - name: AUTH_DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: hermes-secrets
-              key: POSTGRES_PASSWORD
+              name: hermes-db-roles
+              key: AUTH_APP_DB_PASSWORD
         - name: AUTH_DB_NAME
           valueFrom:
             configMapKeyRef:
@@ -126,7 +139,9 @@ spec:
           failureThreshold: 5
         readinessProbe:
           httpGet:
-            path: /health
+            # /ready sema uyumlulugunu da dogrular: yanlis sema uzerinde
+            # calisan bir pod TRAFIK ALMAZ (fail-closed).
+            path: /ready
             port: 8000
           initialDelaySeconds: 15
           periodSeconds: 10
