@@ -271,13 +271,6 @@ jobs:
             kubectl -n "${NAMESPACE}" set image deployment/hermes-mcp hermes-mcp="${REGISTRY}/${OWNER}/hermes-mcp:${TAG}"
             kubectl -n "${NAMESPACE}" rollout status deployment/hermes-mcp --timeout=600s
           else
-      - name: Post-deploy tenant isolation smoke
-        # Rollout'tan SONRA kritik tenant garantilerini CANLI dogrular:
-        # sema revizyonu, runtime rol ayrimi, RLS kapsami, backfill
-        # butunlugu, baglamsiz erisimde 0 satir, /ready ve giris ucunun
-        # workspace cozdugu. Salt-okunur; hicbir is verisi yazilmaz.
-        run: ./scripts/k8s/post-deploy-tenant-smoke.sh hermes-test
-
             echo "hermes-mcp deployment not present yet — skipping (manual first apply required)"
           fi
 
@@ -297,3 +290,10 @@ jobs:
           kubectl -n "${NAMESPACE}" rollout status deployment/core-service --timeout=600s
           kubectl -n "${NAMESPACE}" rollout status deployment/reporting-service --timeout=600s
           kubectl -n "${NAMESPACE}" rollout status deployment/frontend --timeout=600s
+
+      - name: Post-deploy tenant isolation smoke
+        # Rollout'tan SONRA kritik tenant garantilerini CANLI dogrular:
+        # sema revizyonu, runtime rol ayrimi, RLS kapsami, backfill
+        # butunlugu, baglamsiz erisimde 0 satir, /ready ve giris ucunun
+        # workspace cozdugu. Salt-okunur; hicbir is verisi yazilmaz.
+        run: ./scripts/k8s/post-deploy-tenant-smoke.sh hermes-test

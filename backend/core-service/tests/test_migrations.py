@@ -664,3 +664,49 @@ def test_env_settings_read_by_code_are_wired_into_manifests():
         f"{unwired}. ConfigMap'e anahtar yazmak yetmez — Deployment'ta "
         "`env:` girdisi olmadan uygulama o degeri HIC gormez."
     )
+
+
+def test_workflow_files_are_valid_yaml_and_complete():
+    """CI is akislari GECERLI YAML olmali ve gerekli kapilari icermeli.
+
+    Bu test bir hatadan dogdu: `cd-test.yml`'a yaptigim bir duzenleme,
+    bir adimi shell BLOGUNUN ICINE dusurdu ve YAML'i kirdi. GitHub
+    gecersiz bir is akisi icin adi yerine DOSYA YOLUNU gosterip her
+    push'ta kirmizi bir kosu uretir — ve o dal ARTIK DEPLOY ETMEZ.
+    Sessiz degil ama kolayca "baska bir sey kirilmis" diye okunur;
+    hermes-test iki commit boyunca guncellenmedi.
+
+    Yerelde `yaml.safe_load` ile dogrulamak saniyeler suruyor; CI'a
+    bagimli kalmak yerine burada kilitleniyor.
+    """
+    import yaml
+
+    wf_dir = _REPO_ROOT / ".github" / "workflows"
+    files = sorted(wf_dir.glob("*.yml"))
+    assert files, "is akisi dosyasi bulunamadi"
+
+    for f in files:
+        try:
+            doc = yaml.safe_load(f.read_text(encoding="utf-8"))
+        except yaml.YAMLError as exc:  # noqa: PERF203
+            raise AssertionError(f"{f.name} GECERSIZ YAML: {exc}") from exc
+
+        assert doc.get("name"), f"{f.name}: `name` yok (GitHub yolu gosterir)"
+        assert doc.get("jobs"), f"{f.name}: job yok"
+
+        # Sema kapisi: migration adimi OLMADAN deploy, migrate edilmemis
+        # bir veritabanina pod cikarir.
+        text = f.read_text(encoding="utf-8")
+        if "set image" in text:
+            assert "run-migration-job.sh" in text, (
+                f"{f.name}: deploy ediyor ama migration kapisi YOK"
+            )
+            assert "post-deploy-tenant-smoke.sh" in text, (
+                f"{f.name}: deploy ediyor ama tenant duman testi YOK"
+            )
+
+        # Her `run:` bloğu bir ADIM seviyesinde olmali; shell blogunun
+        # icine dusmus bir adim YAML'i sessizce bozar.
+        for job in doc["jobs"].values():
+            for step in job.get("steps", []):
+                assert isinstance(step, dict), f"{f.name}: bozuk adim: {step!r}"
