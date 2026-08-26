@@ -98,6 +98,28 @@ class UserService:
         try:
             self.db.add(db_user)
             self.db.flush()
+
+            # TENANT UYELIGI — cutover sonrasi ZORUNLU.
+            #
+            # `users` GLOBAL bir tablodur; bir kimligin bir organizasyona
+            # erisimi YALNIZCA aktif uyelik satiriyla vardir. Cutover'dan
+            # once kullanici yaratmak yeterliydi; sonra degil. Uyelik
+            # yaratilmayinca kullanici olusuyor, listede gorunuyor, ama:
+            #   - giris "E-posta veya sifre hatali" ile reddediliyor
+            #     (parola dogru olsa bile — uyelik yok),
+            #   - rol atamasi "User not found" donuyor (ayni mesaj
+            #     bilerek kullanilir, numaralandirmayi onlemek icin).
+            # Canlida birebir bu yasandi.
+            if tenant_id is not None:
+                from ..models.tenancy import TenantMembership
+
+                self.db.add(TenantMembership(
+                    tenant_id=tenant_id,
+                    user_id=db_user.id,
+                    status="active",
+                ))
+                self.db.flush()
+
             # RBAC gecis koprusu: legacy is_admin=True ile olusturulan
             # kullanici system-admin rolunu de alir (tek dogruluk
             # kaynagi rol; sutun turetilmis).

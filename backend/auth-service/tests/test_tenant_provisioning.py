@@ -617,3 +617,100 @@ def test_adding_same_admin_twice_is_idempotent(platform_client, pg_session):
     assert pg_session.query(TenantMembership).filter(
         TenantMembership.tenant_id == tenant.id,
         TenantMembership.user_id == u.id).count() == 1
+
+
+# =============================================================================
+# 9) Kullanici olusturma UYELIK yaratmali (canli bug)
+# =============================================================================
+# Cutover'dan sonra bir kimligin organizasyona erisimi YALNIZCA aktif
+# uyelik satiriyla var. Olusturma uyelik yaratmayinca kullanici olusuyor,
+# listede gorunuyor, ama giris "E-posta veya sifre hatali" ile
+# reddediliyor ve rol atamasi "User not found" donuyor.
+
+def test_created_user_gets_active_membership(pg_session):
+    from app.models.tenancy import TenantMembership
+    from app.schemas.user import UserCreate
+    from app.services.user_service import UserService
+
+    tenant = _mk_tenant(pg_session, "duosis", hostname="10.0.0.9")
+    svc = UserService(pg_session)
+    user = svc.create(
+        UserCreate(email="yeni@duosis.com", full_name="Yeni",
+                   password="guvenli123"),
+        tenant_id=tenant.id,
+    )
+    m = pg_session.query(TenantMembership).filter(
+        TenantMembership.tenant_id == tenant.id,
+        TenantMembership.user_id == user.id,
+    ).one()
+    assert m.status == "active"
+
+
+@pytest.fixture()
+def signing(monkeypatch):
+    """Gercek RS256 anahtar cifti — token uretimi icin gerekli."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    from shared import auth as shared_auth
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_pem = key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode()
+    public_pem = key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode()
+    monkeypatch.setattr(shared_auth, "SIGNING_KEY", private_pem)
+    monkeypatch.setattr(shared_auth, "VERIFY_KEY", public_pem)
+    return shared_auth
+
+
+def test_created_user_can_actually_log_in(pg_session, signing):
+    """ASIL kanit: olusturulan kullanici GIRIS YAPABILMELI.
+
+    Uyelik satirini kontrol etmek yeterli degil — kullaniciyi ilgilendiren
+    sey giris yapabilmesi. Bu test uyelik ile kimlik dogrulamayi BIRLIKTE
+    kilitler.
+    """
+    from app.schemas.user import UserCreate
+    from app.services.auth_service import AuthService
+    from app.services.tenant_resolver import ResolvedTenant
+    from app.services.user_service import UserService
+
+    tenant = _mk_tenant(pg_session, "duosis", hostname="10.0.0.9")
+    UserService(pg_session).create(
+        UserCreate(email="giris@duosis.com", full_name="Giris",
+                   password="guvenli123"),
+        tenant_id=tenant.id,
+    )
+    resolved = ResolvedTenant(
+        id=tenant.id, slug=tenant.slug, display_name=tenant.display_name,
+        status=tenant.status,
+    )
+    token = AuthService(pg_session).authenticate(
+        email="giris@duosis.com", password="guvenli123", tenant=resolved,
+    )
+    assert token.access_token
+    assert token.user["email"] == "giris@duosis.com"
+
+
+def test_created_user_can_receive_roles(pg_session):
+    """Rol atamasi 'User not found' DONMEMELI."""
+    from app.schemas.user import UserCreate
+    from app.services import membership_service
+    from app.services.user_service import UserService
+
+    tenant = _mk_tenant(pg_session, "duosis", hostname="10.0.0.9")
+    user = UserService(pg_session).create(
+        UserCreate(email="rol@duosis.com", full_name="Rol",
+                   password="guvenli123"),
+        tenant_id=tenant.id,
+    )
+    # set_user_roles bu kontrolu yapip 404 uretiyordu.
+    assert membership_service.get_active_membership(
+        pg_session, tenant_id=tenant.id, user_id=user.id
+    ) is not None
