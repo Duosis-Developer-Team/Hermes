@@ -56,3 +56,33 @@ data:
   NOTIF_NOTIFY_ASSIGNER: "true"
   # Public app URL for the "View task" button in notification e-mails.
   APP_BASE_URL: "https://hermes.duosis.com"
+
+  # ---------------------------------------------------------------------
+  # Ortak urun ticket platformu (Ticket Hub) — hermes-test
+  # ---------------------------------------------------------------------
+  # DIKKAT: bu UUID hermes-test'in KENDI Duosis tenant'idir ve dev'inkinden
+  # FARKLIDIR (ayri veritabani). Yanlis UUID yazmak baska bir tenant'ta
+  # ticket acmak demektir; startup dogrulamasi tenant'i `tenant_registry`de
+  # arar ve bulamazsa/pasifse modulu ACMAZ (fail-closed).
+  SUPPORT_TICKETS_ENABLED: "true"
+  HERMES_SUPPORT_TENANT_ID: "4dc7666d-d261-4937-870f-0a877c6983d9"
+  SUPPORT_AUTO_CLOSE_DAYS: "7"
+
+  # Attachment: object storage + malware tarayici HAZIR OLANA KADAR
+  # KAPALI. Acikken /ready yapilandirmayi dogrular ve eksikse pod trafige
+  # ALINMAZ. Ticket METIN akisi bundan bagimsiz calisir.
+  TICKET_ATTACHMENTS_ENABLED: "false"
+  TICKET_STORAGE_BACKEND: "s3"
+  TICKET_S3_ENDPOINT_URL: ""
+  TICKET_S3_REGION: "us-east-1"
+  TICKET_S3_BUCKET: ""
+  # Uretim durusu: tarayicisiz mod burada KABUL EDILMEZ ('live' ortamda
+  # attachment ozelligini acmaz).
+  TICKET_SCANNER_MODE: "clamav"
+  TICKET_SCANNER_HOST: ""
+
+  # Giden webhook: HTTPS ZORUNLU ve private/loopback hedefler yasak.
+  # test/prod'da bu bayrak "false" KALIR — dev'deki kume ici duz HTTP
+  # istisnasi buraya TASINMAZ.
+  TICKET_WEBHOOK_ALLOW_INSECURE_HTTP: "false"
+
