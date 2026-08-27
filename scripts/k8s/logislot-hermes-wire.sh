@@ -5,7 +5,7 @@
 # CD (kustomize) ConfigMap'i HER DEPLOY'DA repo'daki haline dondurur; bu betik
 # deploy'dan SONRA calistirilir. Secret repo'da yonetilmedigi icin kalicidir.
 set -euo pipefail
-CID=8951d21f-55fa-4224-8efe-b46cd19c2918
+CID=8efe5764-eb20-46cf-9c01-66e7c004005f
 BASE=https://hermes.duosis.com/api/integrations/v1
 
 pod() { kubectl -n logislot-prod get pods -l app.kubernetes.io/name=logislot-api   --field-selector=status.phase=Running --no-headers -o custom-columns=N:.metadata.name 2>/dev/null | head -1; }

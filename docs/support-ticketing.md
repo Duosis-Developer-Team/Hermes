@@ -175,145 +175,100 @@ TASINMAZ) · `TICKET_SCANNER_MODE=clamav`.
 Platform Console AYRI audience + AYRI cerezdir; tenant oturumu orada
 gecerli DEGILDIR (ve tersi).
 
-## 6d. LogiSlot baglantisi — hermes-test devir durumu
+## 6d. LogiSlot prod <-> hermes-test baglantisi (2026-08-27 — KURULDU)
 
-Son olcum: **2026-08-27**. Her satir canli olculdu, varsayilmadi.
+Baglanti canli olarak kuruldu ve **iki yonu de gercek trafikle
+dogrulandi**. Asagidaki her satir olculdu.
 
-### HAZIR — Hermes tarafi (hermes-test)
+### Kurulum
 
-| Ogul | Durum |
+| | Deger |
 |---|---|
-| `logislot` application | `environment=live`, `webhook_key_id=v1`, **callback BOS** (bilerek) |
-| Integration client | `logislot-platform`, `8951d21f-55fa-4224-8efe-b46cd19c2918` |
-| Scope'lar | `support:groups:read`, `support:tickets:read`, `support:tickets:write` (attachment YOK) |
-| Token | `hsi_live_s86...`, revoked=false |
-| Yonlendirilebilir gruplar | `ArGe Team` (6 uye), `IGA Team` (5 uye) |
-| source tenant / route | **0 / 0** — henuz tanimlanmadi |
-| canonical ticket | 0 |
+| LogiSlot imaj | `logislot-api:prod-315b991` (ticketing kodu iceride) |
+| Base URL | `https://hermes.duosis.com/api/integrations/v1` |
+| Integration client | `logislot-prod-tickets` `8efe5764-eb20-46cf-9c01-66e7c004005f` |
+| Callback | `https://api.logislot.io/integrations/hermes-support/v1/events` |
+| Webhook key id | `v1` (imza sirri uygulama basina, client'tan BAGIMSIZ) |
+| Source tenant | `BTA Cakes&Bakes` / `bta-cakes-bakes` / `deb014a0-...a53d79` |
+| Route | v1 -> **ArGe Team** (`6d90126e-...c8a1a`), aktif |
 
-Disaridan HTTPS ile dogrulandi (`https://hermes.duosis.com/api/integrations/v1`):
+`api.logislot.io` Cloudflare arkasinda yayinda; LogiSlot prod ingress'i
+`nginx` class'ina alinmis durumda (`nginx-test` NodePort'a kilitli
+olurdu). Callback `validate_callback_url` SSRF/sema kapisindan gecirilerek
+kaydedildi ve denetime yazildi.
 
-```
-GET  /support/routing-groups                  -> 200  (ArGe Team, IGA Team)
-POST /support/routes/validate  (tanimsiz tenant) -> 200  reason=source_tenant_unknown
-POST /support/attachments/sessions            -> 403  (scope disi, dogru)
-```
-
-### HAZIR — LogiSlot tarafi (kalici olan kisim)
-
-`logislot-prod/logislot-secrets` icine **yerlestirildi** (2026-08-27):
+### Uctan uca kanit
 
 ```
-LOGISLOT_HERMES_SUPPORT_TOKEN            (52 bayt)
-LOGISLOT_HERMES_SUPPORT_WEBHOOK_SECRET   (40 bayt)
+CEKME  (logislot-prod pod -> hermes-test, gercek httpx istemcisi)
+  GET  /support/routing-groups            -> 200  (ArGe Team, IGA Team)
+  POST /support/routes/validate           -> 200  valid=true, route_version=1
+  POST /support/tickets                   -> 201  TKT-000001, group=ArGe Team
+  POST /support/tickets/{id}/cancel       -> 200  status=cancelled, v2
+
+ITME   (hermes-test -> https://api.logislot.io, HMAC imzali)
+  ticket.created.v1        delivered  HTTP 200  1. denemede  (836 ms)
+  ticket.status_changed.v1 delivered  HTTP 200  1. denemede
+  LogiSlot ticket_webhook_inbox: iki olay da `processed`
+  imzasiz POST                        -> 401 invalid_signature
 ```
 
-Bu kalicidir: LogiSlot'un kustomize'i Secret'i YONETMEZ (`k8s/base/
-kustomization.yaml` resources listesinde secret yok; repo'daki dosya
-`secret.example.yaml`). ConfigMap ise YONETILIR — yani her deploy
-`LOGISLOT_HERMES_SUPPORT_BASE_URL`'i tekrar `""` yapar.
+`TKT-000001` bilerek acilmis bir baglanti testidir ve **iptal edildi**;
+canonical kayit tasarim geregi silinmez.
 
-### BLOKER 1 — logislot-prod hala ticketing ONCESI imajda
+### Cloudflare notu (yanlis teshise girmemek icin)
 
-Olculen: image `prod-2dfafea` (13 Agu), `app/integrations/` klasoru YOK,
-0 hermes ayari, `POST /integrations/hermes-support/v1/events` -> 404.
+Teshis sirasinda `Python-urllib` User-Agent'i ile yapilan cagri
+Cloudflare'den **403 / error code 1010** aldi. Bu bir yetki hatasi
+DEGILDIR ve entegrasyonu etkilemez: gercek istemci (`httpx`) ayni
+pod'dan 200 alir. `hermes.duosis.com` Cloudflare bot korumasi altindadir
+ve yalnizca o UA imzasi engellenir.
 
-Kod prod DALINDA var (`43a1f67`). Takildigi yer GitHub Actions:
-`Build Images` run `33070215551` -> job `deploy / deploy` **`production`
-ortaminin required_reviewers kapisinda ONAY BEKLIYOR** (reviewer:
-`coskungencay`). Ikinci run (`33070790285`, asama 2 / `api.logislot.com`
-ile derlenmis web imaji) concurrency grubunda onun arkasinda kuyrukta.
+### Hala LogiSlot panelinde yapilacak (Hermes tarafi hazir)
 
-LogiSlot'un kendi notu (`overlays/prod/configmap-patch.yaml`): asama 2
-YALNIZCA DNS cozulmeye basladiktan sonra onaylanmalidir — erken onay prod
-web'i cozulmeyen bir API adresine baglar.
+`ticket_routing_configs` ve `hermes_group_catalog_cache` **bos**. Yani
+LogiSlot'un platform panelinden (`admin.logislot.io`) BTA Cakes&Bakes
+icin saglayici + ekip secimi henuz kaydedilmedi. Base URL artik dolu
+oldugu icin o ekran Hermes ekip listesini gorecektir; secim yapilinca
+tenant'lar ticket acabilir. Hermes tarafinda ek bir islem GEREKMEZ.
 
-Deploy indikten sonra baglantinin tamami tek komut:
+### Bakim tuzaklari
 
-```bash
-bash /root/logislot-hermes-wire.sh     # sunucuda hazir, idempotent
-```
+1. **ConfigMap her deploy'da sifirlanir.** LogiSlot'un kustomize'i
+   `k8s/base/configmap.yaml`'i yonetir; her deploy
+   `LOGISLOT_HERMES_SUPPORT_BASE_URL`'i tekrar `""` yapar ve baglantiyi
+   KAPATIR. Deploy sonrasi:
 
-Betik once ticketing kodunun varligini KAPI olarak dogrular ve yoksa
-hicbir sey degistirmeden durur; sonra secret + configmap yamasi, restart
-ve pod ICINDEN hermes-test cagrisi ile dogrulama yapar.
+   ```bash
+   bash scripts/k8s/logislot-hermes-wire.sh   # sunucuda /root/ altinda da var
+   ```
 
-**Kalici duzeltme (LogiSlot repo'sunda, bu oturumda DEGISTIRILMEDI):**
-`k8s/overlays/prod/configmap-patch.yaml` icinde
+   Kalici cozum LogiSlot repo'sunda `k8s/overlays/prod/
+   configmap-patch.yaml` icine BASE_URL + CLIENT_ID satirlarini commit
+   etmektir (bu oturumda o repo DEGISTIRILMEDI).
 
-```yaml
-LOGISLOT_HERMES_SUPPORT_BASE_URL: "https://hermes.duosis.com/api/integrations/v1"
-LOGISLOT_HERMES_SUPPORT_CLIENT_ID: "8951d21f-55fa-4224-8efe-b46cd19c2918"
-```
+   Secret ayni sorunu tasimaz: kustomize Secret'i yonetmez, token ve
+   imza sirri deploy'lardan etkilenmez.
 
-Bu satirlar commit edilmedigi surece her deploy baglantiyi kapatir ve
-betigin tekrar calistirilmasi gerekir.
+2. **base_url `/v1`'DE BITER.** LogiSlot'un sabitleri `/support/...`
+   seklindedir; sonuna `/support` eklemek `/v1/support/support/...`
+   uretir ve 404 verir (dev'de tam olarak bu yasandi).
 
-**TUZAK — base_url `/v1`'DE BITER.** LogiSlot'un sozlesme sabitleri
-`/support/routing-groups` seklindedir; sonuna `/support` eklemek
-`/v1/support/support/...` uretip 404 verir (dev'de tam olarak bu yasandi).
+3. **Token rotasyonu client'i da degistirebilir.** 27 Agu'da
+   `logislot-platform` client'inin iki token'i iptal edilip yeni
+   `logislot-prod-tickets` client'i acildi; CLIENT_ID degismedigi surece
+   yalnizca token yenilemek YETMEZ — ikisi birlikte guncellenir.
+   Rotasyon adimlari: hermes-test `secret/logislot-hermes-credential`
+   (kayit defteri) + `logislot-prod/logislot-secrets` +
+   `logislot-config`'teki CLIENT_ID + `rollout restart`.
 
-### BLOKER 2 — webhook icin `api.logislot.com` henuz cozulmuyor
+### Bilincli kalan riskler
 
-`dig api.logislot.com` -> **bos**. `logislot.com` yalnizca registrar park
-IP'lerine cozuluyor. hermes-test'te `TICKET_WEBHOOK_ALLOW_INSECURE_HTTP=
-false` ve oyle KALIR; callback kayit ANINDA dogrulanir, yani cozulmeyen
-bir adres sessizce degil aninda reddedilir.
-
-Hedef uc (LogiSlot'un router prefix'i ile birebir):
-
-```
-https://api.logislot.com/integrations/hermes-support/v1/events
-```
-
-Kume giris noktalari (olculdu):
-
-| Class | Nasil erisiliyor |
-|---|---|
-| `nginx` | node2 = 84.247.180.173 uzerinde **hostNetwork**, gercek :80/:443 |
-| `nginx-test` | yalnizca **NodePort** 30880 (http) / 30443 (https) — 443'e baglanmaz |
-
-`hermes.duosis.com` Cloudflare arkasindadir ve origin olarak node2:443
-dogru cevabi verir (Host basligiyla zorlanip `/api/integrations/...`
-tokensiz 401 alinarak dogrulandi). LogiSlot prod ingress'i
-`ingressClassName: nginx-test` secmis durumda — bu class 443'e baglanmaz,
-dolayisiyla duz bir A kaydi TEK BASINA yetmez: ya `hermes.duosis.com` ile
-ayni Cloudflare + origin-port kalibi kurulmali, ya da ingress `nginx`
-class'ina alinip A kaydi 84.247.180.173'e verilmelidir. Karar LogiSlot
-tarafinindir; Hermes yalnizca calisan bir HTTPS adresi bekler.
-
-Callback tanimlanana kadar outbox satiri HIC yazilmaz (dead-letter
-birikmez) — yani bu bloker "cekme" yonunu ENGELLEMEZ, sadece Hermes'ten
-LogiSlot'a anlik olay itmeyi erteler.
-
-Adres hazir oldugunda:
-
-```
-POST /tickets/admin/applications/{application_id}   (tickets.config.manage)
-```
-
-### BLOKER 3 — source tenant + route karari
-
-`POST /support/tickets` tasarim geregi **var olan** bir source tenant ve
-**aktif** bir route ister (`require_source_tenant` + `resolve_route`);
-kaynak uygulama kendi kendine bir Duosis ekibi secemez (04 §4). Yani
-LogiSlot'un her prod tenant'i icin Duosis tarafinda tanimlanmasi gereken:
-
-1. `POST /tickets/admin/source-tenants` — LogiSlot'un tenant **UUID**'si
-   (`source_tenant_id`), gorunen ad, slug.
-2. `PUT  /tickets/admin/source-tenants/{id}/route` — hedef grup
-   (`ArGe Team` `6d90126e-7c1a-4a7a-9cde-32869b8c4a1a` veya
-   `IGA Team` `0db88074-0ca2-4f51-8135-bc9ca3170ad8`).
-
-Ikisi de Hermes UI'daki **Ticket Integrations** ekranindan yapilabilir.
-Hangi tenant'in acilacagi ve hangi ekibe gidecegi is kararidir —
-tahmin edilmez, cunku yanlis eslesme ticket'i sessizce yanlis kuyruga
-yazar. Repo'dan cikarilabilen tek aday: **CakesAndBakes** (`cknb`
-subdomain'leri). UUID'si LogiSlot tarafindan alinmalidir.
-
-**BILINCLI KARAR (2026-08-27):** `logislot-dev` -> `hermes-test`
-baglanmadi. Dev bir sistemin CANLI destek workspace'ine gercek ticket
-yazmasi istenmedi.
+- `logislot-prod-tickets` client'i `support:attachments:write` scope'u
+  tasiyor ama attachment ozelligi hem hermes-test'te hem LogiSlot'ta
+  KAPALI. Ozellik acilana kadar bu scope hicbir sey vermez; yine de en
+  az ayricalik acisindan kaldirilmasi tercih edilir.
+- `logislot-dev` hala `hermes-dev`'e bakiyor; teste/prod'a baglanmadi.
 
 
 ## 7. Bilinen sinirlamalar
