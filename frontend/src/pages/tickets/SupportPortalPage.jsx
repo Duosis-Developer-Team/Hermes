@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, App as AntApp, Input, Tabs, Typography } from 'antd'
+import { Alert, Input, message, Tabs, Typography } from 'antd'
 
 import { supportPortalService, ticketErrorCode } from '../../api/ticketsApi'
 import {
@@ -48,7 +48,6 @@ const TABS = [
 export default function SupportPortalPage() {
     const navigate = useNavigate()
     const queryClient = useQueryClient()
-    const { message } = AntApp.useApp()
     const context = useTicketContext()
 
     const [tab, setTab] = useState('open')

@@ -8,7 +8,7 @@
  */
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, App as AntApp, Drawer, Input, Typography } from 'antd'
+import { Alert, Drawer, Input, message, Typography } from 'antd'
 
 import { supportPortalService, ticketErrorCode } from '../../api/ticketsApi'
 import {
@@ -29,7 +29,6 @@ export default function CustomerTicketDetail({
     ticketId, open, onClose, onChanged,
 }) {
     const queryClient = useQueryClient()
-    const { message } = AntApp.useApp()
     const [draft, setDraft] = useState('')
     const [reason, setReason] = useState('')
 

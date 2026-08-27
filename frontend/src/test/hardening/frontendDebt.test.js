@@ -175,6 +175,25 @@ describe('AntD borcu', () => {
         expect(offenders).toEqual([])
     })
 
+    it('AntD `App.useApp()` KULLANILMIYOR — provider yok', () => {
+        /*
+         * Uygulama kokunde (Root.jsx) antd'nin `<App>` provider'i YOKTUR;
+         * oradaki `<App />` bizim kendi bilesenimizdir. `App.useApp()`
+         * provider'siz cagrilinca donen nesnenin `message`i CALISMAZ ve
+         * ilk toast denemesinde `message.error is not a function` ile
+         * patlar — testte degil, KULLANICIDA.
+         *
+         * Repo konvansiyonu statik import: `import { message } from 'antd'`.
+         * (Canli olarak yakalandi: yeni ticket ekranlarinin tamami bu
+         * hatayla yazilmisti.)
+         */
+        const offenders = []
+        for (const f of walk(SRC, ['.jsx'])) {
+            if (/App\.useApp\s*\(/.test(codeOnly(read(f)))) offenders.push(f)
+        }
+        expect(offenders).toEqual([])
+    })
+
     it('Table rowKey INDEX parametresi kullanmiyor', () => {
         // AntD 5.x: `rowKey`in index parametresi deprecated — siralama ya
         // da filtreleme sonrasi ayni index farkli satiri gosterir.

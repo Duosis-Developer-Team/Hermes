@@ -13,9 +13,7 @@
  */
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-    Alert, App as AntApp, Form, Input, Select, Table, Tabs, Typography,
-} from 'antd'
+import { Alert, Form, Input, message, Select, Table, Tabs, Typography } from 'antd'
 
 import { ticketAdminService, ticketHubService } from '../../api/ticketsApi'
 import {
@@ -37,7 +35,6 @@ const SCOPES = [
 
 function RoutingTab() {
     const queryClient = useQueryClient()
-    const { message } = AntApp.useApp()
 
     const sources = useQuery({
         queryKey: queryKeys.ticketAdmin.sourceTenants,
@@ -144,7 +141,6 @@ function RoutingTab() {
 
 function CredentialsTab() {
     const queryClient = useQueryClient()
-    const { message } = AntApp.useApp()
     const [form] = Form.useForm()
     const [createOpen, setCreateOpen] = useState(false)
     const [issuedToken, setIssuedToken] = useState(null)
@@ -336,7 +332,6 @@ function CredentialsTab() {
 
 function DeliveryTab() {
     const queryClient = useQueryClient()
-    const { message } = AntApp.useApp()
 
     const stats = useQuery({
         queryKey: queryKeys.ticketAdmin.delivery,

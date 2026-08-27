@@ -22,6 +22,7 @@ import {
     Tag, Typography, message,
 } from 'antd'
 import {
+    CustomerServiceOutlined,
     ApartmentOutlined,
     PlusOutlined,
     DashboardOutlined,
@@ -32,10 +33,11 @@ import {
 
 import AppShell from '../../components/layout/AppShell'
 import { platformService } from '../../api/platformApi'
+import SupportRoutingTab from './SupportRoutingTab'
 import { usePlatformAuthStore } from '../../stores/platformAuthStore'
 import SupportSessionBanner from './SupportSessionBanner'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 /** Durum → renk + METIN. Renk TEK BASINA anlam tasimaz (erisilebilirlik). */
 const STATUS_TONE = {
@@ -633,6 +635,7 @@ function AuditTab() {
 const SECTIONS = [
     { key: 'overview', icon: <DashboardOutlined />, label: 'Overview' },
     { key: 'tenants', icon: <ApartmentOutlined />, label: 'Tenants' },
+    { key: 'support', icon: <CustomerServiceOutlined />, label: 'Support routing' },
     { key: 'audit', icon: <FileSearchOutlined />, label: 'Audit log' },
 ]
 
@@ -679,9 +682,11 @@ export default function PlatformConsole() {
 
     const body = section === 'tenants'
         ? <TenantsTab onSupportStarted={setSupportSession} />
-        : section === 'audit'
-            ? <AuditTab />
-            : <OverviewTab />
+        : section === 'support'
+            ? <SupportRoutingTab />
+            : section === 'audit'
+                ? <AuditTab />
+                : <OverviewTab />
 
     return (
         <>

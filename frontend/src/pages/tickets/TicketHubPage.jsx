@@ -17,7 +17,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ReloadOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { App as AntApp, Input, Select, Table, Tabs, Typography } from 'antd'
+import { Input, message, Select, Table, Tabs, Typography } from 'antd'
 
 import { ticketErrorCode, ticketHubService } from '../../api/ticketsApi'
 import {
@@ -43,7 +43,6 @@ const DEFAULT_QUEUE = 'my_group_open'
 export default function TicketHubPage() {
     const navigate = useNavigate()
     const queryClient = useQueryClient()
-    const { message } = AntApp.useApp()
     const [params, setParams] = useSearchParams()
     const context = useTicketContext()
 

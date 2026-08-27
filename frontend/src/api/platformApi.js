@@ -56,6 +56,36 @@ export const platformService = {
 
     /** Askiya alma: gerekce + yazili slug onayi ZORUNLU. */
     // WS12 — tenant olusturma / duzenleme
+    // -----------------------------------------------------------------
+    // Ticket Hub — tenant destek yonlendirmesi
+    // -----------------------------------------------------------------
+    // "Bu tenant ticket acabilir mi, KIME ve HANGI EKIBE?" Konfigurasyon
+    // core_db'de yasar; auth-service dar bir S2S ucundan okur/yazar.
+    // Bu uclar ticket ICERIGI DONDURMEZ.
+    supportProviders: async () => {
+        const { data } = await platformClient.get(`${BASE}/support/providers`)
+        return data
+    },
+
+    supportRouting: async () => {
+        const { data } = await platformClient.get(`${BASE}/support/routing`)
+        return data.items || []
+    },
+
+    setSupportRouting: async (tenantId, payload) => {
+        const { data } = await platformClient.put(
+            `${BASE}/support/routing/${tenantId}`, payload,
+        )
+        return data
+    },
+
+    disableSupportRouting: async (tenantId) => {
+        const { data } = await platformClient.delete(
+            `${BASE}/support/routing/${tenantId}`,
+        )
+        return data
+    },
+
     listPlans: async () => {
         const { data } = await platformClient.get(`${BASE}/plans`)
         return data.plans || []

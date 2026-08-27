@@ -166,6 +166,14 @@ from .routers.internal_tenants import router as internal_tenants_router  # noqa:
 
 app.include_router(internal_tenants_router)
 
+# Platform Admin konsolunun tenant destek yonlendirmesi. Platform
+# token'i core'a GIREMEZ (bilincli izolasyon); auth-service bu dar S2S
+# uclarina gelir ve yalnizca KONFIGURASYON okur/yazar — ticket icerigi
+# ASLA donmez.
+from .routers.internal_support import router as internal_support_router  # noqa: E402
+
+app.include_router(internal_support_router)
+
 app.include_router(customers_router, prefix=API_PREFIX)
 app.include_router(work_types_router, prefix=API_PREFIX)
 app.include_router(projects_router, prefix=API_PREFIX)
