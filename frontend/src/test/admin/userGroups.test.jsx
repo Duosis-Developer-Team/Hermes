@@ -124,6 +124,25 @@ const confirmButton = (dialog, re) =>
     within(dialog).getByRole('button', { name: re })
 
 /**
+ * AntD yukleme ortusu KALKANA kadar bekler.
+ *
+ * `.ant-spin-blur` `pointer-events: none` uygular; ogenin GORUNMESI
+ * tiklanabilir oldugu anlamina GELMEZ. Hizli makinede ikisi ayni karede
+ * olur, yavas CI kosucusunda olmaz.
+ *
+ * Yardimci hem satir tiklamasinda hem UYE PANELI tiklamalarinda
+ * kullanilir: paneli acmak ikinci bir sorgu (uye listesi) tetikler ve
+ * panel o sorgu inerken TEKRAR bulaniklasir — yani "genislettim, artik
+ * guvendeyim" dogru DEGIL. (Canli kanit: CI shard 2'de "Remove Bob Bit
+ * from group" butonu `pointer-events: none` ile patladi.)
+ */
+const settled = () =>
+    waitFor(() =>
+        expect(document.querySelector('.ant-spin-blur, .ant-spin-spinning'))
+            .toBeNull()
+    )
+
+/**
  * Grup satirini genisletir (uye paneli acilir) — satirin KENDISI tiklanir.
  * ONCE tablonun yuklenmesi beklenir: AntD yuklenirken tabloyu bulanik
  * yapar ve `pointer-events: none` uygular, yani sanal satirlar gorunse
@@ -141,10 +160,7 @@ const expandGroup = async (user, name) => {
      * ortusunun KALKMASI beklenir — usersLifecycle'daki Sprint 7
      * receteyle birebir ayni sinif.
      */
-    await waitFor(() =>
-        expect(document.querySelector('.ant-spin-blur, .ant-spin-spinning'))
-            .toBeNull()
-    )
+    await settled()
     const cell = await screen.findByText(name)
     const row = cell.closest('tr')
     await user.click(row)
@@ -230,7 +246,11 @@ describe('KUSUR — uye ekleme onay butonu HER ZAMAN disabled’di', () => {
         const user = setupUser()
         renderGroups()
         await expandGroup(user, 'Technical Team')
-        await user.click(await screen.findByRole('button', { name: /Add Member/ }))
+        const addButton = await screen.findByRole(
+            'button', { name: /Add Member/ },
+        )
+        await settled()
+        await user.click(addButton)
         const dialog = await dialogByTitle(/Add Members/)
         // Eski davranista bu buton disabled'di → uye HIC eklenemiyordu.
         expect(within(dialog).getByRole('button', { name: /^Add Members$/ }))
@@ -241,7 +261,11 @@ describe('KUSUR — uye ekleme onay butonu HER ZAMAN disabled’di', () => {
         const user = setupUser()
         renderGroups()
         await expandGroup(user, 'Technical Team')
-        await user.click(await screen.findByRole('button', { name: /Add Member/ }))
+        const addButton = await screen.findByRole(
+            'button', { name: /Add Member/ },
+        )
+        await settled()
+        await user.click(addButton)
         expect(
             screen.queryByText(/All users are already members/)
         ).not.toBeInTheDocument()
@@ -257,7 +281,11 @@ describe('KUSUR — uye ekleme onay butonu HER ZAMAN disabled’di', () => {
         const user = setupUser()
         renderGroups()
         await expandGroup(user, 'Technical Team')
-        await user.click(await screen.findByRole('button', { name: /Add Member/ }))
+        const addButton = await screen.findByRole(
+            'button', { name: /Add Member/ },
+        )
+        await settled()
+        await user.click(addButton)
         const dialog = await dialogByTitle(/Add Members/)
         expect(within(dialog).getByText(/All users are already members/))
             .toBeInTheDocument()
@@ -287,7 +315,11 @@ describe('uye ekleme / cikarma davranisi', () => {
         const user = setupUser()
         renderGroups()
         await expandGroup(user, 'Technical Team')
-        await user.click(await screen.findByRole('button', { name: /Add Member/ }))
+        const addButton = await screen.findByRole(
+            'button', { name: /Add Member/ },
+        )
+        await settled()
+        await user.click(addButton)
         const dialog = await dialogByTitle(/Add Members/)
 
         await user.click(within(dialog).getByRole('combobox'))
@@ -306,7 +338,11 @@ describe('uye ekleme / cikarma davranisi', () => {
         const user = setupUser()
         renderGroups()
         await expandGroup(user, 'Technical Team')
-        await user.click(await screen.findByRole('button', { name: /Add Member/ }))
+        const addButton = await screen.findByRole(
+            'button', { name: /Add Member/ },
+        )
+        await settled()
+        await user.click(addButton)
         const dialog = await dialogByTitle(/Add Members/)
         await user.click(within(dialog).getByRole('combobox'))
         await user.click(await screen.findByTitle('Cleo Cache'))
@@ -323,9 +359,11 @@ describe('uye ekleme / cikarma davranisi', () => {
         const user = setupUser()
         renderGroups()
         await expandGroup(user, 'Technical Team')
-        await user.click(
-            await screen.findByRole('button', { name: /Remove Bob Bit from group/ })
+        const removeButton = await screen.findByRole(
+            'button', { name: /Remove Bob Bit from group/ },
         )
+        await settled()
+        await user.click(removeButton)
         const dialog = await confirmDialog(/Remove member from group\?/)
         await user.click(confirmButton(dialog, /Remove/))
         await waitFor(() =>
@@ -339,9 +377,11 @@ describe('uye ekleme / cikarma davranisi', () => {
         const user = setupUser()
         renderGroups()
         await expandGroup(user, 'Technical Team')
-        await user.click(
-            await screen.findByRole('button', { name: /Remove Bob Bit from group/ })
+        const removeButton = await screen.findByRole(
+            'button', { name: /Remove Bob Bit from group/ },
         )
+        await settled()
+        await user.click(removeButton)
         const dialog = await confirmDialog(/Remove member from group\?/)
         const confirm = confirmButton(dialog, /Remove/)
         await user.click(confirm)
@@ -359,7 +399,11 @@ describe('uye ekleme / cikarma davranisi', () => {
         const user = setupUser()
         renderGroups()
         await expandGroup(user, 'Technical Team')
-        await user.click(await screen.findByRole('button', { name: /Add Member/ }))
+        const addButton = await screen.findByRole(
+            'button', { name: /Add Member/ },
+        )
+        await settled()
+        await user.click(addButton)
         const dialog = await dialogByTitle(/Add Members/)
         await user.click(within(dialog).getByRole('combobox'))
         await user.click(await screen.findByTitle('Cleo Cache'))
@@ -371,12 +415,19 @@ describe('uye ekleme / cikarma davranisi', () => {
         const user = setupUser()
         const { invalidateSpy } = renderGroups()
         await expandGroup(user, 'Technical Team')
-        await user.click(
-            await screen.findByRole('button', { name: /Remove Bob Bit from group/ })
+        const removeButton = await screen.findByRole(
+            'button', { name: /Remove Bob Bit from group/ },
         )
+        await settled()
+        await user.click(removeButton)
         const dialog = await confirmDialog(/Remove member from group\?/)
         await user.click(confirmButton(dialog, /Remove/))
         await waitFor(() => expect(userGroupService.removeMember).toHaveBeenCalled())
+        // Mutasyonun CAGRILMASI ile `onSuccess`in kosmasi ayni sey
+        // DEGIL: yavas kosucuda arada bir kare degil, birkac yuz ms
+        // olabiliyor ve invalidate henuz hic calismamis oluyor
+        // (CI kaniti: "expected [] to include ..."). Once ortu kalksin.
+        await settled()
         // Uyelik degisti: uye listesi, grup listesi ve Tasks tarafindaki
         // izin gorunumu HEDEFLI olarak invalidate edilir.
         await waitFor(() => {
