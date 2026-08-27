@@ -575,3 +575,162 @@ def test_capabilities_endpoint_is_public_and_content_free(
     assert body["contract_version"] == "1.0"
     assert "support:tickets:write" in body["scopes"]
     assert body["signature"]["encoding"] == "lowercase-hex"
+
+
+# =============================================================================
+# Self-servis routing (uygulama basina bayrak)
+# =============================================================================
+# Varsayilan davranis DEGISMEDI: `routes/validate` bir seyi dogrular, bir sey
+# KURMAZ. Bayrak yalnizca acildigi uygulamada baglama yetkisi verir ve o
+# yetki bile "aktif grup" + "yazma scope'u" ile sinirlidir.
+
+def _enable_self_service(session, application):
+    from app.services import ticket_routing
+
+    application.capabilities_json = {
+        ticket_routing.SELF_SERVICE_ROUTING_CAPABILITY: True
+    }
+    session.commit()
+
+
+def test_validate_does_not_bind_when_self_service_is_off(
+    support_api, ticket_world
+):
+    """Varsayilan: kaynak uygulama kendi kendine ekip secemez."""
+    http, _client, _token = support_api(
+        ticket_world["logislot_app"],
+        ["support:groups:read", "support:tickets:write"],
+    )
+    other = ticket_world["platform"]          # route'ta OLMAYAN grup
+    r = http.post("/api/integrations/v1/support/routes/validate", json={
+        "source_tenant": {"id": "bta"}, "group_id": str(other.id),
+    })
+    assert r.status_code == 200
+    assert r.json()["valid"] is False
+    assert r.json()["reason"] == "route_group_mismatch"
+
+    from app.services import ticket_routing
+    route = ticket_routing.active_route(
+        ticket_world["session"],
+        source_tenant_row_id=ticket_world["logislot_src"].id,
+    )
+    assert route.group_id == ticket_world["devops"].id   # DEGISMEDI
+
+
+def test_self_service_binds_the_requested_group(support_api, ticket_world):
+    _enable_self_service(ticket_world["session"], ticket_world["logislot_app"])
+    http, client, _token = support_api(
+        ticket_world["logislot_app"],
+        ["support:groups:read", "support:tickets:write"],
+    )
+    target = ticket_world["platform"]
+    r = http.post("/api/integrations/v1/support/routes/validate", json={
+        "source_tenant": {"id": "bta"}, "group_id": str(target.id),
+    })
+    assert r.status_code == 200
+    body = r.json()
+    assert body["valid"] is True
+    assert body["reason"] is None
+    assert body["route_version"] == 2          # onceki route pasife alindi
+
+    from app.services import ticket_routing
+    route = ticket_routing.active_route(
+        ticket_world["session"],
+        source_tenant_row_id=ticket_world["logislot_src"].id,
+    )
+    assert route.group_id == target.id
+
+    # Baglama DENETLENIR: kim, hangi grubu, hangi versiyonla bagladi.
+    from app.models.ticketing import SupportAuditEvent
+    audit = (
+        ticket_world["session"].query(SupportAuditEvent)
+        .filter(SupportAuditEvent.action == "route.set")
+        .order_by(SupportAuditEvent.created_at.desc()).first()
+    )
+    assert audit.actor_type == "integration_client"
+    assert audit.actor_id == str(client.id)
+
+
+def test_self_service_creates_an_unknown_source_tenant(
+    support_api, ticket_world
+):
+    """Onceden kayit ZORUNLU DEGIL: ilk baglama tenant'i da olusturur."""
+    _enable_self_service(ticket_world["session"], ticket_world["logislot_app"])
+    http, _client, _token = support_api(
+        ticket_world["logislot_app"],
+        ["support:groups:read", "support:tickets:write"],
+    )
+    r = http.post("/api/integrations/v1/support/routes/validate", json={
+        "source_tenant": {"id": "yeni-tenant", "slug": "yeni",
+                          "display_name": "Yeni Musteri"},
+        "group_id": str(ticket_world["devops"].id),
+    })
+    assert r.status_code == 200
+    assert r.json()["valid"] is True
+    assert r.json()["source_tenant_known"] is True
+
+    from app.services import ticket_routing
+    src = ticket_routing.get_source_tenant(
+        ticket_world["session"],
+        application_id=ticket_world["logislot_app"].id,
+        source_tenant_id="yeni-tenant",
+    )
+    assert src is not None and src.display_name == "Yeni Musteri"
+
+
+def test_self_service_still_needs_the_write_scope(support_api, ticket_world):
+    """Okuma scope'lu bir token route DEGISTIREMEZ."""
+    _enable_self_service(ticket_world["session"], ticket_world["logislot_app"])
+    http, _client, _token = support_api(
+        ticket_world["logislot_app"], ["support:groups:read"],
+    )
+    r = http.post("/api/integrations/v1/support/routes/validate", json={
+        "source_tenant": {"id": "bta"},
+        "group_id": str(ticket_world["platform"].id),
+    })
+    assert r.status_code == 403
+    assert r.json()["error"]["code"] == "insufficient_scope"
+
+
+def test_self_service_cannot_bind_an_inactive_group(support_api, ticket_world):
+    _enable_self_service(ticket_world["session"], ticket_world["logislot_app"])
+    dead = ticket_world["platform"]
+    dead.is_active = False
+    ticket_world["session"].commit()
+
+    http, _client, _token = support_api(
+        ticket_world["logislot_app"],
+        ["support:groups:read", "support:tickets:write"],
+    )
+    r = http.post("/api/integrations/v1/support/routes/validate", json={
+        "source_tenant": {"id": "bta"}, "group_id": str(dead.id),
+    })
+    assert r.status_code == 200
+    assert r.json()["valid"] is False
+    assert r.json()["reason"] == "group_inactive"
+
+
+def test_self_service_never_crosses_the_application_boundary(
+    support_api, ticket_world
+):
+    """LogiSlot'un bayragi HERMES uygulamasinin route'unu degistiremez."""
+    _enable_self_service(ticket_world["session"], ticket_world["logislot_app"])
+    http, _client, _token = support_api(
+        ticket_world["logislot_app"],
+        ["support:groups:read", "support:tickets:write"],
+    )
+    # `hermes` uygulamasinin kaynak tenant kimligi ile dener.
+    r = http.post("/api/integrations/v1/support/routes/validate", json={
+        "source_tenant": {"id": OTHER_TENANT_ID},
+        "group_id": str(ticket_world["platform"].id),
+    })
+    assert r.status_code == 200
+
+    from app.services import ticket_routing
+    hermes_route = ticket_routing.active_route(
+        ticket_world["session"],
+        source_tenant_row_id=ticket_world["hermes_src"].id,
+    )
+    # Hermes'in route'u DOKUNULMADI; LogiSlot kendi kapsaminda ayri bir
+    # kaynak tenant olusturdu.
+    assert hermes_route.group_id == ticket_world["devops"].id

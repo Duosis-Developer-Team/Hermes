@@ -6,9 +6,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session
 
+from ...models.ticketing import SupportApplication
 from ...models.user_group import UserGroup as Group
-from ...services import ticket_routing
+from ...services import support_audit, ticket_routing
 from ..deps import get_support_db, require_scopes
+from ..errors import SupportAPIError
 from ..schemas import (
     RouteValidateIn,
     RouteValidateOut,
@@ -56,10 +58,20 @@ def validate_route(
 ):
     """Platform admin'in "kaydet/test et" cagrisi.
 
-    Bu uc TEK BASINA Hermes'te route OTORITESI OLUSTURMAZ (04 §4): bir
-    seyi dogrular, bir sey KURMAZ. Canonical route, Duosis tarafinda
-    `tickets.config.manage` ile atanir. Boylece bir kaynak uygulama,
-    kendi kendine bir Duosis ekibini hedef secemez.
+    IKI DAVRANIS, uygulama basina bayrakla ayrilir:
+
+    * Bayrak KAPALI (varsayilan, 04 §4): bu uc bir seyi DOGRULAR, bir sey
+      KURMAZ. Canonical route Duosis tarafinda `tickets.config.manage` ile
+      atanir; boylece bir kaynak uygulama kendi kendine bir Duosis ekibini
+      hedef secemez.
+    * Bayrak ACIK (`capabilities_json.self_service_routing`): kaynak
+      uygulama kendi tenant'i icin AKTIF gruplardan birini secebilir ve bu
+      cagri route'u KURAR. Uygulama siniri yine mutlaktir (kapsam token
+      kaydindan gelir), yalnizca aktif gruplar secilebilir ve her baglama
+      denetime yazilir.
+
+    Baglama YAZMA islemidir: okuma scope'u tek basina yetmez, cagiranin
+    ayrica `support:tickets:write` scope'u olmalidir.
     """
     group = db.get(Group, payload.group_id)
     group_active = bool(group and group.is_active)
@@ -72,6 +84,50 @@ def validate_route(
         ticket_routing.active_route(db, source_tenant_row_id=src.id)
         if src else None
     )
+
+    application = db.get(SupportApplication, scope.application_id)
+    self_service = (
+        application is not None
+        and ticket_routing.self_service_routing_enabled(application)
+    )
+    needs_binding = group_active and (
+        route is None or route.group_id != payload.group_id
+    )
+    if self_service and needs_binding:
+        if not scope.has_scope("support:tickets:write"):
+            # Okuma scope'lu bir token route DEGISTIREMEZ.
+            raise SupportAPIError(
+                "insufficient_scope",
+                "Binding a route requires the support:tickets:write scope.",
+            )
+        if src is None:
+            src = ticket_routing.ensure_source_tenant(
+                db, application=application,
+                source_tenant_id=payload.source_tenant.id,
+                display_name=payload.source_tenant.display_name,
+                slug=payload.source_tenant.slug,
+            )
+            db.flush()
+        route = ticket_routing.set_route(
+            db, source_tenant=src, group=group,
+            actor_type="integration_client", actor_id=str(scope.client_id),
+        )
+        db.flush()
+        support_audit.record(
+            db, subject_type=support_audit.SUBJECT_ROUTE,
+            subject_id=str(route.id), action="route.set",
+            actor_type="integration_client", actor_id=str(scope.client_id),
+            actor_display_name=application.code,
+            reason="self-service routing",
+            metadata={"source_tenant_id": src.source_tenant_id,
+                      "group": group.name,
+                      "route_version": route.route_version},
+        )
+        # COMMIT YOK: `support_session()` istek sonunda commit eder.
+        # Burada erken commit etmek transaction-local `app.tenant_id`
+        # GUC'unu dusurur ve ayni istekteki sonraki okumalar RLS altinda
+        # BOS doner (bu tam olarak bir kez yasandi).
+
     configured = bool(route and route.group_id == payload.group_id)
 
     reason = None

@@ -115,6 +115,27 @@ def list_applications(
 # Source tenant
 # =============================================================================
 
+#: Uygulama basina yetenek anahtari (`capabilities_json`).
+SELF_SERVICE_ROUTING_CAPABILITY = "self_service_routing"
+
+
+def self_service_routing_enabled(application: SupportApplication) -> bool:
+    """Kaynak uygulama kendi tenant'lari icin hedef ekibi KENDI secebilir mi?
+
+    VARSAYILAN HAYIR (04 §4). Normalde canonical route'u Duosis tarafi
+    `tickets.config.manage` ile atar; boylece bir kaynak uygulama, elindeki
+    service token ile keyfi bir Duosis ekibini (ornegin baska bir musteriye
+    ait bir kuyrugu) hedefleyemez.
+
+    Bayrak acildiginda o uygulama kendi kaynak tenant'lari icin AKTIF
+    gruplardan birini secebilir. Sinir hala vardir: secim yalnizca aktif
+    gruplar arasindan yapilir, yalnizca kendi application'inin tenant'lari
+    icin gecerlidir ve her baglama denetime yazilir.
+    """
+    caps = application.capabilities_json or {}
+    return caps.get(SELF_SERVICE_ROUTING_CAPABILITY) is True
+
+
 def get_source_tenant(
     db: Session, *, application_id, source_tenant_id: str
 ) -> Optional[SupportSourceTenant]:
