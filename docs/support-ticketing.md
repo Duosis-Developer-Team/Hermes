@@ -129,6 +129,41 @@ ticket_outbox_pending / ticket_outbox_dead  (gauge)
 
 Tenant ID, ticket ID ve hata metni **etiket degildir**.
 
+## 6b. hermes-test terfisi (2026-08-27 — YAPILDI)
+
+Sirasiyla: dogrulanmis yedek → ff-only push → cd-test (migrate+deploy)
+→ elle konfigurasyon.
+
+```bash
+# 1) YEDEK — pg_restore POD ICINDE dogrulanir (node'da istemci yok)
+kubectl -n hermes-test exec auth-db-0 -- pg_dump -U hermes -d auth_db -Fc > auth_db.dump
+kubectl -n hermes-test exec core-db-0 -- pg_dump -U hermes -d core_db -Fc > core_db.dump
+kubectl -n hermes-test exec -i core-db-0 -- sh -c \
+  'cat > /tmp/v.dump && pg_restore --list /tmp/v.dump | grep -c "TABLE DATA"'  < core_db.dump
+
+# 2) ff-only terfi (test dev'in ATASI olmali)
+git merge-base --is-ancestor origin/test origin/dev && git push origin origin/dev:test
+
+# 3) elle konfigurasyon (CD bunlari YAPMAZ)
+kubectl -n hermes-test diff -f k8s/test/01-configmap.yaml   # ONCE DIFF
+kubectl -n hermes-test apply -f k8s/test/01-configmap.yaml
+kubectl -n hermes-test set env deployment/core-service --from=configmap/hermes-config \
+  --keys=SUPPORT_TICKETS_ENABLED,HERMES_SUPPORT_TENANT_ID,...   # apply DEGIL: image pini
+kubectl -n hermes-test apply -f k8s/test/ticket-dispatcher-cronjob.yaml \
+                             -f k8s/test/ticket-maintenance-cronjob.yaml
+```
+
+**Ingress — IKI kurala birden:** `hermes-mcp-ingress` test'te
+`hermes.duosis.com` host'unu sahiplenir ve tum uygulama route'larini
+tasir. Yalnizca host'suz kurala eklemek, IP:30443'te calisan ama public
+host'ta SPA'ya dusen bir uc uretir (200 donen sessiz hata). Ayrinti:
+`k8s/test/05-ingress.yaml` basindaki drift notu.
+
+**test ≠ dev farklari:** tenant UUID farkli · `PUBLIC_API_ENV=live`
+(token'lar `hsi_live_`, application `environment=live`) ·
+`TICKET_WEBHOOK_ALLOW_INSECURE_HTTP=false` (kume ici duz HTTP istisnasi
+TASINMAZ) · `TICKET_SCANNER_MODE=clamav`.
+
 ## 7. Bilinen sinirlamalar
 
 1. **Attachment uretim-hazir degil**: object storage ve ClamAV
