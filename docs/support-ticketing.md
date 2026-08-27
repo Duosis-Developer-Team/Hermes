@@ -96,6 +96,45 @@ karari gerekir.
 6. `PUT /tickets/admin/source-tenants/{id}/route` — tek aktif grup.
 7. Consumer contract testleri: `docs/contracts/support-ticketing-v1/`.
 
+### 4b. Self-servis routing (5 ve 6 adimlarini kaynak uygulamaya devretmek)
+
+Varsayilan tasarimda hedef ekibi YALNIZCA Duosis tarafi atar (04 §4):
+kaynak uygulama elindeki service token ile keyfi bir Duosis ekibini —
+ornegin baska bir musteriye ait bir kuyrugu — hedefleyemesin diye.
+Bedeli sudur: kaynak uygulamanin panelinde secilen her ekip icin Duosis'te
+onceden bir route tanimlanmis olmalidir, yoksa `route_group_mismatch` /
+`route_missing` doner. (LogiSlot'ta "Yonlendirme Hermes tarafinda
+dogrulanamadi" hatasi tam olarak buydu.)
+
+Uygulama basina acilan bir bayrak bu iki adimi kaynak uygulamaya devreder:
+
+```sql
+UPDATE support_applications
+   SET capabilities_json = coalesce(capabilities_json,'{}'::jsonb)
+                           || '{"self_service_routing": true}'::jsonb
+ WHERE code = 'logislot';
+```
+
+Acikken `POST /support/routes/validate` yalnizca dogrulamaz, **baglar**:
+istenen grup aktifse route'u kurar ve gerekiyorsa kaynak tenant'i da
+olusturur. Kapaliyken davranis birebir eskisi gibidir.
+
+Bayrak acikken de gecerli kalan sinirlar:
+
+| Sinir | Sonuc |
+|---|---|
+| Yalnizca AKTIF gruplar | pasif grup -> `group_inactive` |
+| Yazma scope'u sart | yalnizca `groups:read` -> 403 `insufficient_scope` |
+| Uygulama siniri | kapsam TOKEN kaydindan gelir; LogiSlot'un bayragi `hermes` uygulamasinin route'una dokunamaz |
+| Denetim | her baglama `actor_type=integration_client` + client id ile yazilir |
+
+Route KAYDI yine olusur — "kayitli hicbir sey olmasin" mumkun degildir,
+cunku ticket create hedef grubu route'tan cozer. Degisen sey, o kaydi
+KIMIN olusturdugudur: artik kaynak uygulamanin secimi olusturuyor.
+
+Sozlesme DEGISMEDI (yeni alan/hata kodu yok), dolayisiyla consumer
+fixture'lari etkilenmez.
+
 ## 5. Saglik
 
 `GET /api/v1/core/tickets/admin/health` (`tickets.admin`):
