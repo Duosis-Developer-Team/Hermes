@@ -135,6 +135,87 @@ KIMIN olusturdugudur: artik kaynak uygulamanin secimi olusturuyor.
 Sozlesme DEGISMEDI (yeni alan/hata kodu yok), dolayisiyla consumer
 fixture'lari etkilenmez.
 
+## 4c. Attachment (ekran goruntusu) — hermes-test'te ACIK
+
+**Durum: 2026-08-28 itibariyle hermes-test'te CALISIYOR ve uctan uca
+dogrulandi.** Onceki "uretim-hazir degil" sinirlamasi bu ortam icin
+kalkti.
+
+### Arkasindaki iki servis (ikisi de yeni)
+
+| Manifest | Ne | Erisim |
+|---|---|---|
+| `k8s/test/10-minio.yaml` | MinIO (S3 uyumlu depo) + 10Gi PVC | ClusterIP, ingress YOK, konsol kapali |
+| `k8s/test/11-clamav.yaml` | ClamAV `clamd` (INSTREAM, 3310) + 3Gi imza PVC | ClusterIP |
+
+Kova `hermes-ticket-attachments`, **private**. Uygulama kullanicisi
+(`hermes-tickets`) yalnizca o kovaya `Get/Put/DeleteObject` +
+`ListBucket` yetkisi tasir; root credential'lari ayri secret'tadir.
+Indirme kalici/imzali URL ile DEGIL, Hermes'ten yetki kontrolunden SONRA
+STREAM edilir — bu yuzden MinIO'nun disariya acilmasi gereken bir yolu
+yoktur.
+
+### Iki tuzak (ikisi de canli olarak yasandi)
+
+1. **MinIO KMS'siz SSE'yi yok saymaz, 501 doner.** Hermes'in S3
+   istemcisi her PUT'ta `x-amz-server-side-encryption: AES256` gonderir.
+   Koddaki "destekleyemeyen saglayici bu basligi yok sayar" varsayimi
+   MinIO icin YANLIS: KMS anahtari tanimli degilse **501
+   NotImplemented** doner ve yukleme komple basarisiz olur. Cozum
+   `MINIO_KMS_SECRET_KEY` (bkz. `k8s/01-secrets.example.yaml`).
+   Sifrelemeyi kapatmak yerine ortami duzeltmek tercih edildi.
+
+2. **Canli deployment'ta iki env EKSIKTI.** `TICKET_S3_ACCESS_KEY_ID` ve
+   `TICKET_S3_SECRET_ACCESS_KEY` repo manifestinde vardi ama
+   `hermes-test`'in CANLI deployment'inda yoktu (manifest drift'i).
+   `kubectl apply` image SHA pin'ini geri alacagi icin additive
+   eklendi:
+
+   ```bash
+   kubectl -n hermes-test set env deploy/core-service \
+     --from=secret/hermes-ticket-storage \
+     --keys=TICKET_S3_ACCESS_KEY_ID,TICKET_S3_SECRET_ACCESS_KEY \
+     --containers=core-service
+   ```
+
+### Uctan uca kanit
+
+```
+/ready                                  -> 200 (durus kontrolu geciyor)
+temiz PNG   session/upload              -> 201 / 200  status=clean
+EICAR (68 bayt, gercek dizge)           -> 200        status=rejected
+                                                      reason=malware_detected
+kova: attachments/<Y>/<M>/<D>/<uuid>    Encryption: SSE-S3
+      quarantine/                        BOS (temiz olan tasindi,
+                                          reddedilen birakilmadi)
+ticket'a iliskirme (TKT-000002)          ek_sayisi=1
+ticket.attachment_ready.v1               delivered HTTP 200
+```
+
+**Dikkat — sahte EICAR sessizce "clean" doner.** Ilk denemede shell
+kacisi dizgeyi bozdu (68 yerine 69 bayt) ve tarayici hakli olarak
+"temiz" dedi. EICAR'i base64 sabitten uretmek gerekir; aksi halde
+"tarayici calisiyor" diye yanlis sonuca varilir:
+
+```
+WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=
+```
+
+### BILINEN BOSLUK — integration API'de indirme ucu YOK
+
+LogiSlot'un istemcisi `GET /support/attachments/{id}/download` cagirir
+(`hermes_contract.attachment_download_path`), ama Hermes bu ucu
+**yalnizca** hub (`/tickets/...`) ve portal (`/support/tickets/...`)
+yuzeylerinde sunar; integration API'de yoktur. Sonuc: LogiSlot ek
+YUKLEYEBILIR, ama Hermes uzerinden geri OKUYAMAZ (404).
+
+Donmus sozlesme (`contract.json`) uc listesi TASIMAZ — yalnizca enum,
+hata, olay, limit, scope ve imza tanimlar — dolayisiyla bu bir sozlesme
+IHLALI degildir; iki tarafin varsayimi ayrismistir. Kapatmak bir karar
+ister: service client'in ek BAYTLARINI stream edebilmesi icin uygun
+scope (`support:attachments:read` gibi yeni bir scope mu, yoksa mevcut
+`support:attachments:write` mi) ve gorunurluk kurali secilmelidir.
+
 ## 5. Saglik
 
 `GET /api/v1/core/tickets/admin/health` (`tickets.admin`):

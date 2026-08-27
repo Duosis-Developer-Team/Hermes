@@ -1,0 +1,102 @@
+# =============================================================================
+# HERMES test — ticket attachment malware tarayicisi (ClamAV / clamd)
+# =============================================================================
+# `live` ortamda attachment ozelligi ACIKKEN tarayici ZORUNLUDUR:
+# `TICKET_SCANNER_MODE=clamav` + `TICKET_SCANNER_HOST` dolu olmazsa
+# `/ready` 503 doner ve pod trafige ALINMAZ (fail-closed, 05 §5).
+# "disabled_dev_only" modu `live` ortamda ozelligi ACMAZ.
+#
+# Protokol: clamd INSTREAM, TCP 3310. Hermes saf stdlib socket ile
+# konusur (yeni bagimlilik yok) — bkz. services/ticket_scanner.py.
+#
+# Imza veritabani: ilk acilista freshclam ~250MB indirir; PVC olmadan
+# her yeniden baslatmada tekrar inerdi. `initialDelaySeconds` bu ilk
+# indirmeyi bekleyecek kadar uzundur.
+#
+# ELLE UYGULANIR:
+#   kubectl -n hermes-test diff -f k8s/test/11-clamav.yaml
+#   kubectl -n hermes-test apply -f k8s/test/11-clamav.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: clamav-db
+  namespace: hermes-test
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 3Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clamav
+  namespace: hermes-test
+spec:
+  type: ClusterIP
+  selector:
+    app: clamav
+  ports:
+    - name: clamd
+      port: 3310
+      targetPort: 3310
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clamav
+  namespace: hermes-test
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: clamav
+  template:
+    metadata:
+      labels:
+        app: clamav
+    spec:
+      containers:
+        - name: clamav
+          image: clamav/clamav:1.4
+          ports:
+            - containerPort: 3310
+              name: clamd
+          env:
+            # Imza guncellemesi surekli calissin (gunluk freshclam).
+            - name: CLAMAV_NO_FRESHCLAMD
+              value: "false"
+            # Milter kullanilmiyor.
+            - name: CLAMAV_NO_MILTERD
+              value: "true"
+          volumeMounts:
+            - name: db
+              mountPath: /var/lib/clamav
+          startupProbe:
+            tcpSocket:
+              port: 3310
+            # Ilk imza indirmesi + clamd yuklemesi dakikalar surebilir.
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 40
+          readinessProbe:
+            exec:
+              command: ["clamdcheck.sh"]
+            periodSeconds: 30
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              # clamd imza veritabanini BELLEGE yukler; 1Gi altinda
+              # baslamaz.
+              memory: 1536Mi
+            limits:
+              cpu: 1000m
+              memory: 2560Mi
+      volumes:
+        - name: db
+          persistentVolumeClaim:
+            claimName: clamav-db

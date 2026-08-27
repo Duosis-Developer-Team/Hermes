@@ -1,0 +1,121 @@
+# =============================================================================
+# HERMES test — ticket attachment object storage (MinIO, S3 uyumlu)
+# =============================================================================
+# Neden kume ici MinIO: attachment ozelligi `live` ortamda `s3` backend
+# ZORUNLU tutar (bkz. ticket_scanner.production_posture_error). Disarida
+# yonetilen bir S3 kovasi olmadigi icin depo kumede duruyor.
+#
+# Erisim YALNIZCA kume icidir: Service ClusterIP'dir, ingress YOKTUR ve
+# konsol portu (9001) hic acilmaz. Attachment indirme zaten Hermes'ten
+# STREAM edilir — imzali/kalici URL uretilmez, yani MinIO'nun disariya
+# acilmasi gereken bir yol yoktur.
+#
+# ELLE UYGULANIR (CD yalnizca `set image` yapar):
+#   kubectl -n hermes-test diff -f k8s/test/10-minio.yaml
+#   kubectl -n hermes-test apply -f k8s/test/10-minio.yaml
+#
+# Root credential'lari `hermes-minio-root` secret'indedir ve REPO'DA
+# DEGILDIR (bkz. 01-secrets.example.yaml).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-data
+  namespace: hermes-test
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: hermes-test
+spec:
+  type: ClusterIP
+  selector:
+    app: minio
+  ports:
+    - name: s3
+      port: 9000
+      targetPort: 9000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: hermes-test
+spec:
+  replicas: 1
+  # PVC RWO ve local-path node'a bagli: eski pod olmadan yenisi baglanamaz.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+        - name: minio
+          image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+          args: ["server", "/data"]
+          ports:
+            - containerPort: 9000
+              name: s3
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-minio-root
+                  key: MINIO_ROOT_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-minio-root
+                  key: MINIO_ROOT_PASSWORD
+            # Konsol bilerek kapali: yonetim yuzeyi acmiyoruz.
+            - name: MINIO_BROWSER
+              value: "off"
+            # SSE-S3 (sunucu tarafi sifreleme) icin dahili KMS.
+            #
+            # ZORUNLUDUR, opsiyonel degil: Hermes'in S3 istemcisi her PUT'ta
+            # `x-amz-server-side-encryption: AES256` gonderir. MinIO bu
+            # istegi KMS anahtari YOKKEN yok saymaz — **501 NotImplemented**
+            # doner ve yukleme tamamen basarisiz olur (canli olarak yasandi,
+            # 2026-08-28). Anahtar silinirse mevcut nesneler COZULEMEZ.
+            - name: MINIO_KMS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-minio-root
+                  key: MINIO_KMS_SECRET_KEY
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: 9000
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: minio-data
