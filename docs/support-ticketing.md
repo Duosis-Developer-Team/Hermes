@@ -164,6 +164,70 @@ host'ta SPA'ya dusen bir uc uretir (200 donen sessiz hata). Ayrinti:
 `TICKET_WEBHOOK_ALLOW_INSECURE_HTTP=false` (kume ici duz HTTP istisnasi
 TASINMAZ) · `TICKET_SCANNER_MODE=clamav`.
 
+## 6c. Uc AYRI panel (karistirmasi kolay)
+
+| Panel | Kimlik | Ne yapar |
+|---|---|---|
+| **Hermes Platform Console** `/platform-admin` | `superadmin@hermes.dev` (`platform_admins`) | **Support routing**: tenant → saglayici → ekip. Ticket ICERIGI gostermez. |
+| Hermes tenant arayuzu | tenant kullanicisi (orn. `admin@duosis.com`) | `/tickets` agent hub'i, `/support` musteri portali, `/ticket-integrations` |
+| LogiSlot platform paneli `:30086` | LogiSlot'un kendi paneli (`logislot-dev`) | LogiSlot tenant'i icin Hermes hedef ekibini secer |
+
+Platform Console AYRI audience + AYRI cerezdir; tenant oturumu orada
+gecerli DEGILDIR (ve tersi).
+
+## 6d. LogiSlot baglantisi — hermes-test devir durumu
+
+**HAZIR (hermes-test'te kurulu):**
+
+- `logislot` application — `environment=live`, `webhook_key_id=v1`,
+  **callback BOS** (bilerek: gercek HTTPS adresi yok).
+- Integration client `logislot-platform` — dar scope seti
+  (`groups:read`, `tickets:read`, `tickets:write`; attachment scope'u
+  YOK cunku ozellik kapali).
+- `hsi_live_` token + imza sirri → `secret/logislot-hermes-credential`
+  ve `secret/hermes-ticket-webhooks` (degerler repo'da/logda DEGIL).
+- Dogrulandi: token ile `GET /support/routing-groups` → 200 (ArGe Team,
+  IGA Team); scope disi `attachments/sessions` → 403.
+
+**LogiSlot prod'a alinirken yapilacaklar:**
+
+```
+LOGISLOT_HERMES_SUPPORT_BASE_URL   = https://hermes.duosis.com/api/integrations/v1
+LOGISLOT_HERMES_SUPPORT_TOKEN      = <secret/logislot-hermes-credential>
+LOGISLOT_HERMES_SUPPORT_CLIENT_ID  = 8951d21f-55fa-4224-8efe-b46cd19c2918
+LOGISLOT_HERMES_SUPPORT_WEBHOOK_SECRET = <ayni secret'tan>
+LOGISLOT_HERMES_SUPPORT_WEBHOOK_KEY_ID = v1
+```
+
+**TUZAK — base_url `/v1`'DE BITER.** LogiSlot'un sozlesme sabitleri
+`/support/routing-groups` seklindedir; adresin sonuna `/support`
+eklemek `/v1/support/support/...` uretip 404 verir. (dev'de tam olarak
+bu yasandi.)
+
+**KALAN BLOKER'lar:**
+
+1. **`logislot-prod`'da ticketing kodu YOK** (olculdu: `integrations/`
+   klasoru yok, 0 hermes ayari, webhook ucu 404). Once LogiSlot'un
+   kendi terfisi gerekir.
+2. **Webhook icin gercek HTTPS adresi gerekiyor.** hermes-test HTTPS
+   zorunlu tutar ve private/loopback hedefleri SSRF kapisinda reddeder
+   (`TICKET_WEBHOOK_ALLOW_INSECURE_HTTP=false` — dev'deki kume ici duz
+   HTTP istisnasi buraya TASINMAZ). Beklenen uc:
+   `https://<logislot-public-host>/integrations/hermes-support/v1/events`
+   Adres `POST /tickets/admin/applications/{id}` ile kaydedilir ve
+   Hermes KAYIT ANINDA dogrular; yanlis adres sessizce degil, aninda
+   reddedilir.
+   Callback tanimlanana kadar outbox satiri HIC yazilmaz (dead-letter
+   birikmez); LogiSlot kendi reconciliation'i ile projeksiyonu taze
+   tutar.
+3. **Source tenant mapping + route yok**: LogiSlot'un hangi
+   tenant'larinin ticket acabilecegi ve hedef ekipleri, prod hazir
+   olunca Duosis tarafinda tanimlanir.
+
+**BILINCLI KARAR (2026-08-27):** `logislot-dev` → `hermes-test`
+baglanmadi. Dev bir sistemin CANLI destek workspace'ine gercek ticket
+yazmasi istenmedi; LogiSlot prod'a alinana kadar beklenecek.
+
 ## 7. Bilinen sinirlamalar
 
 1. **Attachment uretim-hazir degil**: object storage ve ClamAV
