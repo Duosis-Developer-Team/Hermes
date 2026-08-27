@@ -1,0 +1,99 @@
+# =============================================================================
+# HERMES - Giden ticket event dispatcher'i
+# =============================================================================
+# Her dakika kosar; kilitleme `FOR UPDATE SKIP LOCKED` + advisory lock
+# ile saglanir, yani cakisan iki kosu AYNI olayi iki kez GONDEREMEZ.
+# Ayni core-service image'i, ayni DB env'leri. Ana API surecinden
+# bagimsizdir; buradaki bir hata API pod'unu etkilemez.
+#
+# NOT (deploy mekanigi): CD yalnizca set-image/restart yapar — bu
+# manifest sunucuda MANUEL
+#   kubectl apply -f k8s/test/ticket-dispatcher-cronjob.yaml
+# ister. Bu dosya hermes-test icindir; dev karsiligi k8s/ altindadir.
+# =============================================================================
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hermes-ticket-dispatcher
+  namespace: hermes-test
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 120
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 240
+      template:
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: ghcr-secret
+          containers:
+            - name: ticket-dispatcher
+              image: ghcr.io/duosis-developer-team/hermes-core-service:test
+              imagePullPolicy: Always
+              command: ["python", "-m", "app.jobs.ticket_dispatcher"]
+              env:
+                - name: HERMES_ENVIRONMENT
+                  value: "test"
+                - name: CORE_DB_HOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: DB_HOST_CORE
+                - name: CORE_DB_PORT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: DB_PORT
+                # Runtime rolu (NOBYPASSRLS) — superuser DEGIL.
+                - name: CORE_DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-db-roles
+                      key: CORE_APP_DB_USER
+                - name: CORE_DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-db-roles
+                      key: CORE_APP_DB_PASSWORD
+                - name: CORE_DB_NAME
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: POSTGRES_DB_CORE
+                # shared/auth.py modul yuklemesi icin gerekli (job
+                # hicbir HTTP istegi ALMAZ, yalnizca gonderir).
+                - name: JWT_PUBLIC_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-jwt-auth
+                      key: JWT_PUBLIC_KEY
+                - name: SUPPORT_TICKETS_ENABLED
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: SUPPORT_TICKETS_ENABLED
+                      optional: true
+                - name: HERMES_SUPPORT_TENANT_ID
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: HERMES_SUPPORT_TENANT_ID
+                      optional: true
+                # Imzalama sirri OLMADAN gonderim YAPILMAZ; olay
+                # kuyrukta retry'da bekler.
+                - name: HERMES_TICKET_WEBHOOK_SECRET__LOGISLOT
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-ticket-webhooks
+                      key: HERMES_TICKET_WEBHOOK_SECRET__LOGISLOT
+                      optional: true
+                - name: HERMES_TICKET_WEBHOOK_SECRET__LOGISLOT_NEXT
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-ticket-webhooks
+                      key: HERMES_TICKET_WEBHOOK_SECRET__LOGISLOT_NEXT
+                      optional: true
