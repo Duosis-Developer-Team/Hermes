@@ -249,6 +249,14 @@ spec:
               name: hermes-config
               key: TICKET_SCANNER_HOST
               optional: true
+        # Yalnizca dev: kume ici http:// + private adresli callback'e
+        # izin verir. test/prod'da "false".
+        - name: TICKET_WEBHOOK_ALLOW_INSECURE_HTTP
+          valueFrom:
+            configMapKeyRef:
+              name: hermes-config
+              key: TICKET_WEBHOOK_ALLOW_INSECURE_HTTP
+              optional: true
         # Giden webhook imzalama sirri: uygulama KODU basina bir anahtar.
         # Secret'ta yoksa o uygulamanin olaylari GONDERILMEZ (imzasiz
         # gonderme yolu YOKTUR) ve kuyrukta retry'da bekler.

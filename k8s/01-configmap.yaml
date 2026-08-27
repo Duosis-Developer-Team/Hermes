@@ -105,3 +105,19 @@ data:
   # kabul edilir; 'live' ortamda attachment ozelligini ACMAZ)
   TICKET_SCANNER_MODE: "disabled_dev_only"
   TICKET_SCANNER_HOST: ""
+
+  # Giden webhook: HTTPS ZORUNLUDUR ve private/loopback/metadata
+  # adresleri SSRF kapisinda reddedilir. Bu bayrak o iki kurali birden
+  # gevsetir ve YALNIZCA gelistirme icindir.
+  #
+  # Neden dev'de acik: LogiSlot ayni kumede (`logislot-dev`) ve
+  # cagri kume ici servis DNS'i uzerinden gidiyor —
+  # http://logislot-api.logislot-dev.svc.cluster.local:8000/... Bu adres
+  # hem `http` hem de private ClusterIP'ye cozuluyor. Alternatif (public
+  # IP + self-signed sertifika) sertifika dogrulamasini kapatmayi
+  # gerektirirdi; kume ici duz HTTP daha az kotu bir takas ve Hermes'in
+  # kendi servisleri de boyle konusuyor (AUTH_SERVICE_URL).
+  #
+  # hermes-test/prod'da "false" KALMALI: orada callback gercek bir
+  # HTTPS adresi olmalidir.
+  TICKET_WEBHOOK_ALLOW_INSECURE_HTTP: "true"
