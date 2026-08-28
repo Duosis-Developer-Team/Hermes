@@ -250,6 +250,28 @@ sonlanir ve uvicorn forwarded basliklarina varsayilan olarak yalnizca
 `X-Forwarded-Proto/Host`'tan kurulur (yalnizca adres icin; hicbir yetki
 karari bu basliklara dayanmaz).
 
+### Metin uzunluk alt sinirlari — KALDIRILDI (2026-08-28)
+
+Once: baslik >= 8, aciklama >= 20, cozum ozeti >= 20, sebep >= 5.
+Simdi: hepsi **1** — bos gonderim yine reddedilir, uzunluk dayatilmaz.
+
+Neden: esikler gercek talepleri engelliyordu (baslik "404" ya da
+"yavas" gecmiyordu). Kaliteyi form dogrulamasi degil destek ekibinin
+geri sorusu saglar.
+
+Bu bir **gevsetmedir**, dolayisiyla consumer'i KIRMAZ: onceden gecerli
+olan her govde hala gecerlidir. `contract.json`da yalnizca `title_min`,
+`description_min`, `resolution_summary_min` degisti; enum/olay/hata
+kodu/scope'a DOKUNULMADI ve LogiSlot'un fixture MANIFEST'i bu dosyayi
+kapsamiyor.
+
+**LogiSlot tarafinda AYRI bir kopya var.** `apps/api/app/integrations/
+hermes_contract.py` icinde `TITLE_MIN_LENGTH = 8` ve
+`DESCRIPTION_MIN_LENGTH = 20` duruyor. LogiSlot portalindan acilan bir
+talep Hermes'e ULASMADAN once orada reddedilir; o iki sabit 1 yapilmadan
+LogiSlot kullanicisi icin hicbir sey degismez. Hermes yuzeyleri (hub ve
+musteri portali) icin degisiklik zaten yeterlidir.
+
 ## 5. Saglik
 
 `GET /api/v1/core/tickets/admin/health` (`tickets.admin`):

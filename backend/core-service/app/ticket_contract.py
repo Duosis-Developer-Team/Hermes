@@ -114,15 +114,19 @@ ENVIRONMENTS = ("dev", "live")
 # 2) Alan uzunluklari / limitleri
 # =============================================================================
 
-TITLE_MIN_LENGTH = 8
+# Minimumlar BILEREK 1'dir: bos gonderim reddedilir ama kullaniciya
+# uzunluk dayatilmaz. "En az 8 karakter" gibi esikler gercek bir talebi
+# (ornegin baslik "404") engelliyordu; kaliteyi form dogrulamasi degil
+# destek ekibinin geri sorusu saglar.
+TITLE_MIN_LENGTH = 1
 TITLE_MAX_LENGTH = 160
-DESCRIPTION_MIN_LENGTH = 20
+DESCRIPTION_MIN_LENGTH = 1
 DESCRIPTION_MAX_LENGTH = 10_000
 MESSAGE_MIN_LENGTH = 1
 MESSAGE_MAX_LENGTH = 10_000
-RESOLUTION_SUMMARY_MIN_LENGTH = 20
+RESOLUTION_SUMMARY_MIN_LENGTH = 1
 RESOLUTION_SUMMARY_MAX_LENGTH = 10_000
-REASON_MIN_LENGTH = 5
+REASON_MIN_LENGTH = 1
 REASON_MAX_LENGTH = 1_000
 SOURCE_ID_MAX_LENGTH = 128
 

@@ -155,8 +155,10 @@ export default function CreateTicketModal({
                         name="title"
                         label="Title"
                         rules={[
+                            // Uzunluk ALT SINIRI YOK: bos olmasin yeter.
+                            // "En az 8 karakter" gercek basliklari
+                            // ("404", "yavas") engelliyordu.
                             { required: true, message: 'A title is required' },
-                            { min: 8, message: 'At least 8 characters' },
                             { max: 160, message: 'At most 160 characters' },
                         ]}
                     >
@@ -168,7 +170,6 @@ export default function CreateTicketModal({
                         label="Description"
                         rules={[
                             { required: true, message: 'A description is required' },
-                            { min: 20, message: 'At least 20 characters' },
                         ]}
                     >
                         <Input.TextArea rows={5} maxLength={10000} showCount />

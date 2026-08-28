@@ -158,7 +158,7 @@ export default function CustomerTicketDetail({
                                         style={{ maxWidth: 280 }}
                                     />
                                     <Button
-                                        disabled={reason.trim().length < 5}
+                                        disabled={!reason.trim()}
                                         loading={reopen.isPending}
                                         onClick={() => reopen.mutate({
                                             reason,

@@ -219,16 +219,16 @@
     "attachment_max_files": 5,
     "attachment_total_max_bytes": 52428800,
     "description_max": 10000,
-    "description_min": 20,
+    "description_min": 1,
     "message_max": 10000,
     "resolution_summary_max": 10000,
-    "resolution_summary_min": 20,
+    "resolution_summary_min": 1,
     "title_max": 160,
-    "title_min": 8
+    "title_min": 1
   },
   "scopes": {
     "support:attachments:write": "Open attachment upload sessions and upload attachment content.",
-    "support:groups:read": "Read the Duosis support routing group catalog (names and active member counts only \u2014 never member identities).",
+    "support:groups:read": "Read the Duosis support routing group catalog (names and active member counts only — never member identities).",
     "support:tickets:read": "Read customer-visible snapshots of tickets that belong to the application's own source tenants.",
     "support:tickets:write": "Create tickets and submit customer commands (reply, reopen, confirm-close, cancel) for the application's own source tenants."
   },

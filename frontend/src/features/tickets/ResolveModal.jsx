@@ -75,7 +75,6 @@ export function ResolveModal({ open, onCancel, onSubmit, pending, ticket }) {
                     extra="The customer sees this text exactly as written."
                     rules={[
                         { required: true, message: 'A resolution summary is required' },
-                        { min: 20, message: 'Write at least 20 characters' },
                     ]}
                 >
                     <Input.TextArea
