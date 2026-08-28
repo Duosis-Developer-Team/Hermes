@@ -186,6 +186,27 @@ class AttachmentSessionOut(BaseModel):
     max_size_bytes: int
 
 
+class AttachmentDownloadIn(_Contract):
+    """Kaynak uygulamanin indirme izni istegi.
+
+    `application_code` sozlesme geregi govdede TASINIR ama YOK SAYILIR:
+    uygulama sinirini token kaydindan gelen kapsam belirler (05 §9).
+    Govdeden uygulama degistirme yolu YOKTUR.
+    """
+
+    ticket_id: UUID
+    source_tenant_id: str = Field(
+        ..., min_length=1, max_length=SOURCE_ID_MAX_LENGTH
+    )
+    application_code: Optional[str] = Field(None, max_length=50)
+
+
+class AttachmentDownloadOut(_Contract):
+    download_url: str
+    expires_at: datetime
+    file_name: str
+
+
 class AttachmentStatusOut(BaseModel):
     upload_id: UUID
     status: str

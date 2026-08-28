@@ -59,6 +59,7 @@ from .ticketing import (
     TicketOutboxEvent,
     TicketResolution,
     TICKETING_TABLES,
+    TicketDownloadGrant,
 )
 
 # NOTE: The legacy TaskGroup / TaskGroupMember classes have been removed
@@ -119,4 +120,5 @@ __all__ = [
     "TicketOutboxEvent",
     "TicketResolution",
     "TICKETING_TABLES",
+    "TicketDownloadGrant",
 ]

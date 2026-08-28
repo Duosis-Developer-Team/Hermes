@@ -921,6 +921,55 @@ class SupportAuditEvent(TenantOwnedMixin, Base):
 # Migration ve testlerin kullandigi OTORITER liste. Elle tutulan tek
 # yer burasi ve tek amaci "bu revizyonun YARATTIGI tablolar" demektir;
 # RLS/politika kapsami yine `TenantOwnedMixin`den turetilir.
+class TicketDownloadGrant(TenantOwnedMixin, Base):
+    """Tek kullanimlik, kisa omurlu indirme izni.
+
+    NEDEN VAR: kaynak uygulama (LogiSlot) kendi kullanicisinin
+    TARAYICISINI indirme adresine yonlendirir; tarayicida Hermes bearer
+    token'i YOKTUR. Bearer isteyen bir uc bu akista kullanilamaz.
+
+    NE **DEGILDIR**: object storage'in imzali URL'i. Depo private kalir
+    ve disariya hic acilmaz; bu izin YALNIZCA Hermes'in kendi ucunda
+    gecerlidir ve baytlar yine Hermes uzerinden akar. Yani "kalici/imzali
+    URL yok" kuralinin amaci (yetki kontrolu Hermes'te kalsin, depo
+    disariya acilmasin) korunur.
+
+    Sinirlar tasarimin PARCASI: tek kullanim (`used_at`), kisa TTL,
+    tek bir eke bagli ve veren client'a bagli. Token'in KENDISI DB'de
+    DEGILDIR — yalnizca SHA-256 ozeti tutulur.
+    """
+
+    __tablename__ = "ticket_download_grants"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    attachment_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("ticket_attachments.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    ticket_id = Column(
+        UUID(as_uuid=True), ForeignKey("tickets.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    application_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("support_applications.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    source_tenant_row_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("support_source_tenants.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    #: SHA-256(token) — token'in duz hali HICBIR YERDE saklanmaz.
+    token_hash = Column(String(64), nullable=False, index=True)
+    issued_to_client_id = Column(String(64), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_now,
+                        nullable=False)
+
+
 TICKETING_TABLES = (
     "support_applications",
     "support_source_tenants",
@@ -936,4 +985,5 @@ TICKETING_TABLES = (
     "ticket_delivery_attempts",
     "ticket_idempotency_records",
     "support_audit_events",
+    "ticket_download_grants",
 )

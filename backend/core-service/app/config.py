@@ -200,6 +200,11 @@ class Settings(BaseSettings):
     # disabled_dev_only → tarama YOK; yalnizca PUBLIC_API_ENV='dev'te
     #                   kabul edilir. 'live' ortamda bu deger attachment
     #                   ozelligini ACMAZ (fail-closed, startup kontrolu).
+    # Integration yuzeyinde uretilen tek kullanimlik indirme izninin
+    # omru. Kisa tutulur: adres kaynak uygulamanin kullanicisinin
+    # TARAYICISINA 307 ile verilir ve aninda kullanilir.
+    TICKET_DOWNLOAD_GRANT_TTL_SECONDS: int = 60
+
     TICKET_SCANNER_MODE: str = "clamav"
     TICKET_SCANNER_HOST: str = ""
     TICKET_SCANNER_PORT: int = 3310

@@ -201,20 +201,54 @@ kacisi dizgeyi bozdu (68 yerine 69 bayt) ve tarayici hakli olarak
 WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=
 ```
 
-### BILINEN BOSLUK — integration API'de indirme ucu YOK
+### Indirme — integration yuzeyinde iki adim
 
-LogiSlot'un istemcisi `GET /support/attachments/{id}/download` cagirir
-(`hermes_contract.attachment_download_path`), ama Hermes bu ucu
-**yalnizca** hub (`/tickets/...`) ve portal (`/support/tickets/...`)
-yuzeylerinde sunar; integration API'de yoktur. Sonuc: LogiSlot ek
-YUKLEYEBILIR, ama Hermes uzerinden geri OKUYAMAZ (404).
+LogiSlot, kendi kullanicisinin TARAYICISINI indirme adresine `307` ile
+yonlendirir. O istekte Hermes bearer token'i YOKTUR; bu yuzden akis iki
+adimdir:
 
-Donmus sozlesme (`contract.json`) uc listesi TASIMAZ — yalnizca enum,
-hata, olay, limit, scope ve imza tanimlar — dolayisiyla bu bir sozlesme
-IHLALI degildir; iki tarafin varsayimi ayrismistir. Kapatmak bir karar
-ister: service client'in ek BAYTLARINI stream edebilmesi icin uygun
-scope (`support:attachments:read` gibi yeni bir scope mu, yoksa mevcut
-`support:attachments:write` mi) ve gorunurluk kurali secilmelidir.
+```
+POST /v1/support/attachments/{id}/download     (bearer + tickets:read)
+     body: {ticket_id, source_tenant_id, application_code?}
+     -> {download_url, expires_at, file_name}
+
+GET  /v1/support/attachments/{id}/content?grant=...   (BEARER YOK)
+     -> baytlar; Content-Disposition: attachment
+```
+
+**Bu, object storage'in imzali URL'i DEGILDIR.** Depo private kalir,
+baytlar yine Hermes uzerinden akar ve yetki karari Hermes'te verilir —
+"kalici/imzali URL yok" kuralinin amaci korunur. Degisen sey, ikinci
+adimin kendini bir bearer yerine TEK KULLANIMLIK bir izinle
+dogrulamasidir.
+
+Iznin sinirlari (hepsi testle kilitli, `tests/ticketing/
+test_download_grants.py`):
+
+| Sinir | Davranis |
+|---|---|
+| Tek kullanim | ikinci GET -> 404 |
+| Kisa TTL | `TICKET_DOWNLOAD_GRANT_TTL_SECONDS` (varsayilan 60 sn) |
+| Tek eke bagli | baska ek kimligiyle kullanilamaz -> 404 |
+| Token saklanmaz | DB'de yalnizca SHA-256 ozeti |
+| Kapsam | baska uygulama/kaynak tenant -> 404 (var olmayan kayit) |
+| Gorunurluk | `internal` ek ASLA verilmez -> 404 |
+| Tarama | `clean` olmayan ek -> 409 `attachment_not_ready` |
+| Icerik | her zaman `application/octet-stream` + `nosniff` + attachment |
+
+Sozlesme DEGISMEDI: `attachment_not_ready` ve `insufficient_scope` zaten
+donmus katalogda, yeni scope/enum/olay eklenmedi. Yeni scope ACILMADI —
+okuma icin mevcut `support:tickets:read` kullanildi; yeni bir scope
+LogiSlot'un parite fixture'larini kirardi.
+
+Yeni tablo: `ticket_download_grants` (migration `0008_download_grants`,
+tamamen additive; RLS+FORCE ve dort composite FK dogrulandi).
+
+**TUZAK — adres tarayiciya gider, sema DOGRU olmali.** TLS ingress'te
+sonlanir ve uvicorn forwarded basliklarina varsayilan olarak yalnizca
+127.0.0.1'den guvenir; duz `request.url` `http` doner. Adres
+`X-Forwarded-Proto/Host`'tan kurulur (yalnizca adres icin; hicbir yetki
+karari bu basliklara dayanmaz).
 
 ## 5. Saglik
 
