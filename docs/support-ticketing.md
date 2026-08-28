@@ -338,6 +338,30 @@ CronJob'i biz eklemistik. Iki onlem alindi:
 Olcum (duzeltmelerden ~10 dk sonra): node2 yuk **22.7 -> 11.2**,
 `cpu some` **%55 -> %26**.
 
+**Dispatcher'da gercek bir tasarim kusuru bulundu.** Is
+`python -m app.jobs.ticket_dispatcher` ile basliyordu; bu once `app`
+paketini yukluyor ve `app/__init__.py` icindeki `from .main import app`
+satiri TUM FastAPI uygulamasini kuruyordu — butun router'lar, iki alt
+uygulama, metrik sunucusu ve `routers/reports.py` uzerinden **pandas**.
+
+Olculdu (hermes-test pod'unda): **11.0 sn CPU, 206 MB zirve RSS** —
+dakikada bir, bos bir kuyrugu yoklamak icin. Gunde ~4.4 CPU-saati.
+`import app.config` bile ayni bedeli oduyordu.
+
+`app/__init__.py` bosaltildi. Dispatcher'in import'u **0.43 sn**'ye
+dustu; ne `app.main` ne `pandas` yukleniyor. API sunucusu etkilenmez:
+uvicorn zaten `app.main:app` ile cagriliyor ve paket duzeyindeki
+export'a bagimli TEK bir cagri yeri yoktu (arandi).
+
+Geri gelmesini `tests/ticketing/test_job_import_cost.py` engelliyor:
+CronJob girisleri `app.main` veya `pandas` yuklerse test DUSER. Kilidin
+gercekten tuttugu, satir bilerek geri konularak dogrulandi.
+
+**Bu bir COKME hatasi DEGILDI** — dispatcher dogru calisiyordu (lock
+dogru aliniyor, `finally`'de birakiliyor, outbox birikmemis). Sorun
+davranista degil MALIYETTE idi ve doymus bir node'da bu maliyet
+kesintiye katki verdi.
+
 **COZULMEDI — kapasite karari sizin:** node2 110 pod sinirini asmis
 durumda (113) ve I/O'da doymus. Probe gevsetmesi kesintiyi engeller ama
 node'u hizlandirmaz. Kalici cozum ya node2'nin yukunu dagitmak, ya
