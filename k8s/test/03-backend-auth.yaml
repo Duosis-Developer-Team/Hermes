@@ -141,7 +141,11 @@ spec:
           # saglikli pod'lar oldurulup servis kapandi (2026-08-25);
           # auth ayni riski tasiyor, ayni degerlere hizalandi.
           timeoutSeconds: 10
-          failureThreshold: 10
+          # 2026-08-28: node stall'i sirasinda 10 esik de yetmedi
+          # (bkz. 03-backend-core.yaml — olculen PSI: io full %14.7).
+          # Saglikli bir pod'u node yavasligi yuzunden yeniden baslatmak
+          # kesintiyi BUYUTUYOR; 18 esik ~6 dk tolerans verir.
+          failureThreshold: 18
         readinessProbe:
           httpGet:
             # /ready sema uyumlulugunu da dogrular: yanlis sema uzerinde
@@ -151,6 +155,9 @@ spec:
           initialDelaySeconds: 15
           periodSeconds: 10
           timeoutSeconds: 10
+          # failureThreshold ACIKCA verilir: varsayilan 3 (=30 sn) node
+          # stall'inda saglikli pod'u trafikten aliyordu (2026-08-28).
+          failureThreshold: 6
 
         resources:
           requests:

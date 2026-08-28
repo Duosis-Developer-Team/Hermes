@@ -272,6 +272,60 @@ talep Hermes'e ULASMADAN once orada reddedilir; o iki sabit 1 yapilmadan
 LogiSlot kullanicisi icin hicbir sey degismez. Hermes yuzeyleri (hub ve
 musteri portali) icin degisiklik zaten yeterlidir.
 
+### Olay: 2026-08-28 core-service kesintisi (KOK SEBEP: node, uygulama DEGIL)
+
+Iki core-service replikasi da NotReady oldu ve liveness ikisini de
+yeniden baslatti. auth-service ve reporting-service de ayni saatlerde
+probe hatasi verdi.
+
+**Uygulama saglikliydi.** Olculdu:
+
+| Olcum | Deger |
+|---|---|
+| Bellek | 265 MiB / 512 MiB, cgroup `oom 0`, `max 0` |
+| CPU throttle | 8749 periyotta 2 (0.36 sn) |
+| DB | 13/100 baglanti, uzun sorgu YOK, kilit YOK |
+| Log | Pod olurken bile `/health` ve `/ready` **200** donuyordu |
+| Clamav/MinIO | O anda ACIK BAGLANTI YOKTU (dis cagrida takili degil) |
+
+**Kok sebep node2'nin doygunlugu.** PSI degerleri:
+
+```
+node2:  cpu some=%55   io some=%45   io full=%14.7   <-- 113 pod (limit 110)
+node1:  cpu some=%10   io some=%0.0  io full=%0
+```
+
+`io full=%14.7`, node2'de zamanin %14'unde HICBIR isin ilerlemedigi
+anlamina gelir. CPU'yu yiyenler kubelet (%56) ve gozlemlenebilirlik
+agent'lari (~%40); uygulama pod'lari degil. Ayni diskte logislot-dev
+deploy'lari da kosuyor.
+
+Zincir: node stall'i > 30 sn surunce **readiness varsayilan esigi (3)**
+node2'deki replikayi trafikten aldi, tum yuk node1'dekine bindi, o da
+ayni sekilde dustu; sonra liveness ikisini de oldurdu ve soguk baslangic
+yuku durumu daha da kotulestirdi.
+
+**Yapilan duzeltmeler:**
+
+1. Probe'lar node stall'ini UYGULAMA arizasi saymayacak sekilde
+   gevsetildi (uc backend serviste birden):
+   `readiness failureThreshold 3 -> 6` (30 sn -> 60 sn),
+   `liveness failureThreshold 10 -> 18` (200 sn -> 360 sn).
+   Ayrica auth/reporting'in CANLI `timeoutSeconds` degeri **1 sn**'ydi
+   (repo'da 10 yaziyordu — drift); 10'a cekildi.
+2. `core-service` CPU request 250m -> 500m. CFS payi request ile
+   orantilidir; cekismede daha buyuk pay demektir.
+3. **ClamAV node1'e sabitlendi** (`nodeSelector`). Imza veritabani +
+   gunluk freshclam disk yogundur ve doymus node'a ek yuk bindirmenin
+   anlami yoktu. PVC node'a bagli oldugu icin silinip yeniden
+   yaratildi — icerik yalnizca yeniden indirilebilir bir onbellekti.
+
+**COZULMEDI — kapasite karari sizin:** node2 110 pod sinirini asmis
+durumda (113) ve I/O'da doymus. Probe gevsetmesi kesintiyi engeller ama
+node'u hizlandirmaz. Kalici cozum ya node2'nin yukunu dagitmak, ya
+gozlemlenebilirlik agent'larinin maliyetini dusurmek, ya da node
+eklemektir.
+
 ## 5. Saglik
 
 `GET /api/v1/core/tickets/admin/health` (`tickets.admin`):

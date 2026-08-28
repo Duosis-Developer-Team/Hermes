@@ -59,6 +59,18 @@ spec:
       labels:
         app: clamav
     spec:
+      # node1'e SABITLENIR (2026-08-28). node2'nin PSI degerleri
+      # `cpu some=%55`, `io some=%45`, `io full=%14.7` — yani node2'de
+      # zamanin %14'unde hicbir is ilerlemiyor ve oradaki her pod'un
+      # probe'lari zaman asimina ugruyor. node1'de ayni degerler
+      # %10 / %0.0 / %0. ClamAV imza veritabani (3Gi) + gunluk freshclam
+      # indirmesi DISK yogundur; doymus node'a ek yuk BINDIRILMEZ.
+      #
+      # NOT: local-path PVC'si node'a BAGLIDIR. Bu secici degistirilirse
+      # PVC de silinip yeniden yaratilmalidir (icerik yalnizca yeniden
+      # indirilebilir bir imza onbellegidir, veri kaybi DEGILDIR).
+      nodeSelector:
+        kubernetes.io/hostname: node1
       containers:
         - name: clamav
           image: clamav/clamav:1.4

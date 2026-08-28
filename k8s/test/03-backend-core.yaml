@@ -266,8 +266,21 @@ spec:
           # 10sn + 10 esik = gercekten olu bir surec hala yeniden
           # baslatilir (~200sn), ama anlik bir yavaslama saglikli bir
           # pod'u OLDURMEZ.
+          #
+          # 2026-08-28 IKINCI OLAY: 10sn + 10 esik de yetmedi, iki replika
+          # da yeniden baslatildi. Bu kez SEBEP OLCULDU ve uygulamada
+          # DEGIL: node2'nin PSI degerleri `cpu some=%55`, `io some=%45`,
+          # **`io full=%14.7`** — yani zamanin %14'unde node'da hicbir is
+          # ilerlemiyor. Pod olurken bile /health ve /ready 200 donuyordu;
+          # bellek 265/512MB, CPU throttle 8749 periyotta 2. Yani probe'lar
+          # UYGULAMA arizasi degil NODE stall'i olcuyordu ve saglikli
+          # pod'lari trafikten alip yeniden baslatarak kesintiyi KENDILERI
+          # uretiyordu.
+          #
+          # 18 esik = ~6 dk. Gercekten kilitlenmis bir surec hala
+          # yeniden baslatilir; gecici bir node stall'i artik OLDURMEZ.
           timeoutSeconds: 10
-          failureThreshold: 10
+          failureThreshold: 18
         readinessProbe:
           httpGet:
             # /ready sema uyumlulugunu da dogrular: yanlis sema uzerinde
@@ -277,11 +290,20 @@ spec:
           initialDelaySeconds: 15
           periodSeconds: 10
           timeoutSeconds: 10
+          # failureThreshold ACIKCA verilir: varsayilan 3'tur ve 30 sn
+          # sonra pod'u trafikten alir. 2026-08-28'de kesintiyi buyuten
+          # sey buydu — node stall'i 30 sn'yi asinca ONCE node2'deki
+          # replika trafikten cikti, tum yuk node1'dekine bindi ve o da
+          # ayni sekilde dustu. 6 esik = 60 sn tolerans.
+          failureThreshold: 6
 
         resources:
           requests:
             memory: "128Mi"
-            cpu: "250m"
+            # 250m -> 500m: CFS payi request ile ORANTILIDIR. node2'de
+            # kubelet + gozlemlenebilirlik agent'lari CPU'yu doyurdugunda
+            # daha yuksek request, cekismede daha buyuk pay demektir.
+            cpu: "500m"
           limits:
             memory: "512Mi"
             cpu: "1500m"
