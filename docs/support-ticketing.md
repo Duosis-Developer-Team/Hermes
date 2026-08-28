@@ -320,6 +320,24 @@ yuku durumu daha da kotulestirdi.
    anlami yoktu. PVC node'a bagli oldugu icin silinip yeniden
    yaratildi — icerik yalnizca yeniden indirilebilir bir onbellekti.
 
+**Churn kaynagi bulundu ve kesildi.** node2'de CPU'yu yiyen `cp`
+surecleri Datadog kutuphane enjeksiyonuydu: her pod baslangicinda **7
+init container** dosya kopyaliyor. Ticket dispatcher CronJob'i dakikada
+bir kostugu icin bu tek basina **gunde ~10.000 kopyalama** demekti — ve o
+CronJob'i biz eklemistik. Iki onlem alindi:
+
+* `admission.datadoghq.com/enabled: "false"` etiketi ile ticket
+  CronJob'larinda APM enjeksiyonu KAPATILDI (uzun omurlu servisler
+  enjekte edilmeye devam eder; kapatilan yalnizca dakikalik kisa omurlu
+  is). Dogrulandi: yeni pod'lar 7 yerine **0** init container ile
+  kosuyor.
+* CronJob'lar `nodeSelector` ile node1'e alindi.
+* Birikmis 16 `Succeeded` job pod'u silindi; node2 **113 -> 103** pod
+  (110 sinirinin altina indi).
+
+Olcum (duzeltmelerden ~10 dk sonra): node2 yuk **22.7 -> 11.2**,
+`cpu some` **%55 -> %26**.
+
 **COZULMEDI — kapasite karari sizin:** node2 110 pod sinirini asmis
 durumda (113) ve I/O'da doymus. Probe gevsetmesi kesintiyi engeller ama
 node'u hizlandirmaz. Kalici cozum ya node2'nin yukunu dagitmak, ya

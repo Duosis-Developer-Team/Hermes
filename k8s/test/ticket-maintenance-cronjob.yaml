@@ -28,7 +28,20 @@ spec:
     spec:
       activeDeadlineSeconds: 900
       template:
+        metadata:
+          labels:
+            # APM enjeksiyonu KAPALI (2026-08-28). Bu CronJob dakikada bir
+            # pod baslatir; her pod basina 7 Datadog init container'i
+            # `cp -r` ile dosya kopyalar. Gunde ~10.000 kopyalama, ve
+            # node2 zaten I/O'da doymus durumdaydi (io full=%14.7) — bu
+            # churn olcum degeri sifira yakin bir isi disk basincina
+            # ceviriyordu. Uzun omurlu servisler enjekte edilmeye
+            # DEVAM EDER; kapatilan yalnizca dakikalik kisa omurlu is.
+            admission.datadoghq.com/enabled: "false"
         spec:
+          # Doymus node'a dakikalik pod churn'u BINDIRILMEZ.
+          nodeSelector:
+            kubernetes.io/hostname: node1
           restartPolicy: OnFailure
           imagePullSecrets:
             - name: ghcr-secret
