@@ -92,3 +92,47 @@ Her olay ticket basina monoton `sequence` tasir:
 `internal note`, `internal root cause` ve agent kisisel kimligi
 **hicbir** event'te, snapshot'ta veya API yanitinda bulunmaz. Musteri
 yuzeyindeki agent mesajlarinda yazar adi **ekip adidir**.
+
+## Sik karisan iki nokta (2026-08-28'de soruldu)
+
+### `aggregate_version` sira alani DEGILDIR — `sequence` odur
+
+Zarf ikisini de tasir ve **farkli isler yaparlar**:
+
+| Alan | Ne demek | Consumer nasil kullanmali |
+|---|---|---|
+| `sequence` | Ticket basina **monoton olay sayaci** | Siralama ve tekilleştirme BUNUNLA yapilir |
+| `aggregate_version` | Ticket'in **optimistic-lock surumu** | Yazma cagrilarindaki `expected_version` ile eslesir |
+
+`aggregate_version` olay basina ARTMAZ ve artmamalidir: ticket'i
+degistirmeyen olaylar (ornegin `attachment_ready`) onceki surumu tasir.
+Canli ornek:
+
+```
+ticket.created.v1          aggregate_version=1   sequence=1
+ticket.attachment_ready.v1 aggregate_version=1   sequence=2
+ticket.status_changed.v1   aggregate_version=2   sequence=3
+```
+
+`aggregate_version`i olay basina artirmak, optimistic locking'i
+BOZARDI: elinde v2 tutan bir istemcinin yazmasi, ticket hic degismemis
+olsa bile catisma verirdi.
+
+Sira garantisi (06 §3) `sequence` uzerindedir: "mevcut + 1" ise uygula,
+kucuk/esitse idempotent ack et, buyukse snapshot ile bosluk kapat.
+
+### `GET /v1/support/tickets/by-source/{id}` — `source_tenant_id` ZORUNLUDUR
+
+Bu bir kapris degil, dogruluk gereksinimi. Ticket'larin tekillik kisiti:
+
+```
+UNIQUE (tenant_id, application_id, source_tenant_row_id, source_ticket_id)
+```
+
+Yani `source_ticket_id` **kaynak tenant basina** tekildir, uygulama
+basina DEGIL. Ayni LogiSlot kurulumundaki iki farkli musteri ayni
+`source_ticket_id` degerini kullanabilir. Parametre olmadan sorgu iki
+tenant arasinda BELIRSIZ kalir — ve yanlis tenant'in ticket'ini donmek,
+kapsam ihlalidir.
+
+Token uygulama sinirini zaten cizer; tenant sinirini bu parametre cizer.
