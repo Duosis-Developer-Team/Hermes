@@ -66,6 +66,10 @@ class UserService:
                 full_name="Yeni Kullanıcı"
             ))
         """
+        # E-posta tek kanonik yazimla saklanir (kucuk harf) — SSO
+        # dizininden gelen yazim ne olursa olsun ayni kaydi bulur.
+        user_data.email = (user_data.email or "").strip().lower()
+
         # E-posta kontrolü
         existing_user = self.get_by_email(user_data.email)
         if existing_user:
@@ -184,7 +188,15 @@ class UserService:
         Returns:
             User nesnesi veya None (bulunamazsa)
         """
-        return self.db.query(User).filter(User.email == email).first()
+        # BUYUK/kucuk harf duyarsiz: ayni kisi icin ikinci hesap
+        # acilmasini onler (SSO dizini farkli yazimla donebilir).
+        from sqlalchemy import func
+
+        return (
+            self.db.query(User)
+            .filter(func.lower(User.email) == (email or "").strip().lower())
+            .first()
+        )
     
     def get_all(
         self,
@@ -255,9 +267,13 @@ class UserService:
         update_data = user_data.model_dump(exclude_unset=True)
         
         # E-posta değişiyorsa, çakışma kontrolü yap
-        if "email" in update_data and update_data["email"] != db_user.email:
+        if "email" in update_data:
+            update_data["email"] = (update_data["email"] or "").strip().lower()
+        if ("email" in update_data
+                and update_data["email"] != (db_user.email or "").lower()):
             existing = self.get_by_email(update_data["email"])
-            if existing:
+            # Kendi kaydini farkli yazimla guncellemek cakisma degildir.
+            if existing and existing.id != db_user.id:
                 raise ConflictError(
                     message="This e-mail address is used by another user",
                     field="email"

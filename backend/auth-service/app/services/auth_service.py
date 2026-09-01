@@ -142,7 +142,16 @@ class AuthService:
         Returns:
             User nesnesi veya None
         """
-        return self.db.query(User).filter(User.email == email).first()
+        # BUYUK/kucuk harf duyarsiz: Entra "Ad.Soyad@duosis.com",
+        # panel "ad.soyad@duosis.com" yazabilir. Duyarli karsilastirma
+        # ayni kisi icin IKINCI bir hesap acilmasina yol acardi.
+        from sqlalchemy import func
+
+        return (
+            self.db.query(User)
+            .filter(func.lower(User.email) == (email or "").strip().lower())
+            .first()
+        )
     
     def _create_token_for_user(
         self, user: User, *, tenant, membership, auth_method: str = "local"
@@ -262,18 +271,45 @@ class AuthService:
             if not email:
                 raise UnauthorizedError("No email found in Microsoft account")
                 
-        # 3. Kimligi bul — YARATMA.
+        # Misafir (B2B) hesaplarin UPN'i "ali_disfirma.com#EXT#@..."
+        # bicimindedir. Alan adi izin listesi bunlari zaten elemeli;
+        # yine de dizin disi kimlikleri ADI GECMEDEN reddediyoruz.
+        if "#EXT#" in email.upper():
+            raise UnauthorizedError("Bu organizasyona erişiminiz bulunmuyor.")
+
+        # Tek kanonik yazim: dizin "Ad.Soyad@duosis.com" dondurse de
+        # kayit ve arama kucuk harf uzerinden yurur.
+        email = email.strip().lower()
+
+        # 3. Kimligi bul; yoksa ALAN ADI IZIN LISTESINE bakarak ac.
         generic_failure = "Bu organizasyona erişiminiz bulunmuyor."
         user = self._get_user_by_email(email)
+
+        if user is None:
+            # WS12+: tenant e-posta alan adiyla otomatik katilima
+            # aciksa, dizinde DOGRULANMIS kimlik icin hesap acilir.
+            # Bu dal yalnizca Microsoft token'i ve Graph profili
+            # basariyla alindiktan SONRA calisir (yukarida); alan adi
+            # eslesmezse None doner ve asagidaki kontrol reddeder.
+            user = membership_service.maybe_auto_create_user(
+                self.db, tenant=tenant, email=email, full_name=full_name,
+            )
 
         if user is None or not user.is_active:
             raise UnauthorizedError(generic_failure)
 
-        # 4. Bu tenant'ta AKTIF uyelik sart.
+        # 4. Bu tenant'ta AKTIF uyelik sart. Yoksa, ayni alan adi
+        #    kuraliyla uyelik acilir (rol: member).
         membership = membership_service.get_active_membership(
             self.db, tenant_id=tenant.id, user_id=user.id
         )
         if membership is None:
+            membership = membership_service.maybe_auto_join(
+                self.db, tenant=tenant, user=user
+            )
+        if membership is None:
+            # Hesap yeni acildiysa uyeliksiz kimlik birakmayiz.
+            self.db.rollback()
             raise UnauthorizedError(generic_failure)
 
         # 5. Tenant-scoped JWT

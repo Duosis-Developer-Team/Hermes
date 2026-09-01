@@ -126,30 +126,34 @@ def assert_user_ids_are_members(
 # E-posta alan adiyla OTOMATIK katilim (WS12)
 # =============================================================================
 
-def maybe_auto_join(db: Session, *, tenant, user):
-    """Alan adi eslesiyorsa kullaniciyi tenant'a uye yapar.
+def email_domain(email: str) -> Optional[str]:
+    """E-postanin alan adini kucuk harfle doner (cozulemezse None)."""
+    value = (email or "").strip().lower()
+    if "@" not in value:
+        return None
+    domain = value.rsplit("@", 1)[1].strip().rstrip(".")
+    return domain or None
 
-    NE ZAMAN CAGRILIR: kimlik DOGRULANDIKTAN sonra, uyelik bulunamayinca.
-    Parola kontrolu bu fonksiyondan ONCE yapilir — burasi kimseyi
-    "girise" almaz, yalnizca zaten dogrulanmis bir kimlige UYELIK verir.
 
-    Kosullar (hepsi saglanmali, aksi halde None):
-      - tenant'in aktif bir 'email-domain' saglayicisi var,
+def domain_is_auto_joinable(db: Session, *, tenant, email: str) -> bool:
+    """`email` bu tenant'a otomatik katilim hakki veriyor mu?
+
+    TEK karar noktasi: hem uyelik acan `maybe_auto_join` hem de kimlik
+    acan `maybe_auto_create_user` bu fonksiyonu kullanir. Kural iki
+    yerde ayri ayri yazilsaydi, biri gevsedigi anda otekinin sikiligi
+    anlamsiz kalirdi.
+
+    Kosullar (hepsi saglanmali):
+      - tenant'in AKTIF bir 'email-domain' saglayicisi var,
       - `auto_provision_mode == 'auto'`,
-      - kullanicinin e-posta alan adi izin listesinde.
-
-    Verilen rol MEMBER'dir; admin YAPILMAZ. Bir alan adina sahip olmak
-    o organizasyonun yoneticisi olmak anlamina gelmez.
+      - e-posta alan adi izin listesinde (tam eslesme; alt alan adlari
+        DAHIL DEGILDIR — 'evil-duosis.com' ya da 'x.duosis.com' gecmez).
     """
-    from ..models.rbac import RbacRole, RbacUserRole
     from ..models.tenancy import TenantIdentityProvider
 
-    email = (getattr(user, "email", "") or "").lower()
-    if "@" not in email:
-        return None
-    domain = email.rsplit("@", 1)[1].strip().rstrip(".")
-    if not domain:
-        return None
+    domain = email_domain(email)
+    if domain is None:
+        return False
 
     idp = db.query(TenantIdentityProvider).filter(
         TenantIdentityProvider.tenant_id == tenant.id,
@@ -157,10 +161,30 @@ def maybe_auto_join(db: Session, *, tenant, user):
         TenantIdentityProvider.is_active.is_(True),
     ).first()
     if idp is None or idp.auto_provision_mode != "auto":
-        return None
+        return False
 
-    allowed = [d.lower() for d in (idp.allowed_email_domains or [])]
-    if domain not in allowed:
+    allowed = {
+        (d or "").strip().lower().rstrip(".")
+        for d in (idp.allowed_email_domains or [])
+    }
+    return domain in allowed
+
+
+def maybe_auto_join(db: Session, *, tenant, user):
+    """Alan adi eslesiyorsa kullaniciyi tenant'a uye yapar.
+
+    NE ZAMAN CAGRILIR: kimlik DOGRULANDIKTAN sonra, uyelik bulunamayinca.
+    Parola/SSO dogrulamasi bu fonksiyondan ONCE yapilir — burasi kimseyi
+    "girise" almaz, yalnizca zaten dogrulanmis bir kimlige UYELIK verir.
+
+    Verilen rol MEMBER'dir; admin YAPILMAZ. Bir alan adina sahip olmak
+    o organizasyonun yoneticisi olmak anlamina gelmez.
+    """
+    from ..models.rbac import RbacRole, RbacUserRole
+
+    if not domain_is_auto_joinable(
+        db, tenant=tenant, email=getattr(user, "email", "") or ""
+    ):
         return None
 
     membership = TenantMembership(
@@ -183,3 +207,53 @@ def maybe_auto_join(db: Session, *, tenant, user):
         ))
     db.commit()
     return membership
+
+
+def maybe_auto_create_user(
+    db: Session, *, tenant, email: str, full_name: str | None = None,
+    auth_provider: str = "MICROSOFT",
+):
+    """Alan adi eslesiyorsa DOGRULANMIS SSO kimligi icin hesap acar.
+
+    NE ZAMAN CAGRILIR: SSO saglayicisi kimligi dogruladiktan SONRA,
+    `users` tablosunda karsilik bulunamayinca. Cagiran, e-postanin
+    guvenilir bir dizinden geldigini garanti etmis olmalidir; bu
+    fonksiyon token dogrulamaz.
+
+    Neden yerel parola girisinde YOK: orada kimligin var olmasi
+    parolayi dogrulamanin on kosuludur; hesabi olmayan birinin
+    "dogrulanmis" olmasi mumkun degildir.
+
+    Acilan hesap:
+      - parolasiz (`hashed_password=None`) — yalnizca SSO ile girilir,
+      - `is_admin=False`, rol atamasi `maybe_auto_join`'e birakilir
+        (member); yonetici yetkisi yalnizca admin panelinden verilir,
+      - e-posta KUCUK HARF saklanir (tek kanonik yazim).
+
+    Uyelik BURADA acilmaz: cagiran ardindan `maybe_auto_join` cagirir.
+    Boylece "kimlik acma" ve "tenant'a alma" kararlari ayri ayri
+    denetlenebilir kalir.
+    """
+    from ..models.user import AuthProvider, User, UserRole
+
+    normalized = (email or "").strip().lower()
+    if not normalized or not domain_is_auto_joinable(
+        db, tenant=tenant, email=normalized
+    ):
+        return None
+
+    user = User(
+        email=normalized,
+        full_name=(full_name or "").strip() or normalized,
+        hashed_password=None,
+        is_active=True,
+        is_admin=False,
+        role=UserRole.USER,
+        auth_provider=(
+            AuthProvider.MICROSOFT if auth_provider == "MICROSOFT"
+            else AuthProvider.LOCAL
+        ),
+    )
+    db.add(user)
+    db.flush()
+    return user
