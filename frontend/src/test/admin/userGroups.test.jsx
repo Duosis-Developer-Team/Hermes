@@ -297,9 +297,15 @@ describe('KUSUR — uye ekleme onay butonu HER ZAMAN disabled’di', () => {
         const user = setupUser()
         renderGroups()
         await expandGroup(user, 'Technical Team')
-        await user.click(
-            await screen.findByRole('button', { name: /Edit title for Bob Bit/ })
+        const editButton = await screen.findByRole(
+            'button', { name: /Edit title for Bob Bit/ },
         )
+        // Kardes testlerdeki AYNI kalip: grup genisletmek IKINCI bir
+        // sorgu tetikler ve uye paneli o sorgu inerken TEKRAR bulaniklasir
+        // (`pointer-events: none`). Bu bekleme atlanmisti; CI shard 2'de
+        // tam olarak bu yuzden dustu.
+        await settled()
+        await user.click(editButton)
         const dialog = await dialogByTitle(/Edit Member Title/)
         expect(within(dialog).getByRole('button', { name: /Save Changes/ }))
             .toBeEnabled()
