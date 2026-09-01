@@ -21,6 +21,8 @@
  *     t('tickets.count', { n: 5 })        // "5 tickets" / "5 talep"
  */
 
+import { useCallback } from 'react'
+
 import { useLocaleStore } from '../stores/localeStore'
 import en from './en'
 import tr from './tr'
@@ -66,10 +68,19 @@ export function translate(locale, key, vars) {
     return interpolate(text, vars)
 }
 
-/** Bilesenler icin: dil degisince yeniden render eder. */
+/**
+ * Bilesenler icin: dil degisince yeniden render eder.
+ *
+ * Donen fonksiyon KARARLIDIR (yalnizca dil degisince yenilenir). Bu
+ * onemli: her render'da yeni bir fonksiyon donseydi, `t`'yi bagimlilik
+ * dizisine yazan her `useMemo`/`useEffect` her render'da yeniden
+ * kosardi — yani memo'lar islevsiz kalirdi. Kararli oldugu icin `t`
+ * bagimliliklara GUVENLE yazilabilir ve dil degisince icerik gercekten
+ * tazelenir.
+ */
 export function useT() {
     const locale = useLocaleStore((s) => s.locale)
-    return (key, vars) => translate(locale, key, vars)
+    return useCallback((key, vars) => translate(locale, key, vars), [locale])
 }
 
 export default useT

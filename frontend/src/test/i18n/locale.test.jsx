@@ -36,7 +36,7 @@ describe('i18n sozlukleri', () => {
             'nav.apiManagement', 'nav.platforms', 'nav.projects',
             'entity.platform', 'entity.platforms',
             // Saf BICIM dizgesi (prose degil): "{entity} ({n})".
-            'admin.entityCount',
+            'admin.entityCount', 'logTime.platform',
         ])
         const untranslated = flatten(en).filter((key) => {
             if (SAME_BY_DESIGN.has(key)) return false

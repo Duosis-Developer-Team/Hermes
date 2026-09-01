@@ -37,13 +37,12 @@ import {
     taskService,
     taskSubProjectService,
 } from '../../services/api'
+import { useT } from '../../i18n'
 
-const PRIORITY_OPTIONS = [
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
-    { value: 'urgent', label: 'Urgent' },
-]
+// Oncelik listesi MODUL duzeyindeydi; ceviri bir hook'a bagli oldugu
+// icin artik bilesen icinde uretilir. Degerler (low/medium/...) API
+// sozlesmesidir ve CEVRILMEZ — yalnizca etiket cevrilir.
+const PRIORITY_VALUES = ['low', 'medium', 'high', 'urgent']
 
 function CreateTaskModal({
     open,
@@ -57,6 +56,10 @@ function CreateTaskModal({
     assignableUserIds = [],
     loading = false,
 }) {
+    const t = useT()
+    const priorityOptions = PRIORITY_VALUES.map((value) => ({
+        value, label: t(`task.${value}`),
+    }))
     const TYPE_LABEL = { task: 'Task', issue: 'Issue', suggestion: 'Suggestion' }
     const typeLabel = TYPE_LABEL[taskType] || 'Task'
     // Form value for assignee is a prefixed string:
@@ -110,7 +113,7 @@ function CreateTaskModal({
                 name,
             }),
         onSuccess: (created) => {
-            message.success('Sub project created.')
+            message.success(t('task.subProjectCreated'))
             setNewSubName('')
             // Synchronously add it to THIS query's cache so the option
             // exists immediately — otherwise the auto-select below points
@@ -193,7 +196,7 @@ function CreateTaskModal({
         }
         return [
             {
-                label: 'Groups',
+                label: t('task.groups'),
                 options: assignableGroups.map((g) => ({
                     value: `group:${g.id}`,
                     label: `${g.name} (${g.member_count} member${
@@ -202,11 +205,11 @@ function CreateTaskModal({
                 })),
             },
             {
-                label: 'Users',
+                label: t('task.users'),
                 options: userOptions,
             },
         ]
-    }, [mappedUsers, assignableGroups, editingTask])
+    }, [mappedUsers, assignableGroups, editingTask, t])
 
     useEffect(() => {
         // Clear the inline "new sub project" draft whenever the modal
@@ -341,7 +344,7 @@ function CreateTaskModal({
             open={open}
             onCancel={onClose}
             okText={isEditing ? 'Save Changes' : `Create ${typeLabel}`}
-            cancelText="Cancel"
+            cancelText={t('common.cancel')}
             confirmLoading={loading}
             onOk={() => form.submit()}
             width={880}
@@ -373,13 +376,13 @@ function CreateTaskModal({
                 {/* Customer | Project: eslenmis satir (bkz. .h-modal-row) */}
                 <div className="h-modal-row">
                 <Form.Item
-                    label="Customer"
+                    label={t('entity.customer')}
                     name="customer_id"
-                    rules={[{ required: true, message: 'Customer is required.' }]}
+                    rules={[{ required: true, message: t('task.customerRequired') }]}
                 >
                     <Select
                         showSearch
-                        placeholder="Select customer"
+                        placeholder={t('task.selectCustomer')}
                         onChange={handleCustomerChange}
                         optionFilterProp="label"
                         options={customers.map((c) => ({ value: c.id, label: c.name }))}
@@ -387,9 +390,9 @@ function CreateTaskModal({
                 </Form.Item>
 
                 <Form.Item
-                    label="Project"
+                    label={t('entity.project')}
                     name="project_id"
-                    rules={[{ required: true, message: 'Project is required.' }]}
+                    rules={[{ required: true, message: t('task.projectRequired') }]}
                 >
                     <Select
                         showSearch
@@ -411,7 +414,7 @@ function CreateTaskModal({
                 {/* Sub Project | Assignees */}
                 <div className="h-modal-row">
                 <Form.Item
-                    label="Sub Project"
+                    label={t('task.subProject')}
                     name="sub_project_id"
                     extra={`Optional — leave empty to create the ${typeLabel.toLowerCase()} directly under the project.`}
                 >
@@ -437,7 +440,7 @@ function CreateTaskModal({
                                 >
                                     <Input
                                         size="small"
-                                        placeholder="New sub project name"
+                                        placeholder={t('task.newSubProject')}
                                         value={newSubName}
                                         maxLength={255}
                                         onChange={(e) => setNewSubName(e.target.value)}
@@ -462,9 +465,7 @@ function CreateTaskModal({
                                             createSubMutation.isPending
                                         }
                                         onClick={handleAddSubProject}
-                                    >
-                                        Add
-                                    </Button>
+                                    >{t('task.add')}</Button>
                                 </Space.Compact>
                             </>
                         )}
@@ -477,7 +478,7 @@ function CreateTaskModal({
                     rules={[
                         {
                             required: true,
-                            message: 'Pick at least one assignee.',
+                            message: t('task.pickAssignee'),
                         },
                     ]}
                 >
@@ -513,7 +514,7 @@ function CreateTaskModal({
                             whitespace: true,
                             message: `${typeLabel} title is required.`,
                         },
-                        { max: 255, message: 'Max 255 characters.' },
+                        { max: 255, message: t('task.maxChars') },
                     ]}
                 >
                     <Input
@@ -523,16 +524,16 @@ function CreateTaskModal({
                 </Form.Item>
 
                 <Form.Item
-                    label="Description"
+                    label={t('common.description')}
                     name="description"
                     rules={[
-                        { required: true, message: 'Description is required.' },
+                        { required: true, message: t('task.descriptionRequired') },
                         {
                             validator: (_, value) =>
                                 !value || value.trim().length > 0
                                     ? Promise.resolve()
                                     : Promise.reject(
-                                          new Error('Description is required.')
+                                          new Error(t('task.descriptionRequired'))
                                       ),
                         },
                     ]}
@@ -548,26 +549,26 @@ function CreateTaskModal({
                     both fit side by side. */}
                 <div className="h-modal-row h-modal-row--3">
                     <Form.Item
-                        label="Scheduled Date"
+                        label={t('task.scheduledDate')}
                         name="scheduled_date"
                         rules={[
-                            { required: true, message: 'Scheduled date is required.' },
+                            { required: true, message: t('task.scheduledDateRequired') },
                         ]}
                         style={{ flex: 1 }}
                     >
                         <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
                     </Form.Item>
 
-                    <Form.Item label="Due Date" name="due_date" style={{ flex: 1 }}>
+                    <Form.Item label={t('task.dueDate')} name="due_date" style={{ flex: 1 }}>
                         <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
                     </Form.Item>
 
                     <Form.Item
-                        label="Priority"
+                        label={t('task.priority')}
                         name="priority"
                         rules={[{ required: true }]}
                     >
-                        <Select options={PRIORITY_OPTIONS} />
+                        <Select options={priorityOptions} />
                     </Form.Item>
                 </div>
             </Form>

@@ -56,7 +56,10 @@ describe('KPI kartlari metric stripe donustu', () => {
         const jsx = noComments(read('pages/ReportsPage.jsx'))
         expect(jsx).toContain('h-metric-strip')
         expect(jsx).not.toContain('className="stat-card"')
-        expect(jsx).toContain('Download CSV')
+        // Metin artik sozlukte (i18n): kaynak duz Ingilizce TASIMAZ.
+        // Kilitlenen sey metnin kendisi degil, KOMPAKT indirme
+        // eyleminin varligiydi — anahtar uzerinden dogrulanir.
+        expect(jsx).toContain("reports.downloadCsv")
     })
 
     it('Contract Status health strip kullaniyor', () => {
@@ -159,8 +162,15 @@ describe('duzeltme turu (2026-08-04) kilitleri', () => {
         expect(jsx).not.toContain('More filters')
         expect(jsx).not.toContain('moreFiltersOpen')
         // Uc filtre de erisilebilir ad tasir (placeholder ad DEGILDIR).
-        for (const n of ['Filter by project', 'Filter by type', 'Filter by platform']) {
-            expect(jsx, n).toContain(n)
+        // i18n sonrasi ad sozlukten gelir; kilit ANAHTAR uzerindedir.
+        // Anahtarlarin gercek metni `test/i18n/locale.test.jsx`
+        // tarafindan ayrica dogrulanir.
+        for (const key of [
+            'reports.filterByProject',
+            'reports.filterByType',
+            'reports.filterByPlatform',
+        ]) {
+            expect(jsx, key).toContain(key)
         }
     })
 

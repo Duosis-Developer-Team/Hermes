@@ -35,6 +35,7 @@ import {
 } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { queryKeys } from '../query/queryKeys'
+import { useT } from '../i18n'
 
 const { RangePicker } = DatePicker
 
@@ -52,6 +53,7 @@ function formatDuration(decimalHours) {
 // =============================================================================
 
 function ReportsPage() {
+    const t = useT()
     // RBAC R3: sayfa yetkisi reports.view iznine bakar.
     const canViewReports = useAuthStore((s) => s.can)('reports.view')
     const permissions = useAuthStore((s) => s.permissions)
@@ -146,7 +148,7 @@ function ReportsPage() {
     }
 
     if (!canViewReports) {
-        return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>Access Restricted</div>
+        return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>{t('reports.accessRestricted')}</div>
     }
 
     const activeFilterCount =
@@ -178,9 +180,7 @@ function ReportsPage() {
                         icon={<CloseCircleOutlined />}
                         onClick={handleClearAll}
                         style={{ marginTop: 4 }}
-                    >
-                        Clear Filters
-                    </Button>
+                    >{t('reports.clearFilters')}</Button>
                 )}
             </div>
 
@@ -202,12 +202,12 @@ function ReportsPage() {
                         <Button
                             icon={<FilterOutlined />}
                             onClick={() => setFilterSheetOpen(true)}
-                            aria-label="Filters"
+                            aria-label={t('tasks.filters')}
                         >
                             Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
                         </Button>
                         <Drawer
-                            title="Filters"
+                            title={t('tasks.filters')}
                             placement="bottom"
                             height="auto"
                             open={filterSheetOpen}
@@ -217,7 +217,7 @@ function ReportsPage() {
                             <div style={{ display: 'grid', gap: 16 }}>
 
                     {/* Date Range */}
-                    <FilterBlock label="Date Range" icon={<CalendarOutlined />}>
+                    <FilterBlock label={t('reports.dateRange')} icon={<CalendarOutlined />}>
                         <RangePicker
                             value={dateRange}
                             onChange={setDateRange}
@@ -231,8 +231,8 @@ function ReportsPage() {
                     <FilterBlock label="Users" count={selectedUsers.length}>
                         <Select
                             mode="multiple"
-                            placeholder="All users"
-                            aria-label="Filter by user"
+                            placeholder={t('reports.allUsers')}
+                            aria-label={t('reports.filterByUser')}
                             value={selectedUsers}
                             onChange={setSelectedUsers}
                             options={users.map(u => ({ value: u.id, label: u.full_name || u.email }))}
@@ -248,8 +248,8 @@ function ReportsPage() {
                     <FilterBlock label="Customers" count={selectedCustomers.length}>
                         <Select
                             mode="multiple"
-                            placeholder="All customers"
-                            aria-label="Filter by customer"
+                            placeholder={t('reports.allCustomers')}
+                            aria-label={t('reports.filterByCustomer')}
                             value={selectedCustomers}
                             onChange={setSelectedCustomers}
                             options={customers.map(c => ({ value: c.id, label: c.name }))}
@@ -266,8 +266,8 @@ function ReportsPage() {
                     <FilterBlock label="Projects" count={selectedProjects.length}>
                         <Select
                             mode="multiple"
-                            placeholder="All projects"
-                            aria-label="Filter by project"
+                            placeholder={t('reports.allProjects')}
+                            aria-label={t('reports.filterByProject')}
                             value={selectedProjects}
                             onChange={setSelectedProjects}
                             options={projects.map(p => ({ value: p.id, label: p.name }))}
@@ -283,8 +283,8 @@ function ReportsPage() {
                     <FilterBlock label="Types" count={selectedTypes.length}>
                         <Select
                             mode="multiple"
-                            placeholder="All types"
-                            aria-label="Filter by type"
+                            placeholder={t('reports.allTypes')}
+                            aria-label={t('reports.filterByType')}
                             value={selectedTypes}
                             onChange={setSelectedTypes}
                             options={workTypes.map(t => ({ value: t.id, label: t.name }))}
@@ -300,8 +300,8 @@ function ReportsPage() {
                     <FilterBlock label="Platforms" count={selectedPlatforms.length}>
                         <Select
                             mode="multiple"
-                            placeholder="All platforms"
-                            aria-label="Filter by platform"
+                            placeholder={t('reports.allPlatforms')}
+                            aria-label={t('reports.filterByPlatform')}
                             value={selectedPlatforms}
                             onChange={setSelectedPlatforms}
                             options={platforms.map(p => ({ value: p.id, label: p.name }))}
@@ -319,7 +319,7 @@ function ReportsPage() {
                     <div className="reports-filter-toolbar h-inline-toolbar" style={{ alignItems: 'flex-end', gap: 20 }}>
 
                     {/* Date Range */}
-                    <FilterBlock label="Date Range" icon={<CalendarOutlined />}>
+                    <FilterBlock label={t('reports.dateRange')} icon={<CalendarOutlined />}>
                         <RangePicker
                             value={dateRange}
                             onChange={setDateRange}
@@ -333,8 +333,8 @@ function ReportsPage() {
                     <FilterBlock label="Users" count={selectedUsers.length}>
                         <Select
                             mode="multiple"
-                            placeholder="All users"
-                            aria-label="Filter by user"
+                            placeholder={t('reports.allUsers')}
+                            aria-label={t('reports.filterByUser')}
                             value={selectedUsers}
                             onChange={setSelectedUsers}
                             options={users.map(u => ({ value: u.id, label: u.full_name || u.email }))}
@@ -350,8 +350,8 @@ function ReportsPage() {
                     <FilterBlock label="Customers" count={selectedCustomers.length}>
                         <Select
                             mode="multiple"
-                            placeholder="All customers"
-                            aria-label="Filter by customer"
+                            placeholder={t('reports.allCustomers')}
+                            aria-label={t('reports.filterByCustomer')}
                             value={selectedCustomers}
                             onChange={setSelectedCustomers}
                             options={customers.map(c => ({ value: c.id, label: c.name }))}
@@ -368,8 +368,8 @@ function ReportsPage() {
                     <FilterBlock label="Projects" count={selectedProjects.length}>
                         <Select
                             mode="multiple"
-                            placeholder="All projects"
-                            aria-label="Filter by project"
+                            placeholder={t('reports.allProjects')}
+                            aria-label={t('reports.filterByProject')}
                             value={selectedProjects}
                             onChange={setSelectedProjects}
                             options={projects.map(p => ({ value: p.id, label: p.name }))}
@@ -385,8 +385,8 @@ function ReportsPage() {
                     <FilterBlock label="Types" count={selectedTypes.length}>
                         <Select
                             mode="multiple"
-                            placeholder="All types"
-                            aria-label="Filter by type"
+                            placeholder={t('reports.allTypes')}
+                            aria-label={t('reports.filterByType')}
                             value={selectedTypes}
                             onChange={setSelectedTypes}
                             options={workTypes.map(t => ({ value: t.id, label: t.name }))}
@@ -402,8 +402,8 @@ function ReportsPage() {
                     <FilterBlock label="Platforms" count={selectedPlatforms.length}>
                         <Select
                             mode="multiple"
-                            placeholder="All platforms"
-                            aria-label="Filter by platform"
+                            placeholder={t('reports.allPlatforms')}
+                            aria-label={t('reports.filterByPlatform')}
                             value={selectedPlatforms}
                             onChange={setSelectedPlatforms}
                             options={platforms.map(p => ({ value: p.id, label: p.name }))}
@@ -475,6 +475,7 @@ function FilterBlock({ label, icon, count, children }) {
 // =============================================================================
 
 function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedProjects, selectedTypes, selectedPlatforms }) {
+    const t = useT()
     const startDate = dateRange?.[0]?.format('YYYY-MM-DD')
     const endDate = dateRange?.[1]?.format('YYYY-MM-DD')
 
@@ -582,7 +583,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
 
     const columns = [
         {
-            title: 'Date',
+            title: t('reports.date'),
             dataIndex: 'date',
             width: 130,
             sorter: (a, b) => (a.date || '').localeCompare(b.date || ''),
@@ -595,7 +596,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             )
         },
         {
-            title: 'User',
+            title: t('entity.user'),
             dataIndex: 'user_name',
             width: 160,
             sorter: (a, b) => (a.user_name || '').localeCompare(b.user_name || '', 'en'),
@@ -604,7 +605,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             render: u => <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{u}</span>
         },
         {
-            title: 'Customer',
+            title: t('entity.customer'),
             dataIndex: 'customer_name',
             width: 180,
             sorter: (a, b) => (a.customer_name || '').localeCompare(b.customer_name || '', 'en'),
@@ -613,7 +614,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             render: c => <span style={{ color: 'var(--text-primary)' }}>{c}</span>
         },
         {
-            title: 'Project',
+            title: t('entity.project'),
             dataIndex: 'project_name',
             width: 200,
             sorter: (a, b) => (a.project_name || '').localeCompare(b.project_name || '', 'en'),
@@ -622,7 +623,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             render: p => <span style={{ color: 'var(--text-primary)' }}>{p}</span>
         },
         {
-            title: 'Type',
+            title: t('reports.type'),
             dataIndex: 'work_type',
             width: 140,
             sorter: (a, b) => (a.work_type || '').localeCompare(b.work_type || '', 'en'),
@@ -642,7 +643,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             )
         },
         {
-            title: 'Platform',
+            title: t('entity.platform'),
             dataIndex: 'platform_name',
             width: 130,
             sorter: (a, b) => (a.platform_name || '').localeCompare(b.platform_name || '', 'en'),
@@ -660,13 +661,13 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                 : <span style={{ color: 'var(--text-muted)' }}>—</span>
         },
         {
-            title: 'Description',
+            title: t('common.description'),
             dataIndex: 'description',
             ellipsis: true,
             render: d => <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{d || '—'}</span>
         },
         {
-            title: 'Hours',
+            title: t('reports.hours'),
             dataIndex: 'duration',
             width: 90,
             align: 'right',
@@ -691,11 +692,11 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                 <div className="h-metric-strip__item h-metric-strip__item--accent">
                     <span className="h-metric-strip__accent" aria-hidden="true" />
                     <div className="h-metric-strip__value">{formatDuration(totalHours)}</div>
-                    <div className="h-metric-strip__label">Total Hours</div>
+                    <div className="h-metric-strip__label">{t('reports.totalHours')}</div>
                 </div>
                 <div className="h-metric-strip__item">
                     <div className="h-metric-strip__value">{entryCount}</div>
-                    <div className="h-metric-strip__label">Entries</div>
+                    <div className="h-metric-strip__label">{t('reports.entries')}</div>
                 </div>
                 <div className="h-metric-strip__item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                     <Button
@@ -703,10 +704,8 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                         icon={<DownloadOutlined />}
                         onClick={exportCsv}
                         loading={exportLoading}
-                        aria-label="Download CSV — exports the current filter view"
-                    >
-                        Download CSV
-                    </Button>
+                        aria-label={t('reports.downloadCsvHint')}
+                    >{t('reports.downloadCsv')}</Button>
                 </div>
             </div>
 
@@ -718,7 +717,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                     <div style={{ padding: '28px 0', textAlign: 'center' }}>
                         <Empty
                             description={
-                                <span style={{ color: 'var(--text-muted)' }}>No entries match the current filters</span>
+                                <span style={{ color: 'var(--text-muted)' }}>{t('reports.noEntries')}</span>
                             }
                         />
                     </div>
