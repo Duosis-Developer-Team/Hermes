@@ -29,8 +29,14 @@ describe('i18n sozlukleri', () => {
     it('Turkce metinler Ingilizce ile AYNI olmamalidir', () => {
         // Kopyala-yapistir kalan anahtarlari yakalar. Ozel adlar ve
         // kisaltmalar (API, Hermes, TR/EN) haric tutulur.
+        // Turkce'de AYNI kalan sozcukler (odunc alinmis ya da kisaltma).
+        // Liste bilerek kisa: her eklenen madde "cevrilmedi mi, yoksa
+        // gercekten ayni mi?" sorusunu bir kez daha sordurur.
         const SAME_BY_DESIGN = new Set([
             'nav.apiManagement', 'nav.platforms', 'nav.projects',
+            'entity.platform', 'entity.platforms',
+            // Saf BICIM dizgesi (prose degil): "{entity} ({n})".
+            'admin.entityCount',
         ])
         const untranslated = flatten(en).filter((key) => {
             if (SAME_BY_DESIGN.has(key)) return false

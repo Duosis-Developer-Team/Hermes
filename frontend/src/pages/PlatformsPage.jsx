@@ -17,13 +17,15 @@ import DictionaryCrudPage from '../features/admin/dictionaries/DictionaryCrudPag
 import { platformService } from '../services/api'
 import { queryKeys } from '../query/queryKeys'
 import './AdminPages.css'
+import { useT } from '../i18n'
 
 function PlatformsPage() {
+    const t = useT()
     return (
         <DictionaryCrudPage
-            title="Platforms"
+            title={t('entity.platforms')}
             singular="Platform"
-            description="Manage platforms"
+            description={t('admin.managePlatforms')}
             codeColor="purple"
             service={platformService}
             queryKey={queryKeys.platforms.all}

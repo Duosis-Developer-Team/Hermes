@@ -41,6 +41,7 @@ const FORM_SHAPE = {
     contract_start_date: null, contract_duration_days: undefined,
 }
 import { Page, PageHeader } from '../../components/ui'
+import { useT } from '../../i18n'
 
 function CustomersPage() {
     const [form] = Form.useForm()
@@ -50,6 +51,7 @@ function CustomersPage() {
 
     // Data fetching
     const [search, setSearch] = useState('')
+    const t = useT()
     const {
         data: customers = [], isLoading, isFetching, isError, error, refetch,
     } = useQuery({
@@ -61,7 +63,7 @@ function CustomersPage() {
     const createMutation = useMutation({
         mutationFn: customerService.create,
         onSuccess: () => {
-            message.success('Customer created')
+            message.success(t('admin.entityCreated', { entity: t('entity.customer') }))
             handleCloseModal()
             queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
@@ -71,7 +73,7 @@ function CustomersPage() {
     const updateMutation = useMutation({
         mutationFn: ({ id, data }) => customerService.update(id, data),
         onSuccess: () => {
-            message.success('Customer updated')
+            message.success(t('admin.entityUpdated', { entity: t('entity.customer') }))
             handleCloseModal()
             queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
@@ -81,7 +83,7 @@ function CustomersPage() {
     const archiveMutation = useMutation({
         mutationFn: ({ id }) => customerService.update(id, { is_active: false }),
         onSuccess: () => {
-            message.success('Customer archived (soft deleted)')
+            message.success(t('admin.entityArchived', { entity: t('entity.customer') }))
             handleDeleteCancel()
             queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
@@ -91,7 +93,7 @@ function CustomersPage() {
     const deleteMutation = useMutation({
         mutationFn: customerService.delete,
         onSuccess: () => {
-            message.success({ content: 'Customer permanently deleted', style: { marginTop: '10vh' } })
+            message.success({ content: t('admin.entityDeleted', { entity: t('entity.customer') }), style: { marginTop: '10vh' } })
             handleDeleteCancel()
             queryClient.invalidateQueries({ queryKey: ['customers'] })
         },
@@ -187,14 +189,14 @@ function CustomersPage() {
     // Table columns
     const columns = [
         {
-            title: 'Customers',
+            title: t('entity.customers'),
             subTitle: 'Manage customer accounts',
             dataIndex: 'name',
             key: 'name',
             sorter: (a, b) => a.name.localeCompare(b.name),
         },
         {
-            title: 'Status',
+            title: t('common.status'),
             dataIndex: 'is_active',
             key: 'is_active',
             width: 100,
@@ -206,14 +208,14 @@ function CustomersPage() {
         },
 
         {
-            title: 'Created At',
+            title: t('admin.createdAt'),
             dataIndex: 'created_at',
             key: 'created_at',
             width: 150,
             render: (date) => new Date(date).toLocaleDateString('en-GB'),
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             key: 'actions',
             width: 120,
             render: (_, record) => (
@@ -245,22 +247,20 @@ function CustomersPage() {
     return (
         <Page className="customers-page fade-in">
             <PageHeader
-                title="Customers"
-                subtitle="Manage user accounts and organization details"
+                title={t('entity.customers')}
+                subtitle={t('admin.manageCustomers')}
                 extra={
                     <Space wrap>
                         <Input
                             allowClear
                             prefix={<SearchOutlined aria-hidden="true" />}
-                            placeholder="Search customers"
-                            aria-label="Search Customers"
+                            placeholder={t('admin.searchEntity', { entity: t('entity.customers') })}
+                            aria-label={t('admin.searchEntity', { entity: t('entity.customers') })}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             style={{ width: 220 }}
                         />
-                        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
-                            New Customer
-                        </Button>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>{t('admin.newEntity', { entity: t('entity.customer') })}</Button>
                     </Space>
                 }
             />
@@ -268,7 +268,10 @@ function CustomersPage() {
             <AdminErrorAlert error={isError ? error : null} onRetry={refetch} />
 
             <Card variant="borderless"
-                title={`Customers (${filteredCustomers.length})`}
+                title={t('admin.entityCount', {
+                    entity: t('entity.customers'),
+                    n: filteredCustomers.length,
+                })}
             >
                 <Table
                     dataSource={filteredCustomers}
@@ -284,7 +287,7 @@ function CustomersPage() {
                         emptyText: adminEmptyText({
                             filtered: !!query,
                             entityPlural: 'customers',
-                            createLabel: 'New Customer',
+                            createLabel: t('admin.newEntity', { entity: t('entity.customer') }),
                             term: search.trim(),
                         }),
                     }}
@@ -305,37 +308,37 @@ function CustomersPage() {
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <Form.Item
                         name="name"
-                        label="Customer Name"
+                        label={t('admin.customerNameLabel')}
                         rules={[
                             {
                                 required: true, whitespace: true,
-                                message: 'Customer name is required',
+                                message: t('admin.nameRequired', { entity: t('entity.customer') }),
                             },
                         ]}
                     >
-                        <Input placeholder="e.g. ABC Tech Inc." maxLength={255} />
+                        <Input placeholder={t('admin.customerNameExample')} maxLength={255} />
                     </Form.Item>
 
                     {/* Sozlesme alanlari: backend ikisini de opsiyonel kabul
                         eder, bu yuzden zorunlu yapilmadi. */}
                     <Form.Item
                         name="contract_start_date"
-                        label="Contract Start Date — Optional"
+                        label={t('admin.contractStartOptional')}
                     >
                         <DatePicker
                             style={{ width: '100%' }}
                             format="YYYY-MM-DD"
-                            placeholder="Select start date"
+                            placeholder={t('admin.selectStartDate')}
                         />
                     </Form.Item>
 
                     <Form.Item
                         name="contract_duration_days"
-                        label="Contract Duration (Days) — Optional"
+                        label={t('admin.contractDurationOptional')}
                     >
                         <InputNumber
                             min={1}
-                            placeholder="e.g. 365"
+                            placeholder={t('admin.durationExample')}
                             style={{ width: '100%' }}
                         />
                     </Form.Item>
@@ -343,14 +346,14 @@ function CustomersPage() {
 
 
                     {editingId && (
-                        <Form.Item name="is_active" label="Status" valuePropName="checked">
+                        <Form.Item name="is_active" label={t('common.status')} valuePropName="checked">
                             <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
                         </Form.Item>
                     )}
 
                     <Form.Item>
                         <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                            <Button onClick={handleCloseModal}>Cancel</Button>
+                            <Button onClick={handleCloseModal}>{t('common.cancel')}</Button>
                             <Button
                                 type="primary"
                                 htmlType="submit"

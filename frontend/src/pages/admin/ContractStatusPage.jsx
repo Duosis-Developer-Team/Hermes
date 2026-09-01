@@ -17,12 +17,14 @@ import { useQuery } from '@tanstack/react-query'
 import { projectService, workLogService } from '../../services/api'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import dayjs from 'dayjs'
+import { useT } from '../../i18n'
 
 const HOURS_PER_DAY = 8
 
 const { Text } = Typography
 
 function ContractStatusPage() {
+    const t = useT()
     const [searchText, setSearchText] = useState('')
 
     // Fetch Projects (include inactive to show all contracts)
@@ -143,7 +145,7 @@ function ContractStatusPage() {
             }
         },
         {
-            title: 'REMAINING TIME',
+            title: t('contracts.remainingTime'),
             key: 'remaining',
             width: 300,
             render: (_, record) => (
@@ -174,7 +176,7 @@ function ContractStatusPage() {
             )
         },
         {
-            title: 'START DATE',
+            title: t('contracts.startDate'),
             dataIndex: 'contract_start_date',
             key: 'contract_start_date',
             width: 150,
@@ -202,12 +204,8 @@ function ContractStatusPage() {
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         fontWeight: 800
-                    }}>
-                        Contract Status
-                    </h1>
-                    <Text style={{ color: 'var(--c-text-faint)', fontSize: '1rem' }}>
-                        Track project contract durations and renewals
-                    </Text>
+                    }}>{t('contracts.title')}</h1>
+                    <Text style={{ color: 'var(--c-text-faint)', fontSize: '1rem' }}>{t('contracts.subtitle')}</Text>
                 </div>
             </div>
 
@@ -218,21 +216,19 @@ function ContractStatusPage() {
                     style={{ marginBottom: 24 }}
                     message={loadError.message}
                     action={
-                        <Button size="small" onClick={() => loadError.retry()}>
-                            Retry
-                        </Button>
+                        <Button size="small" onClick={() => loadError.retry()}>{t('common.retry')}</Button>
                     }
                 />
             )}
 
             {/* Premium: uc buyuk status karti yerine TEK health strip —
                 ince dikey ayiricilar, ikon + sayi + label hiyerarsisi. */}
-            <div className="h-metric-strip" role="group" aria-label="Contract health">
+            <div className="h-metric-strip" role="group" aria-label={t('contracts.health')}>
                 <div className="h-metric-strip__item">
                     <div className="h-metric-strip__value" style={{ color: 'var(--h-danger)' }}>
                         <WarningOutlined style={{ fontSize: 18, marginRight: 8 }} />{criticalCount}
                     </div>
-                    <div className="h-metric-strip__label">Critical / Expired</div>
+                    <div className="h-metric-strip__label">{t('contracts.critical')}</div>
                 </div>
                 <div className="h-metric-strip__item">
                     <div className="h-metric-strip__value" style={{ color: 'var(--h-warning)' }}>
@@ -254,8 +250,8 @@ function ContractStatusPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <SearchOutlined style={{ color: 'var(--c-text-faint)', fontSize: 18 }} />
                     <Input
-                        placeholder="Search by customer or project name..."
-                        aria-label="Search contracts by customer or project"
+                        placeholder={t('contracts.searchPlaceholder')}
+                        aria-label={t('contracts.searchLabel')}
                         /* AntD 5.x: bordered deprecated → variant. */
                         variant="borderless"
                         value={searchText}

@@ -29,6 +29,7 @@ import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecy
 import {
     contractToForm, contractToPayload,
 } from '../../features/admin/shared/contractFields'
+import { useT } from '../../i18n'
 
 // Formda GERCEKTEN olan alanlar: API kaydindaki id/created_at gibi
 // alanlar form store'una sizmaz, eksik alan da bayat deger BIRAKMAZ.
@@ -45,6 +46,7 @@ const FORM_SHAPE = {
 
 
 function ProjectsPage() {
+    const t = useT()
     const [form] = Form.useForm()
     const [modalOpen, setModalOpen] = useState(false)
     const [editingId, setEditingId] = useState(null)
@@ -74,7 +76,7 @@ function ProjectsPage() {
     const createMutation = useMutation({
         mutationFn: projectService.create,
         onSuccess: () => {
-            message.success('Project created')
+            message.success(t('admin.entityCreated', { entity: t('entity.project') }))
             handleCloseModal()
             queryClient.invalidateQueries({ queryKey: ['projects'] })
         },
@@ -84,7 +86,7 @@ function ProjectsPage() {
     const updateMutation = useMutation({
         mutationFn: ({ id, data }) => projectService.update(id, data),
         onSuccess: () => {
-            message.success('Project updated')
+            message.success(t('admin.entityUpdated', { entity: t('entity.project') }))
             handleCloseModal()
             queryClient.invalidateQueries({ queryKey: ['projects'] })
         },
@@ -94,7 +96,7 @@ function ProjectsPage() {
     const archiveMutation = useMutation({
         mutationFn: ({ id }) => projectService.update(id, { is_active: false }),
         onSuccess: () => {
-            message.success('Project archived (soft deleted)')
+            message.success(t('admin.entityArchived', { entity: t('entity.project') }))
             handleDeleteCancel()
             queryClient.invalidateQueries({ queryKey: ['projects'] })
         },
@@ -104,7 +106,7 @@ function ProjectsPage() {
     const deleteMutation = useMutation({
         mutationFn: projectService.delete,
         onSuccess: () => {
-            message.success({ content: 'Project permanently deleted', style: { marginTop: '10vh' } })
+            message.success({ content: t('admin.entityDeleted', { entity: t('entity.project') }), style: { marginTop: '10vh' } })
             handleDeleteCancel()
             queryClient.invalidateQueries({ queryKey: ['projects'] })
         },
@@ -197,28 +199,28 @@ function ProjectsPage() {
 
     const columns = [
         {
-            title: 'Projects',
-            subTitle: 'Manage projects',
+            title: t('entity.projects'),
+            subTitle: t('admin.manageProjects'),
             dataIndex: 'name',
             key: 'name',
             sorter: (a, b) => a.name.localeCompare(b.name),
         },
         {
-            title: 'Customer',
+            title: t('entity.customer'),
             dataIndex: 'customer_name',
             key: 'customer_name',
-            render: (name) => name || <p>Internal Project</p>,
+            render: (name) => name || <p>{t('admin.internalProject')}</p>,
             sorter: (a, b) => (a.customer_name || 'Internal').localeCompare(b.customer_name || 'Internal'),
         },
         {
-            title: 'Status',
+            title: t('common.status'),
             dataIndex: 'is_active',
             key: 'is_active',
             width: 100,
             render: (active) => <Tag color={active ? 'success' : 'default'}>{active ? 'Active' : 'Inactive'}</Tag>,
         },
         {
-            title: 'Contract',
+            title: t('admin.contract'),
             key: 'contract',
             width: 220,
             sorter: (a, b) => (a.contract_duration_days || 0) - (b.contract_duration_days || 0),
@@ -244,7 +246,7 @@ function ProjectsPage() {
             }
         },
         {
-            title: 'Contract Status',
+            title: t('admin.contractStatus'),
             key: 'contract_status',
             width: 160,
             render: (_, record) => {
@@ -268,7 +270,7 @@ function ProjectsPage() {
             }
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             key: 'actions',
             width: 120,
             render: (_, record) => (
@@ -298,28 +300,26 @@ function ProjectsPage() {
     return (
         <div className="projects-page fade-in">
             <div className="page-header">
-                <h1>Projects</h1>
-                <p>Manage projects</p>
+                <h1>{t('entity.projects')}</h1>
+                <p>{t('admin.manageProjects')}</p>
             </div>
 
             <AdminErrorAlert error={isError ? error : null} onRetry={refetch} />
 
             <Card variant="borderless"
-                title={`Projects (${filteredProjects.length})`}
+                title={t('admin.entityCount', { entity: t('entity.projects'), n: filteredProjects.length })}
                 extra={
                     <Space wrap>
                         <Input
                             allowClear
                             prefix={<SearchOutlined aria-hidden="true" />}
-                            placeholder="Search projects"
-                            aria-label="Search Projects"
+                            placeholder={t('admin.searchEntity', { entity: t('entity.projects') })}
+                            aria-label={t('admin.searchEntity', { entity: t('entity.projects') })}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             style={{ width: 220 }}
                         />
-                        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
-                            New Project
-                        </Button>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>{t('admin.newEntity', { entity: t('entity.project') })}</Button>
                     </Space>
                 }
             >
@@ -336,7 +336,7 @@ function ProjectsPage() {
                         emptyText: adminEmptyText({
                             filtered: !!query,
                             entityPlural: 'projects',
-                            createLabel: 'New Project',
+                            createLabel: t('admin.newEntity', { entity: t('entity.project') }),
                             term: search.trim(),
                         }),
                     }}
@@ -349,12 +349,12 @@ function ProjectsPage() {
 
             <Modal title={editingId ? 'Edit Project' : 'New Project'} open={modalOpen} onCancel={handleCloseModal} footer={null}>
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
-                    <Form.Item name="name" label="Project Name" rules={[{ required: true, message: 'Project name is required' }]}>
-                        <Input placeholder="e.g. E-Commerce Platform" />
+                    <Form.Item name="name" label={t('admin.projectNameLabel')} rules={[{ required: true, message: t('admin.nameRequired', { entity: t('entity.project') }) }]}>
+                        <Input placeholder={t('admin.projectNameExample')} />
                     </Form.Item>
-                    <Form.Item name="customer_id" label="Customer (Optional)">
+                    <Form.Item name="customer_id" label={t('admin.customerOptional')}>
                         <Select
-                            placeholder="Select customer (leave empty for internal projects)"
+                            placeholder={t('admin.selectCustomerHint')}
                             allowClear
                             showSearch
                             filterOption={(input, option) =>
@@ -364,25 +364,25 @@ function ProjectsPage() {
                         />
                     </Form.Item>
                     {editingId && (
-                        <Form.Item name="is_active" label="Status" valuePropName="checked">
+                        <Form.Item name="is_active" label={t('common.status')} valuePropName="checked">
                             <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
                         </Form.Item>
                     )}
                     <Form.Item
                         name="contract_start_date"
-                        label="Contract Start Date — Optional"
+                        label={t('admin.contractStartOptional')}
                     >
                         <DatePicker
                             style={{ width: '100%' }}
                             format="YYYY-MM-DD"
-                            placeholder="Select start date"
+                            placeholder={t('admin.selectStartDate')}
                         />
                     </Form.Item>
 
-                    <Form.Item name="contract_duration_days" label="Contract Duration (Days) — Optional">
+                    <Form.Item name="contract_duration_days" label={t('admin.contractDurationOptional')}>
                         <InputNumber
                             min={1}
-                            placeholder="e.g. 365"
+                            placeholder={t('admin.durationExample')}
                             style={{ width: '100%' }}
                             className="contrast-placeholder"
                         />
@@ -395,7 +395,7 @@ function ProjectsPage() {
                     `}</style>
                     <Form.Item>
                         <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                            <Button onClick={handleCloseModal}>Cancel</Button>
+                            <Button onClick={handleCloseModal}>{t('common.cancel')}</Button>
                             <Button type="primary" htmlType="submit" loading={isSaving}>
                                 {editingId ? 'Update' : 'Create'}
                             </Button>

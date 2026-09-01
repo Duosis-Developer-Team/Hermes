@@ -17,13 +17,15 @@ import DictionaryCrudPage from '../features/admin/dictionaries/DictionaryCrudPag
 import { activityTypeService } from '../services/api'
 import { queryKeys } from '../query/queryKeys'
 import './AdminPages.css'
+import { useT } from '../i18n'
 
 function ActivityTypesPage() {
+    const t = useT()
     return (
         <DictionaryCrudPage
-            title="Activity Types"
+            title={t('entity.activityTypes')}
             singular="Activity Type"
-            description="Manage activity types"
+            description={t('admin.manageActivityTypes')}
             codeColor="blue"
             service={activityTypeService}
             queryKey={queryKeys.activityTypes.all}

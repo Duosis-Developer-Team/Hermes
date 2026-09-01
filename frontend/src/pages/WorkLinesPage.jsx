@@ -17,13 +17,15 @@ import DictionaryCrudPage from '../features/admin/dictionaries/DictionaryCrudPag
 import { workLineService } from '../services/api'
 import { queryKeys } from '../query/queryKeys'
 import './AdminPages.css'
+import { useT } from '../i18n'
 
 function WorkLinesPage() {
+    const t = useT()
     return (
         <DictionaryCrudPage
-            title="Work Lines"
+            title={t('entity.workLines')}
             singular="Work Line"
-            description="Manage work lines"
+            description={t('admin.manageWorkLines')}
             codeColor="cyan"
             service={workLineService}
             queryKey={queryKeys.workLines.all}

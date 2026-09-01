@@ -34,6 +34,7 @@ import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecy
 import UserGroupsTab from './UserGroupsTab'
 import RolesTab from './RolesTab'
 import './UsersPage.css'
+import { useT } from '../../i18n'
 /**
  * Formda GERCEKTEN olan alanlar. `password` bilerek `undefined`: bos
  * string yazilirsa duzenlemede sunucuya BOS PAROLA gonderilebilirdi.
@@ -45,6 +46,7 @@ const FORM_SHAPE = {
 
 
 export function UsersTab() {
+    const t = useT()
     const [form] = Form.useForm()
     const [modalOpen, setModalOpen] = useState(false)
     const [editingId, setEditingId] = useState(null)
@@ -129,7 +131,7 @@ export function UsersTab() {
     const archiveMutation = useMutation({
         mutationFn: ({ id }) => authService.updateUser(id, { is_active: false }),
         onSuccess: () => {
-            message.success('User archived (soft deleted)')
+            message.success(t('admin.entityArchived', { entity: t('entity.user') }))
             handleDeleteCancel()
             invalidateUsers()
         },
@@ -139,7 +141,7 @@ export function UsersTab() {
     const deleteMutation = useMutation({
         mutationFn: authService.deleteUser,
         onSuccess: () => {
-            message.success({ content: 'User permanently deleted', style: { marginTop: '10vh' } })
+            message.success({ content: t('admin.entityDeleted', { entity: t('entity.user') }), style: { marginTop: '10vh' } })
             handleDeleteCancel()
             invalidateUsers()
         },
@@ -219,10 +221,10 @@ export function UsersTab() {
     }
 
     const columns = [
-        { title: 'Email', dataIndex: 'email', key: 'email', sorter: (a, b) => a.email.localeCompare(b.email) },
-        { title: 'Full Name', dataIndex: 'full_name', key: 'full_name' },
+        { title: t('users.email'), dataIndex: 'email', key: 'email', sorter: (a, b) => a.email.localeCompare(b.email) },
+        { title: t('users.fullName'), dataIndex: 'full_name', key: 'full_name' },
         {
-            title: 'Role',
+            title: t('users.role'),
             dataIndex: 'is_admin',
             key: 'is_admin',
             width: 120,
@@ -230,12 +232,12 @@ export function UsersTab() {
                 // is_admin artık system-admin ROLÜNDEN türetiliyor —
                 // rozet güvenilir; detaylı roller düzenleme modalında.
                 isAdmin
-                    ? <Tag icon={<CrownOutlined />} color="gold">Admin</Tag>
-                    : <Tag icon={<UserOutlined />} color="blue">User</Tag>,
+                    ? <Tag icon={<CrownOutlined />} color="gold">{t('users.adminBadge')}</Tag>
+                    : <Tag icon={<UserOutlined />} color="blue">{t('entity.user')}</Tag>,
         },
-        { title: 'Status', dataIndex: 'is_active', key: 'is_active', width: 100, render: (active) => <Tag color={active ? 'success' : 'default'}>{active ? 'Active' : 'Inactive'}</Tag> },
+        { title: t('common.status'), dataIndex: 'is_active', key: 'is_active', width: 100, render: (active) => <Tag color={active ? 'success' : 'default'}>{active ? 'Active' : 'Inactive'}</Tag> },
         {
-            title: 'Actions', key: 'actions', width: 120, render: (_, record) => (
+            title: t('common.actions'), key: 'actions', width: 120, render: (_, record) => (
                 <Space>
                     <Button
                         type="text"
@@ -264,21 +266,19 @@ export function UsersTab() {
             <AdminErrorAlert error={isError ? error : null} onRetry={refetch} />
 
             <Card variant="borderless"
-                title={`Users (${filteredUsers.length})`}
+                title={t('admin.entityCount', { entity: t('entity.users'), n: filteredUsers.length })}
                 extra={
                     <Space wrap>
                         <Input
                             allowClear
                             prefix={<SearchOutlined aria-hidden="true" />}
-                            placeholder="Search users"
-                            aria-label="Search Users"
+                            placeholder={t('admin.searchEntity', { entity: t('entity.users') })}
+                            aria-label={t('admin.searchEntity', { entity: t('entity.users') })}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             style={{ width: 220 }}
                         />
-                        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
-                            New User
-                        </Button>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>{t('admin.newEntity', { entity: t('entity.user') })}</Button>
                     </Space>
                 }
             >
@@ -294,7 +294,7 @@ export function UsersTab() {
                         emptyText: adminEmptyText({
                             filtered: !!query,
                             entityPlural: 'users',
-                            createLabel: 'New User',
+                            createLabel: t('admin.newEntity', { entity: t('entity.user') }),
                             term: search.trim(),
                         }),
                     }}
@@ -303,27 +303,27 @@ export function UsersTab() {
             </Card>
             <Modal title={editingId ? 'Edit User' : 'New User'} open={modalOpen} onCancel={handleCloseModal} footer={null}>
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
-                    <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email', message: 'Enter a valid email' }]}>
-                        <Input placeholder="example@company.com" disabled={!!editingId} />
+                    <Form.Item name="email" label={t('users.email')} rules={[{ required: true, type: 'email', message: t('users.emailInvalid') }]}>
+                        <Input placeholder={t('users.emailExample')} disabled={!!editingId} />
                     </Form.Item>
-                    <Form.Item name="full_name" label="Full Name">
-                        <Input placeholder="Full Name" />
+                    <Form.Item name="full_name" label={t('users.fullName')}>
+                        <Input placeholder={t('users.fullName')} />
                     </Form.Item>
                     {!editingId && (
-                        <Form.Item name="password" label="Password" rules={[{ required: true, min: 6, message: 'Password must be at least 6 characters' }]}>
-                            <Input.Password placeholder="Password" />
+                        <Form.Item name="password" label={t('users.password')} rules={[{ required: true, min: 6, message: t('users.passwordMin') }]}>
+                            <Input.Password placeholder={t('users.password')} />
                         </Form.Item>
                     )}
-                    {editingId && <Form.Item name="is_active" label="Status" valuePropName="checked"><Switch checkedChildren="Active" unCheckedChildren="Inactive" /></Form.Item>}
+                    {editingId && <Form.Item name="is_active" label={t('common.status')} valuePropName="checked"><Switch checkedChildren="Active" unCheckedChildren="Inactive" /></Form.Item>}
 
                     <Form.Item
                         name="role_ids"
-                        label="Roles"
-                        extra="Permissions come from roles. You cannot assign a role containing permissions you do not hold (subset rule); the last active admin cannot be demoted."
+                        label={t('users.roles')}
+                        extra={t('users.rolesHint')}
                     >
                         <Select
                             mode="multiple"
-                            placeholder="Select roles"
+                            placeholder={t('users.selectRoles')}
                             optionFilterProp="label"
                             options={assignableRoles.map((r) => ({
                                 value: r.id,
@@ -332,7 +332,7 @@ export function UsersTab() {
                         />
                     </Form.Item>
 
-                    <Form.Item><Space style={{ width: '100%', justifyContent: 'flex-end' }}><Button onClick={handleCloseModal}>Cancel</Button><Button type="primary" htmlType="submit" loading={isSaving}>{editingId ? 'Update' : 'Create'}</Button></Space></Form.Item>
+                    <Form.Item><Space style={{ width: '100%', justifyContent: 'flex-end' }}><Button onClick={handleCloseModal}>{t('common.cancel')}</Button><Button type="primary" htmlType="submit" loading={isSaving}>{editingId ? 'Update' : 'Create'}</Button></Space></Form.Item>
                 </Form>
             </Modal>
 
@@ -349,18 +349,19 @@ export function UsersTab() {
 }
 
 function UsersPage() {
+    const t = useT()
     return (
         <div className="users-page fade-in">
             <div className="page-header">
-                <h1>Users</h1>
-                <p>Manage users, roles and groups</p>
+                <h1>{t('entity.users')}</h1>
+                <p>{t('admin.manageUsers')}</p>
             </div>
             <Tabs
                 className="users-page-tabs"
                 items={[
-                    { key: 'users', label: 'Users', children: <UsersTab /> },
-                    { key: 'roles', label: 'Roles', children: <RolesTab /> },
-                    { key: 'groups', label: 'Groups', children: <UserGroupsTab /> },
+                    { key: 'users', label: t('entity.users'), children: <UsersTab /> },
+                    { key: 'roles', label: t('users.roles'), children: <RolesTab /> },
+                    { key: 'groups', label: t('users.groups'), children: <UserGroupsTab /> },
                 ]}
             />
         </div>

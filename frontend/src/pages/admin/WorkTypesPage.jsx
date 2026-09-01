@@ -20,6 +20,7 @@ import {
 } from '../../features/admin/shared/AdminListStates'
 import { adminEmptyText } from '../../features/admin/shared/adminEmptyText'
 import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecycle'
+import { useT } from '../../i18n'
 
 // Formda GERCEKTEN olan alanlar. API kaydindaki id/created_at gibi
 // alanlar form store'una sizmaz.
@@ -27,6 +28,7 @@ const FORM_SHAPE = { name: '', is_active: true }
 
 
 function WorkTypesPage() {
+    const t = useT()
     const [form] = Form.useForm()
     const [modalOpen, setModalOpen] = useState(false)
     const [editingId, setEditingId] = useState(null)
@@ -42,20 +44,20 @@ function WorkTypesPage() {
 
     const createMutation = useMutation({
         mutationFn: workTypeService.create,
-        onSuccess: () => { message.success('Work type created'); handleCloseModal(); queryClient.invalidateQueries({ queryKey: ['workTypes'] }) },
+        onSuccess: () => { message.success(t('admin.entityCreated', { entity: t('entity.workType') })); handleCloseModal(); queryClient.invalidateQueries({ queryKey: ['workTypes'] }) },
         onError: (err) => message.error(normalizeApiError(err).message),
     })
 
     const updateMutation = useMutation({
         mutationFn: ({ id, data }) => workTypeService.update(id, data),
-        onSuccess: () => { message.success('Work type updated'); handleCloseModal(); queryClient.invalidateQueries({ queryKey: ['workTypes'] }) },
+        onSuccess: () => { message.success(t('admin.entityUpdated', { entity: t('entity.workType') })); handleCloseModal(); queryClient.invalidateQueries({ queryKey: ['workTypes'] }) },
         onError: (err) => message.error(normalizeApiError(err).message),
     })
 
     const archiveMutation = useMutation({
         mutationFn: ({ id }) => workTypeService.update(id, { is_active: false }),
         onSuccess: () => {
-            message.success('Work type archived (soft deleted)')
+            message.success(t('admin.entityArchived', { entity: t('entity.workType') }))
             handleDeleteCancel()
             queryClient.invalidateQueries({ queryKey: ['workTypes'] })
         },
@@ -65,7 +67,7 @@ function WorkTypesPage() {
     const deleteMutation = useMutation({
         mutationFn: workTypeService.delete,
         onSuccess: () => {
-            message.success({ content: 'Work type permanently deleted', style: { marginTop: '10vh' } })
+            message.success({ content: t('admin.entityDeleted', { entity: t('entity.workType') }), style: { marginTop: '10vh' } })
             handleDeleteCancel()
             queryClient.invalidateQueries({ queryKey: ['workTypes'] })
         },
@@ -138,10 +140,10 @@ function WorkTypesPage() {
     }
 
     const columns = [
-        { title: 'Work Type Name', dataIndex: 'name', key: 'name', sorter: (a, b) => a.name.localeCompare(b.name) },
-        { title: 'Status', dataIndex: 'is_active', key: 'is_active', width: 100, render: (active) => <Tag color={active ? 'success' : 'default'}>{active ? 'Active' : 'Inactive'}</Tag> },
+        { title: t('admin.workTypeNameLabel'), dataIndex: 'name', key: 'name', sorter: (a, b) => a.name.localeCompare(b.name) },
+        { title: t('common.status'), dataIndex: 'is_active', key: 'is_active', width: 100, render: (active) => <Tag color={active ? 'success' : 'default'}>{active ? 'Active' : 'Inactive'}</Tag> },
         {
-            title: 'Actions', key: 'actions', width: 120, render: (_, record) => (
+            title: t('common.actions'), key: 'actions', width: 120, render: (_, record) => (
                 <Space>
                     <Button
                         type="text"
@@ -168,27 +170,25 @@ function WorkTypesPage() {
     return (
         <div className="work-types-page fade-in">
             <div className="page-header">
-                <h1>Work Types</h1>
-                <p>Manage work types</p>
+                <h1>{t('entity.workTypes')}</h1>
+                <p>{t('admin.manageWorkTypes')}</p>
             </div>
             <AdminErrorAlert error={isError ? error : null} onRetry={refetch} />
 
             <Card variant="borderless"
-                title={`Work Types (${filteredWorkTypes.length})`}
+                title={t('admin.entityCount', { entity: t('entity.workTypes'), n: filteredWorkTypes.length })}
                 extra={
                     <Space wrap>
                         <Input
                             allowClear
                             prefix={<SearchOutlined aria-hidden="true" />}
-                            placeholder="Search work types"
-                            aria-label="Search Work Types"
+                            placeholder={t('admin.searchEntity', { entity: t('entity.workTypes') })}
+                            aria-label={t('admin.searchEntity', { entity: t('entity.workTypes') })}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             style={{ width: 200 }}
                         />
-                        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
-                            New Work Type
-                        </Button>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>{t('admin.newEntity', { entity: t('entity.workType') })}</Button>
                     </Space>
                 }
             >
@@ -204,7 +204,7 @@ function WorkTypesPage() {
                         emptyText: adminEmptyText({
                             filtered: !!query,
                             entityPlural: 'work types',
-                            createLabel: 'New Work Type',
+                            createLabel: t('admin.newEntity', { entity: t('entity.workType') }),
                             term: search.trim(),
                         }),
                     }}
@@ -224,11 +224,11 @@ function WorkTypesPage() {
                 keyboard={!isSaving}
             >
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
-                    <Form.Item name="name" label="Work Type Name" rules={[{ required: true, whitespace: true, message: 'Work type name is required' }]}>
-                        <Input placeholder="Work Type Name" />
+                    <Form.Item name="name" label={t('admin.workTypeNameLabel')} rules={[{ required: true, whitespace: true, message: t('admin.nameRequired', { entity: t('entity.workType') }) }]}>
+                        <Input placeholder={t('admin.workTypeNameLabel')} />
                     </Form.Item>
-                    {editingId && <Form.Item name="is_active" label="Status" valuePropName="checked"><Switch checkedChildren="Active" unCheckedChildren="Inactive" /></Form.Item>}
-                    <Form.Item><Space style={{ width: '100%', justifyContent: 'flex-end' }}><Button onClick={handleCloseModal}>Cancel</Button><Button type="primary" htmlType="submit" loading={isSaving}>{editingId ? 'Update' : 'Create'}</Button></Space></Form.Item>
+                    {editingId && <Form.Item name="is_active" label={t('common.status')} valuePropName="checked"><Switch checkedChildren="Active" unCheckedChildren="Inactive" /></Form.Item>}
+                    <Form.Item><Space style={{ width: '100%', justifyContent: 'flex-end' }}><Button onClick={handleCloseModal}>{t('common.cancel')}</Button><Button type="primary" htmlType="submit" loading={isSaving}>{editingId ? 'Update' : 'Create'}</Button></Space></Form.Item>
                 </Form>
             </Modal>
 
