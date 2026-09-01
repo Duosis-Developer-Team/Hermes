@@ -17,12 +17,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ReloadOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Input, message, Select, Table, Tabs, Typography } from 'antd'
+import {
+    Card, Input, message, Select, Skeleton, Space, Table, Tabs,
+} from 'antd'
 
 import { ticketErrorCode, ticketHubService } from '../../api/ticketsApi'
 import {
-    Button, EmptyState, FilterChip, Inline, Page, PageHeader,
-    Surface, Toolbar,
+    Button, EmptyState, FilterChip, Inline, Page, PageHeader, Toolbar,
 } from '../../components/ui'
 import AgentWorkbench from '../../features/tickets/AgentWorkbench'
 import {
@@ -35,8 +36,6 @@ import {
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { queryKeys } from '../../query/queryKeys'
 import '../../features/tickets/tickets.css'
-
-const { Text } = Typography
 
 const DEFAULT_QUEUE = 'my_group_open'
 
@@ -58,6 +57,12 @@ export default function TicketHubPage() {
     const applicationId = params.get('application') || undefined
     const search = params.get('q') || ''
     const statuses = params.getAll('status')
+    // "Clear" ancak temizlenecek bir sey varken gorunur — bos bir
+    // filtre cubugunda olu buton durmaz.
+    const hasFilters = Boolean(
+        search || statuses.length || applicationId
+        || (queue && queue !== DEFAULT_QUEUE),
+    )
 
     const patchParams = (patch) => {
         const next = new URLSearchParams(params)
@@ -124,12 +129,16 @@ export default function TicketHubPage() {
     }
 
     if (context.isLoading) {
-        return <Page><Text type="secondary">Loading…</Text></Page>
+        return (
+            <Page className="tickets-page fade-in">
+                <Skeleton active paragraph={{ rows: 6 }} />
+            </Page>
+        )
     }
 
     if (!context.isHub) {
         return (
-            <Page>
+            <Page className="tickets-page fade-in">
                 <EmptyState
                     title="This screen is unavailable"
                     description={
@@ -193,18 +202,27 @@ export default function TicketHubPage() {
     ]
 
     return (
-        <Page>
+        <Page className="tickets-page fade-in">
             <PageHeader
                 title="Tickets"
                 subtitle={`${total} tickets · ${labelOf(QUEUE_LABELS, queue)}`}
                 extra={(
-                    <Button
-                        icon={<ReloadOutlined />}
-                        onClick={() => list.refetch()}
-                        loading={list.isFetching}
-                    >
-                        Refresh
-                    </Button>
+                    <Space wrap>
+                        <Input.Search
+                            allowClear
+                            placeholder="Code, title, error code"
+                            defaultValue={search}
+                            onSearch={(value) => patchParams({ q: value || null })}
+                            style={{ width: 260 }}
+                        />
+                        <Button
+                            icon={<ReloadOutlined />}
+                            onClick={() => list.refetch()}
+                            loading={list.isFetching}
+                        >
+                            Refresh
+                        </Button>
+                    </Space>
                 )}
             />
 
@@ -216,44 +234,6 @@ export default function TicketHubPage() {
                 })}
             />
 
-            <Toolbar>
-                <Inline gap={2}>
-                    {(queues.data ?? []).map((item) => (
-                        <FilterChip
-                            key={item.key}
-                            active={item.key === queue}
-                            onClick={() => patchParams({ queue: item.key })}
-                        >
-                            {labelOf(QUEUE_LABELS, item.key)} · {item.count}
-                        </FilterChip>
-                    ))}
-                </Inline>
-                <Toolbar.Spacer />
-                <Inline gap={2}>
-                    <Select
-                        mode="multiple"
-                        allowClear
-                        style={{ minWidth: 220 }}
-                        placeholder="Status"
-                        value={statuses}
-                        onChange={(value) => patchParams({ status: value })}
-                        options={Object.entries(AGENT_STATUS_LABELS).map(
-                            ([value, label]) => ({ value, label }),
-                        )}
-                    />
-                    <Input.Search
-                        allowClear
-                        placeholder="Code, title, error code"
-                        defaultValue={search}
-                        onSearch={(value) => patchParams({ q: value || null })}
-                        style={{ width: 260 }}
-                    />
-                    <Button onClick={() => setParams(new URLSearchParams())}>
-                        Clear
-                    </Button>
-                </Inline>
-            </Toolbar>
-
             {!context.hasScope ? (
                 <EmptyState
                     title="No queue is visible to you"
@@ -262,14 +242,57 @@ export default function TicketHubPage() {
                         + 'you to the relevant group.'}
                 />
             ) : (
-                <Surface>
+                <Card
+                    variant="borderless"
+                    title={`Tickets (${total})`}
+                    className="tickets-page__card"
+                >
+                    {/* Filtreler kartin ICINDE: sablonda icerik ve onu
+                        daraltan kontroller ayni yuzeyde yasar. */}
+                    <Toolbar>
+                        <Inline gap={2}>
+                            {(queues.data ?? []).map((item) => (
+                                <FilterChip
+                                    key={item.key}
+                                    active={item.key === queue}
+                                    onClick={() => patchParams({ queue: item.key })}
+                                >
+                                    {labelOf(QUEUE_LABELS, item.key)} · {item.count}
+                                </FilterChip>
+                            ))}
+                        </Inline>
+                        <Toolbar.Spacer />
+                        <Inline gap={2}>
+                            <Select
+                                mode="multiple"
+                                allowClear
+                                style={{ minWidth: 220 }}
+                                placeholder="Status"
+                                value={statuses}
+                                onChange={(value) => patchParams({ status: value })}
+                                options={Object.entries(AGENT_STATUS_LABELS).map(
+                                    ([value, label]) => ({ value, label }),
+                                )}
+                            />
+                            {hasFilters && (
+                                <Button onClick={() => setParams(new URLSearchParams())}>
+                                    Clear
+                                </Button>
+                            )}
+                        </Inline>
+                    </Toolbar>
+
                     <Table
                         rowKey="id"
-                        size="small"
                         loading={list.isLoading}
                         dataSource={rows}
                         columns={columns}
-                        pagination={false}
+                        /* Sablon kalibi: dar ekranda sayfa DEGIL tablo
+                           kayar; sayfalama diger listelerle ayni. */
+                        scroll={{ x: 'max-content' }}
+                        pagination={{ pageSize: 20, hideOnSinglePage: true,
+                            showSizeChanger: false }}
+                        showSorterTooltip={false}
                         onRow={(row) => ({
                             onClick: () => setSelectedId(row.id),
                             style: { cursor: 'pointer' },
@@ -283,7 +306,7 @@ export default function TicketHubPage() {
                             ),
                         }}
                     />
-                </Surface>
+                </Card>
             )}
 
             <AgentWorkbench

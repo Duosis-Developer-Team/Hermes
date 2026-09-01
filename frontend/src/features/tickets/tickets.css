@@ -129,3 +129,42 @@
     border-color: var(--h-brand);
     background: var(--h-bg-selected);
 }
+
+/* -----------------------------------------------------------------------
+ * Sayfa kabugu — diger Hermes sayfalariyla ayni ritim
+ * -----------------------------------------------------------------------
+ * Icerik baslikli bir Card'da yasar (Customers/Projects kalibi) ve onu
+ * daraltan kontroller AYNI yuzeyin ustunde durur; sayfada serbest gezen
+ * bir filtre cubugu YOKTUR.
+ */
+.tickets-page__card .h-toolbar {
+    margin-bottom: var(--h-space-3);
+}
+
+/* Dar ekranda filtreler alt alta gecer; yatay kaydirma tabloya aittir. */
+@media (max-width: 720px) {
+    .tickets-page__card .h-toolbar {
+        flex-wrap: wrap;
+        gap: var(--h-space-2);
+    }
+}
+
+/* Workbench footer'i: birincil eylem saga yaslanir, AntD'nin modal/drawer
+ * footer ritmiyle ayni hizada durur. */
+.ticket-workbench-drawer__actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+/* Istege bagli alanlar: baslik satiri form etiketleriyle ayni ritimde
+ * dursun, ghost Collapse fazladan ic bosluk eklemesin. */
+.ticket-create-modal__optional .ant-collapse-header {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+.ticket-create-modal__optional .ant-collapse-content-box {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-bottom: 0 !important;
+}

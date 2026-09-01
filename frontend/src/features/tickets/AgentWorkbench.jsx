@@ -11,7 +11,7 @@
  */
 import { Fragment, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Drawer, Select, Typography } from 'antd'
+import { Alert, Drawer, Select, Skeleton, Typography } from 'antd'
 
 import { ticketErrorCode, ticketHubService } from '../../api/ticketsApi'
 import {
@@ -188,12 +188,53 @@ export default function AgentWorkbench({
             open={open}
             onClose={onClose}
             width="min(1100px, 96vw)"
+            className="ticket-workbench-drawer"
             title={ticket
                 ? `${ticket.ticket_number} · ${ticket.title}`
                 : 'Ticket'}
             destroyOnHidden
+            /* Eylemler SABIT footer'da: uzun bir zaman cizelgesinin
+               altinda kaybolmasinlar. Sablonda birincil eylem her zaman
+               gorunur bir yerde durur. */
+            footer={ticket ? (
+                <Inline gap={2} className="ticket-workbench-drawer__actions">
+                    {(ticket.allowed_transitions ?? [])
+                        .filter((target) => target !== 'resolved')
+                        .map((target) => (
+                            <Button
+                                key={target}
+                                disabled={!canRespond}
+                                loading={transition.isPending}
+                                onClick={() => transition.mutate({
+                                    to_status: target,
+                                    expected_version: ticket.version,
+                                    public_message:
+                                        target === 'waiting_customer'
+                                            ? draft || undefined
+                                            : undefined,
+                                    reason: target === 'cancelled'
+                                        ? 'Cancelled by an agent'
+                                        : undefined,
+                                })}
+                            >
+                                {labelOf(AGENT_STATUS_LABELS, target)}
+                            </Button>
+                        ))}
+                    {(ticket.allowed_transitions ?? []).includes('resolved') && (
+                        <Button
+                            variant="primary"
+                            disabled={!canResolve}
+                            onClick={() => setResolveOpen(true)}
+                        >
+                            Resolve
+                        </Button>
+                    )}
+                </Inline>
+            ) : null}
         >
-            {detail.isLoading && <Text type="secondary">Loading…</Text>}
+            {detail.isLoading && (
+                <Skeleton active paragraph={{ rows: 8 }} />
+            )}
             {detail.isError && (
                 <EmptyState
                     title="This ticket could not be opened"
@@ -269,55 +310,15 @@ export default function AgentWorkbench({
                                 })}
                             />
 
-                            <Surface>
-                                <Stack gap={2}>
-                                    <Text type="secondary">Status actions</Text>
-                                    <Inline gap={2}>
-                                        {(ticket.allowed_transitions ?? [])
-                                            .filter((target) => target !== 'resolved')
-                                            .map((target) => (
-                                                <Button
-                                                    key={target}
-                                                    disabled={!canRespond}
-                                                    loading={transition.isPending}
-                                                    onClick={() => transition.mutate({
-                                                        to_status: target,
-                                                        expected_version: ticket.version,
-                                                        public_message:
-                                                            target === 'waiting_customer'
-                                                                ? draft || undefined
-                                                                : undefined,
-                                                        reason: target === 'cancelled'
-                                                            ? 'Cancelled by an agent'
-                                                            : undefined,
-                                                    })}
-                                                >
-                                                    {labelOf(AGENT_STATUS_LABELS, target)}
-                                                </Button>
-                                            ))}
-                                        {(ticket.allowed_transitions ?? [])
-                                            .includes('resolved') && (
-                                            <Button
-                                                variant="primary"
-                                                disabled={!canResolve}
-                                                onClick={() => setResolveOpen(true)}
-                                            >
-                                                Resolve
-                                            </Button>
-                                        )}
-                                    </Inline>
-                                    {ticket.allowed_transitions?.includes(
-                                        'waiting_customer',
-                                    ) && (
-                                        <Text type="secondary">
-                                            To move to “Waiting on customer”,
-                                            write a customer-visible message in
-                                            the composer — the request for
-                                            information is mandatory.
-                                        </Text>
-                                    )}
-                                </Stack>
-                            </Surface>
+                            {ticket.allowed_transitions?.includes(
+                                'waiting_customer',
+                            ) && (
+                                <Text type="secondary">
+                                    To move to “Waiting on customer”, write a
+                                    customer-visible message in the composer —
+                                    the request for information is mandatory.
+                                </Text>
+                            )}
                         </Stack>
                     </div>
                 </Stack>

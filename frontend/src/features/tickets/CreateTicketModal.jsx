@@ -11,7 +11,7 @@
  * string ASLA toplanmaz (bu bileşen onları OKUMAZ bile).
  */
 import { useMemo, useState } from 'react'
-import { Alert, Form, Input, Select, Typography } from 'antd'
+import { Alert, Collapse, Form, Input, Select, Typography } from 'antd'
 
 import { supportPortalService } from '../../api/ticketsApi'
 import { AppModal, Stack, StatusBadge } from '../../components/ui'
@@ -175,15 +175,50 @@ export default function CreateTicketModal({
                         <Input.TextArea rows={5} maxLength={10000} showCount />
                     </Form.Item>
 
-                    <Form.Item name="reproduction_steps" label="Steps to reproduce (optional)">
-                        <Input.TextArea rows={2} maxLength={10000} />
-                    </Form.Item>
-                    <Form.Item name="expected_result" label="Expected result (optional)">
-                        <Input.TextArea rows={2} maxLength={10000} />
-                    </Form.Item>
-                    <Form.Item name="actual_result" label="Actual result (optional)">
-                        <Input.TextArea rows={2} maxLength={10000} />
-                    </Form.Item>
+                    {/* Istege bagli alanlar KAPALI baslar: zorunlu dort
+                        alanla is goren cogunluk uzun bir formla
+                        karsilasmaz, ayrintiyi verecek olan tek tikla acar.
+
+                        `forceRender` KEMER-VE-ASKI'dir, tek dayanak
+                        DEGILDIR: AntD Collapse bir kez acilan paneli
+                        zaten mount'ta tutar (`destroyInactivePanel`
+                        varsayilani false), dolayisiyla panel kapansa da
+                        deger form'da kalir. Bayrak, o varsayilan bir gun
+                        degistirilirse `preserve={false}` ile birlesip
+                        yazilan ayrintiyi sessizce dusurmesin diye
+                        duruyor. Davranisi kilitleyen sey testtir. */}
+                    <Collapse
+                        ghost
+                        size="small"
+                        className="ticket-create-modal__optional"
+                        items={[{
+                            key: 'details',
+                            label: 'Add more detail (optional)',
+                            forceRender: true,
+                            children: (
+                                <>
+                                    <Form.Item
+                                        name="reproduction_steps"
+                                        label="Steps to reproduce"
+                                    >
+                                        <Input.TextArea rows={2} maxLength={10000} />
+                                    </Form.Item>
+                                    <Form.Item
+                                        name="expected_result"
+                                        label="Expected result"
+                                    >
+                                        <Input.TextArea rows={2} maxLength={10000} />
+                                    </Form.Item>
+                                    <Form.Item
+                                        name="actual_result"
+                                        label="Actual result"
+                                    >
+                                        <Input.TextArea rows={2} maxLength={10000} />
+                                    </Form.Item>
+                                </>
+                            ),
+                        }]}
+                    />
                     <Form.Item name="error_code" label="Error code or message (optional)">
                         <Input maxLength={80} />
                     </Form.Item>

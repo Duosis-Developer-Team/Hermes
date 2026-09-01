@@ -13,12 +13,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Input, message, Tabs, Typography } from 'antd'
+import {
+    Alert, Card as AntCard, Input, message, Skeleton, Space, Tabs, Typography,
+} from 'antd'
 
 import { supportPortalService, ticketErrorCode } from '../../api/ticketsApi'
 import {
-    Button, Card, EmptyState, Inline, Page, PageHeader, Stack,
-    StatusBadge, Surface, Toolbar,
+    Button, Card, EmptyState, Inline, Page, PageHeader, Stack, StatusBadge,
 } from '../../components/ui'
 import CreateTicketModal from '../../features/tickets/CreateTicketModal'
 import CustomerTicketDetail from '../../features/tickets/CustomerTicketDetail'
@@ -102,12 +103,16 @@ export default function SupportPortalPage() {
     })
 
     if (context.isLoading) {
-        return <Page><Text type="secondary">Loading…</Text></Page>
+        return (
+            <Page className="tickets-page fade-in">
+                <Skeleton active paragraph={{ rows: 6 }} />
+            </Page>
+        )
     }
 
     if (!context.isPortal) {
         return (
-            <Page>
+            <Page className="tickets-page fade-in">
                 <EmptyState
                     title="The support portal is unavailable"
                     description={
@@ -124,14 +129,20 @@ export default function SupportPortalPage() {
     const routeReady = Boolean(context.route?.configured)
 
     return (
-        <Page>
+        <Page className="tickets-page fade-in">
             <PageHeader
-                title="Destek"
+                title="Support"
                 subtitle={routeReady
                     ? `Your requests go to the ${context.route.group_name} team.`
                     : 'Support routing has not been configured yet.'}
                 extra={(
-                    <Inline gap={2}>
+                    <Space wrap>
+                        <Input.Search
+                            allowClear
+                            placeholder="Ticket code or title"
+                            onSearch={setSearch}
+                            style={{ width: 260 }}
+                        />
                         <Button
                             icon={<ReloadOutlined />}
                             onClick={() => list.refetch()}
@@ -147,7 +158,7 @@ export default function SupportPortalPage() {
                         >
                             New request
                         </Button>
-                    </Inline>
+                    </Space>
                 )}
             />
 
@@ -171,16 +182,12 @@ export default function SupportPortalPage() {
                 }))}
             />
 
-            <Toolbar>
-                <Input.Search
-                    allowClear
-                    placeholder="Ticket code or title"
-                    onSearch={setSearch}
-                    style={{ width: 320 }}
-                />
-            </Toolbar>
-
-            <Stack gap={2}>
+            <AntCard
+                variant="borderless"
+                title={`Requests (${rows.length})`}
+                className="tickets-page__card"
+            >
+                <Stack gap={2}>
                 {rows.map((ticket) => (
                     <Card
                         key={ticket.id}
@@ -211,17 +218,16 @@ export default function SupportPortalPage() {
                         </Inline>
                     </Card>
                 ))}
-                {!rows.length && !list.isLoading && (
-                    <Surface>
+                    {!rows.length && !list.isLoading && (
                         <EmptyState
                             title="No requests in this tab"
                             description={context.canCreate
                                 ? 'You can open a new support request.'
                                 : 'You do not have permission to open requests.'}
                         />
-                    </Surface>
-                )}
-            </Stack>
+                    )}
+                </Stack>
+            </AntCard>
 
             <CreateTicketModal
                 open={createOpen}
