@@ -16,6 +16,7 @@ import { useQuery } from '@tanstack/react-query'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import dayjs from 'dayjs'
 import { reportsService, authService } from '../services/api'
+import { useT } from '../i18n'
 import { queryKeys } from '../query/queryKeys'
 import {
     chartState, dashboardSummary, resolveUserNames, toChartSeries,
@@ -35,6 +36,7 @@ const CHART_SERIES_COLOR = {
 }
 
 function DashboardPage() {
+    const t = useT()
     const [dateRange, setDateRange] = useState([
         dayjs().subtract(30, 'day'),
         dayjs(),
@@ -152,20 +154,20 @@ function DashboardPage() {
             <div className="page-header">
                 <Row justify="space-between" align="middle">
                     <Col>
-                        <h1>Dashboard</h1>
-                        <p>Team performance and time distribution</p>
+                        <h1>{t('dashboard.title')}</h1>
+                        <p>{t('dashboard.subtitle')}</p>
                     </Col>
                     <Col>
                         {/* Premium: buyuk gri segmented kutu yerine baslik
                             hizasinda sade inline date navigator. */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <Button type="text" aria-label="Previous month" icon={<LeftOutlined />} onClick={goToPreviousMonth} style={{ color: 'var(--c-text)' }} />
+                            <Button type="text" aria-label={t('dashboard.previousMonth')} icon={<LeftOutlined />} onClick={goToPreviousMonth} style={{ color: 'var(--c-text)' }} />
                             <span style={{ color: 'var(--c-text)', fontWeight: 500, minWidth: 160, textAlign: 'center' }}>
                                 {dateRange[0].format('DD MMM')} - {dateRange[1].format('DD MMM, YYYY')}
                             </span>
-                            <Button type="text" aria-label="Next month" icon={<RightOutlined />} onClick={goToNextMonth} style={{ color: 'var(--c-text)' }} />
+                            <Button type="text" aria-label={t('dashboard.nextMonth')} icon={<RightOutlined />} onClick={goToNextMonth} style={{ color: 'var(--c-text)' }} />
                             <div style={{ width: 1, height: 20, background: 'var(--c-border)', margin: '0 4px' }} />
-                            <Button type="text" onClick={goToThisMonth} style={{ color: 'var(--c-text)' }}>Today</Button>
+                            <Button type="text" onClick={goToThisMonth} style={{ color: 'var(--c-text)' }}>{t('dashboard.today')}</Button>
                         </div>
                     </Col>
                 </Row>
@@ -173,11 +175,11 @@ function DashboardPage() {
 
             {/* Premium: dort gri KPI karti yerine TEK kesintisiz metric
                 strip — buyuk deger + kucuk label, ince dikey ayiricilar. */}
-            <div className="h-metric-strip" role="group" aria-label="Summary metrics">
+            <div className="h-metric-strip" role="group" aria-label={t('dashboard.summaryMetrics')}>
                 <div className="h-metric-strip__item h-metric-strip__item--accent">
                     <span className="h-metric-strip__accent" aria-hidden="true" />
                     <div className="h-metric-strip__value">{summary.totalHours}</div>
-                    <div className="h-metric-strip__label">Total Hours</div>
+                    <div className="h-metric-strip__label">{t('dashboard.totalHours')}</div>
                 </div>
                 <div className="h-metric-strip__item">
                     <div className="h-metric-strip__value">{summary.customerCount}</div>
@@ -189,7 +191,7 @@ function DashboardPage() {
                 </div>
                 <div className="h-metric-strip__item">
                     <div className="h-metric-strip__value">{summary.memberCount}</div>
-                    <div className="h-metric-strip__label">Active Members</div>
+                    <div className="h-metric-strip__label">{t('dashboard.activeMembers')}</div>
                 </div>
             </div>
 
@@ -197,7 +199,7 @@ function DashboardPage() {
             <Row gutter={[24, 24]}>
                 {/* By Customer - Pie Chart */}
                 <Col xs={24} lg={12}>
-                    <Card variant="borderless" title={<span className="h-section__head" style={{ margin: 0 }}><span className="h-section__icon"><TeamOutlined /></span><span className="h-section__title">By Customer</span></span>}>
+                    <Card variant="borderless" title={<span className="h-section__head" style={{ margin: 0 }}><span className="h-section__icon"><TeamOutlined /></span><span className="h-section__title">{t('dashboard.byCustomer')}</span></span>}>
                         <ChartFrame series={customerData}>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={customerData} layout="vertical">
@@ -214,7 +216,7 @@ function DashboardPage() {
 
                 {/* By Project - Bar Chart */}
                 <Col xs={24} lg={12}>
-                    <Card variant="borderless" title={<span className="h-section__head" style={{ margin: 0 }}><span className="h-section__icon"><FolderOpenOutlined /></span><span className="h-section__title">By Project</span></span>}>
+                    <Card variant="borderless" title={<span className="h-section__head" style={{ margin: 0 }}><span className="h-section__icon"><FolderOpenOutlined /></span><span className="h-section__title">{t('dashboard.byProject')}</span></span>}>
                         <ChartFrame series={projectData}>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={projectData} layout="vertical">
@@ -231,7 +233,7 @@ function DashboardPage() {
 
                 {/* By User - Bar Chart */}
                 <Col xs={24}>
-                    <Card variant="borderless" title={<span className="h-section__head" style={{ margin: 0 }}><span className="h-section__icon"><UserOutlined /></span><span className="h-section__title">By User</span></span>}>
+                    <Card variant="borderless" title={<span className="h-section__head" style={{ margin: 0 }}><span className="h-section__icon"><UserOutlined /></span><span className="h-section__title">{t('dashboard.byUser')}</span></span>}>
                         <ChartFrame series={userData}>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={userData}>

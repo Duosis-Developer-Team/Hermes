@@ -81,4 +81,91 @@ export default {
         genericError: 'Something went wrong. Please try again.',
         retry: 'Retry',
     },
+    // ---------------------------------------------------------------
+    // Giris
+    // ---------------------------------------------------------------
+    login: {
+        signInToHermes: 'Sign in to Hermes',
+        email: 'Email',
+        password: 'Password',
+        emailPlaceholder: 'you@company.com',
+        passwordPlaceholder: 'Enter your password',
+        signIn: 'Sign In',
+        signInWithMicrosoft: 'Sign in with Microsoft',
+        microsoftHint: 'Use your Microsoft work account to continue',
+        loginSuccess: 'Login successful!',
+        signedInToPlatform: 'Signed in to Platform Administration',
+        emailRequired: 'Please enter your email',
+        emailInvalid: 'Please enter a valid email address',
+        passwordRequired: 'Please enter your password',
+        azureMisconfigured: 'Azure Client ID is missing from the web configuration',
+        toggleTheme: 'Toggle light and dark mode',
+    },
+
+    // ---------------------------------------------------------------
+    // Zaman girisi
+    // ---------------------------------------------------------------
+    timeEntry: {
+        timeLogged: 'Time logged',
+        timeUpdated: 'Time updated',
+        logEntryDeleted: 'Log entry deleted successfully',
+        planUpdated: 'Plan updated',
+        planDeleted: 'Plan deleted',
+        deletePlan: 'Delete Plan',
+        deletePlanFailed: 'Failed to delete plan',
+        confirmDeletion: 'Confirm Deletion',
+        cannotBeUndone: 'This action cannot be undone',
+        assignmentsWillBeRemoved: 'All assignments will be removed',
+        selectTargetDay: 'Select a target day first, then paste',
+        reportDownloaded: 'Weekly report (CSV) downloaded',
+        reportFailed: 'Failed to download report',
+        meetingInviteSent: 'Meeting invite sent',
+        respondFailed: 'Failed to respond',
+    },
+
+    // ---------------------------------------------------------------
+    // Gorevler / toplantilar / panel
+    // ---------------------------------------------------------------
+    tasks: {
+        filters: 'Filters',
+        noAccess: 'You do not have access to the Tasks module.',
+        statusNotAllowed: 'You are not allowed to change this task status.',
+    },
+
+    meetings: {
+        previousWeek: 'Previous week',
+        nextWeek: 'Next week',
+        today: 'Today',
+        allUsers: 'All users',
+        noMeetings: 'No meetings for this week.',
+    },
+
+    dashboard: {
+        title: 'Dashboard',
+        subtitle: 'Team performance and time distribution',
+        summaryMetrics: 'Summary metrics',
+        totalHours: 'Total Hours',
+        activeMembers: 'Active Members',
+        customers: 'Customers',
+        projects: 'Projects',
+        byUser: 'By User',
+        byCustomer: 'By Customer',
+        byProject: 'By Project',
+        previousMonth: 'Previous month',
+        nextMonth: 'Next month',
+        today: 'Today',
+    },
+
+    billableHours: {
+        title: 'Billable Hours',
+        subtitle: 'Manage user billable time entries',
+        selectUser: 'Select user',
+        currentWeek: 'Current Week',
+        previousWeek: 'Previous week',
+        nextWeek: 'Next week',
+        save: 'Save billable hours',
+        hoursUpdated: 'Hours updated',
+        minuteIncrement: 'Minutes must be in increments of 15 (0, 15, 30, 45).',
+        accessDenied: 'Access Denied',
+    },
 }

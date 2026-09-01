@@ -56,9 +56,11 @@ import TaskStatusConfirmModal from '../features/tasks/modals/TaskStatusConfirmMo
 import CreateTaskModal from '../components/modals/CreateTaskModal'
 import TaskReviewModal from '../components/modals/TaskReviewModal'
 import LogTimeModal from '../components/modals/LogTimeModal'
+import { useT } from '../i18n'
 import './TasksPage.css'
 
 function TasksPage() {
+    const t = useT()
     const { user } = useAuthStore()
     const { isTaskAdmin, canAccessAny, scopes } = useTaskPermissions()
 
@@ -181,7 +183,7 @@ function TasksPage() {
             task, currentUserId: user?.id, isTaskAdmin,
         })
         if (!canStatus) {
-            message.info('You are not allowed to change this task status.')
+            message.info(t('tasks.statusNotAllowed'))
             return
         }
         const result = await status.changeTaskStatus({
@@ -234,7 +236,7 @@ function TasksPage() {
     if (!canAccessAny) {
         return (
             <div style={{ padding: 24 }}>
-                <Empty description="You do not have access to the Tasks module." />
+                <Empty description={t('tasks.noAccess')} />
             </div>
         )
     }

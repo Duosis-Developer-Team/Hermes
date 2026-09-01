@@ -37,12 +37,14 @@ import {
 import MeetingsWeeklyView from '../components/meetings/MeetingsWeeklyView'
 import MeetingReviewModal from '../components/modals/MeetingReviewModal'
 import LogTimeModal from '../components/modals/LogTimeModal'
+import { useT } from '../i18n'
 import './MeetingsPage.css'
 
 dayjs.extend(isoWeek)
 
 
 function MeetingsPage() {
+    const t = useT()
     const { user } = useAuthStore()
     const queryClient = useQueryClient()
     // RBAC R3: baskalarinin toplantilarini gorme/sync yetkisi
@@ -289,7 +291,7 @@ function MeetingsPage() {
                             mode="multiple"
                             value={selectedUserIds}
                             onChange={setSelectedUserIds}
-                            placeholder="All users"
+                            placeholder={t('meetings.allUsers')}
                             allowClear
                             maxTagCount="responsive"
                             style={{ minWidth: 260, maxWidth: 520 }}
@@ -312,7 +314,7 @@ function MeetingsPage() {
                 <div className="meetings-user-header-right">
                     <Space wrap>
                         <Button
-                                aria-label="Previous week"
+                                aria-label={t('meetings.previousWeek')}
                             icon={<LeftOutlined />}
                             onClick={() =>
                                 setWeekStart((p) => p.subtract(1, 'week'))
@@ -326,7 +328,7 @@ function MeetingsPage() {
                             Today
                         </Button>
                         <Button
-                                aria-label="Next week"
+                                aria-label={t('meetings.nextWeek')}
                             icon={<RightOutlined />}
                             onClick={() =>
                                 setWeekStart((p) => p.add(1, 'week'))
@@ -353,7 +355,7 @@ function MeetingsPage() {
                     </div>
                 ) : meetings.length === 0 ? (
                     <Empty
-                        description="No meetings for this week."
+                        description={t('meetings.noMeetings')}
                         style={{ marginTop: 60 }}
                     />
                 ) : (

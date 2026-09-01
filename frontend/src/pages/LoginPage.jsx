@@ -26,6 +26,7 @@ import { usePlatformAuthStore } from '../stores/platformAuthStore'
 import logoIconDark from '../assets/logos/logo-icon-dark.jpg'
 import logoIconLight from '../assets/logos/logo-icon-light.png'
 import './LoginPage.css'
+import { useT } from '../i18n'
 
 /**
  * Login Page Component
@@ -34,6 +35,7 @@ import './LoginPage.css'
  * Başarılı girişte token saklanır ve ana sayfaya yönlendirilir.
  */
 function LoginPage() {
+    const t = useT()
     const [loading, setLoading] = useState(false)
     // Microsoft sign-in is the primary path for almost everyone; the
     // email/password form is collapsed by default and mainly used for
@@ -60,7 +62,7 @@ function LoginPage() {
             // seçmez, yalnızca backend'in bildirdiğini gösterir.
             login(response.user, response.tenant || null)
 
-            message.success('Login successful!')
+            message.success(t('login.loginSuccess'))
             navigate('/time-entry')
         } catch (error) {
             /*
@@ -86,7 +88,7 @@ function LoginPage() {
                     values.email, values.password
                 )
                 platformLogin(platform.admin, platform.permissions)
-                message.success('Signed in to Platform Administration')
+                message.success(t('login.signedInToPlatform'))
                 navigate('/platform-admin')
                 return
             } catch {
@@ -105,7 +107,7 @@ function LoginPage() {
         const redirectUri = window.location.origin + '/auth/callback'
 
         if (!clientId) {
-            message.warning('Azure Client ID is missing from the web configuration')
+            message.warning(t('login.azureMisconfigured'))
             return
         }
 
@@ -123,7 +125,7 @@ function LoginPage() {
                 onChange={toggleTheme}
                 checkedChildren={<BulbFilled />}
                 unCheckedChildren={<BulbOutlined />}
-                aria-label="Toggle light and dark mode"
+                aria-label={t('login.toggleTheme')}
             />
 
             <div className="login-container">
@@ -135,8 +137,8 @@ function LoginPage() {
                 {/* Login Card */}
                 <div className="login-card">
                     <div className="login-header">
-                        <h2>Sign in to Hermes</h2>
-                        <p>Use your Microsoft work account to continue</p>
+                        <h2>{t('login.signInToHermes')}</h2>
+                        <p>{t('login.microsoftHint')}</p>
                     </div>
 
                     {/* Primary: Microsoft SSO */}
@@ -146,7 +148,7 @@ function LoginPage() {
                         onClick={handleMicrosoftLogin}
                         className="ms-login-btn"
                     >
-                        Sign in with Microsoft
+                        {t('login.signInWithMicrosoft')}
                     </Button>
 
                     {/* Secondary: collapsible email/password (admins, service accounts) */}
@@ -170,29 +172,29 @@ function LoginPage() {
                         >
                             <Form.Item
                                 name="email"
-                                label="Email"
+                                label={t('login.email')}
                                 rules={[
-                                    { required: true, message: 'Please enter your email' },
-                                    { type: 'email', message: 'Please enter a valid email address' }
+                                    { required: true, message: t('login.emailRequired') },
+                                    { type: 'email', message: t('login.emailInvalid') }
                                 ]}
                             >
                                 <Input
                                     prefix={<UserOutlined />}
-                                    placeholder="you@company.com"
+                                    placeholder={t('login.emailPlaceholder')}
                                     size="large"
                                 />
                             </Form.Item>
 
                             <Form.Item
                                 name="password"
-                                label="Password"
+                                label={t('login.password')}
                                 rules={[
-                                    { required: true, message: 'Please enter your password' }
+                                    { required: true, message: t('login.passwordRequired') }
                                 ]}
                             >
                                 <Input.Password
                                     prefix={<LockOutlined />}
-                                    placeholder="Enter your password"
+                                    placeholder={t('login.passwordPlaceholder')}
                                     size="large"
                                 />
                             </Form.Item>
@@ -204,7 +206,7 @@ function LoginPage() {
                                     loading={loading}
                                     className="login-submit-btn"
                                 >
-                                    Sign In
+                                    {t('login.signIn')}
                                 </Button>
                             </Form.Item>
                         </Form>
