@@ -18,6 +18,7 @@ import { Button, Inline, Stack } from '../../components/ui'
 import AttachmentDropzone from './AttachmentDropzone'
 import { readyAttachmentIds } from './attachmentState'
 import './tickets.css'
+import { useT } from '../../i18n'
 
 const { Text } = Typography
 
@@ -25,6 +26,7 @@ export function AgentComposer({
     onSubmit, pending = false, canRespond = true, value, onChange,
     attachmentsEnabled = false,
 }) {
+    const t = useT()
     const [visibility, setVisibility] = useState('public')
     const [internalDraft, setInternalDraft] = useState('')
     const [attachments, setAttachments] = useState([])
@@ -34,9 +36,7 @@ export function AgentComposer({
     const internal = visibility === 'internal'
     if (!canRespond) {
         return (
-            <Text type="secondary">
-                You do not have permission to reply to this ticket.
-            </Text>
+            <Text type="secondary">{t('ticket.noReplyPermission')}</Text>
         )
     }
 
@@ -65,14 +65,13 @@ export function AgentComposer({
                 <Segmented
                     value={visibility}
                     onChange={setVisibility}
-                    aria-label="Message visibility"
+                    aria-label={t('ticket.messageVisibility')}
                     options={[
-                        { label: 'Reply to customer', value: 'public' },
+                        { label: t('ticket.replyToCustomer'), value: 'public' },
                         {
                             label: (
                                 <span>
-                                    <LockOutlined aria-hidden="true" /> Internal note
-                                </span>
+                                    <LockOutlined aria-hidden="true" />{t('ticket.internalNote')}</span>
                             ),
                             value: 'internal',
                         },

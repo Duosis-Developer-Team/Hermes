@@ -18,6 +18,7 @@ import { Progress, Typography } from 'antd'
 
 import { Button, Inline, Stack, StatusBadge } from '../../components/ui'
 import './tickets.css'
+import { useT } from '../../i18n'
 
 const { Text } = Typography
 
@@ -26,13 +27,15 @@ const MAX_FILES = 5
 const MAX_BYTES = 15 * 1024 * 1024
 const TOTAL_MAX_BYTES = 50 * 1024 * 1024
 
+// Durum -> ton eslemesi SABIT kalir; yalnizca etiket cevrilir ve o da
+// bir hook'a bagli oldugu icin bilesen icinde uretilir.
 const STATUS_VIEW = {
-    uploading: { tone: 'info', label: 'Uploading' },
-    pending_scan: { tone: 'warning', label: 'Scanning' },
-    clean: { tone: 'success', label: 'Ready' },
-    rejected: { tone: 'danger', label: 'Rejected' },
-    scan_failed: { tone: 'danger', label: 'Scan failed' },
-    failed: { tone: 'danger', label: 'Upload failed' },
+    uploading: { tone: 'info', key: 'ticket.uploading' },
+    pending_scan: { tone: 'warning', key: 'ticket.scanning' },
+    clean: { tone: 'success', key: 'ticket.ready' },
+    rejected: { tone: 'danger', key: 'ticket.rejected' },
+    scan_failed: { tone: 'danger', key: 'ticket.scanFailed' },
+    failed: { tone: 'danger', key: 'ticket.uploadFailed' },
 }
 
 const REJECT_REASONS = {
@@ -50,6 +53,7 @@ const REJECT_REASONS = {
 export default function AttachmentDropzone({
     enabled, onOpenSession, onUploadContent, value = [], onChange,
 }) {
+    const t = useT()
     const inputRef = useRef(null)
     const [dragging, setDragging] = useState(false)
     const [error, setError] = useState(null)
@@ -134,7 +138,7 @@ export default function AttachmentDropzone({
                     accept(event.dataTransfer?.files)
                 }}
                 onPaste={(event) => accept(event.clipboardData?.files)}
-                aria-label="Add files: drag and drop, paste, or browse"
+                aria-label={t('ticket.addFiles')}
             >
                 <InboxOutlined aria-hidden="true" />
                 <span>
@@ -173,7 +177,7 @@ export default function AttachmentDropzone({
                         <Text type="secondary">
                             {Math.max(1, Math.round((item.size || 0) / 1024))} KB
                         </Text>
-                        <StatusBadge tone={view.tone}>{view.label}</StatusBadge>
+                        <StatusBadge tone={view.tone}>{t(view.key)}</StatusBadge>
                         {item.status === 'uploading' && (
                             <Progress
                                 percent={item.progress}
@@ -192,9 +196,7 @@ export default function AttachmentDropzone({
                                 size="small"
                                 icon={<ReloadOutlined />}
                                 onClick={() => upload(item, item.file)}
-                            >
-                                Retry
-                            </Button>
+                            >{t('common.retry')}</Button>
                         )}
                         <Button
                             size="small"

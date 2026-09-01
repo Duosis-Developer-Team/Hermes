@@ -17,13 +17,16 @@ import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { customerService, projectService, authService } from '../../services/api'
 import './PlanTimeModal.css'
+import { useT } from '../../i18n'
 
 const { TextArea } = Input
 
-const RECURRENCE_OPTIONS = [
-    { value: 'one_time', label: 'One-Time' },
-    { value: 'weekly', label: 'Weekly' },
-    { value: 'monthly', label: 'Monthly' },
+// Degerler API sozlesmesidir ve CEVRILMEZ; yalnizca etiket cevrilir.
+// Liste modul duzeyinde kalamaz cunku ceviri bir hook'a baglidir.
+const RECURRENCE_VALUES = [
+    ['one_time', 'plan.oneTime'],
+    ['weekly', 'plan.weekly'],
+    ['monthly', 'plan.monthly'],
 ]
 
 function PlanTimeModal({
@@ -35,6 +38,10 @@ function PlanTimeModal({
     currentUserId = null,  // planı oluşturan kişi — listeden gizlenir
     loading = false
 }) {
+    const t = useT()
+    const recurrenceOptions = RECURRENCE_VALUES.map(([value, key]) => ({
+        value, label: t(key),
+    }))
     const [form] = Form.useForm()
     const [selectedCustomerId, setSelectedCustomerId] = useState(null)
 
@@ -166,11 +173,11 @@ function PlanTimeModal({
                 <div className="form-row">
                     <Form.Item
                         name="customer_id"
-                        label="Customer"
-                        rules={[{ required: true, message: 'Required' }]}
+                        label={t('entity.customer')}
+                        rules={[{ required: true, message: t('logTime.required') }]}
                     >
                         <Select
-                            placeholder="Select customer"
+                            placeholder={t('plan.selectCustomer')}
                             showSearch
                             optionFilterProp="label"
                             options={customers.map(c => ({ value: c.id, label: c.name }))}
@@ -180,11 +187,11 @@ function PlanTimeModal({
 
                     <Form.Item
                         name="project_id"
-                        label="Project"
-                        rules={[{ required: true, message: 'Required' }]}
+                        label={t('entity.project')}
+                        rules={[{ required: true, message: t('logTime.required') }]}
                     >
                         <Select
-                            placeholder="Select project"
+                            placeholder={t('plan.selectProject')}
                             showSearch
                             optionFilterProp="label"
                             options={filteredProjects.map(p => ({ value: p.id, label: p.name }))}
@@ -195,15 +202,15 @@ function PlanTimeModal({
 
                 {/* Date & Time */}
                 <div className="form-row four-cols">
-                    <Form.Item name="start_date" label="Start Date" rules={[{ required: true }]}>
+                    <Form.Item name="start_date" label={t('plan.startDate')} rules={[{ required: true }]}>
                         <DatePicker format="DD/MMM/YY" style={{ width: '100%' }} />
                     </Form.Item>
 
-                    <Form.Item name="end_date" label="End Date" rules={[{ required: true }]}>
+                    <Form.Item name="end_date" label={t('plan.endDate')} rules={[{ required: true }]}>
                         <DatePicker format="DD/MMM/YY" style={{ width: '100%' }} />
                     </Form.Item>
 
-                    <Form.Item name="start_time" label="Start Time">
+                    <Form.Item name="start_time" label={t('plan.startTime')}>
                         <TimePicker
                             format="HH:mm"
                             style={{ width: '100%' }}
@@ -217,7 +224,7 @@ function PlanTimeModal({
                         />
                     </Form.Item>
 
-                    <Form.Item name="end_time" label="End Time">
+                    <Form.Item name="end_time" label={t('plan.endTime')}>
                         <TimePicker
                             format="HH:mm"
                             style={{ width: '100%' }}
@@ -233,19 +240,19 @@ function PlanTimeModal({
                 </div>
 
                 {/* Recurrence */}
-                <Form.Item name="recurrence" label="Recurrence" rules={[{ required: true }]}>
-                    <Select options={RECURRENCE_OPTIONS} />
+                <Form.Item name="recurrence" label={t('plan.recurrence')} rules={[{ required: true }]}>
+                    <Select options={recurrenceOptions} />
                 </Form.Item>
 
                 {/* Assign Users */}
                 <Form.Item
                     name="user_ids"
-                    label="Assign To"
-                    rules={[{ required: true, message: 'At least one user must be selected' }]}
+                    label={t('plan.assignTo')}
+                    rules={[{ required: true, message: t('plan.atLeastOneUser') }]}
                 >
                     <Select
                         mode="multiple"
-                        placeholder="Select team members..."
+                        placeholder={t('plan.selectMembers')}
                         showSearch
                         optionFilterProp="label"
                         options={usersList.map(u => ({
@@ -267,11 +274,11 @@ function PlanTimeModal({
                                 flexShrink: 0,
                             }
                             const statusBadge = status === 'accepted'
-                                ? <span style={{ ...badgeStyle, background: 'rgba(82,196,26,0.15)', color: '#52c41a' }}>Accepted</span>
+                                ? <span style={{ ...badgeStyle, background: 'rgba(82,196,26,0.15)', color: '#52c41a' }}>{t('plan.accepted')}</span>
                                 : status === 'rejected'
-                                ? <span style={{ ...badgeStyle, background: 'rgba(255,77,79,0.15)', color: '#ff4d4f' }}>Rejected</span>
+                                ? <span style={{ ...badgeStyle, background: 'rgba(255,77,79,0.15)', color: '#ff4d4f' }}>{t('plan.rejected')}</span>
                                 : assignment
-                                ? <span style={{ ...badgeStyle, background: 'rgba(250,173,20,0.15)', color: '#faad14' }}>Pending</span>
+                                ? <span style={{ ...badgeStyle, background: 'rgba(250,173,20,0.15)', color: '#faad14' }}>{t('plan.pending')}</span>
                                 : null
 
                             return (
@@ -286,10 +293,10 @@ function PlanTimeModal({
                 </Form.Item>
 
                 {/* Description */}
-                <Form.Item name="description" label="Description">
+                <Form.Item name="description" label={t('common.description')}>
                     <TextArea
                         rows={2}
-                        placeholder="Add a meeting description or agenda..."
+                        placeholder={t('plan.meetingDescription')}
                     />
                 </Form.Item>
 
@@ -302,7 +309,7 @@ function PlanTimeModal({
                     >
                         {editingPlan ? 'Save Changes' : 'Send Invite'}
                     </Button>
-                    <Button onClick={handleClose}>Cancel</Button>
+                    <Button onClick={handleClose}>{t('common.cancel')}</Button>
                 </div>
             </Form>
         </Modal>

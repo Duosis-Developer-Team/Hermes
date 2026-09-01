@@ -36,6 +36,7 @@ import { taskService } from '../../services/api'
 import { typeMeta } from '../../utils/workItemType'
 import TaskCommentsThread from '../tasks/TaskCommentsThread'
 import './TaskReviewModal.css'
+import { useT } from '../../i18n'
 
 const { Text, Paragraph } = Typography
 
@@ -135,6 +136,7 @@ function describeActivityEvent(event, noun = 'task') {
 }
 
 export function ActivityTimeline({ taskId, userMap, taskType = 'task' }) {
+    const t = useT()
     const noun = typeMeta(taskType).lower
     const { data: events = [], isLoading } = useQuery({
         queryKey: ['task-activity', taskId],
@@ -152,9 +154,7 @@ export function ActivityTimeline({ taskId, userMap, taskType = 'task' }) {
     }
     if (events.length === 0) {
         return (
-            <div style={{ color: 'var(--c-text-muted)', fontSize: 12, padding: '4px 0' }}>
-                No activity yet.
-            </div>
+            <div style={{ color: 'var(--c-text-muted)', fontSize: 12, padding: '4px 0' }}>{t('review.noActivity')}</div>
         )
     }
     return (
@@ -209,6 +209,7 @@ function TaskReviewModal({
     currentUserId,
     isAdmin = false,
 }) {
+    const t = useT()
     // Which action is awaiting confirmation: 'accept' | 'complete' |
     // 'reject' | 'reopen' | null. Every state-changing action routes
     // through a confirmation dialog (same pattern as delete).
@@ -244,7 +245,7 @@ function TaskReviewModal({
             confirmIcon: <CheckCircleOutlined />,
             title: `Mark ${n} as completed?`,
             body: `This marks the ${n} as completed. You can reopen it afterwards if needed.`,
-            confirmLabel: 'Mark as Completed',
+            confirmLabel: t('review.markCompleted'),
             action: onMarkCompleted,
         },
         reject: {
@@ -264,7 +265,7 @@ function TaskReviewModal({
             body: isCompleted
                 ? `The ${n} will move back to In Progress so it can be worked on again.`
                 : `The ${n} will move back to Pending so it can be re-accepted.`,
-            confirmLabel: 'Reopen',
+            confirmLabel: t('review.reopen'),
             action: onReopen,
         },
     }
@@ -336,41 +337,41 @@ function TaskReviewModal({
                         items={[
                             {
                                 key: 'details',
-                                label: 'Details',
+                                label: t('review.details'),
                                 children: (
                                     <div className="task-review-tab-body">
-                                        <Row label="Customer">
+                                        <Row label={t('entity.customer')}>
                                             {task.customer_name || '—'}
                                         </Row>
-                                        <Row label="Project">
+                                        <Row label={t('entity.project')}>
                                             {task.project_name || '—'}
                                         </Row>
                                         {task.sub_project_name && (
-                                            <Row label="Sub Project">
+                                            <Row label={t('task.subProject')}>
                                                 {task.sub_project_name}
                                             </Row>
                                         )}
-                                        <Row label="Assigner">
+                                        <Row label={t('review.assigner')}>
                                             {userLabel(
                                                 task.assigner_user_id,
                                                 userMap
                                             )}
                                         </Row>
-                                        <Row label="Assignee">
+                                        <Row label={t('review.assignee')}>
                                             {userLabel(
                                                 task.assignee_user_id,
                                                 userMap
                                             )}
                                         </Row>
-                                        <Row label="Scheduled">
+                                        <Row label={t('review.scheduled')}>
                                             {task.scheduled_date || '—'}
                                         </Row>
                                         {task.due_date && (
-                                            <Row label="Due">
+                                            <Row label={t('review.due')}>
                                                 {task.due_date}
                                             </Row>
                                         )}
-                                        <Row label="Priority">
+                                        <Row label={t('task.priority')}>
                                             <Tag
                                                 color={
                                                     PRIORITY_COLOR[
@@ -381,7 +382,7 @@ function TaskReviewModal({
                                                 {task.priority}
                                             </Tag>
                                         </Row>
-                                        <Row label="Status">
+                                        <Row label={t('common.status')}>
                                             <Tag
                                                 color={
                                                     STATUS_COLOR[status] ||
@@ -393,9 +394,7 @@ function TaskReviewModal({
                                         </Row>
                                         {task.description && (
                                             <div style={{ marginTop: 10 }}>
-                                                <Text style={{ color: 'var(--c-text-muted)' }}>
-                                                    Description
-                                                </Text>
+                                                <Text style={{ color: 'var(--c-text-muted)' }}>{t('common.description')}</Text>
                                                 <Paragraph
                                                     style={{
                                                         color: 'var(--c-text-strong)',
@@ -417,7 +416,7 @@ function TaskReviewModal({
                             },
                             {
                                 key: 'activity',
-                                label: 'Activity',
+                                label: t('review.activity'),
                                 children: (
                                     <div className="task-review-tab-body">
                                         <ActivityTimeline
@@ -430,7 +429,7 @@ function TaskReviewModal({
                             },
                             {
                                 key: 'comments',
-                                label: 'Comments',
+                                label: t('review.comments'),
                                 children: (
                                     <div className="task-review-tab-body">
                                         <TaskCommentsThread
@@ -472,9 +471,7 @@ function TaskReviewModal({
                                             icon={<CheckCircleOutlined />}
                                             disabled={actionLoading}
                                             onClick={() => setConfirmType('complete')}
-                                        >
-                                            Mark as Completed
-                                        </Button>
+                                        >{t('review.markCompleted')}</Button>
                                     )}
                                     <Button
                                         danger
@@ -491,12 +488,10 @@ function TaskReviewModal({
                                     icon={<UndoOutlined />}
                                     disabled={actionLoading}
                                     onClick={() => setConfirmType('reopen')}
-                                >
-                                    Reopen
-                                </Button>
+                                >{t('review.reopen')}</Button>
                             )}
                         </div>
-                        <Button onClick={onClose}>Close</Button>
+                        <Button onClick={onClose}>{t('common.close')}</Button>
                     </div>
                 </Space>
             </Modal>

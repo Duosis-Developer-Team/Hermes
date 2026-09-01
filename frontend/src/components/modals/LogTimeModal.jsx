@@ -28,6 +28,7 @@ import {
     workLineService,
 } from '../../services/api'
 import './LogTimeModal.css'
+import { useT } from '../../i18n'
 
 const { TextArea } = Input
 
@@ -93,6 +94,7 @@ function LogTimeModal({
      */
     prefillMeeting = null,
 }) {
+    const t = useT()
     const [form] = Form.useForm()
     const [step, setStep] = useState(0) // 0: Customer, 1: Project, 2: Form
     const [selectedCustomerId, setSelectedCustomerId] = useState(null)
@@ -276,9 +278,9 @@ function LogTimeModal({
             values = await form.validateFields()
         } catch (error) {
             if (error?.errorFields) {
-                message.error('Please fill in all required fields.')
+                message.error(t('logTime.fillRequired'))
             } else {
-                message.error('Unexpected error: ' + (error?.message || ''))
+                message.error(`${t('logTime.unexpectedError')} ${error?.message || ''}`)
             }
             return
         }
@@ -328,7 +330,7 @@ function LogTimeModal({
                 onLogAnother()
             }
 
-            message.success('Saved! Ready for next entry.')
+            message.success(t('logTime.savedReady'))
         } else {
             handleClose()
         }
@@ -350,7 +352,7 @@ function LogTimeModal({
                gecirmez. Baslik gorsel olarak gizlenir — modalin kendi
                adim basliklari zaten gorunur durumda, ikinci bir baslik
                cubugu tasarimi degistirirdi. */
-            title={<span className="h-sr-only">Log time</span>}
+            title={<span className="h-sr-only">{t('logTime.logTime')}</span>}
             classNames={{ header: 'h-sr-only' }}
             /* Pending'te yanlislikla kapanma KILITLI (§7 UX sozlesmesi):
                kayit sunucuya giderken Escape/mask/X ile cikip "kaydoldu
@@ -364,10 +366,10 @@ function LogTimeModal({
                 {step === 0 && (
                     <div className="log-time-step selection-step fade-in">
                         <div className="selection-wrapper">
-                            <h3 style={{ marginBottom: 24, textAlign: 'center' }}>Select Customer</h3>
+                            <h3 style={{ marginBottom: 24, textAlign: 'center' }}>{t('logTime.selectCustomer')}</h3>
                             <Form.Item required>
                                 <Select
-                                    placeholder="Search Customer..."
+                                    placeholder={t('logTime.searchCustomer')}
                                     value={selectedCustomerId}
                                     onChange={(val) => {
                                         setSelectedCustomerId(val)
@@ -397,12 +399,12 @@ function LogTimeModal({
                         <div className="selection-wrapper">
                             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
                                 <Button
-                                    aria-label="Back to previous step"
+                                    aria-label={t('logTime.backToPrevious')}
                                     type="text"
                                     icon={<ArrowLeftOutlined />}
                                     onClick={prevStep}
                                 />
-                                <h3 style={{ flex: 1, textAlign: 'center', margin: 0, marginRight: 32 }}>Select Project</h3>
+                                <h3 style={{ flex: 1, textAlign: 'center', margin: 0, marginRight: 32 }}>{t('logTime.selectProject')}</h3>
                             </div>
 
                             <div style={{ marginBottom: 16, textAlign: 'center', color: '#1890ff' }}>
@@ -411,7 +413,7 @@ function LogTimeModal({
 
                             <Form.Item required>
                                 <Select
-                                    placeholder="Search Project..."
+                                    placeholder={t('logTime.searchProject')}
                                     value={selectedProjectId}
                                     onChange={(val) => {
                                         handleProjectSelect(val)
@@ -444,7 +446,7 @@ function LogTimeModal({
                         {/* Selected Issue Header */}
                         <div className="selected-issue-header">
                             <Button
-                                aria-label="Back to previous step"
+                                aria-label={t('logTime.backToPrevious')}
                                 type="text"
                                 icon={<ArrowLeftOutlined />}
                                 onClick={handleBack}
@@ -462,8 +464,8 @@ function LogTimeModal({
                         <div className="form-row" style={{ alignItems: 'flex-start' }}>
                             <Form.Item
                                 name="date_worked"
-                                label="Date"
-                                rules={[{ required: true, message: 'Required' }]}
+                                label={t('reports.date')}
+                                rules={[{ required: true, message: t('logTime.required') }]}
                                 style={{ flex: 1 }}
                             >
                                 <DatePicker
@@ -476,7 +478,7 @@ function LogTimeModal({
                             <div style={{ flex: 1 }}>
                                 <Form.Item
                                     name="duration_hours"
-                                    label="Duration"
+                                    label={t('logTime.duration')}
                                     required
                                     rules={[
                                         {
@@ -505,12 +507,12 @@ function LogTimeModal({
                         {/* Description */}
                         <Form.Item
                             name="description"
-                            label="Description"
-                            rules={[{ required: true, message: 'Description is required' }]}
+                            label={t('common.description')}
+                            rules={[{ required: true, message: t('logTime.descriptionRequired') }]}
                         >
                             <TextArea
                                 rows={2}
-                                placeholder="What did you work on?"
+                                placeholder={t('logTime.whatDidYouWorkOn')}
                             />
                         </Form.Item>
 
@@ -519,11 +521,11 @@ function LogTimeModal({
                         <div className="form-row">
                         <Form.Item
                             name="work_type_id"
-                            label="Work Type"
-                            rules={[{ required: true, message: 'Please select' }]}
+                            label={t('logTime.workType')}
+                            rules={[{ required: true, message: t('logTime.pleaseSelect') }]}
                         >
                             <Select
-                                placeholder="Please select"
+                                placeholder={t('logTime.pleaseSelect')}
                                 showSearch
                                 filterOption={(input, option) =>
                                     (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -536,12 +538,12 @@ function LogTimeModal({
 
                         <Form.Item
                             name="activity_type_id"
-                            label="Activity Type"
+                            label={t('logTime.activityType')}
                             required
-                            rules={[{ required: true, message: 'Activity Type is required' }]}
+                            rules={[{ required: true, message: t('logTime.activityTypeRequired') }]}
                         >
                             <Select
-                                placeholder="Please select"
+                                placeholder={t('logTime.pleaseSelect')}
                                 showSearch
                                 filterOption={(input, option) =>
                                     (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -558,12 +560,12 @@ function LogTimeModal({
                         <div className="form-row">
                         <Form.Item
                             name="platform_id"
-                            label="Platform"
+                            label={t('logTime.platform')}
                             required
-                            rules={[{ required: true, message: 'Platform is required' }]}
+                            rules={[{ required: true, message: t('logTime.platformRequired') }]}
                         >
                             <Select
-                                placeholder="Please select"
+                                placeholder={t('logTime.pleaseSelect')}
                                 showSearch
                                 filterOption={(input, option) =>
                                     (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -576,10 +578,10 @@ function LogTimeModal({
 
                         <Form.Item
                             name="work_line_id"
-                            label="Work Line"
+                            label={t('logTime.workLine')}
                         >
                             <Select
-                                placeholder="Please select"
+                                placeholder={t('logTime.pleaseSelect')}
                                 allowClear
                                 showSearch
                                 filterOption={(input, option) =>
@@ -594,28 +596,22 @@ function LogTimeModal({
                         </div>
 
                         {/* Show hidden fields link */}
-                        <div className="show-hidden-fields">
-                            Show hidden fields
-                        </div>
+                        <div className="show-hidden-fields">{t('logTime.showHiddenFields')}</div>
 
                         {/* Actions */}
                         <div className="form-actions">
                             <Checkbox
                                 checked={logAnother}
                                 onChange={(e) => setLogAnother(e.target.checked)}
-                            >
-                                Log another
-                            </Checkbox>
+                            >{t('logTime.logAnother')}</Checkbox>
 
                             <div className="action-buttons">
                                 <Button
                                     type="primary"
                                     onClick={handleSubmit}
                                     loading={loading}
-                                >
-                                    Log time
-                                </Button>
-                                <Button onClick={handleClose}>Cancel</Button>
+                                >{t('logTime.logTime')}</Button>
+                                <Button onClick={handleClose}>{t('common.cancel')}</Button>
                             </div>
                         </div>
                     </div>

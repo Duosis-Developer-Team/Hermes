@@ -14,6 +14,7 @@ import {
     applyErrorToForm,
 } from '../../features/admin/shared/normalizeApiError'
 import { resetAndFill } from '../../features/admin/shared/formLifecycle'
+import { useT } from '../../i18n'
 
 const FORM_FIELDS = ['name', 'description']
 
@@ -24,6 +25,7 @@ function UserGroupModal({
     editingGroup = null,
     loading = false,
 }) {
+    const t = useT()
     const [form] = Form.useForm()
     const [submitError, setSubmitError] = useState(null)
     const [submitting, setSubmitting] = useState(false)
@@ -68,7 +70,7 @@ function UserGroupModal({
             open={open}
             onCancel={onClose}
             okText={isEditing ? 'Save Changes' : 'Create Group'}
-            cancelText="Cancel"
+            cancelText={t('common.cancel')}
             confirmLoading={loading || submitting}
             onOk={() => form.submit()}
             width={520}
@@ -87,23 +89,23 @@ function UserGroupModal({
             )}
             <Form form={form} layout="vertical" onFinish={handleFinish}>
                 <Form.Item
-                    label="Group Name"
+                    label={t('group.name')}
                     name="name"
                     rules={[
                         {
                             required: true, whitespace: true,
-                            message: 'Group name is required.',
+                            message: t('group.nameRequired'),
                         },
-                        { max: 255, message: 'Max 255 characters.' },
+                        { max: 255, message: t('group.maxChars') },
                     ]}
                 >
-                    <Input maxLength={255} placeholder="e.g. Technical Team" />
+                    <Input maxLength={255} placeholder={t('group.nameExample')} />
                 </Form.Item>
 
-                <Form.Item label="Description" name="description">
+                <Form.Item label={t('common.description')} name="description">
                     <Input.TextArea
                         rows={3}
-                        placeholder="What this group is for (optional)"
+                        placeholder={t('group.purpose')}
                     />
                 </Form.Item>
             </Form>

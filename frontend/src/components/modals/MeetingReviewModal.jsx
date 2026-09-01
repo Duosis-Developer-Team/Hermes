@@ -25,6 +25,7 @@ import {
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import './MeetingReviewModal.css'
+import { useT } from '../../i18n'
 
 const { Text, Paragraph } = Typography
 
@@ -44,6 +45,7 @@ function MeetingReviewModal({
     onLogTime,
     isLogged = false,
 }) {
+    const t = useT()
     if (!meeting) return null
 
     const start = meeting.start_datetime
@@ -119,7 +121,7 @@ function MeetingReviewModal({
                         type="success"
                         showIcon
                         icon={<CheckCircleOutlined />}
-                        message="Time logged for this meeting."
+                        message={t('meeting.timeLogged')}
                     />
                 )}
                 {isPrivate && (
@@ -127,15 +129,15 @@ function MeetingReviewModal({
                         type="info"
                         showIcon
                         icon={<LockOutlined />}
-                        message="Private meeting — full details are intentionally not stored."
+                        message={t('meeting.privateMeeting')}
                     />
                 )}
 
                 <div>
-                    <Row label="Date">{dateStr}</Row>
-                    <Row label="Time">{timeRange}</Row>
-                    <Row label="Duration">{durationLabel}</Row>
-                    <Row label="Organizer">
+                    <Row label={t('reports.date')}>{dateStr}</Row>
+                    <Row label={t('meeting.time')}>{timeRange}</Row>
+                    <Row label={t('meeting.duration')}>{durationLabel}</Row>
+                    <Row label={t('meeting.organizer')}>
                         {organizer}
                         {meeting.organizer_email &&
                         meeting.organizer_name ? (
@@ -144,7 +146,7 @@ function MeetingReviewModal({
                             </span>
                         ) : null}
                     </Row>
-                    <Row label="Attendees">
+                    <Row label={t('meeting.attendees')}>
                         <span>
                             <UsergroupAddOutlined
                                 style={{ marginRight: 6, color: 'var(--c-text-muted)' }}
@@ -153,17 +155,16 @@ function MeetingReviewModal({
                         </span>
                     </Row>
                     {meeting.is_online_meeting && (
-                        <Row label="Type">
+                        <Row label={t('meeting.type')}>
                             <Tag color="cyan">
-                                <TeamOutlined /> Microsoft Teams
-                            </Tag>
+                                <TeamOutlined />{t('meeting.teams')}</Tag>
                         </Row>
                     )}
                 </div>
 
                 {meeting.body_preview && !isPrivate && (
                     <div>
-                        <Text style={{ color: 'var(--c-text-muted)' }}>Description</Text>
+                        <Text style={{ color: 'var(--c-text-muted)' }}>{t('common.description')}</Text>
                         <Paragraph
                             style={{
                                 color: 'var(--c-text-strong)',
@@ -184,7 +185,7 @@ function MeetingReviewModal({
 
                 {attendees.length > 0 && (
                     <div>
-                        <Text style={{ color: 'var(--c-text-muted)' }}>Invited</Text>
+                        <Text style={{ color: 'var(--c-text-muted)' }}>{t('meeting.invited')}</Text>
                         <div
                             style={{
                                 marginTop: 6,
@@ -253,9 +254,7 @@ function MeetingReviewModal({
                             type="primary"
                             icon={<FieldTimeOutlined />}
                             onClick={() => onLogTime(meeting)}
-                        >
-                            Log Time
-                        </Button>
+                        >{t('meeting.logTime')}</Button>
                     )}
                     {/* Right-aligned cluster: Teams + Close. The
                         spacer <span/> keeps Close pinned right when
@@ -266,11 +265,9 @@ function MeetingReviewModal({
                             <Button
                                 icon={<LinkOutlined />}
                                 onClick={handleOpenTeams}
-                            >
-                                Open in Teams
-                            </Button>
+                            >{t('meeting.openInTeams')}</Button>
                         )}
-                        <Button onClick={onClose}>Close</Button>
+                        <Button onClick={onClose}>{t('common.close')}</Button>
                     </Space>
                 </div>
             </Space>

@@ -14,10 +14,12 @@ import { Alert, Form, Input, Select, Typography } from 'antd'
 import { AppModal, Stack } from '../../components/ui'
 import { RESOLUTION_LABELS } from './constants'
 import './tickets.css'
+import { useT } from '../../i18n'
 
 const { Text } = Typography
 
 export function ResolveModal({ open, onCancel, onSubmit, pending, ticket }) {
+    const t = useT()
     const [form] = Form.useForm()
     const [preview, setPreview] = useState('')
 
@@ -45,9 +47,9 @@ export function ResolveModal({ open, onCancel, onSubmit, pending, ticket }) {
     return (
         <AppModal
             open={open}
-            title="Resolve ticket"
-            okText="Send resolution"
-            cancelText="Cancel"
+            title={t('ticket.resolveTicket')}
+            okText={t('ticket.sendResolution')}
+            cancelText={t('common.cancel')}
             onCancel={onCancel}
             onOk={handleOk}
             pending={pending}
@@ -58,23 +60,23 @@ export function ResolveModal({ open, onCancel, onSubmit, pending, ticket }) {
             <Form form={form} layout="vertical" preserve={false}>
                 <Form.Item
                     name="resolution_code"
-                    label="Resolution type"
-                    rules={[{ required: true, message: 'Select a resolution type' }]}
+                    label={t('ticket.resolutionType')}
+                    rules={[{ required: true, message: t('ticket.selectResolutionType') }]}
                 >
                     <Select
                         options={Object.entries(RESOLUTION_LABELS).map(
                             ([value, label]) => ({ value, label }),
                         )}
-                        placeholder="Select"
+                        placeholder={t('ticket.select')}
                     />
                 </Form.Item>
 
                 <Form.Item
                     name="public_summary"
-                    label="Customer-visible resolution summary"
-                    extra="The customer sees this text exactly as written."
+                    label={t('ticket.customerSummary')}
+                    extra={t('ticket.summaryVerbatim')}
                     rules={[
-                        { required: true, message: 'A resolution summary is required' },
+                        { required: true, message: t('ticket.summaryRequired') },
                     ]}
                 >
                     <Input.TextArea
@@ -84,32 +86,32 @@ export function ResolveModal({ open, onCancel, onSubmit, pending, ticket }) {
                     />
                 </Form.Item>
 
-                <Form.Item name="public_workaround" label="Workaround (optional, visible to the customer)">
+                <Form.Item name="public_workaround" label={t('ticket.workaround')}>
                     <Input.TextArea rows={2} maxLength={10000} />
                 </Form.Item>
 
-                <Form.Item name="fix_version" label="Fix version (optional, visible to the customer)">
+                <Form.Item name="fix_version" label={t('ticket.fixVersion')}>
                     <Input maxLength={120} />
                 </Form.Item>
 
                 <Alert
                     type="warning"
                     showIcon
-                    message="The fields below are for the team only"
-                    description="Root cause and internal notes are never included in the customer portal, webhook events or API responses."
+                    message={t('ticket.teamOnlyFields')}
+                    description={t('ticket.internalNeverLeaks')}
                     style={{ marginBottom: 16 }}
                 />
 
-                <Form.Item name="internal_root_cause" label="Root cause — team only">
+                <Form.Item name="internal_root_cause" label={t('ticket.rootCause')}>
                     <Input.TextArea rows={2} maxLength={10000} />
                 </Form.Item>
 
-                <Form.Item name="internal_note" label="Internal follow-up note — team only">
+                <Form.Item name="internal_note" label={t('ticket.internalFollowUp')}>
                     <Input.TextArea rows={2} maxLength={10000} />
                 </Form.Item>
 
                 <Stack gap={1} className="h-ticket-resolution">
-                    <Text strong>What the customer will see</Text>
+                    <Text strong>{t('ticket.customerWillSee')}</Text>
                     <Text>{preview || 'The resolution summary will appear here.'}</Text>
                 </Stack>
             </Form>

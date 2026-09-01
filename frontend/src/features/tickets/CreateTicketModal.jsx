@@ -19,6 +19,7 @@ import AttachmentDropzone from './AttachmentDropzone'
 import { readyAttachmentIds } from './attachmentState'
 import { CATEGORY_LABELS, IMPACT_HINTS, IMPACT_LABELS } from './constants'
 import './tickets.css'
+import { useT } from '../../i18n'
 
 const { Text } = Typography
 
@@ -43,6 +44,7 @@ export default function CreateTicketModal({
     open, onCancel, onSubmit, pending, groupName, routeReady,
     attachmentsEnabled = false,
 }) {
+    const t = useT()
     const [form] = Form.useForm()
     const [attachments, setAttachments] = useState([])
     // Idempotency anahtari MODAL ACILISINDA uretilir ve retry'larda
@@ -80,9 +82,9 @@ export default function CreateTicketModal({
     return (
         <AppModal
             open={open}
-            title="New support request"
-            okText="Submit"
-            cancelText="Cancel"
+            title={t('ticket.newRequest')}
+            okText={t('common.submit')}
+            cancelText={t('common.cancel')}
             onCancel={onCancel}
             onOk={handleOk}
             pending={pending}
@@ -109,18 +111,18 @@ export default function CreateTicketModal({
                         type="warning"
                         showIcon
                         message="Support routing has not been configured yet"
-                        description="Requests cannot be submitted. Please contact your administrator."
+                        description={t('ticket.cannotSubmit')}
                     />
                 )}
 
                 <Form form={form} layout="vertical" preserve={false}>
                     <Form.Item
                         name="category"
-                        label="Category"
-                        rules={[{ required: true, message: 'Select a category' }]}
+                        label={t('ticket.category')}
+                        rules={[{ required: true, message: t('ticket.selectCategory') }]}
                     >
                         <Select
-                            placeholder="Select"
+                            placeholder={t('ticket.select')}
                             options={Object.entries(CATEGORY_LABELS).map(
                                 ([value, label]) => ({ value, label }),
                             )}
@@ -129,11 +131,11 @@ export default function CreateTicketModal({
 
                     <Form.Item
                         name="impact"
-                        label="Impact"
-                        rules={[{ required: true, message: 'Select an impact' }]}
+                        label={t('ticket.impact')}
+                        rules={[{ required: true, message: t('ticket.selectImpact') }]}
                     >
                         <Select
-                            placeholder="Select"
+                            placeholder={t('ticket.select')}
                             options={Object.entries(IMPACT_LABELS).map(
                                 ([value, label]) => ({
                                     value,
@@ -158,8 +160,8 @@ export default function CreateTicketModal({
                             // Uzunluk ALT SINIRI YOK: bos olmasin yeter.
                             // "En az 8 karakter" gercek basliklari
                             // ("404", "yavas") engelliyordu.
-                            { required: true, message: 'A title is required' },
-                            { max: 160, message: 'At most 160 characters' },
+                            { required: true, message: t('ticket.titleRequired') },
+                            { max: 160, message: t('ticket.titleMax') },
                         ]}
                     >
                         <Input maxLength={160} showCount />
@@ -167,9 +169,9 @@ export default function CreateTicketModal({
 
                     <Form.Item
                         name="description"
-                        label="Description"
+                        label={t('common.description')}
                         rules={[
-                            { required: true, message: 'A description is required' },
+                            { required: true, message: t('ticket.descriptionRequired') },
                         ]}
                     >
                         <Input.TextArea rows={5} maxLength={10000} showCount />
@@ -193,25 +195,25 @@ export default function CreateTicketModal({
                         className="ticket-create-modal__optional"
                         items={[{
                             key: 'details',
-                            label: 'Add more detail (optional)',
+                            label: t('ticket.addMoreDetail'),
                             forceRender: true,
                             children: (
                                 <>
                                     <Form.Item
                                         name="reproduction_steps"
-                                        label="Steps to reproduce"
+                                        label={t('ticket.stepsToReproduce')}
                                     >
                                         <Input.TextArea rows={2} maxLength={10000} />
                                     </Form.Item>
                                     <Form.Item
                                         name="expected_result"
-                                        label="Expected result"
+                                        label={t('ticket.expectedResult')}
                                     >
                                         <Input.TextArea rows={2} maxLength={10000} />
                                     </Form.Item>
                                     <Form.Item
                                         name="actual_result"
-                                        label="Actual result"
+                                        label={t('ticket.actualResult')}
                                     >
                                         <Input.TextArea rows={2} maxLength={10000} />
                                     </Form.Item>
@@ -219,7 +221,7 @@ export default function CreateTicketModal({
                             ),
                         }]}
                     />
-                    <Form.Item name="error_code" label="Error code or message (optional)">
+                    <Form.Item name="error_code" label={t('ticket.errorCode')}>
                         <Input maxLength={80} />
                     </Form.Item>
                 </Form>
