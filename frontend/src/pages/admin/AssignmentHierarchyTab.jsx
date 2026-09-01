@@ -46,6 +46,7 @@ import {
 import DangerConfirmModal from '../../components/common/DangerConfirmModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import { resetAndFill } from '../../features/admin/shared/formLifecycle'
+import { useT } from '../../i18n'
 
 function userLabel(u) {
     if (!u) return '—'
@@ -63,6 +64,7 @@ function AssignerCard({
     onRemoveUserRelation,
     onRemoveGroupRelation,
 }) {
+    const t = useT()
     const [expanded, setExpanded] = useState(false)
     const userCount = userRelations.length
     const groupCount = groupRelations.length
@@ -126,9 +128,7 @@ function AssignerCard({
                             e.stopPropagation()
                             onAddRule(assigner.id)
                         }}
-                    >
-                        Add Assignment Rule
-                    </Button>
+                    >{t('assignment.addRule')}</Button>
                 </Space>
             </div>
 
@@ -149,9 +149,7 @@ function AssignerCard({
                                 textTransform: 'uppercase',
                                 marginBottom: 6,
                             }}
-                        >
-                            Groups
-                        </div>
+                        >{t('task.groups')}</div>
                         {groupRelations.length === 0 ? (
                             <div
                                 style={{
@@ -159,9 +157,7 @@ function AssignerCard({
                                     fontSize: 12,
                                     fontStyle: 'italic',
                                 }}
-                            >
-                                No group assignments.
-                            </div>
+                            >{t('assignment.noGroupAssignments')}</div>
                         ) : (
                             groupRelations.map((rel) => {
                                 const g = groupsById[rel.assignee_group_id]
@@ -190,7 +186,7 @@ function AssignerCard({
                                             </span>
                                         </div>
                                         {/* Tooltip erisilebilir AD VERMEZ. */}
-                                        <Tooltip title="Remove this group from assigner">
+                                        <Tooltip title={t('assignment.removeGroupFromAssigner')}>
                                             <Button
                                                 size="small"
                                                 danger
@@ -219,9 +215,7 @@ function AssignerCard({
                                 textTransform: 'uppercase',
                                 marginBottom: 6,
                             }}
-                        >
-                            Users
-                        </div>
+                        >{t('task.users')}</div>
                         {userRelations.length === 0 ? (
                             <div
                                 style={{
@@ -229,9 +223,7 @@ function AssignerCard({
                                     fontSize: 12,
                                     fontStyle: 'italic',
                                 }}
-                            >
-                                No user assignments.
-                            </div>
+                            >{t('assignment.noUserAssignments')}</div>
                         ) : (
                             userRelations.map((rel) => {
                                 const u = usersById[rel.assignee_user_id]
@@ -266,7 +258,7 @@ function AssignerCard({
                                             )}
                                         </div>
                                         {/* Tooltip erisilebilir AD VERMEZ. */}
-                                        <Tooltip title="Remove this user from assigner">
+                                        <Tooltip title={t('assignment.removeUserFromAssigner')}>
                                             <Button
                                                 size="small"
                                                 danger
@@ -300,6 +292,7 @@ function AddRuleModal({
     initialAssignerId = null,
     loading = false,
 }) {
+    const t = useT()
     const [form] = Form.useForm()
 
     /**
@@ -320,7 +313,7 @@ function AddRuleModal({
 
     return (
         <Modal
-            title="Add Assignment Rules"
+            title={t('assignment.addRules')}
             open={open}
             onCancel={onClose}
             onOk={() => {
@@ -328,7 +321,7 @@ function AddRuleModal({
                 if (loading) return
                 form.submit()
             }}
-            okText="Save"
+            okText={t('common.save')}
             confirmLoading={loading}
             destroyOnHidden
             closable={!loading}
@@ -341,13 +334,13 @@ function AddRuleModal({
                 onFinish={onSubmit}
             >
                 <Form.Item
-                    label="Assigner"
+                    label={t('assignment.assigner')}
                     name="assigner_user_id"
-                    rules={[{ required: true, message: 'Pick an assigner.' }]}
+                    rules={[{ required: true, message: t('assignment.pickAssigner') }]}
                 >
                     <Select
                         showSearch
-                        placeholder="Select assigner"
+                        placeholder={t('assignment.selectAssigner')}
                         optionFilterProp="label"
                         options={eligibleAssigners.map((u) => ({
                             value: u.id,
@@ -365,9 +358,9 @@ function AddRuleModal({
                     a single save. At least one is required (validated on
                     submit since the rule spans two fields). */}
                 <Form.Item
-                    label="Assignee Users"
+                    label={t('assignment.assigneeUsers')}
                     name="assignee_user_ids"
-                    extra="Pick one or more users this assigner may assign to."
+                    extra={t('assignment.pickTargets')}
                     dependencies={['assignee_group_ids']}
                     rules={[
                         {
@@ -394,7 +387,7 @@ function AddRuleModal({
                         mode="multiple"
                         allowClear
                         showSearch
-                        placeholder="Select users"
+                        placeholder={t('assignment.selectUsers')}
                         optionFilterProp="label"
                         maxTagCount="responsive"
                         options={eligibleAssignees.map((u) => ({
@@ -410,15 +403,15 @@ function AddRuleModal({
                 </Form.Item>
 
                 <Form.Item
-                    label="Assignee Groups"
+                    label={t('assignment.assigneeGroups')}
                     name="assignee_group_ids"
-                    extra="Optionally assign whole groups (fans out per active member at task time)."
+                    extra={t('assignment.groupsHint')}
                 >
                     <Select
                         mode="multiple"
                         allowClear
                         showSearch
-                        placeholder="Select groups"
+                        placeholder={t('assignment.selectGroups')}
                         optionFilterProp="label"
                         maxTagCount="responsive"
                         options={eligibleGroups.map((g) => ({
@@ -438,6 +431,7 @@ function AddRuleModal({
 }
 
 function AssignmentHierarchyTab({ scope = 'task' }) {
+    const t = useT()
     const queryClient = useQueryClient()
     const scopeNoun = scope === 'issue' ? 'issues/suggestions' : 'tasks'
 
@@ -592,7 +586,7 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
             }
         },
         onSuccess: () => {
-            message.success('Assignment rules added.')
+            message.success(t('assignment.rulesAdded'))
             setAddModalOpen(false)
         },
         onError: (err) => {
@@ -611,7 +605,7 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
     const deleteUserMutation = useMutation({
         mutationFn: (id) => taskAssignmentService.delete(id),
         onSuccess: () => {
-            message.success('User rule removed.')
+            message.success(t('assignment.userRuleRemoved'))
             setRemovingUserRelation(null)
             queryClient.invalidateQueries({
                 queryKey: ['admin-task-assignment-relations', scope],
@@ -626,7 +620,7 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
     const deleteGroupMutation = useMutation({
         mutationFn: (id) => taskAssignmentGroupService.delete(id),
         onSuccess: () => {
-            message.success('Group rule removed.')
+            message.success(t('assignment.groupRuleRemoved'))
             setRemovingGroupRelation(null)
             queryClient.invalidateQueries({
                 queryKey: ['admin-task-assignment-group-relations', scope],
@@ -648,7 +642,7 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
         const userIds = values.assignee_user_ids || []
         const groupIds = values.assignee_group_ids || []
         if (userIds.length === 0 && groupIds.length === 0) {
-            message.warning('Select at least one user or group.')
+            message.warning(t('assignment.selectAtLeastOne'))
             return
         }
         addRulesMutation.mutate({
@@ -686,9 +680,9 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
                   */}
                 <Input
                     prefix={<SearchOutlined aria-hidden="true" />}
-                    aria-label="Search assigner by name or email"
+                    aria-label={t('assignment.searchAssigner')}
                     allowClear
-                    placeholder="Search assigner by name or email"
+                    placeholder={t('assignment.searchAssigner')}
                     value={assignerSearch}
                     onChange={(e) => setAssignerSearch(e.target.value)}
                     style={{ maxWidth: 320 }}
@@ -698,14 +692,12 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
                     icon={<PlusOutlined />}
                     /* Kart icindeki ayni metinli butondan AYRI ad: bu
                        hicbir assigner'i on-secmez. */
-                    aria-label="Add assignment rule"
+                    aria-label={t('assignment.addRuleShort')}
                     onClick={() => {
                         setPresetAssignerId(null)
                         setAddModalOpen(true)
                     }}
-                >
-                    Add Assignment Rule
-                </Button>
+                >{t('assignment.addRule')}</Button>
             </div>
 
             {relationsError && (
@@ -715,9 +707,7 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
                     style={{ marginBottom: 16 }}
                     message={relationsError.message}
                     action={
-                        <Button size="small" onClick={() => relationsError.retry()}>
-                            Retry
-                        </Button>
+                        <Button size="small" onClick={() => relationsError.retry()}>{t('common.retry')}</Button>
                     }
                 />
             )}
@@ -772,7 +762,7 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
 
             <DangerConfirmModal
                 open={!!removingUserRelation}
-                title="Remove assignment mapping?"
+                title={t('assignment.removeMapping')}
                 body="This prevents future assignment through this mapping. Existing tasks remain unchanged."
                 itemName={
                     removingUser
@@ -791,7 +781,7 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
 
             <DangerConfirmModal
                 open={!!removingGroupRelation}
-                title="Remove assignment mapping?"
+                title={t('assignment.removeMapping')}
                 body="This prevents future assignment through this mapping. Existing tasks remain unchanged."
                 itemName={removingGroupName}
                 confirmLabel="Remove"

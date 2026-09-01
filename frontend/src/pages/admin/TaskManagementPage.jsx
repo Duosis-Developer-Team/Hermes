@@ -54,12 +54,14 @@ import LifecyclePolicyControl from '../../features/tasks/components/LifecyclePol
 import DangerConfirmModal from '../../components/common/DangerConfirmModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import { resetAndFill } from '../../features/admin/shared/formLifecycle'
+import { useT } from '../../i18n'
 
 // =============================================================================
 // Sub Projects
 // =============================================================================
 
 export function SubProjectsTab() {
+    const t = useT()
     const queryClient = useQueryClient()
     const [filterCustomer, setFilterCustomer] = useState(null)
     const [filterProject, setFilterProject] = useState(null)
@@ -103,7 +105,7 @@ export function SubProjectsTab() {
     const createMutation = useMutation({
         mutationFn: (data) => taskSubProjectService.create(data),
         onSuccess: () => {
-            message.success('Sub project created.')
+            message.success(t('pm.subProjectCreated'))
             setModalOpen(false)
             form.resetFields()
             queryClient.invalidateQueries({ queryKey: ['admin-task-sub-projects'] })
@@ -117,7 +119,7 @@ export function SubProjectsTab() {
     const updateMutation = useMutation({
         mutationFn: ({ id, data }) => taskSubProjectService.update(id, data),
         onSuccess: () => {
-            message.success('Sub project updated.')
+            message.success(t('pm.subProjectUpdated'))
             setModalOpen(false)
             setEditing(null)
             form.resetFields()
@@ -132,7 +134,7 @@ export function SubProjectsTab() {
     const deleteMutation = useMutation({
         mutationFn: (id) => taskSubProjectService.delete(id),
         onSuccess: () => {
-            message.success('Sub project deleted.')
+            message.success(t('pm.subProjectDeleted'))
             setDeletingSub(null)
             queryClient.invalidateQueries({ queryKey: ['admin-task-sub-projects'] })
             queryClient.invalidateQueries({ queryKey: ['task-sub-projects'] })
@@ -205,25 +207,25 @@ export function SubProjectsTab() {
     }
 
     const columns = [
-        { title: 'Name', dataIndex: 'name' },
-        { title: 'Customer', dataIndex: 'customer_name' },
-        { title: 'Project', dataIndex: 'project_name' },
+        { title: t('common.name'), dataIndex: 'name' },
+        { title: t('entity.customer'), dataIndex: 'customer_name' },
+        { title: t('entity.project'), dataIndex: 'project_name' },
         {
-            title: 'Description',
+            title: t('common.description'),
             dataIndex: 'description',
             render: (val) => val || '—',
         },
         {
-            title: 'Created',
+            title: t('admin.createdAt'),
             dataIndex: 'created_at',
             render: (val) => (val ? new Date(val).toLocaleDateString() : '—'),
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             render: (_, record) => (
                 <Space>
                     {/* AntD Tooltip erisilebilir AD VERMEZ. */}
-                    <Tooltip title="Edit">
+                    <Tooltip title={t('common.edit')}>
                         <Button
                             size="small"
                             aria-label={`Edit ${record.name}`}
@@ -241,9 +243,7 @@ export function SubProjectsTab() {
                         aria-label={`Delete ${record.name} permanently`}
                         disabled={isDeleting}
                         onClick={() => setDeletingSub(record)}
-                    >
-                        Delete
-                    </Button>
+                    >{t('common.delete')}</Button>
                 </Space>
             ),
         },
@@ -258,9 +258,7 @@ export function SubProjectsTab() {
                     style={{ marginBottom: 12 }}
                     message={normalizeApiError(error).message}
                     action={
-                        <Button size="small" onClick={() => refetch()}>
-                            Retry
-                        </Button>
+                        <Button size="small" onClick={() => refetch()}>{t('common.retry')}</Button>
                     }
                 />
             )}
@@ -277,7 +275,7 @@ export function SubProjectsTab() {
                     <Select
                         allowClear
                         showSearch
-                        placeholder="Customer"
+                        placeholder={t('entity.customer')}
                         style={{ width: 200 }}
                         value={filterCustomer}
                         onChange={(v) => {
@@ -290,7 +288,7 @@ export function SubProjectsTab() {
                     <Select
                         allowClear
                         showSearch
-                        placeholder="Project"
+                        placeholder={t('entity.project')}
                         style={{ width: 200 }}
                         value={filterProject}
                         disabled={!filterCustomer}
@@ -308,9 +306,7 @@ export function SubProjectsTab() {
                     className="h-create-action"
                     icon={<PlusOutlined />}
                     onClick={handleOpenCreate}
-                >
-                    Create Sub Project
-                </Button>
+                >{t('pm.createSubProject')}</Button>
             </div>
 
             <Table
@@ -348,14 +344,14 @@ export function SubProjectsTab() {
             >
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <Form.Item
-                        label="Customer"
+                        label={t('entity.customer')}
                         name="customer_id"
-                        rules={[{ required: true, message: 'Customer is required.' }]}
+                        rules={[{ required: true, message: t('task.customerRequired') }]}
                     >
                         <Select
                             disabled={!!editing}
                             showSearch
-                            placeholder="Select customer"
+                            placeholder={t('task.selectCustomer')}
                             optionFilterProp="label"
                             onChange={() => {
                                 form.setFieldsValue({ project_id: undefined })
@@ -367,9 +363,9 @@ export function SubProjectsTab() {
                         />
                     </Form.Item>
                     <Form.Item
-                        label="Project"
+                        label={t('entity.project')}
                         name="project_id"
-                        rules={[{ required: true, message: 'Project is required.' }]}
+                        rules={[{ required: true, message: t('task.projectRequired') }]}
                     >
                         <Select
                             disabled={!!editing || !formCustomerId}
@@ -387,19 +383,19 @@ export function SubProjectsTab() {
                         />
                     </Form.Item>
                     <Form.Item
-                        label="Name"
+                        label={t('common.name')}
                         name="name"
                         rules={[
                             {
                                 required: true, whitespace: true,
-                                message: 'Name is required.',
+                                message: t('pm.nameRequired'),
                             },
-                            { max: 255, message: 'Max 255 characters.' },
+                            { max: 255, message: t('task.maxChars') },
                         ]}
                     >
                         <Input maxLength={255} />
                     </Form.Item>
-                    <Form.Item label="Description" name="description">
+                    <Form.Item label={t('common.description')} name="description">
                         <Input.TextArea rows={3} />
                     </Form.Item>
                 </Form>
@@ -407,7 +403,7 @@ export function SubProjectsTab() {
 
             <DangerConfirmModal
                 open={!!deletingSub}
-                title="Delete sub project?"
+                title={t('pm.deleteSubProject')}
                 body="This will permanently remove the sub project. This action cannot be undone."
                 itemName={deletingSub?.name}
                 itemSubtitle={
@@ -419,7 +415,7 @@ export function SubProjectsTab() {
                           }`
                         : null
                 }
-                confirmLabel="Delete"
+                confirmLabel={t('common.delete')}
                 onCancel={() => setDeletingSub(null)}
                 onConfirm={() => {
                     // Cift tetikleme kilidi KAYNAKTA.
@@ -454,32 +450,39 @@ function StatCard({ icon, label, value, accent }) {
 // Mail Notifications — admin-configurable e-mail rules per work-item type
 // =============================================================================
 
+// Sabitler ANAHTAR tasir, cevrilmis metin DEGIL: ceviri bir hook'a
+// baglidir ve modul duzeyinde cagrilamaz. Degerler (task/issue/low...)
+// API sozlesmesidir ve cevrilmez.
 const NOTIF_TYPES = [
-    { value: 'task', label: 'Tasks', color: '#388bff' },
-    { value: 'issue', label: 'Issues', color: '#f97316' },
-    { value: 'suggestion', label: 'Suggestions', color: '#a855f7' },
+    { value: 'task', labelKey: 'pm.tasks', color: '#388bff' },
+    { value: 'issue', labelKey: 'pm.issues', color: '#f97316' },
+    { value: 'suggestion', labelKey: 'pm.suggestions', color: '#a855f7' },
 ]
 
-const NOTIF_PRIORITY_OPTIONS = [
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
-    { value: 'urgent', label: 'Urgent' },
+const NOTIF_PRIORITY_KEYS = [
+    ['low', 'task.low'], ['medium', 'task.medium'],
+    ['high', 'task.high'], ['urgent', 'task.urgent'],
 ]
 
-const NOTIF_DUE_RULES = [
-    { value: 'any', label: 'All items' },
-    { value: 'with_due', label: 'Only with due date' },
-    { value: 'without_due', label: 'Only without due date' },
+const NOTIF_DUE_KEYS = [
+    ['any', 'pm.allItems'], ['with_due', 'pm.onlyWithDueDate'],
+    ['without_due', 'pm.onlyWithoutDueDate'],
 ]
 
 const NOTIF_EVENTS = [
-    { key: 'notify_assignment', label: 'Assigned' },
-    { key: 'notify_accept', label: 'Accepted' },
-    { key: 'notify_complete', label: 'Completed' },
+    { key: 'notify_assignment', labelKey: 'pm.assigned' },
+    { key: 'notify_accept', labelKey: 'pm.accepted' },
+    { key: 'notify_complete', labelKey: 'pm.completed' },
 ]
 
 function MailNotificationsTab() {
+    const t = useT()
+    const priorityOptions = NOTIF_PRIORITY_KEYS.map(([value, key]) => ({
+        value, label: t(key),
+    }))
+    const dueRuleOptions = NOTIF_DUE_KEYS.map(([value, key]) => ({
+        value, label: t(key),
+    }))
     const queryClient = useQueryClient()
 
     const { data: settings = [], isLoading } = useQuery({
@@ -496,7 +499,7 @@ function MailNotificationsTab() {
         mutationFn: ({ taskType, data }) =>
             taskNotificationSettingsService.update(taskType, data),
         onSuccess: () => {
-            message.success('Notification settings saved.')
+            message.success(t('pm.notificationsSaved'))
             queryClient.invalidateQueries({
                 queryKey: ['admin-notification-settings'],
             })
@@ -539,21 +542,23 @@ function MailNotificationsTab() {
                 priority is selected, and the due-date rule fits. Types
                 never configured default to everything on.
             </p>
-            {NOTIF_TYPES.map((t) => {
-                const row = byType[t.value]
+            {/* Parametre `type`: eskiden `t` idi ve cevirici `t`'yi
+                    GOLGELIYORDU. */}
+            {NOTIF_TYPES.map((type) => {
+                const row = byType[type.value]
                 if (!row) return null
                 const disabled = !row.enabled || saveMutation.isPending
                 return (
                     <div
-                        key={t.value}
+                        key={type.value}
                         className={`tm-notif-row${
                             row.enabled ? '' : ' is-off'
                         }`}
-                        style={{ '--notif-accent': t.color }}
+                        style={{ '--notif-accent': type.color }}
                     >
                         <div className="tm-notif-head">
                             <span className="tm-notif-dot" />
-                            <span className="tm-notif-name">{t.label}</span>
+                            <span className="tm-notif-name">{t(type.labelKey)}</span>
                             <Switch
                                 checked={row.enabled}
                                 loading={saveMutation.isPending}
@@ -564,7 +569,7 @@ function MailNotificationsTab() {
                         </div>
                         <div className="tm-notif-controls">
                             <div className="tm-notif-field">
-                                <span className="tm-notif-label">Events</span>
+                                <span className="tm-notif-label">{t('pm.events')}</span>
                                 {/*
                                   * Kullanici karari (2026-08-04): dagini k
                                   * checkbox'lar yerine RBAC izin satirlarindaki
@@ -587,37 +592,33 @@ function MailNotificationsTab() {
                                                 }
                                             >
                                                 <span className="tm-notif-chip-dot" aria-hidden="true" />
-                                                {ev.label}
+                                                {t(ev.labelKey)}
                                             </button>
                                         )
                                     })}
                                 </div>
                             </div>
                             <div className="tm-notif-field">
-                                <span className="tm-notif-label">
-                                    Priorities
-                                </span>
+                                <span className="tm-notif-label">{t('pm.priorities')}</span>
                                 <Select
                                     mode="multiple"
                                     className="tm-notif-priorities"
                                     value={row.priorities}
-                                    options={NOTIF_PRIORITY_OPTIONS}
+                                    options={priorityOptions}
                                     disabled={disabled}
                                     maxTagCount="responsive"
-                                    placeholder="No priorities → no e-mails"
+                                    placeholder={t('pm.noPrioritiesNoMail')}
                                     onChange={(vals) =>
                                         save(row, { priorities: vals })
                                     }
                                 />
                             </div>
                             <div className="tm-notif-field">
-                                <span className="tm-notif-label">
-                                    Due date
-                                </span>
+                                <span className="tm-notif-label">{t('pm.dueDate')}</span>
                                 <Select
                                     className="tm-notif-due"
                                     value={row.due_date_rule}
-                                    options={NOTIF_DUE_RULES}
+                                    options={dueRuleOptions}
                                     disabled={disabled}
                                     onChange={(val) =>
                                         save(row, { due_date_rule: val })
@@ -667,6 +668,7 @@ function Section({ icon, title, subtitle, count, accent, open, onToggle, childre
 // =============================================================================
 
 function TaskManagementPage() {
+    const t = useT()
     // Multiple sections can be open at once (accordion felt restrictive).
     const [open, setOpen] = useState({
         lifecycle: false,
@@ -710,7 +712,7 @@ function TaskManagementPage() {
     return (
         <div className="tm-page">
             <header className="tm-header">
-                <h1 className="tm-title">PM Configurations</h1>
+                <h1 className="tm-title">{t('pm.title')}</h1>
                 <p className="tm-subtitle">
                     Manage assignment hierarchies, sub-projects and mail
                     notifications. Who can USE the task module is managed in
@@ -721,19 +723,19 @@ function TaskManagementPage() {
             <div className="tm-stats">
                 <StatCard
                     icon={<TeamOutlined />}
-                    label="Groups"
+                    label={t('task.groups')}
                     value={groups.length}
                     accent="#388bff"
                 />
                 <StatCard
                     icon={<ApartmentOutlined />}
-                    label="Assignment rules"
+                    label={t('pm.assignmentRules')}
                     value={rulesCount}
                     accent="#7c5cff"
                 />
                 <StatCard
                     icon={<FolderOpenOutlined />}
-                    label="Sub-projects"
+                    label={t('pm.subProjectsShort')}
                     value={subProjects.length}
                     accent="#22a06b"
                 />
@@ -741,7 +743,7 @@ function TaskManagementPage() {
 
             <Section
                 icon={<InboxOutlined />}
-                title="Work Item Lifecycle"
+                title={t('pm.workItemLifecycle')}
                 subtitle="When completed and rejected work is archived"
                 accent="#38bdf8"
                 open={open.lifecycle}
@@ -752,7 +754,7 @@ function TaskManagementPage() {
 
             <Section
                 icon={<ApartmentOutlined />}
-                title="Task Hierarchy"
+                title={t('pm.taskHierarchy')}
                 subtitle="Who can assign tasks to which users or groups"
                 count={rulesCount}
                 accent="#7c5cff"
@@ -764,7 +766,7 @@ function TaskManagementPage() {
 
             <Section
                 icon={<ApartmentOutlined />}
-                title="Issue / Suggestion Hierarchy"
+                title={t('pm.issueHierarchy')}
                 subtitle="Who can assign issues & suggestions to which users or groups"
                 count={issueRulesCount}
                 accent="#7c5cff"
@@ -776,7 +778,7 @@ function TaskManagementPage() {
 
             <Section
                 icon={<FolderOpenOutlined />}
-                title="Sub Projects"
+                title={t('pm.subProjects')}
                 subtitle="Task-only sub-projects under a customer/project"
                 count={subProjects.length}
                 accent="#22a06b"
@@ -788,7 +790,7 @@ function TaskManagementPage() {
 
             <Section
                 icon={<MailOutlined />}
-                title="Mail Notifications"
+                title={t('pm.mailNotifications')}
                 subtitle="Which e-mails go out, per type / event / priority / due date"
                 accent="#f97316"
                 open={open.mail}

@@ -36,6 +36,7 @@ import { platformService } from '../../api/platformApi'
 import SupportRoutingTab from './SupportRoutingTab'
 import { usePlatformAuthStore } from '../../stores/platformAuthStore'
 import SupportSessionBanner from './SupportSessionBanner'
+import { useT } from '../../i18n'
 
 const { Text } = Typography
 
@@ -59,6 +60,7 @@ function TenantStatus({ status }) {
 // =============================================================================
 
 function OverviewTab() {
+    const t = useT()
     const [data, setData] = useState(null)
     const [error, setError] = useState(null)
 
@@ -74,18 +76,18 @@ function OverviewTab() {
     return (
         <Row gutter={[16, 16]}>
             <Col xs={12} md={6}>
-                <Card><Statistic title="Tenants" value={data.tenants?.total ?? 0} /></Card>
+                <Card><Statistic title={t('platform.tenants')} value={data.tenants?.total ?? 0} /></Card>
             </Col>
             <Col xs={12} md={6}>
-                <Card><Statistic title="Active" value={byStatus.active ?? 0} /></Card>
+                <Card><Statistic title={t('common.active')} value={byStatus.active ?? 0} /></Card>
             </Col>
             <Col xs={12} md={6}>
-                <Card><Statistic title="Suspended" value={byStatus.suspended ?? 0} /></Card>
+                <Card><Statistic title={t('platform.suspended')} value={byStatus.suspended ?? 0} /></Card>
             </Col>
             <Col xs={12} md={6}>
                 <Card>
                     <Statistic
-                        title="Active support sessions"
+                        title={t('platform.activeSessions')}
                         value={data.support_sessions_active ?? 0}
                     />
                 </Card>
@@ -99,6 +101,7 @@ function OverviewTab() {
 // =============================================================================
 
 function TenantsTab({ onSupportStarted }) {
+    const t = useT()
     const [rows, setRows] = useState([])
     const [loading, setLoading] = useState(true)
     const [target, setTarget] = useState(null)     // suspend hedefi
@@ -111,50 +114,42 @@ function TenantsTab({ onSupportStarted }) {
         setLoading(true)
         platformService.listTenants()
             .then((d) => setRows(d.tenants || []))
-            .catch(() => message.error('Could not load tenants.'))
+            .catch(() => message.error(t('platform.loadTenantsFailed')))
             .finally(() => setLoading(false))
-    }, [])
+    }, [t])
 
     useEffect(reload, [reload])
 
     const columns = [
-        { title: 'Organization', dataIndex: 'display_name' },
-        { title: 'Slug', dataIndex: 'slug', responsive: ['md'] },
+        { title: t('platform.organization'), dataIndex: 'display_name' },
+        { title: t('platform.slug'), dataIndex: 'slug', responsive: ['md'] },
         {
-            title: 'Status', dataIndex: 'status',
+            title: t('common.status'), dataIndex: 'status',
             render: (s) => <TenantStatus status={s} />,
         },
         {
-            title: 'Plan', dataIndex: 'plan_code', responsive: ['lg'],
+            title: t('platform.plan'), dataIndex: 'plan_code', responsive: ['lg'],
             render: (p) => (p ? <Tag>{p}</Tag> : <Text type="secondary">—</Text>),
         },
         {
-            title: 'Members', dataIndex: 'active_members', responsive: ['lg'],
+            title: t('platform.members'), dataIndex: 'active_members', responsive: ['lg'],
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             render: (_, row) => (
                 <Space wrap>
                     {can('platform.tenants.manage') && row.status === 'active' && (
                         <Button size="small" danger
-                                onClick={() => setTarget(row)}>
-                            Suspend
-                        </Button>
+                                onClick={() => setTarget(row)}>{t('platform.suspend')}</Button>
                     )}
                     {can('platform.tenants.manage') && row.status === 'suspended' && (
-                        <Button size="small" onClick={() => reactivate(row)}>
-                            Reactivate
-                        </Button>
+                        <Button size="small" onClick={() => reactivate(row)}>{t('platform.reactivate')}</Button>
                     )}
                     {can('platform.tenants.manage') && (
-                        <Button size="small" onClick={() => setEditing(row)}>
-                            Edit
-                        </Button>
+                        <Button size="small" onClick={() => setEditing(row)}>{t('common.edit')}</Button>
                     )}
                     {can('platform.support_access.create') && (
-                        <Button size="small" onClick={() => setSupportFor(row)}>
-                            Support access
-                        </Button>
+                        <Button size="small" onClick={() => setSupportFor(row)}>{t('platform.supportAccess')}</Button>
                     )}
                 </Space>
             ),
@@ -182,9 +177,7 @@ function TenantsTab({ onSupportStarted }) {
             <Space style={{ marginBottom: 16 }}>
                 {can('platform.tenants.manage') && (
                     <Button type="primary" icon={<PlusOutlined />}
-                            onClick={() => setCreating(true)}>
-                        New tenant
-                    </Button>
+                            onClick={() => setCreating(true)}>{t('platform.newTenant')}</Button>
                 )}
             </Space>
             <Table
@@ -192,7 +185,7 @@ function TenantsTab({ onSupportStarted }) {
                 loading={loading} size="middle"
                 // Genis tablo mobilde SAYFAYI degil KENDINI kaydirir.
                 scroll={{ x: 'max-content' }}
-                locale={{ emptyText: <Empty description="No tenants yet" /> }}
+                locale={{ emptyText: <Empty description={t('platform.noTenants')} /> }}
             />
             <SuspendModal
                 tenant={target} onClose={() => setTarget(null)}
@@ -236,6 +229,7 @@ function usePlans() {
 }
 
 function CreateTenantModal({ open, onClose, onDone }) {
+    const t = useT()
     const [form] = Form.useForm()
     const [busy, setBusy] = useState(false)
     const [created, setCreated] = useState(null)
@@ -266,9 +260,9 @@ function CreateTenantModal({ open, onClose, onDone }) {
     if (created) {
         return (
             <Modal
-                open title="Tenant created" onCancel={() => { setCreated(null); onDone() }}
+                open title={t('platform.tenantCreated')} onCancel={() => { setCreated(null); onDone() }}
                 onOk={() => { setCreated(null); onDone() }}
-                okText="I saved the password" cancelButtonProps={{ style: { display: 'none' } }}
+                okText={t('platform.savedPassword')} cancelButtonProps={{ style: { display: 'none' } }}
                 closable={false} maskClosable={false}
             >
                 <Space direction="vertical" style={{ width: '100%' }}>
@@ -278,10 +272,10 @@ function CreateTenantModal({ open, onClose, onDone }) {
                         <Text code>{created.workspace_hint}</Text>
                     </Text>
                     <Descriptions column={1} size="small" bordered>
-                        <Descriptions.Item label="Owner">
+                        <Descriptions.Item label={t('platform.owner')}>
                             {created.owner.email}
                         </Descriptions.Item>
-                        <Descriptions.Item label="One-time password">
+                        <Descriptions.Item label={t('platform.oneTimePassword')}>
                             <Text code copyable>{created.one_time_password}</Text>
                         </Descriptions.Item>
                     </Descriptions>
@@ -297,54 +291,54 @@ function CreateTenantModal({ open, onClose, onDone }) {
 
     return (
         <Modal
-            open={open} title="New tenant" onCancel={onClose} onOk={submit}
-            confirmLoading={busy} okText="Create" destroyOnClose
+            open={open} title={t('platform.newTenant')} onCancel={onClose} onOk={submit}
+            confirmLoading={busy} okText={t('common.create')} destroyOnClose
         >
             <Form form={form} layout="vertical" preserve={false}>
                 <Form.Item
-                    name="display_name" label="Organization name"
-                    rules={[{ required: true, message: 'Required' }]}
+                    name="display_name" label={t('platform.organizationName')}
+                    rules={[{ required: true, message: t('logTime.required') }]}
                 >
                     <Input placeholder="Acme Industries" />
                 </Form.Item>
                 <Form.Item
-                    name="slug" label="Workspace address"
-                    extra="Users reach this tenant at /?workspace=<slug>"
+                    name="slug" label={t('platform.workspaceAddress')}
+                    extra={t('platform.workspaceHint')}
                     rules={[
-                        { required: true, message: 'Required' },
+                        { required: true, message: t('logTime.required') },
                         {
                             pattern: /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/,
-                            message: 'Lowercase letters, digits and dashes only',
+                            message: t('platform.slugRule'),
                         },
                     ]}
                 >
                     <Input placeholder="acme" />
                 </Form.Item>
                 <Form.Item
-                    name="owner_email" label="Owner e-mail"
-                    extra="This person becomes the tenant's administrator."
+                    name="owner_email" label={t('platform.ownerEmail')}
+                    extra={t('platform.ownerBecomesTenant')}
                     rules={[
-                        { required: true, message: 'Required' },
-                        { type: 'email', message: 'Enter a valid e-mail' },
+                        { required: true, message: t('logTime.required') },
+                        { type: 'email', message: t('platform.emailInvalid') },
                     ]}
                 >
                     <Input placeholder="admin@acme.com" />
                 </Form.Item>
-                <Form.Item name="owner_full_name" label="Owner name (optional)">
+                <Form.Item name="owner_full_name" label={t('platform.ownerName')}>
                     <Input placeholder="Ada Lovelace" />
                 </Form.Item>
                 <Form.Item
-                    name="email_domains" label="E-mail domains (optional)"
+                    name="email_domains" label={t('platform.emailDomainsOptional')}
                     extra={
                         'Anyone with an e-mail at these domains joins this '
                         + 'tenant on first sign-in. Comma separated.'
                     }
                 >
-                    <Input placeholder="acme.com, acme.co.uk" />
+                    <Input placeholder={t('platform.emailDomainsExample')} />
                 </Form.Item>
-                <Form.Item name="plan_code" label="Plan">
+                <Form.Item name="plan_code" label={t('platform.plan')}>
                     <Select
-                        allowClear placeholder="Select a plan"
+                        allowClear placeholder={t('platform.selectPlan')}
                         options={plans.map((p) => ({
                             value: p.code, label: p.display_name || p.code,
                         }))}
@@ -356,6 +350,7 @@ function CreateTenantModal({ open, onClose, onDone }) {
 }
 
 function EditTenantModal({ tenant, onClose, onDone }) {
+    const t = useT()
     const [form] = Form.useForm()
     const [busy, setBusy] = useState(false)
     const plans = usePlans()
@@ -376,7 +371,7 @@ function EditTenantModal({ tenant, onClose, onDone }) {
         setBusy(true)
         try {
             await platformService.updateTenant(tenant.id, values)
-            message.success('Tenant updated.')
+            message.success(t('platform.tenantUpdated'))
             onDone()
         } catch (err) {
             const d = err?.response?.data?.detail
@@ -390,12 +385,12 @@ function EditTenantModal({ tenant, onClose, onDone }) {
         <Modal
             open={!!tenant} title={`Edit ${tenant?.display_name || ''}`}
             onCancel={onClose} onOk={submit} confirmLoading={busy}
-            okText="Save" destroyOnClose
+            okText={t('common.save')} destroyOnClose
         >
             <Form form={form} layout="vertical" preserve={false}>
                 <Form.Item
-                    name="display_name" label="Organization name"
-                    rules={[{ required: true, message: 'Required' }]}
+                    name="display_name" label={t('platform.organizationName')}
+                    rules={[{ required: true, message: t('logTime.required') }]}
                 >
                     <Input />
                 </Form.Item>
@@ -405,7 +400,7 @@ function EditTenantModal({ tenant, onClose, onDone }) {
                     GOSTERILIR — duzenleme ekrani, olusturma ekranindaki her
                     alani icermeli; degistirilemeyen alan gizlenmez, neden
                     kilitli oldugu SOYLENIR. */}
-                <Form.Item label="Workspace address">
+                <Form.Item label={t('platform.workspaceAddress')}>
                     <Input value={tenant?.slug} disabled />
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         Cannot be changed — existing links and sessions
@@ -414,19 +409,19 @@ function EditTenantModal({ tenant, onClose, onDone }) {
                 </Form.Item>
 
                 <Form.Item
-                    name="email_domains" label="E-mail domains"
+                    name="email_domains" label={t('platform.emailDomains')}
                     extra={
                         'Anyone with an e-mail at these domains joins this '
                         + 'tenant on first sign-in. Comma separated; empty '
                         + 'disables domain auto-join.'
                     }
                 >
-                    <Input placeholder="acme.com, acme.co.uk" />
+                    <Input placeholder={t('platform.emailDomainsExample')} />
                 </Form.Item>
 
-                <Form.Item name="plan_code" label="Plan">
+                <Form.Item name="plan_code" label={t('platform.plan')}>
                     <Select
-                        allowClear placeholder="Select a plan"
+                        allowClear placeholder={t('platform.selectPlan')}
                         options={plans.map((p) => ({
                             value: p.code, label: p.display_name || p.code,
                         }))}
@@ -437,7 +432,7 @@ function EditTenantModal({ tenant, onClose, onDone }) {
                     yapilabilir. Askiya alma YIKICI bir islemdir — ayri
                     onay akisi (SuspendModal) korunur, burada yalnizca
                     geri acma dogrudan sunulur. */}
-                <Form.Item label="Status">
+                <Form.Item label={t('common.status')}>
                     <Space>
                         <TenantStatus status={tenant?.status} />
                         <Text type="secondary" style={{ fontSize: 12 }}>
@@ -448,13 +443,13 @@ function EditTenantModal({ tenant, onClose, onDone }) {
                 </Form.Item>
 
                 <Form.Item
-                    name="owner_email" label="Add another administrator"
+                    name="owner_email" label={t('platform.addAnotherAdmin')}
                     extra={
                         'Optional. Grants this person tenant-admin rights. '
                         + 'If they do not have an account yet, one is created '
                         + 'and a one-time password is shown once.'
                     }
-                    rules={[{ type: 'email', message: 'Enter a valid e-mail' }]}
+                    rules={[{ type: 'email', message: t('platform.emailInvalid') }]}
                 >
                     <Input placeholder="admin@acme.com" allowClear />
                 </Form.Item>
@@ -464,6 +459,7 @@ function EditTenantModal({ tenant, onClose, onDone }) {
 }
 
 function SuspendModal({ tenant, onClose, onDone }) {
+    const t = useT()
     const [form] = Form.useForm()
     const [saving, setSaving] = useState(false)
     if (!tenant) return null
@@ -491,7 +487,7 @@ function SuspendModal({ tenant, onClose, onDone }) {
     return (
         <Modal
             open title={`Suspend ${tenant.display_name}`}
-            onCancel={onClose} okText="Suspend" okButtonProps={{ danger: true }}
+            onCancel={onClose} okText={t('platform.suspend')} okButtonProps={{ danger: true }}
             confirmLoading={saving} onOk={() => form.submit()}
         >
             <Text type="secondary">
@@ -501,11 +497,11 @@ function SuspendModal({ tenant, onClose, onDone }) {
             <Form form={form} layout="vertical" onFinish={submit}
                   style={{ marginTop: 16 }}>
                 <Form.Item
-                    name="reason" label="Reason"
+                    name="reason" label={t('platform.reason')}
                     rules={[{ required: true, min: 3 }]}
                 >
                     <Input.TextArea rows={2}
-                                    placeholder="e.g. SUP-1234: non-payment" />
+                                    placeholder={t('platform.reasonSuspendExample')} />
                 </Form.Item>
                 <Form.Item
                     name="confirm_slug"
@@ -526,6 +522,7 @@ function SuspendModal({ tenant, onClose, onDone }) {
 
 /** Destek erisimi: salt-okunur VARSAYILAN, azami 30 dakika. */
 function SupportModal({ tenant, onClose, onStarted }) {
+    const t = useT()
     const [form] = Form.useForm()
     const [saving, setSaving] = useState(false)
     if (!tenant) return null
@@ -553,7 +550,7 @@ function SupportModal({ tenant, onClose, onStarted }) {
     return (
         <Modal
             open title={`Support access — ${tenant.display_name}`}
-            onCancel={onClose} okText="Start session"
+            onCancel={onClose} okText={t('platform.startSession')}
             confirmLoading={saving} onOk={() => form.submit()}
         >
             <Text type="secondary">
@@ -566,23 +563,23 @@ function SupportModal({ tenant, onClose, onStarted }) {
                 initialValues={{ mode: 'read_only', duration_minutes: 15 }}
                 style={{ marginTop: 16 }}
             >
-                <Form.Item name="mode" label="Mode">
+                <Form.Item name="mode" label={t('platform.mode')}>
                     <Select options={[
-                        { value: 'read_only', label: 'Read-only (default)' },
-                        { value: 'read_write', label: 'Read-write' },
+                        { value: 'read_only', label: t('platform.readOnly') },
+                        { value: 'read_write', label: t('platform.readWrite') },
                     ]} />
                 </Form.Item>
                 <Form.Item
-                    name="duration_minutes" label="Duration (minutes, max 30)"
+                    name="duration_minutes" label={t('platform.durationMinutes')}
                     rules={[{ required: true }]}
                 >
                     <InputNumber min={1} max={30} style={{ width: '100%' }} />
                 </Form.Item>
                 <Form.Item
-                    name="reason" label="Reason / ticket"
+                    name="reason" label={t('platform.reasonTicket')}
                     rules={[{ required: true, min: 3 }]}
                 >
-                    <Input placeholder="e.g. SUP-1234: investigate report" />
+                    <Input placeholder={t('platform.reasonExample')} />
                 </Form.Item>
             </Form>
         </Modal>
@@ -594,27 +591,28 @@ function SupportModal({ tenant, onClose, onStarted }) {
 // =============================================================================
 
 function AuditTab() {
+    const t = useT()
     const [rows, setRows] = useState([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         platformService.listAuditEvents()
             .then(setRows)
-            .catch(() => message.error('Could not load audit events.'))
+            .catch(() => message.error(t('platform.loadAuditFailed')))
             .finally(() => setLoading(false))
-    }, [])
+    }, [t])
 
     return (
         <Table
             rowKey="id" loading={loading} dataSource={rows} size="small"
             scroll={{ x: 'max-content' }}
             columns={[
-                { title: 'When', dataIndex: 'occurred_at' },
-                { title: 'Action', dataIndex: 'action' },
-                { title: 'Result', dataIndex: 'result' },
-                { title: 'Reason', dataIndex: 'reason', responsive: ['md'] },
+                { title: t('platform.when'), dataIndex: 'occurred_at' },
+                { title: t('platform.action'), dataIndex: 'action' },
+                { title: t('platform.result'), dataIndex: 'result' },
+                { title: t('platform.reason'), dataIndex: 'reason', responsive: ['md'] },
             ]}
-            locale={{ emptyText: <Empty description="No audit events" /> }}
+            locale={{ emptyText: <Empty description={t('platform.noAuditEvents')} /> }}
         />
     )
 }
@@ -632,14 +630,16 @@ function AuditTab() {
 // `usePlatformAuthStore`dan gelir ve istekler yalnizca /api/platform'a
 // gider.
 
+// Bolum listesi ANAHTAR tasir; ceviri render'da yapilir (bkz. useSections).
 const SECTIONS = [
-    { key: 'overview', icon: <DashboardOutlined />, label: 'Overview' },
-    { key: 'tenants', icon: <ApartmentOutlined />, label: 'Tenants' },
-    { key: 'support', icon: <CustomerServiceOutlined />, label: 'Support routing' },
-    { key: 'audit', icon: <FileSearchOutlined />, label: 'Audit log' },
+    { key: 'overview', icon: <DashboardOutlined />, labelKey: 'platform.overview' },
+    { key: 'tenants', icon: <ApartmentOutlined />, labelKey: 'platform.tenants' },
+    { key: 'support', icon: <CustomerServiceOutlined />, labelKey: 'platform.supportRouting' },
+    { key: 'audit', icon: <FileSearchOutlined />, labelKey: 'platform.auditLog' },
 ]
 
 export default function PlatformConsole() {
+    const t = useT()
     const admin = usePlatformAuthStore((s) => s.admin)
     const logout = usePlatformAuthStore((s) => s.logout)
     const [supportSession, setSupportSession] = useState(null)
@@ -674,7 +674,7 @@ export default function PlatformConsole() {
         {
             key: 'logout',
             icon: <LogoutOutlined />,
-            label: 'Sign out',
+            label: t('platform.signOut'),
             danger: true,
             onClick: handleLogout,
         },
@@ -698,7 +698,7 @@ export default function PlatformConsole() {
                 onExpire={() => { /* sure doldu — banner kendi durumunu gosterir */ }}
             />
             <AppShell
-                menuItems={SECTIONS}
+                menuItems={SECTIONS.map((s) => ({ ...s, label: t(s.labelKey) }))}
                 selectedKey={section}
                 onMenuClick={({ key }) => setSection(key)}
                 onLogoClick={() => setSection('overview')}

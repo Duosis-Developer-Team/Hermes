@@ -37,8 +37,9 @@ describe('i18n sozlukleri', () => {
             'entity.platform', 'entity.platforms',
             // Saf BICIM dizgesi (prose degil): "{entity} ({n})".
             'admin.entityCount', 'logTime.platform',
-            // Urun adi: cevrilmez.
-            'meeting.teams',
+            // Urun adi / odunc sozcuk: cevrilmez.
+            'meeting.teams', 'platform.plan',
+            'platform.emailDomainsExample',
         ])
         const untranslated = flatten(en).filter((key) => {
             if (SAME_BY_DESIGN.has(key)) return false

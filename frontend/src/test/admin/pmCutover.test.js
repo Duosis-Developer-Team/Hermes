@@ -29,10 +29,18 @@ describe('PM Configurations sadelestirildi', () => {
         const page = read('pages/admin/TaskManagementPage.jsx')
         expect(page).not.toContain('TaskAccessByGroupTab')
         expect(page).not.toContain('title="Task Access"')
-        expect(page).toContain('title="Task Hierarchy"')
-        expect(page).toContain('title="Issue / Suggestion Hierarchy"')
-        expect(page).toContain('title="Sub Projects"')
-        expect(page).toContain('title="Mail Notifications"')
+        // i18n sonrasi baslik metni sozlukten gelir; kilit ANAHTAR
+        // uzerindedir. Kilitlenen sey DORT BOLUMUN varligiydi ve o
+        // aynen duruyor. Anahtarlarin gercek metni
+        // `test/i18n/locale.test.jsx` tarafindan dogrulanir.
+        for (const key of [
+            'pm.taskHierarchy',
+            'pm.issueHierarchy',
+            'pm.subProjects',
+            'pm.mailNotifications',
+        ]) {
+            expect(page, key).toContain(key)
+        }
     })
 
     it('services/api legacy access-mutation metodlarini tasimiyor', () => {

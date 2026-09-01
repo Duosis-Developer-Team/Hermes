@@ -53,6 +53,7 @@ import { Section, StatCard } from '../../features/api-management/components/Shel
 import TokenOnceModal from '../../features/api-management/components/TokenOnceModal'
 import ClientModal from '../../features/api-management/modals/ClientModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
+import { useT } from '../../i18n'
 
 
 // =============================================================================
@@ -60,6 +61,7 @@ import { normalizeApiError } from '../../features/admin/shared/normalizeApiError
 // =============================================================================
 
 function ApiManagementPage() {
+    const t = useT()
     const queryClient = useQueryClient()
     const [open, setOpen] = useState({
         clients: true,
@@ -164,7 +166,7 @@ function ApiManagementPage() {
             }
         },
         onSuccess: () => {
-            message.success('API client saved.')
+            message.success(t('api.clientSaved'))
             setClientModal(null)
             invalidate()
         },
@@ -234,7 +236,7 @@ function ApiManagementPage() {
         mutationFn: ({ tokenId }) =>
             apiManagementService.revokeToken(tokenId),
         onSuccess: () => {
-            message.success('Token revoked.')
+            message.success(t('api.tokenRevoked'))
             invalidate()
         },
         onError: onErr,
@@ -243,7 +245,7 @@ function ApiManagementPage() {
         mutationFn: ({ tokenId, expiresAt }) =>
             apiManagementService.updateTokenExpiry(tokenId, expiresAt),
         onSuccess: () => {
-            message.success('Token expiry updated.')
+            message.success(t('api.tokenExpiryUpdated'))
             setExpiryModal(null)
             invalidate()
         },
@@ -282,7 +284,7 @@ function ApiManagementPage() {
     // ── Token tablosu kolonlari ─────────────────────────────────────────
     const tokenColumns = [
         {
-            title: 'Client',
+            title: t('api.client'),
             dataIndex: ['client', 'name'],
             render: (_, t) => (
                 <Space size={6}>
@@ -300,13 +302,13 @@ function ApiManagementPage() {
             ),
         },
         {
-            title: 'Token',
+            title: t('api.tokens'),
             dataIndex: 'token_prefix',
             render: (v, t) => (
                 <Space size={6}>
                     <code className="am-prefix">{v}…</code>
                     {t.rotated_from_token_id && (
-                        <Tooltip title="Created by rotating an earlier token">
+                        <Tooltip title={t('api.rotatedFrom')}>
                             <Tag>rotated</Tag>
                         </Tooltip>
                     )}
@@ -314,7 +316,7 @@ function ApiManagementPage() {
             ),
         },
         {
-            title: 'Status',
+            title: t('common.status'),
             dataIndex: 'status',
             width: 100,
             render: (v, t) =>
@@ -327,17 +329,17 @@ function ApiManagementPage() {
                 ),
         },
         {
-            title: 'Created',
+            title: t('api.created'),
             dataIndex: 'created_at',
             render: fmtDate,
         },
         {
-            title: 'Expires',
+            title: t('api.expires'),
             dataIndex: 'expires_at',
             render: (v) => (v ? fmtDate(v) : 'Never'),
         },
         {
-            title: 'Last used',
+            title: t('api.lastUsed'),
             dataIndex: 'last_used_at',
             render: (v, t) =>
                 v ? (
@@ -349,7 +351,7 @@ function ApiManagementPage() {
                 ),
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             width: 230,
             render: (_, t) => (
                 <Space wrap>
@@ -362,26 +364,20 @@ function ApiManagementPage() {
                             )
                             setExpiryModal({ token: t })
                         }}
-                    >
-                        Expiry
-                    </Button>
+                    >{t('api.expiry')}</Button>
                     <Button
                         size="small"
                         icon={<ReloadOutlined />}
                         disabled={t.status !== 'active'}
                         onClick={() => setConfirm({ kind: 'rotate', token: t })}
-                    >
-                        Rotate
-                    </Button>
+                    >{t('api.rotate')}</Button>
                     <Button
                         size="small"
                         danger
                         icon={<StopOutlined />}
                         disabled={t.status !== 'active'}
                         onClick={() => setConfirm({ kind: 'revoke', token: t })}
-                    >
-                        Revoke
-                    </Button>
+                    >{t('api.revoke')}</Button>
                 </Space>
             ),
         },
@@ -425,9 +421,9 @@ function ApiManagementPage() {
                 queryKey: ['admin-api-request-logs'],
             })
             if (res.status === 'disabled') {
-                message.warning('Cleanup is disabled by configuration.')
+                message.warning(t('api.cleanupDisabled'))
             } else if (res.status === 'skipped_already_running') {
-                message.warning('A cleanup run is already in progress.')
+                message.warning(t('api.cleanupRunning'))
             } else if (res.dry_run) {
                 message.info(
                     `Dry run: ${res.request_logs_deleted} request logs and ` +
@@ -455,25 +451,25 @@ function ApiManagementPage() {
 
     const logColumns = [
         {
-            title: 'Time',
+            title: t('api.time'),
             dataIndex: 'created_at',
             render: fmtDateTime,
             width: 150,
         },
         {
-            title: 'Client',
+            title: t('api.client'),
             dataIndex: 'client_id',
             render: (v) => (v ? clientById[v]?.name || v.slice(0, 8) : '—'),
         },
         {
-            title: 'Request ID',
+            title: t('api.requestId'),
             dataIndex: 'request_id',
             render: (v) => <code className="am-prefix">{v}</code>,
         },
-        { title: 'Method', dataIndex: 'method', width: 80 },
-        { title: 'Path', dataIndex: 'path' },
+        { title: t('api.method'), dataIndex: 'method', width: 80 },
+        { title: t('api.path'), dataIndex: 'path' },
         {
-            title: 'Status',
+            title: t('common.status'),
             dataIndex: 'status_code',
             width: 90,
             render: (v, r) => (
@@ -486,7 +482,7 @@ function ApiManagementPage() {
                         {v}
                     </Tag>
                     {r.rate_limited && (
-                        <Tooltip title="Rate limited">
+                        <Tooltip title={t('api.rateLimited')}>
                             <Tag color="orange">RL</Tag>
                         </Tooltip>
                     )}
@@ -494,19 +490,19 @@ function ApiManagementPage() {
             ),
         },
         {
-            title: 'Duration',
+            title: t('api.duration'),
             dataIndex: 'duration_ms',
             width: 100,
             render: (v) => `${v} ms`,
         },
-        { title: 'Source IP', dataIndex: 'source_ip', render: (v) => v || '—' },
+        { title: t('api.sourceIp'), dataIndex: 'source_ip', render: (v) => v || '—' },
     ]
 
     // ── Render ──────────────────────────────────────────────────────────
     return (
         <div className="tm-page">
             <header className="tm-header">
-                <h1 className="tm-title">API Management</h1>
+                <h1 className="tm-title">{t('api.title')}</h1>
                 <p className="tm-subtitle">
                     External API clients, access tokens, request logs and
                     developer documentation for the Hermes Public API.
@@ -516,25 +512,25 @@ function ApiManagementPage() {
             <div className="tm-stats">
                 <StatCard
                     icon={<ApiOutlined />}
-                    label="API Clients"
+                    label={t('api.clients')}
                     value={clients.length}
                     accent="#388bff"
                 />
                 <StatCard
                     icon={<KeyOutlined />}
-                    label="Active tokens"
+                    label={t('api.activeTokens')}
                     value={activeTokens.length}
                     accent="#22a06b"
                 />
                 <StatCard
                     icon={<SafetyCertificateOutlined />}
-                    label="Live clients"
+                    label={t('api.liveClients')}
                     value={clients.filter((c) => c.environment === 'live').length}
                     accent="#7c5cff"
                 />
                 <StatCard
                     icon={<StopOutlined />}
-                    label="Disabled clients"
+                    label={t('api.disabledClients')}
                     value={clients.filter((c) => c.status !== 'active').length}
                     accent="#f97316"
                 />
@@ -543,7 +539,7 @@ function ApiManagementPage() {
             {/* ── API Clients ── */}
             <Section
                 icon={<ApiOutlined />}
-                title="API Clients"
+                title={t('api.clients')}
                 subtitle="Who can call the Public API, with which scopes and data access"
                 count={clients.length}
                 accent="#388bff"
@@ -556,9 +552,7 @@ function ApiManagementPage() {
                         className="h-create-action"
                         icon={<PlusOutlined />}
                         onClick={() => setClientModal({ editing: null })}
-                    >
-                        Create API Client
-                    </Button>
+                    >{t('api.createClient')}</Button>
                 </div>
                 {clientsLoading && <div>Loading…</div>}
                 {!clientsLoading && clients.length === 0 && (
@@ -604,9 +598,7 @@ function ApiManagementPage() {
                                     onClick={() =>
                                         setClientModal({ editing: c })
                                     }
-                                >
-                                    Edit
-                                </Button>
+                                >{t('common.edit')}</Button>
                                 <Button
                                     size="small"
                                     className="h-create-action"
@@ -615,9 +607,7 @@ function ApiManagementPage() {
                                     onClick={() =>
                                         createToken.mutate({ clientId: c.id })
                                     }
-                                >
-                                    New Token
-                                </Button>
+                                >{t('api.newToken')}</Button>
                                 <Button
                                     size="small"
                                     className="h-inline-action h-inline-action--danger"
@@ -645,7 +635,7 @@ function ApiManagementPage() {
                         )}
                         <div className="am-client-meta">
                             <div className="am-meta-block">
-                                <span className="am-meta-label">Scopes</span>
+                                <span className="am-meta-label">{t('api.scopes')}</span>
                                 <span>
                                     {(c.scopes || []).length ? (
                                         c.scopes.map((s) => (
@@ -657,9 +647,7 @@ function ApiManagementPage() {
                                 </span>
                             </div>
                             <div className="am-meta-block">
-                                <span className="am-meta-label">
-                                    Data access
-                                </span>
+                                <span className="am-meta-label">{t('api.dataAccess')}</span>
                                 <span>
                                     {(c.access || []).length ? (
                                         c.access.map((b) => (
@@ -691,20 +679,18 @@ function ApiManagementPage() {
                                 </span>
                             </div>
                             <div className="am-meta-block">
-                                <span className="am-meta-label">
-                                    Rate limit
-                                </span>
+                                <span className="am-meta-label">{t('api.rateLimit')}</span>
                                 {c.rate_limit_per_min || 60}/min
                             </div>
                             <div className="am-meta-block">
-                                <span className="am-meta-label">Tokens</span>
+                                <span className="am-meta-label">{t('api.tokens')}</span>
                                 {(c.tokens || []).filter(
                                     (t) => t.status === 'active'
                                 ).length}{' '}
                                 active / {(c.tokens || []).length}
                             </div>
                             <div className="am-meta-block">
-                                <span className="am-meta-label">Created</span>
+                                <span className="am-meta-label">{t('api.created')}</span>
                                 {fmtDate(c.created_at)}
                             </div>
                         </div>
@@ -715,7 +701,7 @@ function ApiManagementPage() {
             {/* ── Access Tokens ── */}
             <Section
                 icon={<KeyOutlined />}
-                title="Access Tokens"
+                title={t('api.accessTokens')}
                 subtitle="Every credential across all clients — prefix only, never the token itself"
                 count={allTokens.length}
                 accent="#22a06b"
@@ -735,7 +721,7 @@ function ApiManagementPage() {
             {/* ── Request Logs ── */}
             <Section
                 icon={<UnorderedListOutlined />}
-                title="Request Logs"
+                title={t('api.requestLogs')}
                 subtitle="Audit trail of Public API calls (no bodies, no secrets)"
                 accent="#7c5cff"
                 open={open.logs}
@@ -795,24 +781,20 @@ function ApiManagementPage() {
                                 size="small"
                                 loading={runCleanup.isPending}
                                 onClick={() => runCleanup.mutate(true)}
-                            >
-                                Dry run
-                            </Button>
+                            >{t('api.dryRun')}</Button>
                             <Button
                                 size="small"
                                 danger
                                 loading={runCleanup.isPending}
                                 onClick={() => setCleanupConfirm(true)}
-                            >
-                                Run Cleanup
-                            </Button>
+                            >{t('api.runCleanup')}</Button>
                         </Space>
                     </div>
                 )}
                 <Space wrap className="am-log-filters">
                     <Select
                         allowClear
-                        placeholder="Client"
+                        placeholder={t('api.client')}
                         style={{ minWidth: 180 }}
                         options={clients.map((c) => ({
                             value: c.id,
@@ -828,7 +810,7 @@ function ApiManagementPage() {
                     />
                     <Select
                         allowClear
-                        placeholder="Status"
+                        placeholder={t('common.status')}
                         style={{ minWidth: 120 }}
                         options={[200, 201, 401, 403, 404, 422, 429, 500].map(
                             (s) => ({ value: s, label: s })
@@ -856,7 +838,7 @@ function ApiManagementPage() {
                         }}
                     />
                     <Input.Search
-                        placeholder="Request ID"
+                        placeholder={t('api.requestId')}
                         allowClear
                         style={{ width: 260 }}
                         onSearch={(v) => {
@@ -884,23 +866,19 @@ function ApiManagementPage() {
                         onClick={() =>
                             setLogOffset((o) => Math.max(0, o - LOG_PAGE))
                         }
-                    >
-                        Newer
-                    </Button>
+                    >{t('api.newer')}</Button>
                     <Button
                         size="small"
                         disabled={logs.length < LOG_PAGE}
                         onClick={() => setLogOffset((o) => o + LOG_PAGE)}
-                    >
-                        Older
-                    </Button>
+                    >{t('api.older')}</Button>
                 </div>
             </Section>
 
             {/* ── Documentation ── */}
             <Section
                 icon={<FileTextOutlined />}
-                title="Documentation"
+                title={t('api.documentation')}
                 subtitle="Developer resources for the Public API"
                 accent="#f97316"
                 open={open.docs}
@@ -913,12 +891,8 @@ function ApiManagementPage() {
                         target="_blank"
                         rel="noreferrer"
                     >
-                        <span className="am-doc-title">
-                            Interactive API Reference
-                        </span>
-                        <span className="am-doc-sub">
-                            Swagger UI for every public endpoint
-                        </span>
+                        <span className="am-doc-title">{t('api.interactiveReference')}</span>
+                        <span className="am-doc-sub">{t('api.swaggerHint')}</span>
                     </a>
                     <a
                         className="am-doc-card"
@@ -926,13 +900,11 @@ function ApiManagementPage() {
                         target="_blank"
                         rel="noreferrer"
                     >
-                        <span className="am-doc-title">OpenAPI Schema</span>
-                        <span className="am-doc-sub">
-                            Machine-readable spec (client generation)
-                        </span>
+                        <span className="am-doc-title">{t('api.openapiSchema')}</span>
+                        <span className="am-doc-sub">{t('api.openapiHint')}</span>
                     </a>
                     <div className="am-doc-card is-static">
-                        <span className="am-doc-title">Authentication</span>
+                        <span className="am-doc-title">{t('api.authentication')}</span>
                         <span className="am-doc-sub">
                             Send{' '}
                             <code>Authorization: Bearer hms_…</code> on every
@@ -941,7 +913,7 @@ function ApiManagementPage() {
                         </span>
                     </div>
                     <div className="am-doc-card is-static">
-                        <span className="am-doc-title">Scopes</span>
+                        <span className="am-doc-title">{t('api.scopes')}</span>
                         <span className="am-doc-sub">
                             {scopeCatalog.map((s) => (
                                 <Tag key={s} style={{ marginBottom: 4 }}>
@@ -951,8 +923,7 @@ function ApiManagementPage() {
                         </span>
                     </div>
                     <div className="am-doc-card is-static">
-                        <span className="am-doc-title">
-                            MCP Server <Tag color="green">Active</Tag>
+                        <span className="am-doc-title">{t('api.mcpServer')}<Tag color="green">{t('common.active')}</Tag>
                         </span>
                         <span className="am-doc-sub">
                             AI tools connect with these same tokens, scopes
@@ -989,14 +960,14 @@ function ApiManagementPage() {
             <DangerConfirmModal
                 open={cleanupConfirm}
                 tone="danger"
-                title="Run retention cleanup now?"
+                title={t('api.runCleanupConfirm')}
                 subtitle={
                     'Permanently removes API request logs older than the ' +
                     'retention period and expired idempotency keys. ' +
                     'Business data (tasks, work logs, meetings, customers, ' +
                     'projects) is never touched.'
                 }
-                confirmLabel="Run Cleanup"
+                confirmLabel={t('api.runCleanup')}
                 loading={runCleanup.isPending}
                 onConfirm={() => {
                     setCleanupConfirm(false)
@@ -1059,8 +1030,8 @@ function ApiManagementPage() {
 
             <Modal
                 open={!!expiryModal}
-                title="Update token expiry"
-                okText="Save"
+                title={t('api.updateTokenExpiry')}
+                okText={t('common.save')}
                 onOk={() => {
                     // Cift gonderim kilidi KAYNAKTA.
                     if (updateExpiry.isPending) return
@@ -1075,9 +1046,7 @@ function ApiManagementPage() {
                 onCancel={() => setExpiryModal(null)}
                 destroyOnHidden
             >
-                <p style={{ color: 'var(--c-text-muted)', marginBottom: 12 }}>
-                    Leave empty for a token that never expires.
-                </p>
+                <p style={{ color: 'var(--c-text-muted)', marginBottom: 12 }}>{t('api.neverExpires')}</p>
                 <DatePicker
                     style={{ width: '100%' }}
                     value={expiryValue}

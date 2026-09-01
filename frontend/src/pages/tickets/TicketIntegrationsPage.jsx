@@ -23,6 +23,7 @@ import {
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { queryKeys } from '../../query/queryKeys'
 import '../../features/tickets/tickets.css'
+import { useT } from '../../i18n'
 
 const { Text, Paragraph } = Typography
 
@@ -34,6 +35,7 @@ const SCOPES = [
 ]
 
 function RoutingTab() {
+    const t = useT()
     const queryClient = useQueryClient()
 
     const sources = useQuery({
@@ -53,7 +55,7 @@ function RoutingTab() {
         mutationFn: ({ id, groupId }) =>
             ticketAdminService.setRoute(id, { group_id: groupId }),
         onSuccess: () => {
-            message.success('Routing updated. Only new tickets are affected.')
+            message.success(t('integrations.routingUpdated'))
             queryClient.invalidateQueries({
                 queryKey: queryKeys.ticketAdmin.sourceTenants,
             })
@@ -71,8 +73,8 @@ function RoutingTab() {
             <Alert
                 type="info"
                 showIcon
-                message="One active target team per customer workspace"
-                description="Changing the route affects new tickets only; existing tickets are never moved in bulk."
+                message={t('integrations.oneTargetPerWorkspace')}
+                description={t('integrations.routeChangeHint')}
             />
             <Surface>
                 <Table
@@ -84,23 +86,23 @@ function RoutingTab() {
                     locale={{
                         emptyText: (
                             <EmptyState
-                                title="No customer workspaces mapped yet"
-                                description="A mapping is created the first time a workspace raises a ticket, or manually via the API."
+                                title={t('integrations.noWorkspaces')}
+                                description={t('integrations.mappingHint')}
                             />
                         ),
                     }}
                     columns={[
                         {
-                            title: 'Application', dataIndex: 'application_id',
+                            title: t('integrations.application'), dataIndex: 'application_id',
                             render: appName, width: 140,
                         },
-                        { title: 'Workspace', dataIndex: 'display_name' },
+                        { title: t('integrations.workspace'), dataIndex: 'display_name' },
                         {
-                            title: 'Source ID', dataIndex: 'source_tenant_id',
+                            title: t('integrations.sourceId'), dataIndex: 'source_tenant_id',
                             ellipsis: true,
                         },
                         {
-                            title: 'Status', dataIndex: 'status', width: 110,
+                            title: t('common.status'), dataIndex: 'status', width: 110,
                             render: (status) => (
                                 <StatusBadge
                                     tone={status === 'active'
@@ -111,11 +113,11 @@ function RoutingTab() {
                             ),
                         },
                         {
-                            title: 'Target team', width: 260,
+                            title: t('integrations.targetTeam'), width: 260,
                             render: (_, row) => (
                                 <Select
                                     style={{ width: '100%' }}
-                                    placeholder="Not configured"
+                                    placeholder={t('integrations.notConfigured')}
                                     value={row.route?.group_id}
                                     loading={setRoute.isPending}
                                     onChange={(groupId) => setRoute.mutate({
@@ -129,7 +131,7 @@ function RoutingTab() {
                             ),
                         },
                         {
-                            title: 'Route v', dataIndex: ['route', 'route_version'],
+                            title: t('integrations.routeVersion'), dataIndex: ['route', 'route_version'],
                             width: 90,
                         },
                     ]}
@@ -140,6 +142,7 @@ function RoutingTab() {
 }
 
 function CredentialsTab() {
+    const t = useT()
     const queryClient = useQueryClient()
     const [form] = Form.useForm()
     const [createOpen, setCreateOpen] = useState(false)
@@ -181,9 +184,7 @@ function CredentialsTab() {
     return (
         <Stack gap={3}>
             <Inline gap={2}>
-                <Button variant="primary" onClick={() => setCreateOpen(true)}>
-                    New integration client
-                </Button>
+                <Button variant="primary" onClick={() => setCreateOpen(true)}>{t('integrations.newClient')}</Button>
             </Inline>
 
             {(clients.data ?? []).map((client) => (
@@ -207,9 +208,7 @@ function CredentialsTab() {
                                 style={{ marginLeft: 'auto' }}
                                 loading={issueToken.isPending}
                                 onClick={() => issueToken.mutate(client.id)}
-                            >
-                                Issue token
-                            </Button>
+                            >{t('integrations.issueToken')}</Button>
                         </Inline>
                         <Inline gap={1}>
                             {client.scopes.map((scope) => (
@@ -223,12 +222,12 @@ function CredentialsTab() {
                             size="small"
                             pagination={false}
                             dataSource={client.tokens}
-                            locale={{ emptyText: 'No tokens issued yet' }}
+                            locale={{ emptyText: t('integrations.noTokens') }}
                             columns={[
-                                { title: 'Prefix', dataIndex: 'token_prefix' },
-                                { title: 'Status', dataIndex: 'status' },
+                                { title: t('integrations.prefix'), dataIndex: 'token_prefix' },
+                                { title: t('common.status'), dataIndex: 'status' },
                                 {
-                                    title: 'Last used', dataIndex: 'last_used_at',
+                                    title: t('integrations.lastUsed'), dataIndex: 'last_used_at',
                                     render: (v) => (v
                                         ? new Date(v).toLocaleString()
                                         : 'never'),
@@ -244,9 +243,7 @@ function CredentialsTab() {
                                                     clientId: client.id,
                                                     tokenId: token.id,
                                                 })}
-                                            >
-                                                Revoke
-                                            </Button>
+                                            >{t('integrations.revoke')}</Button>
                                         )
                                         : null),
                                 },
@@ -258,8 +255,8 @@ function CredentialsTab() {
 
             <AppModal
                 open={createOpen}
-                title="New integration client"
-                okText="Create"
+                title={t('integrations.newClient')}
+                okText={t('common.create')}
                 onCancel={() => setCreateOpen(false)}
                 onOk={async () => {
                     let values
@@ -276,8 +273,8 @@ function CredentialsTab() {
                 <Form form={form} layout="vertical" preserve={false}>
                     <Form.Item
                         name="application_id"
-                        label="Application"
-                        rules={[{ required: true, message: 'Select an application' }]}
+                        label={t('integrations.application')}
+                        rules={[{ required: true, message: t('integrations.selectApplication') }]}
                     >
                         <Select
                             options={(applications.data ?? []).map((app) => ({
@@ -288,16 +285,16 @@ function CredentialsTab() {
                     </Form.Item>
                     <Form.Item
                         name="name"
-                        label="Name"
-                        rules={[{ required: true, message: 'A name is required' }]}
+                        label={t('common.name')}
+                        rules={[{ required: true, message: t('integrations.nameRequired') }]}
                     >
                         <Input maxLength={120} />
                     </Form.Item>
                     <Form.Item
                         name="scopes"
-                        label="Scopes"
-                        extra="Grant only what this integration actually needs."
-                        rules={[{ required: true, message: 'Select at least one scope' }]}
+                        label={t('integrations.scopes')}
+                        extra={t('integrations.scopesHint')}
+                        rules={[{ required: true, message: t('integrations.selectScope') }]}
                     >
                         <Select
                             mode="multiple"
@@ -309,8 +306,8 @@ function CredentialsTab() {
 
             <AppModal
                 open={Boolean(issuedToken)}
-                title="Copy this token now"
-                okText="I saved it"
+                title={t('integrations.copyTokenNow')}
+                okText={t('integrations.savedIt')}
                 cancelButtonProps={{ style: { display: 'none' } }}
                 onOk={() => setIssuedToken(null)}
                 onCancel={() => setIssuedToken(null)}
@@ -319,8 +316,8 @@ function CredentialsTab() {
                 <Alert
                     type="warning"
                     showIcon
-                    message="Shown only once"
-                    description="Hermes stores only a hash of this token. If you lose it, issue a new one."
+                    message={t('integrations.shownOnce')}
+                    description={t('integrations.tokenHashOnly')}
                 />
                 <Paragraph copyable={{ text: issuedToken?.token }} code>
                     {issuedToken?.token}
@@ -331,6 +328,7 @@ function CredentialsTab() {
 }
 
 function DeliveryTab() {
+    const t = useT()
     const queryClient = useQueryClient()
 
     const stats = useQuery({
@@ -350,7 +348,7 @@ function DeliveryTab() {
     const retry = useMutation({
         mutationFn: ticketAdminService.retryDelivery,
         onSuccess: () => {
-            message.success('Event re-queued with the same event id.')
+            message.success(t('integrations.requeued'))
             queryClient.invalidateQueries({
                 queryKey: queryKeys.ticketAdmin.delivery,
             })
@@ -366,11 +364,11 @@ function DeliveryTab() {
         <Stack gap={3}>
             <Surface>
                 <Inline gap={4}>
-                    <Metric label="Pending" value={stats.data?.pending ?? '—'} />
-                    <Metric label="In flight" value={stats.data?.in_flight ?? '—'} />
-                    <Metric label="Delivered" value={stats.data?.delivered ?? '—'} />
+                    <Metric label={t('integrations.pending')} value={stats.data?.pending ?? '—'} />
+                    <Metric label={t('integrations.inFlight')} value={stats.data?.in_flight ?? '—'} />
+                    <Metric label={t('integrations.delivered')} value={stats.data?.delivered ?? '—'} />
                     <Metric
-                        label="Dead letter"
+                        label={t('integrations.deadLetter')}
                         value={stats.data?.dead ?? '—'}
                         hint={stats.data?.dead
                             ? 'Needs an audited manual replay'
@@ -405,9 +403,7 @@ function DeliveryTab() {
                                 </StatusBadge>
                             )}
                         </Inline>
-                        <Text type="secondary">
-                            Ticket content is never shown on this screen.
-                        </Text>
+                        <Text type="secondary">{t('integrations.contentNeverShown')}</Text>
                     </Stack>
                 </Surface>
             )}
@@ -422,17 +418,17 @@ function DeliveryTab() {
                     locale={{
                         emptyText: (
                             <EmptyState
-                                title="No outbound events yet"
-                                description="Events appear once a source application with a callback URL is connected."
+                                title={t('integrations.noEvents')}
+                                description={t('integrations.eventsHint')}
                             />
                         ),
                     }}
                     columns={[
-                        { title: 'Ticket', dataIndex: 'ticket_number', width: 130 },
-                        { title: 'Event', dataIndex: 'event_type' },
-                        { title: 'App', dataIndex: 'application_code', width: 110 },
+                        { title: t('integrations.ticket'), dataIndex: 'ticket_number', width: 130 },
+                        { title: t('integrations.event'), dataIndex: 'event_type' },
+                        { title: t('integrations.app'), dataIndex: 'application_code', width: 110 },
                         {
-                            title: 'Status', dataIndex: 'status', width: 110,
+                            title: t('common.status'), dataIndex: 'status', width: 110,
                             render: (status) => (
                                 <StatusBadge
                                     tone={{
@@ -446,8 +442,8 @@ function DeliveryTab() {
                                 </StatusBadge>
                             ),
                         },
-                        { title: 'Tries', dataIndex: 'attempts', width: 80 },
-                        { title: 'Last error', dataIndex: 'last_error_code' },
+                        { title: t('integrations.tries'), dataIndex: 'attempts', width: 80 },
+                        { title: t('integrations.lastError'), dataIndex: 'last_error_code' },
                         {
                             title: '', width: 110,
                             render: (_, row) => (row.status === 'dead' ? (
@@ -455,9 +451,7 @@ function DeliveryTab() {
                                     size="small"
                                     loading={retry.isPending}
                                     onClick={() => retry.mutate(row.id)}
-                                >
-                                    Retry now
-                                </Button>
+                                >{t('integrations.retryNow')}</Button>
                             ) : null),
                         },
                     ]}
@@ -468,6 +462,7 @@ function DeliveryTab() {
 }
 
 export default function TicketIntegrationsPage() {
+    const t = useT()
     const context = useTicketContext()
     const canConfigure = context.can('tickets.config.manage')
     const canOperate = context.can('tickets.admin')
@@ -476,8 +471,8 @@ export default function TicketIntegrationsPage() {
         return (
             <Page>
                 <EmptyState
-                    title="This screen is unavailable"
-                    description="Support integration configuration lives inside the Duosis support workspace."
+                    title={t('integrations.unavailable')}
+                    description={t('integrations.livesInDuosis')}
                 />
             </Page>
         )
@@ -485,29 +480,29 @@ export default function TicketIntegrationsPage() {
 
     const items = [
         ...(canConfigure ? [
-            { key: 'routing', label: 'Routing', children: <RoutingTab /> },
+            { key: 'routing', label: t('integrations.routing'), children: <RoutingTab /> },
             {
-                key: 'credentials', label: 'Credentials',
+                key: 'credentials', label: t('integrations.credentials'),
                 children: <CredentialsTab />,
             },
         ] : []),
         ...(canOperate ? [
-            { key: 'delivery', label: 'Delivery', children: <DeliveryTab /> },
+            { key: 'delivery', label: t('integrations.delivery'), children: <DeliveryTab /> },
         ] : []),
     ]
 
     return (
         <Page>
             <PageHeader
-                title="Ticket integrations"
+                title={t('integrations.title')}
                 subtitle="Applications, routing, service credentials and event delivery."
             />
             {items.length
                 ? <Tabs items={items} />
                 : (
                     <EmptyState
-                        title="No sections available"
-                        description="You need tickets.config.manage or tickets.admin."
+                        title={t('integrations.noSections')}
+                        description={t('integrations.needPermission')}
                     />
                 )}
         </Page>

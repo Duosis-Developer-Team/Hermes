@@ -39,6 +39,7 @@ import UserGroupModal from '../../components/modals/UserGroupModal'
 import UserGroupMemberModal from '../../components/modals/UserGroupMemberModal'
 import DangerConfirmModal from '../../components/common/DangerConfirmModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
+import { useT } from '../../i18n'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Virtual group helpers
@@ -47,14 +48,16 @@ import { normalizeApiError } from '../../features/admin/shared/normalizeApiError
 const VIRTUAL_ADMINS_ID = '__virtual_admins__'
 const VIRTUAL_GENERAL_ID = '__virtual_general__'
 
-function buildVirtualGroups(users) {
+// `t` PARAMETRE olarak gelir: bu saf bir yardimci, bilesen degil —
+// hook cagiramaz. Cagiran bilesen kendi `t`'sini gecirir.
+function buildVirtualGroups(users, t) {
     const admins = users.filter((u) => u.is_admin)
     const general = users.filter((u) => !u.is_admin && u.is_active)
     return [
         {
             id: VIRTUAL_ADMINS_ID,
             name: 'Admins',
-            description: 'Built-in. Membership derives from the Admin role.',
+            description: t('groups.builtInAdmins'),
             is_active: true,
             member_count: admins.length,
             virtual: true,
@@ -63,7 +66,7 @@ function buildVirtualGroups(users) {
         {
             id: VIRTUAL_GENERAL_ID,
             name: 'General Users',
-            description: 'Built-in. All active non-admin users.',
+            description: t('groups.builtInAllUsers'),
             is_active: true,
             member_count: general.length,
             virtual: true,
@@ -77,15 +80,16 @@ function buildVirtualGroups(users) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function VirtualMembersTable({ users }) {
+    const t = useT()
     const columns = [
         {
-            title: 'User',
+            title: t('entity.user'),
             dataIndex: 'full_name',
             render: (val, row) => val || row.email || row.id,
         },
-        { title: 'Email', dataIndex: 'email' },
+        { title: t('users.email'), dataIndex: 'email' },
         {
-            title: 'Auth Role',
+            title: t('groups.authRole'),
             dataIndex: 'role',
             render: (val, row) =>
                 row.is_admin ? (
@@ -95,7 +99,7 @@ function VirtualMembersTable({ users }) {
                 ),
         },
         {
-            title: 'Member Title',
+            title: t('groups.memberTitle'),
             key: 'title',
             render: () => <span style={{ color: 'var(--c-text-muted)' }}>—</span>,
         },
@@ -113,13 +117,14 @@ function VirtualMembersTable({ users }) {
                 columns={columns}
                 dataSource={users}
                 pagination={false}
-                locale={{ emptyText: 'No matching users.' }}
+                locale={{ emptyText: t('groups.noMatchingUsers') }}
             />
         </div>
     )
 }
 
 function RealMembersTable({ group, allUsersById, users }) {
+    const t = useT()
     const queryClient = useQueryClient()
     const [memberModalOpen, setMemberModalOpen] = useState(false)
     const [editingMember, setEditingMember] = useState(null)
@@ -146,7 +151,7 @@ function RealMembersTable({ group, allUsersById, users }) {
         mutationFn: ({ memberId, data }) =>
             userGroupService.updateMember(group.id, memberId, data),
         onSuccess: () => {
-            message.success('Member updated.')
+            message.success(t('groups.memberUpdated'))
             setMemberModalOpen(false)
             setEditingMember(null)
             queryClient.invalidateQueries({
@@ -209,7 +214,7 @@ function RealMembersTable({ group, allUsersById, users }) {
     const removeMutation = useMutation({
         mutationFn: (memberId) => userGroupService.removeMember(group.id, memberId),
         onSuccess: () => {
-            message.success('Member removed.')
+            message.success(t('groups.memberRemoved'))
             setRemovingMember(null)
             queryClient.invalidateQueries({
                 queryKey: ['admin-user-group-members', group.id],
@@ -238,7 +243,7 @@ function RealMembersTable({ group, allUsersById, users }) {
 
     const columns = [
         {
-            title: 'User',
+            title: t('entity.user'),
             dataIndex: 'user_id',
             render: (uid) => {
                 const u = allUsersById[uid]
@@ -246,13 +251,13 @@ function RealMembersTable({ group, allUsersById, users }) {
             },
         },
         {
-            title: 'Email',
+            title: t('users.email'),
             dataIndex: 'user_id',
             key: 'email',
             render: (uid) => allUsersById[uid]?.email || '—',
         },
         {
-            title: 'Auth Role',
+            title: t('groups.authRole'),
             dataIndex: 'user_id',
             key: 'role',
             render: (uid) => {
@@ -263,12 +268,12 @@ function RealMembersTable({ group, allUsersById, users }) {
             },
         },
         {
-            title: 'Member Title',
+            title: t('groups.memberTitle'),
             dataIndex: 'title',
             render: (val) => val || <span style={{ color: 'var(--c-text-muted)' }}>—</span>,
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             key: 'actions',
             render: (_, record) => (
                 <Space onClick={(e) => e.stopPropagation()}>
@@ -277,7 +282,7 @@ function RealMembersTable({ group, allUsersById, users }) {
                       * attribute'u basmaz, portala cizer). Ikon-only
                       * butonlarin adi bu yuzden acikca yazilir.
                       */}
-                    <Tooltip title="Edit Member Title">
+                    <Tooltip title={t('groups.editMemberTitle')}>
                         <Button
                             size="small"
                             icon={<EditOutlined />}
@@ -293,7 +298,7 @@ function RealMembersTable({ group, allUsersById, users }) {
                             }}
                         />
                     </Tooltip>
-                    <Tooltip title="Remove from group">
+                    <Tooltip title={t('groups.removeFromGroup')}>
                         <Button
                             size="small"
                             danger
@@ -334,9 +339,7 @@ function RealMembersTable({ group, allUsersById, users }) {
                         setEditingMember(null)
                         setMemberModalOpen(true)
                     }}
-                >
-                    Add Member
-                </Button>
+                >{t('groups.addMember')}</Button>
             </div>
 
             <Table
@@ -346,7 +349,7 @@ function RealMembersTable({ group, allUsersById, users }) {
                 dataSource={members}
                 loading={isLoading}
                 pagination={false}
-                locale={{ emptyText: 'No members yet.' }}
+                locale={{ emptyText: t('groups.noMembers') }}
             />
 
             <UserGroupMemberModal
@@ -364,7 +367,7 @@ function RealMembersTable({ group, allUsersById, users }) {
 
             <DangerConfirmModal
                 open={!!removingMember}
-                title="Remove member from group?"
+                title={t('groups.removeMemberConfirm')}
                 body="This removes the user from this group only. The user account is not affected, and existing tasks remain unchanged."
                 itemName={
                     removingMember
@@ -396,6 +399,7 @@ function RealMembersTable({ group, allUsersById, users }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function UserGroupsTab() {
+    const t = useT()
     const queryClient = useQueryClient()
     const [groupModalOpen, setGroupModalOpen] = useState(false)
     const [deletingGroup, setDeletingGroup] = useState(null)
@@ -420,7 +424,9 @@ function UserGroupsTab() {
         queryFn: () => userGroupService.list(),
     })
 
-    const virtualGroups = useMemo(() => buildVirtualGroups(users), [users])
+    const virtualGroups = useMemo(
+        () => buildVirtualGroups(users, t), [users, t],
+    )
 
     // Virtual groups always first; admin-created groups follow alphabetically.
     const allRows = useMemo(
@@ -431,7 +437,7 @@ function UserGroupsTab() {
     const createMutation = useMutation({
         mutationFn: (data) => userGroupService.create(data),
         onSuccess: () => {
-            message.success('Group created.')
+            message.success(t('groups.groupCreated'))
             setGroupModalOpen(false)
             setEditingGroup(null)
             queryClient.invalidateQueries({ queryKey: ['admin-user-groups'] })
@@ -443,7 +449,7 @@ function UserGroupsTab() {
     const updateMutation = useMutation({
         mutationFn: ({ groupId, data }) => userGroupService.update(groupId, data),
         onSuccess: () => {
-            message.success('Group updated.')
+            message.success(t('groups.groupUpdated'))
             setGroupModalOpen(false)
             setEditingGroup(null)
             queryClient.invalidateQueries({ queryKey: ['admin-user-groups'] })
@@ -454,7 +460,7 @@ function UserGroupsTab() {
     const deactivateMutation = useMutation({
         mutationFn: (groupId) => userGroupService.deactivate(groupId),
         onSuccess: () => {
-            message.success('Group archived.')
+            message.success(t('groups.groupArchived'))
             setDeletingGroup(null)
             queryClient.invalidateQueries({ queryKey: ['admin-user-groups'] })
             queryClient.invalidateQueries({ queryKey: ['task-permissions'] })
@@ -478,31 +484,31 @@ function UserGroupsTab() {
 
     const columns = [
         {
-            title: 'Group Name',
+            title: t('group.name'),
             dataIndex: 'name',
             render: (val, row) =>
                 row.virtual ? (
                     <Space>
                         <strong>{val}</strong>
-                        <Tag>Built-in</Tag>
+                        <Tag>{t('groups.builtIn')}</Tag>
                     </Space>
                 ) : (
                     <strong>{val}</strong>
                 ),
         },
         {
-            title: 'Description',
+            title: t('common.description'),
             dataIndex: 'description',
             render: (val) => val || <span style={{ color: 'var(--c-text-muted)' }}>—</span>,
         },
         {
-            title: 'Members',
+            title: t('groups.members'),
             dataIndex: 'member_count',
             width: 100,
             align: 'center',
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             key: 'actions',
             width: 200,
             render: (_, record) =>
@@ -510,7 +516,7 @@ function UserGroupsTab() {
                     <span style={{ color: 'var(--c-text-muted)' }}>—</span>
                 ) : (
                     <Space onClick={(e) => e.stopPropagation()}>
-                        <Tooltip title="Edit Group">
+                        <Tooltip title={t('groups.editGroup')}>
                             <Button
                                 size="small"
                                 icon={<EditOutlined />}
@@ -533,9 +539,7 @@ function UserGroupsTab() {
                             aria-label={`Archive ${record.name}`}
                             disabled={isArchivingGroup}
                             onClick={() => setDeletingGroup(record)}
-                        >
-                            Archive
-                        </Button>
+                        >{t('groups.archive')}</Button>
                     </Space>
                 ),
         },
@@ -550,9 +554,7 @@ function UserGroupsTab() {
                     style={{ marginBottom: 12 }}
                     message={normalizeApiError(error).message}
                     action={
-                        <Button size="small" onClick={() => refetch()}>
-                            Retry
-                        </Button>
+                        <Button size="small" onClick={() => refetch()}>{t('common.retry')}</Button>
                     }
                 />
             )}
@@ -570,9 +572,7 @@ function UserGroupsTab() {
                         setEditingGroup(null)
                         setGroupModalOpen(true)
                     }}
-                >
-                    Create Group
-                </Button>
+                >{t('groups.createGroup')}</Button>
             </div>
 
             <Table
@@ -582,7 +582,7 @@ function UserGroupsTab() {
                 loading={isLoading}
                 pagination={{ pageSize: 20 }}
                 locale={{
-                    emptyText: 'No groups yet — Admins / General Users always show.',
+                    emptyText: t('groups.noGroups'),
                 }}
                 expandable={{
                     expandRowByClick: true, // whole-row click toggles
@@ -613,7 +613,7 @@ function UserGroupsTab() {
 
             <DangerConfirmModal
                 open={!!deletingGroup}
-                title="Archive group?"
+                title={t('groups.archiveGroup')}
                 body="This removes the group from active use. Membership, user accounts and existing tasks remain unchanged, and the group can be restored by an administrator."
                 itemName={deletingGroup?.name}
                 itemSubtitle={

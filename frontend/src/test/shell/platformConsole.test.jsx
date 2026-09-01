@@ -225,7 +225,9 @@ describe('tenant yonetimi', () => {
 
     it('yeni tenant ve duzenleme aksiyonlari vardir', () => {
         const src = consoleSrc()
-        expect(src).toMatch(/New tenant/)
+        // i18n sonrasi metin sozlukten gelir; kilit ANAHTAR uzerinde.
+        // Kilitlenen sey "yeni tenant aksiyonu var" idi ve aynen duruyor.
+        expect(src).toMatch(/platform\.newTenant/)
         expect(src).toMatch(/CreateTenantModal/)
         expect(src).toMatch(/EditTenantModal/)
     })
@@ -328,8 +330,8 @@ describe('duzenleme paritesi', () => {
                              'owner_email']) {
             expect(edit).toMatch(new RegExp(`name="${field}"`))
         }
-        // Slug degistirilemez ama GOSTERILIR.
-        expect(edit).toMatch(/Workspace address/)
+        // Slug degistirilemez ama GOSTERILIR. (i18n: anahtar uzerinden.)
+        expect(edit).toMatch(/platform\.workspaceAddress/)
         expect(edit).toMatch(/disabled/)
     })
 

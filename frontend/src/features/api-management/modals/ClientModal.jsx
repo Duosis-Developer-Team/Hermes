@@ -14,8 +14,10 @@ import { useMemo } from 'react'
 import { Button, Form, Input, InputNumber, Modal, Select } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { BINDING_LABEL, SCOPE_HELP } from '../model/format'
+import { useT } from '../../../i18n'
 
 export default function ClientModal({ open, editing, scopes, pickers, onClose, onSubmit, saving }) {
+    const t = useT()
     const [form] = Form.useForm()
     const clientType = Form.useWatch('client_type', form) || 'service'
     const bindings = Form.useWatch('access', form) || []
@@ -32,17 +34,17 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
 
     const bindingTypeOptions = useMemo(() => {
         const opts = [
-            { value: 'user', label: 'User' },
-            { value: 'group', label: 'Group' },
-            { value: 'customer', label: 'Customer' },
-            { value: 'project', label: 'Project' },
+            { value: 'user', label: t('entity.user') },
+            { value: 'group', label: t('api.group') },
+            { value: 'customer', label: t('entity.customer') },
+            { value: 'project', label: t('entity.project') },
         ]
         // Kural: global yalniz basina; user-bound client global alamaz.
         if (clientType !== 'user' && bindings.length <= 1) {
             opts.unshift({ value: 'global', label: BINDING_LABEL.global })
         }
         return opts
-    }, [clientType, bindings.length])
+    }, [clientType, bindings.length, t])
 
     const targetOptions = (type) => pickers[type] || []
 
@@ -103,53 +105,53 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
                 }
             >
                 <Form.Item
-                    label="Client Name"
+                    label={t('api.clientName')}
                     name="name"
                     rules={[
-                        { required: true, message: 'Name is required.' },
+                        { required: true, message: t('api.nameRequired') },
                         { min: 2, max: 100 },
                     ]}
                 >
-                    <Input placeholder="e.g. Reporting Bot" maxLength={100} />
+                    <Input placeholder={t('api.clientNameExample')} maxLength={100} />
                 </Form.Item>
-                <Form.Item label="Description" name="description">
+                <Form.Item label={t('common.description')} name="description">
                     <Input.TextArea
                         rows={2}
                         maxLength={2000}
-                        placeholder="What integrates through this client?"
+                        placeholder={t('api.whatIntegrates')}
                     />
                 </Form.Item>
                 <div className="am-form-row">
                     <Form.Item
-                        label="Client Type"
+                        label={t('api.clientType')}
                         name="client_type"
-                        tooltip="Service: server-to-server integration. User-bound: acts on behalf of one Hermes user and can never see more than they can."
+                        tooltip={t('api.typeHint')}
                     >
                         <Select
                             disabled={!!editing}
                             options={[
-                                { value: 'service', label: 'Service' },
-                                { value: 'user', label: 'User-bound' },
+                                { value: 'service', label: t('api.service') },
+                                { value: 'user', label: t('api.userBound') },
                             ]}
                         />
                     </Form.Item>
                     <Form.Item
-                        label="Environment"
+                        label={t('api.environment')}
                         name="environment"
-                        tooltip="Development tokens only work on the dev deployment; Live tokens only on the live deployment."
+                        tooltip={t('api.envHint')}
                     >
                         <Select
                             disabled={!!editing}
                             options={[
-                                { value: 'dev', label: 'Development' },
-                                { value: 'live', label: 'Live' },
+                                { value: 'dev', label: t('api.development') },
+                                { value: 'live', label: t('api.live') },
                             ]}
                         />
                     </Form.Item>
                     <Form.Item
-                        label="Rate Limit (req/min)"
+                        label={t('api.rateLimitField')}
                         name="rate_limit_per_min"
-                        tooltip="Empty = default 60 requests per minute."
+                        tooltip={t('api.rateLimitHint')}
                     >
                         <InputNumber
                             min={1}
@@ -161,13 +163,12 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
                 </div>
                 {clientType === 'user' && (
                     <Form.Item
-                        label="Bound Hermes User"
+                        label={t('api.boundUser')}
                         name="bound_user_id"
                         rules={[
                             {
                                 required: true,
-                                message:
-                                    'A user-bound client requires a bound user.',
+                                message: t('api.boundUserRequired'),
                             },
                         ]}
                     >
@@ -175,27 +176,25 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
                             showSearch
                             optionFilterProp="label"
                             options={targetOptions('user')}
-                            placeholder="Select the Hermes user this client acts as"
+                            placeholder={t('api.boundUserHint')}
                             disabled={!!editing}
                         />
                     </Form.Item>
                 )}
                 <Form.Item
-                    label="Scopes"
+                    label={t('api.scopes')}
                     name="scopes"
-                    tooltip="What operations the client may perform. Data visibility is controlled separately by access bindings below."
+                    tooltip={t('api.scopesHint')}
                 >
                     <Select
                         mode="multiple"
                         options={scopeOptions}
-                        placeholder="Select allowed operations"
+                        placeholder={t('api.selectScopes')}
                         maxTagCount="responsive"
                     />
                 </Form.Item>
 
-                <div className="am-bindings-label">
-                    Access bindings
-                    <span className="am-bindings-hint">
+                <div className="am-bindings-label">{t('api.accessBindings')}<span className="am-bindings-hint">
                         Which data the client can see. No bindings = no
                         business data. Global cannot be combined with
                         narrower bindings.
@@ -217,7 +216,7 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
                                             style={{ marginBottom: 0 }}
                                         >
                                             <Select
-                                                placeholder="Type"
+                                                placeholder={t('api.type')}
                                                 options={bindingTypeOptions}
                                                 style={{ minWidth: 150 }}
                                             />
@@ -231,8 +230,7 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
                                                 rules={[
                                                     {
                                                         required: true,
-                                                        message:
-                                                            'Target required.',
+                                                        message: t('api.targetRequired'),
                                                     },
                                                 ]}
                                                 style={{
@@ -243,7 +241,7 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
                                                 <Select
                                                     showSearch
                                                     optionFilterProp="label"
-                                                    placeholder="Select target"
+                                                    placeholder={t('api.selectTarget')}
                                                     options={targetOptions(
                                                         row.access_type
                                                     )}
@@ -256,9 +254,7 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
                                             onClick={() =>
                                                 remove(field.name)
                                             }
-                                        >
-                                            Remove
-                                        </Button>
+                                        >{t('api.remove')}</Button>
                                     </div>
                                 )
                             })}
@@ -268,9 +264,7 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
                                 disabled={hasGlobal}
                                 onClick={() => add({ access_type: undefined })}
                                 style={{ marginTop: 4 }}
-                            >
-                                Add binding
-                            </Button>
+                            >{t('api.addBinding')}</Button>
                             {hasGlobal && (
                                 <span className="am-bindings-hint">
                                     {' '}
