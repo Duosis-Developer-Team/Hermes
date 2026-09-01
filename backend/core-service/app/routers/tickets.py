@@ -18,6 +18,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request
+from starlette.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -619,11 +620,13 @@ async def upload_attachment_content(
             "validation_error",
             "This file exceeds the maximum attachment size.",
         )
-    row = db.get(TicketAttachment, attachment_id)
+    row = await run_in_threadpool(db.get, TicketAttachment, attachment_id)
     if row is None:
         raise http_error("not_found", "Upload session not found.")
     try:
-        ticket_attachment_service.store_upload(db, row, body)
+        await run_in_threadpool(
+            ticket_attachment_service.store_upload, db, row, body,
+        )
     except ticket_attachment_service.AttachmentDisabled as exc:
         raise http_error("support_not_configured", str(exc))
     except Exception as exc:  # noqa: BLE001

@@ -7,6 +7,7 @@
 # =============================================================================
 
 from fastapi import APIRouter, Depends
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from ...database import get_db
@@ -50,10 +51,10 @@ async def me(
     ctx: ApiContext = Depends(get_api_context),
     db: Session = Depends(get_db),
 ):
-    bindings = (
+    bindings = await run_in_threadpool(
         db.query(ApiClientAccess)
         .filter(ApiClientAccess.client_id == ctx.client.id)
-        .all()
+        .all
     )
     return {
         # WS6: token'in BAGLI OLDUGU workspace. Entegrasyonlar (ve MCP)

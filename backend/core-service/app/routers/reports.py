@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from typing import Optional, Dict, List
 from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Response, HTTPException, Request
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 import pandas as pd
@@ -21,6 +22,15 @@ from shared.auth import CurrentUser, get_current_user
 from ..authz import require_permissions, user_has
 from shared.permissions import Perm
 
+# -----------------------------------------------------------------------------
+# NOT (2026-09-01 kesintisi): bu dosyadaki disa aktarma uclari `async def`
+# olup ICLERINDE senkron SQLAlchemy calistiriyordu — yani sorgu suresince
+# EVENT LOOP bloke oluyordu ve surec `/health` dahil hicbir istege cevap
+# veremiyordu. Uclar `def` YAPILAMAZ (iclerinde `await get_all_users_map`
+# var), bu yuzden en agir adim -- veriyi materyalize eden `.all()` --
+# threadpool'a alindi. CSV/matris kurulumu bellekteki veri uzerinde
+# calisir ve cok daha ucuzdur.
+# -----------------------------------------------------------------------------
 router = APIRouter(
     prefix="/reports",
     tags=["Reports"]
@@ -230,7 +240,9 @@ async def export_excel(
         if end_date:
             query = query.filter(WorkLog.date_worked <= end_date)
 
-        results = query.order_by(desc(WorkLog.date_worked)).all()
+        results = await run_in_threadpool(
+            query.order_by(desc(WorkLog.date_worked)).all,
+        )
 
         # Build CSV data
         data = []
@@ -334,7 +346,7 @@ async def export_global_detailed_v2(
         WorkLog.date_worked <= date_end
     ).order_by(WorkLog.date_worked)
 
-    results = query.all()
+    results = await run_in_threadpool(query.all)
 
     data = []
     for r in results:
@@ -406,7 +418,7 @@ async def export_global_matrix(
         WorkLog.user_id
     )
     
-    results = query.all()
+    results = await run_in_threadpool(query.all)
     
     data = []
     for r in results:
@@ -516,7 +528,9 @@ async def get_user_logs_json(
     if end_date:
         query = query.filter(WorkLog.date_worked <= end_date)
 
-    results = query.order_by(WorkLog.date_worked.asc()).limit(5000).all()
+    results = await run_in_threadpool(
+        query.order_by(WorkLog.date_worked.asc()).limit(5000).all,
+    )
 
     data = []
     for r in results:
@@ -582,7 +596,7 @@ async def get_global_detailed_json(
         WorkLog.date_worked <= date_end
     ).order_by(WorkLog.date_worked)
 
-    results = query.limit(3000).all()
+    results = await run_in_threadpool(query.limit(3000).all)
 
     data = []
     for r in results:
@@ -631,7 +645,7 @@ async def get_matrix_json(
         WorkLog.user_id
     )
     
-    results = query.all()
+    results = await run_in_threadpool(query.all)
     
     # Return flat list, frontend can pivot
     data = []

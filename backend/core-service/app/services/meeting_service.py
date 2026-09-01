@@ -37,6 +37,7 @@ from typing import Callable, Iterable, List, Mapping, Optional, Sequence
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from ..models.meeting import Meeting, MeetingAttendee
@@ -312,19 +313,45 @@ async def sync_user_meetings(
         "attendees_upserted": 0,
     }
     try:
-        async for event in client.iter_calendar_view(
-            user_email=user_email,
-            start_iso=start_iso,
-            end_iso=end_iso,
-        ):
-            meeting, upserted, _added = upsert_event_from_graph(
-                db, event, user_map=user_map
+        # -----------------------------------------------------------------
+        # IKI ASAMA — SEBEBI ONEMLI (2026-09-01 kesintisi)
+        # -----------------------------------------------------------------
+        # Once Graph'tan CEKILIR (httpx.AsyncClient — loop'u bloke etmez),
+        # sonra veritabani yazimi TEK SEFERDE threadpool'a alinir.
+        #
+        # Eskiden upsert'ler `async for` dongusunun ICINDE yapiliyordu:
+        # her takvim olayi icin SENKRON bir SQLAlchemy cagrisi, dogrudan
+        # EVENT LOOP uzerinde. Meetings sayfasi acilista bu ucu otomatik
+        # cagirdigi icin, birkac kullanici ayni anda sayfayi actiginda
+        # loop doluyor ve surec `/health` dahil hicbir istege cevap
+        # veremiyordu; liveness pod'u olduruyordu. Kullanicilarin
+        # "meetings'te gezerken bir anda gitti" dedigi sey buydu.
+        events = [
+            event
+            async for event in client.iter_calendar_view(
+                user_email=user_email,
+                start_iso=start_iso,
+                end_iso=end_iso,
             )
-            summary["meetings_upserted"] += 1
-            summary["attendees_upserted"] += upserted
-            if meeting.is_cancelled:
-                summary["meetings_cancelled"] += 1
-        db.flush()
+        ]
+
+        def _persist() -> tuple[int, int, int]:
+            upserted_total = 0
+            cancelled = 0
+            for event in events:
+                meeting, upserted, _added = upsert_event_from_graph(
+                    db, event, user_map=user_map
+                )
+                upserted_total += upserted
+                if meeting.is_cancelled:
+                    cancelled += 1
+            db.flush()
+            return len(events), upserted_total, cancelled
+
+        count, upserted_total, cancelled = await run_in_threadpool(_persist)
+        summary["meetings_upserted"] = count
+        summary["attendees_upserted"] = upserted_total
+        summary["meetings_cancelled"] = cancelled
         summary["ok"] = True
     except GraphConfigError as e:
         db.rollback()

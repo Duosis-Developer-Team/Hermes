@@ -11,6 +11,7 @@
 # =============================================================================
 
 import sys
+from typing import Optional
 from pathlib import Path
 from contextlib import asynccontextmanager
 
@@ -230,6 +231,41 @@ async def health_check():
     return {"status": "healthy", "service": settings.SERVICE_NAME, "version": settings.SERVICE_VERSION}
 
 
+# -----------------------------------------------------------------------------
+# Readiness — sema kontrolu ONBELLEKLI
+# -----------------------------------------------------------------------------
+# Bu kontrol eskiden HER probe'ta (10 sn'de bir) `engine.connect()` cagirip
+# alembic revizyonunu okuyordu. Iki sorun birden vardi:
+#
+#   1. `/ready` bir `async def`tir; senkron DB cagrisi EVENT LOOP'U bloke
+#      eder. Havuz doluyken `engine.connect()` bos baglanti bekler
+#      (`pool_timeout`, varsayilan 30 sn) — yani tum surec o sure boyunca
+#      HICBIR istege cevap veremez, `/health` dahil. Liveness dusup pod'u
+#      oldururdu (2026-09-01'de birebir bu yasandi: iki replika da ayni
+#      anda, exitCode 137, bellek 210/512 MB, oom_kill 0).
+#   2. Sema surec omru boyunca DEGISMEZ: migration Job'i rollout'tan ONCE
+#      ve bloke ederek kosar. Ayni sabiti gunde 8.640 kez sormanin degeri
+#      yoktu.
+#
+# Bu yuzden sonuc bir kez hesaplanip saklanir. "Uyumsuz" sonucu da
+# saklanir: uyumsuz bir semaya trafik vermemek fail-closed davranistir ve
+# durumun kendi kendine duzelmesi beklenmez (duzeltme = yeni rollout).
+_schema_compatible: Optional[bool] = None
+
+
+def _schema_is_compatible() -> bool:
+    global _schema_compatible
+    if _schema_compatible is None:
+        from app.database import engine
+        from shared.schema_guard import verify_schema_compatibility
+        try:
+            verify_schema_compatibility("core", engine)
+            _schema_compatible = True
+        except Exception:  # noqa: BLE001 — ayrinti disariya CIKMAZ
+            _schema_compatible = False
+    return _schema_compatible
+
+
 @app.get("/ready", tags=["Health"])
 async def readiness_check():
     """Readiness — trafige HAZIR miyim?
@@ -247,12 +283,7 @@ async def readiness_check():
     """
     from fastapi.responses import JSONResponse
 
-    from app.database import engine
-    from shared.schema_guard import verify_schema_compatibility
-
-    try:
-        verify_schema_compatibility("core", engine)
-    except Exception:  # noqa: BLE001 — ayrinti disariya CIKMAZ
+    if not _schema_is_compatible():
         return JSONResponse(
             status_code=503,
             content={"status": "not_ready", "service": settings.SERVICE_NAME},
