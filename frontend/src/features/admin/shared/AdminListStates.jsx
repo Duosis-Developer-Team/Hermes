@@ -22,6 +22,7 @@
 import { Alert, Button } from 'antd'
 
 import { normalizeApiError } from './normalizeApiError'
+import { useT } from '../../../i18n'
 
 /**
  * Kurtarilabilir yukleme hatasi bandi. `error` yoksa hicbir sey cizmez.
@@ -31,6 +32,7 @@ import { normalizeApiError } from './normalizeApiError'
  * @param {string} [props.context] Neyin eksik kaldigini anlatan ek cumle
  */
 export function AdminErrorAlert({ error, onRetry, context, style }) {
+    const t = useT()
     if (!error) return null
     const normalized = normalizeApiError(error)
     return (
@@ -41,9 +43,7 @@ export function AdminErrorAlert({ error, onRetry, context, style }) {
             message={context ? `${normalized.message} ${context}` : normalized.message}
             action={
                 onRetry ? (
-                    <Button size="small" onClick={() => onRetry()}>
-                        Retry
-                    </Button>
+                    <Button size="small" onClick={() => onRetry()}>{t('common.retry')}</Button>
                 ) : undefined
             }
         />

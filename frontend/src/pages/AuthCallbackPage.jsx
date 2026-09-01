@@ -12,8 +12,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { message, Spin } from 'antd'
 import { authService } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
+import { useT } from '../i18n'
 
 function AuthCallbackPage() {
+    const t = useT()
     const [searchParams] = useSearchParams()
     const navigate = useNavigate()
     const { login } = useAuthStore()
@@ -23,7 +25,7 @@ function AuthCallbackPage() {
         const code = searchParams.get('code')
 
         if (!code) {
-            message.error('Authorization code missing')
+            message.error(t('misc.authCodeMissing'))
             navigate('/login')
             return
         }
@@ -53,7 +55,7 @@ function AuthCallbackPage() {
                 // kaydedilir — token değil.
                 login(user, user?.tenant || null)
 
-                message.success('Signed in successfully.')
+                message.success(t('misc.signedInSuccessfully'))
                 navigate('/')
             } catch (error) {
                 const detail = error?.response?.data?.detail || error?.message || 'Bilinmeyen hata'
@@ -76,7 +78,7 @@ function AuthCallbackPage() {
             gap: 20
         }}>
             <Spin size="large" />
-            <div style={{ color: '#fff', fontSize: 16 }}>Logging in with Microsoft...</div>
+            <div style={{ color: '#fff', fontSize: 16 }}>{t('misc.loggingInMicrosoft')}</div>
         </div>
     )
 }

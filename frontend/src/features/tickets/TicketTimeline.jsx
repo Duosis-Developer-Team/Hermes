@@ -11,6 +11,7 @@ import { Typography } from 'antd'
 
 import { Stack, StatusBadge } from '../../components/ui'
 import './tickets.css'
+import { useT } from '../../i18n'
 
 const { Text } = Typography
 
@@ -25,6 +26,7 @@ const formatWhen = (value) => {
 }
 
 function AttachmentList({ attachments = [], downloadUrl }) {
+    const t = useT()
     if (!attachments.length) return null
     return (
         <ul className="h-ticket-attachments">
@@ -47,10 +49,10 @@ function AttachmentList({ attachments = [], downloadUrl }) {
                             {Math.max(1, Math.round((file.size_bytes || 0) / 1024))} KB
                         </span>
                         {file.scan_status === 'pending_scan' && (
-                            <StatusBadge tone="warning">Scanning</StatusBadge>
+                            <StatusBadge tone="warning">{t('ticket.scanning')}</StatusBadge>
                         )}
                         {file.scan_status === 'rejected' && (
-                            <StatusBadge tone="danger">Rejected</StatusBadge>
+                            <StatusBadge tone="danger">{t('ticket.rejected')}</StatusBadge>
                         )}
                     </li>
                 )
@@ -60,6 +62,7 @@ function AttachmentList({ attachments = [], downloadUrl }) {
 }
 
 export function TicketTimeline({ messages = [], downloadUrl }) {
+    const t = useT()
     return (
         <Stack gap={3} className="h-ticket-timeline">
             {messages.map((message) => {
@@ -105,7 +108,7 @@ export function TicketTimeline({ messages = [], downloadUrl }) {
                 )
             })}
             {!messages.length && (
-                <Text type="secondary">No messages yet.</Text>
+                <Text type="secondary">{t('misc.noMessages')}</Text>
             )}
         </Stack>
     )

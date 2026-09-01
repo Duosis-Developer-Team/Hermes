@@ -387,7 +387,7 @@ function LogTimeModal({
                             </Form.Item>
 
                             <div className="step-footer" style={{ textAlign: 'center', marginTop: 32 }}>
-                                <span style={{ color: 'var(--c-text-muted)' }}>Step 1 of 3</span>
+                                <span style={{ color: 'var(--c-text-muted)' }}>{t('logTime.stepOf', { n: 1, total: 3 })}</span>
                             </div>
                         </div>
                     </div>
@@ -430,7 +430,7 @@ function LogTimeModal({
                             </Form.Item>
 
                             <div className="step-footer" style={{ textAlign: 'center', marginTop: 32 }}>
-                                <span style={{ color: 'var(--c-text-muted)' }}>Step 2 of 3</span>
+                                <span style={{ color: 'var(--c-text-muted)' }}>{t('logTime.stepOf', { n: 2, total: 3 })}</span>
                             </div>
                         </div>
                     </div>

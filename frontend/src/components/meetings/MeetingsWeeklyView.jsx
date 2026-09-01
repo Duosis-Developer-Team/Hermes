@@ -16,6 +16,7 @@ import dayjs from 'dayjs'
 
 import MeetingCard from './MeetingCard'
 import './MeetingsWeeklyView.css'
+import { useT } from '../../i18n'
 
 function MeetingsWeeklyView({
     weekStart,
@@ -23,6 +24,7 @@ function MeetingsWeeklyView({
     loggedMeetingIds,
     onSelectMeeting,
 }) {
+    const t = useT()
     const weekDays = useMemo(() => {
         const days = []
         for (let i = 0; i < 7; i++) days.push(dayjs(weekStart).add(i, 'day'))
@@ -87,9 +89,7 @@ function MeetingsWeeklyView({
                             </div>
                             <div className="meeting-day-column-body">
                                 {list.length === 0 ? (
-                                    <div className="meeting-day-column-empty">
-                                        No meetings
-                                    </div>
+                                    <div className="meeting-day-column-empty">{t('misc.noMeetings')}</div>
                                 ) : (
                                     list.map((m) => (
                                         <MeetingCard

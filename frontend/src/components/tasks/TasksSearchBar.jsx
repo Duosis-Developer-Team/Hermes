@@ -21,6 +21,7 @@ import { taskService } from '../../services/api'
 import { TaskDueBadge } from './TaskCard'
 import { typeMeta } from '../../utils/workItemType'
 import './TasksSearchBar.css'
+import { useT } from '../../i18n'
 
 function userLabel(id, userMap) {
     if (!id) return ''
@@ -29,6 +30,7 @@ function userLabel(id, userMap) {
 }
 
 function TasksSearchBar({ userMap = {}, onSelect, style, taskType = 'task' }) {
+    const t = useT()
     const [text, setText] = useState('')
     const [debounced, setDebounced] = useState('')
     const [open, setOpen] = useState(false)
@@ -106,9 +108,7 @@ function TasksSearchBar({ userMap = {}, onSelect, style, taskType = 'task' }) {
                         </div>
                     )}
                     {empty && (
-                        <div className="tasks-search-status">
-                            No matching tasks found
-                        </div>
+                        <div className="tasks-search-status">{t('misc.noMatchingTasks')}</div>
                     )}
                     {results.map((t) => (
                         <button

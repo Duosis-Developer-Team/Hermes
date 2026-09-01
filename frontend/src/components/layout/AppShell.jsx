@@ -169,7 +169,7 @@ function AppShell({
                     className="logo-container"
                     onClick={onLogoClick}
                     role="link"
-                    aria-label="Home"
+                    aria-label={t('shellExtra.home')}
                 >
                     <img
                         src={isLight ? logoFullLight : logoFullDark}
@@ -198,7 +198,7 @@ function AppShell({
                 {!collapsed && (
                     <div className="sidebar-footer fade-in">
                         <div className="copyright-text">Copyright © 2026 Duosis</div>
-                        <div className="rights-text">All rights reserved.</div>
+                        <div className="rights-text">{t('shellExtra.allRightsReserved')}</div>
                     </div>
                 )}
             </Sider>
@@ -219,7 +219,7 @@ function AppShell({
                                 : setCollapsed(!collapsed)
                         }
                         className="collapse-btn"
-                        aria-label="Toggle navigation"
+                        aria-label={t('shellExtra.toggleNav')}
                     />
 
                     {/* Spacer */}

@@ -22,16 +22,17 @@ import {
     DeleteOutlined,
     ExclamationCircleOutlined,
 } from '@ant-design/icons'
+import { useT } from '../../i18n'
 
 function DangerConfirmModal({
     open,
-    title = 'Confirm action',
+    title,
     subtitle,
     body,
     itemName,
     itemSubtitle,
-    confirmLabel = 'Delete',
-    cancelLabel = 'Cancel',
+    confirmLabel,
+    cancelLabel,
     confirmIcon = <DeleteOutlined />,
     onConfirm,
     onCancel,
@@ -41,6 +42,12 @@ function DangerConfirmModal({
     // Icon shown in the badge; defaults to the warning glyph.
     badgeIcon = <ExclamationCircleOutlined />,
 }) {
+    const t = useT()
+    // Varsayilan metinler PARAMETREDE verilemez (ceviri hook'a bagli);
+    // burada cozulur ve cagiranin gecirdigi deger AYNEN korunur.
+    const heading = title ?? t('errors.confirmAction')
+    const confirmText = confirmLabel ?? t('common.delete')
+    const cancelText = cancelLabel ?? t('common.cancel')
     const isDanger = tone === 'danger'
     const accent = isDanger ? '#ef4444' : 'var(--color-primary)'
     const accentBadgeBg = isDanger
@@ -59,7 +66,7 @@ function DangerConfirmModal({
                element'ine aria-* gecirmedigi icin ayni metin gorsel
                olarak gizli bir baslik olarak da verilir. Tasarim
                degismez, diyalogun adi olur. */
-            title={<span className="h-sr-only">{title}</span>}
+            title={<span className="h-sr-only">{heading}</span>}
             classNames={{ header: 'h-sr-only' }}
             /* Pending'te kapanma kilidi (§7). */
             maskClosable={!loading}
@@ -95,7 +102,7 @@ function DangerConfirmModal({
                     </div>
                     <div>
                         <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--c-text-strong)' }}>
-                            {title}
+                            {heading}
                         </div>
                         {subtitle && (
                             <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 2 }}>
@@ -156,7 +163,7 @@ function DangerConfirmModal({
                             borderRadius: 8,
                         }}
                     >
-                        {cancelLabel}
+                        {cancelText}
                     </Button>
                     <Button
                         type="primary"
@@ -166,7 +173,7 @@ function DangerConfirmModal({
                         loading={loading}
                         style={{ borderRadius: 8 }}
                     >
-                        {confirmLabel}
+                        {confirmText}
                     </Button>
                 </div>
             </div>

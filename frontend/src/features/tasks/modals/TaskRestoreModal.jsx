@@ -15,15 +15,19 @@ import { useEffect, useMemo, useState } from 'react'
 import { Modal, Radio, Select, Space } from 'antd'
 
 import { assigneeLabelOf } from '../model/grouping'
+import { useT } from '../../../i18n'
 
-const STATUS_LABEL = {
-    pending: 'Pending',
-    in_progress: 'In Progress',
-    completed: 'Completed',
-    rejected: 'Rejected',
+// Durum -> ceviri ANAHTARI. Durum kodlari API sozlesmesidir ve
+// degismez; yalnizca gosterilen metin cevrilir.
+const STATUS_LABEL_KEY = {
+    pending: 'plan.pending',
+    in_progress: 'board.inProgress',
+    completed: 'board.completed',
+    rejected: 'plan.rejected',
 }
 
 function TaskRestoreModal({ item, loading, onCancel, onConfirm }) {
+    const t = useT()
     // Referans kararli: her render'da yeni bos dizi uretilirse
     // asagidaki effect surekli yeniden kosardi.
     const assignments = useMemo(() => item?.assignments || [], [item])
@@ -41,8 +45,8 @@ function TaskRestoreModal({ item, loading, onCancel, onConfirm }) {
     return (
         <Modal
             open={!!item}
-            title="Restore and reopen"
-            okText="Restore and reopen"
+            title={t('lifecycle.restoreAndReopen')}
+            okText={t('lifecycle.restoreAndReopen')}
             okButtonProps={{ disabled: !selected, loading }}
             cancelButtonProps={{ disabled: loading }}
             closable={!loading}
@@ -70,7 +74,7 @@ function TaskRestoreModal({ item, loading, onCancel, onConfirm }) {
                         <Radio key={a.id} value={a.id}>
                             {assigneeLabelOf(a)}
                             {' — '}
-                            {STATUS_LABEL[a.status] || a.status}
+                            {STATUS_LABEL_KEY[a.status] ? t(STATUS_LABEL_KEY[a.status]) : a.status}
                         </Radio>
                     ))}
                 </Space>
@@ -81,18 +85,16 @@ function TaskRestoreModal({ item, loading, onCancel, onConfirm }) {
                     htmlFor="restore-target-status"
                     style={{ display: 'block', marginBottom: 6,
                              color: 'var(--h-text-secondary)' }}
-                >
-                    Reopen as
-                </label>
+                >{t('lifecycle.reopenAs')}</label>
                 <Select
                     id="restore-target-status"
-                    aria-label="Reopen as"
+                    aria-label={t('lifecycle.reopenAs')}
                     value={targetStatus}
                     onChange={setTargetStatus}
                     style={{ width: 200 }}
                     options={[
-                        { value: 'in_progress', label: 'In Progress' },
-                        { value: 'pending', label: 'Pending' },
+                        { value: 'in_progress', label: t('board.inProgress') },
+                        { value: 'pending', label: t('plan.pending') },
                     ]}
                 />
             </div>

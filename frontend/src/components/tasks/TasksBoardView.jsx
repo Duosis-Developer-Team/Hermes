@@ -44,11 +44,13 @@ import { canDragTaskStatus } from '../../features/tasks/model/permissions'
 import { groupIntoLogicalItems, userLabel } from '../../features/tasks/model/grouping'
 import { typeMeta } from '../../utils/workItemType'
 import './TasksBoardView.css'
+import { useT } from '../../i18n'
 
+// Sutun listesi ANAHTAR tasir; ceviri render'da yapilir.
 const COLUMNS = [
-    { status: 'pending', label: 'Pending' },
-    { status: 'in_progress', label: 'In Progress' },
-    { status: 'completed', label: 'Completed' },
+    { status: 'pending', labelKey: 'plan.pending' },
+    { status: 'in_progress', labelKey: 'board.inProgress' },
+    { status: 'completed', labelKey: 'board.completed' },
 ]
 
 const VALID_STATUSES = new Set([
@@ -134,6 +136,7 @@ function TasksBoardView({
     // hover button still opens the full modal via onOpenReview.
     onOpenPanel,
 }) {
+    const t = useT()
     const sensors = useSensors(
         // 6px activation distance so a plain click still opens the Review
         // modal (TaskCard's body click) instead of starting a drag.
@@ -346,11 +349,11 @@ function TasksBoardView({
                         trigger={['click']}
                         menu={{
                             items: [
-                                { key: 'task', label: 'New Task' },
-                                { key: 'issue', label: 'New Issue' },
+                                { key: 'task', label: t('board.newTask') },
+                                { key: 'issue', label: t('board.newIssue') },
                                 {
                                     key: 'suggestion',
-                                    label: 'New Suggestion',
+                                    label: t('board.newSuggestion'),
                                 },
                             ],
                             onClick: ({ key }) => onCreate?.(key),
@@ -363,9 +366,8 @@ function TasksBoardView({
                             /* Ikon + "New" metni AntD'nin ikon
                                aria-label'lariyla karisik bir ad
                                uretiyordu; acik ad verilir (§8). */
-                            aria-label="New work item"
-                        >
-                            New <DownOutlined />
+                            aria-label={t('board.newWorkItem')}
+                        >{t('board.new')}<DownOutlined />
                         </Button>
                     </Dropdown>
                 </div>
@@ -392,13 +394,13 @@ function TasksBoardView({
                                     role="row"
                                 >
                                     <div className="tasks-board-swimlane-rowhead" />
-                                    {COLUMNS.map(({ status, label }) => (
+                                    {COLUMNS.map(({ status, labelKey }) => (
                                         <div
                                             key={status}
                                             className="tasks-board-swimlane-colhead"
                                             role="columnheader"
                                         >
-                                            {label}
+                                            {t(labelKey)}
                                         </div>
                                     ))}
                                 </div>

@@ -11,12 +11,14 @@
  */
 import { Avatar, Button, Select, Tooltip } from 'antd'
 import { FileExcelOutlined, UserOutlined } from '@ant-design/icons'
+import { useT } from '../../../i18n'
 
 function TimeEntryHeader({
     canSelectUser, targetUserId, usersList, onSelectUser, displayName,
     exportLoading, onExport,
     viewMode, onViewModeChange,
 }) {
+    const t = useT()
     return (
         <div className="user-header">
             <div className="user-header-left">
@@ -33,7 +35,7 @@ function TimeEntryHeader({
                             }))}
                             showSearch
                             optionFilterProp="label"
-                            aria-label="Select user"
+                            aria-label={t('timeEntryHeader.selectUser')}
                         />
                     </div>
                 ) : (
@@ -42,7 +44,7 @@ function TimeEntryHeader({
             </div>
 
             <div className="user-header-right">
-                <Tooltip title="Export CSV">
+                <Tooltip title={t('timeEntryHeader.exportCsv')}>
                     <Button
                         type="primary"
                         shape="circle"
@@ -50,12 +52,12 @@ function TimeEntryHeader({
                         icon={<FileExcelOutlined />}
                         loading={exportLoading}
                         onClick={onExport}
-                        aria-label="Export as CSV"
+                        aria-label={t('timeEntryHeader.exportAsCsv')}
                     />
                 </Tooltip>
 
 
-                <div className="view-switchers" role="tablist" aria-label="View">
+                <div className="view-switchers" role="tablist" aria-label={t('misc.view')}>
                     {['list', 'timesheet'].map((v) => (
                         <button
                             key={v}

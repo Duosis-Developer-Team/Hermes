@@ -40,6 +40,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import DeleteModal from '../../../components/common/DeleteModal'
 import { generateCode } from '../../../utils/codeGenerator'
 import { applyErrorToForm, normalizeApiError } from '../shared/normalizeApiError'
+import { useT } from '../../../i18n'
 
 const FORM_FIELDS = ['name', 'code', 'description', 'is_active']
 
@@ -55,6 +56,7 @@ const FORM_FIELDS = ['name', 'code', 'description', 'is_active']
 function DictionaryCrudPage({
     title, singular, description, codeColor = 'blue', service, queryKey,
 }) {
+    const t = useT()
     const queryClient = useQueryClient()
     const [form] = Form.useForm()
     const [modalOpen, setModalOpen] = useState(false)
@@ -191,16 +193,16 @@ function DictionaryCrudPage({
 
     const columns = useMemo(() => [
         {
-            title: 'Name', dataIndex: 'name', key: 'name',
+            title: t('common.name'), dataIndex: 'name', key: 'name',
             sorter: (a, b) => (a.name || '').localeCompare(b.name || '', 'en'),
         },
         {
-            title: 'Code', dataIndex: 'code', key: 'code',
+            title: t('dictionary.code'), dataIndex: 'code', key: 'code',
             render: (code) => <Tag color={codeColor}>{code}</Tag>,
         },
-        { title: 'Description', dataIndex: 'description', key: 'description' },
+        { title: t('common.description'), dataIndex: 'description', key: 'description' },
         {
-            title: 'Active', dataIndex: 'is_active', key: 'is_active',
+            title: t('common.active'), dataIndex: 'is_active', key: 'is_active',
             // Durum yalniz RENKLE anlatilmaz: etiket metni de tasir.
             render: (active) => (
                 <Tag color={active ? 'green' : 'red'}>
@@ -209,7 +211,7 @@ function DictionaryCrudPage({
             ),
         },
         {
-            title: 'Actions', key: 'actions', width: 110,
+            title: t('common.actions'), key: 'actions', width: 110,
             render: (_, record) => (
                 <Space>
                     {/* Ikon-only butonlar erisilebilir ad tasir (§8). */}
@@ -258,9 +260,7 @@ function DictionaryCrudPage({
                     style={{ marginBottom: 16 }}
                     message={normalizeApiError(error).message}
                     action={
-                        <Button size="small" onClick={() => refetch()}>
-                            Retry
-                        </Button>
+                        <Button size="small" onClick={() => refetch()}>{t('common.retry')}</Button>
                     }
                 />
             )}
@@ -356,9 +356,9 @@ function DictionaryCrudPage({
                 <Form form={form} layout="vertical">
                     <Form.Item
                         name="name"
-                        label="Name"
+                        label={t('common.name')}
                         rules={[
-                            { required: true, whitespace: true, message: 'Name is required.' },
+                            { required: true, whitespace: true, message: t('dictionary.nameRequired') },
                         ]}
                     >
                         <Input
@@ -374,19 +374,19 @@ function DictionaryCrudPage({
                     </Form.Item>
                     <Form.Item
                         name="code"
-                        label="Code"
+                        label={t('dictionary.code')}
                         rules={[
-                            { required: true, whitespace: true, message: 'Code is required.' },
+                            { required: true, whitespace: true, message: t('dictionary.codeRequired') },
                         ]}
                     >
                         <Input placeholder={`${singular} code`} maxLength={64} />
                     </Form.Item>
-                    <Form.Item name="description" label="Description">
+                    <Form.Item name="description" label={t('common.description')}>
                         <Input.TextArea rows={2} maxLength={500} />
                     </Form.Item>
                     <Form.Item
                         name="is_active"
-                        label="Active"
+                        label={t('common.active')}
                         valuePropName="checked"
                         initialValue={true}
                     >

@@ -6,11 +6,13 @@
  */
 import { Button } from 'antd'
 import { LeftOutlined, RightOutlined } from '@ant-design/icons'
+import { useT } from '../../../i18n'
 
 function WeekNavigator({
     weekLabel, totalLabel, targetLabel = '/ 40h',
     onPrevious, onNext, onToday,
 }) {
+    const t = useT()
     return (
         <div className="time-entry-header">
             <div className="header-left">
@@ -20,7 +22,7 @@ function WeekNavigator({
                         icon={<LeftOutlined />}
                         onClick={onPrevious}
                         className="nav-btn"
-                        aria-label="Previous week"
+                        aria-label={t('meetings.previousWeek')}
                     />
                     <span className="week-label">{weekLabel}</span>
                     <Button
@@ -28,12 +30,10 @@ function WeekNavigator({
                         icon={<RightOutlined />}
                         onClick={onNext}
                         className="nav-btn"
-                        aria-label="Next week"
+                        aria-label={t('meetings.nextWeek')}
                     />
                 </div>
-                <Button onClick={onToday} className="today-btn">
-                    Today
-                </Button>
+                <Button onClick={onToday} className="today-btn">{t('meetings.today')}</Button>
             </div>
 
             <div className="header-right">

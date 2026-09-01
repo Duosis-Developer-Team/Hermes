@@ -228,7 +228,7 @@ function ReportsPage() {
                     </FilterBlock>
 
                     {/* Users */}
-                    <FilterBlock label="Users" count={selectedUsers.length}>
+                    <FilterBlock label={t('entity.users')} count={selectedUsers.length}>
                         <Select
                             mode="multiple"
                             placeholder={t('reports.allUsers')}
@@ -245,7 +245,7 @@ function ReportsPage() {
                     </FilterBlock>
 
                     {/* Customers */}
-                    <FilterBlock label="Customers" count={selectedCustomers.length}>
+                    <FilterBlock label={t('entity.customers')} count={selectedCustomers.length}>
                         <Select
                             mode="multiple"
                             placeholder={t('reports.allCustomers')}
@@ -263,7 +263,7 @@ function ReportsPage() {
 
 
                     {/* Projects */}
-                    <FilterBlock label="Projects" count={selectedProjects.length}>
+                    <FilterBlock label={t('entity.projects')} count={selectedProjects.length}>
                         <Select
                             mode="multiple"
                             placeholder={t('reports.allProjects')}
@@ -280,7 +280,7 @@ function ReportsPage() {
                     </FilterBlock>
 
                     {/* Types */}
-                    <FilterBlock label="Types" count={selectedTypes.length}>
+                    <FilterBlock label={t('reports.types')} count={selectedTypes.length}>
                         <Select
                             mode="multiple"
                             placeholder={t('reports.allTypes')}
@@ -297,7 +297,7 @@ function ReportsPage() {
                     </FilterBlock>
 
                     {/* Platforms */}
-                    <FilterBlock label="Platforms" count={selectedPlatforms.length}>
+                    <FilterBlock label={t('entity.platforms')} count={selectedPlatforms.length}>
                         <Select
                             mode="multiple"
                             placeholder={t('reports.allPlatforms')}
@@ -330,7 +330,7 @@ function ReportsPage() {
                     </FilterBlock>
 
                     {/* Users */}
-                    <FilterBlock label="Users" count={selectedUsers.length}>
+                    <FilterBlock label={t('entity.users')} count={selectedUsers.length}>
                         <Select
                             mode="multiple"
                             placeholder={t('reports.allUsers')}
@@ -347,7 +347,7 @@ function ReportsPage() {
                     </FilterBlock>
 
                     {/* Customers */}
-                    <FilterBlock label="Customers" count={selectedCustomers.length}>
+                    <FilterBlock label={t('entity.customers')} count={selectedCustomers.length}>
                         <Select
                             mode="multiple"
                             placeholder={t('reports.allCustomers')}
@@ -365,7 +365,7 @@ function ReportsPage() {
 
 
                     {/* Projects */}
-                    <FilterBlock label="Projects" count={selectedProjects.length}>
+                    <FilterBlock label={t('entity.projects')} count={selectedProjects.length}>
                         <Select
                             mode="multiple"
                             placeholder={t('reports.allProjects')}
@@ -382,7 +382,7 @@ function ReportsPage() {
                     </FilterBlock>
 
                     {/* Types */}
-                    <FilterBlock label="Types" count={selectedTypes.length}>
+                    <FilterBlock label={t('reports.types')} count={selectedTypes.length}>
                         <Select
                             mode="multiple"
                             placeholder={t('reports.allTypes')}
@@ -399,7 +399,7 @@ function ReportsPage() {
                     </FilterBlock>
 
                     {/* Platforms */}
-                    <FilterBlock label="Platforms" count={selectedPlatforms.length}>
+                    <FilterBlock label={t('entity.platforms')} count={selectedPlatforms.length}>
                         <Select
                             mode="multiple"
                             placeholder={t('reports.allPlatforms')}

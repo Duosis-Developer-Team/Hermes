@@ -15,11 +15,13 @@ import {
     CheckCircleOutlined, PlayCircleOutlined, UndoOutlined,
 } from '@ant-design/icons'
 
-export function statusConfirmConfig({ task, nextCompleted }) {
+// `t` PARAMETRE olarak gelir: bu SAF bir fonksiyondur (dosyanin kendi
+// aciklamasi da boyle der) ve hook cagiramaz.
+export function statusConfirmConfig({ task, nextCompleted }, t) {
     // Pending → tamamla istegi ONCE kabul adimina donusur.
     if (nextCompleted && task.status === 'pending') {
         return {
-            title: 'Accept this task?',
+            title: t('lifecycle.acceptTask'),
             body: 'The task will move to In Progress so you can start working on it.',
             confirmLabel: 'Accept Task',
             icon: <PlayCircleOutlined />,
@@ -27,14 +29,14 @@ export function statusConfirmConfig({ task, nextCompleted }) {
     }
     if (nextCompleted) {
         return {
-            title: 'Mark task as completed?',
+            title: t('lifecycle.completeTask'),
             body: 'This marks the task as completed. You can reopen it afterwards if needed.',
             confirmLabel: 'Mark as Completed',
             icon: <CheckCircleOutlined />,
         }
     }
     return {
-        title: 'Reopen this task?',
+        title: t('lifecycle.reopenTask'),
         body: 'The task will move back to In Progress so it can be worked on again.',
         confirmLabel: 'Reopen',
         icon: <UndoOutlined />,

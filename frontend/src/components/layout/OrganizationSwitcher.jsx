@@ -24,10 +24,12 @@ import { DownOutlined, TeamOutlined } from '@ant-design/icons'
 
 import { authService } from '../../api/authApi'
 import { useAuthStore } from '../../stores/authStore'
+import { useT } from '../../i18n'
 
 const { Text } = Typography
 
 export default function OrganizationSwitcher() {
+    const t = useT()
     const tenant = useAuthStore((s) => s.tenant)
     const memberships = useAuthStore((s) => s.memberships)
     const setMemberships = useAuthStore((s) => s.setMemberships)
@@ -94,7 +96,7 @@ export default function OrganizationSwitcher() {
             <span
                 role="button"
                 tabIndex={0}
-                aria-label="Switch organization"
+                aria-label={t('shellExtra.switchOrganization')}
                 className="hermes-org-switcher"
                 style={{ cursor: 'pointer', display: 'inline-flex',
                          alignItems: 'center', gap: 6 }}

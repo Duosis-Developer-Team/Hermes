@@ -17,18 +17,21 @@ import useTaskInvalidation from '../hooks/useTaskInvalidation'
 import { normalizeApiError } from '../../admin/shared/normalizeApiError'
 import { queryKeys } from '../../../query/queryKeys'
 import { taskService } from '../../../services/api'
+import { useT } from '../../../i18n'
 
 const NEVER = '__never__'
 
+// Secenekler ANAHTAR tasir; ceviri render'da yapilir.
 const OPTIONS = [
-    { value: 1, label: '1 day' },
-    { value: 7, label: '7 days' },
-    { value: 14, label: '14 days' },
-    { value: 30, label: '30 days' },
-    { value: NEVER, label: 'Never' },
+    { value: 1, labelKey: 'lifecycle.oneDay' },
+    { value: 7, labelKey: 'lifecycle.sevenDays' },
+    { value: 14, labelKey: 'lifecycle.fourteenDays' },
+    { value: 30, labelKey: 'lifecycle.thirtyDays' },
+    { value: NEVER, labelKey: 'lifecycle.never' },
 ]
 
 function LifecyclePolicyControl() {
+    const t = useT()
     // Anahtar ve invalidation MERKEZI sozlesmeden gelir; bu bilesen
     // kendi anahtarini yazmaz.
     const { invalidateLifecyclePolicy } = useTaskInvalidation()
@@ -41,7 +44,7 @@ function LifecyclePolicyControl() {
         mutationFn: (value) =>
             taskService.setLifecyclePolicy(value === NEVER ? null : value),
         onSuccess: () => {
-            message.success('Archive policy updated')
+            message.success(t('lifecycle.policyUpdated'))
             invalidateLifecyclePolicy()
         },
         onError: (error) => message.error(normalizeApiError(error).message),
@@ -54,9 +57,7 @@ function LifecyclePolicyControl() {
     return (
         <div className="tm-policy-row">
             <div className="tm-policy-text">
-                <div className="tm-policy-label">
-                    Auto-archive completed work items after
-                </div>
+                <div className="tm-policy-label">{t('lifecycle.autoArchiveAfter')}</div>
                 <div className="tm-policy-hint">
                     Pending and In Progress work stays in Active regardless of
                     age. Archiving never deletes anything — logged time and
@@ -64,14 +65,14 @@ function LifecyclePolicyControl() {
                 </div>
             </div>
             <Select
-                aria-label="Auto-archive retention"
+                aria-label={t('lifecycle.retention')}
                 value={current}
                 onChange={(v) => {
                     if (mutation.isPending) return
                     mutation.mutate(v)
                 }}
                 loading={mutation.isPending}
-                options={OPTIONS}
+                options={OPTIONS.map((o) => ({ ...o, label: t(o.labelKey) }))}
                 style={{ minWidth: 160 }}
             />
         </div>

@@ -12,11 +12,13 @@
  */
 import DangerConfirmModal from '../../../components/common/DangerConfirmModal'
 import { statusConfirmConfig } from './statusConfirmConfig'
+import { useT } from '../../../i18n'
 
 function TaskStatusConfirmModal({ pendingToggle, loading, onCancel, onConfirm }) {
+    const t = useT()
     if (!pendingToggle) return null
     const { task } = pendingToggle
-    const cfg = statusConfirmConfig(pendingToggle)
+    const cfg = statusConfirmConfig(pendingToggle, t)
     return (
         <DangerConfirmModal
             open

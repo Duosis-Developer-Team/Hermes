@@ -11,6 +11,13 @@
  */
 import React from 'react'
 import { Button, Result } from 'antd'
+// `BaseBoundary` CLASS bilesenidir (hata siniri olmasi icin zorunlu) ve
+// hook cagiramaz. Ceviri store'dan O ANKI dille yapilir; bu ekran
+// nadiren gorunur ve dil degisiminde yeniden render edilmesi gerekmez.
+import { translate, useT } from '../../i18n'
+import { useLocaleStore } from '../../stores/localeStore'
+
+const t = (key) => translate(useLocaleStore.getState().locale, key)
 
 class BaseBoundary extends React.Component {
     constructor(props) {
@@ -46,7 +53,7 @@ class BaseBoundary extends React.Component {
                         type="primary"
                         onClick={() => this.setState({ error: null })}
                     >
-                        Tekrar dene
+                        {t('common.retry')}
                     </Button>
                 }
             />
@@ -55,10 +62,11 @@ class BaseBoundary extends React.Component {
 }
 
 export function AppErrorBoundary({ children }) {
+    const t = useT()
     return (
         <BaseBoundary
             level="app"
-            title="Hermes ran into an unexpected error"
+            title={t('errors.unexpected')}
             subtitle="Refreshing the page usually fixes this. If it persists, contact your administrator."
         >
             {children}
@@ -67,11 +75,12 @@ export function AppErrorBoundary({ children }) {
 }
 
 export function RouteErrorBoundary({ resetKey, children }) {
+    const t = useT()
     return (
         <BaseBoundary
             level="route"
             resetKey={resetKey}
-            title="Something went wrong while loading this page"
+            title={t('errors.pageLoadFailed')}
             subtitle="Other pages keep working. You can try again."
         >
             {children}

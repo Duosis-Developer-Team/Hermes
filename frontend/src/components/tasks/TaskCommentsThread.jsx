@@ -25,6 +25,7 @@ import dayjs from 'dayjs'
 import { taskService } from '../../services/api'
 import DangerConfirmModal from '../common/DangerConfirmModal'
 import './TaskCommentsThread.css'
+import { useT } from '../../i18n'
 
 function userLabel(id, userMap) {
     if (!id) return '—'
@@ -48,6 +49,7 @@ function relativeTimeShort(iso) {
 }
 
 function TaskCommentsThread({ taskId, currentUserId, isAdmin, userMap = {} }) {
+    const t = useT()
     const queryClient = useQueryClient()
     const [draft, setDraft] = useState('')
     const [editingId, setEditingId] = useState(null)
@@ -133,9 +135,7 @@ function TaskCommentsThread({ taskId, currentUserId, isAdmin, userMap = {} }) {
                         <Spin size="small" />
                     </div>
                 ) : comments.length === 0 ? (
-                    <div className="task-comments-empty">
-                        No comments yet. Start the conversation below.
-                    </div>
+                    <div className="task-comments-empty">{t('comments.empty')}</div>
                 ) : (
                     comments.map((c) => (
                         <div key={c.id} className="task-comment">
@@ -155,7 +155,7 @@ function TaskCommentsThread({ taskId, currentUserId, isAdmin, userMap = {} }) {
                                 {canMutate(c) && editingId !== c.id && (
                                     <div className="task-comment-actions">
                                         <Button
-                                aria-label="Edit comment"
+                                aria-label={t('comments.edit')}
                                             size="small"
                                             type="text"
                                             icon={<EditOutlined />}
@@ -165,7 +165,7 @@ function TaskCommentsThread({ taskId, currentUserId, isAdmin, userMap = {} }) {
                                             }}
                                         />
                                         <Button
-                                aria-label="Delete comment"
+                                aria-label={t('comments.deleteComment')}
                                             size="small"
                                             type="text"
                                             danger
@@ -194,17 +194,13 @@ function TaskCommentsThread({ taskId, currentUserId, isAdmin, userMap = {} }) {
                                                 setEditingId(null)
                                                 setEditDraft('')
                                             }}
-                                        >
-                                            Cancel
-                                        </Button>
+                                        >{t('common.cancel')}</Button>
                                         <Button
                                             size="small"
                                             type="primary"
                                             loading={updateMutation.isPending}
                                             onClick={handleSaveEdit}
-                                        >
-                                            Save
-                                        </Button>
+                                        >{t('common.save')}</Button>
                                     </div>
                                 </div>
                             ) : (
@@ -222,7 +218,7 @@ function TaskCommentsThread({ taskId, currentUserId, isAdmin, userMap = {} }) {
                     rows={2}
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
-                    placeholder="Write a comment…"
+                    placeholder={t('comments.placeholder')}
                     maxLength={5000}
                 />
                 <Button
@@ -231,14 +227,12 @@ function TaskCommentsThread({ taskId, currentUserId, isAdmin, userMap = {} }) {
                     loading={createMutation.isPending}
                     disabled={!draft.trim()}
                     onClick={handleSend}
-                >
-                    Send
-                </Button>
+                >{t('comments.send')}</Button>
             </div>
 
             <DangerConfirmModal
                 open={!!deletingComment}
-                title="Delete comment?"
+                title={t('comments.deleteConfirm')}
                 body="This comment will be removed from the thread. This action cannot be undone."
                 onCancel={() => setDeletingComment(null)}
                 onConfirm={() =>

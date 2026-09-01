@@ -13,6 +13,7 @@ import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import DayColumn from './DayColumn'
 import './WeeklyListView.css'
+import { useT } from '../../i18n'
 
 dayjs.extend(isoWeek)
 
@@ -37,6 +38,7 @@ function WeeklyListView({
     onSelectDay,
     onClearClipboard
 }) {
+    const t = useT()
     // Haftanın 7 gününü hesapla
     const weekDays = useMemo(() => {
         const days = []
@@ -101,7 +103,7 @@ function WeeklyListView({
                     <button
                         className="clipboard-close-btn"
                         onClick={onClearClipboard}
-                        title="Clear (Esc)"
+                        title={t('timesheet.clearEsc')}
                     >
                         ✕
                     </button>

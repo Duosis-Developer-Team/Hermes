@@ -376,6 +376,8 @@ export default {
         reopen: 'Reopen',
     },
     ticket: {
+        targetTeamFixed: 'The target team comes from the routing configuration and cannot be changed here.',
+        autoDiagnostics: 'Technical details sent automatically',
         newRequest: 'New support request',
         category: 'Category',
         selectCategory: 'Select a category',
@@ -778,5 +780,149 @@ export default {
         confirmAndClose: 'Confirm and close',
         cannotOpen: 'This request could not be opened',
         noLongerVisible: 'It is no longer visible to you.',
+    },
+    planCard: {
+        accept: 'Accept',
+        reject: 'Reject',
+        expired: 'Expired',
+        scheduled: 'Scheduled',
+    },
+
+    comments: {
+        placeholder: 'Write a comment…',
+        send: 'Send',
+        edit: 'Edit comment',
+        deleteComment: 'Delete comment',
+        deleteConfirm: 'Delete comment?',
+        empty: 'No comments yet. Start the conversation below.',
+    },
+    misc: {
+        loggingInMicrosoft: 'Logging in with Microsoft…',
+        signedInSuccessfully: 'Signed in successfully.',
+        authCodeMissing: 'Authorization code missing',
+        endSession: 'End session',
+        noMessages: 'No messages yet.',
+        noMatchingTasks: 'No matching tasks found',
+        noMeetings: 'No meetings',
+        back: 'Back',
+        view: 'View',
+        copy: 'Copy',
+    },
+
+    board: {
+        newTask: 'New Task',
+        newIssue: 'New Issue',
+        newSuggestion: 'New Suggestion',
+        newWorkItem: 'New work item',
+        new: 'New',
+        inProgress: 'In Progress',
+        completed: 'Completed',
+    },
+
+    explorer: {
+        workItemFolders: 'Work item folders',
+        folderPath: 'Folder path',
+        backToParent: 'Back to parent folder',
+        groupFoldersBy: 'Group folders by',
+        byCustomer: 'By customer',
+        byUser: 'By user',
+        searchWorkItems: 'Search work items',
+        itemsInFolder: 'Work items in selected folder',
+        quickFilters: 'Quick task filters',
+        clearQuickFilter: 'Clear quick filter',
+        groupByAssignee: 'Group by assignee',
+        taskScope: 'Task scope',
+        viewedUser: 'Viewed user',
+        workItemType: 'Work item type',
+        workItemPool: 'Work item pool',
+        timeRange: 'Time range',
+        whichAssignments: 'Which assignments should change?',
+    },
+
+    lifecycle: {
+        retention: 'Auto-archive retention',
+        autoArchiveAfter: 'Auto-archive completed work items after',
+        policyUpdated: 'Archive policy updated',
+        never: 'Never',
+        oneDay: '1 day',
+        sevenDays: '7 days',
+        fourteenDays: '14 days',
+        thirtyDays: '30 days',
+        archiveNow: 'Archive now',
+        restoreAndReopen: 'Restore and reopen',
+        reopenAs: 'Reopen as',
+        acceptTask: 'Accept this task?',
+        completeTask: 'Mark task as completed?',
+        reopenTask: 'Reopen this task?',
+    },
+
+    timeEntryHeader: {
+        exportCsv: 'Export CSV',
+        exportAsCsv: 'Export as CSV',
+        selectUser: 'Select user',
+    },
+
+    meetingCard: {
+        cancelled: 'Cancelled',
+        logged: 'Logged',
+        teams: 'Teams',
+        teamsMeeting: 'Microsoft Teams meeting',
+        privateMeeting: 'Private meeting — details are not stored',
+        timeLogged: 'Time logged for this meeting',
+    },
+
+    dictionary: {
+        code: 'Code',
+        codeRequired: 'Code is required.',
+        nameRequired: 'Name is required.',
+    },
+
+    token: {
+        created: 'API token created',
+        notShownAgain: 'This token will not be shown again. Store it securely now.',
+        copiedToClipboard: 'Token copied to clipboard.',
+        copyFailed: 'Copy failed — select and copy manually.',
+        confirmStored: 'I have copied and securely stored this token.',
+    },
+    shellExtra: {
+        home: 'Home',
+        toggleNav: 'Toggle navigation',
+        allRightsReserved: 'All rights reserved.',
+        switchOrganization: 'Switch organization',
+    },
+
+    timesheet: {
+        key: 'Key',
+        issue: 'Issue',
+        logged: 'Logged',
+        total: 'Total',
+        noEntries: 'No entries found for this period',
+        planTime: 'Plan Time',
+        clearEsc: 'Clear (Esc)',
+    },
+
+    workLog: {
+        editLog: 'Edit log',
+        deleteLog: 'Delete log',
+    },
+
+    memberModal: {
+        selectUsers: 'Select one or more users',
+        pickAtLeastOne: 'Pick at least one user.',
+        allAlreadyMembers: 'All users are already members of this group.',
+        titleExample: 'Senior Developer',
+    },
+
+    errors: {
+        unexpected: 'Hermes ran into an unexpected error',
+        pageLoadFailed: 'Something went wrong while loading this page',
+        somethingWrong: 'Something went wrong.',
+        reload: 'Reload',
+        confirmAction: 'Confirm action',
+    },
+
+    picker: {
+        hours: 'Hours',
+        minutes: 'Minutes',
     },
 }

@@ -11,15 +11,17 @@ import { InboxOutlined } from '@ant-design/icons'
 import { Modal } from 'antd'
 
 import { typeMeta } from '../../../utils/workItemType'
+import { useT } from '../../../i18n'
 
 function TaskArchiveModal({ item, loading, onCancel, onConfirm }) {
+    const t = useT()
     const meta = typeMeta(item?.kind || item?.representative?.task_type)
     const count = item?.assignments?.length || 0
     return (
         <Modal
             open={!!item}
             title={`Archive ${meta.singular}`}
-            okText="Archive now"
+            okText={t('lifecycle.archiveNow')}
             okButtonProps={{ icon: <InboxOutlined />, loading }}
             cancelButtonProps={{ disabled: loading }}
             closable={!loading}

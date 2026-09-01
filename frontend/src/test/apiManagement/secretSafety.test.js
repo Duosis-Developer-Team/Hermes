@@ -97,7 +97,10 @@ describe('reveal-once sozlesmesi', () => {
     })
 
     it('"bir daha gosterilmeyecek" uyarisi kullaniciya soylenir', () => {
-        expect(tokenModal()).toMatch(/will not be shown again/i)
+        // i18n sonrasi metin sozlukten gelir; kilit ANAHTAR uzerinde.
+        // Uyarinin GERCEK metni `test/i18n/locale.test.jsx` ile
+        // dogrulanir (EN ve TR karsiliklari zorunlu).
+        expect(tokenModal()).toMatch(/token\.notShownAgain/)
     })
 
     it('kopyalama ACIK bir kullanici eylemi ve geri bildirimi var', () => {

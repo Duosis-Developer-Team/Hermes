@@ -14,13 +14,15 @@
 import { CloseOutlined } from '@ant-design/icons'
 
 import { TASK_QUICK_FILTERS } from '../model/constants'
+import { useT } from '../../../i18n'
 
 function TaskQuickFilters({ value, onToggle, onClear }) {
+    const t = useT()
     return (
         <div
             className="tasks-quickfilters"
             role="toolbar"
-            aria-label="Quick task filters"
+            aria-label={t('explorer.quickFilters')}
         >
             {TASK_QUICK_FILTERS.map((f) => {
                 const isActive = value === f.value
@@ -42,12 +44,10 @@ function TaskQuickFilters({ value, onToggle, onClear }) {
                 <button
                     type="button"
                     className="tasks-quickfilter-clear"
-                    aria-label="Clear quick filter"
+                    aria-label={t('explorer.clearQuickFilter')}
                     onClick={onClear}
                 >
-                    <CloseOutlined />
-                    Clear
-                </button>
+                    <CloseOutlined />{t('common.clear')}</button>
             )}
         </div>
     )

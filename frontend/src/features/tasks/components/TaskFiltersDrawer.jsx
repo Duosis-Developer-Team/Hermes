@@ -9,15 +9,17 @@
 import { Drawer } from 'antd'
 
 import TaskFilterBar from './TaskFilterBar'
+import { useT } from '../../../i18n'
 
 function TaskFiltersDrawer({
     open, onClose, placement, filters, customers, projects, subProjects,
     assigneeOptions, onStatusChange, onPriorityChange, onCustomerChange,
     onProjectChange, onSubProjectChange, onAssigneeChange, onClear,
 }) {
+    const t = useT()
     return (
         <Drawer
-            title="Filters"
+            title={t('tasks.filters')}
             open={open}
             onClose={onClose}
             placement={placement}

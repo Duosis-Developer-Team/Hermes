@@ -11,11 +11,13 @@ import { Button, Space } from 'antd'
 import { LeftOutlined, RightOutlined } from '@ant-design/icons'
 
 import { TASK_RANGE_MODES } from '../model/constants'
+import { useT } from '../../../i18n'
 
 function TaskRangeBar({
     rangeMode, onSelectRange, weekStart, weekEnd,
     onPreviousWeek, onCurrentWeek, onNextWeek,
 }) {
+    const t = useT()
     return (
         <div
             className="tasks-body"
@@ -29,7 +31,7 @@ function TaskRangeBar({
                 paddingBottom: 0,
             }}
         >
-            <div className="tasks-views" role="tablist" aria-label="Time range">
+            <div className="tasks-views" role="tablist" aria-label={t('explorer.timeRange')}>
                 {TASK_RANGE_MODES.map((m) => (
                     <button
                         key={m.value}
@@ -49,13 +51,13 @@ function TaskRangeBar({
                 <Space wrap>
                     <Button
                         icon={<LeftOutlined />}
-                        aria-label="Previous week"
+                        aria-label={t('meetings.previousWeek')}
                         onClick={onPreviousWeek}
                     />
-                    <Button onClick={onCurrentWeek}>Today</Button>
+                    <Button onClick={onCurrentWeek}>{t('meetings.today')}</Button>
                     <Button
                         icon={<RightOutlined />}
-                        aria-label="Next week"
+                        aria-label={t('meetings.nextWeek')}
                         onClick={onNextWeek}
                     />
                     <span style={{ color: 'var(--c-text-strong)', fontWeight: 500 }}>

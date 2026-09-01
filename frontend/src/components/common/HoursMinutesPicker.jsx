@@ -12,6 +12,7 @@
 
 import { useState, useEffect } from 'react'
 import './HoursMinutesPicker.css'
+import { useT } from '../../i18n'
 
 // Decimal hours → { h, m } (m snapped to nearest 15 for legacy data)
 function decimalToHM(decimal) {
@@ -27,6 +28,7 @@ function decimalToHM(decimal) {
 }
 
 function HoursMinutesPicker({ value, onChange, disabled = false, size = 'default' }) {
+    const t = useT()
     const [hours, setHours] = useState(0)
     const [hoursRaw, setHoursRaw] = useState('0')
     const [minutes, setMinutes] = useState(0)
@@ -165,7 +167,7 @@ function HoursMinutesPicker({ value, onChange, disabled = false, size = 'default
                         inputMode="numeric"
                         /* Ozel kontrol: Form.Item label'i bu input'a
                            baglanmaz — erisilebilir ad acikca verilir. */
-                        aria-label="Hours"
+                        aria-label={t('picker.hours')}
                         value={hoursRaw}
                         onChange={handleHoursChange}
                         onBlur={handleHoursBlur}
@@ -195,7 +197,7 @@ function HoursMinutesPicker({ value, onChange, disabled = false, size = 'default
                         className={`hmp-input${minutesError ? ' hmp-input-error' : ''}`}
                         type="text"
                         inputMode="numeric"
-                        aria-label="Minutes"
+                        aria-label={t('picker.minutes')}
                         value={minutesRaw}
                         onChange={handleMinutesChange}
                         onBlur={handleMinutesBlur}

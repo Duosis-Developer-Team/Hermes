@@ -30,6 +30,7 @@ import {
 import WeekNavigator from '../features/time-entry/components/WeekNavigator'
 import TimeEntryHeader from '../features/time-entry/components/TimeEntryHeader'
 import './TimeEntryPage.css'
+import { useT } from '../i18n'
 
 dayjs.extend(isoWeek)
 dayjs.locale('en')
@@ -44,6 +45,7 @@ function formatDuration(decimal) {
 }
 
 function TimeEntryPage() {
+    const t = useT()
     const queryClient = useQueryClient()
     const { user } = useAuthStore()
 
@@ -177,7 +179,7 @@ function TimeEntryPage() {
     const createMutation = useMutation({
         mutationFn: (data) => workLogService.create(data, selectedUserId || null),
         onSuccess: () => {
-            message.success('Time logged')
+            message.success(t('timeEntry.timeLogged'))
             queryClient.invalidateQueries({ queryKey: ['workLogs'] })
         },
         onError: (error) => {
@@ -199,7 +201,7 @@ function TimeEntryPage() {
     const updateMutation = useMutation({
         mutationFn: ({ id, data }) => workLogService.update(id, data),
         onSuccess: () => {
-            message.success('Time updated')
+            message.success(t('timeEntry.timeUpdated'))
             queryClient.invalidateQueries({ queryKey: ['workLogs'] })
         },
         onError: (error) => {
@@ -210,7 +212,7 @@ function TimeEntryPage() {
     const deleteMutation = useMutation({
         mutationFn: workLogService.delete,
         onSuccess: () => {
-            message.success('Log entry deleted successfully')
+            message.success(t('timeEntry.logEntryDeleted'))
             queryClient.invalidateQueries({ queryKey: ['workLogs'] })
             setDeletingLog(null)
         },
@@ -264,7 +266,7 @@ function TimeEntryPage() {
     const createPlanTimeMutation = useMutation({
         mutationFn: (data) => planTimeService.create(data),
         onSuccess: () => {
-            message.success('Meeting invite sent')
+            message.success(t('timeEntry.meetingInviteSent'))
             setPlanTimeModalOpen(false)
             queryClient.invalidateQueries({ queryKey: ['planTimes'] })
         },
@@ -276,7 +278,7 @@ function TimeEntryPage() {
     const updatePlanTimeMutation = useMutation({
         mutationFn: ({ id, data }) => planTimeService.update(id, data),
         onSuccess: () => {
-            message.success('Plan updated')
+            message.success(t('timeEntry.planUpdated'))
             setPlanTimeModalOpen(false)
             setEditingPlan(null)
             queryClient.invalidateQueries({ queryKey: ['planTimes'] })
@@ -289,12 +291,12 @@ function TimeEntryPage() {
     const deletePlanTimeMutation = useMutation({
         mutationFn: (id) => planTimeService.delete(id),
         onSuccess: () => {
-            message.success('Plan deleted')
+            message.success(t('timeEntry.planDeleted'))
             setDeletingPlan(null)
             queryClient.invalidateQueries({ queryKey: ['planTimes'] })
         },
         onError: () => {
-            message.error('Failed to delete plan')
+            message.error(t('timeEntry.deletePlanFailed'))
             setDeletingPlan(null)
         },
     })
@@ -306,7 +308,7 @@ function TimeEntryPage() {
             queryClient.invalidateQueries({ queryKey: ['planTimes'] })
         },
         onError: () => {
-            message.error('Failed to respond')
+            message.error(t('timeEntry.respondFailed'))
         },
     })
 
@@ -394,7 +396,7 @@ function TimeEntryPage() {
                 e.preventDefault()
 
                 if (!targetDate) {
-                    message.warning('Select a target day first, then paste')
+                    message.warning(t('timeEntry.selectTargetDay'))
                     return
                 }
 
@@ -422,7 +424,7 @@ function TimeEntryPage() {
 
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [selectedLogId, copiedLog, targetDate, workLogs, pasteMutation])
+    }, [selectedLogId, copiedLog, targetDate, workLogs, pasteMutation, t])
 
     const [exportLoading, setExportLoading] = useState(false)
 
@@ -456,10 +458,10 @@ function TimeEntryPage() {
                 user_id: selectedUserId // Pass the selected user (or null)
             }, customFilename)
 
-            message.success('Weekly report (CSV) downloaded')
+            message.success(t('timeEntry.reportDownloaded'))
         } catch (error) {
             console.error('Export error:', error)
-            message.error('Failed to download report')
+            message.error(t('timeEntry.reportFailed'))
         } finally {
             setExportLoading(false)
         }
@@ -584,8 +586,8 @@ function TimeEntryPage() {
                             <ExclamationCircleOutlined style={{ color: '#ef4444', fontSize: 20 }} />
                         </div>
                         <div>
-                            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--c-text-strong)' }}>Delete Plan</div>
-                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 2 }}>All assignments will be removed</div>
+                            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--c-text-strong)' }}>{t('timeEntry.deletePlan')}</div>
+                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 2 }}>{t('timeEntry.assignmentsWillBeRemoved')}</div>
                         </div>
                     </div>
 
@@ -613,9 +615,7 @@ function TimeEntryPage() {
                         <Button
                             onClick={() => setDeletingPlan(null)}
                             style={{ background: 'transparent', borderColor: 'var(--c-border-strong)', color: 'var(--c-text)', borderRadius: 8 }}
-                        >
-                            Cancel
-                        </Button>
+                        >{t('common.cancel')}</Button>
                         <Button
                             type="primary"
                             danger
@@ -623,9 +623,7 @@ function TimeEntryPage() {
                             onClick={handleDeletePlanConfirm}
                             loading={deletePlanTimeMutation.isPending}
                             style={{ borderRadius: 8 }}
-                        >
-                            Delete
-                        </Button>
+                        >{t('common.delete')}</Button>
                     </div>
                 </div>
             </Modal>
@@ -659,12 +657,8 @@ function TimeEntryPage() {
                             <ExclamationCircleOutlined style={{ color: '#ef4444', fontSize: 20 }} />
                         </div>
                         <div>
-                            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--c-text-strong)' }}>
-                                Confirm Deletion
-                            </div>
-                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 2 }}>
-                                This action cannot be undone
-                            </div>
+                            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--c-text-strong)' }}>{t('timeEntry.confirmDeletion')}</div>
+                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 2 }}>{t('timeEntry.cannotBeUndone')}</div>
                         </div>
                     </div>
 
@@ -704,9 +698,7 @@ function TimeEntryPage() {
                                 color: 'var(--c-text)',
                                 borderRadius: 8,
                             }}
-                        >
-                            Cancel
-                        </Button>
+                        >{t('common.cancel')}</Button>
                         <Button
                             type="primary"
                             danger
@@ -714,9 +706,7 @@ function TimeEntryPage() {
                             onClick={handleDeleteConfirm}
                             loading={deleteMutation.isPending}
                             style={{ borderRadius: 8 }}
-                        >
-                            Delete
-                        </Button>
+                        >{t('common.delete')}</Button>
                     </div>
                 </div>
             </Modal>

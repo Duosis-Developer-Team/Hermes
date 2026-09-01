@@ -12,6 +12,7 @@ import { Table, Checkbox } from 'antd'
 import { CheckSquareOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import './TimesheetView.css'
+import { useT } from '../../i18n'
 
 // 0.75 → "45m", 2.75 → "2h 45m", 2.0 → "2h"
 function formatDuration(decimal) {
@@ -27,6 +28,7 @@ function TimesheetView({
     workLogs = [],
     onCellClick,
 }) {
+    const t = useT()
     // Haftanın günlerini hesapla (2 hafta gösterilecek - 14 gün)
     const displayDays = useMemo(() => {
         const days = []
@@ -94,7 +96,7 @@ function TimesheetView({
         },
         // Issue (Proje) column
         {
-            title: 'Issue',
+            title: t('timesheet.issue'),
             dataIndex: 'project_name',
             key: 'issue',
             fixed: 'left',
@@ -108,7 +110,7 @@ function TimesheetView({
         },
         // Key (Müşteri Kodu) column
         {
-            title: 'Key',
+            title: t('timesheet.key'),
             dataIndex: 'customer_code',
             key: 'key',
             fixed: 'left',
@@ -119,7 +121,7 @@ function TimesheetView({
         },
         // Logged (Toplam) column
         {
-            title: 'Logged',
+            title: t('timesheet.logged'),
             dataIndex: 'totalHours',
             key: 'logged',
             width: 70,
@@ -179,15 +181,13 @@ function TimesheetView({
                 scroll={{ x: 900 }}
                 size="small"
                 className="timesheet-table"
-                locale={{ emptyText: 'No entries found for this period' }}
+                locale={{ emptyText: t('timesheet.noEntries') }}
                 rowClassName="timesheet-row"
                 summary={() => {
                     return (
                         <Table.Summary fixed>
                             <Table.Summary.Row className="timesheet-total-row">
-                                <Table.Summary.Cell index={0} colSpan={3} className="timesheet-total-label">
-                                    Total
-                                </Table.Summary.Cell>
+                                <Table.Summary.Cell index={0} colSpan={3} className="timesheet-total-label">{t('timesheet.total')}</Table.Summary.Cell>
                                 <Table.Summary.Cell index={1} className="timesheet-total-value">
                                     {formatDuration(grandTotal) || '0h'}
                                 </Table.Summary.Cell>

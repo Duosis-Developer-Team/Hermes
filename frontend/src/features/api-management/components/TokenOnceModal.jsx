@@ -13,8 +13,10 @@
 import { useState } from 'react'
 import { Alert, Button, Checkbox, Modal, Space, Tooltip, message } from 'antd'
 import { CopyOutlined, EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons'
+import { useT } from '../../../i18n'
 
 export default function TokenOnceModal({ issued, onDone }) {
+    const t = useT()
     const [copied, setCopied] = useState(false)
     const [confirmed, setConfirmed] = useState(false)
     const [masked, setMasked] = useState(false)
@@ -26,16 +28,16 @@ export default function TokenOnceModal({ issued, onDone }) {
         try {
             await navigator.clipboard.writeText(token)
             setCopied(true)
-            message.success('Token copied to clipboard.')
+            message.success(t('token.copiedToClipboard'))
         } catch {
-            message.error('Copy failed — select and copy manually.')
+            message.error(t('token.copyFailed'))
         }
     }
 
     return (
         <Modal
             open
-            title="API token created"
+            title={t('token.created')}
             closable={false}
             maskClosable={false}
             keyboard={false}
@@ -54,7 +56,7 @@ export default function TokenOnceModal({ issued, onDone }) {
             <Alert
                 type="warning"
                 showIcon
-                message="This token will not be shown again. Store it securely now."
+                message={t('token.notShownAgain')}
                 style={{ marginBottom: 16 }}
             />
             <div className="am-token-box">
@@ -84,18 +86,14 @@ export default function TokenOnceModal({ issued, onDone }) {
                         type="primary"
                         icon={<CopyOutlined />}
                         onClick={copy}
-                    >
-                        Copy
-                    </Button>
+                    >{t('misc.copy')}</Button>
                 </Space>
             </div>
             <Checkbox
                 checked={confirmed}
                 onChange={(e) => setConfirmed(e.target.checked)}
                 style={{ marginTop: 16 }}
-            >
-                I have copied and securely stored this token.
-            </Checkbox>
+            >{t('token.confirmStored')}</Checkbox>
             {!copied && confirmed && (
                 <div className="am-token-hint">
                     Tip: use the Copy button to avoid typos.

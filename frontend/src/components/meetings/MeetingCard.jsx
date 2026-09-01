@@ -27,12 +27,14 @@ import {
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import './MeetingCard.css'
+import { useT } from '../../i18n'
 
 function MeetingCard({
     meeting,
     onClick,
     isLogged = false,
 }) {
+    const t = useT()
     const start = meeting.start_datetime
         ? dayjs(meeting.start_datetime)
         : null
@@ -76,7 +78,7 @@ function MeetingCard({
                 <div className="meeting-card-time">{timeRange}</div>
                 <div className="meeting-card-title">
                     {isPrivate ? (
-                        <Tooltip title="Private meeting — details are not stored">
+                        <Tooltip title={t('meetingCard.privateMeeting')}>
                             <LockOutlined
                                 style={{ marginRight: 6, color: 'var(--c-text-muted)' }}
                             />
@@ -108,25 +110,19 @@ function MeetingCard({
                     {hasTeams && (
                         <span
                             className="meeting-card-badge meeting-card-teams"
-                            title="Microsoft Teams meeting"
+                            title={t('meetingCard.teamsMeeting')}
                         >
-                            <TeamOutlined />
-                            Teams
-                        </span>
+                            <TeamOutlined />{t('meetingCard.teams')}</span>
                     )}
                     {isCancelled && (
-                        <span className="meeting-card-badge meeting-card-cancelled-pill">
-                            Cancelled
-                        </span>
+                        <span className="meeting-card-badge meeting-card-cancelled-pill">{t('meetingCard.cancelled')}</span>
                     )}
                     {isLogged && (
                         <span
                             className="meeting-card-badge meeting-card-logged-pill"
-                            title="Time logged for this meeting"
+                            title={t('meetingCard.timeLogged')}
                         >
-                            <CheckCircleOutlined />
-                            Logged
-                        </span>
+                            <CheckCircleOutlined />{t('meetingCard.logged')}</span>
                     )}
                 </div>
             </div>

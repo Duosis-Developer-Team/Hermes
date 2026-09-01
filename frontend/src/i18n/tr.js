@@ -370,6 +370,8 @@ export default {
         reopen: 'Yeniden Aç',
     },
     ticket: {
+        targetTeamFixed: 'Hedef ekip yönlendirme yapılandırmasından gelir ve buradan değiştirilemez.',
+        autoDiagnostics: 'Teknik ayrıntılar otomatik gönderilir',
         newRequest: 'Yeni destek talebi',
         category: 'Kategori',
         selectCategory: 'Bir kategori seçin',
@@ -772,5 +774,149 @@ export default {
         confirmAndClose: 'Onayla ve kapat',
         cannotOpen: 'Bu talep açılamadı',
         noLongerVisible: 'Artık size görünmüyor.',
+    },
+    planCard: {
+        accept: 'Kabul et',
+        reject: 'Reddet',
+        expired: 'Süresi doldu',
+        scheduled: 'Planlandı',
+    },
+
+    comments: {
+        placeholder: 'Bir yorum yazın…',
+        send: 'Gönder',
+        edit: 'Yorumu düzenle',
+        deleteComment: 'Yorumu sil',
+        deleteConfirm: 'Yorum silinsin mi?',
+        empty: 'Henüz yorum yok. Aşağıdan sohbeti başlatın.',
+    },
+    misc: {
+        loggingInMicrosoft: 'Microsoft ile giriş yapılıyor…',
+        signedInSuccessfully: 'Giriş yapıldı.',
+        authCodeMissing: 'Yetkilendirme kodu eksik',
+        endSession: 'Oturumu bitir',
+        noMessages: 'Henüz mesaj yok.',
+        noMatchingTasks: 'Eşleşen görev bulunamadı',
+        noMeetings: 'Toplantı yok',
+        back: 'Geri',
+        view: 'Görünüm',
+        copy: 'Kopyala',
+    },
+
+    board: {
+        newTask: 'Yeni Görev',
+        newIssue: 'Yeni Sorun',
+        newSuggestion: 'Yeni Öneri',
+        newWorkItem: 'Yeni iş kaydı',
+        new: 'Yeni',
+        inProgress: 'İşlemde',
+        completed: 'Tamamlandı',
+    },
+
+    explorer: {
+        workItemFolders: 'İş kaydı klasörleri',
+        folderPath: 'Klasör yolu',
+        backToParent: 'Üst klasöre dön',
+        groupFoldersBy: 'Klasörleri şuna göre grupla',
+        byCustomer: 'Müşteriye göre',
+        byUser: 'Kullanıcıya göre',
+        searchWorkItems: 'İş kayıtlarında ara',
+        itemsInFolder: 'Seçili klasördeki iş kayıtları',
+        quickFilters: 'Hızlı görev filtreleri',
+        clearQuickFilter: 'Hızlı filtreyi temizle',
+        groupByAssignee: 'Atanana göre grupla',
+        taskScope: 'Görev kapsamı',
+        viewedUser: 'Görüntülenen kullanıcı',
+        workItemType: 'İş kaydı türü',
+        workItemPool: 'İş kaydı havuzu',
+        timeRange: 'Zaman aralığı',
+        whichAssignments: 'Hangi atamalar değişsin?',
+    },
+
+    lifecycle: {
+        retention: 'Otomatik arşivleme süresi',
+        autoArchiveAfter: 'Tamamlanan iş kayıtlarını şu süre sonra arşivle',
+        policyUpdated: 'Arşivleme kuralı güncellendi',
+        never: 'Asla',
+        oneDay: '1 gün',
+        sevenDays: '7 gün',
+        fourteenDays: '14 gün',
+        thirtyDays: '30 gün',
+        archiveNow: 'Şimdi arşivle',
+        restoreAndReopen: 'Geri al ve yeniden aç',
+        reopenAs: 'Şu durumda aç',
+        acceptTask: 'Bu görev kabul edilsin mi?',
+        completeTask: 'Görev tamamlandı olarak işaretlensin mi?',
+        reopenTask: 'Bu görev yeniden açılsın mı?',
+    },
+
+    timeEntryHeader: {
+        exportCsv: 'CSV Dışa Aktar',
+        exportAsCsv: 'CSV olarak dışa aktar',
+        selectUser: 'Kullanıcı seçin',
+    },
+
+    meetingCard: {
+        cancelled: 'İptal edildi',
+        logged: 'Kaydedildi',
+        teams: 'Teams',
+        teamsMeeting: 'Microsoft Teams toplantısı',
+        privateMeeting: 'Özel toplantı — ayrıntılar saklanmıyor',
+        timeLogged: 'Bu toplantı için süre kaydedildi',
+    },
+
+    dictionary: {
+        code: 'Kod',
+        codeRequired: 'Kod zorunludur.',
+        nameRequired: 'Ad zorunludur.',
+    },
+
+    token: {
+        created: 'API token oluşturuldu',
+        notShownAgain: 'Bu token bir daha gösterilmeyecek. Şimdi güvenli bir yere kaydedin.',
+        copiedToClipboard: 'Token panoya kopyalandı.',
+        copyFailed: 'Kopyalanamadı — seçip elle kopyalayın.',
+        confirmStored: 'Bu token\'ı kopyaladım ve güvenle sakladım.',
+    },
+    shellExtra: {
+        home: 'Ana sayfa',
+        toggleNav: 'Menüyü aç/kapat',
+        allRightsReserved: 'Tüm hakları saklıdır.',
+        switchOrganization: 'Organizasyon değiştir',
+    },
+
+    timesheet: {
+        key: 'Anahtar',
+        issue: 'Sorun',
+        logged: 'Kaydedilen',
+        total: 'Toplam',
+        noEntries: 'Bu dönem için kayıt bulunamadı',
+        planTime: 'Süre Planla',
+        clearEsc: 'Temizle (Esc)',
+    },
+
+    workLog: {
+        editLog: 'Kaydı düzenle',
+        deleteLog: 'Kaydı sil',
+    },
+
+    memberModal: {
+        selectUsers: 'Bir veya daha fazla kullanıcı seçin',
+        pickAtLeastOne: 'En az bir kullanıcı seçin.',
+        allAlreadyMembers: 'Tüm kullanıcılar zaten bu grubun üyesi.',
+        titleExample: 'Kıdemli Geliştirici',
+    },
+
+    errors: {
+        unexpected: 'Hermes beklenmeyen bir hatayla karşılaştı',
+        pageLoadFailed: 'Bu sayfa yüklenirken bir sorun oluştu',
+        somethingWrong: 'Bir sorun oluştu.',
+        reload: 'Yeniden yükle',
+        confirmAction: 'İşlemi onayla',
+    },
+
+    picker: {
+        hours: 'Saat',
+        minutes: 'Dakika',
     },
 }

@@ -10,14 +10,16 @@
 import { Checkbox, Modal } from 'antd'
 
 import { userLabel } from '../model/grouping'
+import { useT } from '../../../i18n'
 
 const label = (status) => (status === 'in_progress' ? 'In Progress' : status)
 
 function MultiAssignmentConfirm({ pending, userMap, onToggle, onCancel, onConfirm }) {
+    const t = useT()
     return (
         <Modal
             open={!!pending}
-            title="Which assignments should change?"
+            title={t('explorer.whichAssignments')}
             okText={`Move ${pending?.selected.length || 0} to ${label(pending?.newStatus || '')}`}
             okButtonProps={{ disabled: !pending?.selected.length }}
             onOk={onConfirm}

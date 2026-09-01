@@ -183,11 +183,11 @@ function DashboardPage() {
                 </div>
                 <div className="h-metric-strip__item">
                     <div className="h-metric-strip__value">{summary.customerCount}</div>
-                    <div className="h-metric-strip__label">Customers</div>
+                    <div className="h-metric-strip__label">{t('entity.customers')}</div>
                 </div>
                 <div className="h-metric-strip__item">
                     <div className="h-metric-strip__value">{summary.projectCount}</div>
-                    <div className="h-metric-strip__label">Projects</div>
+                    <div className="h-metric-strip__label">{t('entity.projects')}</div>
                 </div>
                 <div className="h-metric-strip__item">
                     <div className="h-metric-strip__value">{summary.memberCount}</div>

@@ -11,6 +11,7 @@
  */
 import { Button as AntButton, Modal, Spin } from 'antd'
 import './ui.css'
+import { useT } from '../../i18n'
 
 const cx = (...parts) => parts.filter(Boolean).join(' ')
 
@@ -182,10 +183,17 @@ export function AppModal({ pending = false, ...rest }) {
 /** Onay diyalogu: yikici eylemler danger'la isaretlenir; pending'te
  *  kapanma kilitli, buton etiketi anlamini korur (§7 UX sozlesmesi). */
 export function ConfirmDialog({
-    open, title, description, confirmText = 'Confirm',
-    cancelText = 'Cancel', danger = false, pending = false,
+    // Varsayilan metinler PARAMETREDE verilemez: ceviri bir hook'a
+    // baglidir ve varsayilan ifade bilesen govdesinden ONCE hesaplanir.
+    // `undefined` birakilip govdede cozulur; cagiran deger gecerse o
+    // deger AYNEN korunur.
+    open, title, description, confirmText,
+    cancelText, danger = false, pending = false,
     onConfirm, onCancel, children,
 }) {
+    const t = useT()
+    const confirmLabel = confirmText ?? t('common.confirm')
+    const cancelLabel = cancelText ?? t('common.cancel')
     return (
         <AppModal
             open={open}
@@ -194,7 +202,7 @@ export function ConfirmDialog({
             onCancel={pending ? undefined : onCancel}
             footer={[
                 <AntButton key="cancel" onClick={onCancel} disabled={pending}>
-                    {cancelText}
+                    {cancelLabel}
                 </AntButton>,
                 <AntButton
                     key="confirm"
@@ -203,7 +211,7 @@ export function ConfirmDialog({
                     loading={pending}
                     onClick={onConfirm}
                 >
-                    {confirmText}
+                    {confirmLabel}
                 </AntButton>,
             ]}
         >

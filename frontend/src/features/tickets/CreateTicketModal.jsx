@@ -104,13 +104,13 @@ export default function CreateTicketModal({
                                 <strong>{groupName}</strong> team.
                             </span>
                         )}
-                        description="The target team comes from the routing configuration and cannot be changed here."
+                        description={t('ticket.targetTeamFixed')}
                     />
                 ) : (
                     <Alert
                         type="warning"
                         showIcon
-                        message="Support routing has not been configured yet"
+                        message={t('portal.routingNotConfigured')}
                         description={t('ticket.cannotSubmit')}
                     />
                 )}
@@ -155,7 +155,7 @@ export default function CreateTicketModal({
 
                     <Form.Item
                         name="title"
-                        label="Title"
+                        label={t('hub.title')}
                         rules={[
                             // Uzunluk ALT SINIRI YOK: bos olmasin yeter.
                             // "En az 8 karakter" gercek basliklari
@@ -235,7 +235,7 @@ export default function CreateTicketModal({
                 />
 
                 <Stack gap={1}>
-                    <Text strong>Technical details sent automatically</Text>
+                    <Text strong>{t('ticket.autoDiagnostics')}</Text>
                     <Text type="secondary">
                         Only the values below are sent. Cookies, session
                         data, form contents and URL parameters are never

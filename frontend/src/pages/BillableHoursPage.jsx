@@ -39,6 +39,7 @@ import 'dayjs/locale/en'
 
 import { workLogService, authService, customerService, projectService } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
+import { useT } from '../i18n'
 
 dayjs.extend(isoWeek)
 dayjs.locale('en')
@@ -55,6 +56,7 @@ function formatDecimalToHM(decimal) {
 }
 
 function BillableHoursPage() {
+    const t = useT()
     const queryClient = useQueryClient()
     const { user } = useAuthStore()
     // RBAC R3: sayfa yetkisi reports.view iznine bakar.
@@ -225,7 +227,7 @@ function BillableHoursPage() {
         // Only update billable_duration_hours, preserve duration_hours
         mutationFn: ({ id, billable_duration_hours }) => workLogService.update(id, { billable_duration_hours }),
         onSuccess: () => {
-            message.success('Hours updated')
+            message.success(t('billableHours.hoursUpdated'))
             queryClient.invalidateQueries({ queryKey: ['workLogs'] })
             setEditingId(null)
             setEditValue(null)
@@ -256,7 +258,7 @@ function BillableHoursPage() {
         if (editValue === null || editValue <= 0) return
         const mins = Math.round((editValue - Math.floor(editValue)) * 60)
         if (mins % 15 !== 0) {
-            message.error('Minutes must be in increments of 15 (0, 15, 30, 45).')
+            message.error(t('billableHours.minuteIncrement'))
             return
         }
         updateMutation.mutate({ id, billable_duration_hours: editValue })
@@ -328,7 +330,7 @@ function BillableHoursPage() {
             )
         },
         {
-            title: 'BILLABLE HOURS',
+            title: t('billableHours.title'),
             key: 'billable_duration_hours',
             width: 210,
             className: 'billable-col',
@@ -349,7 +351,7 @@ function BillableHoursPage() {
                         />
                         <div style={{ display: 'flex', gap: 4 }}>
                             <Button
-                                aria-label="Save billable hours"
+                                aria-label={t('billableHours.save')}
                                 type="primary"
                                 size="small"
                                 icon={<SaveOutlined />}
@@ -396,7 +398,7 @@ function BillableHoursPage() {
     }
 
     if (!canViewReports) {
-        return <div style={{ padding: 40, textAlign: 'center', color: 'var(--c-text-strong)' }}>Access Denied</div>
+        return <div style={{ padding: 40, textAlign: 'center', color: 'var(--c-text-strong)' }}>{t('billableHours.accessDenied')}</div>
     }
 
     return (
@@ -405,12 +407,8 @@ function BillableHoursPage() {
             {/* Header Section */}
             <div className="bh-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
                 <div>
-                    <h1 style={{ margin: 0, fontSize: 24, fontWeight: 680, color: 'var(--h-text-primary)' }}>
-                        Billable Hours
-                    </h1>
-                    <Text style={{ color: 'var(--c-text-faint)', fontSize: '1rem' }}>
-                        Manage user billable time entries
-                    </Text>
+                    <h1 style={{ margin: 0, fontSize: 24, fontWeight: 680, color: 'var(--h-text-primary)' }}>{t('billableHours.title')}</h1>
+                    <Text style={{ color: 'var(--c-text-faint)', fontSize: '1rem' }}>{t('billableHours.subtitle')}</Text>
                 </div>
 
                 <div className="bh-header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -434,7 +432,7 @@ function BillableHoursPage() {
                            tek secenek kullanicinin KENDISIDIR — garanti
                            403 dogurmayan bir secim sunulmaz. */
                         disabled={!canViewOtherUsers}
-                        aria-label="Select user"
+                        aria-label={t('billableHours.selectUser')}
                         /* label DUZ METIN: arama bunun uzerinden calisir.
                            Onceki hali option.label.props.children[1]
                            okuyordu; adi olmayan bir kayitta patlardi. */
@@ -464,7 +462,7 @@ function BillableHoursPage() {
             <div className="bh-toolbar h-inline-toolbar" style={{ justifyContent: 'space-between' }}>
                 <Space size={16}>
                     <Button
-                        aria-label="Previous week"
+                        aria-label={t('billableHours.previousWeek')}
                         type="text"
                         icon={<LeftOutlined />}
                         onClick={goToPreviousWeek}
@@ -477,7 +475,7 @@ function BillableHoursPage() {
                         </span>
                     </div>
                     <Button
-                        aria-label="Next week"
+                        aria-label={t('billableHours.nextWeek')}
                         type="text"
                         icon={<RightOutlined />}
                         onClick={goToNextWeek}
@@ -485,9 +483,7 @@ function BillableHoursPage() {
                     />
                 </Space>
 
-                <Button type="text" onClick={goToToday}>
-                    Current Week
-                </Button>
+                <Button type="text" onClick={goToToday}>{t('billableHours.currentWeek')}</Button>
             </div>
 
             {/* Data Table */}

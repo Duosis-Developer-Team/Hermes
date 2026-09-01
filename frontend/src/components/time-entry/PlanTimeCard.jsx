@@ -18,25 +18,29 @@ import { Tooltip } from 'antd'
 import { CheckOutlined, CloseOutlined, ClockCircleOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import './PlanTimeCard.css'
+import { useT } from '../../i18n'
 
+// Saf yardimci — hook CAGIRAMAZ. Ceviri yerine ANAHTAR doner; cagiran
+// bilesen kendi `t`'si ile cevirir.
 function getCardStyle(status, isExpired) {
     if (isExpired) {
-        return { bg: 'rgba(22, 119, 255, 0.15)', border: '#1677ff', label: 'Expired', labelColor: '#1677ff' }
+        return { bg: 'rgba(22, 119, 255, 0.15)', border: '#1677ff', labelKey: 'planCard.expired', labelColor: '#1677ff' }
     }
     switch (status) {
         case 'accepted':
-            return { bg: 'rgba(82, 196, 26, 0.15)', border: '#52c41a', label: 'Accepted', labelColor: '#52c41a' }
+            return { bg: 'rgba(82, 196, 26, 0.15)', border: '#52c41a', labelKey: 'plan.accepted', labelColor: '#52c41a' }
         case 'rejected':
-            return { bg: 'rgba(255, 77, 79, 0.15)', border: '#ff4d4f', label: 'Rejected', labelColor: '#ff4d4f' }
+            return { bg: 'rgba(255, 77, 79, 0.15)', border: '#ff4d4f', labelKey: 'plan.rejected', labelColor: '#ff4d4f' }
         case null:
         case undefined:
-            return { bg: 'rgba(139, 92, 246, 0.15)', border: '#8b5cf6', label: 'Scheduled', labelColor: '#8b5cf6' }
+            return { bg: 'rgba(139, 92, 246, 0.15)', border: '#8b5cf6', labelKey: 'planCard.scheduled', labelColor: '#8b5cf6' }
         default: // pending
-            return { bg: 'rgba(250, 173, 20, 0.15)', border: '#faad14', label: 'Pending', labelColor: '#faad14' }
+            return { bg: 'rgba(250, 173, 20, 0.15)', border: '#faad14', labelKey: 'plan.pending', labelColor: '#faad14' }
     }
 }
 
 function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, calendarDate = null }) {
+    const t = useT()
     const {
         id,
         project_name,
@@ -66,7 +70,7 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, 
         : dayjs(checkDate).endOf('day')
     const isExpired = endMoment.isBefore(dayjs())
 
-    const { bg, border, label, labelColor } = getCardStyle(status, isExpired)
+    const { bg, border, labelKey, labelColor } = getCardStyle(status, isExpired)
 
     const timeLabel = start_time && end_time
         ? `${start_time} – ${end_time}`
@@ -91,7 +95,7 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, 
             {/* Admin: hover action butonları (WorkLogCard tarzı) */}
             {canManage && (
                 <div className="plan-time-card-actions">
-                    <Tooltip title="Edit">
+                    <Tooltip title={t('common.edit')}>
                         <button
                             className="plan-time-action-btn"
                             onClick={(e) => { e.stopPropagation(); onEdit?.(planTime) }}
@@ -99,7 +103,7 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, 
                             <EditOutlined />
                         </button>
                     </Tooltip>
-                    <Tooltip title="Delete">
+                    <Tooltip title={t('common.delete')}>
                         <button
                             className="plan-time-action-btn delete"
                             onClick={(e) => { e.stopPropagation(); onDelete?.(planTime) }}
@@ -130,7 +134,7 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, 
                     marginLeft: 6,
                     flexShrink: 0,
                 }}>
-                    {label}
+                    {t(labelKey)}
                 </span>
             </div>
 
@@ -177,8 +181,7 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, 
                             gap: 4,
                         }}
                     >
-                        <CheckOutlined style={{ fontSize: 10 }} /> Accept
-                    </button>
+                        <CheckOutlined style={{ fontSize: 10 }} />{t('planCard.accept')}</button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onRespond?.(id, 'rejected') }}
                         style={{
@@ -197,8 +200,7 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, 
                             gap: 4,
                         }}
                     >
-                        <CloseOutlined style={{ fontSize: 10 }} /> Reject
-                    </button>
+                        <CloseOutlined style={{ fontSize: 10 }} />{t('planCard.reject')}</button>
                 </div>
             )}
         </div>

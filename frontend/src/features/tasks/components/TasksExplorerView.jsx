@@ -40,6 +40,7 @@ import {
     reconcileSelection,
 } from '../model/hierarchy'
 import './tasksExplorer.css'
+import { useT } from '../../../i18n'
 
 /** Logical item listesini ham task satirlarina geri acar — Board ham
  *  satir bekler ve gruplamayi KENDISI yapar (tek kaynak). */
@@ -88,6 +89,7 @@ function FolderRow({
 }
 
 function TasksExplorerView({ tasks = [], boardProps = {}, canGroupByUser = false }) {
+    const t = useT()
     const isMobile = useIsMobile()
     const [search, setSearch] = useState('')
     /*
@@ -213,11 +215,10 @@ function TasksExplorerView({ tasks = [], boardProps = {}, canGroupByUser = false
                         <button
                             type="button"
                             className="tx-back"
-                            aria-label="Back to parent folder"
+                            aria-label={t('explorer.backToParent')}
                             onClick={goBack}
                         >
-                            <LeftOutlined /> Back
-                        </button>
+                            <LeftOutlined />{t('misc.back')}</button>
                     )}
                     <span className="tx-mobile-path">
                         {crumbs.length ? crumbs.map((c) => c.label).join(' / ') : rootLabel}
@@ -231,17 +232,17 @@ function TasksExplorerView({ tasks = [], boardProps = {}, canGroupByUser = false
                         value={mode}
                         onChange={switchMode}
                         options={[
-                            { label: 'By customer', value: 'customer' },
-                            { label: 'By user', value: 'user' },
+                            { label: t('explorer.byCustomer'), value: 'customer' },
+                            { label: t('explorer.byUser'), value: 'user' },
                         ]}
-                        aria-label="Group folders by"
+                        aria-label={t('explorer.groupFoldersBy')}
                     />
                 )}
                 <Input
                     allowClear
                     prefix={<SearchOutlined />}
-                    placeholder="Search work items"
-                    aria-label="Search work items"
+                    placeholder={t('explorer.searchWorkItems')}
+                    aria-label={t('explorer.searchWorkItems')}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="tx-search"
@@ -286,7 +287,7 @@ function TasksExplorerView({ tasks = [], boardProps = {}, canGroupByUser = false
        ------------------------------------------------------------------ */
     return (
         <div className="tx">
-            <aside className="tx-tree" aria-label="Work item folders">
+            <aside className="tx-tree" aria-label={t('explorer.workItemFolders')}>
                 {canGroupByUser && (
                     <Segmented
                         className="tx-mode"
@@ -295,17 +296,17 @@ function TasksExplorerView({ tasks = [], boardProps = {}, canGroupByUser = false
                         value={mode}
                         onChange={switchMode}
                         options={[
-                            { label: 'By customer', value: 'customer' },
-                            { label: 'By user', value: 'user' },
+                            { label: t('explorer.byCustomer'), value: 'customer' },
+                            { label: t('explorer.byUser'), value: 'user' },
                         ]}
-                        aria-label="Group folders by"
+                        aria-label={t('explorer.groupFoldersBy')}
                     />
                 )}
                 <Input
                     allowClear
                     prefix={<SearchOutlined />}
-                    placeholder="Search work items"
-                    aria-label="Search work items"
+                    placeholder={t('explorer.searchWorkItems')}
+                    aria-label={t('explorer.searchWorkItems')}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="tx-search"
@@ -369,8 +370,8 @@ function TasksExplorerView({ tasks = [], boardProps = {}, canGroupByUser = false
                 </div>
             </aside>
 
-            <section className="tx-work" aria-label="Work items in selected folder">
-                <nav className="tx-crumbs" aria-label="Folder path">
+            <section className="tx-work" aria-label={t('explorer.itemsInFolder')}>
+                <nav className="tx-crumbs" aria-label={t('explorer.folderPath')}>
                     <button type="button" className="tx-crumb" onClick={() => setRawSelection({})}>
                         {rootLabel}
                     </button>

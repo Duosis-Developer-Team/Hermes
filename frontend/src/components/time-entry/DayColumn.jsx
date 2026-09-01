@@ -15,6 +15,7 @@ import 'dayjs/locale/en'
 import WorkLogCard from './WorkLogCard'
 import PlanTimeCard from './PlanTimeCard'
 import './DayColumn.css'
+import { useT } from '../../i18n'
 
 dayjs.locale('en')
 
@@ -41,6 +42,7 @@ function DayColumn({
     onSelectLog,
     onSelectDay
 }) {
+    const t = useT()
     const dateKey = dayjs(date).format('YYYY-MM-DD')
     const dayName = dayjs(date).format('ddd')
     const dayNumber = dayjs(date).format('DD')
@@ -72,13 +74,13 @@ function DayColumn({
     const menuItems = [
         {
             key: 'log-time',
-            label: 'Log Time',
+            label: t('taskUi.logTime'),
             icon: <ClockCircleOutlined />,
             onClick: () => onLogTime?.(date),
         },
         ...(isAdmin ? [{
             key: 'plan-time',
-            label: 'Plan Time',
+            label: t('timesheet.planTime'),
             icon: <ScheduleOutlined />,
             onClick: () => onPlanTime?.(date),
         }] : []),
@@ -95,7 +97,7 @@ function DayColumn({
                 <div className={`day-column-name${isToday ? ' h-today-flag' : ''}`}>
                     <span className="day-name">{dayName}</span>
                     <span className="day-number">{dayNumber}</span>
-                    {isToday && <span className="h-today-label">Today</span>}
+                    {isToday && <span className="h-today-label">{t('meetings.today')}</span>}
                 </div>
                 <div className="day-column-hours">
                     {formatDuration(totalHours)} / {DAILY_TARGET_HOURS}h

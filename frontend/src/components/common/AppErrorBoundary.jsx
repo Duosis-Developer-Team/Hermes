@@ -11,6 +11,13 @@
  */
 
 import React from 'react'
+// Hata siniri CLASS bilesenidir (React kurali) ve hook cagiramaz.
+// Ceviri, store'dan O ANKI dili okuyarak dogrudan yapilir; bu ekran
+// nadiren gorunur ve dil degisiminde yeniden render edilmesi gerekmez.
+import { translate } from '../../i18n'
+import { useLocaleStore } from '../../stores/localeStore'
+
+const t = (key) => translate(useLocaleStore.getState().locale, key)
 
 export default class AppErrorBoundary extends React.Component {
     constructor(props) {
@@ -66,9 +73,7 @@ export default class AppErrorBoundary extends React.Component {
                             color: 'var(--c-text-strong)',
                             marginBottom: 8,
                         }}
-                    >
-                        Something went wrong.
-                    </div>
+                    >{t('errors.somethingWrong')}</div>
                     <div
                         style={{
                             color: 'var(--c-text-muted)',
@@ -112,9 +117,7 @@ export default class AppErrorBoundary extends React.Component {
                             borderRadius: 6,
                             cursor: 'pointer',
                         }}
-                    >
-                        Reload
-                    </button>
+                    >{t('errors.reload')}</button>
                 </div>
             </div>
         )

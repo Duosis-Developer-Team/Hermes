@@ -16,6 +16,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Alert, Button, Space, Typography } from 'antd'
 import { EyeOutlined, WarningOutlined } from '@ant-design/icons'
+import { useT } from '../../i18n'
 
 const { Text } = Typography
 
@@ -28,6 +29,7 @@ const formatRemaining = (ms) => {
 }
 
 export default function SupportSessionBanner({ session, onEnd, onExpire }) {
+    const t = useT()
     const expiresAt = useMemo(
         () => (session ? new Date(session.expires_at).getTime() : 0),
         [session],
@@ -88,9 +90,7 @@ export default function SupportSessionBanner({ session, onEnd, onExpire }) {
             }
             action={
                 /* Yalnizca SONLANDIRMA aksiyonu var — gizleme YOK. */
-                <Button size="small" danger onClick={onEnd}>
-                    End session
-                </Button>
+                <Button size="small" danger onClick={onEnd}>{t('misc.endSession')}</Button>
             }
         />
     )

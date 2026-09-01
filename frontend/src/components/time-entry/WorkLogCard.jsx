@@ -12,11 +12,13 @@ import { Tooltip } from 'antd'
 import { CheckSquareOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { formatHours } from '../../features/time-entry/model/timeEntry'
 import './WorkLogCard.css'
+import { useT } from '../../i18n'
 
 
 function WorkLogCard({
     workLog, onEdit, onDelete, isSelected = false, isCopied = false, onSelect,
 }) {
+    const t = useT()
     const {
         project_name,
         customer_name,
@@ -91,19 +93,19 @@ function WorkLogCard({
 
             {/* Hover actions — stopPropagation so they don't trigger card select or day select */}
             <div className="worklog-card-actions">
-                <Tooltip title="Edit">
+                <Tooltip title={t('common.edit')}>
                     <button
                         className="worklog-action-btn"
-                        aria-label="Edit log"
+                        aria-label={t('workLog.editLog')}
                         onClick={(e) => { e.stopPropagation(); onEdit?.(workLog) }}
                     >
                         <EditOutlined />
                     </button>
                 </Tooltip>
-                <Tooltip title="Delete">
+                <Tooltip title={t('common.delete')}>
                     <button
                         className="worklog-action-btn delete"
-                        aria-label="Delete log"
+                        aria-label={t('workLog.deleteLog')}
                         onClick={(e) => { e.stopPropagation(); onDelete?.(workLog) }}
                     >
                         <DeleteOutlined />

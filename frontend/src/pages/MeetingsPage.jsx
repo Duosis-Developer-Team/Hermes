@@ -324,9 +324,7 @@ function MeetingsPage() {
                             onClick={() =>
                                 setWeekStart(dayjs().startOf('isoWeek'))
                             }
-                        >
-                            Today
-                        </Button>
+                        >{t('meetings.today')}</Button>
                         <Button
                                 aria-label={t('meetings.nextWeek')}
                             icon={<RightOutlined />}

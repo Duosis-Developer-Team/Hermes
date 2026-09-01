@@ -291,15 +291,11 @@ function TasksPage() {
                         <AntButton
                             icon={<FilterOutlined />}
                             onClick={() => setFiltersOpen(true)}
-                            aria-label="Filters"
-                        >
-                            Filters
-                        </AntButton>
+                            aria-label={t('tasks.filters')}
+                        >{t('tasks.filters')}</AntButton>
                     </Badge>
                     {activeFilterCount > 0 && (
-                        <AntButton type="text" onClick={clearFilters}>
-                            Clear
-                        </AntButton>
+                        <AntButton type="text" onClick={clearFilters}>{t('common.clear')}</AntButton>
                     )}
                 </div>
                 <TaskFiltersDrawer

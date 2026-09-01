@@ -27,6 +27,7 @@ import {
     applyErrorToForm,
 } from '../../features/admin/shared/normalizeApiError'
 import { resetAndFill } from '../../features/admin/shared/formLifecycle'
+import { useT } from '../../i18n'
 
 const FORM_FIELDS = ['user_ids', 'title']
 
@@ -48,6 +49,7 @@ function UserGroupMemberModal({
     userMap = {},
     loading = false,
 }) {
+    const t = useT()
     const [form] = Form.useForm()
     const [submitError, setSubmitError] = useState(null)
     const [submitting, setSubmitting] = useState(false)
@@ -131,7 +133,7 @@ function UserGroupMemberModal({
             open={open}
             onCancel={onClose}
             okText={okText}
-            cancelText="Cancel"
+            cancelText={t('common.cancel')}
             confirmLoading={loading || submitting}
             onOk={() => form.submit()}
             width={520}
@@ -145,7 +147,7 @@ function UserGroupMemberModal({
                 <Alert
                     type="info"
                     showIcon
-                    message="All users are already members of this group."
+                    message={t('memberModal.allAlreadyMembers')}
                     style={{ marginBottom: 16 }}
                 />
             )}
@@ -161,24 +163,24 @@ function UserGroupMemberModal({
 
             <Form form={form} layout="vertical" onFinish={handleFinish}>
                 {isEditing ? (
-                    <Form.Item label="User">
+                    <Form.Item label={t('entity.user')}>
                         <Input value={editingUserLabel} disabled />
                     </Form.Item>
                 ) : (
                     <Form.Item
-                        label="Users"
+                        label={t('entity.users')}
                         name="user_ids"
                         rules={[
                             {
                                 required: true,
-                                message: 'Pick at least one user.',
+                                message: t('memberModal.pickAtLeastOne'),
                             },
                         ]}
                     >
                         <Select
                             mode="multiple"
                             showSearch
-                            placeholder="Select one or more users"
+                            placeholder={t('memberModal.selectUsers')}
                             optionFilterProp="label"
                             options={userOptions}
                             maxTagCount="responsive"
@@ -197,7 +199,7 @@ function UserGroupMemberModal({
                             : 'Optional. Applied to every selected user. Leave empty to add with no title.'
                     }
                 >
-                    <Input maxLength={255} placeholder="Senior Developer" />
+                    <Input maxLength={255} placeholder={t('memberModal.titleExample')} />
                 </Form.Item>
             </Form>
         </Modal>

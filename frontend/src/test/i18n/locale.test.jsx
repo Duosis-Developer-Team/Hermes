@@ -38,7 +38,7 @@ describe('i18n sozlukleri', () => {
             // Saf BICIM dizgesi (prose degil): "{entity} ({n})".
             'admin.entityCount', 'logTime.platform',
             // Urun adi / odunc sozcuk: cevrilmez.
-            'meeting.teams', 'platform.plan',
+            'meeting.teams', 'meetingCard.teams', 'platform.plan',
             'platform.emailDomainsExample',
         ])
         const untranslated = flatten(en).filter((key) => {

@@ -17,6 +17,7 @@ import TaskLifecycleSwitcher from './TaskLifecycleSwitcher'
 import {
     TASK_LAYOUTS, TASK_SCOPES, TASK_TYPES, typeMetaFor,
 } from '../model/constants'
+import { useT } from '../../../i18n'
 
 function TasksHeader({
     user,
@@ -39,6 +40,7 @@ function TasksHeader({
     groupByAssignee,
     onToggleGroupByAssignee,
 }) {
+    const t = useT()
     const activeTypeMeta = typeMetaFor(taskType)
     // Kapsam etiketi aktif turu izler: "My Tasks" / "My Issues" / …
     const scopeLabel = (s) =>
@@ -59,7 +61,7 @@ function TasksHeader({
                         onChange={onSelectUser}
                         /* Etiketsiz kontrol: erisilebilir ad acikca
                            verilir (§8). */
-                        aria-label="Viewed user"
+                        aria-label={t('explorer.viewedUser')}
                         style={{ width: 220, fontSize: '1.2rem', fontWeight: 600 }}
                         /* AntD 5.x: bordered deprecated → variant. */
                         variant="borderless"
@@ -81,7 +83,7 @@ function TasksHeader({
                 {/* Work item type — Tasks / Issues / Suggestions. Primary,
                     colour-coded mode switch. Same board/list below; only
                     the filter + accent colour change. */}
-                <div className="tasks-types" role="tablist" aria-label="Work item type">
+                <div className="tasks-types" role="tablist" aria-label={t('explorer.workItemType')}>
                     {TASK_TYPES.map((t) => {
                         const isActive = taskType === t.value
                         return (
@@ -111,7 +113,7 @@ function TasksHeader({
                 <div className="tasks-tabs-divider" />
                 {/* Scope — sole scope controller; the old standalone
                     My/Assigned-by-Me pills are folded in here. */}
-                <div className="tasks-views" role="tablist" aria-label="Task scope">
+                <div className="tasks-views" role="tablist" aria-label={t('explorer.taskScope')}>
                     {TASK_SCOPES.filter(
                         (s) => !s.assignerOnly || canViewAssignedByMe
                     ).map((s) => {
@@ -186,9 +188,7 @@ function TasksHeader({
                             checked={groupByAssignee}
                             onChange={onToggleGroupByAssignee}
                             disabled={!showGroupBy}
-                        />
-                        Group by assignee
-                    </label>
+                        />{t('explorer.groupByAssignee')}</label>
                 </div>
                 {/* Create lives inside the Board view toolbar ("+ New"). */}
             </div>

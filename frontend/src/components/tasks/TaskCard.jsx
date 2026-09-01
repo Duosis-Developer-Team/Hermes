@@ -38,6 +38,7 @@ import { AssignmentRoster } from '../../features/tasks/components/AssigneeStatus
 import ArchivedTaskMeta from '../../features/tasks/components/ArchivedTaskMeta'
 import { aggregateStatus } from '../../features/tasks/model/grouping'
 import './TaskCard.css'
+import { useT } from '../../i18n'
 
 function userLabel(id, userMap) {
     if (!id) return '—'
@@ -103,6 +104,7 @@ function TaskCard({
         Tek assignment'ta mevcut gorunum aynen korunur. */
     assignments = null,
 }) {
+    const t = useT()
     // Coklu atama: roster cizilir. Tek atamada eski gorunum korunur —
     // bu bir GORUNUM karari, yetki karari degil.
     const isGrouped = Array.isArray(assignments) && assignments.length > 1
@@ -315,7 +317,7 @@ function TaskCard({
                     aria-label alir, boylece ekran okuyucu hangi karta ait
                     oldugunu bilir ve klavye kullanicisi ayirt edebilir. */}
                 {isCompleted && onOpenLogTime && (
-                    <Tooltip title="Log Time">
+                    <Tooltip title={t('taskUi.logTime')}>
                         <button
                             type="button"
                             className="task-card-action-btn"
@@ -338,7 +340,7 @@ function TaskCard({
                 </Tooltip>
                 {canEditCore && (
                     <>
-                        <Tooltip title="Edit">
+                        <Tooltip title={t('common.edit')}>
                             <button
                                 type="button"
                                 className="task-card-action-btn"
@@ -348,7 +350,7 @@ function TaskCard({
                                 <EditOutlined />
                             </button>
                         </Tooltip>
-                        <Tooltip title="Archive">
+                        <Tooltip title={t('taskUi.archive')}>
                             <button
                                 type="button"
                                 className="task-card-action-btn delete"

@@ -11,10 +11,12 @@
  * =============================================================================
  */
 import { ARCHIVE_STATES } from '../model/taskLifecycle'
+import { useT } from '../../../i18n'
 
 function TaskLifecycleSwitcher({ value, onChange }) {
+    const t = useT()
     return (
-        <div className="tasks-views" role="tablist" aria-label="Work item pool">
+        <div className="tasks-views" role="tablist" aria-label={t('explorer.workItemPool')}>
             {ARCHIVE_STATES.map((s) => (
                 <button
                     key={s.value}

@@ -12,6 +12,7 @@
  */
 import { DeleteOutlined, StopOutlined } from '@ant-design/icons'
 import { ConfirmDialog, StatusBadge } from '../ui'
+import { useT } from '../../i18n'
 
 const DeleteModal = ({
     open,
@@ -21,6 +22,7 @@ const DeleteModal = ({
     onCancel,
     loading = false,
 }) => {
+    const t = useT()
     const isDeactivateMode = isActive === true
 
     const title = isDeactivateMode ? 'Archive / Deactivate?' : 'Delete Permanently?'
@@ -41,7 +43,7 @@ const DeleteModal = ({
             }
             description={description}
             confirmText={isDeactivateMode ? 'Archive' : 'Delete Permanently'}
-            cancelText="Cancel"
+            cancelText={t('common.cancel')}
             onConfirm={onConfirm}
             onCancel={onCancel}
         >
