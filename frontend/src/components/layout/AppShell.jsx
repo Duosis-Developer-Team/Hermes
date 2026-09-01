@@ -27,6 +27,8 @@ import {
 } from '@ant-design/icons'
 
 import { useThemeStore } from '../../stores/themeStore'
+import { useLocaleStore } from '../../stores/localeStore'
+import { useT } from '../../i18n'
 import { IconButton } from '../ui'
 import logoFullDark from '../../assets/logos/logo-full-dark.jpg'
 import logoFullLight from '../../assets/logos/logo-full-light.png'
@@ -99,6 +101,9 @@ function AppShell({
 
     const { theme: themeMode, toggleTheme } = useThemeStore()
     const isLight = themeMode === 'light'
+    const locale = useLocaleStore((s) => s.locale)
+    const toggleLocale = useLocaleStore((s) => s.toggleLocale)
+    const t = useT()
 
     // Sprint 3 §10: drawer acikken arka plan scroll'u KILITLENIR ve
     // kapaninca focus tetikleyiciye doner.
@@ -223,7 +228,7 @@ function AppShell({
                     {/* Tema: kisa ikon crossfade/rotate'li buton (§11);
                         reduced-motion global kuralla durur. */}
                     <IconButton
-                        label={isLight ? 'Switch to dark theme' : 'Switch to light theme'}
+                        label={isLight ? t('shell.switchToDark') : t('shell.switchToLight')}
                         icon={
                             <span className="theme-toggle-icon" data-mode={isLight ? 'light' : 'dark'}>
                                 {isLight ? <BulbFilled /> : <BulbOutlined />}
@@ -231,6 +236,23 @@ function AppShell({
                         }
                         onClick={toggleTheme}
                         className="theme-toggle-btn"
+                    />
+
+                    {/* Dil: tema butonuyla AYNI yerde ve ayni bicimde.
+                        Iki dil oldugu icin acilir menu degil, dogrudan
+                        ANLIK durumu gosteren bir gecis dugmesi — etiket
+                        neye gecilecegini soyler, govde nerede olundugunu. */}
+                    <IconButton
+                        label={locale === 'tr'
+                            ? t('shell.switchToEnglish')
+                            : t('shell.switchToTurkish')}
+                        icon={
+                            <span className="locale-toggle-code">
+                                {locale === 'tr' ? 'TR' : 'EN'}
+                            </span>
+                        }
+                        onClick={toggleLocale}
+                        className="locale-toggle-btn"
                     />
 
                     {/* Kabuga ozel eklenti: tenant tarafinda organizasyon

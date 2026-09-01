@@ -9,22 +9,20 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
-import dayjs from 'dayjs'
-import 'dayjs/locale/en'
-
 import Root from './Root'
 import AppErrorBoundary from './components/common/AppErrorBoundary'
 // Side-effect import: applies the saved data-theme to <html> before the
 // first paint so there's no dark→light flash on light-mode reloads.
 // Side-effect: ilk paint oncesi data-theme attribute'u yazilir.
 import './stores/themeStore'
+// Side-effect: kayitli dil <html lang> ve dayjs'e ilk paint ONCESI
+// yazilir — tarih/ay adlari ilk karede dogru dilde gelir.
+import './stores/localeStore'
 import './styles/tokens.css'
 import './index.css'
 // DS V2.1 (Premium UI): merkezi AntD gorunum koprusu — sayfa-ozel
 // override'lar yerine tek katman (buton/select/tablo/modal/today-flag).
 import './styles/premium.css'
-
-dayjs.locale('en')
 
 // React Query client — merkezi fabrika (Sprint 1): src/query/queryClient.js
 import { queryClient } from './query/queryClient'

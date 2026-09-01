@@ -510,3 +510,18 @@
         margin-left: 0;
     }
 }
+
+
+/* -----------------------------------------------------------------------
+ * Dil gecis dugmesi — tema dugmesiyle ayni olcu ve ritim
+ * -----------------------------------------------------------------------
+ * Ikon yerine iki harfli kod tasir: iki dilli bir sistemde bayrak
+ * kullanmak yanlis olurdu (dil ulke degildir) ve "TR"/"EN" tek bakista
+ * anlasilir.
+ */
+.locale-toggle-code {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1;
+}

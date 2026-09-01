@@ -143,7 +143,11 @@ describe('Ingilizce tutarlilik (§D)', () => {
      *     koseli parantez DISINDA Turkce karakter kalirsa yine yakalanir.
      */
     const TURKISH = /[ğşıİöüçĞŞÖÜÇ]/
-    const ALLOWED = ['utils/codeGenerator.js']
+    // `i18n/tr.js` BILINCLI istisnadir: kural "kullaniciya Ingilizce
+    // goster" demek icin vardi, artik metin sozlukten geliyor ve Turkce
+    // sozlukte Turkce karakter olmasi ZORUNLU. Istisna DOSYA duzeyinde
+    // ve tektir; geri kalan tum kaynakta kural aynen gecerli.
+    const ALLOWED = ['utils/codeGenerator.js', 'i18n/tr.js']
     const dropBracketClasses = (line) => line.replace(/\[[^\]]*\]/g, '')
 
     const stripComments = (text) =>

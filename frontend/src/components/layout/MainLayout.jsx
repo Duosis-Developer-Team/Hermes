@@ -34,6 +34,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { authService } from '../../services/api'
 import { useTaskPermissions } from '../../hooks/useTaskPermissions'
 import useTicketContext from '../../features/tickets/useTicketContext'
+import { useT } from '../../i18n'
 import { loaderByPath } from '../../routes/loaders'
 
 /**
@@ -61,6 +62,7 @@ function MainLayout() {
     // hicbiri" admin blogu yerine her oge kendi iznini ister. Bir grup,
     // icinde gorunur oge kaldiysa render edilir. can() fail-closed:
     // izinler yuklenene dek yonetim menusu gorunmez.
+    const t = useT()
     const can = useAuthStore((s) => s.can)
     useAuthStore((s) => s.permissions) // re-render tetikleyici
 
@@ -69,23 +71,23 @@ function MainLayout() {
     const ticketsPath = ticketContext.isPortal ? '/support' : '/tickets'
 
     const managementItems = [
-        { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard', perm: 'reports.view' },
-        { key: '/management/billable-hours', icon: <ClockCircleOutlined />, label: 'Billable Hours', perm: 'reports.view' },
-        { key: '/management/reports', icon: <FileExcelOutlined />, label: 'Reports', perm: 'reports.view' },
-        { key: '/management/contracts', icon: <FileTextOutlined />, label: 'Contract Status', perm: 'reports.view' },
-        { key: '/pm-configurations', icon: <CheckSquareOutlined />, label: 'PM Configurations', perm: 'tasks.permissions.manage' },
-        { key: '/api-management', icon: <ApiOutlined />, label: 'API Management', perm: 'api.manage' },
-        { key: '/ticket-integrations', icon: <CustomerServiceOutlined />, label: 'Ticket Integrations', perm: 'tickets.config.manage' },
+        { key: '/dashboard', icon: <DashboardOutlined />, label: t('nav.dashboard'), perm: 'reports.view' },
+        { key: '/management/billable-hours', icon: <ClockCircleOutlined />, label: t('nav.billableHours'), perm: 'reports.view' },
+        { key: '/management/reports', icon: <FileExcelOutlined />, label: t('nav.reports'), perm: 'reports.view' },
+        { key: '/management/contracts', icon: <FileTextOutlined />, label: t('nav.contractStatus'), perm: 'reports.view' },
+        { key: '/pm-configurations', icon: <CheckSquareOutlined />, label: t('nav.pmConfigurations'), perm: 'tasks.permissions.manage' },
+        { key: '/api-management', icon: <ApiOutlined />, label: t('nav.apiManagement'), perm: 'api.manage' },
+        { key: '/ticket-integrations', icon: <CustomerServiceOutlined />, label: t('nav.ticketIntegrations'), perm: 'tickets.config.manage' },
     ].filter((i) => can(i.perm)).map(({ perm, ...i }) => i)
 
     const configurationItems = [
-        { key: '/customers', icon: <TeamOutlined />, label: 'Customers', perm: 'customers.manage' },
-        { key: '/projects', icon: <ProjectOutlined />, label: 'Projects', perm: 'projects.manage' },
-        { key: '/work-types', icon: <AppstoreOutlined />, label: 'Work Types', perm: 'reference.manage' },
-        { key: '/activity-types', icon: <AppstoreOutlined />, label: 'Activity Types', perm: 'reference.manage' },
-        { key: '/platforms', icon: <SettingOutlined />, label: 'Platforms', perm: 'reference.manage' },
-        { key: '/work-lines', icon: <SettingOutlined />, label: 'Work Lines', perm: 'reference.manage' },
-        { key: '/users', icon: <UserOutlined />, label: 'Users', perm: 'users.manage' },
+        { key: '/customers', icon: <TeamOutlined />, label: t('nav.customers'), perm: 'customers.manage' },
+        { key: '/projects', icon: <ProjectOutlined />, label: t('nav.projects'), perm: 'projects.manage' },
+        { key: '/work-types', icon: <AppstoreOutlined />, label: t('nav.workTypes'), perm: 'reference.manage' },
+        { key: '/activity-types', icon: <AppstoreOutlined />, label: t('nav.activityTypes'), perm: 'reference.manage' },
+        { key: '/platforms', icon: <SettingOutlined />, label: t('nav.platforms'), perm: 'reference.manage' },
+        { key: '/work-lines', icon: <SettingOutlined />, label: t('nav.workLines'), perm: 'reference.manage' },
+        { key: '/users', icon: <UserOutlined />, label: t('nav.users'), perm: 'users.manage' },
     ].filter((i) => can(i.perm)).map(({ perm, ...i }) => i)
 
     // Sprint 3 §7: nav uzerinde kisa pointer-intent sonrasi route
@@ -152,14 +154,14 @@ function MainLayout() {
         {
             key: '/time-entry',
             icon: <ClockCircleOutlined />,
-            label: 'Time Entry',
+            label: t('nav.timeEntry'),
         },
 
         ...(showTasksItem ? [
             {
                 key: '/project-management',
                 icon: <CheckSquareOutlined />,
-                label: 'Project Management',
+                label: t('nav.projectManagement'),
             },
         ] : []),
 
@@ -169,7 +171,7 @@ function MainLayout() {
         {
             key: '/meetings',
             icon: <CalendarOutlined />,
-            label: 'Meetings',
+            label: t('nav.meetings'),
         },
 
         // Developer Portal — Public API dokumantasyonu. D3: ust seviye
@@ -178,7 +180,7 @@ function MainLayout() {
         {
             key: '/developer',
             icon: <CodeOutlined />,
-            label: 'Developer',
+            label: t('nav.developer'),
         },
 
         // Ticket Hub / Destek. Menu ogesi `tickets.access` ile gorunur;
@@ -188,7 +190,7 @@ function MainLayout() {
         ...(can('tickets.access') ? [{
             key: ticketsPath,
             icon: <CustomerServiceOutlined />,
-            label: ticketsPath === '/support' ? 'Support' : 'Tickets',
+            label: ticketsPath === '/support' ? t('nav.support') : t('nav.tickets'),
         }] : []),
 
         // RBAC R3: yonetim gruplari, icinde GORUNUR oge varsa render
@@ -199,7 +201,7 @@ function MainLayout() {
         ...(managementItems.length ? [
             {
                 key: 'admin-group',
-                label: 'MANAGEMENT',
+                label: t('nav.groupManagement'),
                 type: 'group',
                 children: managementItems,
             },
@@ -207,7 +209,7 @@ function MainLayout() {
         ...(configurationItems.length ? [
             {
                 key: 'config-group',
-                label: 'CONFIGURATION',
+                label: t('nav.groupConfiguration'),
                 type: 'group',
                 children: configurationItems,
             },
@@ -263,7 +265,7 @@ function MainLayout() {
         {
             key: 'logout',
             icon: <LogoutOutlined />,
-            label: 'Logout',
+            label: t('nav.logout'),
             danger: true,
             onClick: async () => {
                 // [KRİTİK-6] Backend cookie'yi siler, sonra UI state temizlenir
