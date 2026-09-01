@@ -27,6 +27,7 @@ import {
     applyErrorToForm, normalizeApiError,
 } from '../../features/admin/shared/normalizeApiError'
 import { resetAndFill } from '../../features/admin/shared/formLifecycle'
+import { useT } from '../../i18n'
 
 // Formda GERCEKTEN olan alanlar. Alanlar MODA GORE kosullu cizildigi
 // icin (code yalniz olusturmada, is_active yalniz edit-ve-system-degil)
@@ -126,6 +127,7 @@ function groupCatalog(catalog) {
 }
 
 function RolesTab() {
+    const t = useT()
     const [form] = Form.useForm()
     const [modalOpen, setModalOpen] = useState(false)
     const [editing, setEditing] = useState(null) // rol nesnesi | null
@@ -167,18 +169,18 @@ function RolesTab() {
 
     const createMutation = useMutation({
         mutationFn: rbacService.createRole,
-        onSuccess: () => { message.success('Role created.'); close(); invalidate() },
+        onSuccess: () => { message.success(t('roles.roleCreated')); close(); invalidate() },
         onError: showFormError,
     })
     const updateMutation = useMutation({
         mutationFn: ({ id, data }) => rbacService.updateRole(id, data),
-        onSuccess: () => { message.success('Role updated.'); close(); invalidate() },
+        onSuccess: () => { message.success(t('roles.roleUpdated')); close(); invalidate() },
         onError: showFormError,
     })
     const deactivateMutation = useMutation({
         mutationFn: rbacService.deactivateRole,
         onSuccess: () => {
-            message.success('Role deactivated — its permissions no longer apply.')
+            message.success(t('roles.roleDeactivated'))
             setDeactivating(null); invalidate()
         },
         onError: (e) => {
@@ -241,10 +243,10 @@ function RolesTab() {
 
     const columns = [
         {
-            title: 'Role', dataIndex: 'name', key: 'name',
+            title: t('roles.role'), dataIndex: 'name', key: 'name',
             render: (name, r) => (
                 <Space>
-                    {r.is_system && <LockOutlined title="System role" />}
+                    {r.is_system && <LockOutlined title={t('roles.systemRole')} />}
                     <span>{name}</span>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         {r.code}
@@ -253,17 +255,17 @@ function RolesTab() {
             ),
         },
         {
-            title: 'Permissions', dataIndex: 'permissions', key: 'permissions',
+            title: t('roles.permissions'), dataIndex: 'permissions', key: 'permissions',
             render: (perms) => (
                 <Text type="secondary">{perms.length} izin</Text>
             ),
         },
         {
-            title: 'Members', dataIndex: 'member_count', key: 'member_count',
+            title: t('roles.members'), dataIndex: 'member_count', key: 'member_count',
             width: 80,
         },
         {
-            title: 'Status', dataIndex: 'is_active', key: 'is_active',
+            title: t('common.status'), dataIndex: 'is_active', key: 'is_active',
             width: 100,
             render: (a) => (
                 <Tag color={a ? 'success' : 'default'}>
@@ -272,7 +274,7 @@ function RolesTab() {
             ),
         },
         {
-            title: 'Actions', key: 'actions', width: 120,
+            title: t('common.actions'), key: 'actions', width: 120,
             render: (_, r) => (
                 <Space>
                     {/* Ikon-only aksiyonlar HANGI rolu hedefledigini soyler. */}
@@ -302,9 +304,7 @@ function RolesTab() {
                     style={{ marginBottom: 16 }}
                     message={normalizeApiError(error).message}
                     action={
-                        <Button size="small" onClick={() => refetch()}>
-                            Retry
-                        </Button>
+                        <Button size="small" onClick={() => refetch()}>{t('common.retry')}</Button>
                     }
                 />
             )}
@@ -312,16 +312,14 @@ function RolesTab() {
                 title={`Roles (${roles.length})`}
                 extra={
                     <Button type="primary" icon={<PlusOutlined />}
-                            onClick={() => open()}>
-                        New Role
-                    </Button>
+                            onClick={() => open()}>{t('roles.newRole')}</Button>
                 }
             >
                 <Table
                     dataSource={roles} columns={columns} rowKey="id"
                     loading={isLoading && roles.length === 0} pagination={false}
                     scroll={{ x: 'max-content' }}
-                    locale={{ emptyText: 'No roles defined yet. Use “New Role”.' }}
+                    locale={{ emptyText: t('roles.noRoles') }}
                 />
             </Card>
 
@@ -342,19 +340,19 @@ function RolesTab() {
                 {systemLocked && (
                     <Alert
                         type="info" showIcon style={{ marginBottom: 16 }}
-                        message="System role is locked"
-                        description="Name, permissions and active state cannot be changed; the permission set stays in sync with the catalog automatically. Only the description is editable."
+                        message={t('roles.systemRoleLocked')}
+                        description={t('roles.systemRoleHint')}
                     />
                 )}
                 <Form form={form} layout="vertical" onFinish={submit}>
                     {!editing && (
                         <Form.Item
-                            name="code" label="Code (permanent, cannot be changed)"
+                            name="code" label={t('roles.code')}
                             rules={[
-                                { required: true, message: 'Code gerekli' },
+                                { required: true, message: t('roles.codeRequired') },
                                 {
                                     pattern: /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/,
-                                    message: 'lowercase letters/digits/hyphens, 3-64 chars',
+                                    message: t('roles.codeRule'),
                                 },
                             ]}
                         >
@@ -362,17 +360,17 @@ function RolesTab() {
                         </Form.Item>
                     )}
                     <Form.Item
-                        name="name" label="Name"
-                        rules={[{ required: true, message: 'Name is required' }]}
+                        name="name" label={t('common.name')}
+                        rules={[{ required: true, message: t('roles.nameRequired') }]}
                     >
                         <Input disabled={systemLocked} />
                     </Form.Item>
-                    <Form.Item name="description" label="Description">
+                    <Form.Item name="description" label={t('common.description')}>
                         <Input.TextArea rows={2} />
                     </Form.Item>
                     <Form.Item
                         name="permissions"
-                        label="Permissions"
+                        label={t('roles.permissions')}
                         normalize={applyPermissionDependencies}
                     >
                         <Checkbox.Group
@@ -402,7 +400,7 @@ function RolesTab() {
                         </Checkbox.Group>
                     </Form.Item>
                     {editing && !systemLocked && (
-                        <Form.Item name="is_active" label="Active"
+                        <Form.Item name="is_active" label={t('common.active')}
                                    valuePropName="checked">
                             <Switch />
                         </Form.Item>
@@ -410,7 +408,7 @@ function RolesTab() {
                     <Form.Item>
                         <Space style={{ width: '100%',
                                         justifyContent: 'flex-end' }}>
-                            <Button onClick={close}>Cancel</Button>
+                            <Button onClick={close}>{t('common.cancel')}</Button>
                             <Button
                                 type="primary" htmlType="submit"
                                 loading={isSaving}

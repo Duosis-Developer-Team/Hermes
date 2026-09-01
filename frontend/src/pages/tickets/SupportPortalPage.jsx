@@ -30,23 +30,26 @@ import { TicketStatusBadge } from '../../features/tickets/TicketStatusBadge'
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { queryKeys } from '../../query/queryKeys'
 import '../../features/tickets/tickets.css'
+import { useT } from '../../i18n'
 
 const { Text } = Typography
 
+// Sekme listesi ANAHTAR tasir; ceviri render'da yapilir.
 const TABS = [
-    { key: 'open', label: 'Open', statuses: ['open', 'reopened'] },
-    { key: 'in_progress', label: 'In progress', statuses: ['in_progress'] },
+    { key: 'open', labelKey: 'portal.open', statuses: ['open', 'reopened'] },
+    { key: 'in_progress', labelKey: 'portal.inProgress', statuses: ['in_progress'] },
     {
-        key: 'waiting_customer', label: 'Waiting for your reply',
+        key: 'waiting_customer', labelKey: 'portal.waitingForYou',
         statuses: ['waiting_customer'],
     },
     {
-        key: 'done', label: 'Resolved / Closed',
+        key: 'done', labelKey: 'portal.resolvedClosed',
         statuses: ['resolved', 'closed', 'cancelled'],
     },
 ]
 
 export default function SupportPortalPage() {
+    const t = useT()
     const navigate = useNavigate()
     const queryClient = useQueryClient()
     const context = useTicketContext()
@@ -114,7 +117,7 @@ export default function SupportPortalPage() {
         return (
             <Page className="tickets-page fade-in">
                 <EmptyState
-                    title="The support portal is unavailable"
+                    title={t('portal.unavailable')}
                     description={
                         context.context?.reason === 'missing_permission'
                             ? 'You do not have access to the support module.'
@@ -131,7 +134,7 @@ export default function SupportPortalPage() {
     return (
         <Page className="tickets-page fade-in">
             <PageHeader
-                title="Support"
+                title={t('portal.support')}
                 subtitle={routeReady
                     ? `Your requests go to the ${context.route.group_name} team.`
                     : 'Support routing has not been configured yet.'}
@@ -139,7 +142,7 @@ export default function SupportPortalPage() {
                     <Space wrap>
                         <Input.Search
                             allowClear
-                            placeholder="Ticket code or title"
+                            placeholder={t('portal.searchPlaceholder')}
                             onSearch={setSearch}
                             style={{ width: 260 }}
                         />
@@ -147,17 +150,13 @@ export default function SupportPortalPage() {
                             icon={<ReloadOutlined />}
                             onClick={() => list.refetch()}
                             loading={list.isFetching}
-                        >
-                            Refresh
-                        </Button>
+                        >{t('common.refresh')}</Button>
                         <Button
                             variant="primary"
                             icon={<PlusOutlined />}
                             disabled={!context.canCreate}
                             onClick={() => setCreateOpen(true)}
-                        >
-                            New request
-                        </Button>
+                        >{t('portal.newRequest')}</Button>
                     </Space>
                 )}
             />
@@ -166,7 +165,7 @@ export default function SupportPortalPage() {
                 <Alert
                     type="warning"
                     showIcon
-                    message="Support routing has not been configured"
+                    message={t('portal.routingNotConfigured')}
                     description={'New requests cannot be created. Please '
                         + 'contact your administrator; this screen enables '
                         + 'itself once a target support team is set.'}
@@ -178,7 +177,7 @@ export default function SupportPortalPage() {
                 activeKey={tab}
                 onChange={setTab}
                 items={TABS.map((item) => ({
-                    key: item.key, label: item.label,
+                    key: item.key, label: t(item.labelKey),
                 }))}
             />
 
@@ -220,7 +219,7 @@ export default function SupportPortalPage() {
                 ))}
                     {!rows.length && !list.isLoading && (
                         <EmptyState
-                            title="No requests in this tab"
+                            title={t('portal.noRequests')}
                             description={context.canCreate
                                 ? 'You can open a new support request.'
                                 : 'You do not have permission to open requests.'}

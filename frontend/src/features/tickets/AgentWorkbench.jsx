@@ -27,15 +27,17 @@ import {
 } from './constants'
 import { TicketPriorityBadge, TicketStatusBadge } from './TicketStatusBadge'
 import './tickets.css'
+import { useT } from '../../i18n'
 
 const { Text } = Typography
 
 function ContextPanel({ ticket, groups, onAssignGroup, canAssign, pending }) {
+    const t = useT()
     return (
         <Surface className="h-ticket-context">
             <Stack gap={3}>
                 <Stack gap={1}>
-                    <Text type="secondary">Status</Text>
+                    <Text type="secondary">{t('common.status')}</Text>
                     <Inline gap={2}>
                         <TicketStatusBadge status={ticket.status} surface="hub" />
                         <TicketPriorityBadge priority={ticket.priority} />
@@ -43,21 +45,21 @@ function ContextPanel({ ticket, groups, onAssignGroup, canAssign, pending }) {
                 </Stack>
 
                 <dl>
-                    <dt>Application</dt>
+                    <dt>{t('integrations.application')}</dt>
                     <dd>{ticket.application?.display_name ?? '—'}</dd>
-                    <dt>Customer</dt>
+                    <dt>{t('entity.customer')}</dt>
                     <dd>{ticket.source_tenant?.display_name ?? '—'}</dd>
-                    <dt>Requester</dt>
+                    <dt>{t('hub.requester')}</dt>
                     <dd>{ticket.requester_display_name ?? '—'}</dd>
-                    <dt>Category</dt>
+                    <dt>{t('hub.category')}</dt>
                     <dd>{labelOf(CATEGORY_LABELS, ticket.category)}</dd>
-                    <dt>Impact</dt>
+                    <dt>{t('hub.impact')}</dt>
                     <dd>{labelOf(IMPACT_LABELS, ticket.impact)}</dd>
-                    <dt>Error code</dt>
+                    <dt>{t('hub.errorCode')}</dt>
                     <dd>{ticket.error_code || '—'}</dd>
-                    <dt>Correlation</dt>
+                    <dt>{t('hub.correlation')}</dt>
                     <dd>{ticket.correlation_id || '—'}</dd>
-                    <dt>First response</dt>
+                    <dt>{t('hub.firstResponse')}</dt>
                     <dd>
                         {ticket.first_response_at
                             ? new Date(ticket.first_response_at).toLocaleString()
@@ -69,7 +71,7 @@ function ContextPanel({ ticket, groups, onAssignGroup, canAssign, pending }) {
                     <Alert
                         type="warning"
                         showIcon
-                        message="A security or data risk was reported"
+                        message={t('hub.securityRisk')}
                         description={'Priority stays at least "High". This '
                             + 'is NOT an automatic security incident process; '
                             + 'start one separately if needed.'}
@@ -77,7 +79,7 @@ function ContextPanel({ ticket, groups, onAssignGroup, canAssign, pending }) {
                 )}
 
                 <Stack gap={1}>
-                    <Text type="secondary">Target team</Text>
+                    <Text type="secondary">{t('hub.targetTeam')}</Text>
                     <Select
                         value={ticket.assigned_group?.id}
                         disabled={!canAssign || pending}
@@ -92,7 +94,7 @@ function ContextPanel({ ticket, groups, onAssignGroup, canAssign, pending }) {
 
                 {Object.keys(ticket.client_context || {}).length > 0 && (
                     <details>
-                        <summary>Technical context</summary>
+                        <summary>{t('hub.technicalContext')}</summary>
                         <dl>
                             {Object.entries(ticket.client_context).map(
                                 ([key, value]) => (
@@ -113,6 +115,7 @@ function ContextPanel({ ticket, groups, onAssignGroup, canAssign, pending }) {
 export default function AgentWorkbench({
     ticketId, open, onClose, context, onChanged, onError,
 }) {
+    const t = useT()
     const queryClient = useQueryClient()
     const [draft, setDraft] = useState('')
     const [resolveOpen, setResolveOpen] = useState(false)
@@ -225,9 +228,7 @@ export default function AgentWorkbench({
                             variant="primary"
                             disabled={!canResolve}
                             onClick={() => setResolveOpen(true)}
-                        >
-                            Resolve
-                        </Button>
+                        >{t('hub.resolve')}</Button>
                     )}
                 </Inline>
             ) : null}
@@ -237,8 +238,8 @@ export default function AgentWorkbench({
             )}
             {detail.isError && (
                 <EmptyState
-                    title="This ticket could not be opened"
-                    description="It may no longer be in your scope."
+                    title={t('hub.cannotOpen')}
+                    description={t('hub.outOfScope')}
                 />
             )}
             {ticket && (
@@ -247,8 +248,8 @@ export default function AgentWorkbench({
                         <Alert
                             type="warning"
                             showIcon
-                            message="This ticket changed while you were looking at it"
-                            description="The latest version was loaded. Your text was kept — you can send it again."
+                            message={t('hub.changedWhileViewing')}
+                            description={t('hub.changedHint')}
                             closable
                             onClose={() => setConflict(false)}
                         />

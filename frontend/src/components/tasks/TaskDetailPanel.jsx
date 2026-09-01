@@ -19,6 +19,7 @@ import { ActivityTimeline } from '../modals/TaskReviewModal'
 import TaskCommentsThread from './TaskCommentsThread'
 import { AssignmentRoster } from '../../features/tasks/components/AssigneeStatusBadge'
 import { aggregateStatus } from '../../features/tasks/model/grouping'
+import { useT } from '../../i18n'
 
 const PRIORITY_COLOR = {
     low: 'default',
@@ -57,6 +58,7 @@ function Row({ label, children }) {
 }
 
 function DetailsBody({ task, userMap, assignments }) {
+    const t = useT()
     /*
      * §12: coklu atamada detay, BUTUN assignee'leri ve her birinin
      * BIREYSEL durumunu eksiksiz gostermeli. Aggregate durum ayrica
@@ -66,12 +68,12 @@ function DetailsBody({ task, userMap, assignments }) {
     const isGrouped = Array.isArray(assignments) && assignments.length > 1
     return (
         <div className="tdp-tab-body">
-            <Row label="Customer">{task.customer_name || '—'}</Row>
-            <Row label="Project">{task.project_name || '—'}</Row>
+            <Row label={t('entity.customer')}>{task.customer_name || '—'}</Row>
+            <Row label={t('entity.project')}>{task.project_name || '—'}</Row>
             {task.sub_project_name && (
-                <Row label="Sub Project">{task.sub_project_name}</Row>
+                <Row label={t('task.subProject')}>{task.sub_project_name}</Row>
             )}
-            <Row label="Assigner">
+            <Row label={t('review.assigner')}>
                 {userLabel(task.assigner_user_id, userMap)}
             </Row>
             {isGrouped ? (
@@ -79,13 +81,13 @@ function DetailsBody({ task, userMap, assignments }) {
                     <AssignmentRoster assignments={assignments} />
                 </Row>
             ) : (
-                <Row label="Assignee">
+                <Row label={t('review.assignee')}>
                     {userLabel(task.assignee_user_id, userMap)}
                 </Row>
             )}
-            <Row label="Scheduled">{task.scheduled_date || '—'}</Row>
-            {task.due_date && <Row label="Due">{task.due_date}</Row>}
-            <Row label="Priority">
+            <Row label={t('review.scheduled')}>{task.scheduled_date || '—'}</Row>
+            {task.due_date && <Row label={t('review.due')}>{task.due_date}</Row>}
+            <Row label={t('task.priority')}>
                 <Tag color={PRIORITY_COLOR[task.priority] || 'default'}>
                     {task.priority}
                 </Tag>
@@ -108,7 +110,7 @@ function DetailsBody({ task, userMap, assignments }) {
             </Row>
             {task.description && (
                 <div className="tdp-desc">
-                    <div className="tdp-desc-label">Description</div>
+                    <div className="tdp-desc-label">{t('common.description')}</div>
                     <div className="tdp-desc-body">{task.description}</div>
                 </div>
             )}
@@ -126,9 +128,10 @@ function TaskDetailPanel({
     /** Coklu atamali logical work item'in TUM gorunur assignment'lari. */
     assignments = null,
 }) {
+    const t = useT()
     if (!task) return null
     return (
-        <aside className="task-detail-panel" aria-label="Task details">
+        <aside className="task-detail-panel" aria-label={t('taskUi.taskDetails')}>
             <div className="tdp-head">
                 <div className="tdp-head-titles">
                     {task.task_code && (
@@ -138,23 +141,23 @@ function TaskDetailPanel({
                 </div>
                 <div className="tdp-head-actions">
                     {onOpenReview && (
-                        <Tooltip title="Open full review">
+                        <Tooltip title={t('taskUi.openFullReview')}>
                             <button
                                 type="button"
                                 className="tdp-icon-btn"
                                 onClick={() => onOpenReview(task)}
-                                aria-label="Open full review"
+                                aria-label={t('taskUi.openFullReview')}
                             >
                                 <EyeOutlined />
                             </button>
                         </Tooltip>
                     )}
-                    <Tooltip title="Close">
+                    <Tooltip title={t('common.close')}>
                         <button
                             type="button"
                             className="tdp-icon-btn"
                             onClick={onClose}
-                            aria-label="Close panel"
+                            aria-label={t('taskUi.closePanel')}
                         >
                             <CloseOutlined />
                         </button>
@@ -171,7 +174,7 @@ function TaskDetailPanel({
                 items={[
                     {
                         key: 'details',
-                        label: 'Details',
+                        label: t('review.details'),
                         children: (
                             <DetailsBody
                                 task={task}
@@ -182,7 +185,7 @@ function TaskDetailPanel({
                     },
                     {
                         key: 'activity',
-                        label: 'Activity',
+                        label: t('review.activity'),
                         children: (
                             <div className="tdp-tab-body">
                                 <ActivityTimeline
@@ -195,7 +198,7 @@ function TaskDetailPanel({
                     },
                     {
                         key: 'comments',
-                        label: 'Comments',
+                        label: t('review.comments'),
                         children: (
                             <div className="tdp-tab-body">
                                 <TaskCommentsThread

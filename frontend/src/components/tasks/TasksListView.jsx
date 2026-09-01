@@ -32,6 +32,7 @@ import {
 import { groupIntoLogicalItems, userLabel } from '../../features/tasks/model/grouping'
 import { AssignmentRoster } from '../../features/tasks/components/AssigneeStatusBadge'
 import { typeMeta } from '../../utils/workItemType'
+import { useT } from '../../i18n'
 
 const PRIORITY_RANK = { low: 0, medium: 1, high: 2, urgent: 3 }
 
@@ -75,6 +76,7 @@ function TasksListView({
     // the assigner's "Assigned by Me" list is read-only monitoring.
     allowStatusChange = true,
 }) {
+    const t = useT()
     const assigneeFilters = useMemo(() => {
         const seen = new Set()
         const out = []
@@ -113,7 +115,7 @@ function TasksListView({
 
     const columns = [
         {
-            title: 'Done',
+            title: t('taskUi.done'),
             key: 'completed',
             width: 64,
             align: 'center',
@@ -150,7 +152,7 @@ function TasksListView({
             },
         },
         {
-            title: 'Code',
+            title: t('taskUi.code'),
             dataIndex: 'task_code',
             key: 'task_code',
             width: 92,
@@ -169,7 +171,7 @@ function TasksListView({
             ),
         },
         {
-            title: 'Task Title',
+            title: t('taskUi.taskTitle'),
             dataIndex: 'title',
             key: 'title',
             sorter: (a, b) => (a.title || '').localeCompare(b.title || ''),
@@ -182,7 +184,7 @@ function TasksListView({
                         if (e.key === 'Enter') onOpenPanel?.(row)
                     }}
                     style={{ cursor: onOpenPanel ? 'pointer' : 'default' }}
-                    title="View details"
+                    title={t('taskUi.viewDetails')}
                 >
                     <div style={{ color: 'var(--c-text-strong)', fontWeight: 600 }}>{val}</div>
                     <div style={{ color: 'var(--c-text-muted)', fontSize: 12, marginTop: 2 }}>
@@ -194,7 +196,7 @@ function TasksListView({
             ),
         },
         {
-            title: 'Assignees',
+            title: t('taskUi.assignees'),
             dataIndex: 'assignee_user_id',
             key: 'assignee',
             filters: assigneeFilters,
@@ -212,7 +214,7 @@ function TasksListView({
             ),
         },
         {
-            title: 'Status',
+            title: t('common.status'),
             dataIndex: 'status',
             key: 'status',
             filters: statusFilters,
@@ -234,7 +236,7 @@ function TasksListView({
             },
         },
         {
-            title: 'Priority',
+            title: t('task.priority'),
             dataIndex: 'priority',
             key: 'priority',
             sorter: (a, b) =>
@@ -245,7 +247,7 @@ function TasksListView({
             ),
         },
         {
-            title: 'Scheduled',
+            title: t('review.scheduled'),
             dataIndex: 'scheduled_date',
             key: 'scheduled_date',
             sorter: (a, b) =>
@@ -253,7 +255,7 @@ function TasksListView({
             render: (val) => val || '—',
         },
         {
-            title: 'Due Date',
+            title: t('task.dueDate'),
             dataIndex: 'due_date',
             key: 'due_date',
             defaultSortOrder: 'ascend',
@@ -272,7 +274,7 @@ function TasksListView({
                 ),
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             key: 'actions',
             width: 180,
             render: (_, record) => {
@@ -286,7 +288,7 @@ function TasksListView({
                        erisilebilir ada sahiptir (§8 ikon-only kurali). */
                     <Space>
                         {isCompleted && onOpenLogTime && (
-                            <Tooltip title="Log Time">
+                            <Tooltip title={t('taskUi.logTime')}>
                                 <Button
                                     size="small"
                                     icon={<FieldTimeOutlined />}
@@ -305,7 +307,7 @@ function TasksListView({
                         </Tooltip>
                         {canEdit && (
                             <>
-                                <Tooltip title="Edit">
+                                <Tooltip title={t('common.edit')}>
                                     <Button
                                         size="small"
                                         icon={<EditOutlined />}
@@ -313,7 +315,7 @@ function TasksListView({
                                         onClick={() => onEditTask?.(record)}
                                     />
                                 </Tooltip>
-                                <Tooltip title="Archive">
+                                <Tooltip title={t('taskUi.archive')}>
                                     <Button
                                         size="small"
                                         danger

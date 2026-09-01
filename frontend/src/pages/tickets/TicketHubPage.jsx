@@ -36,10 +36,12 @@ import {
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { queryKeys } from '../../query/queryKeys'
 import '../../features/tickets/tickets.css'
+import { useT } from '../../i18n'
 
 const DEFAULT_QUEUE = 'my_group_open'
 
 export default function TicketHubPage() {
+    const t = useT()
     const navigate = useNavigate()
     const queryClient = useQueryClient()
     const [params, setParams] = useSearchParams()
@@ -140,7 +142,7 @@ export default function TicketHubPage() {
         return (
             <Page className="tickets-page fade-in">
                 <EmptyState
-                    title="This screen is unavailable"
+                    title={t('hub.unavailable')}
                     description={
                         context.context?.reason === 'missing_permission'
                             ? 'You do not have access to the support module.'
@@ -156,7 +158,7 @@ export default function TicketHubPage() {
 
     const columns = [
         {
-            title: 'Code', dataIndex: 'ticket_number', width: 130,
+            title: t('hub.code'), dataIndex: 'ticket_number', width: 130,
             render: (value, row) => (
                 <span className={isResolvedLike(row.status)
                     ? 'h-ticket-row--resolved' : undefined}
@@ -165,36 +167,36 @@ export default function TicketHubPage() {
                 </span>
             ),
         },
-        { title: 'Title', dataIndex: 'title', ellipsis: true },
+        { title: t('hub.title'), dataIndex: 'title', ellipsis: true },
         {
-            title: 'Application', dataIndex: ['application', 'display_name'],
+            title: t('integrations.application'), dataIndex: ['application', 'display_name'],
             width: 130,
         },
         {
-            title: 'Customer', dataIndex: ['source_tenant', 'display_name'],
+            title: t('entity.customer'), dataIndex: ['source_tenant', 'display_name'],
             width: 150,
         },
         {
-            title: 'Status', dataIndex: 'status', width: 190,
+            title: t('common.status'), dataIndex: 'status', width: 190,
             render: (status) => (
                 <TicketStatusBadge status={status} surface="hub" />
             ),
         },
         {
-            title: 'Priority', dataIndex: 'priority', width: 110,
+            title: t('hub.priority'), dataIndex: 'priority', width: 110,
             render: (priority) => <TicketPriorityBadge priority={priority} />,
         },
         {
-            title: 'Team', dataIndex: ['assigned_group', 'name'], width: 150,
+            title: t('hub.team'), dataIndex: ['assigned_group', 'name'], width: 150,
         },
         {
-            title: 'Updated', dataIndex: 'updated_at', width: 170,
+            title: t('hub.updated'), dataIndex: 'updated_at', width: 170,
             render: (value) => new Date(value).toLocaleString(),
         },
     ]
 
     const appTabs = [
-        { key: 'all', label: 'All' },
+        { key: 'all', label: t('common.all') },
         ...(applications.data ?? []).map((app) => ({
             key: app.id,
             label: `${app.display_name} (${app.open_ticket_count})`,
@@ -204,13 +206,13 @@ export default function TicketHubPage() {
     return (
         <Page className="tickets-page fade-in">
             <PageHeader
-                title="Tickets"
+                title={t('hub.tickets')}
                 subtitle={`${total} tickets · ${labelOf(QUEUE_LABELS, queue)}`}
                 extra={(
                     <Space wrap>
                         <Input.Search
                             allowClear
-                            placeholder="Code, title, error code"
+                            placeholder={t('hub.searchPlaceholder')}
                             defaultValue={search}
                             onSearch={(value) => patchParams({ q: value || null })}
                             style={{ width: 260 }}
@@ -219,9 +221,7 @@ export default function TicketHubPage() {
                             icon={<ReloadOutlined />}
                             onClick={() => list.refetch()}
                             loading={list.isFetching}
-                        >
-                            Refresh
-                        </Button>
+                        >{t('common.refresh')}</Button>
                     </Space>
                 )}
             />
@@ -236,7 +236,7 @@ export default function TicketHubPage() {
 
             {!context.hasScope ? (
                 <EmptyState
-                    title="No queue is visible to you"
+                    title={t('hub.noQueueVisible')}
                     description={'You are not an active member of any '
                         + 'support group yet. Ask an administrator to add '
                         + 'you to the relevant group.'}
@@ -267,7 +267,7 @@ export default function TicketHubPage() {
                                 mode="multiple"
                                 allowClear
                                 style={{ minWidth: 220 }}
-                                placeholder="Status"
+                                placeholder={t('common.status')}
                                 value={statuses}
                                 onChange={(value) => patchParams({ status: value })}
                                 options={Object.entries(AGENT_STATUS_LABELS).map(
@@ -275,9 +275,7 @@ export default function TicketHubPage() {
                                 )}
                             />
                             {hasFilters && (
-                                <Button onClick={() => setParams(new URLSearchParams())}>
-                                    Clear
-                                </Button>
+                                <Button onClick={() => setParams(new URLSearchParams())}>{t('common.clear')}</Button>
                             )}
                         </Inline>
                     </Toolbar>
@@ -300,8 +298,8 @@ export default function TicketHubPage() {
                         locale={{
                             emptyText: (
                                 <EmptyState
-                                    title="No tickets in this queue"
-                                    description="Try a different queue or application."
+                                    title={t('hub.noTickets')}
+                                    description={t('hub.tryAnotherQueue')}
                                 />
                             ),
                         }}

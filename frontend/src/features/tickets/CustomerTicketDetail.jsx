@@ -22,12 +22,14 @@ import {
 } from './constants'
 import { TicketStatusBadge } from './TicketStatusBadge'
 import './tickets.css'
+import { useT } from '../../i18n'
 
 const { Text, Paragraph } = Typography
 
 export default function CustomerTicketDetail({
     ticketId, open, onClose, onChanged,
 }) {
+    const t = useT()
     const queryClient = useQueryClient()
     const [draft, setDraft] = useState('')
     const [reason, setReason] = useState('')
@@ -84,8 +86,8 @@ export default function CustomerTicketDetail({
             {detail.isLoading && <Text type="secondary">Loading…</Text>}
             {detail.isError && (
                 <EmptyState
-                    title="This request could not be opened"
-                    description="It is no longer visible to you."
+                    title={t('customerTicket.cannotOpen')}
+                    description={t('customerTicket.noLongerVisible')}
                 />
             )}
             {ticket && (
@@ -109,8 +111,8 @@ export default function CustomerTicketDetail({
                         <Alert
                             type="warning"
                             showIcon
-                            message="The support team is waiting for your reply"
-                            description="Answer below to keep things moving."
+                            message={t('customerTicket.waitingForYou')}
+                            description={t('customerTicket.answerBelow')}
                         />
                     )}
 
@@ -148,11 +150,9 @@ export default function CustomerTicketDetail({
                                         onClick={() => confirmClose.mutate({
                                             expected_version: ticket.version,
                                         })}
-                                    >
-                                        Confirm and close
-                                    </Button>
+                                    >{t('customerTicket.confirmAndClose')}</Button>
                                     <Input
-                                        placeholder="Reason for reopening"
+                                        placeholder={t('customerTicket.reasonForReopening')}
                                         value={reason}
                                         onChange={(e) => setReason(e.target.value)}
                                         style={{ maxWidth: 280 }}
@@ -164,9 +164,7 @@ export default function CustomerTicketDetail({
                                             reason,
                                             expected_version: ticket.version,
                                         })}
-                                    >
-                                        Reopen
-                                    </Button>
+                                    >{t('customerTicket.reopen')}</Button>
                                 </Inline>
                             )}
                             {ticket.status === 'resolved'
@@ -193,8 +191,8 @@ export default function CustomerTicketDetail({
                             value={draft}
                             maxLength={10000}
                             onChange={(event) => setDraft(event.target.value)}
-                            placeholder="Your reply to the support team…"
-                            aria-label="Reply to the support team"
+                            placeholder={t('customerTicket.replyPlaceholder')}
+                            aria-label={t('customerTicket.replyToSupport')}
                         />
                         <Inline gap={2}>
                             <Button
@@ -205,9 +203,7 @@ export default function CustomerTicketDetail({
                                     { body: draft, expected_version: ticket.version },
                                     { onSuccess: () => setDraft('') },
                                 )}
-                            >
-                                Reply
-                            </Button>
+                            >{t('customerTicket.reply')}</Button>
                         </Inline>
                     </Stack>
                 </Stack>

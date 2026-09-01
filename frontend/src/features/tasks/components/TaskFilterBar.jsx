@@ -15,6 +15,7 @@ import { Button, Select, Space } from 'antd'
 import { FilterOutlined } from '@ant-design/icons'
 
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '../model/constants'
+import { useT } from '../../../i18n'
 
 function TaskFilterBar({
     filters, customers, projects, subProjects,
@@ -22,6 +23,7 @@ function TaskFilterBar({
     assigneeOptions = null, onAssigneeChange,
     onSubProjectChange, onClear,
 }) {
+    const t = useT()
     return (
         /* Premium redesign: bu blok artik surekli acik bir serit DEGIL —
            TasksPage'deki "Filters" aksiyonunun actigi drawer'in icidir.
@@ -37,8 +39,8 @@ function TaskFilterBar({
                         allowClear
                         showSearch
                         optionFilterProp="label"
-                        aria-label="Filter by user"
-                        placeholder="User"
+                        aria-label={t('taskUi.filterByUser')}
+                        placeholder={t('entity.user')}
                         style={{ width: '100%' }}
                         value={filters.assignee || undefined}
                         onChange={(v) => onAssigneeChange?.(v ?? null)}
@@ -47,8 +49,8 @@ function TaskFilterBar({
                 )}
                 <Select
                     allowClear
-                    aria-label="Filter by status"
-                    placeholder="Status"
+                    aria-label={t('taskUi.filterByStatus')}
+                    placeholder={t('common.status')}
                     style={{ width: '100%' }}
                     value={filters.status}
                     onChange={onStatusChange}
@@ -56,8 +58,8 @@ function TaskFilterBar({
                 />
                 <Select
                     allowClear
-                    aria-label="Filter by priority"
-                    placeholder="Priority"
+                    aria-label={t('taskUi.filterByPriority')}
+                    placeholder={t('task.priority')}
                     style={{ width: '100%' }}
                     value={filters.priority}
                     onChange={onPriorityChange}
@@ -66,8 +68,8 @@ function TaskFilterBar({
                 <Select
                     allowClear
                     showSearch
-                    aria-label="Filter by customer"
-                    placeholder="Customer"
+                    aria-label={t('taskUi.filterByCustomer')}
+                    placeholder={t('entity.customer')}
                     style={{ width: '100%' }}
                     value={filters.customer}
                     onChange={onCustomerChange}
@@ -77,8 +79,8 @@ function TaskFilterBar({
                 <Select
                     allowClear
                     showSearch
-                    aria-label="Filter by project"
-                    placeholder="Project"
+                    aria-label={t('taskUi.filterByProject')}
+                    placeholder={t('entity.project')}
                     style={{ width: '100%' }}
                     value={filters.project}
                     disabled={!filters.customer}
@@ -89,8 +91,8 @@ function TaskFilterBar({
                 <Select
                     allowClear
                     showSearch
-                    aria-label="Filter by sub project"
-                    placeholder="Sub Project"
+                    aria-label={t('taskUi.filterBySubProject')}
+                    placeholder={t('task.subProject')}
                     style={{ width: '100%' }}
                     value={filters.subProject}
                     disabled={!filters.project}
@@ -98,7 +100,7 @@ function TaskFilterBar({
                     optionFilterProp="label"
                     options={subProjects.map((s) => ({ value: s.id, label: s.name }))}
                 />
-                <Button onClick={onClear} block>Clear</Button>
+                <Button onClick={onClear} block>{t('common.clear')}</Button>
             </Space>
         </div>
     )
