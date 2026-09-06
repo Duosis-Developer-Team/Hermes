@@ -1,0 +1,218 @@
+{
+  "schemaVersion": "1.0",
+  "slug": "hermes",
+  "kind": "application",
+  "status": "draft",
+  "featured": false,
+  "brand": {
+    "name": "Hermes",
+    "shortName": "Hermes",
+    "tagline": {
+      "tr": "Zaman kaydı, görev ve destek operasyonları tek çalışma alanında.",
+      "en": "Time tracking, tasks and support operations in one workspace."
+    },
+    "accentColor": "#0C66E4",
+    "accentColorDark": "#579DFF",
+    "logoLight": ".duosis/media/logo-light.png",
+    "logoDark": ".duosis/media/logo-dark.png",
+    "icon": ".duosis/media/icon.png"
+  },
+  "content": {
+    "headline": {
+      "tr": "Ekibin müşteri ve proje bazında yaptığı işi kayıt altına alın, raporlayın.",
+      "en": "Record the work your team does for each customer and project, and report on it."
+    },
+    "summary": {
+      "tr": "Hermes, ekiplerin müşteri ve proje bazında yaptıkları işi standart zaman kayıtları olarak toplayan; görev, toplantı ve destek taleplerini aynı çalışma alanında izleyen; bu veriden faturalandırma ve raporlama çıktıları üreten bir operasyon platformudur.",
+      "en": "Hermes is an operations platform for teams whose work is tracked against customers and projects. It captures that work as standardised time entries, keeps tasks, meetings and support tickets in the same workspace, and turns the data into billing and reporting output."
+    },
+    "problem": {
+      "tr": "Farklı müşteriler ve projeler için yapılan işler e-posta ve tablolar gibi dağınık kaynaklarda tutulduğunda, hangi projeye ne kadar efor harcandığını görmek ve raporlamak mümkün olmaz.",
+      "en": "When work for different customers and projects is tracked in scattered spreadsheets and e-mail threads, nobody can see how much effort each project actually takes, and reporting on it is guesswork."
+    },
+    "approach": {
+      "tr": "Hermes, zaman girişlerini müşteri, proje ve iş tipi gibi yöneticinin tanımladığı standart listelere bağlar; kayıtları rol ve izin tabanlı yetkilendirme ile korur ve her organizasyonun verisini veritabanı düzeyinde ayrı tutar. Kimlik, çekirdek iş mantığı ve raporlama ayrı servisler olarak Kubernetes üzerinde çalışır; dış sistemler aynı verilere kapsamlı erişim token'larıyla Public API üzerinden ulaşır.",
+      "en": "Hermes ties every time entry to lists an administrator defines: customers, projects and work types. Records are protected by role- and permission-based authorisation, and each organisation's data is isolated at the database level. Identity, core business logic and reporting run as separate services on Kubernetes, and external systems reach the same data through a Public API with scoped access tokens."
+    },
+    "outcomes": [
+      {
+        "title": { "tr": "Tek merkezde iş kaydı", "en": "One record of work" },
+        "description": {
+          "tr": "Yapılan tüm iş tek bir veritabanında, standart bir veri yapısıyla tutulur.",
+          "en": "Everything the team works on is stored in one database, in one standard structure."
+        }
+      },
+      {
+        "title": { "tr": "Müşteri ve proje bazında görünürlük", "en": "Effort visible per customer and project" },
+        "description": {
+          "tr": "Harcanan süre müşteri, proje ve kişi bazında panelde özetlenir.",
+          "en": "Time spent is summarised by customer, project and person on the dashboard."
+        }
+      },
+      {
+        "title": { "tr": "Faturalandırmaya hazır dökümler", "en": "Billing-ready breakdowns" },
+        "description": {
+          "tr": "Zaman kayıtları tarih aralığına göre filtrelenip Excel olarak dışa aktarılır; faturalandırılacak süre ayrıca izlenir.",
+          "en": "Time entries are filtered by date range and exported to Excel; billable hours are tracked separately from logged hours."
+        }
+      },
+      {
+        "title": { "tr": "Rol ve izne göre erişim", "en": "Access that follows roles and permissions" },
+        "description": {
+          "tr": "Kimin neyi görüp değiştirebileceği, tanımlanabilir roller ve atomik izinlerle yönetilir.",
+          "en": "Who can see and change what is governed by configurable roles and fine-grained permissions."
+        }
+      },
+      {
+        "title": { "tr": "Organizasyon bazında ayrık veri", "en": "Data kept apart per organisation" },
+        "description": {
+          "tr": "Her organizasyonun kayıtları veritabanı düzeyinde ayrı tutulur; bir organizasyonun verisi diğerine görünmez.",
+          "en": "Each organisation's records are isolated at the database level; one organisation's data is not visible to another."
+        }
+      }
+    ],
+    "audiences": [
+      { "tr": "Proje ve operasyon yöneticileri", "en": "Project and operations managers" },
+      { "tr": "Geliştirme ve danışmanlık ekipleri", "en": "Development and consulting teams" },
+      { "tr": "Finans ve faturalama ekipleri", "en": "Finance and billing teams" }
+    ],
+    "capabilities": [
+      {
+        "title": { "tr": "Zaman girişi", "en": "Time entry" },
+        "description": {
+          "tr": "Ekip üyeleri yaptıkları işi müşteri, proje, iş tipi, tarih ve süre bilgisiyle kaydeder; haftalık planlar ve zaman çizelgesi gönderimi aynı akışın parçasıdır.",
+          "en": "Team members log work with customer, project, work type, date and duration. Weekly plans and timesheet submissions are part of the same flow."
+        }
+      },
+      {
+        "title": { "tr": "Çalışma alanı yapılandırması", "en": "Workspace configuration" },
+        "description": {
+          "tr": "Yöneticiler müşteri, proje, iş tipi, aktivite tipi, platform ve iş kolu listelerini yönetir; kullanıcıları davet eder veya pasife alır.",
+          "en": "Administrators maintain the lists of customers, projects, work types, activity types, platforms and work lines, and invite or deactivate users."
+        }
+      },
+      {
+        "title": { "tr": "Raporlama ve panel", "en": "Reporting and dashboard" },
+        "description": {
+          "tr": "Tarih aralığına göre filtrelenen zaman kayıtları Excel dosyası olarak dışa aktarılır; panel toplam süreyi müşteri, proje ve kişi dağılımıyla gösterir.",
+          "en": "Time entries filtered by date range are exported as Excel workbooks; the dashboard breaks total time down by customer, project and person."
+        }
+      },
+      {
+        "title": { "tr": "Faturalandırılabilir saatler", "en": "Billable hours" },
+        "description": {
+          "tr": "Her zaman kaydı için faturalandırılacak süre ayrı tutulur; yöneticiler bu değerleri ayrı bir ekrandan düzenler.",
+          "en": "Each time entry carries a separate billable duration, which managers can adjust from a dedicated screen."
+        }
+      },
+      {
+        "title": { "tr": "Görev ve toplantı yönetimi", "en": "Tasks and meetings" },
+        "description": {
+          "tr": "Görevler, talepler ve toplantılar aynı çalışma alanında izlenir; görev erişimi kullanıcı ve grup bazında ayarlanır.",
+          "en": "Tasks, issues and meetings are tracked in the same workspace, with task access configured per user and group."
+        }
+      },
+      {
+        "title": { "tr": "Rol ve izin yönetimi", "en": "Roles and permissions" },
+        "description": {
+          "tr": "Yönetici tanımlı roller atomik izinlerden oluşur; sistem rolleri kilitlidir ve son yönetici korunur.",
+          "en": "Administrator-defined roles are built from fine-grained permissions; system roles are locked and the last administrator is protected."
+        }
+      },
+      {
+        "title": { "tr": "Destek talepleri merkezi", "en": "Support ticket hub" },
+        "description": {
+          "tr": "Müşteri uygulamalarından gelen destek talepleri Hermes'te toplanır; kaynak uygulamalar entegrasyon API'si ve imzalı webhook'larla bağlanır, ekler paylaşılmadan önce taranır.",
+          "en": "Support tickets raised in customer-facing applications are handled centrally in Hermes. Source applications connect through an integration API and signed webhooks, and attachments are scanned before they are shared."
+        }
+      },
+      {
+        "title": { "tr": "Public API ve MCP sunucusu", "en": "Public API and MCP server" },
+        "description": {
+          "tr": "Dış sistemler ve geliştiriciler zaman kaydı, görev, toplantı ve referans verilerine kapsamlı token'larla Public API üzerinden erişir; MCP sunucusu aynı API'yi yapay zekâ istemcilerine ince bir katman olarak sunar.",
+          "en": "External systems and developers reach time entries, tasks, meetings and reference data through a Public API with scoped tokens. An MCP server exposes the same API to AI clients as a deliberately thin layer, so there is one security model rather than two."
+        }
+      },
+      {
+        "title": { "tr": "Microsoft hesabıyla giriş", "en": "Sign in with Microsoft" },
+        "description": {
+          "tr": "Kullanıcılar e-posta ve şifreyle ya da kurumsal Microsoft (Entra ID) hesabıyla oturum açar.",
+          "en": "Users sign in with e-mail and password or with their organisation's Microsoft (Entra ID) account."
+        }
+      },
+      {
+        "title": { "tr": "Çok kiracılı çalışma alanları", "en": "Multi-organisation workspaces" },
+        "description": {
+          "tr": "Birden fazla organizasyona üye kullanıcılar çalışma alanları arasında geçiş yapar; platform yöneticileri organizasyonları ayrı bir konsoldan yönetir.",
+          "en": "Users who belong to more than one organisation switch between workspaces; platform administrators manage organisations from a separate console."
+        }
+      },
+      {
+        "title": { "tr": "Türkçe ve İngilizce arayüz", "en": "Turkish and English interface" },
+        "description": {
+          "tr": "Arayüz Türkçe ve İngilizce olarak sunulur; dil kullanıcı tarafından değiştirilir.",
+          "en": "The interface is available in Turkish and English and can be switched by the user."
+        }
+      }
+    ],
+    "workflow": [
+      {
+        "title": { "tr": "Çalışma alanını tanımlayın", "en": "Set up the workspace" },
+        "description": {
+          "tr": "Yönetici müşteri, proje ve iş tipi listelerini oluşturur, kullanıcıları davet eder.",
+          "en": "An administrator creates the customer, project and work type lists and invites users."
+        }
+      },
+      {
+        "title": { "tr": "İşi kaydedin", "en": "Log the work" },
+        "description": {
+          "tr": "Ekip üyeleri yaptıkları işi tarih, süre ve açıklamayla ilgili müşteri ve projeye kaydeder.",
+          "en": "Team members log what they did against the relevant customer and project, with date, duration and a note."
+        }
+      },
+      {
+        "title": { "tr": "Faturalandırılacak süreyi belirleyin", "en": "Settle the billable hours" },
+        "description": {
+          "tr": "Yöneticiler kayıtların faturalandırılacak süresini gözden geçirir ve gerekirse düzeltir.",
+          "en": "Managers review the billable duration on each entry and adjust it where needed."
+        }
+      },
+      {
+        "title": { "tr": "Raporlayın", "en": "Report" },
+        "description": {
+          "tr": "Seçilen tarih aralığı için Excel dökümü alınır; panel dağılımları özetler.",
+          "en": "Export an Excel breakdown for the chosen date range; the dashboard summarises the distribution."
+        }
+      }
+    ],
+    "security": [
+      {
+        "tr": "İzinler token'a gömülmez; her istekte sunucu tarafında çözülür ve çözümleme başarısız olursa erişim kapalı kalır.",
+        "en": "Permissions are never embedded in tokens; they are resolved server-side on every request, and access stays closed if resolution fails."
+      },
+      {
+        "tr": "Organizasyon izolasyonu PostgreSQL satır düzeyi güvenliği (RLS) ile veritabanı katmanında zorunlu kılınır.",
+        "en": "Organisation isolation is enforced in the database layer with PostgreSQL row-level security."
+      },
+      {
+        "tr": "Public API erişimi kapsamlı token'lar, hız sınırı ve denetim kaydıyla korunur; MCP sunucusunun veritabanına doğrudan erişimi yoktur.",
+        "en": "Public API access is protected with scoped tokens, rate limiting and audit logging; the MCP server has no direct database access."
+      }
+    ]
+  },
+  "screenshots": [],
+  "metrics": [],
+  "links": {
+    "repository": "https://github.com/Duosis-Developer-Team/Hermes"
+  },
+  "relations": {
+    "technologies": ["Python", "FastAPI", "PostgreSQL", "React", "Vite", "Ant Design", "Kubernetes"]
+  },
+  "seo": {
+    "title": { "tr": "Hermes | Duosis", "en": "Hermes | Duosis" },
+    "description": {
+      "tr": "Duosis Hermes: müşteri ve proje bazlı zaman kaydı, görev ve toplantı takibi, faturalandırma raporları ve destek talepleri tek çalışma alanında.",
+      "en": "Duosis Hermes: customer- and project-based time tracking, task and meeting management, billing reports and support tickets in one workspace."
+    }
+  }
+}
