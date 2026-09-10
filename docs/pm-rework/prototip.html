@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hermes — İş Kalemi Prototipi</title>
+<style>
+/* =============================================================================
+   HERMES PROTOTİP — mevcut tasarım dili
+   Token katmanı frontend/src/styles/tokens.css ve index.css'ten birebir alındı.
+   Koyu tema VARSAYILANDIR; [data-theme="light"] semantic katmanı yeniden bağlar.
+   ============================================================================= */
+:root{
+  /* --- primitive palet (--hp-*) --- */
+  --hp-neutral-0:#FFFFFF; --hp-neutral-25:#FAFBFD; --hp-neutral-50:#F5F7FA;
+  --hp-neutral-100:#F0F3F7; --hp-neutral-200:#E8EDF3; --hp-neutral-300:#D9E1EA;
+  --hp-neutral-400:#A8B3C2; --hp-neutral-500:#78869A; --hp-neutral-600:#526174;
+  --hp-neutral-700:#2A3747; --hp-neutral-750:#202B38; --hp-neutral-800:#1B2532;
+  --hp-neutral-850:#161D27; --hp-neutral-900:#111720; --hp-neutral-950:#0B0F14;
+  --hp-neutral-ink:#17202D;
+  --hp-blue-300:#85B8FF; --hp-blue-400:#579DFF; --hp-blue-500:#388BFF;
+  --hp-blue-600:#0C66E4; --hp-blue-700:#0055CC;
+  --hp-green-300:#4BCE97; --hp-green-500:#22A06B; --hp-green-700:#1F845A;
+  --hp-amber-300:#F5CD47; --hp-amber-500:#E2B203; --hp-amber-700:#946F00;
+  --hp-red-300:#F87168; --hp-red-500:#E2483D; --hp-red-700:#C9372C;
+  --hp-purple-300:#B8ACF6; --hp-purple-500:#8F7EE7;
+
+  /* --- spacing / radius / type / motion --- */
+  --h-space-1:4px; --h-space-2:8px; --h-space-3:12px; --h-space-4:16px;
+  --h-space-5:20px; --h-space-6:24px; --h-space-8:32px;
+  --h-radius-control:6px; --h-radius-standard:8px; --h-radius-card:10px;
+  --h-radius-modal:14px; --h-radius-pill:999px;
+  --h-font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,
+    'Helvetica Neue',Arial,sans-serif;
+  --h-font-mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
+  --h-font-body:14px; --h-font-meta:12px; --h-font-label:12.5px;
+  --h-font-section-title:17px; --h-font-page-title:24px; --h-line-body:1.5;
+  --h-motion-fast:160ms; --h-ease-standard:cubic-bezier(.2,.7,.3,1);
+
+  /* --- semantic: KOYU (varsayılan) --- */
+  --h-bg-canvas:var(--hp-neutral-950);
+  --h-bg-page:radial-gradient(1200px 640px at 78% -8%,rgba(56,139,255,.055),transparent 62%),
+    radial-gradient(900px 560px at -10% 108%,rgba(143,126,231,.045),transparent 60%),
+    var(--hp-neutral-950);
+  --h-bg-surface:var(--hp-neutral-900);
+  --h-bg-elevated:var(--hp-neutral-850);
+  --h-bg-hover:var(--hp-neutral-800);
+  --h-bg-selected:rgba(87,157,255,.16);
+  --h-bg-weekend:rgba(0,0,0,.16);
+  --h-surface-subtle:rgba(255,255,255,.025);
+  --h-surface-interactive:rgba(255,255,255,.045);
+  --h-surface-overlay:var(--hp-neutral-850);
+  --h-surface-danger:rgba(248,113,104,.12);
+  --h-text-primary:#F4F7FB;
+  --h-text-secondary:var(--hp-neutral-400);
+  --h-text-muted:var(--hp-neutral-500);
+  --h-border-subtle:var(--hp-neutral-750);
+  --h-border-default:var(--hp-neutral-700);
+  --h-border-strong:#3B4A5E;
+  --h-brand:var(--hp-blue-400); --h-brand-hover:var(--hp-blue-300);
+  --h-brand-strong:var(--hp-blue-500); --h-focus:var(--hp-blue-400);
+  --h-success:var(--hp-green-300); --h-warning:var(--hp-amber-300);
+  --h-danger:var(--hp-red-300); --h-info:var(--hp-blue-300);
+  --h-on-brand:var(--hp-neutral-ink);
+  --h-shadow-hover:0 2px 8px rgba(0,0,0,.35);
+  --h-shadow-dropdown:0 6px 20px rgba(0,0,0,.45);
+  --sider-bg:#1e1b4b;
+  --h-action-bg:linear-gradient(180deg,var(--hp-neutral-800),var(--hp-neutral-850));
+  --h-action-border:var(--hp-neutral-700);
+}
+:root[data-theme="light"]{
+  --h-bg-canvas:var(--hp-neutral-25);
+  --h-bg-page:radial-gradient(1200px 640px at 78% -8%,rgba(12,102,228,.035),transparent 62%),
+    radial-gradient(900px 560px at -10% 108%,rgba(143,126,231,.03),transparent 60%),
+    var(--hp-neutral-25);
+  --h-bg-surface:var(--hp-neutral-0);
+  --h-bg-elevated:var(--hp-neutral-0);
+  --h-bg-hover:var(--hp-neutral-100);
+  --h-bg-selected:rgba(12,102,228,.10);
+  --h-bg-weekend:rgba(9,30,66,.035);
+  --h-surface-subtle:rgba(9,30,66,.025);
+  --h-surface-interactive:var(--hp-neutral-0);
+  --h-surface-overlay:var(--hp-neutral-0);
+  --h-surface-danger:rgba(201,55,44,.08);
+  --h-text-primary:var(--hp-neutral-ink);
+  --h-text-secondary:var(--hp-neutral-600);
+  --h-text-muted:#7C8999;
+  --h-border-subtle:var(--hp-neutral-200);
+  --h-border-default:var(--hp-neutral-300);
+  --h-border-strong:#B9C6D3;
+  --h-brand:var(--hp-blue-600); --h-brand-hover:var(--hp-blue-500);
+  --h-brand-strong:var(--hp-blue-700); --h-focus:var(--hp-blue-600);
+  --h-success:var(--hp-green-700); --h-warning:var(--hp-amber-700);
+  --h-danger:var(--hp-red-700); --h-info:var(--hp-blue-600);
+  --h-on-brand:var(--hp-neutral-0);
+  --h-shadow-hover:0 2px 8px rgba(23,32,45,.08);
+  --h-shadow-dropdown:0 6px 20px rgba(23,32,45,.14);
+  --sider-bg:#ffffff;
+  --h-action-bg:linear-gradient(180deg,var(--hp-neutral-0),var(--hp-neutral-100));
+  --h-action-border:var(--hp-neutral-300);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:var(--h-font-family);font-size:var(--h-font-body);line-height:var(--h-line-body);
+  background:var(--h-bg-page);background-attachment:fixed;color:var(--h-text-primary);
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+button:focus-visible{outline:2px solid var(--h-focus);outline-offset:2px;border-radius:var(--h-radius-control)}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--h-border-default);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--h-border-strong)}
+.mono{font-family:var(--h-font-mono)}
+
+/* ---------- prototip şeridi ---------- */
+.ribbon{background:var(--h-surface-danger);border-bottom:1px solid var(--h-border-subtle);
+  padding:6px 16px;font-size:var(--h-font-meta);color:var(--h-text-secondary);
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ribbon b{color:var(--h-danger);font-weight:600;letter-spacing:.06em;font-size:11px}
+
+/* ---------- üst çubuk ---------- */
+.top{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--h-bg-surface);
+  border-bottom:1px solid var(--h-border-subtle);position:relative;flex-wrap:wrap}
+.brand{font-size:var(--h-font-section-title);font-weight:600;letter-spacing:-.01em}
+.crumb{font-size:var(--h-font-meta);color:var(--h-text-muted)}
+.top .sp{flex:1}
+.seg{display:flex;gap:2px;background:var(--h-surface-subtle);border:1px solid var(--h-border-subtle);
+  border-radius:var(--h-radius-control);padding:2px}
+.seg button{font-size:var(--h-font-meta);padding:5px 10px;border-radius:4px;color:var(--h-text-secondary);
+  transition:background var(--h-motion-fast) var(--h-ease-standard)}
+.seg button:hover{background:var(--h-bg-hover);color:var(--h-text-primary)}
+.seg button[aria-pressed="true"]{background:var(--h-bg-selected);color:var(--h-brand);font-weight:600}
+.iconbtn{width:32px;height:32px;border-radius:var(--h-radius-control);border:1px solid var(--h-action-border);
+  background:var(--h-action-bg);display:grid;place-items:center;font-size:14px;position:relative}
+.iconbtn:hover{border-color:var(--h-border-strong)}
+.iconbtn b{position:absolute;top:-6px;right:-6px;background:var(--h-danger);color:var(--hp-neutral-ink);
+  font-size:10px;font-weight:600;border-radius:var(--h-radius-pill);padding:1px 5px;line-height:1.4}
+.who{font-size:var(--h-font-meta);color:var(--h-text-secondary)}
+.drop{position:absolute;right:16px;top:calc(100% + 8px);width:min(360px,92vw);
+  background:var(--h-surface-overlay);border:1px solid var(--h-border-default);
+  border-radius:var(--h-radius-standard);padding:8px;z-index:700;box-shadow:var(--h-shadow-dropdown)}
+.drop h5{margin:2px 6px 8px;font-size:11px;color:var(--h-text-muted);letter-spacing:.08em;
+  text-transform:uppercase;font-weight:600}
+.nrow{display:flex;gap:8px;padding:7px 6px;border-radius:var(--h-radius-control);align-items:flex-start}
+.nrow:hover{background:var(--h-bg-hover)}
+.nrow .nd{width:6px;height:6px;border-radius:50%;margin-top:7px;flex:none}
+.nrow .nd.r{background:var(--h-danger)} .nrow .nd.a{background:var(--h-warning)}
+.nrow .nd.n{background:var(--h-border-strong)}
+.nrow .nt{flex:1;font-size:var(--h-font-label)}
+.nrow .nm{font-size:11px;color:var(--h-text-muted);margin-top:2px}
+
+/* ---------- kabuk ---------- */
+.shell{display:grid;grid-template-columns:212px 1fr;min-height:calc(100vh - 96px)}
+@media(max-width:760px){.shell{grid-template-columns:1fr}
+  .nav{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--h-border-subtle)}}
+.nav{background:var(--sider-bg);border-right:1px solid var(--h-border-subtle);padding:12px 8px;
+  display:flex;flex-direction:column;gap:2px}
+.nav button{text-align:left;font-size:var(--h-font-body);padding:8px 12px;border-radius:var(--h-radius-control);
+  color:var(--h-text-secondary);white-space:nowrap;transition:background var(--h-motion-fast) var(--h-ease-standard)}
+.nav button:hover{background:var(--h-surface-interactive);color:var(--h-text-primary)}
+.nav button[aria-current="page"]{background:var(--h-bg-selected);color:var(--h-brand-hover);font-weight:600}
+.nav .sep{height:1px;background:var(--h-border-subtle);margin:10px 6px}
+.nav .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--h-text-muted);
+  padding:6px 12px 2px;font-weight:600}
+.main{padding:20px 24px 48px;min-width:0}
+
+h2.pt{font-size:var(--h-font-page-title);font-weight:600;margin:0 0 2px;letter-spacing:-.01em}
+.psub{color:var(--h-text-muted);font-size:var(--h-font-meta);margin:0 0 20px}
+
+/* ---------- kart ---------- */
+.blk{background:var(--h-bg-surface);border:1px solid var(--h-border-subtle);
+  border-radius:var(--h-radius-card);padding:16px;margin-bottom:12px}
+.blk-h{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
+.blk-h b{font-size:var(--h-font-section-title);font-weight:600}
+.blk-h .sub{font-size:var(--h-font-meta);color:var(--h-text-muted)}
+.blk-h .sp{flex:1}
+.blk-h button.act{font-size:var(--h-font-meta);color:var(--h-brand);font-weight:500}
+.blk-h button.act:hover{color:var(--h-brand-hover)}
+
+/* ---------- efor şeridi ---------- */
+.wk{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.wk .big{font-size:28px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.wk .of{font-size:var(--h-font-meta);color:var(--h-text-muted)}
+.trk{flex:1;height:6px;border-radius:var(--h-radius-pill);background:var(--h-bg-hover);
+  overflow:hidden;max-width:240px;min-width:80px}
+.trk span{display:block;height:100%;background:var(--h-brand);border-radius:var(--h-radius-pill)}
+.days{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.day{border:1px solid var(--h-border-subtle);border-radius:var(--h-radius-standard);padding:10px;
+  background:var(--h-surface-subtle);text-align:left;display:flex;flex-direction:column;
+  transition:border-color var(--h-motion-fast) var(--h-ease-standard)}
+.day>*{display:block;width:100%}
+.day:hover{border-color:var(--h-border-strong)}
+.day .dl{font-size:11px;color:var(--h-text-muted);display:flex;justify-content:space-between;gap:4px}
+.day .dv{font-size:18px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
+.mtr{display:block;width:100%;height:4px;border-radius:var(--h-radius-pill);
+  background:var(--h-bg-hover);margin-top:8px;overflow:hidden;flex:none}
+.mtr span{display:block;height:100%;background:var(--h-brand)}
+.day.miss{border-color:var(--h-warning);background:rgba(245,205,71,.10)}
+.day.miss .dv,.day.miss .dl{color:var(--h-warning)}
+.dotw{width:6px;height:6px;border-radius:50%;background:var(--h-warning);display:inline-block;flex:none}
+.warnline{font-size:var(--h-font-meta);color:var(--h-warning);display:flex;gap:6px;
+  align-items:center;margin-top:10px}
+
+/* ---------- iş satırları ---------- */
+.bh{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--h-text-muted);margin:14px 0 4px;font-weight:600}
+.bh:first-child{margin-top:0}
+.bh.late{color:var(--h-danger)} .bh.today{color:var(--h-warning)}
+.grp{font-size:var(--h-font-meta);color:var(--h-text-muted);margin:8px 0 2px}
+.row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--h-radius-control);
+  width:100%;text-align:left;transition:background var(--h-motion-fast) var(--h-ease-standard)}
+.row:hover{background:var(--h-bg-hover)}
+.row.sel{background:var(--h-bg-selected)}
+.pri{width:3px;height:18px;border-radius:2px;background:var(--h-border-strong);flex:none}
+.pri.hi{background:var(--h-text-secondary)} .pri.lo{background:var(--h-border-subtle)}
+.key{font-family:var(--h-font-mono);font-size:11px;color:var(--h-text-muted);flex:none}
+.ttl{flex:1;font-size:var(--h-font-body);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill{font-size:11px;padding:2px 8px;border-radius:var(--h-radius-pill);flex:none;
+  border:1px solid var(--h-border-default);color:var(--h-text-secondary);
+  background:var(--h-surface-subtle);white-space:nowrap}
+.pill.late{border-color:var(--h-danger);color:var(--h-danger);background:var(--h-surface-danger)}
+.pill.today{border-color:var(--h-warning);color:var(--h-warning);background:rgba(245,205,71,.10)}
+.pill.ok{border-color:var(--h-success);color:var(--h-success);background:rgba(75,206,151,.10)}
+.empty{font-size:var(--h-font-meta);color:var(--h-text-muted);padding:8px}
+
+/* ---------- takvim ---------- */
+.cal{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.cal .c{border:1px solid var(--h-border-subtle);border-radius:var(--h-radius-standard);padding:8px;
+  min-height:88px;display:flex;flex-direction:column;gap:4px;background:var(--h-surface-subtle)}
+.cal .cd{font-size:11px;color:var(--h-text-muted);font-weight:600}
+.ev{font-size:11px;padding:4px 6px;border-radius:var(--h-radius-control);background:var(--h-bg-hover);
+  border-left:2px solid var(--h-border-strong);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;text-align:left;width:100%;color:var(--h-text-secondary)}
+.ev.mt{border-left-color:var(--h-brand)} .ev.due{border-left-color:var(--h-warning)}
+.ev.late{border-left-color:var(--h-danger)}
+
+/* ---------- ekip ---------- */
+.team{display:flex;flex-direction:column;gap:4px}
+.tr{display:grid;grid-template-columns:120px minmax(60px,1fr) auto auto;gap:12px;align-items:center;
+  padding:6px 8px;border-radius:var(--h-radius-control);font-size:var(--h-font-label)}
+.tr:hover{background:var(--h-bg-hover)}
+.bar{height:6px;border-radius:var(--h-radius-pill);background:var(--h-bg-hover);overflow:hidden;max-width:200px}
+.bar span{display:block;height:100%;background:var(--h-brand);border-radius:var(--h-radius-pill)}
+.num{font-size:var(--h-font-meta);color:var(--h-text-muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ---------- metrik şeridi (h-metric-strip deseni) ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0;
+  border:1px solid var(--h-border-subtle);border-radius:var(--h-radius-standard);overflow:hidden}
+.kpi{padding:14px 16px;background:var(--h-surface-subtle);border-left:1px solid var(--h-border-subtle)}
+.kpi:first-child{border-left:0}
+.kpi .kl{font-size:11px;color:var(--h-text-muted);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.kpi .kv{font-size:26px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.15;
+  margin-top:4px;letter-spacing:-.02em}
+.kpi .kd{font-size:11px;color:var(--h-text-muted);margin-top:2px}
+
+/* ---------- uyarı satırları ---------- */
+.alerts{display:flex;flex-direction:column;gap:6px}
+.al{display:flex;align-items:center;gap:10px;font-size:var(--h-font-label);padding:9px 12px;
+  border-radius:var(--h-radius-control);background:var(--h-surface-subtle);
+  border:1px solid var(--h-border-subtle);width:100%;text-align:left}
+.al:hover{background:var(--h-bg-hover);border-color:var(--h-border-default)}
+.lv{font-size:11px;padding:2px 8px;border-radius:var(--h-radius-pill);flex:none;font-weight:600}
+.lv.w{background:rgba(245,205,71,.12);color:var(--h-warning);border:1px solid var(--h-warning)}
+.lv.r{background:var(--h-surface-danger);color:var(--h-danger);border:1px solid var(--h-danger)}
+.lv.n{background:var(--h-surface-subtle);color:var(--h-text-muted);border:1px solid var(--h-border-default)}
+.al .sp{flex:1}
+.al .go{font-size:var(--h-font-meta);color:var(--h-brand)}
+
+/* ---------- iş yüzeyi ---------- */
+.work{display:grid;grid-template-columns:212px 1fr;gap:12px;align-items:start}
+@media(max-width:960px){.work{grid-template-columns:1fr}}
+.views{background:var(--h-bg-surface);border:1px solid var(--h-border-subtle);
+  border-radius:var(--h-radius-card);padding:10px 8px}
+.views .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--h-text-muted);
+  padding:6px 10px 4px;font-weight:600}
+.views button{display:flex;width:100%;text-align:left;font-size:var(--h-font-label);padding:7px 10px;
+  border-radius:var(--h-radius-control);color:var(--h-text-secondary);gap:8px;align-items:center}
+.views button:hover{background:var(--h-bg-hover);color:var(--h-text-primary)}
+.views button[aria-pressed="true"]{background:var(--h-bg-selected);color:var(--h-brand-hover);font-weight:600}
+.views .cnt{margin-left:auto;font-size:11px;color:var(--h-text-muted);font-variant-numeric:tabular-nums}
+.axis{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 10px;
+  background:var(--h-bg-surface);border:1px solid var(--h-border-subtle);
+  border-radius:var(--h-radius-standard);margin-bottom:12px}
+.axis .g{display:flex;gap:2px;background:var(--h-surface-subtle);border:1px solid var(--h-border-subtle);
+  border-radius:var(--h-radius-control);padding:2px}
+.axis .g button{font-size:var(--h-font-meta);padding:4px 10px;border-radius:4px;color:var(--h-text-secondary)}
+.axis .g button:hover{background:var(--h-bg-hover);color:var(--h-text-primary)}
+.axis .g button[aria-pressed="true"]{background:var(--h-bg-selected);color:var(--h-brand);font-weight:600}
+.axis .cap{font-size:11px;color:var(--h-text-muted);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.axis .sp{flex:1}
+.axis .save{font-size:var(--h-font-meta);color:var(--h-brand);padding:4px 8px}
+.surface{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
+.surface.withdetail{grid-template-columns:1fr 320px}
+@media(max-width:1100px){.surface.withdetail{grid-template-columns:1fr}}
+.board{display:grid;grid-template-columns:repeat(4,minmax(170px,1fr));gap:8px;overflow-x:auto}
+.col{background:var(--h-bg-surface);border:1px solid var(--h-border-subtle);
+  border-radius:var(--h-radius-standard);padding:10px 8px;min-width:170px}
+.col .ch{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--h-text-muted);
+  padding:0 4px 8px;display:flex;justify-content:space-between;font-weight:600}
+.card{border:1px solid var(--h-border-subtle);border-radius:var(--h-radius-standard);padding:10px;
+  background:var(--h-bg-elevated);margin-bottom:6px;width:100%;text-align:left;
+  display:flex;flex-direction:column;gap:6px;box-shadow:var(--h-shadow-hover)}
+.card:hover{border-color:var(--h-border-strong)}
+.card.sel{border-color:var(--h-brand);background:var(--h-bg-selected)}
+.card .ck{font-size:11px;color:var(--h-text-muted);display:flex;gap:6px;align-items:center;
+  font-family:var(--h-font-mono)}
+.card .ct{font-size:var(--h-font-label);line-height:1.4;color:var(--h-text-primary)}
+.card .cf{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+
+/* ---------- detay paneli ---------- */
+.detail{background:var(--h-bg-surface);border:1px solid var(--h-border-subtle);
+  border-radius:var(--h-radius-card);padding:16px;position:sticky;top:12px}
+.detail .dk{font-size:var(--h-font-meta);color:var(--h-text-muted);display:flex;align-items:center;gap:8px;
+  font-family:var(--h-font-mono)}
+.detail .dk .sp{flex:1}
+.detail h4{font-size:var(--h-font-section-title);margin:6px 0 12px;font-weight:600;line-height:1.35}
+.kv{display:grid;grid-template-columns:84px 1fr;gap:6px 12px;font-size:var(--h-font-label);margin-bottom:12px}
+.kv dt{font-size:var(--h-font-meta);color:var(--h-text-muted)}
+.kv dd{margin:0}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.av{width:22px;height:22px;border-radius:50%;background:var(--h-bg-hover);
+  border:1px solid var(--h-border-default);display:grid;place-items:center;font-size:10px;
+  color:var(--h-text-secondary);font-weight:600}
+.money{display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px;background:var(--h-surface-subtle);
+  border:1px solid var(--h-border-subtle);border-radius:var(--h-radius-standard);margin-bottom:12px}
+.money span{font-size:var(--h-font-meta);color:var(--h-text-secondary);font-variant-numeric:tabular-nums}
+.money span.hi{color:var(--h-brand);font-weight:600}
+.sec{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--h-text-muted);
+  margin:14px 0 6px;font-weight:600}
+.att{display:flex;align-items:center;gap:8px;font-size:var(--h-font-label);padding:7px 10px;
+  border-radius:var(--h-radius-control);background:var(--h-surface-subtle);margin-bottom:4px;
+  border:1px solid var(--h-border-subtle)}
+.att .x{font-size:11px;color:var(--h-text-muted)}
+.cmt{font-size:var(--h-font-label);padding:6px 10px;border-left:2px solid var(--h-border-strong);
+  margin-bottom:6px;color:var(--h-text-secondary)}
+.cmt b{font-size:var(--h-font-meta);color:var(--h-text-primary)}
+.cmt .m{font-size:11px;color:var(--h-text-muted)}
+
+/* ---------- ayarlar ---------- */
+.setwrap{display:grid;grid-template-columns:230px 1fr;gap:12px;align-items:start}
+@media(max-width:860px){.setwrap{grid-template-columns:1fr}}
+.setnav{background:var(--h-bg-surface);border:1px solid var(--h-border-subtle);
+  border-radius:var(--h-radius-card);padding:10px 8px}
+.setnav button{display:flex;width:100%;text-align:left;font-size:var(--h-font-label);padding:9px 12px;
+  border-radius:var(--h-radius-control);color:var(--h-text-secondary);flex-direction:column;gap:2px}
+.setnav button:hover{background:var(--h-bg-hover);color:var(--h-text-primary)}
+.setnav button[aria-pressed="true"]{background:var(--h-bg-selected);color:var(--h-brand-hover);font-weight:600}
+.setnav .pm{font-size:11px;color:var(--h-text-muted);font-weight:400;font-family:var(--h-font-mono)}
+.tbl{width:100%;border-collapse:collapse;font-size:var(--h-font-label)}
+.tbl th{text-align:left;font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--h-text-muted);font-weight:600;padding:8px 10px;background:var(--h-surface-subtle);
+  border-bottom:1px solid var(--h-border-subtle)}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--h-border-subtle)}
+.tbl tr:last-child td{border-bottom:none}
+.states{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.st{border:1px solid var(--h-border-default);border-radius:var(--h-radius-control);padding:6px 10px;
+  font-size:var(--h-font-label);display:flex;gap:8px;align-items:center;background:var(--h-surface-subtle)}
+.st .cat{font-size:11px;color:var(--h-text-muted);font-family:var(--h-font-mono)}
+.hint{font-size:var(--h-font-meta);color:var(--h-text-secondary);background:var(--h-surface-subtle);
+  border-left:3px solid var(--h-brand);padding:10px 14px;
+  border-radius:0 var(--h-radius-control) var(--h-radius-control) 0;margin:12px 0}
+.tgl{display:inline-flex;align-items:center;gap:6px}
+.sw{width:30px;height:16px;border-radius:var(--h-radius-pill);background:var(--h-bg-hover);
+  position:relative;flex:none;border:1px solid var(--h-border-default)}
+.sw.on{background:var(--h-brand);border-color:var(--h-brand)}
+.sw i{position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;
+  background:var(--h-text-primary);transition:left var(--h-motion-fast) var(--h-ease-standard)}
+.sw.on i{left:16px;background:var(--h-on-brand)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="ribbon">
+  <b>PROTOTİP</b>
+  <span>Örnek veriyle çalışan tıklanabilir taslak — gerçek veri yok, hiçbir şey kaydedilmez.</span>
+  <span>Rolü üstten değiştir; sol menü ve ana sayfa blokları buna göre değişir.</span>
+</div>
+
+<div class="top">
+  <span class="brand">Hermes</span>
+  <span class="crumb" id="crumb">Ana sayfa</span>
+  <span class="sp"></span>
+  <div class="seg roles" role="group" aria-label="Rol">
+    <button data-role="calisan" onclick="setRole('calisan')">Çalışan</button>
+    <button data-role="yonetici" onclick="setRole('yonetici')">Ekip yöneticisi</button>
+    <button data-role="ust" onclick="setRole('ust')">Üst yönetici</button>
+  </div>
+  <button class="iconbtn" onclick="toggleTheme()" aria-label="Tema" title="Koyu / açık tema">◐</button>
+  <button class="iconbtn" onclick="toggleDrop()" aria-label="Bildirimler">🔔<b id="ncount">3</b></button>
+  <span class="who" id="who">Arca</span>
+  <div class="drop" id="drop" hidden></div>
+</div>
+
+<div class="shell">
+  <nav class="nav" id="nav"></nav>
+  <main class="main" id="main"></main>
+</div>
+
+<script>
+const S = { role:'calisan', screen:'home', sel:null, view:'mine', group:'proje', layout:'liste', set:'org' };
+
+const P = {
+  bck:{c:'IGA', p:'Backup Analytics'}, net:{c:'IGA', p:'Network Analytics'},
+  web:{c:'Duosis', p:'Web Sitesi'}, lgs:{c:'LogiSlot', p:'Mal Kabul'}
+};
+// due: gün farkı (negatif = gecikmiş, 0 = bugün, null = terminsiz)
+const ITEMS = [
+  {k:'BCK-142',pr:'bck',t:'Ajan sürüm yükseltmesi',due:-2,st:'progress',pri:'hi',own:'AR',ppl:['AR','MY'],est:360,log:270,bil:240,type:'İş',src:'ticket #4182'},
+  {k:'WEB-31', pr:'web',t:'İletişim formu spam koruması',due:-1,st:'todo',pri:'md',own:'AR',ppl:['AR'],est:120,log:0,bil:0,type:'İş'},
+  {k:'NET-88', pr:'net',t:'Switch envanteri çıkar',due:0,st:'progress',pri:'hi',own:'AR',ppl:['AR','EK'],est:240,log:150,bil:150,type:'İş'},
+  {k:'BCK-151',pr:'bck',t:'Yedek raporu şablonunu güncelle',due:2,st:'todo',pri:'md',own:'AR',ppl:['AR'],est:180,log:0,bil:0,type:'İş'},
+  {k:'BCK-153',pr:'bck',t:'Başarısız job uyarılarını gözden geçir',due:2,st:'todo',pri:'lo',own:'AR',ppl:['AR'],est:90,log:0,bil:0,type:'Sorun'},
+  {k:'LGS-19', pr:'lgs',t:'Randevu çakışma kuralı testi',due:2,st:'review',pri:'md',own:'AR',ppl:['AR','BA'],est:150,log:140,bil:140,type:'İş'},
+  {k:'WEB-34', pr:'web',t:'Referans bölümü içerik girişi',due:1,st:'todo',pri:'lo',own:'AR',ppl:['AR'],est:60,log:0,bil:0,type:'İş'},
+  {k:'NET-90', pr:'net',t:'Port haritası dokümanı',due:null,st:'todo',pri:'lo',own:null,ppl:[],est:null,log:0,bil:0,type:'İş'},
+  {k:'BCK-155',pr:'bck',t:'Retention politikası önerisi',due:null,st:'todo',pri:'md',own:null,ppl:[],est:null,log:0,bil:0,type:'Öneri'},
+  {k:'LGS-21', pr:'lgs',t:'Depo entegrasyon hatası',due:null,st:'todo',pri:'hi',own:null,ppl:[],est:null,log:0,bil:0,type:'Sorun',src:'ticket #4190'},
+  {k:'WEB-28', pr:'web',t:'Analytics kurulumu',due:-2,st:'done',pri:'md',own:'AR',ppl:['AR'],est:120,log:110,bil:0,type:'İş'},
+  {k:'NET-85', pr:'net',t:'VLAN dokümantasyonu',due:1,st:'progress',pri:'md',own:'EK',ppl:['EK','AR'],est:240,log:60,bil:60,type:'İş'}
+];
+const STATES = [{id:'todo',n:'Yapılacak',c:'todo'},{id:'progress',n:'Devam ediyor',c:'in_progress'},
+  {id:'review',n:'Gözden geçirme',c:'in_progress'},{id:'done',n:'Tamam',c:'done'}];
+const NAMES = {AR:'Arca',MY:'M. Yılmaz',EK:'E. Kaya',BA:'B. Aydın',ZO:'Z. Öztürk',AS:'A. Şahin'};
+const DAYS = ['Pzt 8','Sal 9','Çar 10','Per 11','Cum 12'];
+const TODAY = 2;                      // Çarşamba
+const EFFORT = [8,0,4,null,null];     // null = gelecek gün (henüz gelmedi)
+const EXPECT = 8;
+const MEET = {0:['09:30 IGA haftalık'],3:['14:00 Duosis değerlendirme']};
+
+const st = id => STATES.find(s=>s.id===id);
+const proj = i => P[i.pr];
+const dayIdx = d => d===null ? null : TODAY + d;
+const dueLabel = d => {
+  if(d===null) return null;
+  if(d<0) return Math.abs(d)+' gün gecikti';
+  if(d===0) return 'Bugün';
+  const i=dayIdx(d);
+  return i<=4 ? DAYS[i].split(' ')[0] : 'Gelecek hf.';
+};
+const dueCls = d => d===null ? '' : d<0 ? 'late' : d===0 ? 'today' : '';
+const esc = s => (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const mine = i => i.ppl.includes('AR');
+const open = i => st(i.st).c!=='done';
+
+const NOTIF = [
+  {d:'r', t:'<b>BCK-142</b> termini 2 gün geçti', m:'Bugün 09:12'},
+  {d:'a', t:'<b>NET-88</b> sana atandı — M. Yılmaz', m:'Dün 16:40'},
+  {d:'n', t:'<b>LGS-19</b> gözden geçirmeye alındı', m:'Dün 11:05'}
+];
+
+/* ---------- nav ---------- */
+const NAV = {
+  calisan:[['home','Ana sayfa'],['work','İşler'],['time','Efor girişi'],['meet','Toplantılar']],
+  yonetici:[['home','Ana sayfa'],['work','İşler'],['time','Efor girişi'],['meet','Toplantılar'],['SEP','Yönetim'],['settings','Ayarlar']],
+  ust:[['home','Ana sayfa'],['work','İşler'],['time','Efor girişi'],['meet','Toplantılar'],['SEP','Yönetim'],['dash','Dashboard'],['settings','Ayarlar']]
+};
+const TITLES = {home:'Ana sayfa',work:'İşler',time:'Efor girişi',meet:'Toplantılar',settings:'Ayarlar',dash:'Dashboard'};
+const WHO = {calisan:'Arca · Çalışan',yonetici:'S. Demir · Ekip yöneticisi',ust:'Yönetim · Üst yönetici'};
+
+function setRole(r){ S.role=r; if(!NAV[r].some(n=>n[0]===S.screen)) S.screen='home'; S.sel=null; 
+function toggleTheme(){
+  const r=document.documentElement;
+  r.setAttribute('data-theme', r.getAttribute('data-theme')==='light' ? 'dark' : 'light');
+}
+render(); }
+function go(s){ S.screen=s; S.sel=null; document.getElementById('drop').hidden=true; 
+function toggleTheme(){
+  const r=document.documentElement;
+  r.setAttribute('data-theme', r.getAttribute('data-theme')==='light' ? 'dark' : 'light');
+}
+render(); }
+function toggleDrop(){ const d=document.getElementById('drop'); d.hidden=!d.hidden;
+  if(!d.hidden) d.innerHTML='<h5>Bildirimler</h5>'+NOTIF.map(n=>
+    `<div class="nrow"><span class="nd ${n.d}"></span><span class="nt">${n.t}<div class="nm">${n.m}</div></span></div>`).join(''); }
+
+/* ---------- home ---------- */
+function effortBlock(compact){
+  const tot=EFFORT.reduce((a,b)=>a+(b||0),0), exp=EXPECT*5, pct=Math.round(tot/exp*100);
+  const days=EFFORT.map((h,i)=>{
+    const isToday=i===TODAY, future=i>TODAY, miss=!future&&!isToday&&(h===0||h===null);
+    return `<button class="day ${miss?'miss':''}" ${future?'style="opacity:.5"':''} onclick="go('time')">
+      <span class="dl"><span>${DAYS[i]}${isToday?' · bugün':''}</span>${miss?'<span class="dotw"></span>':''}</span>
+      <span class="dv">${h?h.toLocaleString('tr-TR',{minimumFractionDigits:1}):'—'}</span>
+      <span class="mtr"><span style="width:${Math.min(100,(h||0)/EXPECT*100)}%"></span></span></button>`;
+  }).join('');
+  const missDays=EFFORT.map((h,i)=>({h,i})).filter(x=>x.i<TODAY&&!x.h).map(x=>DAYS[x.i].split(' ')[0]);
+  const missCount=missDays.length;
+  return `<div class="blk">
+    <div class="blk-h"><b>Bu hafta eforun</b><span class="sp"></span>
+      <button class="act" onclick="go('time')">Efor gir →</button></div>
+    <div class="wk"><span class="big">${tot.toLocaleString('tr-TR',{minimumFractionDigits:1})}</span>
+      <span class="of">/ ${exp} saat</span><span class="trk"><span style="width:${pct}%"></span></span>
+      <span class="of">%${pct}</span></div>
+    ${compact?'':`<div class="days">${days}</div>
+    ${missCount?`<div class="warnline"><span class="dotw"></span> ${missCount===1?missDays[0]+' boş görünüyor':missCount+' gün eksik ('+missDays.join(', ')+')'} — izinliysen işaretle, değilse gir</div>`:''}`}
+  </div>`;
+}
+function bucket(list,label,cls){
+  if(!list.length) return '';
+  const byProj={}; list.forEach(i=>{const p=proj(i).c+' · '+proj(i).p;(byProj[p]=byProj[p]||[]).push(i)});
+  const groups=Object.entries(byProj).map(([n,arr])=>
+    `<div class="grp">${n}${arr.length>1?' · '+arr.length:''}</div>`+arr.map(rowHTML).join('')).join('');
+  return `<div class="bh ${cls}">${label} <span>· ${list.length}</span></div>${groups}`;
+}
+function rowHTML(i){
+  const dl=dueLabel(i.due), dc=dueCls(i.due);
+  return `<button class="row ${S.sel===i.k?'sel':''}" onclick="pick('${i.k}')">
+    <span class="pri ${i.pri}"></span><span class="key">${i.k}</span>
+    <span class="ttl">${esc(i.t)}</span>
+    ${dl?`<span class="pill ${dc}">${dl}</span>`:''}</button>`;
+}
+function myTasksBlock(){
+  const my=ITEMS.filter(i=>mine(i)&&open(i));
+  const late=my.filter(i=>i.due!==null&&i.due<0), today=my.filter(i=>i.due===0),
+        week=my.filter(i=>i.due!==null&&i.due>0);
+  return `<div class="blk">
+    <div class="blk-h"><b>İşlerim</b><span class="sub">${my.length} açık</span><span class="sp"></span>
+      <button class="act" onclick="go('work')">Tümü →</button></div>
+    ${bucket(late,'Gecikmiş','late')}${bucket(today,'Bugün','today')}${bucket(week,'Bu hafta','')}
+    ${!my.length?'<div class="empty">Terminli açık işin yok.</div>':''}
+  </div>`;
+}
+function weekBlock(){
+  const html=DAYS.map((d,idx)=>{
+    const evs=(MEET[idx]||[]).map(m=>`<span class="ev mt">${m}</span>`).join('');
+    const dues=ITEMS.filter(i=>mine(i)&&open(i)&&dayIdx(i.due)===idx)
+      .map(i=>`<button class="ev ${dueCls(i.due)||'due'}" onclick="pick('${i.k}');go('work')">${i.k} termin</button>`).join('');
+    return `<div class="c"><div class="cd">${d}${idx===TODAY?' · bugün':''}</div>${evs}${dues}</div>`;
+  }).join('');
+  return `<div class="blk"><div class="blk-h"><b>Haftam</b>
+    <span class="sub">toplantı · planlı zaman · termin</span><span class="sp"></span>
+    <button class="act" onclick="go('meet')">Takvim →</button></div>
+    <div class="cal">${html}</div></div>`;
+}
+function attentionBlock(){
+  const orphan=ITEMS.filter(i=>!i.own&&open(i)).length;
+  const late=ITEMS.filter(i=>i.due!==null&&i.due<0&&open(i)).length;
+  return `<div class="blk"><div class="blk-h"><b>Dikkat gerektirenler</b><span class="sp"></span>
+    <button class="act" onclick="go('work')">Hepsi →</button></div>
+    <div class="alerts">
+      <button class="al" onclick="S.view='gecikmis';go('work')"><span class="lv r">gecikme</span>
+        <span>${late} iş termini geçmiş</span><span class="sp"></span><span class="go">aç →</span></button>
+      <button class="al" onclick="S.view='triage';go('work')"><span class="lv n">sahipsiz</span>
+        <span>${orphan} iş kimseye atanmamış (triage)</span><span class="sp"></span><span class="go">dağıt →</span></button>
+      <button class="al" onclick="go('time')"><span class="lv w">efor</span>
+        <span>2 kişi bu hafta hiç efor girmemiş</span><span class="sp"></span><span class="go">gör →</span></button>
+    </div></div>`;
+}
+function teamBlock(){
+  const rows=[['MY',95,38,'6 açık',''],['EK',70,28,'2 gecikmiş','late'],['BA',100,40,'4 açık',''],
+              ['ZO',0,0,'giriş yok','today'],['AS',55,22,'3 açık','']];
+  return `<div class="blk"><div class="blk-h"><b>Ekibim</b><span class="sub">5 kişi · bu hafta</span>
+    <span class="sp"></span><button class="act" onclick="S.set='org';go('settings')">Proje ayarları →</button></div>
+    <div class="team">${rows.map(([id,p,h,lbl,cls])=>
+      `<div class="tr"><span>${NAMES[id]}</span><span class="bar"><span style="width:${p}%"></span></span>
+       <span class="num">${h} / 40 sa</span><span class="pill ${cls}">${lbl}</span></div>`).join('')}</div></div>`;
+}
+function execBlocks(){
+  return `<div class="blk"><div class="blk-h"><b>Bu ay</b><span class="sub">1–10 Eylül</span><span class="sp"></span>
+    <button class="act" onclick="go('dash')">Dashboard →</button></div>
+    <div class="kpis">
+      <div class="kpi"><div class="kl">TOPLAM EFOR</div><div class="kv">412</div><div class="kd">saat</div></div>
+      <div class="kpi"><div class="kl">FATURALANABİLİR</div><div class="kv">%68</div><div class="kd">280 saat</div></div>
+      <div class="kpi"><div class="kl">AKTİF PROJE</div><div class="kv">11</div><div class="kd">6 müşteri</div></div>
+      <div class="kpi"><div class="kl">GİRİŞ YAPAN</div><div class="kv">17<span style="font-size:13px;color:var(--ink-3)">/19</span></div><div class="kd">kişi</div></div>
+    </div></div>
+  <div class="blk"><div class="blk-h"><b>Dikkat</b><span class="sub">eşik aşan sinyaller</span></div>
+    <div class="alerts">
+      <button class="al" onclick="S.view='gecikmis';go('work')"><span class="lv r">gecikme</span>
+        <span>Gecikmiş iş 9 — geçen hafta 4 idi</span><span class="sp"></span><span class="go">kır →</span></button>
+      <button class="al" onclick="go('time')"><span class="lv w">veri</span>
+        <span>2 kişi bu hafta hiç efor girmemiş</span><span class="sp"></span><span class="go">gör →</span></button>
+      <button class="al" onclick="S.view='triage';go('work')"><span class="lv n">birikme</span>
+        <span>Sahipsiz iş 3 haftadır artıyor</span><span class="sp"></span><span class="go">gör →</span></button>
+    </div></div>
+  <div class="blk"><div class="blk-h"><b>Efor nereye gitti</b><span class="sub">müşteri kırılımı</span></div>
+    <div class="team">
+      <div class="tr"><span>IGA</span><span class="bar"><span style="width:100%"></span></span><span class="num">186 sa</span><span class="pill ok">%74 fat.</span></div>
+      <div class="tr"><span>LogiSlot</span><span class="bar"><span style="width:52%"></span></span><span class="num">97 sa</span><span class="pill ok">%81 fat.</span></div>
+      <div class="tr"><span>Duosis (iç)</span><span class="bar"><span style="width:41%"></span></span><span class="num">76 sa</span><span class="pill">%0 fat.</span></div>
+      <div class="tr"><span>Diğer 3</span><span class="bar"><span style="width:29%"></span></span><span class="num">53 sa</span><span class="pill ok">%62 fat.</span></div>
+    </div></div>`;
+}
+function homeScreen(){
+  if(S.role==='calisan') return effortBlock()+myTasksBlock()+weekBlock();
+  if(S.role==='yonetici') return attentionBlock()+teamBlock()+effortBlock(true)+myTasksBlock();
+  return execBlocks();
+}
+
+/* ---------- work ---------- */
+const VIEWS=[
+  {id:'mine',n:'Bana ait işler',f:i=>mine(i)&&open(i)},
+  {id:'triage',n:'Triage',f:i=>!i.own&&open(i)},
+  {id:'gecikmis',n:'Gecikmiş',f:i=>i.due!==null&&i.due<0&&open(i)},
+  {id:'hafta',n:'Bu hafta',f:i=>i.due!==null&&i.due>=0&&open(i)},
+  {id:'fatura',n:'Faturalanmamış',f:i=>i.log>i.bil&&open(i)},
+  {id:'hepsi',n:'Tüm işler',f:()=>true}
+];
+function pick(k){ S.sel=(S.sel===k?null:k); 
+function toggleTheme(){
+  const r=document.documentElement;
+  r.setAttribute('data-theme', r.getAttribute('data-theme')==='light' ? 'dark' : 'light');
+}
+render(); }
+function setV(k,v){ S[k]=v; 
+function toggleTheme(){
+  const r=document.documentElement;
+  r.setAttribute('data-theme', r.getAttribute('data-theme')==='light' ? 'dark' : 'light');
+}
+render(); }
+function workScreen(){
+  const V=VIEWS.find(v=>v.id===S.view)||VIEWS[0];
+  const list=ITEMS.filter(V.f);
+  const views=VIEWS.map(v=>`<button aria-pressed="${v.id===S.view}" onclick="setV('view','${v.id}')">
+     ${v.n}<span class="cnt">${ITEMS.filter(v.f).length}</span></button>`).join('');
+  const axis=`<div class="axis">
+    <span class="cap">GRUPLA</span><div class="g">
+      ${['proje','durum','sahip','termin'].map(g=>`<button aria-pressed="${S.group===g}" onclick="setV('group','${g}')">${g}</button>`).join('')}
+    </div>
+    <span class="cap">YERLEŞİM</span><div class="g">
+      ${['liste','pano','takvim'].map(l=>`<button aria-pressed="${S.layout===l}" onclick="setV('layout','${l}')">${l}</button>`).join('')}
+    </div><span class="sp"></span><button class="save">＋ Görünüm kaydet</button></div>`;
+  let body='';
+  if(S.layout==='pano') body=boardHTML(list);
+  else if(S.layout==='takvim') body=calHTML(list);
+  else body=listHTML(list);
+  const detail=S.sel?detailHTML(ITEMS.find(i=>i.k===S.sel)):'';
+  return `<div class="work">
+    <aside class="views"><div class="lbl">Görünümler</div>${views}
+      <div class="lbl" style="margin-top:.5rem">Projeler</div>
+      ${Object.entries(P).map(([id,p])=>`<button onclick="setV('view','hepsi')">${p.c} · ${p.p}
+        <span class="cnt">${ITEMS.filter(i=>i.pr===id).length}</span></button>`).join('')}
+    </aside>
+    <div><div class="crumbline"></div>${axis}
+      <div class="surface ${S.sel?'withdetail':''}"><div>${body}</div>${detail}</div></div></div>`;
+}
+function groupKey(i){
+  if(S.group==='proje') return proj(i).c+' · '+proj(i).p;
+  if(S.group==='durum') return st(i.st).n;
+  if(S.group==='sahip') return i.own?NAMES[i.own]:'Sahipsiz';
+  return i.due===null?'Terminsiz':i.due<0?'Gecikmiş':i.due===0?'Bugün':'Bu hafta';
+}
+function listHTML(list){
+  if(!list.length) return '<div class="blk"><div class="empty">Bu görünümde iş yok.</div></div>';
+  const g={}; list.forEach(i=>(g[groupKey(i)]=g[groupKey(i)]||[]).push(i));
+  return '<div class="blk">'+Object.entries(g).map(([n,arr])=>
+    `<div class="bh">${n} <span>· ${arr.length}</span></div>`+arr.map(rowHTML).join('')).join('')+'</div>';
+}
+function cardHTML(i){
+  const dl=dueLabel(i.due), dc=dueCls(i.due);
+  return `<button class="card ${S.sel===i.k?'sel':''}" onclick="pick('${i.k}')">
+    <span class="ck"><span class="pri ${i.pri}" style="height:11px"></span>${i.k} · ${i.type}</span>
+    <span class="ct">${esc(i.t)}</span>
+    <span class="cf">${dl?`<span class="pill ${dc}">${dl}</span>`:'<span class="pill">terminsiz</span>'}
+      ${i.own?`<span class="av">${i.own}</span>`:'<span class="pill">sahipsiz</span>'}</span></button>`;
+}
+function boardHTML(list){
+  return '<div class="board">'+STATES.map(s=>{
+    const arr=list.filter(i=>i.st===s.id);
+    return `<div class="col"><div class="ch"><span>${s.n}</span><span>${arr.length}</span></div>
+      ${arr.map(cardHTML).join('')||'<div class="empty" style="font-size:11.5px">—</div>'}</div>`;
+  }).join('')+'</div>';
+}
+function calHTML(list){
+  return '<div class="blk"><div class="cal">'+DAYS.map((d,idx)=>{
+    const arr=list.filter(i=>dayIdx(i.due)===idx);
+    const evs=(MEET[idx]||[]).map(m=>`<span class="ev mt">${m}</span>`).join('');
+    return `<div class="c"><div class="cd">${d}${idx===TODAY?' · bugün':''}</div>${evs}
+      ${arr.map(i=>`<button class="ev ${dueCls(i.due)||'due'}" onclick="pick('${i.k}')">${i.k} ${esc(i.t).slice(0,16)}</button>`).join('')}</div>`;
+  }).join('')+'</div><div class="empty">Haftanın dışına düşen terminler burada görünmez — “Gecikmiş” ve “Bu hafta” görünümlerinden takip edilir.</div></div>';
+}
+function detailHTML(i){
+  if(!i) return '';
+  const dl=dueLabel(i.due), dc=dueCls(i.due);
+  const h=m=>m===null?'—':(m/60).toLocaleString('tr-TR',{minimumFractionDigits:1})+'sa';
+  return `<aside class="detail">
+    <div class="dk">${i.k} · ${i.type}<span class="sp"></span>
+      <button onclick="pick('${i.k}')" aria-label="Kapat">✕</button></div>
+    <h4>${esc(i.t)}</h4>
+    <div class="money"><span>Tahmin ${h(i.est)}</span><span>Girilen ${h(i.log*1)}</span>
+      <span class="hi">Faturalanabilir ${h(i.bil)}</span><span>Tutar ₺—</span></div>
+    <dl class="kv">
+      <dt>durum</dt><dd>${st(i.st).n}</dd>
+      <dt>proje</dt><dd>${proj(i).c} · ${proj(i).p}</dd>
+      <dt>sahip</dt><dd>${i.own?NAMES[i.own]:'<span class="pill">sahipsiz — triage</span>'}</dd>
+      <dt>katılımcı</dt><dd><span class="chips">${i.ppl.map(p=>`<span class="av" title="${NAMES[p]}">${p}</span>`).join('')||'—'}</span></dd>
+      <dt>termin</dt><dd>${dl?`<span class="pill ${dc}">${dl}</span>`:'—'}</dd>
+      ${i.src?`<dt>kaynak</dt><dd>${i.src}</dd>`:''}
+    </dl>
+    <div class="sec">Ek dosyalar</div>
+    <div class="att">📎 <span>ajan-log-2026-09.txt</span><span class="sp" style="flex:1"></span><span class="x">temiz</span></div>
+    <div class="att" style="opacity:.6">📎 <span>ekran-goruntusu.png</span><span class="sp" style="flex:1"></span><span class="x">taranıyor</span></div>
+    <div class="sec">Yorumlar</div>
+    <div class="cmt"><b>M. Yılmaz</b> <span class="m">dün 16:40</span><br>Test ortamında doğruladım, üretime alınabilir.</div>
+    <div class="sec">Aktivite</div>
+    <div class="cmt" style="border-left-color:var(--accent)"><span class="m">durum “Devam ediyor” oldu · dün</span></div>
+  </aside>`;
+}
+
+/* ---------- time ---------- */
+function timeScreen(){
+  const tot=EFFORT.reduce((a,b)=>a+(b||0),0);
+  return `<div class="blk"><div class="blk-h"><b>8–12 Eylül</b><span class="sub">haftalık ızgara</span>
+    <span class="sp"></span><span style="font-family:var(--mono);font-size:11px;color:var(--ink-3)">${tot} / 40 sa</span></div>
+    <table class="tbl"><thead><tr><th>Proje</th>${DAYS.map(d=>`<th>${d}</th>`).join('')}<th>Top.</th></tr></thead>
+    <tbody>
+      <tr><td>IGA · Backup</td><td>4,0</td><td>—</td><td>2,0</td><td>—</td><td>—</td><td>6,0</td></tr>
+      <tr><td>IGA · Network</td><td>2,0</td><td>—</td><td>2,0</td><td>—</td><td>—</td><td>4,0</td></tr>
+      <tr><td>Duosis · Web</td><td>2,0</td><td>—</td><td>—</td><td>—</td><td>—</td><td>2,0</td></tr>
+      <tr><td colspan="6" style="color:var(--amber)">Salı hiç giriş yok — izin işaretle ya da gir</td><td>—</td></tr>
+    </tbody></table>
+    <div class="hint">Kapasite ayarı (günlük beklenen saat · çalışma günleri · tatil · izin) bugün şemada yok. Bu şerit onsuz da çalışır; oran yerine yalnız “girildi / girilmedi” gösterir.</div>
+  </div>`;
+}
+/* ---------- meetings ---------- */
+function meetScreen(){
+  return `<div class="blk"><div class="blk-h"><b>Haftam</b><span class="sub">toplantı · planlı zaman · termin</span></div>
+    <div class="cal">${DAYS.map((d,idx)=>{
+      const evs=(MEET[idx]||[]).map(m=>`<span class="ev mt">${m}</span>`).join('');
+      const dues=ITEMS.filter(i=>mine(i)&&open(i)&&dayIdx(i.due)===idx)
+        .map(i=>`<button class="ev due" onclick="pick('${i.k}');go('work')">${i.k} termin</button>`).join('');
+      const plan=idx===1?'<span class="ev">Planlı: IGA saha ziyareti</span>':'';
+      return `<div class="c" style="min-height:104px"><div class="cd">${d}</div>${evs}${plan}${dues}</div>`;
+    }).join('')}</div>
+    <div class="hint">Üç kaynak tek şeritte: Graph’tan senkronlanan toplantılar, planlı zaman ve iş kalemi terminleri. Ayrı bir takvim sayfası açılmıyor — bu bir görünüm.</div></div>`;
+}
+/* ---------- settings ---------- */
+const SET=[
+  {id:'org',n:'Organizasyon',p:'users.manage · roles.manage'},
+  {id:'work',n:'İş yönetimi',p:'tasks.permissions.manage'},
+  {id:'ref',n:'Referans verileri',p:'reference.manage'},
+  {id:'cust',n:'Müşteri ve projeler',p:'customers.manage · projects.manage'},
+  {id:'int',n:'Entegrasyonlar',p:'api.manage · tickets.config.manage'}
+];
+function setScreen(){
+  const nav=SET.map(s=>`<button aria-pressed="${S.set===s.id}" onclick="setV('set','${s.id}')">
+    ${s.n}<span class="pm">${s.p}</span></button>`).join('');
+  let body='';
+  if(S.set==='org') body=`<div class="blk"><div class="blk-h"><b>Kullanıcılar ve roller</b></div>
+    <table class="tbl"><thead><tr><th>Kişi</th><th>Rol</th><th>Gruplar</th></tr></thead><tbody>
+    ${[['Arca','Geliştirici','Teknik'],['M. Yılmaz','Ekip yöneticisi','Teknik'],['E. Kaya','Geliştirici','Teknik'],
+       ['B. Aydın','Geliştirici','Operasyon'],['Z. Öztürk','Geliştirici','Operasyon']]
+      .map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}
+    </tbody></table>
+    <div class="hint">Proje üyeleri ve proje içi yönlendirme burada <b>değil</b> — projenin kendi ayar sayfasında, proje lideri yönetir. Kiracı ayarı ile proje ayarı bilinçli olarak ayrı.</div></div>`;
+  if(S.set==='work') body=`<div class="blk"><div class="blk-h"><b>Durum akışı</b><span class="sub">kiracı başına tek şema</span></div>
+    <div class="states">${STATES.map(s=>`<span class="st">${s.n}<span class="cat">${s.c}</span></span>`).join('')}
+      <span class="st" style="border-style:dashed;color:var(--ink-3)">＋ durum ekle</span></div>
+    <div class="hint">Pano sütunları bu listeden geliyor. Raporlar ada göre değil <b>kategoriye</b> göre çalışır; kiracı yeniden adlandırınca rapor bozulmaz.</div></div>
+    <div class="blk"><div class="blk-h"><b>Bildirim kuralları</b></div>
+    <table class="tbl"><thead><tr><th>Olay</th><th>E-posta</th><th>Uygulama içi</th></tr></thead><tbody>
+    ${[['Atama',1,1],['Kabul',0,1],['Tamamlama',1,1],['Termin yaklaştı',0,1]].map(r=>
+      `<tr><td>${r[0]}</td><td><span class="tgl"><span class="sw ${r[1]?'on':''}"><i></i></span></span></td>
+       <td><span class="tgl"><span class="sw ${r[2]?'on':''}"><i></i></span></span></td></tr>`).join('')}
+    </tbody></table>
+    <div class="hint">Kanal ayrımı tek sütun: aynı kural tablosu iki kanalı da yönetiyor. İkinci bir bildirim hattı yok.</div></div>
+    <div class="blk"><div class="blk-h"><b>İş tipleri</b></div>
+    <div class="states"><span class="st">İş</span><span class="st">Sorun</span><span class="st">Öneri</span></div></div>`;
+  if(S.set==='ref') body=`<div class="blk"><div class="blk-h"><b>Referans verileri</b></div>
+    <table class="tbl"><thead><tr><th>Küme</th><th>Kayıt</th></tr></thead><tbody>
+    ${[['İş tipleri',12],['Aktivite tipleri',8],['Platformlar',5],['İş hatları',4]].map(r=>
+      `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</tbody></table>
+    <div class="hint">Bugün bunların her biri sol menüde ayrı bir sayfa. Tek çatı altında bölüm oluyorlar.</div></div>`;
+  if(S.set==='cust') body=`<div class="blk"><div class="blk-h"><b>Müşteriler ve projeler</b></div>
+    <table class="tbl"><thead><tr><th>Müşteri</th><th>Proje</th><th>Üye</th></tr></thead><tbody>
+    ${[['IGA','Backup Analytics',4],['IGA','Network Analytics',3],['Duosis','Web Sitesi',2],['LogiSlot','Mal Kabul',3]]
+      .map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table></div>`;
+  if(S.set==='int') body=`<div class="blk"><div class="blk-h"><b>Entegrasyonlar</b></div>
+    <table class="tbl"><thead><tr><th>Bağlantı</th><th>Durum</th></tr></thead><tbody>
+    <tr><td>Public API v1 · istemciler</td><td>3 aktif</td></tr>
+    <tr><td>MCP servisi</td><td>24 araç</td></tr>
+    <tr><td>Ticket entegrasyonu</td><td>LogiSlot bağlı</td></tr>
+    <tr><td>Microsoft Graph · takvim</td><td>senkron açık</td></tr>
+    <tr><td>e-Fatura</td><td style="color:var(--ink-3)">henüz yok</td></tr>
+    </tbody></table></div>`;
+  return `<div class="setwrap"><aside class="setnav">${nav}</aside><div>${body}</div></div>`;
+}
+function dashScreen(){
+  return `<div class="blk"><div class="blk-h"><b>Dashboard</b><span class="sub">mevcut ekran korunuyor</span></div>
+    <div class="hint">Ana sayfa dashboard’un yerine geçmiyor, <b>önüne</b> geçiyor: ana sayfa özet, dashboard detay. Bu ekran bugünkü hâliyle kalır; para katmanı gelince tutar sütunu eklenir.</div>
+    <div class="kpis" style="margin-top:.6rem">
+      <div class="kpi"><div class="kl">TOPLAM SAAT</div><div class="kv">412</div></div>
+      <div class="kpi"><div class="kl">MÜŞTERİ</div><div class="kv">6</div></div>
+      <div class="kpi"><div class="kl">PROJE</div><div class="kv">11</div></div>
+      <div class="kpi"><div class="kl">AKTİF KİŞİ</div><div class="kv">19</div></div>
+    </div></div>`;
+}
+
+/* ---------- render ---------- */
+function render(){
+  document.querySelectorAll('.roles button').forEach(b=>
+    b.setAttribute('aria-pressed', b.dataset.role===S.role));
+  document.getElementById('who').textContent=WHO[S.role];
+  document.getElementById('crumb').textContent=TITLES[S.screen];
+  document.getElementById('nav').innerHTML=NAV[S.role].map(([id,n])=>
+    id==='SEP'?`<div class="sep"></div><div class="lbl">${n}</div>`
+    :`<button ${S.screen===id?'aria-current="page"':''} onclick="go('${id}')">${n}</button>`).join('');
+  const m={home:homeScreen,work:workScreen,time:timeScreen,meet:meetScreen,settings:setScreen,dash:dashScreen};
+  const sub={home:'giriş ekranı — bloklar izne göre görünür',work:'üç eksen: görünüm · gruplama · yerleşim',
+    time:'haftalık ızgara',meet:'toplantı · planlı zaman · termin',settings:'tek çatı, beş bölüm',dash:'mevcut ekran'};
+  document.getElementById('main').innerHTML=
+    `<h2 class="pt">${TITLES[S.screen]}</h2><p class="psub">${sub[S.screen]}</p>`+(m[S.screen]||homeScreen)();
+}
+document.addEventListener('click',e=>{
+  const d=document.getElementById('drop');
+  if(!d.hidden && !e.target.closest('#drop') && !e.target.closest('.bell')) d.hidden=true;
+});
+
+function toggleTheme(){
+  const r=document.documentElement;
+  r.setAttribute('data-theme', r.getAttribute('data-theme')==='light' ? 'dark' : 'light');
+}
+render();
+</script>
+</body>
+</html>
