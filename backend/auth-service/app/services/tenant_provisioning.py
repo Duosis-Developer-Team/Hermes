@@ -20,6 +20,7 @@ import re
 import secrets
 import string
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
 
 import httpx
@@ -288,6 +289,10 @@ def provision_tenant(
         # --- 9) Aktiflestir --------------------------------------------------
         _record_step(db, op, "activate")
         tenant.status = "active"
+        # Yasam dongusu gecisi (`transition_tenant`) burada kullanilmiyor;
+        # aktiflesme zamani da bu yuzden ELLE yazilir. Yazilmayinca acme/
+        # duotest 'active' ama `activated_at` bos kaliyordu.
+        tenant.activated_at = tenant.activated_at or datetime.now(timezone.utc)
         tenant.version = (tenant.version or 1) + 1
         db.flush()
         # Aktif durumu core'a da yansit.

@@ -32,10 +32,15 @@ export const authService = {
      * [KRİTİK-6] Backend HttpOnly cookie set eder; response yalnızca { user }.
      *
      * @param {Object} data { code, redirect_uri }
+     * @param {Object} [opts] { workspace } — callback adresinde `?workspace=`
+     *   bulunmadigi icin (OAuth `state`ten cozulup) acikca verilir.
      * @returns {{ user: object }}
      */
-    microsoftLogin: async (data) => {
-        const response = await authClient.post('/api/v1/auth/microsoft', data)
+    microsoftLogin: async (data, { workspace } = {}) => {
+        const config = workspace ? { params: { workspace } } : undefined
+        const response = await authClient.post(
+            '/api/v1/auth/microsoft', data, config,
+        )
         return response.data
     },
 

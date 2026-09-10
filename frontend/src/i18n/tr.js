@@ -632,6 +632,8 @@ export default {
         slugRule: 'Yalnızca küçük harf, rakam ve tire',
         workspaceAddress: 'Çalışma alanı adresi',
         workspaceHint: 'Kullanıcılar bu kiracıya /?workspace=<kısa-ad> ile ulaşır',
+        workspaceLink: 'Çalışma alanı bağlantısı',
+        workspaceLinkShare: 'Bu bağlantıyı kiracının kullanıcılarıyla paylaşın — parola ve Microsoft ile giriş bu bağlantı üzerinden çalışır.',
         plan: 'Plan',
         selectPlan: 'Bir plan seçin',
         owner: 'Sahip',

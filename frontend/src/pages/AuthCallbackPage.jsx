@@ -11,6 +11,7 @@ import { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { message, Spin } from 'antd'
 import { authService } from '../services/api'
+import { decodeSsoState } from '../api/workspace'
 import { useAuthStore } from '../stores/authStore'
 import { useT } from '../i18n'
 
@@ -41,10 +42,14 @@ function AuthCallbackPage() {
 
                 // [KRİTİK-6] Backend artık token döndürmez; HttpOnly cookie set eder.
                 // Response yalnızca { user } içerir. console.log'lar kaldırıldı.
-                const data = await authService.microsoftLogin({
-                    code,
-                    redirect_uri: redirectUri
-                })
+                // Giris ekranindaki `?workspace=` OAuth `state` ile geri
+                // doner; callback adresinde parametre olmadigi icin ACIKCA
+                // iletilir. Yoksa giris host'un tenant'ina dusuyordu.
+                const workspace = decodeSsoState(searchParams.get('state'))
+                const data = await authService.microsoftLogin(
+                    { code, redirect_uri: redirectUri },
+                    { workspace },
+                )
 
                 const user = data?.user
                 if (!user) {

@@ -714,3 +714,37 @@ def test_created_user_can_receive_roles(pg_session):
     assert membership_service.get_active_membership(
         pg_session, tenant_id=tenant.id, user_id=user.id
     ) is not None
+
+
+# =============================================================================
+# Aktiflesme zamani
+# =============================================================================
+
+def test_provisioning_sets_activated_at(pg_session):
+    """Aktif tenant'in aktiflesme zamani bos KALMAZ.
+
+    Provisioning durumu dogrudan 'active' yapiyor ve `activated_at`'i
+    yazan yasam dongusu gecisini atliyordu; canlida acme ve duotest
+    'active' ama `activated_at` bos kaldi.
+    """
+    _provision(pg_session)
+    tenant = pg_session.query(Tenant).filter(Tenant.slug == "acme").one()
+    assert tenant.status == "active"
+    assert tenant.activated_at is not None
+
+
+def test_failed_provisioning_leaves_activated_at_empty(pg_session):
+    """Aktiflesmeyen tenant'a aktiflesme zamani YAZILMAZ."""
+    with patch.object(
+        prov, "_project_to_core",
+        side_effect=prov.ProvisioningError("core yok", step="core_projection"),
+    ):
+        with pytest.raises(prov.ProvisioningError):
+            prov.provision_tenant(
+                pg_session, slug="acme", display_name="Acme",
+                owner_email="owner@acme.com",
+            )
+    tenant = pg_session.query(Tenant).filter(Tenant.slug == "acme").first()
+    if tenant is not None:
+        assert tenant.status != "active"
+        assert tenant.activated_at is None

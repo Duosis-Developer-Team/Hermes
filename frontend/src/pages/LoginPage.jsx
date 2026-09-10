@@ -23,6 +23,7 @@ import { useThemeStore } from '../stores/themeStore'
 import { authService } from '../services/api'
 import { platformService } from '../api/platformApi'
 import { usePlatformAuthStore } from '../stores/platformAuthStore'
+import { buildMicrosoftAuthorizeUrl, readWorkspace } from '../api/workspace'
 import logoIconDark from '../assets/logos/logo-icon-dark.jpg'
 import logoIconLight from '../assets/logos/logo-icon-light.png'
 import './LoginPage.css'
@@ -104,16 +105,20 @@ function LoginPage() {
     const handleMicrosoftLogin = () => {
         const tenantId = window._env_?.VITE_AZURE_TENANT_ID || import.meta.env.VITE_AZURE_TENANT_ID || 'common'
         const clientId = window._env_?.VITE_AZURE_CLIENT_ID || import.meta.env.VITE_AZURE_CLIENT_ID
-        const redirectUri = window.location.origin + '/auth/callback'
 
         if (!clientId) {
             message.warning(t('login.azureMisconfigured'))
             return
         }
 
-        const url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=User.Read&prompt=select_account`
-
-        window.location.href = url
+        // redirect_uri sabittir (Azure'da kayitli); `?workspace=` Microsoft
+        // donusunde kaybolmasin diye OAuth `state` icinde tasinir.
+        window.location.href = buildMicrosoftAuthorizeUrl({
+            tenantId,
+            clientId,
+            origin: window.location.origin,
+            workspace: readWorkspace(window.location.search),
+        })
     }
 
     return (

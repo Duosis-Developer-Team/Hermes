@@ -7,7 +7,8 @@
  */
 
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { loginPathFor } from './api/workspace'
 import { Spin } from 'antd'
 import { useAuthStore } from './stores/authStore'
 import { usePlatformAuthStore } from './stores/platformAuthStore'
@@ -81,9 +82,12 @@ export const ProtectedRoute = ({ children, permission = null }) => {
     const { isAuthenticated } = useAuthStore()
     const permissions = useAuthStore((s) => s.permissions)
     const canAny = useAuthStore((s) => s.canAny)
+    const location = useLocation()
 
     if (!isAuthenticated) {
-        return <Navigate to="/login" replace />
+        // `?workspace=` KORUNUR: dusurulunce giris host'un tenant'ina
+        // (Duosis) gidiyordu ve yeni tenant'a hic ulasilamiyordu.
+        return <Navigate to={loginPathFor(location.search)} replace />
     }
 
     if (permission) {
@@ -104,9 +108,10 @@ export const ProtectedRoute = ({ children, permission = null }) => {
 export const TaskProtectedRoute = ({ children }) => {
     const { isAuthenticated, user } = useAuthStore()
     const { isLoading, canAccessAny, isTaskAdmin } = useTaskPermissions()
+    const location = useLocation()
 
     if (!isAuthenticated) {
-        return <Navigate to="/login" replace />
+        return <Navigate to={loginPathFor(location.search)} replace />
     }
     if (user?.is_admin) {
         return children

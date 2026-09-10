@@ -638,6 +638,8 @@ export default {
         slugRule: 'Lowercase letters, digits and dashes only',
         workspaceAddress: 'Workspace address',
         workspaceHint: 'Users reach this tenant at /?workspace=<slug>',
+        workspaceLink: 'Workspace link',
+        workspaceLinkShare: 'Share this link with the tenant’s users — both password and Microsoft sign-in work through it.',
         plan: 'Plan',
         selectPlan: 'Select a plan',
         owner: 'Owner',

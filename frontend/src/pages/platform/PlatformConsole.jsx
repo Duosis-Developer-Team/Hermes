@@ -228,7 +228,7 @@ function usePlans() {
     return plans
 }
 
-function CreateTenantModal({ open, onClose, onDone }) {
+export function CreateTenantModal({ open, onClose, onDone }) {
     const t = useT()
     const [form] = Form.useForm()
     const [busy, setBusy] = useState(false)
@@ -240,14 +240,12 @@ function CreateTenantModal({ open, onClose, onDone }) {
         setBusy(true)
         try {
             const result = await platformService.createTenant(values)
-            if (result.one_time_password) {
-                // Parola YALNIZCA burada, BIR KEZ gosterilir; hicbir yere
-                // kaydedilmez. Modal kapanmadan once operator kopyalamali.
-                setCreated(result)
-            } else {
-                message.success(`${values.display_name} created.`)
-                onDone()
-            }
+            // Sonuc ekrani HER ZAMAN acilir: tenant'in adresi operatorun
+            // eline gecmeli. Eskiden sahip zaten kayitliysa (parola
+            // uretilmez) yalnizca toast cikiyor ve adres HIC gosterilmiyordu
+            // (duotest, 2026-09-03). Parola ise YALNIZCA burada, BIR KEZ
+            // gosterilir; hicbir yere kaydedilmez.
+            setCreated(result)
         } catch (err) {
             const d = err?.response?.data?.detail
             message.error(d?.message || d || 'Could not create tenant.')
@@ -256,34 +254,44 @@ function CreateTenantModal({ open, onClose, onDone }) {
         }
     }
 
-    // Basarili + tek seferlik parola ekrani
+    // Basarili olusturma ekrani: ADRES her zaman, parola yalnizca yeni
+    // kullanici yaratildiysa.
     if (created) {
+        const workspaceUrl = window.location.origin + created.workspace_hint
+        const close = () => { setCreated(null); onDone() }
         return (
             <Modal
-                open title={t('platform.tenantCreated')} onCancel={() => { setCreated(null); onDone() }}
-                onOk={() => { setCreated(null); onDone() }}
-                okText={t('platform.savedPassword')} cancelButtonProps={{ style: { display: 'none' } }}
+                open title={t('platform.tenantCreated')} onCancel={close}
+                onOk={close}
+                okText={created.one_time_password ? t('platform.savedPassword') : undefined}
+                cancelButtonProps={{ style: { display: 'none' } }}
                 closable={false} maskClosable={false}
             >
                 <Space direction="vertical" style={{ width: '100%' }}>
                     <Text>
                         <strong>{created.tenant.display_name}</strong> is ready.
-                        Users reach it at{' '}
-                        <Text code>{created.workspace_hint}</Text>
                     </Text>
                     <Descriptions column={1} size="small" bordered>
+                        <Descriptions.Item label={t('platform.workspaceLink')}>
+                            <Text code copyable>{workspaceUrl}</Text>
+                        </Descriptions.Item>
                         <Descriptions.Item label={t('platform.owner')}>
                             {created.owner.email}
                         </Descriptions.Item>
-                        <Descriptions.Item label={t('platform.oneTimePassword')}>
-                            <Text code copyable>{created.one_time_password}</Text>
-                        </Descriptions.Item>
+                        {created.one_time_password && (
+                            <Descriptions.Item label={t('platform.oneTimePassword')}>
+                                <Text code copyable>{created.one_time_password}</Text>
+                            </Descriptions.Item>
+                        )}
                     </Descriptions>
-                    <Text type="warning">
-                        This password is shown once and is not stored anywhere.
-                        Share it securely; the owner should change it at first
-                        sign-in.
-                    </Text>
+                    <Text type="secondary">{t('platform.workspaceLinkShare')}</Text>
+                    {created.one_time_password && (
+                        <Text type="warning">
+                            This password is shown once and is not stored anywhere.
+                            Share it securely; the owner should change it at first
+                            sign-in.
+                        </Text>
+                    )}
                 </Space>
             </Modal>
         )
@@ -292,7 +300,7 @@ function CreateTenantModal({ open, onClose, onDone }) {
     return (
         <Modal
             open={open} title={t('platform.newTenant')} onCancel={onClose} onOk={submit}
-            confirmLoading={busy} okText={t('common.create')} destroyOnClose
+            confirmLoading={busy} okText={t('common.create')} destroyOnHidden
         >
             <Form form={form} layout="vertical" preserve={false}>
                 <Form.Item
@@ -385,7 +393,7 @@ function EditTenantModal({ tenant, onClose, onDone }) {
         <Modal
             open={!!tenant} title={`Edit ${tenant?.display_name || ''}`}
             onCancel={onClose} onOk={submit} confirmLoading={busy}
-            okText={t('common.save')} destroyOnClose
+            okText={t('common.save')} destroyOnHidden
         >
             <Form form={form} layout="vertical" preserve={false}>
                 <Form.Item
@@ -402,6 +410,16 @@ function EditTenantModal({ tenant, onClose, onDone }) {
                     kilitli oldugu SOYLENIR. */}
                 <Form.Item label={t('platform.workspaceAddress')}>
                     <Input value={tenant?.slug} disabled />
+                    {tenant?.slug && (
+                        <div>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                {t('platform.workspaceLink')}:{' '}
+                            </Text>
+                            <Text code copyable style={{ fontSize: 12 }}>
+                                {`${window.location.origin}/?workspace=${tenant.slug}`}
+                            </Text>
+                        </div>
+                    )}
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         Cannot be changed — existing links and sessions
                         depend on it.
