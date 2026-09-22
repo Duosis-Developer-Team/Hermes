@@ -179,7 +179,7 @@ Commit `a05121a`. Alembic **0013_p2_work_item_attachments** (additive): `ticket_
 
 **Bulgular:**
 - Canlı dev `core-service` Deployment'ı repo manifestinden geride: `TICKET_S3_ACCESS_KEY_ID/SECRET` secret referansları yoktu → yeni pod `/ready` 503 (`object_storage_incomplete`) verdi; repo manifestini apply etmek yerine hedefli `kubectl set env deploy/core-service --from=secret/hermes-ticket-storage` uygulandı → `/ready` 200. (Drift notu: `k8s/03-backend-core.yaml` dev'de tam apply edilmemiş; ileride ayrı bakım.)
-- Bildirim temizlik job'ı ilk koşuda `TypeError`: `tenant_runner` `trigger` anahtarını geçiriyor, servis kabul etmiyordu → `purge_read(**_runner_kwargs)` + sözleşme testi (commit `<p24sha>`); job deploy sonrası kuru-koşu ile doğrulanır: __JOBRUN__
+- Bildirim temizlik job'ı ilk koşuda `TypeError`: `tenant_runner` `trigger` anahtarını geçiriyor, servis kabul etmiyordu → `purge_read(**_runner_kwargs)` + sözleşme testi (commit `f4b62b8`); job deploy sonrası kuru-koşu ile doğrulanır: dev'de tek seferlik job koşuldu → 2 kiracı, `ok: true`, aday 0 (henüz okunmuş eski bildirim yok).
 - Datadog APM init container'ları (7 adet) her yeni pod'u ~3–5 dk geciktiriyor; rollout beklemeleri buna göre uzatıldı.
 
 **Canlı kanıt (core pod içinden):** `attachments_production_ready() = (True, None)`; MinIO put → stream → delete ✓ (SSE ile); `ClamAVScanner.healthy() = True`; temiz içerik → `clean/clamav`; EICAR → `rejected/malware_detected`.
