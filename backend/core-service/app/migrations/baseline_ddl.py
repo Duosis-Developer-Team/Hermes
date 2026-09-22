@@ -433,6 +433,23 @@ def apply_tenant_expand(conn) -> None:
         ))
 
 
+# PM rework P1.1 (0010): mevcut tablolara eklenen kolonlar. create_all
+# MEVCUT tabloya kolon eklemez; hem 0010 hem test tohumu bu listeyi kosar.
+WORK_ITEMS_EXPAND_STATEMENTS = (
+    "ALTER TABLE projects ADD COLUMN IF NOT EXISTS is_billable_default "
+    "BOOLEAN NOT NULL DEFAULT true",
+    "ALTER TABLE work_logs ADD COLUMN IF NOT EXISTS work_item_id UUID",
+    "CREATE INDEX IF NOT EXISTS ix_work_logs_work_item_id "
+    "ON work_logs (work_item_id)",
+)
+
+
+def apply_work_items_expand(conn) -> None:
+    """projects.is_billable_default + work_logs.work_item_id (0010)."""
+    for stmt in WORK_ITEMS_EXPAND_STATEMENTS:
+        conn.execute(text(stmt))
+
+
 def apply_all(conn) -> None:
     """Testler icin: bugunku head semasinin tamami.
 
@@ -442,3 +459,4 @@ def apply_all(conn) -> None:
     apply_baseline(conn)
     apply_tenant_projection(conn)
     apply_tenant_expand(conn)
+    apply_work_items_expand(conn)

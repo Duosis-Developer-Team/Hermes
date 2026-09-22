@@ -20,7 +20,7 @@
 
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -117,6 +117,19 @@ class Project(TenantOwnedMixin, Base):
     # Status Flag
     # ==========================================================================
     
+    # ==========================================================================
+    # Faturalanabilirlik varsayilani (PM rework P1 / A8, karar 3)
+    # ==========================================================================
+    # Is kalemi acilirken bunu miras alir (override izlenir); efor kaydi is
+    # kaleminden miras alir. Ic projeler (Duosis) false yapilir.
+    is_billable_default = Column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=text("true"),
+        comment="Bu projede acilan is kalemleri varsayilan olarak faturalanabilir mi",
+    )
+
     is_active = Column(
         Boolean,
         default=True,

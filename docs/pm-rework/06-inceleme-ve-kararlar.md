@@ -13,9 +13,13 @@ Bu dosya 05'in "açık kararlar" tablosunu kapatır ve dokümanlarda düzeltilme
 | 2 | Alt-proje | **Proje ağacı seviyesi olarak KALIR** | Dokümanın önerisinin (→ `parent_id`) tersi — gerekçe §2b. `parent_id` yalnız gerçek iş kırılımı için. |
 | — | Çoklu atamada kişi başı ilerleme | **`work_item_participants.completed_at`** | 02-sema §5.1'de yoktu; gerekçe §2c. İş kaleminin durumu birleşik, katılımcının kendi tamamlanma damgası korunur. |
 | 4 | A/B bölmesi | **Kabul** — P0 başladı | D1+D2 ile başlandı (bu commit). |
-| 7 | Ayarlar birleştirmesi (B1) | Evet, P0 içinde, D1+D2'den sonra | |
+| 7 | Ayarlar birleştirmesi (B1) | Evet, P0 içinde, D1+D2'den sonra | Yapıldı. |
+| 3 | Faturalanabilirlik varsayılanı | **Proje varsayılanı → iş kalemi → efor override** | `projects.is_billable_default` (varsayılan true; iç projeler false); iş kalemi açılırken miras alır, override kim/ne zaman izlenir; efor kaydı iş kaleminden miras alır, satır bazında değişir. (22.09, ikinci tur) |
+| 5 | Ek dosya sahipliği | **Polimorfik** | Mevcut `ticket_attachments` exclusive-arc desenine `work_item_id` eklenir; tek servis, tek karantina/tarama hattı. |
+| 6 | İki seviye kuralı | **Servis katmanı** | `work_item_service` doğrular; ticket durum makinesiyle aynı yaklaşım. |
+| — | **A10 (yeni):** efor girişinde iş kalemi seçimi | **P1'e eklendi, isteğe bağlı** | LogTimeModal'da müşteri/proje seçilince o projenin açık işleri listelenir; zorunlu değil. Gerekçe §2a. |
 
-Hâlâ açık: 3 (faturalanabilirlik varsayılanının kaynağı — §2a'daki veri bulgusu kararı zorlaştırıyor), 5 (ek dosya polimorfik mi), 6 (iki seviye kuralı: servis).
+Açık karar kalmadı; P1 (F00 şema dondurma) başlayabilir.
 
 ## 2. Canlı veri bulguları (hermes-test, salt-okunur, 22.09)
 

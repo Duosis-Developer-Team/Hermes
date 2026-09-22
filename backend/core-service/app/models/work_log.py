@@ -171,6 +171,16 @@ class WorkLog(TenantOwnedMixin, Base):
         index=True,
     )
 
+    # PM rework P1 / A10: is kalemine bag. `task_id`nin devami — tasima
+    # eski kaydi buraya esler; gecis boyunca IKISI de yazilir, `task_id`
+    # F05'te kalkar. Ayni SET NULL durusu.
+    work_item_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("work_items.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Optional link to a synced Teams/Outlook meeting. Set when the
     # user opens Log Time from a Meetings calendar card. Same
     # SET NULL stance — deleting/un-syncing a meeting never destroys

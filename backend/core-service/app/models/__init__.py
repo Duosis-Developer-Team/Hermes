@@ -19,6 +19,11 @@ from .plan_time import PlanTime, PlanTimeAssignment
 from .capacity import (
     TenantCapacitySettings, TenantHoliday, UserAbsence, UserCapacityOverride,
 )
+from .work_item import (
+    WORK_ITEM_TABLES, RoutingRelation, SavedView, WorkflowState, WorkItem,
+    WorkItemCodeAlias, WorkItemComment, WorkItemEvent, WorkItemLink,
+    WorkItemParticipant,
+)
 from .task import (
     TaskUserPermission,
     TaskAssignmentRelation,
@@ -128,4 +133,14 @@ __all__ = [
     "TicketResolution",
     "TICKETING_TABLES",
     "TicketDownloadGrant",
+    "WorkflowState",
+    "WorkItem",
+    "WorkItemParticipant",
+    "WorkItemCodeAlias",
+    "WorkItemLink",
+    "WorkItemComment",
+    "WorkItemEvent",
+    "RoutingRelation",
+    "SavedView",
+    "WORK_ITEM_TABLES",
 ]
