@@ -43,19 +43,8 @@ const STATUS_RANK = {
     cancelled: 3,
 }
 
-const PRIORITY_COLOR = {
-    low: 'default',
-    medium: 'blue',
-    high: 'orange',
-    urgent: 'red',
-}
-
-const STATUS_COLOR = {
-    pending: 'default',
-    in_progress: 'blue',
-    completed: 'green',
-    cancelled: 'magenta',
-}
+// E4 gorsel dil (PM rework P3.4): listede de renk tasiyan TEK sey termin
+// rozetidir; durum ve oncelik NOTR etiket. (Eski renk haritalari kalkti.)
 
 
 function TasksListView({
@@ -229,7 +218,7 @@ function TasksListView({
             render: (_, record) => {
                 const val = record.__item?.aggregateStatus ?? record.status
                 return (
-                    <Tag color={STATUS_COLOR[val] || 'default'}>
+                    <Tag className="task-list-tag">
                         {val === 'in_progress' ? 'in progress' : val}
                     </Tag>
                 )
@@ -243,7 +232,13 @@ function TasksListView({
                 (PRIORITY_RANK[a.priority] ?? -1) -
                 (PRIORITY_RANK[b.priority] ?? -1),
             render: (val) => (
-                <Tag color={PRIORITY_COLOR[val] || 'default'}>{val}</Tag>
+                <span className="task-list-priority">
+                    <span
+                        className={`task-card-priority task-card-priority-${val}`}
+                        aria-hidden="true"
+                    />
+                    <Tag className="task-list-tag">{val}</Tag>
+                </span>
             ),
         },
         {

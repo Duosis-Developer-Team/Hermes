@@ -65,34 +65,43 @@
 
 .task-card-badges {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
     margin-bottom: 6px;
 }
 
-.task-card-priority,
+/* =============================================================================
+   E4 gorsel dil (PM rework P3.4, 04-roller §9.1): bir kartta EN FAZLA BIR
+   renkli sinyal, o da TERMIN. Oncelik renksiz ince cubuk (yukseklik =
+   oncelik), durum notr metin (pano sutunu / liste grubu zaten soyler),
+   tip kodun onekinden okunur — tip rengi YOK (05 kapsam disi).
+   ========================================================================== */
+.task-card-priority {
+    display: inline-block;
+    width: 3px;
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--h-text-secondary) 55%, transparent);
+    flex: none;
+}
+.task-card-priority-low      { height: 6px; }
+.task-card-priority-medium   { height: 10px; }
+.task-card-priority-high     { height: 14px; }
+.task-card-priority-urgent   { height: 18px; background: color-mix(in srgb, var(--h-text-primary) 80%, transparent); }
+
 .task-card-status {
     font-size: 10px;
     font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 4px;
-    text-transform: uppercase;
     letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--h-text-muted);
 }
-
-/* Premium redesign: dolu koyu rozetler yerine soft tonal tint + guclu
-   metin — kart yuzeyi sakin kalir, durum yine bir bakista okunur. */
-.task-card-priority-low      { background: var(--h-bg-hover); color: var(--h-text-secondary); }
-.task-card-priority-medium   { background: color-mix(in srgb, var(--h-brand) 14%, transparent); color: var(--h-brand); }
-.task-card-priority-high     { background: color-mix(in srgb, var(--h-warning) 16%, transparent); color: var(--h-warning); }
-.task-card-priority-urgent   { background: color-mix(in srgb, var(--h-danger) 16%, transparent); color: var(--h-danger); }
-
-.task-card-status-pending     { background: var(--h-bg-hover); color: var(--h-text-secondary); }
-.task-card-status-in_progress { background: color-mix(in srgb, var(--h-brand) 14%, transparent); color: var(--h-brand); }
-.task-card-status-completed   { background: color-mix(in srgb, var(--h-success) 14%, transparent); color: var(--h-success); }
-.task-card-status-cancelled   { background: color-mix(in srgb, var(--hp-purple-500) 16%, transparent); color: var(--hp-purple-300); }
-.task-card-status-rejected    { background: color-mix(in srgb, var(--h-danger) 14%, transparent); color: var(--h-danger); }
+.task-card-status-pending,
+.task-card-status-in_progress,
+.task-card-status-completed,
+.task-card-status-cancelled,
+.task-card-status-rejected { color: var(--h-text-muted); }
 
 .task-card-code {
     color: var(--c-text-muted);
@@ -114,14 +123,16 @@
     letter-spacing: 0.04em;
     line-height: 1.1;
 }
-.task-due-badge-overdue   { background: #7f1d1d; color: #fecaca; }
-.task-due-badge-due_today { background: #9a3412; color: #fed7aa; }
-.task-due-badge-due_soon  { background: #713f12; color: #fde68a; }
+/* Tek renkli sinyal: gecikmis kirmizi, bugun amber; "yakinda" notr. */
+.task-due-badge-overdue   { background: color-mix(in srgb, var(--h-danger) 16%, transparent); color: var(--h-danger); }
+.task-due-badge-due_today { background: color-mix(in srgb, var(--h-warning) 18%, transparent); color: var(--h-warning); }
+.task-due-badge-due_soon  { background: var(--h-bg-hover); color: var(--h-text-secondary); }
 
 .task-card-due-hint {
     margin-top: 6px;
     font-size: 11px;
-    color: #fbbf24;
+    color: var(--h-text-secondary);
+    font-variant-numeric: tabular-nums;
 }
 
 .task-card-assignee-hint {
@@ -233,23 +244,13 @@
     background: color-mix(in srgb, var(--h-success) 10%, transparent);
 }
 
-/* ── Light-mode legibility: the amber/cream due text was tuned for a
-   dark card. On a light card it washes out, so darken it. The dark
-   due-badge chips (red/orange/brown bg + light text) stay as-is. ── */
-:root[data-theme="light"] .task-card-due-hint {
-    color: #92600a;
-}
-
-/* ── Work item type accent — coloured left border per kind so Tasks,
-   Issues and Suggestions are glanceable. ── */
-.task-card.task-card-type-task {
-    border-left: 3px solid #388bff;
-}
-.task-card.task-card-type-issue {
-    border-left: 3px solid #f97316;
-}
+/* ── Tip rengi YOK (E4): tur, kod onekinden okunur (TASK-56 / ISSUE-3).
+   `.task-card-type-*` sinifi test/otomasyon kancasi olarak kalir, renk
+   tasimaz. ── */
+.task-card.task-card-type-task,
+.task-card.task-card-type-issue,
 .task-card.task-card-type-suggestion {
-    border-left: 3px solid #a855f7;
+    border-left-width: 1px;
 }
 
 /* =============================================================================
@@ -336,4 +337,13 @@
     color: var(--h-text-secondary);
     font-size: 11px;
     line-height: 18px;
+}
+
+/* Liste gorunumu: oncelik cubugu + notr etiket (E4). */
+.task-list-priority { display: inline-flex; align-items: center; gap: 6px; }
+.task-list-tag.ant-tag {
+    background: var(--h-bg-hover);
+    border-color: var(--h-border-subtle);
+    color: var(--h-text-secondary);
+    text-transform: capitalize;
 }

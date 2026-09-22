@@ -163,7 +163,9 @@ describe('ayni gorev — iki gorunumde AYNI anlam', () => {
         await screen.findByText('Devam eden gorev')
         const card = inCard('TASK-2')
         expect(card.getByText('in progress')).toBeInTheDocument()
-        expect(card.getByText('low')).toBeInTheDocument()
+        // E4 (P3.4): kartta oncelik METIN degil notr cubuk; deger erisilebilir
+        // adda tasinir. Listede metin olarak durur — anlam ayni.
+        expect(card.getByRole('button', { name: /priority low/ })).toBeInTheDocument()
 
         await toList(user)
         await waitFor(() => expect(listCodes()).toHaveLength(3))

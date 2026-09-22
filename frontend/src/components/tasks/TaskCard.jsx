@@ -261,12 +261,17 @@ function TaskCard({
                     {subProjectSegment}
                 </div>
 
+                {/* E4 gorsel dil (PM rework P3.4): bir kartta EN FAZLA BIR
+                    renkli sinyal — termin. Oncelik renksiz ince cubuk
+                    (yuksekligi onceligi soyler; ad erisilebilir etikette),
+                    durum notr metin (konum zaten soyler), tip kodun
+                    onekinde (TASK-56 / ISSUE-3) — ayri renk yok. */}
                 <div className="task-card-badges">
                     <span
                         className={`task-card-priority task-card-priority-${task.priority}`}
-                    >
-                        {task.priority}
-                    </span>
+                        title={task.priority}
+                        aria-hidden="true"
+                    />
                     <span
                         className={`task-card-status task-card-status-${cardStatus}`}
                     >
