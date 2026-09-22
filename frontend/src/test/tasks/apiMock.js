@@ -149,7 +149,14 @@ const DEFS = {
         getUsers: from('users'),
     },
     customerService: { getAll: from('customers') },
-    projectService: { getAll: from('projects') },
+    projectService: {
+        getAll: from('projects'),
+        // B2: Explorer'daki "Uyeler" dugmesi; varsayilan yonetim yetkisi yok.
+        listMembers: ok({ project_id: 'p1', can_manage: false, can_assign_lead: false, items: [] }),
+        addMember: ok({}),
+        updateMember: ok({}),
+        removeMember: ok({}),
+    },
     workTypeService: { getAll: from('workTypes') },
     activityTypeService: { getAll: from('activityTypes') },
     platformService: { getAll: from('platforms') },

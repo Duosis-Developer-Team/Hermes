@@ -101,6 +101,12 @@ export const queryKeys = {
         get all() { return k('task-sub-projects') },
         list: (customerId, projectId) => k('task-sub-projects', customerId, projectId),
     },
+    /** Proje uyeleri (PM rework P2.1 / B2) — drawer ve Explorer dugmesi
+     *  AYNI anahtari okur; ekleme/cikarma tek invalidation. */
+    projectMembers: {
+        get all() { return k('project-members') },
+        byProject: (projectId) => k('project-members', projectId),
+    },
     /** auth-service /users/lookup — iki ayri cagri sekli var. */
     authUsersLookup: {
         get all() { return k('auth-users-lookup') },

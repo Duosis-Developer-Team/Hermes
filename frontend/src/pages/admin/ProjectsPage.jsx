@@ -13,13 +13,14 @@ import {
 } from 'antd'
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined,
-    WarningOutlined, ClockCircleOutlined, SearchOutlined,
+    WarningOutlined, ClockCircleOutlined, SearchOutlined, TeamOutlined,
 } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { projectService, customerService, workLogService } from '../../services/api'
 
 const HOURS_PER_DAY = 8
 import DeleteModal from '../../components/common/DeleteModal'
+import ProjectMembersDrawer from '../../components/projects/ProjectMembersDrawer'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import {
     AdminErrorAlert, AdminRefreshHint,
@@ -125,6 +126,8 @@ function ProjectsPage() {
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false)
     const [deletingRecord, setDeletingRecord] = useState(null)
+    // B2: proje uyeleri drawer'i (admin girisi; lead'inki Explorer'da).
+    const [membersProject, setMembersProject] = useState(null)
 
     const handleDeleteClick = (record) => {
         setDeletingRecord(record)
@@ -279,6 +282,12 @@ function ProjectsPage() {
                 <Space>
                     <Button
                         type="text"
+                        icon={<TeamOutlined />}
+                        aria-label={`Members ${record.name}`}
+                        onClick={() => setMembersProject(record)}
+                    />
+                    <Button
+                        type="text"
                         icon={<EditOutlined />}
                         aria-label={`Edit ${record.name}`}
                         onClick={() => handleOpenModal(record)}
@@ -413,6 +422,13 @@ function ProjectsPage() {
                     </Form.Item>
                 </Form>
             </Modal>
+
+            <ProjectMembersDrawer
+                open={Boolean(membersProject)}
+                projectId={membersProject?.id}
+                projectName={membersProject?.name}
+                onClose={() => setMembersProject(null)}
+            />
 
             <DeleteModal
                 open={deleteModalOpen}

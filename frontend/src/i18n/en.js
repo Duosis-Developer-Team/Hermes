@@ -227,6 +227,24 @@ export default {
     // ---------------------------------------------------------------
     // Bu ekranlar AYNI CRUD sozlugunu paylasir; metin yer tutucuyla
     // uretilir, ayni cumle alti kez YAZILMAZ.
+    projects: {
+        members: 'Members',
+        membersOf: 'Members of {name}',
+        addMember: 'Add',
+        pickUser: 'Pick a user',
+        role: 'Role',
+        role_lead: 'Lead',
+        role_member: 'Member',
+        role_viewer: 'Viewer',
+        removeMember: 'Remove member',
+        noMembers: 'No members yet',
+        memberAdded: 'Member added.',
+        memberRemoved: 'Member removed.',
+        memberError: 'Could not update members.',
+        readOnlyMembers: 'Only a project lead or a projects manager can change members.',
+        membersHint: 'Members see every work item of this project. Leads can also edit them.',
+        unknownUser: 'Unknown user',
+    },
     entity: {
         customer: 'Customer',
         customers: 'Customers',

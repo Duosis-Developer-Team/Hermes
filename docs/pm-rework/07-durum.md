@@ -3,7 +3,7 @@
 Can'ın 05-gelistirme-kapsami.md'de listelediği **31 kalem** ile yapılanların karşılaştırması.
 Kararlar ve kod doğrulaması ayrıntısı: `06-inceleme-ve-kararlar.md`.
 
-**Özet:** **P0 tamam** (D1 sapmayla, D2, G1, B1) · **P1 tamam** (P1.1 şema/taşıma, P1.2 servis/API geçişi, P1.3 görünürlük + yetki + bağlar: A1–A4, A6–A10, B3–B5) — 16 kalem dev'de · 16 başlamadı (A5 F05'e ertelendi · P2 5 · P3 10; tablo 32 satır = Can'ın 31'i + A10). Sıradaki: CTO'nun dev testi → toplu ff; sonra P2.
+**Özet:** **P0 tamam** (D1 sapmayla, D2, G1, B1) · **P1 tamam** (A1–A4, A6–A10, B3–B5) · **P2 başladı** (P2.1 B2 üyelik dev'de) — 17 kalem dev'de · 15 başlamadı (A5 F05'e ertelendi · P2 4: C1–C3, F1 · P3 10; tablo 32 satır = Can'ın 31'i + A10). Sıradaki: P2.2 (C3 + C2 bildirim), P2.3 (F1 ek dosya), P2.4 (C1 kapanış); CTO'nun dev testi → toplu ff.
 Kararlar: 7'nin 7'si + 2 yeni karar kapatıldı (batch → `participant.completed_at`; A10 efor↔iş kalemi). Açık karar yok.
 
 ## 1. Can'ın istediği tüm geliştirmeler (05'teki liste)
@@ -21,7 +21,7 @@ Kararlar: 7'nin 7'si + 2 yeni karar kapatıldı (batch → `participant.complete
 | A9 | `/v1` ve MCP uyumluluk | P1 | **Yapıldı** | `/v1` şekli değişmedi (`work_item_compat.to_public_task`); `task_code` = `item_key` ∨ alias; eski `tasks.id`, katılımcı id ve iş kalemi id'si aynı uçlarda çözülür (`resolve_ref`); 335 public API testi yeşil. **MCP istemci matrisi yeniden koşulmadı** (gerçek istemci gerekir) — CTO dev testinde; matris dokunulmadı |
 | A10 | Efor girişinde iş kalemi seçimi (**yeni**, CTO 22.09) | P1 | **Yapıldı** | LogTimeModal: serbest girişte proje seçilince "İş kalemi (isteğe bağlı)" — kullanıcının o projede gördüğü açık işler; seçim `task_id` → `work_logs.work_item_id` + `log_time_created` olayı. Görevden/toplantıdan açılan akışta seçici yok |
 | B1 | Ayarların tek çatı altına alınması | P0 | **Yapıldı** | Tek `/settings`, beş bölüm, bölüm başına izin; menüde tek "Ayarlar" (Yönetim grubunda, prototipteki yerleşim); eski adresler yönlendirilir; yeni izin kodu yok |
-| B2 | Proje ayarları sayfası | P2 | Başlamadı | A3'e bağlı |
+| B2 | Proje ayarları sayfası | P2 | **Yapıldı (P2.1)** | `/projects/{id}/members` GET/POST/PATCH/DELETE — `projects.manage` her şey; proje **lead**'i kendi ekibini yönetir (member/viewer), lead veremez/alamaz. UI: Ayarlar › Projeler › "Üyeler" drawer'ı (admin) + Explorer'da proje seçilince "Üyeler" (lead; yetki sunucudan `can_manage`). Proje bazlı workflow kapsam dışı |
 | B3 | Düzenleme yetkisi kuralları | P1 | **Yapıldı** | Çekirdek (proje/atanan/tür/fatura/silme): admin ∨ reporter ∨ proje **lead**'i; sahip (owner) yalnız başlık/açıklama/tarihler/öncelik/tahmin (`OWNER_EDITABLE_FIELDS`) |
 | B4 | Kendine iş açma | P1 | **Yapıldı** | Yalnız kendine atama → erişim yeter (`require_create_authority`, `_validate_assignment_wi`); `permissions/me` `can_self_assign` + kendisi listede; UI: "My Tasks"ta Create, seçici kendisini listeler. Yönlendirmede `assigner==assignee` kısıtı kalktı |
 | B5 | Takipçi | P1 | **Yapıldı** | `participants.role='watcher'`: `POST/DELETE /tasks/{id}/watchers` (kendini: görünürlük yeter; başkasını: çekirdek yetki); görür, düzenleyemez; ilk kabul/tamamlama e-postası takipçilere de gider. UI: detay panelinde zil + "Takipçiler" satırı |
@@ -75,13 +75,13 @@ Prototip (`prototip.html`): P3 arayüzünün taslağı; olduğu gibi uygulanmad�
 
 ## 4. Yapılmayanlar ve neden
 
-- **P2 (B2, C1–C3, F1):** P1 tamam; sıradaki tur. B2 (proje ayarları sayfası: üyelik/rol yönetimi — bugün üyelik yalnız API + backfill) A3'ün doğal devamı.
+- **P2 (C1–C3, F1):** 09-p2-plani onaylı; P2.2 bildirim (C3+C2), P2.3 ek dosya (F1), P2.4 olay kataloğu (C1) sırada. B2 bitti (P2.1).
 - **P3 (D3–D6, E1–E6):** A/B bölmesi gereği para katmanı ve e-fatura sonrası; ekran o zaman bir kez çizilir.
 
 ## 5. Sıradaki adımlar
 
 1. CTO P0 + P1 kalemlerini hermes-dev'de test eder → toplu ff-merge `test`'e (CTO "ff yapalım" deyince). Terfi öncesi hermes-test kopyasında kuru-koşu (`p1_dryrun.sh`) tekrar edilir.
-2. P2 (B2, C1–C3, F1) — plan taslağı `09-p2-plani.md` (7 onay maddesi: outbox ertelenmesi, kanal modeli, alıcı kümesi, ek dosya sahipliği, B2 yetki/yer, dev'de MinIO/ClamAV). CTO onayı sonrası P2.1'den başlanır.
+2. P2 — `09-p2-plani.md` CTO onaylı (22.09). P2.1 B2 bitti; P2.2 → P2.3 → P2.4 sırada. P2.3 için hermes-dev'e MinIO + ClamAV manifestleri (manuel `kubectl`, komutları ben veririm).
 
 ## 6. P1.1 — şema + taşıma (22.09, dev)
 
@@ -138,3 +138,12 @@ Commit `b29904f` (hermes-dev). Şema değişikliği YOK (0010'daki tablolar yete
 **Canlı doğrulama (hermes-dev, `b29904f`, 22.09):** CD kapıları (core 691 · mcp 104 · auth · frontend 5 shard · build) yeşil, migrate/deploy başarılı; imajlar SHA'ya pinli; `alembic_version = 0011` (P1.3 şema değiştirmez); 42 iş kalemi / 60 katılımcı / 19 alias / 145 olay değişmedi, taşınmamış task 0; `routing_relations` 16, `project_memberships` 30 (0010 backfill'i), takipçi/bağ 0 (yeni); `/tasks`, `/tasks/states`, `/v1/tasks`, `/projects`, `/tickets/context`, `/admin/task-assignment-relations` token'sız 401; pod logunda hata yok. hermes-test kopyasında kuru-koşu tekrarı gerekmedi (0011 aynen; terfi öncesi yine koşulacak).
 
 **Sapmalar / notlar:** `member_role` bugün serbest metin (`member` backfill'i); `lead` rolü verilmesi B2 (proje ayarları sayfası) gelene kadar API/DB ile. Bağ (links) UI'si P3 (08 §2.9). MCP istemci matrisi hâlâ yeniden koşulmadı (gerçek istemci gerekir).
+
+## 9. P2.1 — B2 proje üyeleri (22.09, dev)
+
+Commit `<p21sha>`. Şema değişikliği yok (`member_role` CHECK'i 0012'de gelecek; şema Literal `lead|member|viewer` ile korunuyor).
+
+- Backend: `routers/project_members.py` — `GET/POST/PATCH/DELETE /projects/{id}/members`; yanıt `{project_id, can_manage, can_assign_lead, items[]}` (UI düğmeleri sunucu kararına bağlı). Yetki: `projects.manage` ∨ o projenin lead'i; lead `member/viewer` ekler-çıkarır-değiştirir, `lead` rolüne dokunamaz (403); pasif üyelik yeniden etkinleştirilir (satır çoğaltılmaz); mükerrer 409; geçersiz rol 422. Eski `/project-memberships` uçları (admin) aynen.
+- Frontend: `components/projects/ProjectMembersDrawer.jsx` (liste, kullanıcı seçici — zaten üye olanlar listelenmez —, rol Select, çıkar; `can_assign_lead` yoksa "Lider" seçeneği yok); Ayarlar › Projeler satırında "Üyeler"; Explorer breadcrumb'ında proje seçiliyken `ProjectMembersButton` (provider yoksa kendini gizler — `QueryClientContext` guard'ı; `components/tasks` provider'sız render sınırı korunur). Query anahtarı `queryKeys.projectMembers` (merkezi sözleşme).
+- Testler: core +7 (`test_project_members.py`: yetki matrisi, lead sınırı, 409/422, üyeliğin görünürlüğü anında değiştirmesi); frontend +5 (`admin/projectMembers.test.jsx`).
+- Not: üyelik listesi kullanıcı adlarını `auth /users/lookup` ile çözer (en az ayrıcalıklı dizin); lead için proje-içi yönlendirme (05 B2 "proje içi yönlendirme") P2'de yok — yönlendirme kiracı düzeyinde (A4).

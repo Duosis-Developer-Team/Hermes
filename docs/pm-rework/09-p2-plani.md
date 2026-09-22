@@ -1,4 +1,4 @@
-# P2 planı — nesneye tutunanlar (B2, C1–C3, F1) · TASLAK, CTO onayı bekliyor
+# P2 planı — nesneye tutunanlar (B2, C1–C3, F1) · CTO onaylı (22.09: P2-1 outbox yok · P2-2 iki anahtar · P2-4 `work_item_id` arc'a · P2-7 dev'e MinIO/ClamAV; P2-3/5/6 varsayılan öneriyle)
 
 Girdi: 05 §B2/§C/§F, 03 §3–4, 06 karar 5 (ek dosya polimorfik), P1'de kurulan `work_items` / `work_item_events` / `project_memberships`. P1 gibi: her adım ayrı dev commit'i, CTO dev'de test eder, ff toplu.
 

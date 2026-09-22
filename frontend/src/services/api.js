@@ -118,6 +118,29 @@ export const projectService = {
     delete: async (id) => {
         await coreApi.delete(`/api/v1/core/projects/${id}`)
     },
+
+    // PM rework P2.1 (B2): proje kapsamli uyelik — yanit
+    // { project_id, can_manage, can_assign_lead, items[] }.
+    listMembers: async (projectId) => {
+        const response = await coreApi.get(`/api/v1/core/projects/${projectId}/members`)
+        return response.data
+    },
+    addMember: async (projectId, data) => {
+        const response = await coreApi.post(`/api/v1/core/projects/${projectId}/members`, data)
+        return response.data
+    },
+    updateMember: async (projectId, membershipId, data) => {
+        const response = await coreApi.patch(
+            `/api/v1/core/projects/${projectId}/members/${membershipId}`, data
+        )
+        return response.data
+    },
+    removeMember: async (projectId, membershipId) => {
+        const response = await coreApi.delete(
+            `/api/v1/core/projects/${projectId}/members/${membershipId}`
+        )
+        return response.data
+    },
 }
 
 // =============================================================================

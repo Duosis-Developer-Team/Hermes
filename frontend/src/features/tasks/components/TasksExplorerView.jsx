@@ -29,6 +29,7 @@ import {
 } from '@ant-design/icons'
 
 import TasksBoardView from '../../../components/tasks/TasksBoardView'
+import ProjectMembersButton from './ProjectMembersButton'
 import useIsMobile from '../../../hooks/useIsMobile'
 import { groupIntoLogicalItems, userLabel } from '../model/grouping'
 import {
@@ -381,6 +382,13 @@ function TasksExplorerView({ tasks = [], boardProps = {}, canGroupByUser = false
                             <span className="tx-crumb">{c.label}</span>
                         </span>
                     ))}
+                    {/* B2: proje lead'i ekibini buradan yonetir (yetki sunucudan). */}
+                    {mode === 'customer' && selection.projectId && (
+                        <ProjectMembersButton
+                            projectId={selection.projectId}
+                            projectName={crumbs.find((c) => c.level === 'project')?.label}
+                        />
+                    )}
                 </nav>
 
                 {folderTasks.length === 0
