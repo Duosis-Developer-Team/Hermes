@@ -40,6 +40,7 @@ export default {
         workLines: 'İş Kolları',
         users: 'Kullanıcılar',
         capacity: 'Kapasite',
+        settings: 'Ayarlar',
         timeEntry: 'Zaman Girişi',
         projectManagement: 'Proje Yönetimi',
         meetings: 'Toplantılar',
@@ -47,8 +48,20 @@ export default {
         tickets: 'Talepler',
         support: 'Destek',
         groupManagement: 'YÖNETİM',
-        groupConfiguration: 'YAPILANDIRMA',
         logout: 'Çıkış Yap',
+    },
+
+    // ---------------------------------------------------------------
+    // Ayarlar çatısı (PM rework P0 / B1)
+    // ---------------------------------------------------------------
+    settings: {
+        title: 'Ayarlar',
+        subtitle: 'Organizasyon, iş yönetimi, referans verileri, müşteriler ve entegrasyonlar',
+        organization: 'Organizasyon',
+        work: 'İş yönetimi',
+        reference: 'Referans verileri',
+        customers: 'Müşteri ve projeler',
+        integrations: 'Entegrasyonlar',
     },
 
     shell: {

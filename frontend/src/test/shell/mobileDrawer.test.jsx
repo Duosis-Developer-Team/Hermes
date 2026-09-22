@@ -67,7 +67,7 @@ const renderMobileShell = () => {
                     <Routes>
                         <Route path="/" element={<MainLayout />}>
                             <Route path="time-entry" element={<div>ROUTE-CONTENT</div>} />
-                            <Route path="customers" element={<div>CUSTOMERS</div>} />
+                            <Route path="settings/*" element={<div>SETTINGS</div>} />
                         </Route>
                     </Routes>
                 </MemoryRouter>
@@ -98,9 +98,9 @@ describe('mobil drawer', () => {
     it('route secilince drawer kapanir ve navigasyon gerceklesir', async () => {
         renderMobileShell()
         fireEvent.click(openBtn())
-        const links = screen.getAllByText('Customers')
+        const links = screen.getAllByText('Settings')
         fireEvent.click(links[links.length - 1])
-        expect(await screen.findByText('CUSTOMERS')).toBeInTheDocument()
+        expect(await screen.findByText('SETTINGS')).toBeInTheDocument()
         await waitFor(() =>
             expect(document.querySelector('.mobile-nav-drawer .ant-drawer-content-wrapper'))
                 .toBeNull()

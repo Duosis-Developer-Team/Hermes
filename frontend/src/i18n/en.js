@@ -29,6 +29,7 @@ export default {
         workLines: 'Work Lines',
         users: 'Users',
         capacity: 'Capacity',
+        settings: 'Settings',
         timeEntry: 'Time Entry',
         projectManagement: 'Project Management',
         meetings: 'Meetings',
@@ -36,8 +37,20 @@ export default {
         tickets: 'Tickets',
         support: 'Support',
         groupManagement: 'MANAGEMENT',
-        groupConfiguration: 'CONFIGURATION',
         logout: 'Logout',
+    },
+
+    // ---------------------------------------------------------------
+    // Ayarlar catisi (PM rework P0 / B1)
+    // ---------------------------------------------------------------
+    settings: {
+        title: 'Settings',
+        subtitle: 'Organization, work management, reference data, customers and integrations',
+        organization: 'Organization',
+        work: 'Work management',
+        reference: 'Reference data',
+        customers: 'Customers & projects',
+        integrations: 'Integrations',
     },
 
     shell: {

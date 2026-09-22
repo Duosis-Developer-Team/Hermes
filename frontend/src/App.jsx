@@ -9,6 +9,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { loginPathFor } from './api/workspace'
+import { LEGACY_SETTINGS_PATHS } from './features/settings/sections'
 import { Spin } from 'antd'
 import { useAuthStore } from './stores/authStore'
 import { usePlatformAuthStore } from './stores/platformAuthStore'
@@ -55,6 +56,8 @@ const ProjectsPage = lazy(routeLoaders.projects)
 const WorkTypesPage = lazy(routeLoaders.workTypes)
 const UsersPage = lazy(routeLoaders.users)
 const CapacitySettingsPage = lazy(routeLoaders.capacitySettings)
+const SettingsPage = lazy(routeLoaders.settings)
+const SettingsIndex = lazy(() => routeLoaders.settings().then((m) => ({ default: m.SettingsIndex })))
 const ActivityTypesPage = lazy(routeLoaders.activityTypes)
 const PlatformsPage = lazy(routeLoaders.platforms)
 const WorkLinesPage = lazy(routeLoaders.workLines)
@@ -293,16 +296,6 @@ function App() {
                 />
                 {/* Entegrasyon yonetimi AYRI izin uzayidir: konfigurasyon
                     yetkisi ticket ICERIGI vermez. */}
-                <Route
-                    path="ticket-integrations"
-                    element={
-                        <ProtectedRoute
-                            permission={['tickets.config.manage', 'tickets.admin']}
-                        >
-                            <TicketIntegrationsPage />
-                        </ProtectedRoute>
-                    }
-                />
 
                 {/* Back-compat: old /tasks links (e.g. earlier e-mails). */}
                 <Route
@@ -315,31 +308,58 @@ function App() {
                 />
 
                 {/* PM Configurations (was Task Management) */}
-                <Route
-                    path="pm-configurations"
-                    element={
-                        <ProtectedRoute permission={'tasks.permissions.manage'}>
-                            <TaskManagementPage />
-                        </ProtectedRoute>
-                    }
-                />
 
                 {/* API Management — Public API clients/tokens/logs/docs */}
-                <Route
-                    path="api-management"
-                    element={
-                        <ProtectedRoute permission={'api.manage'}>
-                            <ApiManagementPage />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="task-management"
-                    element={<Navigate to="/pm-configurations" replace />}
-                />
 
                 {/* Meetings — every authenticated user; backend
                     visibility narrows to their own attended events. */}
+                {/* =========================================================
+                    B1 — Ayarlar tek cati: /settings + bes bolum. Her sayfa
+                    kendi iznini ister (icerik degismedi, yalnizca evi).
+                    Katalog: features/settings/sections.js
+                   ========================================================= */}
+                <Route path="settings" element={<SettingsPage />}>
+                    <Route index element={<SettingsIndex />} />
+                    <Route path="organization/users" element={
+                        <ProtectedRoute permission={'users.manage'}><UsersPage /></ProtectedRoute>
+                    } />
+                    <Route path="organization/capacity" element={
+                        <ProtectedRoute permission={'users.manage'}><CapacitySettingsPage /></ProtectedRoute>
+                    } />
+                    <Route path="work/pm" element={
+                        <ProtectedRoute permission={'tasks.permissions.manage'}><TaskManagementPage /></ProtectedRoute>
+                    } />
+                    <Route path="reference/work-types" element={
+                        <ProtectedRoute permission={'reference.manage'}><WorkTypesPage /></ProtectedRoute>
+                    } />
+                    <Route path="reference/activity-types" element={
+                        <ProtectedRoute permission={'reference.manage'}><ActivityTypesPage /></ProtectedRoute>
+                    } />
+                    <Route path="reference/platforms" element={
+                        <ProtectedRoute permission={'reference.manage'}><PlatformsPage /></ProtectedRoute>
+                    } />
+                    <Route path="reference/work-lines" element={
+                        <ProtectedRoute permission={'reference.manage'}><WorkLinesPage /></ProtectedRoute>
+                    } />
+                    <Route path="customers/customers" element={
+                        <ProtectedRoute permission={'customers.manage'}><CustomersPage /></ProtectedRoute>
+                    } />
+                    <Route path="customers/projects" element={
+                        <ProtectedRoute permission={'projects.manage'}><ProjectsPage /></ProtectedRoute>
+                    } />
+                    <Route path="integrations/api" element={
+                        <ProtectedRoute permission={'api.manage'}><ApiManagementPage /></ProtectedRoute>
+                    } />
+                    <Route path="integrations/tickets" element={
+                        <ProtectedRoute permission={['tickets.config.manage', 'tickets.admin']}><TicketIntegrationsPage /></ProtectedRoute>
+                    } />
+                </Route>
+                {/* Eski ayar adresleri: favoriler ve e-posta baglantilari
+                    kirilmasin diye yeni yola yonlendirilir. */}
+                {Object.entries(LEGACY_SETTINGS_PATHS).map(([from, to]) => (
+                    <Route key={from} path={from.slice(1)} element={<Navigate to={to} replace />} />
+                ))}
+
                 <Route path="meetings" element={<MeetingsPage />} />
 
                 {/* Developer Portal — Public API dokumantasyonu (D1:
@@ -380,73 +400,7 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
-                {/* PM rework P0 / D1: kapasite ayarlari. B1 (tek /settings)
-                    gelince bu rota o catinin "Organizasyon" bolumune tasinir. */}
-                <Route
-                    path="capacity"
-                    element={
-                        <ProtectedRoute permission={'users.manage'}>
-                            <CapacitySettingsPage />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="customers"
-                    element={
-                        <ProtectedRoute permission={'customers.manage'}>
-                            <CustomersPage />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="projects"
-                    element={
-                        <ProtectedRoute permission={'projects.manage'}>
-                            <ProjectsPage />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="work-types"
-                    element={
-                        <ProtectedRoute permission={'reference.manage'}>
-                            <WorkTypesPage />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="users"
-                    element={
-                        <ProtectedRoute permission={'users.manage'}>
-                            <UsersPage />
-                        </ProtectedRoute>
-                    }
-                />
 
-                <Route
-                    path="activity-types"
-                    element={
-                        <ProtectedRoute permission={'reference.manage'}>
-                            <ActivityTypesPage />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="platforms"
-                    element={
-                        <ProtectedRoute permission={'reference.manage'}>
-                            <PlatformsPage />
-                        </ProtectedRoute>
-                    }
-                />
-                <Route
-                    path="work-lines"
-                    element={
-                        <ProtectedRoute permission={'reference.manage'}>
-                            <WorkLinesPage />
-                        </ProtectedRoute>
-                    }
-                />
             </Route>
 
             {/* 404 - Redirect to home */}

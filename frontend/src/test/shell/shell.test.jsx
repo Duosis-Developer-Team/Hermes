@@ -46,6 +46,7 @@ const renderShell = ({ permissions = [], route = '/time-entry', user } = {}) => 
                         <Route path="/" element={<MainLayout />}>
                             <Route path="time-entry" element={<div>ROUTE-CONTENT</div>} />
                             <Route path="customers" element={<div>CUSTOMERS</div>} />
+                            <Route path="settings/*" element={<div>SETTINGS</div>} />
                         </Route>
                     </Routes>
                 </MemoryRouter>
@@ -136,10 +137,13 @@ describe('RBAC menu gorunurlugu (Sprint 3te DEGISMEDI)', () => {
         expect(screen.queryByText('API Management')).not.toBeInTheDocument()
     })
 
-    it('customers.manage CONFIGURATION grubunu acar', () => {
+    it('customers.manage tek "Settings" ogesini acar (B1: ayar sayfalari menude DEGIL)', () => {
         renderShell({ permissions: ['customers.manage'] })
-        expect(screen.getByText('CONFIGURATION')).toBeInTheDocument()
-        expect(screen.getAllByText('Customers').length).toBeGreaterThan(0)
+        expect(screen.getByText('MANAGEMENT')).toBeInTheDocument()
+        expect(screen.getAllByText('Settings').length).toBeGreaterThan(0)
+        // Ayar sayfalari kenar cubugunda tek tek listelenmez; /settings icinde.
+        expect(screen.queryByText('Customers')).not.toBeInTheDocument()
+        expect(screen.queryByText('CONFIGURATION')).not.toBeInTheDocument()
     })
 
     it('izinler henuz YUKLENMEDIYSE (null) menu kapali kalir (fail-closed)', () => {
@@ -150,10 +154,11 @@ describe('RBAC menu gorunurlugu (Sprint 3te DEGISMEDI)', () => {
 
 describe('aktif rota', () => {
     it('bulundugumuz route menude secili', () => {
-        renderShell({ permissions: ['customers.manage'], route: '/customers' })
+        renderShell({ permissions: ['customers.manage'], route: '/settings/customers/customers' })
         const selected = document.querySelector('.ant-menu-item-selected')
         expect(selected).toBeTruthy()
-        expect(selected.textContent).toContain('Customers')
+        // Alt yol (/settings/...) ust ogeyi (Settings) secili tutar.
+        expect(selected.textContent).toContain('Settings')
     })
 })
 
@@ -161,7 +166,7 @@ describe('prefetch sozlesmesi (§7)', () => {
     it('yalnizca kod chunk yukler; izin YOKSA o rota haritada olsa bile menude yok', async () => {
         const { loaderByPath } = await import('../../routes/loaders')
         // Harita rotalari kapsar…
-        expect(Object.keys(loaderByPath)).toContain('/api-management')
+        expect(Object.keys(loaderByPath)).toContain('/settings/integrations/api')
         // …ama izinsiz kullanicida o nav ogesi hic render edilmez,
         // dolayisiyla prefetch tetiklenemez (yapisal guvence).
         renderShell({ permissions: [] })

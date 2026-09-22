@@ -268,6 +268,6 @@ describe('duzeltme turu (2026-08-04) kilitleri', () => {
         expect(jsx).toContain('idlePrefetchDone')
         expect(jsx).toContain('requestIdleCallback')
         // Yalniz izin filtresinden gecmis menu listeleri kullanilir.
-        expect(jsx).toMatch(/\[\.\.\.managementItems, \.\.\.configurationItems\]/)
+        expect(jsx).toMatch(/\[\.\.\.managementItems, \.\.\.settingsItems\]/)
     })
 })

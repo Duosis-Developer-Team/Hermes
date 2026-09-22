@@ -1,0 +1,95 @@
+/* Ayarlar kabugu (B1) — mevcut token dili; sayfa icerikleri kendi stilini korur. */
+.settings-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.settings-head h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.settings-head p {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    color: var(--text-muted);
+}
+
+.settings-body {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+@media (max-width: 860px) {
+    .settings-body {
+        grid-template-columns: 1fr;
+    }
+}
+
+.settings-nav {
+    position: sticky;
+    top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 10px 8px;
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    background: var(--h-surface-subtle, transparent);
+}
+
+.settings-section-label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    padding: 4px 10px 2px;
+}
+
+.settings-link {
+    display: block;
+    padding: 7px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-secondary, var(--text-muted));
+    text-decoration: none;
+    transition: background 160ms ease, color 160ms ease;
+}
+
+.settings-link:hover {
+    background: var(--h-bg-hover, rgba(255, 255, 255, 0.04));
+    color: var(--text-primary);
+}
+
+.settings-link.active {
+    background: var(--h-bg-selected);
+    color: var(--h-brand-hover, var(--h-brand));
+    font-weight: 600;
+}
+
+.settings-link:focus-visible {
+    outline: 2px solid var(--h-focus);
+    outline-offset: 2px;
+}
+
+.settings-content {
+    min-width: 0;
+}
+
+.settings-loading {
+    display: flex;
+    justify-content: center;
+    padding: 48px 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-link {
+        transition: none;
+    }
+}

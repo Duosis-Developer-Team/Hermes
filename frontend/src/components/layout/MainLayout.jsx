@@ -12,14 +12,9 @@
 import { useEffect, useRef } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import {
-    ApiOutlined,
     CodeOutlined,
     DashboardOutlined,
     ClockCircleOutlined,
-    TeamOutlined,
-    ProjectOutlined,
-    AppstoreOutlined,
-    UserOutlined,
     FileTextOutlined,
     LogoutOutlined,
     FileExcelOutlined,
@@ -36,6 +31,7 @@ import { useTaskPermissions } from '../../hooks/useTaskPermissions'
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { useT } from '../../i18n'
 import { loaderByPath } from '../../routes/loaders'
+import { hasAnySettings } from '../../features/settings/sections'
 
 /**
  * Main Layout Component
@@ -70,26 +66,25 @@ function MainLayout() {
     const ticketContext = useTicketContext()
     const ticketsPath = ticketContext.isPortal ? '/support' : '/tickets'
 
+    // Dashboard, Billable Hours, Raporlar ve Sozlesmeler AYAR DEGILDIR;
+    // "Yonetim" grubunda kalirlar (03-yetenekler §6).
     const managementItems = [
         { key: '/dashboard', icon: <DashboardOutlined />, label: t('nav.dashboard'), perm: 'reports.view' },
         { key: '/management/billable-hours', icon: <ClockCircleOutlined />, label: t('nav.billableHours'), perm: 'reports.view' },
         { key: '/management/reports', icon: <FileExcelOutlined />, label: t('nav.reports'), perm: 'reports.view' },
         { key: '/management/contracts', icon: <FileTextOutlined />, label: t('nav.contractStatus'), perm: 'reports.view' },
-        { key: '/pm-configurations', icon: <CheckSquareOutlined />, label: t('nav.pmConfigurations'), perm: 'tasks.permissions.manage' },
-        { key: '/api-management', icon: <ApiOutlined />, label: t('nav.apiManagement'), perm: 'api.manage' },
-        { key: '/ticket-integrations', icon: <CustomerServiceOutlined />, label: t('nav.ticketIntegrations'), perm: 'tickets.config.manage' },
     ].filter((i) => can(i.perm)).map(({ perm, ...i }) => i)
 
-    const configurationItems = [
-        { key: '/customers', icon: <TeamOutlined />, label: t('nav.customers'), perm: 'customers.manage' },
-        { key: '/projects', icon: <ProjectOutlined />, label: t('nav.projects'), perm: 'projects.manage' },
-        { key: '/work-types', icon: <AppstoreOutlined />, label: t('nav.workTypes'), perm: 'reference.manage' },
-        { key: '/activity-types', icon: <AppstoreOutlined />, label: t('nav.activityTypes'), perm: 'reference.manage' },
-        { key: '/platforms', icon: <SettingOutlined />, label: t('nav.platforms'), perm: 'reference.manage' },
-        { key: '/work-lines', icon: <SettingOutlined />, label: t('nav.workLines'), perm: 'reference.manage' },
-        { key: '/users', icon: <UserOutlined />, label: t('nav.users'), perm: 'users.manage' },
-        { key: '/capacity', icon: <CalendarOutlined />, label: t('nav.capacity'), perm: 'users.manage' },
-    ].filter((i) => can(i.perm)).map(({ perm, ...i }) => i)
+    /*
+     * B1 — ayarlar TEK cati altinda: menude tek "Ayarlar" ogesi. Hangi
+     * bolumlerin acilacagini /settings kabugu izne gore secer; burada
+     * yalnizca "en az bir bolum gorunur mu?" sorulur. Eskiden sekiz ayar
+     * sayfasi "YAPILANDIRMA" grubunda, ucu de "YONETIM"de duz listeydi.
+     */
+    const canAny = useAuthStore((s) => s.canAny)
+    const settingsItems = hasAnySettings(canAny) ? [
+        { key: '/settings', icon: <SettingOutlined />, label: t('nav.settings') },
+    ] : []
 
     // Sprint 3 §7: nav uzerinde kisa pointer-intent sonrasi route
     // CHUNK'i prefetch edilir (API verisi degil). Menu izin-filtreli
@@ -121,7 +116,7 @@ function MainLayout() {
         const conn = typeof navigator !== 'undefined' ? navigator.connection : null
         if (conn && (conn.saveData || /2g/.test(conn.effectiveType || ''))) return undefined
 
-        const keys = [...managementItems, ...configurationItems]
+        const keys = [...managementItems, ...settingsItems]
             .map((i) => i.key)
             .filter((k) => loaderByPath[k])
         if (!keys.length) return undefined
@@ -147,7 +142,7 @@ function MainLayout() {
         }
         // Menu listeleri izinler cozulunce bir kez dolar; ref tekrar
         // kosmayi engeller.
-    }, [managementItems.length, configurationItems.length])
+    }, [managementItems.length, settingsItems.length])
 
     // Menu items
     const menuItems = [
@@ -194,25 +189,16 @@ function MainLayout() {
             label: ticketsPath === '/support' ? t('nav.support') : t('nav.tickets'),
         }] : []),
 
-        // RBAC R3: yonetim gruplari, icinde GORUNUR oge varsa render
-        // edilir — tek is_admin bit'i yerine oge-bazli izinler.
-        ...(managementItems.length || configurationItems.length ? [
+        // RBAC R3: yonetim grubu, icinde GORUNUR oge varsa render
+        // edilir — tek is_admin bit'i yerine oge-bazli izinler. B1 ile
+        // "Ayarlar" da bu grubun son ogesidir (prototipteki yerlesim).
+        ...(managementItems.length || settingsItems.length ? [
             { type: 'divider' },
-        ] : []),
-        ...(managementItems.length ? [
             {
                 key: 'admin-group',
                 label: t('nav.groupManagement'),
                 type: 'group',
-                children: managementItems,
-            },
-        ] : []),
-        ...(configurationItems.length ? [
-            {
-                key: 'config-group',
-                label: t('nav.groupConfiguration'),
-                type: 'group',
-                children: configurationItems,
+                children: [...managementItems, ...settingsItems],
             },
         ] : []),
     ]

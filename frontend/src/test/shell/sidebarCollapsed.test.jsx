@@ -45,7 +45,7 @@ vi.mock('../../routes/loaders', () => {
         loaderByPath: {
             '/time-entry': stub,
             '/management/reports': stub,
-            '/users': stub,
+            '/settings': stub,
         },
     }
 })
@@ -94,9 +94,10 @@ afterEach(() => vi.clearAllMocks())
 describe('collapsed sider grup basliklari', () => {
     it('expanded: yonetim gruplarinin basliklari GORUNUR', () => {
         renderShell({ permissions: ADMIN_PERMS })
-        expect(groupTitles().length).toBeGreaterThanOrEqual(2)
+        // B1: tek grup (MANAGEMENT) — ayar sayfalari "Settings" altinda.
+        expect(groupTitles().length).toBeGreaterThanOrEqual(1)
         expect(screen.getByText('MANAGEMENT')).toBeInTheDocument()
-        expect(screen.getByText('CONFIGURATION')).toBeInTheDocument()
+        expect(screen.getAllByText('Settings').length).toBeGreaterThan(0)
     })
 
     it('collapsed: grup basligi DOM da HIC yok (gizlenmis degil, cizilmemis)', () => {
@@ -118,7 +119,7 @@ describe('collapsed sider grup basliklari', () => {
 
     it('collapsed: gruplarin yerinde ayirici (divider) var — hiyerarsi ipucu korunur', () => {
         renderShell({ permissions: ADMIN_PERMS, collapsed: true })
-        expect(dividers().length).toBeGreaterThanOrEqual(2)
+        expect(dividers().length).toBeGreaterThanOrEqual(1)
     })
 
     it('collapsed: ART ARDA divider yok (menu zaten gruplardan once bir tane koyar)', () => {
@@ -133,13 +134,13 @@ describe('collapsed sider grup basliklari', () => {
 
     it('toggle ile basliklar kaybolur ve GERI GELIR (kalici DOM hasari yok)', () => {
         renderShell({ permissions: ADMIN_PERMS })
-        expect(groupTitles().length).toBeGreaterThanOrEqual(2)
+        expect(groupTitles().length).toBeGreaterThanOrEqual(1)
 
         fireEvent.click(screen.getByRole('button', { name: /Toggle navigation/i }))
         expect(groupTitles().length).toBe(0)
 
         fireEvent.click(screen.getByRole('button', { name: /Toggle navigation/i }))
-        expect(groupTitles().length).toBeGreaterThanOrEqual(2)
+        expect(groupTitles().length).toBeGreaterThanOrEqual(1)
     })
 })
 

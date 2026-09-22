@@ -202,8 +202,9 @@ describe('yetkisiz kullanici admin KODUNU preload etmez', () => {
         // Prefetch haritasi admin yollarini AYNI loader'a baglar; menu
         // izin-filtreli oldugu icin izinsiz route prefetch'i yapisal
         // olarak imkansizdir.
-        expect(loaderByPath['/pm-configurations']).toBe(routeLoaders.taskManagement)
-        expect(loaderByPath['/api-management']).toBe(routeLoaders.apiManagement)
-        expect(loaderByPath['/users']).toBe(routeLoaders.users)
+        // B1: ayar sayfalari /settings altinda; harita YENI yollari baglar.
+        expect(loaderByPath['/settings/work/pm']).toBe(routeLoaders.taskManagement)
+        expect(loaderByPath['/settings/integrations/api']).toBe(routeLoaders.apiManagement)
+        expect(loaderByPath['/settings/organization/users']).toBe(routeLoaders.users)
     })
 })

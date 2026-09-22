@@ -25,6 +25,9 @@ vi.mock('../../routes/loaders', () => {
             platforms: stub('STUB-PLAT'), workLines: stub('STUB-WL'),
             taskManagement: stub('STUB-TM'), apiManagement: stub('STUB-AM'),
             developerPortal: stub('STUB-DEV'),
+            // B1: /api-management artik /settings/integrations/api'ye
+            // yonlenir; kabuk GERCEK modul (Outlet ile alt sayfayi cizer).
+            settings: () => import('../../pages/settings/SettingsPage'),
         },
         // MainLayout hover-prefetch ve (2026-08-04) idle-prefetch icin
         // bu haritayi okur. Mock'ta bulunmayinca ESM erisimde patliyordu;
