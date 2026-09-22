@@ -53,3 +53,30 @@ Kapsam DIŞI (05 aynen): proje bazlı workflow, olay replay arayüzü, WebSocket
 - Bildirim gürültüsü: alıcı kümesi katılımcıyla sınırlı, aktör hariç; okunmuşlar 90 günde temizlenir.
 - Ek dosya arc değişikliği: ticket testleri (parite + sızıntı) aynen geçmeli; iş kalemi ekleri hub/portal serializer'larına ASLA girmez (sızıntı testi eklenir).
 - Dev'de MinIO/ClamAV kurulumu manifest işidir (CD değil) — CTO Termius'tan uygular, komutları ben veririm.
+
+## 6. P2.3 runbook — hermes-dev'de ek dosya (CTO Termius'tan uygular)
+
+Kod tarafı `TICKET_ATTACHMENTS_ENABLED=false` iken de çalışır (uçlar 503 "not configured"); özelliği açmak için sırayla:
+
+```bash
+# 0) repo dev dalı sunucuda güncel (k8s/10-minio.yaml, k8s/11-clamav.yaml, k8s/notification-cleanup-cronjob.yaml)
+# 1) secret'lar (bir kez; degerleri KENDINIZ uretin — repo/log/rapora GIRMEZ)
+kubectl -n hermes-dev create secret generic hermes-minio-root \
+  --from-literal=MINIO_ROOT_USER=<user> --from-literal=MINIO_ROOT_PASSWORD=<pass> \
+  --from-literal=MINIO_KMS_SECRET_KEY="hermes-dev-key:$(openssl rand -base64 32)"
+kubectl -n hermes-dev create secret generic hermes-ticket-storage \
+  --from-literal=TICKET_S3_ACCESS_KEY_ID=<user> --from-literal=TICKET_S3_SECRET_ACCESS_KEY=<pass>
+# 2) MinIO + ClamAV (once diff, sonra apply)
+kubectl diff -f k8s/10-minio.yaml; kubectl apply -f k8s/10-minio.yaml
+kubectl diff -f k8s/11-clamav.yaml; kubectl apply -f k8s/11-clamav.yaml
+kubectl -n hermes-dev rollout status deploy/minio; kubectl -n hermes-dev rollout status deploy/clamav   # clamav ilk imza indirmesi dakikalar surer
+# 3) bucket (MinIO pod'undan mc ile ya da python/awscli; test'te nasil yapildiysa ayni)
+# 4) ConfigMap anahtarlari (patch — dosya apply edilmez)
+kubectl -n hermes-dev patch cm hermes-config --type merge -p '{"data":{"TICKET_ATTACHMENTS_ENABLED":"true","TICKET_STORAGE_BACKEND":"s3","TICKET_S3_ENDPOINT_URL":"http://minio.hermes-dev.svc:9000","TICKET_S3_BUCKET":"hermes-attachments","TICKET_SCANNER_MODE":"clamav","TICKET_SCANNER_HOST":"clamav.hermes-dev.svc"}}'
+kubectl -n hermes-dev rollout restart deploy/core-service && kubectl -n hermes-dev rollout status deploy/core-service
+# 5) dogrulama: /ready 200 (yapilandirma eksikse pod trafige alinmaz), bir is kalemine PNG yukleyip indirin
+# 6) bildirim temizligi
+kubectl diff -f k8s/notification-cleanup-cronjob.yaml; kubectl apply -f k8s/notification-cleanup-cronjob.yaml
+```
+
+Not: `TICKET_SCANNER_MODE=disabled_dev_only` dev'de kabul edilir ama CTO kararı (P2-7) tarama akışını dev'de de görmek; ClamAV hazır olana kadar geçici olarak bu modla açılabilir.

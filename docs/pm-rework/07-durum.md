@@ -3,7 +3,7 @@
 Can'ın 05-gelistirme-kapsami.md'de listelediği **31 kalem** ile yapılanların karşılaştırması.
 Kararlar ve kod doğrulaması ayrıntısı: `06-inceleme-ve-kararlar.md`.
 
-**Özet:** **P0 tamam** (D1 sapmayla, D2, G1, B1) · **P1 tamam** (A1–A4, A6–A10, B3–B5) · **P2 sürüyor** (P2.1 B2, P2.2 C1–C3 dev'de) — 20 kalem dev'de · 12 başlamadı (A5 F05'e ertelendi · F1 · P3 10; tablo 32 satır = Can'ın 31'i + A10). Sıradaki: P2.3 (F1 ek dosya, dev'e MinIO/ClamAV); CTO'nun dev testi → toplu ff.
+**Özet:** **P0 tamam** (D1 sapmayla, D2, G1, B1) · **P1 tamam** (A1–A4, A6–A10, B3–B5) · **P2 tamam (kod)** (B2, C1–C3, F1 dev'de; F1 için dev'de MinIO/ClamAV kurulumu manuel) — 21 kalem dev'de · 11 başlamadı (A5 F05'e ertelendi · P3 10; tablo 32 satır = Can'ın 31'i + A10). Sıradaki: CTO'nun dev testi + 09 §6 runbook → toplu ff; P3 para katmanı sonrası.
 Kararlar: 7'nin 7'si + 2 yeni karar kapatıldı (batch → `participant.completed_at`; A10 efor↔iş kalemi). Açık karar yok.
 
 ## 1. Can'ın istediği tüm geliştirmeler (05'teki liste)
@@ -40,7 +40,7 @@ Kararlar: 7'nin 7'si + 2 yeni karar kapatıldı (batch → `participant.complete
 | E4 | Görsel dil | P3 | Başlamadı | |
 | E5 | Takvim yerleşimi | P3 | Başlamadı | |
 | E6 | Derin link `/work/KEY` | P3 | Başlamadı | `?item=<uuid>` tek seferlik link zaten var; kalıcı adres yok |
-| F1 | İş kalemine dosya ekleme | P2 | Başlamadı | Düzeltme: `ticket_attachments.ticket_id` nullable, exclusive-arc — polimorfik geçiş bunu devralmalı |
+| F1 | İş kalemine dosya ekleme | P2 | **Yapıldı (P2.3, kod)** | `ticket_attachments.work_item_id` (0013; arc: ticket/mesaj/çözüm/iş kalemi); ticket ek altyapısı aynen (oturum → karantina → sniff → ClamAV → temiz → yetkili stream); `/tasks/{id}/attachments` uçları; temiz dosya anında bağlanır, `rejected` bağlanmaz/indirilemez; iş kalemi eki hub/portal'a giremez (test). UI: detay panelinde "Ekler" sekmesi (ticket dropzone'u). **hermes-dev'de MinIO/ClamAV kurulumu manuel (09 §6 runbook) — kurulana kadar uçlar 503 "not configured"** |
 | G1 | Durum kullanım ölçümü | P0 | **Yapıldı** | 182 iş: completed 109 · pending 51 · rejected 14 · in_progress 8; pending medyan 0,3 gün, çalışma 6,8 gün; 27 iş in_progress'i atlamış |
 
 Prototip (`prototip.html`): P3 arayüzünün taslağı; olduğu gibi uygulanmadı, fikirleri D3–D6 ve E1–E6'ya eşleniyor.
@@ -75,13 +75,14 @@ Prototip (`prototip.html`): P3 arayüzünün taslağı; olduğu gibi uygulanmad�
 
 ## 4. Yapılmayanlar ve neden
 
-- **P2 (F1):** 09-p2-plani onaylı; B2 (P2.1) ve C1–C3 (P2.2) bitti; P2.3 ek dosya (F1) sırada — hermes-dev'e MinIO/ClamAV manifestleri gerekir (manuel kubectl).
+- **P2:** kod tarafı tamam (B2, C1–C3, F1). F1'in dev'de uçtan uca görülmesi MinIO/ClamAV kurulumuna bağlı (09 §6 runbook, CTO uygular). Outbox/webhook ertelendi (CTO kararı).
 - **P3 (D3–D6, E1–E6):** A/B bölmesi gereği para katmanı ve e-fatura sonrası; ekran o zaman bir kez çizilir.
 
 ## 5. Sıradaki adımlar
 
 1. CTO P0 + P1 kalemlerini hermes-dev'de test eder → toplu ff-merge `test`'e (CTO "ff yapalım" deyince). Terfi öncesi hermes-test kopyasında kuru-koşu (`p1_dryrun.sh`) tekrar edilir.
-2. P2 — `09-p2-plani.md` CTO onaylı (22.09). P2.1 B2 ve P2.2 C1–C3 bitti; P2.3 F1 sırada: hermes-dev'e MinIO + ClamAV manifestleri (manuel `kubectl`, komutları ben veririm), `k8s/notification-cleanup-cronjob.yaml` da manuel apply.
+2. hermes-dev'de manuel `kubectl`: MinIO + ClamAV + configmap patch + bildirim temizlik CronJob'u (09 §6). Ardından F1 uçtan uca dev testi.
+3. P3 (D3–D6, E1–E6): A/B bölmesi gereği para katmanı ve e-fatura sonrası.
 
 ## 6. P1.1 — şema + taşıma (22.09, dev)
 
@@ -146,11 +147,12 @@ Commit `1ba5a9f`. Şema değişikliği yok (`member_role` CHECK'i 0012'de gelece
 - Backend: `routers/project_members.py` — `GET/POST/PATCH/DELETE /projects/{id}/members`; yanıt `{project_id, can_manage, can_assign_lead, items[]}` (UI düğmeleri sunucu kararına bağlı). Yetki: `projects.manage` ∨ o projenin lead'i; lead `member/viewer` ekler-çıkarır-değiştirir, `lead` rolüne dokunamaz (403); pasif üyelik yeniden etkinleştirilir (satır çoğaltılmaz); mükerrer 409; geçersiz rol 422. Eski `/project-memberships` uçları (admin) aynen.
 - Frontend: `components/projects/ProjectMembersDrawer.jsx` (liste, kullanıcı seçici — zaten üye olanlar listelenmez —, rol Select, çıkar; `can_assign_lead` yoksa "Lider" seçeneği yok); Ayarlar › Projeler satırında "Üyeler"; Explorer breadcrumb'ında proje seçiliyken `ProjectMembersButton` (provider yoksa kendini gizler — `QueryClientContext` guard'ı; `components/tasks` provider'sız render sınırı korunur). Query anahtarı `queryKeys.projectMembers` (merkezi sözleşme).
 - Testler: core +7 (`test_project_members.py`: yetki matrisi, lead sınırı, 409/422, üyeliğin görünürlüğü anında değiştirmesi); frontend +5 (`admin/projectMembers.test.jsx`).
+- **Canlı doğrulama (hermes-dev, `1ba5a9f`):** CD kapıları + migrate/deploy başarılı; uçlar token'sız 401; pod logu temiz.
 - Not: üyelik listesi kullanıcı adlarını `auth /users/lookup` ile çözer (en az ayrıcalıklı dizin); lead için proje-içi yönlendirme (05 B2 "proje içi yönlendirme") P2'de yok — yönlendirme kiracı düzeyinde (A4).
 
 ## 10. P2.2 — C1–C3 uygulama içi bildirim + kanal ayrımı (22.09, dev)
 
-Commit `<p22sha>`. Alembic **0012_p2_notifications_channels** (additive): `work_item_notifications` (RLS+FORCE), `task_notification_settings.email_enabled/in_app_enabled` (DEFAULT true), `project_memberships.member_role` CHECK (`lead|member|viewer|NULL`). F1'in `ticket_attachments.work_item_id`'si P2.3'te ayrı migration'a (0013) alındı — 09 §3 "tek migration" demişti; adımların bağımsız kalması için bölündü.
+Commit `21e7736`. Alembic **0012_p2_notifications_channels** (additive): `work_item_notifications` (RLS+FORCE), `task_notification_settings.email_enabled/in_app_enabled` (DEFAULT true), `project_memberships.member_role` CHECK (`lead|member|viewer|NULL`). F1'in `ticket_attachments.work_item_id`'si P2.3'te ayrı migration'a (0013) alındı — 09 §3 "tek migration" demişti; adımların bağımsız kalması için bölündü.
 
 - `services/notification_service.py`: `fan_out` `record_event` içinden (aynı transaction, outbox yok); alıcı kuralları olay tipine göre (task_created → atananlar; durum/yorum → reporter+owner+katılımcılar; watcher_added → eklenen; log_time → reporter/owner); aktör hariç; kural tablosu `channel="in_app"` ile uygulanır (öncelik/termin/olay bayrağı). Hiçbir zaman istisna yükseltmez.
 - `routers/notifications.py`: liste (`unread`, sayfalı) + okunmamış sayısı + okundu/tümü okundu; kullanıcı yalnız kendi bildirimlerini görür (başkasınınki 404). Yanıt olay verisinden yalnız güvenli anahtarları taşır (`from/to/user_id/...`).
@@ -158,3 +160,15 @@ Commit `<p22sha>`. Alembic **0012_p2_notifications_channels** (additive): `work_
 - Temizlik: `app/jobs/notification_cleanup.py` (`purge_read`, 90 gün, tenant başına) + `k8s/notification-cleanup-cronjob.yaml` (03:30 UTC, dev; manuel apply, `kubectl diff` sonrası).
 - Frontend: `components/layout/NotificationBell.jsx` (rozet, liste, okundu, tümünü okundu, işe git; `refetchOnWindowFocus` + 60 sn), kabuk başlığında; PM ayarları › Mail Notifications sekmesinde "Kanallar: E-posta / Uygulama içi" çipleri; i18n.
 - Testler: core +7 (`test_work_item_notifications.py`: alıcı kümesi, aktör hariç, okundu/tümü, kanal kapama, öncelik kuralı, purge), migration zinciri 0012 (temiz DB + geride kalmış DB); frontend +5 (`shell/notificationBell.test.jsx`).
+- **Canlı doğrulama (hermes-dev, `21e7736`):** `alembic_version = 0012`; `/notifications`, `/unread-count`, `/admin/notification-settings` token'sız 401; `email_enabled/in_app_enabled` 2/2, `chk_project_memberships_role` 1, `work_item_notifications` RLS+FORCE; 42 iş kalemi sabit; pod logu temiz.
+
+## 11. P2.3 — F1 iş kalemine ek dosya (22.09, dev)
+
+Commit `<p23sha>`. Alembic **0013_p2_work_item_attachments** (additive): `ticket_attachments.work_item_id` (FK RESTRICT) + index; `chk_ticket_attachments_attached_needs_ticket` iş kalemini de kabul eder; yeni `chk_ticket_attachments_work_item_exclusive` (iş kalemi eki ticket/mesaj/çözüm sahipliğiyle birlikte olamaz). Mevcut satırlar (hepsi ticket'a bağlı) her iki kısıta uyar. Model ve baseline expand ifadeleri aynı metni taşır (temiz DB = create_all, mevcut DB = ALTER).
+
+- `services/work_item_attachment_service.py`: oturum (Hermes uygulama satırı `ensure_application` ile, `uploader_type=hermes_user`, `public`), içerik → `store_upload` (ticket'la aynı) → **temizse anında bağlanır** (`attached_at`, `expires_at=NULL`, olay `attachment_added`); liste; indirme (`open_download`: temiz + bağlı değilse 409); kaldırma (sahiplik kopar, 1 saat sonra bakım job'ı nesneyi siler). Yetki: yükleme/kaldırma `_can_link` kümesi (reporter/owner/katılımcı/lead/admin), görme/indirme `can_view`; özellik kapalıysa 503.
+- Uçlar (`routers/tasks.py`): `GET/POST /tasks/{id}/attachments`, `POST .../{aid}/content` (ham gövde), `GET .../{aid}/download` (stream, `Content-Disposition: attachment`, `no-store`, `nosniff`), `DELETE .../{aid}`.
+- Sızıntı: hub/portal serializer'ları `ticket_id` ile yükler → iş kalemi eki (ticket_id NULL) o kümeye yapısal olarak giremez; test kilitler. Ticket sızıntı ve indirme-izni testleri aynen yeşil.
+- Frontend: `components/tasks/TaskAttachmentsTab.jsx` (liste, boyut, indir, kaldır; ticket `AttachmentDropzone`'u ile yükleme; 503'te açıklama), detay panelinde "Ekler" sekmesi (tembel mount). `taskService.*Attachment*`, `queryKeys.tasks.attachments`.
+- Dev ortamı: `k8s/10-minio.yaml`, `k8s/11-clamav.yaml` (test kopyası, ns hermes-dev) + `k8s/notification-cleanup-cronjob.yaml`; adımlar 09 §6. Kurulana kadar dev'de uçlar 503 döner (ticket tarafındaki mevcut davranışla aynı).
+- Testler: core +6 (`test_work_item_attachments.py`), migration zinciri 0013; frontend +5 (`tasks/attachmentsTab.test.jsx`).

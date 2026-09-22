@@ -18,6 +18,7 @@ import { BellFilled, BellOutlined, CloseOutlined, EyeOutlined } from '@ant-desig
 
 import { ActivityTimeline } from '../modals/TaskReviewModal'
 import TaskCommentsThread from './TaskCommentsThread'
+import TaskAttachmentsTab from './TaskAttachmentsTab'
 import { AssignmentRoster } from '../../features/tasks/components/AssigneeStatusBadge'
 import { aggregateStatus } from '../../features/tasks/model/grouping'
 import { useT } from '../../i18n'
@@ -263,6 +264,16 @@ function TaskDetailPanel({
                                     userMap={userMap}
                                 />
                             </div>
+                        ),
+                    },
+                    {
+                        // F1: ekler — yalniz sekme aktifken mount (tembel).
+                        key: 'attachments',
+                        label: t('task.attachments'),
+                        children: (
+                            <TaskAttachmentsTab
+                                taskId={task.work_item_id || task.id}
+                            />
                         ),
                     },
                 ]}

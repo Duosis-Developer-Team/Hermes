@@ -49,6 +49,7 @@ from ..schemas.task import (
 from ..services import task_service
 from ..services import work_item_service as wi
 from ..services import work_item_compat as compat
+from ..services import work_item_attachment_service as wia
 from ..schemas.work_item import (
     WatcherAdd, WorkflowStateResponse, WorkItemLinkCreate, WorkItemLinkResponse,
     WorkItemResponse, WorkItemStatusUpdate,
@@ -932,3 +933,102 @@ def delete_link(
     task_service.require_task_access(db, current_user)
     wi.delete_link(db, current_user, task_id, link_id)
     return [WorkItemLinkResponse(**row) for row in wi.list_links(db, current_user, task_id)]
+
+
+# =============================================================================
+# Ek dosyalar (PM rework P2.3 / F1) — ticket ek altyapisi, is kalemi sahipligi
+# =============================================================================
+from fastapi.responses import StreamingResponse  # noqa: E402
+from starlette.concurrency import run_in_threadpool  # noqa: E402
+
+from ..schemas.ticketing import AttachmentOut  # noqa: E402
+from ..services import ticket_serializers as _tser  # noqa: E402
+
+
+@router.get("/{task_id}/attachments", response_model=List[AttachmentOut])
+def list_attachments(
+    task_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_tenant_db),
+):
+    task_service.require_task_access(db, current_user)
+    return [_tser.attachment_out(r) for r in wia.list_for_item(db, current_user, task_id)]
+
+
+@router.post(
+    "/{task_id}/attachments",
+    response_model=AttachmentOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def open_attachment_session(
+    task_id: UUID,
+    file_name: str = Query(..., max_length=255),
+    size_bytes: int = Query(..., ge=1),
+    declared_mime_type: Optional[str] = Query(None, max_length=120),
+    sha256: Optional[str] = Query(None, min_length=64, max_length=64),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_tenant_db),
+):
+    """Iki adimli yukleme (ticket ile ayni): once metadata oturumu, sonra
+    ham icerik. Icerik taranir; TEMIZSE aninda ise baglanir."""
+    task_service.require_task_access(db, current_user)
+    row = wia.open_session(
+        db, current_user, task_id, file_name=file_name, size_bytes=size_bytes,
+        declared_mime=declared_mime_type, sha256=sha256,
+    )
+    return _tser.attachment_out(row)
+
+
+@router.post("/{task_id}/attachments/{attachment_id}/content", response_model=AttachmentOut)
+async def upload_attachment_content(
+    task_id: UUID,
+    attachment_id: UUID,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_tenant_db),
+):
+    from ..config import get_settings
+
+    task_service.require_task_access(db, current_user)
+    body = await request.body()
+    if len(body) > int(get_settings().TICKET_ATTACHMENT_MAX_BYTES):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="This file exceeds the maximum attachment size.")
+    row = await run_in_threadpool(
+        wia.store_and_attach, db, current_user, task_id, attachment_id, body,
+    )
+    return _tser.attachment_out(row)
+
+
+@router.get("/{task_id}/attachments/{attachment_id}/download")
+def download_attachment(
+    task_id: UUID,
+    attachment_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_tenant_db),
+):
+    """Once IS KALEMI gorunurlugu, sonra yetkili stream. Imzali/kalici URL
+    yok; `Content-Disposition: attachment` ile inline calistirma kapali."""
+    task_service.require_task_access(db, current_user)
+    row, stream = wia.open_download(db, current_user, task_id, attachment_id)
+    return StreamingResponse(
+        stream,
+        media_type=row.detected_mime_type or "application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{row.file_name}"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.delete("/{task_id}/attachments/{attachment_id}", response_model=List[AttachmentOut])
+def remove_attachment(
+    task_id: UUID,
+    attachment_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_tenant_db),
+):
+    task_service.require_task_access(db, current_user)
+    wia.detach(db, current_user, task_id, attachment_id)
+    return [_tser.attachment_out(r) for r in wia.list_for_item(db, current_user, task_id)]

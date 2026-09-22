@@ -394,6 +394,13 @@ export default {
     },
 
     task: {
+        attachments: 'Attachments',
+        attachmentsEmpty: 'No files attached yet',
+        attachmentsDisabled: 'File attachments are not configured in this environment.',
+        attachmentsHint: 'Files are scanned before they are attached; only clean files can be downloaded.',
+        download: 'Download',
+        removeAttachment: 'Remove attachment',
+        attachmentRemoved: 'Attachment removed.',
         origin: 'Origin',
         originTicket: 'Ticket',
         billable: 'Billable',

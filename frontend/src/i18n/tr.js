@@ -388,6 +388,13 @@ export default {
     },
 
     task: {
+        attachments: 'Ekler',
+        attachmentsEmpty: 'Henüz dosya eklenmedi',
+        attachmentsDisabled: 'Dosya ekleme bu ortamda yapılandırılmamış.',
+        attachmentsHint: 'Dosyalar eklenmeden önce taranır; yalnızca temiz dosyalar indirilebilir.',
+        download: 'İndir',
+        removeAttachment: 'Eki kaldır',
+        attachmentRemoved: 'Ek kaldırıldı.',
         origin: 'Kaynak',
         originTicket: 'Destek talebi',
         billable: 'Faturalanabilir',

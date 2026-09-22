@@ -88,6 +88,8 @@ export const queryKeys = {
         /** Is akisi durumlari (workflow_states) — pano sutunlari ve durum
          *  sozlugu tek kaynaktan (PM rework P1). */
         states: () => k('tasks', 'states'),
+        /** Is kalemi ekleri (PM rework P2.3 / F1). */
+        attachments: (id) => k('tasks', 'attachments', id),
     },
     /** Gorev aktivite akisi (Review modal + yorum thread'i ayni aileyi
      *  tuketir; kok anahtar DEGISTIRILEMEZ). */

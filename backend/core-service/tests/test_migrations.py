@@ -271,6 +271,10 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             conn.execute(text("ALTER TABLE task_notification_settings DROP COLUMN IF EXISTS email_enabled"))
             conn.execute(text("ALTER TABLE task_notification_settings DROP COLUMN IF EXISTS in_app_enabled"))
             conn.execute(text("ALTER TABLE project_memberships DROP CONSTRAINT IF EXISTS chk_project_memberships_role"))
+            # 0013: is kalemi eki kolonu (kisitlariyla) gider; eski kisit geri gelir.
+            conn.execute(text("ALTER TABLE ticket_attachments DROP COLUMN IF EXISTS work_item_id CASCADE"))
+            conn.execute(text("ALTER TABLE ticket_attachments DROP CONSTRAINT IF EXISTS chk_ticket_attachments_attached_needs_ticket"))
+            conn.execute(text("ALTER TABLE ticket_attachments ADD CONSTRAINT chk_ticket_attachments_attached_needs_ticket CHECK (attached_at IS NULL OR ticket_id IS NOT NULL)"))
             conn.execute(text(
                 "UPDATE alembic_version SET version_num = '0008_download_grants'"
             ))
@@ -299,7 +303,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
                     "'medium', 'pending', :b, now(), now())"
                 ), {"t": tenant_id, "cid": customer_id, "pid": project_id, "b": batch})
 
-        _run_migration(disposable_db)      # 0008 → 0009 → 0010 → 0011 → 0012
+        _run_migration(disposable_db)      # 0008 → 0009 → 0010 → 0011 → 0012 → 0013
 
         with engine.connect() as conn:
             head = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
@@ -320,7 +324,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             )).scalar()
     finally:
         engine.dispose()
-    assert head == "0012_p2_notifications_channels"
+    assert head == "0013_p2_work_item_attachments"
     assert items == 1 and parts == 2, "2 kopyalik batch tek is kalemi olmali"
     assert watchers == 1
     assert forced == 4

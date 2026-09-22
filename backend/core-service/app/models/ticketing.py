@@ -626,6 +626,13 @@ class TicketAttachment(TenantOwnedMixin, Base):
         ForeignKey("ticket_messages.id", ondelete="RESTRICT"),
         nullable=True,
     )
+    # PM rework P2.3 / F1 (CTO karari P2-4): is kalemi eki — ayni tablo,
+    # ayni karantina → tarama → temiz → indirme akisi; sahiplik exclusive-arc'a
+    # eklenir (ticket/message/resolution ile ASLA birlikte).
+    work_item_id = Column(
+        UUID(as_uuid=True), ForeignKey("work_items.id", ondelete="RESTRICT"),
+        nullable=True, index=True,
+    )
     resolution_id = Column(
         UUID(as_uuid=True),
         ForeignKey("ticket_resolutions.id", ondelete="RESTRICT"),
@@ -684,8 +691,14 @@ class TicketAttachment(TenantOwnedMixin, Base):
             name="chk_ticket_attachments_single_owner",
         ),
         CheckConstraint(
-            "attached_at IS NULL OR ticket_id IS NOT NULL",
+            "attached_at IS NULL OR ticket_id IS NOT NULL OR work_item_id IS NOT NULL",
             name="chk_ticket_attachments_attached_needs_ticket",
+        ),
+        # F1: is kalemi eki ticket/mesaj/cozum sahipligiyle birlikte olamaz.
+        CheckConstraint(
+            "work_item_id IS NULL OR (ticket_id IS NULL AND message_id IS NULL "
+            "AND resolution_id IS NULL)",
+            name="chk_ticket_attachments_work_item_exclusive",
         ),
         CheckConstraint("size_bytes >= 0",
                         name="chk_ticket_attachments_size"),

@@ -930,6 +930,36 @@ export const taskService = {
     },
 
     /** Newest-first activity feed for a task. */
+    /** Ek dosyalar (PM rework P2.3 / F1) — ticket ek altyapisi, is kalemi sahipligi.
+     *  Iki adimli yukleme: once metadata oturumu, sonra HAM icerik (multipart
+     *  degil); sunucu turu magic-byte ile kendisi tespit eder, temizse baglar. */
+    listAttachments: async (taskId) => {
+        const response = await coreApi.get(`/api/v1/core/tasks/${taskId}/attachments`)
+        return response.data
+    },
+    openAttachmentSession: async (taskId, params) => {
+        const response = await coreApi.post(
+            `/api/v1/core/tasks/${taskId}/attachments`, null, { params }
+        )
+        return response.data
+    },
+    uploadAttachmentContent: async (taskId, attachmentId, file) => {
+        const response = await coreApi.post(
+            `/api/v1/core/tasks/${taskId}/attachments/${attachmentId}/content`,
+            file,
+            { headers: { 'Content-Type': 'application/octet-stream' } }
+        )
+        return response.data
+    },
+    attachmentDownloadUrl: (taskId, attachmentId) =>
+        `/api/v1/core/tasks/${taskId}/attachments/${attachmentId}/download`,
+    removeAttachment: async (taskId, attachmentId) => {
+        const response = await coreApi.delete(
+            `/api/v1/core/tasks/${taskId}/attachments/${attachmentId}`
+        )
+        return response.data
+    },
+
     /** Takipci (B5): govde bos → kendini ekler; user_id → reporter/lead baskasini ekler. */
     addWatcher: async (taskId, userId = null) => {
         const response = await coreApi.post(

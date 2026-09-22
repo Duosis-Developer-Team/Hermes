@@ -472,6 +472,32 @@ def apply_p2_notifications_expand(conn) -> None:
         conn.execute(text(stmt))
 
 
+# PM rework P2.3 / F1 (0013): ticket_attachments exclusive-arc'ina is kalemi.
+# CHECK metinleri app/models/ticketing.py ile BIREBIR ayni olmali (temiz DB
+# create_all ile, mevcut DB bu ifadelerle ayni kisita gelir).
+P2_ATTACHMENTS_EXPAND_STATEMENTS = (
+    "ALTER TABLE ticket_attachments ADD COLUMN IF NOT EXISTS work_item_id UUID "
+    "REFERENCES work_items(id) ON DELETE RESTRICT",
+    "CREATE INDEX IF NOT EXISTS ix_ticket_attachments_work_item_id "
+    "ON ticket_attachments (work_item_id)",
+    "ALTER TABLE ticket_attachments DROP CONSTRAINT IF EXISTS "
+    "chk_ticket_attachments_attached_needs_ticket",
+    "ALTER TABLE ticket_attachments ADD CONSTRAINT chk_ticket_attachments_attached_needs_ticket "
+    "CHECK (attached_at IS NULL OR ticket_id IS NOT NULL OR work_item_id IS NOT NULL)",
+    "ALTER TABLE ticket_attachments DROP CONSTRAINT IF EXISTS "
+    "chk_ticket_attachments_work_item_exclusive",
+    "ALTER TABLE ticket_attachments ADD CONSTRAINT chk_ticket_attachments_work_item_exclusive "
+    "CHECK (work_item_id IS NULL OR (ticket_id IS NULL AND message_id IS NULL "
+    "AND resolution_id IS NULL))",
+)
+
+
+def apply_p2_attachments_expand(conn) -> None:
+    """ticket_attachments.work_item_id + arc kisitlari (0013)."""
+    for stmt in P2_ATTACHMENTS_EXPAND_STATEMENTS:
+        conn.execute(text(stmt))
+
+
 def apply_all(conn) -> None:
     """Testler icin: bugunku head semasinin tamami.
 
@@ -483,3 +509,4 @@ def apply_all(conn) -> None:
     apply_tenant_expand(conn)
     apply_work_items_expand(conn)
     apply_p2_notifications_expand(conn)
+    apply_p2_attachments_expand(conn)
