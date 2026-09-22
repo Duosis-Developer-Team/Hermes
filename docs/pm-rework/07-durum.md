@@ -123,7 +123,7 @@ Commit `044651e` + `704db53` + `d9e558c` (hermes-dev). Eski `tasks` ailesi hâl�
 
 ## 8. P1.3 — görünürlük + yetki + bağlar (22.09, dev)
 
-Commit `<p13sha>` (hermes-dev). Şema değişikliği YOK (0010'daki tablolar yeter); hepsi servis/API + küçük UI.
+Commit `b29904f` (hermes-dev). Şema değişikliği YOK (0010'daki tablolar yeter); hepsi servis/API + küçük UI.
 
 - **A3** görünürlük: `visible_filter`/`can_view` proje üyeliğini sayar; üyelik olmadan kişi yalnız reporter/owner/katılımcı olduğu işi görür. Testler: üye görür, üye olmayan 404, başka projedeki üyelik sızmaz, yönlendirme görünürlük vermez.
 - **A4** yönlendirme: `task_service` okuma/yazma `routing_relations`a geçti; admin uçları aynı yol/şekil. Testler `RoutingRelation` tohumlar (7 dosya).
@@ -134,5 +134,7 @@ Commit `<p13sha>` (hermes-dev). Şema değişikliği YOK (0010'daki tablolar yet
 - **A8** faturalanabilirlik: proje şeması/serializer/formu; iş kalemi miras + override izi; efor kaydı bağlı işten miras. Detay panelinde satır; düzenleme modalında anahtar (yalnız değiştiyse gönderilir).
 - **A6** talep → iş: hub uçları, `TicketAgentOut.work_items`, açıklama = ticket başlığı + ilk **public** mesaj + adımlar (internal not asla taşınmaz), varsayılan tür `task` (issue ayrı izin scope'u). Hub UI: modal + liste; iş detayında kaynak bağı; `/tickets?ticket=<id>` derin linki.
 - **Testler:** +4 core dosyası (`test_work_item_access/watchers/hierarchy_billing`, `ticketing/test_work_item_link`) + güncellenen sözleşme testleri; frontend +2 (`watchers`, B4 crud senaryosu); tam core paketi ve frontend paketleri yeşil (kanıt aşağıda).
+
+**Canlı doğrulama (hermes-dev, `b29904f`, 22.09):** CD kapıları (core 691 · mcp 104 · auth · frontend 5 shard · build) yeşil, migrate/deploy başarılı; imajlar SHA'ya pinli; `alembic_version = 0011` (P1.3 şema değiştirmez); 42 iş kalemi / 60 katılımcı / 19 alias / 145 olay değişmedi, taşınmamış task 0; `routing_relations` 16, `project_memberships` 30 (0010 backfill'i), takipçi/bağ 0 (yeni); `/tasks`, `/tasks/states`, `/v1/tasks`, `/projects`, `/tickets/context`, `/admin/task-assignment-relations` token'sız 401; pod logunda hata yok. hermes-test kopyasında kuru-koşu tekrarı gerekmedi (0011 aynen; terfi öncesi yine koşulacak).
 
 **Sapmalar / notlar:** `member_role` bugün serbest metin (`member` backfill'i); `lead` rolü verilmesi B2 (proje ayarları sayfası) gelene kadar API/DB ile. Bağ (links) UI'si P3 (08 §2.9). MCP istemci matrisi hâlâ yeniden koşulmadı (gerçek istemci gerekir).
