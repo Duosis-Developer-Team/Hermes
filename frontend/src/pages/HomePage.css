@@ -329,3 +329,156 @@
 /* Termin satiri: tek renkli sinyal yine termin. */
 .home-week__entry--item.home-item--overdue .home-week__time { color: var(--h-danger); font-weight: 600; }
 .home-week__entry--item.home-item--today .home-week__time { color: var(--h-warning); font-weight: 600; }
+
+/* --- Ekibim: kisi kuyrugu (D5) ------------------------------------------ */
+.home-team__members {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+.home-team__member {
+    display: grid;
+    grid-template-columns: minmax(140px, 1fr) repeat(3, minmax(88px, auto));
+    align-items: center;
+    gap: var(--h-space-4);
+    padding: var(--h-space-2) var(--h-space-2);
+    border-top: 1px solid var(--h-border-subtle);
+}
+.home-team__member:first-child { border-top: 0; }
+.home-team__name {
+    font-size: var(--h-font-body);
+    font-weight: 600;
+    color: var(--h-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.home-team__stat {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+.home-team__value {
+    font-size: var(--h-font-body);
+    font-weight: 650;
+    color: var(--h-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.home-team__of { font-weight: 500; color: var(--h-text-muted); }
+.home-team__label {
+    font-size: var(--h-font-label);
+    color: var(--h-text-secondary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+/* Kirmizi YALNIZ gecikmede; efor girmemis sari (§5, §7). */
+.home-team__stat--danger .home-team__value { color: var(--h-danger); }
+.home-team__stat--warning .home-team__value { color: var(--h-warning); }
+
+/* --- Dikkat gerektirenler --------------------------------------------- */
+.home-attention__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--h-space-5);
+}
+.home-attention__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+.home-attention__list--names li {
+    padding: var(--h-space-1) var(--h-space-2);
+    font-size: var(--h-font-body);
+    color: var(--h-text-primary);
+}
+.home-attention__link {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: var(--h-space-2);
+    padding: var(--h-space-2) var(--h-space-2);
+    border-radius: var(--h-radius-control);
+    color: var(--h-text-primary);
+    text-decoration: none;
+}
+.home-attention__link:hover,
+.home-attention__link:focus-visible {
+    background: var(--h-bg-hover);
+    outline: none;
+}
+.home-attention__title {
+    font-size: var(--h-font-body);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.home-attention__meta {
+    grid-column: 1 / -1;
+    font-size: var(--h-font-meta);
+    color: var(--h-text-secondary);
+}
+
+/* --- Organizasyon ozeti (D6) -------------------------------------------- */
+.home-org__metrics { margin-bottom: var(--h-space-4); }
+.home-org__columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--h-space-5);
+}
+.home-org__signals,
+.home-org__customers {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--h-space-1);
+}
+.home-org__signal {
+    display: flex;
+    align-items: baseline;
+    gap: var(--h-space-3);
+    padding: var(--h-space-2) var(--h-space-3);
+    border-left: 3px solid var(--h-border-subtle);
+    color: var(--h-text-secondary);
+}
+.home-org__signal-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--h-text-primary);
+    font-variant-numeric: tabular-nums;
+    min-width: 2ch;
+    text-align: right;
+}
+.home-org__signal-label { font-size: var(--h-font-meta); }
+.home-org__signal-delta { color: var(--h-text-muted); }
+/* Esik asildi: sinyal one cikar; digerleri notr kalir (§6). */
+.home-org__signal--warn { border-left-color: var(--h-danger); color: var(--h-text-primary); }
+.home-org__signal--warn .home-org__signal-value { color: var(--h-danger); }
+.home-org__customer {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--h-space-3);
+    padding: var(--h-space-1) var(--h-space-2);
+    font-size: var(--h-font-body);
+    color: var(--h-text-primary);
+}
+.home-org__customer-hours {
+    color: var(--h-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+.home-org__shortcuts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--h-space-2);
+    margin-top: var(--h-space-4);
+}
+
+@media (max-width: 640px) {
+    .home-team__member { grid-template-columns: 1fr 1fr; }
+    .home-team__name { grid-column: 1 / -1; }
+}

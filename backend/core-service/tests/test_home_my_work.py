@@ -304,3 +304,135 @@ def test_plan_recurrence_rule_matches_frontend():
     assert not plan_occurs_on(weekly, date(2026, 8, 26))                # baslangictan once
     assert plan_occurs_on(monthly, date(2026, 9, 16)) and not plan_occurs_on(monthly, date(2026, 9, 9))
     assert plan_occurs_on(once, date(2026, 9, 16)) and not plan_occurs_on(once, date(2026, 9, 17))
+
+
+# =============================================================================
+# D5 Ekibim + Dikkat — /home/team
+# =============================================================================
+LEAD = uuid.UUID("00000000-0000-4000-8000-00000000d307")
+TEAM = "/api/v1/core/home/team"
+ORG = "/api/v1/core/home/org"
+
+
+def _seed_worklog(s, world, *, user, day, hours, billable=None):
+    from decimal import Decimal
+    from app.models.work_log import WorkLog
+    from app.models.work_type import WorkType
+    wt = s.query(WorkType).first()
+    if wt is None:
+        wt = WorkType(id=uuid.uuid4(), name="Dev", is_active=True)
+        s.add(wt)
+        s.flush()
+    s.add(WorkLog(
+        user_id=user, customer_id=world["customer"].id, project_id=world["project"].id,
+        work_type_id=wt.id, date_worked=day, duration_hours=Decimal(str(hours)),
+        billable_duration_hours=None if billable is None else Decimal(str(billable)), description="is",
+    ))
+    s.commit()
+
+
+def _unassign(s, item_id):
+    from app.models.work_item import WorkItem
+    row = s.get(WorkItem, uuid.UUID(item_id))
+    row.owner_user_id = None
+    s.query(WorkItemParticipant).filter_by(work_item_id=row.id).delete()
+    s.commit()
+
+
+def test_team_block_for_assigner(http, world, authz_grants):
+    s = world["s"]
+    s.execute(sa_text("TRUNCATE work_logs, user_capacity_overrides, user_absences, tenant_holidays CASCADE"))
+    s.commit()
+    authz_grants[str(NOBODY)] = []
+    _create(http, world, "W acik", due=date(2026, 9, 18))
+    _create(http, world, "W gecikmis", due=date(2026, 9, 10))
+    _create(http, world, "M acik", due=date(2026, 9, 18), assignee=MATE)
+    _create(http, world, "M gecikmis 1", due=date(2026, 9, 12), assignee=MATE)
+    _create(http, world, "M gecikmis 2", due=date(2026, 9, 9), priority="urgent", assignee=MATE)
+    orphan = _create(http, world, "Sahipsiz", due=date(2026, 9, 25))
+    _unassign(s, orphan["id"])
+    # WORKER Pazartesi 8 saat girdi; MATE hic girmedi (Pzt+Sal eksik).
+    _seed_worklog(s, world, user=WORKER, day=date(2026, 9, 14), hours=8)
+
+    body = http(REPORTER).get(TEAM).json()
+    assert body["eligible"] is True and body["week_start"] == "2026-09-14"
+    members = {m["user_id"]: m for m in body["members"]}
+    assert set(members) == {str(WORKER), str(MATE)}
+    # Kuyruk sirasi: en cok acik is once (MATE 3 > WORKER 2).
+    assert [m["user_id"] for m in body["members"]] == [str(MATE), str(WORKER)]
+    assert members[str(MATE)]["open_count"] == 3 and members[str(MATE)]["overdue_count"] == 2
+    assert members[str(WORKER)]["open_count"] == 2 and members[str(WORKER)]["overdue_count"] == 1
+    assert float(members[str(WORKER)]["logged_hours"]) == 8.0 and float(members[str(WORKER)]["expected_hours"]) == 40.0
+    assert members[str(WORKER)]["missing_days"] == 1 and members[str(MATE)]["missing_days"] == 2
+    att = body["attention"]
+    assert att["no_effort_user_ids"] == [str(MATE)]
+    assert att["unassigned_count"] == 1 and att["unassigned"][0]["title"] == "Sahipsiz"
+    assert att["unassigned"][0]["owner_user_id"] is None and att["unassigned"][0]["customer_name"] == "Vakko"
+    # Gecikmisler en eski terminden: 9 Eylul (7 gun), 10, 12.
+    assert [i["title"] for i in att["overdue"]] == ["M gecikmis 2", "W gecikmis", "M gecikmis 1"]
+    assert att["overdue"][0]["days_overdue"] == 7 and att["overdue_count"] == 3
+
+    # Ekibi olmayan kullanici: 403 degil, eligible=false ve bos.
+    res = http(WORKER).get(TEAM)
+    assert res.status_code == 200 and res.json()["eligible"] is False and res.json()["members"] == []
+
+
+def test_team_block_for_project_lead(http, world, authz_grants):
+    from app.models.project_membership import ProjectMembership
+    s = world["s"]
+    s.execute(sa_text("TRUNCATE work_logs CASCADE"))
+    s.add_all([
+        ProjectMembership(project_id=world["project"].id, user_id=LEAD, member_role="lead", is_active=True),
+        ProjectMembership(project_id=world["project"].id, user_id=MATE, member_role="member", is_active=True),
+        ProjectMembership(project_id=world["project2"].id, user_id=STRANGER, member_role="member", is_active=True),
+    ])
+    s.commit()
+    authz_grants[str(LEAD)] = [Perm.TASKS_ACCESS]   # atama yetkisi YOK, liderlik var
+    _create(http, world, "M isi", due=date(2026, 9, 18), assignee=MATE)
+    body = http(LEAD).get(TEAM).json()
+    assert body["eligible"] is True
+    assert [m["user_id"] for m in body["members"]] == [str(MATE)]   # diger projenin uyesi yok
+    assert body["members"][0]["open_count"] == 1
+
+
+# =============================================================================
+# D6 Organizasyon ozeti — /home/org
+# =============================================================================
+
+def test_org_summary_kpis_and_signals(http, world, authz_grants):
+    s = world["s"]
+    s.execute(sa_text("TRUNCATE work_logs CASCADE"))
+    s.commit()
+    EXEC = uuid.UUID("00000000-0000-4000-8000-00000000d308")
+    authz_grants[str(EXEC)] = [Perm.REPORTS_VIEW]
+    assert http(WORKER).get(ORG).status_code == 403
+
+    # Donem (Eylul): 10 saat, 6 faturalanabilir → %60. Onceki ay disarida.
+    _seed_worklog(s, world, user=WORKER, day=date(2026, 9, 3), hours=6, billable=6)
+    _seed_worklog(s, world, user=MATE, day=date(2026, 9, 4), hours=4, billable=0)
+    _seed_worklog(s, world, user=MATE, day=date(2026, 8, 20), hours=9, billable=9)
+    # Bu hafta: WORKER girdi, MATE girmedi → 1 kisi.
+    _seed_worklog(s, world, user=WORKER, day=date(2026, 9, 15), hours=8, billable=8)
+    for n, due in enumerate([date(2026, 9, 1), date(2026, 9, 2), date(2026, 9, 3), date(2026, 9, 12), date(2026, 9, 15)]):
+        _create(http, world, f"Gecikmis {n}", due=due)
+    for n in range(3):
+        _unassign(s, _create(http, world, f"Sahipsiz {n}")["id"])
+
+    body = http(EXEC).get(ORG).json()
+    assert body["period_start"] == "2026-09-01" and body["period_end"] == "2026-09-16"
+    assert float(body["total_hours"]) == 18.0 and float(body["billable_hours"]) == 14.0
+    assert body["billable_ratio"] == 78
+    assert body["by_customer"] == [{"name": "Vakko", "hours": "18.00"}]
+    sig = {x["key"]: x for x in body["signals"]}
+    assert sig["no_entry_users"] == {"key": "no_entry_users", "value": 1, "delta": None, "threshold": 1, "level": "warn"}
+    assert sig["overdue"]["value"] == 5 and sig["overdue"]["delta"] == 2 and sig["overdue"]["level"] == "warn"
+    assert sig["unassigned"]["value"] == 3 and sig["unassigned"]["level"] == "warn"
+
+    # Ozel donem + esik alti sinyaller.
+    prev = http(EXEC).get(f"{ORG}?start=2026-08-01&end=2026-08-31").json()
+    assert float(prev["total_hours"]) == 9.0 and prev["billable_ratio"] == 100
+    s.execute(sa_text("TRUNCATE work_item_participants, work_item_events, work_item_notifications, work_items CASCADE"))
+    s.commit()
+    calm = {x["key"]: x for x in http(EXEC).get(ORG).json()["signals"]}
+    assert calm["overdue"] == {"key": "overdue", "value": 0, "delta": 0, "threshold": 5, "level": "ok"}
+    assert calm["unassigned"]["level"] == "ok"

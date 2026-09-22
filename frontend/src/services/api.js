@@ -671,6 +671,19 @@ export const homeService = {
         const response = await coreApi.get('/api/v1/core/home/week', { params })
         return response.data
     },
+    /** Ekibim + Dikkat (D5). Uygun degilse `eligible=false` doner. */
+    team: async () => {
+        const response = await coreApi.get('/api/v1/core/home/team')
+        return response.data
+    },
+    /** Organizasyon ozeti (D6) — reports.view. Donem bos = bu ay. */
+    org: async ({ start, end } = {}) => {
+        const params = {}
+        if (start) params.start = start
+        if (end) params.end = end
+        const response = await coreApi.get('/api/v1/core/home/org', { params })
+        return response.data
+    },
 }
 
 export const taskNotificationSettingsService = {

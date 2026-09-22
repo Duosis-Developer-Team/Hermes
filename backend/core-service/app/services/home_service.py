@@ -17,26 +17,32 @@ gruplar en erken termine gore.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta, timezone
-from typing import Dict, List, Optional
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
+from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from shared.auth import CurrentUser
 from shared.permissions import Perm
 
 from ..authz import user_has
+from ..models.customer import Customer
 from ..models.plan_time import PlanTime, PlanTimeAssignment
 from ..models.project import Project
+from ..models.project_membership import ProjectMembership
 from ..models.work_item import (
     TERMINAL_CATEGORIES, WorkflowState, WorkItem, WorkItemParticipant,
 )
-from .capacity_service import CAPACITY_TZ, today_in_tenant_tz, week_monday
+from ..models.work_log import WorkLog
+from .capacity_service import CAPACITY_TZ, resolve_week, today_in_tenant_tz, week_monday
 from .meeting_service import list_meetings_for_user
-from .task_service import is_task_admin
-from .work_item_service import _base_query, is_owner
+from .task_service import (
+    get_active_group_member_ids, get_assignable_group_ids, get_assignable_user_ids, is_task_admin,
+)
+from .work_item_service import LEAD_ROLES, _base_query, is_owner, visible_filter
 
 PRIORITY_RANK = {"urgent": 0, "high": 1, "medium": 2, "low": 3}
 
@@ -245,4 +251,248 @@ def my_week(db: Session, user: CurrentUser, *, start: Optional[date] = None,
     }
 
 
-__all__ = ["my_work", "my_week", "group_by_project", "plan_occurs_on", "has_work_access", "PRIORITY_RANK"]
+__all__ = [
+    "my_work", "my_week", "my_team", "org_summary", "group_by_project", "plan_occurs_on",
+    "has_work_access", "team_scope", "PRIORITY_RANK", "ORG_THRESHOLDS",
+]
+
+
+# -----------------------------------------------------------------------------
+# D5 Ekibim + Dikkat (04-roller §5)
+# -----------------------------------------------------------------------------
+# Ekip = is yonlendirebildigim kisiler (routing_relations: dogrudan +
+# grup uyeleri) ∪ lideri oldugum projelerin uyeleri. tasks.admin icin:
+# acik islerde gorunen herkes ∪ aktif proje uyeleri. Ton: karne degil
+# KUYRUK — siralama bekleyen is sayisina gore.
+
+ATTENTION_LIMIT = 5
+
+
+def _led_project_ids(db: Session, me: UUID) -> List[UUID]:
+    rows = db.query(ProjectMembership.project_id).filter(
+        ProjectMembership.user_id == me,
+        ProjectMembership.is_active.is_(True),
+        ProjectMembership.member_role.in_(list(LEAD_ROLES)),
+    ).all()
+    return [r[0] for r in rows]
+
+
+def _open_items_query(db: Session):
+    return (
+        _base_query(db)
+        .join(WorkflowState, WorkflowState.id == WorkItem.state_id)
+        .filter(WorkItem.archived_at.is_(None), WorkflowState.category.notin_(TERMINAL_CATEGORIES))
+    )
+
+
+def team_scope(db: Session, user: CurrentUser) -> Tuple[bool, set, List[UUID]]:
+    """(eligible, team_user_ids, led_project_ids)."""
+    me = UUID(user.id)
+    led = _led_project_ids(db, me)
+    admin = is_task_admin(user)
+    assigner = user_has(user, Perm.TASKS_ASSIGN) or user_has(user, Perm.ISSUES_ASSIGN)
+    if not (admin or assigner or led):
+        return False, set(), []
+    ids: set = set()
+    if admin:
+        for owner, in db.query(WorkItem.owner_user_id).filter(
+            WorkItem.archived_at.is_(None), WorkItem.owner_user_id.isnot(None)
+        ).distinct():
+            ids.add(owner)
+        for uid, in db.query(WorkItemParticipant.user_id).filter(
+            WorkItemParticipant.role == "assignee"
+        ).distinct():
+            ids.add(uid)
+        for uid, in db.query(ProjectMembership.user_id).filter(ProjectMembership.is_active.is_(True)).distinct():
+            ids.add(uid)
+    else:
+        for scope in ("task", "issue"):
+            ids.update(get_assignable_user_ids(db, user, scope))
+            for gid in get_assignable_group_ids(db, user, scope):
+                ids.update(get_active_group_member_ids(db, gid))
+        if led:
+            for uid, in db.query(ProjectMembership.user_id).filter(
+                ProjectMembership.project_id.in_(led), ProjectMembership.is_active.is_(True)
+            ).distinct():
+                ids.add(uid)
+    ids.discard(me)
+    return True, ids, led
+
+
+def _attention_dict(item: WorkItem, user: CurrentUser, today: date) -> dict:
+    d = _item_dict(item, user)
+    project = item.project
+    d.update({
+        "owner_user_id": item.owner_user_id,
+        "customer_name": project.customer.name if project and project.customer else None,
+        "project_name": project.name if project else None,
+        "days_overdue": (today - item.due_date).days if item.due_date and item.due_date < today else 0,
+    })
+    return d
+
+
+def _item_users(item: WorkItem) -> set:
+    users = set()
+    if item.owner_user_id:
+        users.add(item.owner_user_id)
+    for p in item.participants or []:
+        if p.role == "assignee" and p.completed_at is None:
+            users.add(p.user_id)
+    return users
+
+
+def my_team(db: Session, user: CurrentUser, *, today: Optional[date] = None) -> dict:
+    today = today or today_in_tenant_tz()
+    week_start = week_monday(today)
+    week_end = week_start + timedelta(days=6)
+    eligible, ids, led = team_scope(db, user)
+    empty = {"unassigned_count": 0, "unassigned": [], "overdue_count": 0, "overdue": [], "no_effort_user_ids": []}
+    base = {"eligible": eligible, "today": today, "week_start": week_start, "week_end": week_end}
+    if not eligible:
+        return {**base, "members": [], "attention": empty}
+
+    open_items = _open_items_query(db).all()
+    per_user = {uid: {"open": 0, "overdue": 0} for uid in ids}
+    team_overdue: List[WorkItem] = []
+    for item in open_items:
+        users = _item_users(item) & ids
+        if not users:
+            continue
+        overdue = item.due_date is not None and item.due_date < today
+        for uid in users:
+            per_user[uid]["open"] += 1
+            if overdue:
+                per_user[uid]["overdue"] += 1
+        if overdue:
+            team_overdue.append(item)
+
+    # Sahipsiz isler: gorebildigim acik islerden owner'i olmayanlar (lider
+    # icin liderlik ettigi projeler zaten gorunur kumede).
+    vis = visible_filter(user)
+    unassigned_q = _open_items_query(db).filter(WorkItem.owner_user_id.is_(None))
+    if vis is not True:
+        unassigned_q = unassigned_q.filter(vis)
+    unassigned = sorted(unassigned_q.all(), key=lambda i: (i.created_at, i.item_number))
+
+    members = []
+    no_effort: List[UUID] = []
+    for uid in ids:
+        week = resolve_week(db, user_id=uid, week_start=week_start, today=today)
+        missing = len(week.get("missing_days") or [])
+        logged = week.get("logged_total") or Decimal("0")
+        if missing and Decimal(str(logged)) <= 0:
+            no_effort.append(uid)
+        members.append({
+            "user_id": uid,
+            "open_count": per_user[uid]["open"],
+            "overdue_count": per_user[uid]["overdue"],
+            "logged_hours": logged,
+            "expected_hours": week.get("expected_total") or Decimal("0"),
+            "missing_days": missing,
+        })
+    # Kuyruk sirasi: bekleyen (acik) is, sonra gecikmis; kisi adi DEGIL.
+    members.sort(key=lambda m: (-m["open_count"], -m["overdue_count"], str(m["user_id"])))
+    team_overdue.sort(key=lambda i: (i.due_date, PRIORITY_RANK.get(i.priority, 9), i.item_number))
+
+    return {
+        **base,
+        "members": members,
+        "attention": {
+            "unassigned_count": len(unassigned),
+            "unassigned": [_attention_dict(i, user, today) for i in unassigned[:ATTENTION_LIMIT]],
+            "overdue_count": len(team_overdue),
+            "overdue": [_attention_dict(i, user, today) for i in team_overdue[:ATTENTION_LIMIT]],
+            "no_effort_user_ids": sorted(no_effort, key=str),
+        },
+    }
+
+
+# -----------------------------------------------------------------------------
+# D6 Organizasyon ozeti (04-roller §6)
+# -----------------------------------------------------------------------------
+# Donem KPI'lari mevcut dashboard verisinden (work_logs); anomali
+# sinyalleri ucu de mevcut tablolardan SAYIM. Deger, esik asildiginda
+# one cikmasinda: esikler burada, istemci yalniz `level`i boyar.
+#
+#   no_entry_users  son 4 haftada efor girmis olup BU hafta hic girmemis
+#                   kisi (gecmis calisma gunu varsa) — core'da kullanici
+#                   tablosu yok, tanim work_logs'tan turetilir
+#   overdue         acik + termini gecmis is; delta = bu hafta gecikmeye
+#                   dusenler (termin son 7 gun icinde)
+#   unassigned      acik + sahipsiz is birikmesi
+
+ORG_THRESHOLDS = {"no_entry_users": 1, "overdue": 5, "unassigned": 3}
+ORG_CUSTOMER_LIMIT = 5
+
+
+def _signal(key: str, value: int, *, delta: Optional[int] = None, warn: bool) -> dict:
+    return {
+        "key": key, "value": value, "delta": delta,
+        "threshold": ORG_THRESHOLDS[key], "level": "warn" if warn else "ok",
+    }
+
+
+def org_summary(db: Session, user: CurrentUser, *, start: Optional[date] = None,
+                end: Optional[date] = None, today: Optional[date] = None) -> dict:
+    today = today or today_in_tenant_tz()
+    period_end = end or today
+    period_start = start or period_end.replace(day=1)
+    if period_start > period_end:
+        period_start, period_end = period_end, period_start
+
+    total, billable = db.query(
+        func.coalesce(func.sum(WorkLog.duration_hours), 0),
+        func.coalesce(func.sum(WorkLog.billable_duration_hours), 0),
+    ).filter(WorkLog.date_worked >= period_start, WorkLog.date_worked <= period_end).one()
+    total = Decimal(str(total))
+    billable = Decimal(str(billable))
+    ratio = int(round(billable / total * 100)) if total > 0 else None
+
+    by_customer = [
+        {"name": name, "hours": Decimal(str(hours))}
+        for name, hours in db.query(Customer.name, func.sum(WorkLog.duration_hours).label("hours"))
+        .join(WorkLog, WorkLog.customer_id == Customer.id)
+        .filter(WorkLog.date_worked >= period_start, WorkLog.date_worked <= period_end)
+        .group_by(Customer.name).order_by(desc("hours")).limit(ORG_CUSTOMER_LIMIT).all()
+    ]
+
+    week_start = week_monday(today)
+    week_end = week_start + timedelta(days=6)
+    recent = {
+        r[0] for r in db.query(WorkLog.user_id).filter(
+            WorkLog.date_worked >= week_start - timedelta(days=28),
+            WorkLog.date_worked < week_start,
+        ).distinct()
+    }
+    this_week = {
+        r[0] for r in db.query(WorkLog.user_id).filter(
+            WorkLog.date_worked >= week_start, WorkLog.date_worked <= week_end,
+        ).distinct()
+    }
+    # Pazartesi gunu kimse "girmemis" sayilmaz: gecmis calisma gunu yok.
+    no_entry = len(recent - this_week) if today > week_start else 0
+
+    open_q = db.query(WorkItem).join(WorkflowState, WorkflowState.id == WorkItem.state_id).filter(
+        WorkItem.archived_at.is_(None), WorkflowState.category.notin_(TERMINAL_CATEGORIES),
+    )
+    overdue_count = open_q.filter(WorkItem.due_date.isnot(None), WorkItem.due_date < today).count()
+    overdue_new = open_q.filter(
+        WorkItem.due_date.isnot(None), WorkItem.due_date < today,
+        WorkItem.due_date >= today - timedelta(days=7),
+    ).count()
+    unassigned = open_q.filter(WorkItem.owner_user_id.is_(None)).count()
+
+    return {
+        "period_start": period_start,
+        "period_end": period_end,
+        "total_hours": total,
+        "billable_hours": billable,
+        "billable_ratio": ratio,
+        "by_customer": by_customer,
+        "signals": [
+            _signal("no_entry_users", no_entry, warn=no_entry >= ORG_THRESHOLDS["no_entry_users"]),
+            _signal("overdue", overdue_count, delta=overdue_new,
+                    warn=overdue_count >= ORG_THRESHOLDS["overdue"] or overdue_new >= 1),
+            _signal("unassigned", unassigned, warn=unassigned >= ORG_THRESHOLDS["unassigned"]),
+        ],
+    }

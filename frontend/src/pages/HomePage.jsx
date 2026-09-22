@@ -10,13 +10,16 @@
  *   Efor seridi   herkes
  *   Islerim       tasks.access | issues.access | tasks.admin
  *   Takvimim      herkes (termin satirlari yalniz is erisimi olana — sunucu)
- *   (P3.3) Ekibim / Organizasyon ozeti
+ *   Ekibim        tasks.assign ∨ proje lideri ∨ tasks.admin (sunucu karar verir)
+ *   Organizasyon  reports.view
  * =============================================================================
  */
 import dayjs from 'dayjs'
 
 import EffortStrip from '../features/home/components/EffortStrip'
 import MyWorkBlock from '../features/home/components/MyWorkBlock'
+import OrgBlock from '../features/home/components/OrgBlock'
+import TeamBlock from '../features/home/components/TeamBlock'
 import WeekBlock from '../features/home/components/WeekBlock'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
 import { useAuthStore } from '../stores/authStore'
@@ -32,8 +35,13 @@ function firstNameOf(user) {
 function HomePage() {
     const t = useT()
     const { user } = useAuthStore()
+    const can = useAuthStore((s) => s.can)
+    useAuthStore((s) => s.permissions) // izinler cozulunce yeniden ciz
     const { canAccessAny, isTaskAdmin } = useTaskPermissions()
     const showMyWork = !!user?.is_admin || isTaskAdmin || canAccessAny
+    // Ekibim: liderlik istemcide bilinmez → uc hep cagrilir, sunucu
+    // eligible=false derse blok cizilmez. Organizasyon: reports.view.
+    const showOrg = can('reports.view')
 
     return (
         <div className="home-page h-page">
@@ -45,6 +53,8 @@ function HomePage() {
             <EffortStrip />
             {showMyWork && <MyWorkBlock />}
             <WeekBlock />
+            <TeamBlock />
+            {showOrg && <OrgBlock />}
         </div>
     )
 }
