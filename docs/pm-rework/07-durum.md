@@ -81,7 +81,7 @@ Prototip (`prototip.html`): P3 arayüzünün taslağı; olduğu gibi uygulanmad�
 ## 5. Sıradaki adımlar
 
 1. CTO P0 + P1 kalemlerini hermes-dev'de test eder → toplu ff-merge `test`'e (CTO "ff yapalım" deyince). Terfi öncesi hermes-test kopyasında kuru-koşu (`p1_dryrun.sh`) tekrar edilir.
-2. P2 (B2, C1–C3, F1).
+2. P2 (B2, C1–C3, F1) — plan taslağı `09-p2-plani.md` (7 onay maddesi: outbox ertelenmesi, kanal modeli, alıcı kümesi, ek dosya sahipliği, B2 yetki/yer, dev'de MinIO/ClamAV). CTO onayı sonrası P2.1'den başlanır.
 
 ## 6. P1.1 — şema + taşıma (22.09, dev)
 
