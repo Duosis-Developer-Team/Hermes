@@ -95,7 +95,7 @@ Prototip (`prototip.html`): P3 arayüzünün taslağı; olduğu gibi uygulanmad�
 
 ## 7. P1.2 — servis/API geçişi + frontend (22.09, dev)
 
-Commit `<sha>` (hermes-dev). Eski `tasks` ailesi hâlâ duruyor (F05'e kadar), ama artık **hiçbir uç ondan okumuyor/yazmıyor**.
+Commit `044651e` + `704db53` + `d9e558c` (hermes-dev). Eski `tasks` ailesi hâlâ duruyor (F05'e kadar), ama artık **hiçbir uç ondan okumuyor/yazmıyor**.
 
 **Backend**
 - `services/work_item_service.py` (yeni, tek iş mantığı): listeleme/arama (eski filtreler + `state_id`/`owner_user_id`/`unassigned`), oluşturma (tekil, bulk, grup → **tek iş kalemi + N katılımcı**), güncelleme (tür değişince yeni numara + alias), katılımcı bazlı durum (`apply_status`: kabul/tamamlama kişi başı; hepsi tamamlanınca kalem `done`), reddetme, silme, arşiv/geri alma, yorum/olay (`sequence`), kapanış hesabı. Görünürlük: admin ∨ reporter ∨ owner ∨ katılımcı.
@@ -104,6 +104,7 @@ Commit `<sha>` (hermes-dev). Eski `tasks` ailesi hâlâ duruyor (F05'e kadar), a
 - `work_log_service`: `task_id` (iş/katılımcı/eski id) iş kalemine çözülür; `work_item_id` yazılır; `log_time_created` olayı iş kaleminde; kapanış yeniden hesaplanır. `WorkLogResponse.work_item_id` eklendi.
 - Otomatik arşiv (`task_archive_service`): ham SQL `work_items` üzerine (terminal kategori + `closed_at ≤ cutoff`), audit `work_item_events` (`sequence` ile). `assignment_rows_updated` artık iş kalemi sayısı.
 - Alembic **0011_work_items_cutover_sync**: taşımayı yeniden koşar (0010 → cutover arasında `tasks`'a düşen satırlar alınır; taşınmışlar atlanır).
+- `ensure_states`: kiracıda `workflow_states` boşsa (0010'dan sonra açılan kiracı, boş test DB'si) ilk iş kaleminde 422 yerine 0010/0011 ile aynı varsayılan akış tohumlanır — CI'da boş DB'de yakalandı.
 - `task_lifecycle.py` politika + DDL/backfill için kalır; Task tabanlı yardımcılar yalnız `task_service`'in eski yollarında (F05'te gider).
 
 **Frontend (08 §5, küçük adaptasyon)**
@@ -113,6 +114,10 @@ Commit `<sha>` (hermes-dev). Eski `tasks` ailesi hâlâ duruyor (F05'e kadar), a
 - **A10**: LogTimeModal iş kalemi seçici (yukarıda).
 - Yan bulgu: düz panoda sütun başlığı `label` (tanımsız) okuyordu — i18n geçişinde `labelKey`'e geçilmemiş; düzeltildi.
 
-**Testler:** core tüm paket yeşil (658 + migration 22: 0011 head, geride-kalmış-DB senaryosu); `test_task_archive_api`, `test_task_auto_archive`, public API paketi ve grup sözleşmesi iş kalemine taşındı (tohum `Task` → `sync_work_items` → iddialar iş kalemi üzerinde; üretim taşıma yolu = test yolu). Frontend: +14 (katılımcı gruplama, durum→sütun, A10 seçici), pano/gruplama/log-time entegrasyonları yeşil.
+**Testler:** MCP paketi (104) `Task` tohumu → `sync_work_items` ile iş kalemine taşındı; core tüm paket yeşil (658 + migration 22: 0011 head, geride-kalmış-DB senaryosu); `test_task_archive_api`, `test_task_auto_archive`, public API paketi ve grup sözleşmesi iş kalemine taşındı (tohum `Task` → `sync_work_items` → iddialar iş kalemi üzerinde; üretim taşıma yolu = test yolu). Frontend: +14 (katılımcı gruplama, durum→sütun, A10 seçici), pano/gruplama/log-time entegrasyonları yeşil.
+
+**Canlı doğrulama (hermes-dev, `d9e558c`, 22.09):** `alembic_version = 0011`; 61 task → 42 iş kalemi (taşınmamış 0), 60 katılımcı, 19 alias, 145 olay; `/tasks/states`, `/tasks`, `/v1/tasks` token'sız 401 (500 yok); core pod loglarında hata yok. CD: core/auth/mcp/frontend kapıları yeşil (GHCR login'de bir kez geçici hata → yalnız o job yeniden koştu).
+
+**Kuru-koşu (hermes-test kopyası, `d9e558c`, 0008 → 0011):** 182 task → **120 iş kalemi**, 182 katılımcı, 62 alias, 25 sahipsiz (triage), 18 yorum, 690 olay, 18 efor bağı, üyelik +40, routing +68; iki kiracıda 5'er durum; dağılım Completed 78 · Pending 18 · In Progress 15 · Rejected 9. Gerçek `core_db`'ye dokunulmadı (kopya + pod silindi). Not: kopya DB'de migrator rolüne `GRANT ALL ON DATABASE` gerekiyor (script'e eklendi); gerçek DB'de yetki zaten var.
 
 **Sapmalar:** `assignment_batch_id` yalnız çok katılımcılı kalemde dolu (08 §4 "= id" diyordu) — tekil oluşturma sözleşmesi (`assignment_batch_id is None`) korunur. Pasif grup → 400, yok → 404 (eski grup ucu sözleşmesi).
