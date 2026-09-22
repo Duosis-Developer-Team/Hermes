@@ -220,7 +220,21 @@ def convert_foreign_keys(
             "WHERE n.nspname = 'public' AND con.contype = 'u'"
         )).all()
     }
-    for table in sorted(all_tables):
+    # YALNIZ VERITABANINDA VAR OLAN tablolar: model envanteri, geride
+    # kalmis bir veritabaninin (orn. hermes-test 0008'deyken 0009'u kosan
+    # Job) ONUNDE olabilir — henuz yaratilmamis bir tabloya ALTER atmak
+    # "relation does not exist" ile eski bir revizyonu kirar (P1.1
+    # kuru-kosusunda yakalandi). O tablolarin kisiti kendi revizyonunda,
+    # create_all'dan sonra gelir.
+    present = {
+        row[0]
+        for row in conn.execute(text(
+            "SELECT c.relname FROM pg_class c "
+            "JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "WHERE n.nspname = 'public' AND c.relkind = 'r'"
+        )).all()
+    }
+    for table in sorted(all_tables & present):
         if f"uq_{table}_tenant_id" in existing:
             continue
         conn.execute(text(

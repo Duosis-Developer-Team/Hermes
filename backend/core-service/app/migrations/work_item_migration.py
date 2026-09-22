@@ -248,6 +248,24 @@ def migrate_tenant(conn, tenant_id) -> dict:
             })
             report["participants"] += 1
 
+        # Batch'in canonical disindaki satirlarinda FARKLI bir atayan varsa
+        # (gercek veride tek atayan; anomali) o kisi gorunurlugunu
+        # kaybetmesin: `watcher` katilimci olur — sahiplik/yetki degil,
+        # yalnizca gorme (06 §2.6 "kimse is kaybetmez").
+        canon_reporter = str(canon["assigner_user_id"])
+        extra_watchers = {
+            str(r["assigner_user_id"]) for r in rows
+            if str(r["assigner_user_id"]) != canon_reporter
+        } - seen
+        for uid in sorted(extra_watchers):
+            conn.execute(text(
+                "INSERT INTO work_item_participants (id, tenant_id, work_item_id, "
+                " user_id, role, added_by_user_id, created_at) "
+                "VALUES (gen_random_uuid(), CAST(:t AS uuid), CAST(:item AS uuid), "
+                " CAST(:user AS uuid), 'watcher', CAST(:added_by AS uuid), now())"
+            ), {"t": t, "item": item_id, "user": uid, "added_by": canon_reporter})
+            report["participants"] += 1
+
         for r in rows:
             if r is canon:
                 continue

@@ -238,6 +238,88 @@ def test_migration_is_idempotent_and_preserves_rows(disposable_db):
 # 4) Sema uyumluluk kapisi
 # =============================================================================
 
+def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
+    """GERIDE KALMIS veritabani: model envanteri DB'nin onundeyken eski
+    revizyonlar hala kosabilmeli.
+
+    hermes-test 0008'deyken P1.1 kuru-kosusu 0009'da patladi: enforce
+    fazi, henuz yaratilmamis `routing_relations` tablosuna UNIQUE
+    (tenant_id, id) eklemeye calisti. Temiz-DB testi bunu GORMEZ, cunku
+    0001 tum model tablolarini bastan yaratir. Bu test o farki uretir:
+    head'e cikar, sonra 0009/0010'un getirdiklerini dusurup isareti
+    0008'e ceker ve YENIDEN head'e cikar.
+    """
+    _run_migration(disposable_db)
+    engine = create_engine(disposable_db)
+    tenant_id = uuid.uuid4()
+    customer_id, project_id = uuid.uuid4(), uuid.uuid4()
+    try:
+        with engine.begin() as conn:
+            # 0009 + 0010'un getirdikleri gider; alembic isareti 0008'e.
+            for table in (
+                "work_item_events", "work_item_comments", "work_item_links",
+                "work_item_code_aliases", "work_item_participants", "work_items",
+                "workflow_states", "routing_relations", "saved_views",
+                "user_absences", "user_capacity_overrides", "tenant_holidays",
+                "tenant_capacity_settings",
+            ):
+                conn.execute(text(f"DROP TABLE IF EXISTS {table} CASCADE"))
+            conn.execute(text("ALTER TABLE projects DROP COLUMN IF EXISTS is_billable_default"))
+            conn.execute(text("ALTER TABLE work_logs DROP COLUMN IF EXISTS work_item_id"))
+            conn.execute(text(
+                "UPDATE alembic_version SET version_num = '0008_download_grants'"
+            ))
+            # Tasinacak gercek veri de olsun.
+            conn.execute(text(
+                "INSERT INTO tenant_registry (tenant_id, slug, status, "
+                "placement_key, source_version, provisioned_at, updated_at) "
+                "VALUES (:t, 'behind', 'active', 'shared-default', 1, now(), now())"
+            ), {"t": tenant_id})
+            conn.execute(text(
+                "INSERT INTO customers (id, tenant_id, name, is_active, created_at) "
+                "VALUES (:id, :t, 'Musteri', true, now())"
+            ), {"id": customer_id, "t": tenant_id})
+            conn.execute(text(
+                "INSERT INTO projects (id, tenant_id, customer_id, name, is_active, "
+                "created_at) VALUES (:id, :t, :cid, 'Proje', true, now())"
+            ), {"id": project_id, "t": tenant_id, "cid": customer_id})
+            batch = uuid.uuid4()
+            for _ in range(2):
+                conn.execute(text(
+                    "INSERT INTO tasks (id, tenant_id, customer_id, project_id, "
+                    "title, assignee_user_id, assigner_user_id, scheduled_date, "
+                    "task_type, priority, status, assignment_batch_id, created_at, "
+                    "updated_at) VALUES (gen_random_uuid(), :t, :cid, :pid, 'Ortak is', "
+                    "gen_random_uuid(), gen_random_uuid(), current_date, 'task', "
+                    "'medium', 'pending', :b, now(), now())"
+                ), {"t": tenant_id, "cid": customer_id, "pid": project_id, "b": batch})
+
+        _run_migration(disposable_db)      # 0008 → 0009 → 0010
+
+        with engine.connect() as conn:
+            head = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
+            items = conn.execute(text("SELECT count(*) FROM work_items")).scalar()
+            parts = conn.execute(text(
+                "SELECT count(*) FROM work_item_participants WHERE role = 'assignee'"
+            )).scalar()
+            # Iki kopyanin atayani FARKLI (sentetik anomali): ikincisi
+            # gorunurlugunu kaybetmesin diye watcher olur.
+            watchers = conn.execute(text(
+                "SELECT count(*) FROM work_item_participants WHERE role = 'watcher'"
+            )).scalar()
+            forced = conn.execute(text(
+                "SELECT count(*) FROM pg_class WHERE relname IN "
+                "('work_items','routing_relations','tenant_holidays') "
+                "AND relforcerowsecurity"
+            )).scalar()
+    finally:
+        engine.dispose()
+    assert head == "0010_work_items_foundation"
+    assert items == 1 and parts == 2, "2 kopyalik batch tek is kalemi olmali"
+    assert watchers == 1
+    assert forced == 3
+
+
 def test_schema_guard_rejects_unmigrated_database(disposable_db):
     """Migration kosMAMIS bir DB'ye karsi pod acilmamali."""
     import sys
