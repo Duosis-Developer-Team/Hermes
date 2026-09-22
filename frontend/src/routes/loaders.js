@@ -22,6 +22,8 @@ export const routeLoaders = {
     reports: () => import('../pages/ReportsPage'),
     contracts: () => import('../pages/admin/ContractStatusPage'),
     users: () => import('../pages/admin/UsersPage'),
+    // PM rework P0 / D1: kapasite ayarlari (Ayarlar > Organizasyon).
+    capacitySettings: () => import('../pages/admin/CapacitySettingsPage'),
     customers: () => import('../pages/admin/CustomersPage'),
     projects: () => import('../pages/admin/ProjectsPage'),
     workTypes: () => import('../pages/admin/WorkTypesPage'),
@@ -63,4 +65,5 @@ export const loaderByPath = {
     '/platforms': routeLoaders.platforms,
     '/work-lines': routeLoaders.workLines,
     '/users': routeLoaders.users,
+    '/capacity': routeLoaders.capacitySettings,
 }

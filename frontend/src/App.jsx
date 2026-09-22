@@ -54,6 +54,7 @@ const CustomersPage = lazy(routeLoaders.customers)
 const ProjectsPage = lazy(routeLoaders.projects)
 const WorkTypesPage = lazy(routeLoaders.workTypes)
 const UsersPage = lazy(routeLoaders.users)
+const CapacitySettingsPage = lazy(routeLoaders.capacitySettings)
 const ActivityTypesPage = lazy(routeLoaders.activityTypes)
 const PlatformsPage = lazy(routeLoaders.platforms)
 const WorkLinesPage = lazy(routeLoaders.workLines)
@@ -376,6 +377,16 @@ function App() {
                     element={
                         <ProtectedRoute permission={'reports.view'}>
                             <ContractStatusPage />
+                        </ProtectedRoute>
+                    }
+                />
+                {/* PM rework P0 / D1: kapasite ayarlari. B1 (tek /settings)
+                    gelince bu rota o catinin "Organizasyon" bolumune tasinir. */}
+                <Route
+                    path="capacity"
+                    element={
+                        <ProtectedRoute permission={'users.manage'}>
+                            <CapacitySettingsPage />
                         </ProtectedRoute>
                     }
                 />

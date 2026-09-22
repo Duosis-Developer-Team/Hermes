@@ -56,6 +56,12 @@ const LOGS = [
 ]
 
 vi.mock('../../services/api', () => ({
+    // PM rework P0 / D2: sayfa kapasite sorgusu da yapar; bu testin konusu
+    // degil — null donmesi eski davranisi (8h/40h, uyari yok) korur.
+    capacityService: {
+        getWeek: vi.fn(() => Promise.resolve(null)),
+        createAbsence: vi.fn(), deleteAbsence: vi.fn(),
+    },
     authService: { getUsers: vi.fn(), lookupUsers: vi.fn(() => Promise.resolve([])) },
     workLogService: {
         getMyLogs: vi.fn(() => Promise.resolve({ data: LOGS })),

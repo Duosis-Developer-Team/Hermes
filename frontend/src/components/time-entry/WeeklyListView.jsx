@@ -36,7 +36,12 @@ function WeeklyListView({
     targetDate,
     onSelectLog,
     onSelectDay,
-    onClearClipboard
+    onClearClipboard,
+    // PM rework P0 / D2: tarih -> kapasite gunu haritasi (WeekNavigator'daki
+    // haftalik ozetle AYNI sorgudan; burada hafta bandi CIZILMEZ).
+    capacityDays = null,
+    onMarkAbsence,
+    onRemoveAbsence,
 }) {
     const t = useT()
     // Haftanın 7 gününü hesapla
@@ -141,6 +146,9 @@ function WeeklyListView({
                             hasCopiedLog={!!copiedLog}
                             onSelectLog={onSelectLog}
                             onSelectDay={onSelectDay}
+                            capacity={capacityDays?.[dateKey] || null}
+                            onMarkAbsence={onMarkAbsence}
+                            onRemoveAbsence={onRemoveAbsence}
                         />
                     )
                 })}

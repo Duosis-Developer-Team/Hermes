@@ -16,6 +16,9 @@ from .issue import Issue
 from .project_membership import ProjectMembership
 from .timesheet import TimesheetSubmission, TimesheetStatus
 from .plan_time import PlanTime, PlanTimeAssignment
+from .capacity import (
+    TenantCapacitySettings, TenantHoliday, UserAbsence, UserCapacityOverride,
+)
 from .task import (
     TaskUserPermission,
     TaskAssignmentRelation,
@@ -82,6 +85,10 @@ __all__ = [
     "TimesheetStatus",
     "PlanTime",
     "PlanTimeAssignment",
+    "TenantCapacitySettings",
+    "TenantHoliday",
+    "UserCapacityOverride",
+    "UserAbsence",
     "TaskUserPermission",
     "TaskAssignmentRelation",
     "TaskAssignmentGroupRelation",

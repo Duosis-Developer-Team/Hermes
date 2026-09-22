@@ -192,3 +192,82 @@
     margin-top: 4px;
     cursor: default;
 }
+/* =============================================================================
+   PM rework P0 / D2 — eksik gun durtmesi ve izin etiketi
+   Kural (04-roller §7): sari, kutunun icinde, tiklanabilir; kirmizi yok,
+   modal yok. Bugun asla eksik sayilmaz (sunucu 'today' doner).
+   ============================================================================= */
+.day-column-missing .day-column-header {
+    border-left: 3px solid var(--h-warning);
+    padding-left: 6px;
+}
+
+.day-column-missing-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--h-warning);
+    display: inline-block;
+    margin-left: 6px;
+    flex: none;
+}
+
+.day-column-missing-hint {
+    margin: 4px 8px 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--h-warning);
+    border-radius: 8px;
+    background: rgba(245, 205, 71, 0.10);
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.day-column-missing-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.day-column-mini-btn {
+    font: inherit;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border-default);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.day-column-mini-btn:hover {
+    border-color: var(--h-warning);
+    color: var(--h-warning);
+}
+
+.day-column-mini-btn:focus-visible {
+    outline: 2px solid var(--h-focus);
+    outline-offset: 2px;
+}
+
+.day-column-off .day-column-hours,
+.day-column-off-label {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.day-column-absence {
+    margin: 4px 8px 6px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border-default);
+    background: var(--h-surface-subtle, transparent);
+    font-size: 12px;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    align-self: flex-start;
+}

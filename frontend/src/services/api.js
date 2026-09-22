@@ -178,6 +178,62 @@ export const workLogService = {
 }
 
 // =============================================================================
+// CORE SERVICE - Kapasite (PM rework P0 / D1+D2)
+// =============================================================================
+// Efor seridinin verisi ve "Ayarlar > Organizasyon" kapasite ayarlari.
+// Baskasinin haftasi/izni icin backend worklogs.admin ister; ayarlar
+// users.manage.
+export const capacityService = {
+    /** Haftalik beklenen/girilen/eksik ozeti — start haftanin herhangi bir gunu. */
+    getWeek: async ({ start, user_id = null } = {}) => {
+        const params = user_id ? { start, user_id } : { start }
+        const response = await coreApi.get('/api/v1/core/capacity/week', { params })
+        return response.data
+    },
+    getSettings: async () => {
+        const response = await coreApi.get('/api/v1/core/capacity/settings')
+        return response.data
+    },
+    updateSettings: async (data) => {
+        const response = await coreApi.put('/api/v1/core/capacity/settings', data)
+        return response.data
+    },
+    listHolidays: async (params = {}) => {
+        const response = await coreApi.get('/api/v1/core/capacity/holidays', { params })
+        return response.data
+    },
+    addHoliday: async (data) => {
+        const response = await coreApi.post('/api/v1/core/capacity/holidays', data)
+        return response.data
+    },
+    deleteHoliday: async (id) => {
+        await coreApi.delete(`/api/v1/core/capacity/holidays/${id}`)
+    },
+    listOverrides: async () => {
+        const response = await coreApi.get('/api/v1/core/capacity/users')
+        return response.data
+    },
+    upsertOverride: async (userId, data) => {
+        const response = await coreApi.put(`/api/v1/core/capacity/users/${userId}`, data)
+        return response.data
+    },
+    deleteOverride: async (userId) => {
+        await coreApi.delete(`/api/v1/core/capacity/users/${userId}`)
+    },
+    listAbsences: async (params = {}) => {
+        const response = await coreApi.get('/api/v1/core/capacity/absences', { params })
+        return response.data
+    },
+    createAbsence: async (data) => {
+        const response = await coreApi.post('/api/v1/core/capacity/absences', data)
+        return response.data
+    },
+    deleteAbsence: async (id) => {
+        await coreApi.delete(`/api/v1/core/capacity/absences/${id}`)
+    },
+}
+
+// =============================================================================
 // CORE SERVICE - Activity Types
 // =============================================================================
 
@@ -982,6 +1038,7 @@ export default {
     workTypeService,
     projectService,
     workLogService,
+    capacityService,
     activityTypeService,
     platformService,
     workLineService,

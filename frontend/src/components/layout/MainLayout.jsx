@@ -88,6 +88,7 @@ function MainLayout() {
         { key: '/platforms', icon: <SettingOutlined />, label: t('nav.platforms'), perm: 'reference.manage' },
         { key: '/work-lines', icon: <SettingOutlined />, label: t('nav.workLines'), perm: 'reference.manage' },
         { key: '/users', icon: <UserOutlined />, label: t('nav.users'), perm: 'users.manage' },
+        { key: '/capacity', icon: <CalendarOutlined />, label: t('nav.capacity'), perm: 'users.manage' },
     ].filter((i) => can(i.perm)).map(({ perm, ...i }) => i)
 
     // Sprint 3 §7: nav uzerinde kisa pointer-intent sonrasi route

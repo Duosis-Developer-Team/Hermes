@@ -62,6 +62,15 @@ export const queryKeys = {
         get all() { return k('workLogs') },
         list: (filters) => k('workLogs', 'list', stableFilters(filters)),
     },
+    // PM rework P0 / D1+D2: efor seridi ve kapasite ayarlari.
+    capacity: {
+        get all() { return k('capacity') },
+        week: (filters) => k('capacity', 'week', stableFilters(filters)),
+        get settings() { return k('capacity', 'settings') },
+        holidays: (filters) => k('capacity', 'holidays', stableFilters(filters)),
+        get overrides() { return k('capacity', 'overrides') },
+        absences: (filters) => k('capacity', 'absences', stableFilters(filters)),
+    },
     planTimes: {
         get all() { return k('planTimes') },
         list: (filters) => k('planTimes', 'list', stableFilters(filters)),

@@ -22,7 +22,8 @@ import WeeklyListView from '../components/time-entry/WeeklyListView'
 import TimesheetView from '../components/time-entry/TimesheetView'
 import LogTimeModal from '../components/modals/LogTimeModal'
 import PlanTimeModal from '../components/modals/PlanTimeModal'
-import { workLogService, reportsService, authService, planTimeService } from '../services/api'
+import { workLogService, reportsService, authService, planTimeService, capacityService } from '../services/api'
+import { queryKeys } from '../query/queryKeys'
 import { useAuthStore } from '../stores/authStore'
 import {
     buildPastePayload, isEditableTarget, makeClipboardSnapshot,
@@ -168,6 +169,28 @@ function TimeEntryPage() {
         () => workLogsResponse?.data || [], [workLogsResponse]
     )
 
+    /*
+     * PM rework P0 / D2 — KAPASITE: beklenen saat, tatil/izin, eksik gun.
+     * Tek sorgu; WeekNavigator (hafta ozeti) ve DayColumn (gun kutulari)
+     * ayni veriyi okur. Baskasinin haftasi icin backend worklogs.admin
+     * ister — burada ek kontrol yok, sunucu 403 verir.
+     */
+    const weekStartKey = weekStart.format('YYYY-MM-DD')
+    const { data: capacityWeek } = useQuery({
+        queryKey: queryKeys.capacity.week({ start: weekStartKey, user_id: targetUserId }),
+        queryFn: () => capacityService.getWeek({
+            start: weekStartKey, user_id: selectedUserId || null,
+        }),
+        enabled: !!user?.id,
+    })
+    const capacityDays = useMemo(() => {
+        const map = {}
+        for (const d of capacityWeek?.days || []) map[d.date] = d
+        return map
+    }, [capacityWeek])
+    const invalidateCapacity = () =>
+        queryClient.invalidateQueries({ queryKey: queryKeys.capacity.all })
+
     // Haftalık toplam saat
     const weekTotalHours = useMemo(() =>
         workLogs.reduce((sum, log) => sum + (parseFloat(log.duration_hours) || 0), 0)
@@ -181,6 +204,7 @@ function TimeEntryPage() {
         onSuccess: () => {
             message.success(t('timeEntry.timeLogged'))
             queryClient.invalidateQueries({ queryKey: ['workLogs'] })
+            invalidateCapacity()
         },
         onError: (error) => {
             message.error(error.response?.data?.detail || 'An error occurred')
@@ -192,6 +216,7 @@ function TimeEntryPage() {
         mutationFn: (data) => workLogService.create(data, selectedUserId || null),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['workLogs'] })
+            invalidateCapacity()
         },
         onError: (error) => {
             message.error(error.response?.data?.detail || 'Paste failed')
@@ -203,6 +228,7 @@ function TimeEntryPage() {
         onSuccess: () => {
             message.success(t('timeEntry.timeUpdated'))
             queryClient.invalidateQueries({ queryKey: ['workLogs'] })
+            invalidateCapacity()
         },
         onError: (error) => {
             message.error(error.response?.data?.detail || 'An error occurred')
@@ -214,7 +240,33 @@ function TimeEntryPage() {
         onSuccess: () => {
             message.success(t('timeEntry.logEntryDeleted'))
             queryClient.invalidateQueries({ queryKey: ['workLogs'] })
+            invalidateCapacity()
             setDeletingLog(null)
+        },
+    })
+
+    // Izin isaretle / kaldir — eksik gun kutusundaki "izinliysen isaretle".
+    const markAbsenceMutation = useMutation({
+        mutationFn: (dateKey) => capacityService.createAbsence({
+            user_id: selectedUserId || undefined,
+            start_date: dateKey, end_date: dateKey, absence_type: 'leave',
+        }),
+        onSuccess: () => {
+            message.success(t('timeEntry.leaveMarked'))
+            invalidateCapacity()
+        },
+        onError: (error) => {
+            message.error(error.response?.data?.detail || t('timeEntry.leaveFailed'))
+        },
+    })
+    const removeAbsenceMutation = useMutation({
+        mutationFn: (absenceId) => capacityService.deleteAbsence(absenceId),
+        onSuccess: () => {
+            message.success(t('timeEntry.leaveRemoved'))
+            invalidateCapacity()
+        },
+        onError: (error) => {
+            message.error(error.response?.data?.detail || t('timeEntry.leaveFailed'))
         },
         onError: (error) => {
             message.error(error.response?.data?.detail || 'An error occurred')
@@ -495,6 +547,7 @@ function TimeEntryPage() {
             <WeekNavigator
                 weekLabel={weekLabel}
                 totalLabel={formatDuration(weekTotalHours)}
+                capacity={capacityWeek || null}
                 onPrevious={goToPreviousWeek}
                 onNext={goToNextWeek}
                 onToday={goToToday}
@@ -522,6 +575,9 @@ function TimeEntryPage() {
                         onSelectDay={handleSelectDay}
                         onClearClipboard={handleClearClipboard}
                         isAdmin={canWorklogsAdmin}
+                        capacityDays={capacityDays}
+                        onMarkAbsence={(dateKey) => markAbsenceMutation.mutate(dateKey)}
+                        onRemoveAbsence={(absenceId) => removeAbsenceMutation.mutate(absenceId)}
                     />
                 ) : (
                     <TimesheetView

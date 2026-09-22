@@ -189,6 +189,9 @@ app.include_router(timesheets_router, prefix=API_PREFIX)
 app.include_router(dashboard_router, prefix=API_PREFIX)
 app.include_router(reports_router, prefix=API_PREFIX)
 app.include_router(plan_times_router, prefix=API_PREFIX)
+# PM rework P0 / D1+D2: kapasite ayarlari + efor seridi verisi.
+from .routers.capacity import router as capacity_router  # noqa: E402
+app.include_router(capacity_router, prefix=API_PREFIX)
 app.include_router(tasks_router, prefix=API_PREFIX)
 app.include_router(task_admin_router, prefix=API_PREFIX)
 app.include_router(user_group_admin_router, prefix=API_PREFIX)

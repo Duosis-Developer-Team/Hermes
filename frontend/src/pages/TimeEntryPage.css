@@ -320,3 +320,27 @@
     align-items: center;
     justify-content: center;
 }
+
+/* PM rework P0 / D2 — haftalik dolum ve eksik gun satiri (sari, sessiz) */
+.summary-fill {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-left: 6px;
+}
+
+.week-missing {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--h-warning);
+}
+
+.week-missing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--h-warning);
+    flex: none;
+}
