@@ -61,7 +61,7 @@ def world(pg_session, authz_grants):
         sa_text(
             "TRUNCATE work_items, work_item_participants, work_item_code_aliases, "
             "work_item_comments, work_item_events, "
-            "TRUNCATE task_comments, task_activity_events, tasks, "
+            "task_comments, task_activity_events, tasks, "
             "task_assignment_relations, task_assignment_group_relations, "
             "task_user_permissions, task_group_member_overrides, "
             "task_group_permissions, user_group_members, user_groups, "
