@@ -19,8 +19,15 @@
     gap: var(--h-space-5) var(--h-space-6);
     align-items: stretch;
 }
-.home-cell { min-width: 0; display: flex; }
-.home-cell > .home-block { flex: 1; min-width: 0; }
+/* Hucre DIKEY yigin: bir blok iki bolum dondurebilir (Ekibim + Dikkat);
+   yan yana sikistirilmaz, alt alta durur. */
+.home-cell {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--h-space-5);
+}
+.home-cell > .home-block { min-width: 0; }
 .home-cell--full { flex: 1 1 100%; }
 .home-cell--wide { flex: 3 1 560px; }
 .home-cell--narrow { flex: 2 1 420px; }
@@ -45,17 +52,26 @@
 }
 
 /* --- Blok kabugu ------------------------------------------------------- */
+/* Her blok kendi kart yuzeyinde: bloklar birbirine KARISMAZ, ic bosluk
+   ve kenarlik tek kaynaktan. */
 .home-block {
-    border-top: 1px solid var(--h-border-subtle);
-    padding-top: var(--h-space-4);
+    background: var(--h-bg-surface);
+    border: 1px solid var(--h-border-subtle);
+    border-radius: var(--h-radius-card);
+    padding: var(--h-space-4) var(--h-space-5) var(--h-space-5);
     min-width: 0;
+    overflow: hidden;
 }
+.home-effort:empty { display: none; }
 .home-block__head {
     display: flex;
     align-items: center;
-    gap: var(--h-space-3);
+    flex-wrap: wrap;
+    gap: var(--h-space-2) var(--h-space-3);
     margin-bottom: var(--h-space-3);
+    min-width: 0;
 }
+.home-block__link { white-space: nowrap; }
 .home-block__title {
     font-size: 18px;
     font-weight: 650;
