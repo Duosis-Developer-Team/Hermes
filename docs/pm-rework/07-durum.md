@@ -3,23 +3,23 @@
 Can'ın 05-gelistirme-kapsami.md'de listelediği **31 kalem** ile yapılanların karşılaştırması.
 Kararlar ve kod doğrulaması ayrıntısı: `06-inceleme-ve-kararlar.md`.
 
-**Özet:** 4 kalem yapıldı (D1 sapmayla, D2, G1, B1) — **P0 tamam** · 27 başlamadı (P1/P2/P3 — kapsam gereği F00 kararlarına ve para katmanına bağlı). Sıradaki: P1 şema rework'ü, 3/5/6 kararları kapanınca.
+**Özet:** 4 kalem yapıldı (D1 sapmayla, D2, G1, B1) — **P0 tamam** · **P1.1 + P1.2 yapıldı** (A1, A2, A9 ve A10 dev'de; A3–A8, B3–B5 P1.3'te) · 24 başlamadı (P1.3 9 · P2 5 · P3 10; tablo 32 satır = Can'ın 31'i + A10). Sıradaki: P1.3 görünürlük + yetki + bağlar.
 Kararlar: 7'nin 7'si + 2 yeni karar kapatıldı (batch → `participant.completed_at`; A10 efor↔iş kalemi). Açık karar yok.
 
 ## 1. Can'ın istediği tüm geliştirmeler (05'teki liste)
 
 | Kod | İş | Faz | Durum | Not |
 |---|---|---|---|---|
-| A1 | İş kalemi nesnesi + katılımcılar | P1 | **P1.1 yapıldı (şema+taşıma)** | `work_items` + `work_item_participants` (kişi başı `completed_at`); Alembic 0010; taşıma idempotent, doğrulamalı. Servis/API geçişi P1.2 |
-| A2 | Konfigüre edilebilir durum akışı | P1 | **P1.1 yapıldı (şema)** | `workflow_states` kiracı başına tohumlandı: Pending/todo · In Progress · Completed/done · Cancelled · **Rejected/cancelled** (doküman `Pending` diyordu). Durum makinesi ve pano P1.2 |
+| A1 | İş kalemi nesnesi + katılımcılar | P1 | **Yapıldı (P1.1 + P1.2)** | `work_items` + `work_item_participants` (kişi başı `completed_at`); Alembic 0010 + 0011 cutover; tüm internal/public uçlar iş kaleminden okur/yazar (`work_item_service`); frontend katılımcı bazlı |
+| A2 | Konfigüre edilebilir durum akışı | P1 | **Yapıldı (temel)** | `workflow_states` tohumu (Pending/todo · In Progress · Completed/done · Cancelled · **Rejected/cancelled**); `GET /tasks/states`; `PATCH /status` `state_id` kabul eder; pano sütunları durumlardan (`useWorkflowStates`, geri düşüş eski 3). Yönetim ekranı (durum ekle/sırala) P2 |
 | A3 | Görünürlük proje üyeliğine | P1 | Başlamadı | `project_memberships` 0 satır, `member_role` serbest metin; backfill sıfırdan |
 | A4 | Yönlendirme politikasının ayrılması | P1 | Başlamadı | |
 | A5 | `issues` birleştirme | P1 | Başlamadı | `issues` 0 kayıt → veri taşımasız; CRUD router'ının emekliliği kod işi |
 | A6 | Talep → iş bağı | P1 | Başlamadı | |
 | A7 | Hiyerarşi ve ilişkiler | P1 | Başlamadı | Karar: **alt-proje proje ağacında kalır** (işlerin %63'ü kategori adlı 16 alt-projede); `parent_id` yalnız gerçek kırılım |
 | A8 | Faturalanabilirlik iş kaleminde | P1 | Başlamadı | Karar 3 kapandı: `projects.is_billable_default` → iş kalemi → efor override. Veri: %100 billable, %0,6 işe bağlı → A10 |
-| A9 | `/v1` ve MCP uyumluluk | P1 | **P1.1 kısmen (alias tablosu)** | `work_item_code_aliases`: batch birleşince kaybolan kodlar korunur; `legacy_task_ids` ile eski id'ler çözülür. Serializer/MCP matrisi P1.2 |
-| A10 | Efor girişinde iş kalemi seçimi (**yeni**, CTO 22.09) | P1 | Başlamadı | LogTimeModal'da proje seçilince açık işler listelenir; isteğe bağlı. Bugün kayıtların %0,6'sı işe bağlı |
+| A9 | `/v1` ve MCP uyumluluk | P1 | **Yapıldı** | `/v1` şekli değişmedi (`work_item_compat.to_public_task`); `task_code` = `item_key` ∨ alias; eski `tasks.id`, katılımcı id ve iş kalemi id'si aynı uçlarda çözülür (`resolve_ref`); 335 public API testi yeşil. **MCP istemci matrisi yeniden koşulmadı** (gerçek istemci gerekir) — CTO dev testinde; matris dokunulmadı |
+| A10 | Efor girişinde iş kalemi seçimi (**yeni**, CTO 22.09) | P1 | **Yapıldı** | LogTimeModal: serbest girişte proje seçilince "İş kalemi (isteğe bağlı)" — kullanıcının o projede gördüğü açık işler; seçim `task_id` → `work_logs.work_item_id` + `log_time_created` olayı. Görevden/toplantıdan açılan akışta seçici yok |
 | B1 | Ayarların tek çatı altına alınması | P0 | **Yapıldı** | Tek `/settings`, beş bölüm, bölüm başına izin; menüde tek "Ayarlar" (Yönetim grubunda, prototipteki yerleşim); eski adresler yönlendirilir; yeni izin kodu yok |
 | B2 | Proje ayarları sayfası | P2 | Başlamadı | A3'e bağlı |
 | B3 | Düzenleme yetkisi kuralları | P1 | Başlamadı | A1+A3 ile gelir |
@@ -75,14 +75,14 @@ Prototip (`prototip.html`): P3 arayüzünün taslağı; olduğu gibi uygulanmad�
 
 ## 4. Yapılmayanlar ve neden
 
-- **P1 (A1–A10, B3–B5):** Sıradaki. Tüm kararlar kapandı; F00 şema dondurma ile başlar.
-- **P2 (B2, C1–C3, F1):** A1'e bağlı.
+- **P1.3 (A3–A8, B3–B5):** Sıradaki — proje üyeliği görünürlüğü, routing, düzenleme yetkisi, kendine iş, takipçi, talep→iş, hiyerarşi, faturalanabilirlik.
+- **P2 (B2, C1–C3, F1):** A1 tamam; P1.3 sonrası.
 - **P3 (D3–D6, E1–E6):** A/B bölmesi gereği para katmanı ve e-fatura sonrası; ekran o zaman bir kez çizilir.
 
 ## 5. Sıradaki adımlar
 
-1. F00 şema dondurma (08-p1-plani) → **P1** (A1–A10, B3–B5).
-2. CTO tüm kalemleri hermes-dev'de test eder → toplu ff-merge `test`'e (CTO "ff yapalım" deyince).
+1. **P1.3** (A3–A8, B3–B5) — 08-p1-plani §6.
+2. CTO tüm kalemleri hermes-dev'de test eder → toplu ff-merge `test`'e (CTO "ff yapalım" deyince). Terfi öncesi hermes-test kopyasında kuru-koşu (`p1_dryrun.sh`) tekrar edilir.
 
 ## 6. P1.1 — şema + taşıma (22.09, dev)
 
@@ -92,3 +92,27 @@ Prototip (`prototip.html`): P3 arayüzünün taslağı; olduğu gibi uygulanmad�
 - Testler: +7 (kurallar, karışık batch, idempotentlik, gölge dönem, fail-closed doğrulama, durum tohumu); migration zinciri ve RLS envanteri yeşil.
 - **Kuru-koşu bulgusu (hermes-test kopyası, 0008 → head):** `convert_foreign_keys` ebeveyn `UNIQUE (tenant_id, id)` kısıtını model envanterindeki *tüm* tablolara uyguluyordu; envanter DB'nin önündeyken (hermes-test 0008'de, `routing_relations` yok) **0009 bile koşmuyordu**. Dev'de görünmedi (0009 modellerden önce koşmuştu), temiz-DB testi görmedi (0001 tüm model tablolarını baştan yaratır). Düzeltme: yalnız DB'de var olan tablolar; `test_upgrade_from_older_snapshot_when_models_are_ahead` bu senaryoyu kilitler. Ayrıca doğrulama, batch içinde farklı atayan anomalisinde görünürlük kaybını yakaladı → ikincil atayanlar `watcher` katılımcı olur.
 - hermes-dev'de 0010 sonucu: 61 task → 42 grup → **42 iş kalemi**, 60 katılımcı, 19 alias, 18 sahipsiz (çok kişili → triage), 6 yorum, 145 olay, üyelik +30, routing +16; iki kiracıda 5'er durum; RLS+FORCE; tek bileşik FK.
+
+## 7. P1.2 — servis/API geçişi + frontend (22.09, dev)
+
+Commit `<sha>` (hermes-dev). Eski `tasks` ailesi hâlâ duruyor (F05'e kadar), ama artık **hiçbir uç ondan okumuyor/yazmıyor**.
+
+**Backend**
+- `services/work_item_service.py` (yeni, tek iş mantığı): listeleme/arama (eski filtreler + `state_id`/`owner_user_id`/`unassigned`), oluşturma (tekil, bulk, grup → **tek iş kalemi + N katılımcı**), güncelleme (tür değişince yeni numara + alias), katılımcı bazlı durum (`apply_status`: kabul/tamamlama kişi başı; hepsi tamamlanınca kalem `done`), reddetme, silme, arşiv/geri alma, yorum/olay (`sequence`), kapanış hesabı. Görünürlük: admin ∨ reporter ∨ owner ∨ katılımcı.
+- `services/work_item_compat.py`: internal `WorkItemResponse` = eski `TaskResponse` + `participants[]`, `state`, `owner/reporter_user_id`, `is_billable`, `origin_*`, `parent_id`; public `PublicTask` şekli **değişmedi**. Kimlik: `/tasks/{id}` iş kalemi id'si, katılımcı id'si **ya da** eski `tasks.id` alır.
+- Public API: `public_resource_service`, `api_access_service.work_item_filter`, `public_directory_service`, `public_api/routers/tasks*.py`, `work_logs.py` iş kalemine geçti. `POST /v1/task-groups` yanıtı aynı şekil (üye başına giriş, hepsi aynı kod, `assignment_batch_id` = iş kalemi id'si). Efor: `task_code` → `work_logs.work_item_id`; `task_codes_for` hem iş kalemi hem eski id ile çözer.
+- `work_log_service`: `task_id` (iş/katılımcı/eski id) iş kalemine çözülür; `work_item_id` yazılır; `log_time_created` olayı iş kaleminde; kapanış yeniden hesaplanır. `WorkLogResponse.work_item_id` eklendi.
+- Otomatik arşiv (`task_archive_service`): ham SQL `work_items` üzerine (terminal kategori + `closed_at ≤ cutoff`), audit `work_item_events` (`sequence` ile). `assignment_rows_updated` artık iş kalemi sayısı.
+- Alembic **0011_work_items_cutover_sync**: taşımayı yeniden koşar (0010 → cutover arasında `tasks`'a düşen satırlar alınır; taşınmışlar atlanır).
+- `task_lifecycle.py` politika + DDL/backfill için kalır; Task tabanlı yardımcılar yalnız `task_service`'in eski yollarında (F05'te gider).
+
+**Frontend (08 §5, küçük adaptasyon)**
+- `grouping.js`: satır `participants[]` taşıyorsa mantıksal iş = kalemin kendisi; assignment = assignee rolündeki katılımcı (id = **katılımcı id'si**, kişi bazlı durum sunucudan). Eski şekil (batch) aynen çalışır. `expandAssignmentRows` swimlane için kişi başı satır açar.
+- `useTaskStatusMutation`: iyimser yama katılımcıyı da yamalar. Uçlar değişmedi (katılımcı id'siyle `PATCH /status`).
+- `useWorkflowStates` + `GET /tasks/states`: pano sütunları durumlardan (3 sütun sabit, sunucu durumu iliştirilir; erişilemezse eski 3).
+- **A10**: LogTimeModal iş kalemi seçici (yukarıda).
+- Yan bulgu: düz panoda sütun başlığı `label` (tanımsız) okuyordu — i18n geçişinde `labelKey`'e geçilmemiş; düzeltildi.
+
+**Testler:** core tüm paket yeşil (658 + migration 22: 0011 head, geride-kalmış-DB senaryosu); `test_task_archive_api`, `test_task_auto_archive`, public API paketi ve grup sözleşmesi iş kalemine taşındı (tohum `Task` → `sync_work_items` → iddialar iş kalemi üzerinde; üretim taşıma yolu = test yolu). Frontend: +14 (katılımcı gruplama, durum→sütun, A10 seçici), pano/gruplama/log-time entegrasyonları yeşil.
+
+**Sapmalar:** `assignment_batch_id` yalnız çok katılımcılı kalemde dolu (08 §4 "= id" diyordu) — tekil oluşturma sözleşmesi (`assignment_batch_id is None`) korunur. Pasif grup → 400, yok → 404 (eski grup ucu sözleşmesi).

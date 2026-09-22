@@ -30,15 +30,15 @@ from sqlalchemy.orm import Session
 
 from ..models.api_client import ApiClient, ApiClientAccess
 from ..models.meeting import Meeting, MeetingAttendee
-from ..models.task import Task
-from ..models.task_activity import TaskActivityEvent
-from ..models.task_comment import TaskComment
+from ..models.work_item import (
+    WorkItem, WorkItemComment, WorkItemEvent, WorkItemParticipant,
+)
 from ..models.user_group import UserGroup, UserGroupMember
 from ..models.work_log import WorkLog
 from .api_access_service import (
     AccessScope,
     meeting_filter,
-    task_filter,
+    work_item_filter,
     work_log_filter,
 )
 
@@ -84,32 +84,38 @@ def authorized_user_ids(
 
     ids: Set[UUID] = set(scope.user_ids)
 
-    tf = task_filter(scope)
-    for a, b in db.query(
-        Task.assignee_user_id, Task.assigner_user_id
-    ).filter(tf, Task.archived_at.is_(None)):
-        ids.add(a)
-        ids.add(b)
+    # P1.2: gorunur is kalemlerinin raporlayan/sahip/katilimcilari
+    # (eski assignee/assigner ciftinin karsiligi).
+    tf = work_item_filter(scope)
+    visible_task_ids = []
+    for item_id, reporter, owner in db.query(
+        WorkItem.id, WorkItem.reporter_user_id, WorkItem.owner_user_id
+    ).filter(tf, WorkItem.archived_at.is_(None)):
+        visible_task_ids.append(item_id)
+        if reporter:
+            ids.add(reporter)
+        if owner:
+            ids.add(owner)
 
-    visible_task_ids = [
-        r[0]
-        for r in db.query(Task.id).filter(
-            tf, Task.archived_at.is_(None)
-        )
-    ]
     if visible_task_ids:
+        for (uid,) in (
+            db.query(WorkItemParticipant.user_id)
+            .filter(WorkItemParticipant.work_item_id.in_(visible_task_ids))
+            .distinct()
+        ):
+            ids.add(uid)
         for (actor,) in (
-            db.query(TaskActivityEvent.actor_user_id)
-            .filter(TaskActivityEvent.task_id.in_(visible_task_ids))
+            db.query(WorkItemEvent.actor_user_id)
+            .filter(WorkItemEvent.work_item_id.in_(visible_task_ids))
             .distinct()
         ):
             if actor:
                 ids.add(actor)
         for (author,) in (
-            db.query(TaskComment.author_user_id)
+            db.query(WorkItemComment.author_user_id)
             .filter(
-                TaskComment.task_id.in_(visible_task_ids),
-                TaskComment.deleted_at.is_(None),
+                WorkItemComment.work_item_id.in_(visible_task_ids),
+                WorkItemComment.deleted_at.is_(None),
             )
             .distinct()
         ):

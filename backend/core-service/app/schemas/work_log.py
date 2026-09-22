@@ -134,6 +134,10 @@ class WorkLogResponse(WorkLogBase):
     work_line_id: Optional[UUID] = None
     issue_id: Optional[UUID] = None
     issue_key_manual: Optional[str] = None
+
+    # PM rework P1.2: bagli is kalemi (Log Time akisi). `task_id` yalnizca
+    # eski tasks satirina bagli tarihsel kayitlarda doludur.
+    work_item_id: Optional[UUID] = None
     
     model_config = ConfigDict(from_attributes=True)
 

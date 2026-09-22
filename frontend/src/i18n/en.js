@@ -330,6 +330,9 @@ export default {
     logTime: {
         logTime: 'Log time',
         logAnother: 'Log another',
+        workItem: 'Work item (optional)',
+        workItemPlaceholder: 'Link to an open work item',
+        workItemHint: 'Only open work items of the selected project are listed.',
         savedReady: 'Saved! Ready for next entry.',
         stepOf: 'Step {n} of {total}',
         backToPrevious: 'Back to previous step',

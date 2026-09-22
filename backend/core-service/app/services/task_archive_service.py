@@ -2,8 +2,12 @@
 =============================================================================
 HERMES - Otomatik arsiv (retention) servisi
 =============================================================================
-Kapanmis (closed_at dolu) logical work item'lari, PM Configurations'taki
-politika suresi dolunca Active havuzdan Archive havuzuna alir.
+Kapanmis (closed_at dolu) is kalemlerini, PM Configurations'taki politika
+suresi dolunca Active havuzdan Archive havuzuna alir.
+
+PM rework P1.2: is kalemi = `work_items` satiri (eski `tasks` fan-out'u
+tek satira indi; katilimcilar `work_item_participants`). Grup butunlugu
+artik yapisal: bir is kaleminin "yarisi" arsivlenemez.
 
 KALICI SILME YOKTUR: yalnizca lifecycle metadata'si yazilir. work_logs
 tablosuna hicbir sekilde DOKUNULMAZ.
@@ -12,13 +16,9 @@ Mimari, mevcut `api_cleanup_service` deseninin aynisidir:
   - ayri baglanti (istek/fixture session'inin transaction'ina karismaz),
   - session-seviyesi PostgreSQL advisory lock (ikinci esZamanli kosu
     sessizce cekilir),
-  - logical item bazinda batch,
+  - is kalemi bazinda batch,
   - ASLA exception firlatmaz — ana API'yi etkilemez,
-  - sanitize edilmis ozet (baslik, assignee adi, SQL, secret LOGLANMAZ).
-
-BATCH SINIRI LOGICAL GRUBU BOLMEZ: batch, logical anahtarlar uzerinden
-alinir; bir grubun satirlari her zaman AYNI transaction'da arsivlenir.
-Kismi arsiv olusursa transaction geri alinir.
+  - sanitize edilmis ozet (baslik, kisi adi, SQL, secret LOGLANMAZ).
 =============================================================================
 """
 import logging
@@ -29,6 +29,7 @@ from sqlalchemy import text as sa_text
 from sqlalchemy.orm import Session
 
 from . import task_lifecycle
+from .work_item_service import TERMINAL_CATEGORIES
 
 logger = logging.getLogger(__name__)
 
@@ -38,57 +39,53 @@ ADVISORY_LOCK_KEY = 947_310_281
 
 DEFAULT_BATCH_SIZE = 200
 
-#: Arsiv adayi logical anahtarlar. Kapanis suresi dolmus, HENUZ
-#: arsivlenmemis ve grubun HICBIR satiri aktif olmayan gruplar.
+#: Arsiv adayi is kalemleri: durumu terminal kategoride, kapanis suresi
+#: dolmus ve HENUZ arsivlenmemis olanlar.
 #:
 #: `updated_at` KULLANILMAZ — runtime kararinin tek girdisi closed_at.
-#
-# DIKKAT — satir filtresi HAVING'den ONCE uygulanamaz. Ilk yazimda
-# `WHERE closed_at IS NOT NULL` vardi; bu, karisik bir grubun HENUZ ACIK
-# satirini gruplamadan ONCE eliyor ve grup tamamen terminal gorunuyordu
-# (test yakaladi: mixed group arsivleniyordu). Bu yuzden gruplama TUM
-# satirlar uzerinden yapilir; kosullar HAVING'de, yani grup duzeyinde
-# degerlendirilir.
+#: Kapanis (closed_at) `work_item_service.recompute_closure` ile
+#: katilimci durumlarindan turetilir; karisik (bir katilimcisi acik)
+#: kalem hicbir zaman terminal kategoriye dusmez, dolayisiyla aday olmaz.
 _CANDIDATE_SQL = """
-SELECT COALESCE(assignment_batch_id::text, 'task:' || id::text) AS logical_key
-FROM tasks
-WHERE (:tenant_id IS NULL OR tenant_id = CAST(:tenant_id AS uuid))
-GROUP BY COALESCE(assignment_batch_id::text, 'task:' || id::text)
-HAVING bool_and(status = 'completed')
-   AND bool_and(archived_at IS NULL)
-   AND bool_and(closed_at IS NOT NULL)
-   AND max(closed_at) <= :cutoff
-ORDER BY 1
+SELECT w.id
+FROM work_items w
+JOIN workflow_states s ON s.id = w.state_id
+WHERE (:tenant_id IS NULL OR w.tenant_id = CAST(:tenant_id AS uuid))
+  AND s.category = ANY(:categories)
+  AND w.archived_at IS NULL
+  AND w.closed_at IS NOT NULL
+  AND w.closed_at <= :cutoff
+ORDER BY w.closed_at, w.id
 LIMIT :limit
 """
 
-_ARCHIVE_GROUP_SQL = """
-UPDATE tasks
+_ARCHIVE_ITEM_SQL = """
+UPDATE work_items
 SET archived_at = :now,
     archive_reason = 'auto_retention',
     archived_by_user_id = NULL
-WHERE COALESCE(assignment_batch_id::text, 'task:' || id::text) = :logical_key
+WHERE id = CAST(:item_id AS uuid)
   AND archived_at IS NULL
   AND (:tenant_id IS NULL OR tenant_id = CAST(:tenant_id AS uuid))
 """
 
-#: Audit: her arsivlenen satir icin bir olay. Mevcut `task_deleted`
+#: Audit: arsivlenen her is kalemi icin bir olay. Mevcut `task_deleted`
 #: terminolojisi YENI islemlerde URETILMEZ; tarihsel olaylar da
-#: silinmez/yeniden yazilmaz.
-# WS5: `tenant_id` tasinir. Kolon NOT NULL oldugu icin eksikligi
-# INSERT'i patlatirdi — ve bu, arsivin sessizce "partial_failure"
-# donmesi demekti (hicbir satir arsivlenmez, hicbir istisna yukselmez).
-# Tenant, ARSIVLENEN SATIRDAN alinir; boylece audit olayi her zaman
-# kaynak satirla ayni tenant'a duser.
+#: silinmez/yeniden yazilmaz. `tenant_id` ARSIVLENEN SATIRDAN alinir;
+#: `sequence` kalem icindeki son olayin bir fazlasidir (record_event ile
+#: ayni kural).
 _AUDIT_SQL = """
-INSERT INTO task_activity_events (id, tenant_id, task_id, actor_user_id,
-                                  event_type, event_data, created_at)
-SELECT gen_random_uuid(), tenant_id, id, NULL, 'task_archived_auto',
-       jsonb_build_object('reason', 'auto_retention'), :now
-FROM tasks
-WHERE COALESCE(assignment_batch_id::text, 'task:' || id::text) = :logical_key
-  AND archived_at = :now
-  AND (:tenant_id IS NULL OR tenant_id = CAST(:tenant_id AS uuid))
+INSERT INTO work_item_events (id, tenant_id, work_item_id, actor_user_id,
+                              event_type, event_data, sequence, created_at)
+SELECT gen_random_uuid(), w.tenant_id, w.id, NULL, 'task_archived_auto',
+       jsonb_build_object('reason', 'auto_retention'),
+       COALESCE((SELECT MAX(e.sequence) FROM work_item_events e
+                 WHERE e.work_item_id = w.id), 0) + 1,
+       :now
+FROM work_items w
+WHERE w.id = CAST(:item_id AS uuid)
+  AND w.archived_at = :now
+  AND (:tenant_id IS NULL OR w.tenant_id = CAST(:tenant_id AS uuid))
 """
 
 
@@ -108,6 +105,10 @@ def run_auto_archive(
     secimi, arsivleme ve audit yazimi acikca tenant'a baglanir. Job
     yolu her zaman verir (bkz. app/jobs/tenant_runner.py); verilmezse
     cagiranin session'indaki tenant baglami (RLS) sinirlar.
+
+    Ozet anahtarlari job cikti sozlesmesidir (degismez):
+    `assignment_rows_updated` artik guncellenen is kalemi satiri
+    sayisidir (P1.2 oncesi: fan-out satiri sayisi).
     """
     started = datetime.now(timezone.utc)
     now = now or started
@@ -142,8 +143,10 @@ def run_auto_archive(
                 sa_text("SELECT set_config('app.tenant_id', :t, false)"),
                 {"t": str(tenant_id)},
             )
+    tenant_param = str(tenant_id) if tenant_id else None
+    categories = sorted(TERMINAL_CATEGORIES)
     locked = False
-    scanned = archived_groups = rows_updated = batches = 0
+    scanned = archived_items = rows_updated = batches = 0
     status = "success"
     try:
         with conn.begin():
@@ -162,54 +165,51 @@ def run_auto_archive(
 
         while True:
             with conn.begin():
-                keys = [
+                ids = [
                     r[0]
                     for r in conn.execute(
                         sa_text(_CANDIDATE_SQL),
                         {"cutoff": cutoff, "limit": batch_size,
-                         "tenant_id": str(tenant_id) if tenant_id else None},
+                         "tenant_id": tenant_param,
+                         "categories": categories},
                     ).fetchall()
                 ]
-            if not keys:
+            if not ids:
                 break
-            scanned += len(keys)
+            scanned += len(ids)
             batches += 1
 
             if dry_run:
-                # HICBIR satir degistirilmez.
-                archived_groups += len(keys)
-                if batches * batch_size >= scanned + batch_size:
-                    break
-                # Dry-run'da ayni adaylar tekrar gelir; tek tur yeter.
+                # HICBIR satir degistirilmez. Dry-run'da ayni adaylar
+                # tekrar gelir; tek tur yeter.
+                archived_items += len(ids)
                 break
 
-            for key in keys:
-                # Bir logical grup TEK transaction'da arsivlenir; hata
-                # olursa o grup icin kismi degisiklik geri alinir.
+            for item_id in ids:
+                # Bir is kalemi TEK transaction'da arsivlenir; hata
+                # olursa o kalem icin kismi degisiklik geri alinir.
                 try:
                     with conn.begin():
                         n = conn.execute(
-                            sa_text(_ARCHIVE_GROUP_SQL),
-                            {"now": now, "logical_key": key,
-                             "tenant_id": str(tenant_id) if tenant_id
-                             else None},
+                            sa_text(_ARCHIVE_ITEM_SQL),
+                            {"now": now, "item_id": str(item_id),
+                             "tenant_id": tenant_param},
                         ).rowcount
                         conn.execute(
                             sa_text(_AUDIT_SQL),
-                            {"now": now, "logical_key": key,
-                             "tenant_id": str(tenant_id) if tenant_id
-                             else None},
+                            {"now": now, "item_id": str(item_id),
+                             "tenant_id": tenant_param},
                         )
                     if n:
-                        archived_groups += 1
+                        archived_items += 1
                         rows_updated += n
                 except Exception as exc:  # noqa: BLE001
                     status = "partial_failure"
                     logger.error(
-                        "task_auto_archive group failed class=%s",
+                        "task_auto_archive item failed class=%s",
                         type(exc).__name__,
                     )
-            if len(keys) < batch_size:
+            if len(ids) < batch_size:
                 break
     except Exception as exc:  # noqa: BLE001 — ana API'yi koru
         status = "failed"
@@ -230,7 +230,7 @@ def run_auto_archive(
         ok=status in ("success", "skipped_already_running", "disabled"),
         status=status,
         logical_items_scanned=scanned,
-        logical_items_archived=archived_groups,
+        logical_items_archived=archived_items,
         assignment_rows_updated=rows_updated,
         batches=batches,
         duration_ms=_ms(started),

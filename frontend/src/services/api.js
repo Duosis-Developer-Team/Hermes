@@ -805,6 +805,12 @@ export const userGroupService = {
 
 export const taskService = {
     /** List tasks visible to the current user with optional filters. */
+    /** Is akisi durumlari (PM rework P1): pano sutunlari ve durum sozlugu. */
+    listStates: async () => {
+        const response = await coreApi.get('/api/v1/core/tasks/states')
+        return response.data
+    },
+
     list: async (params = {}) => {
         const response = await coreApi.get('/api/v1/core/tasks', { params })
         return response.data

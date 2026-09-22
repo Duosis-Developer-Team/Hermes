@@ -22,13 +22,13 @@ from ...services import api_access_service, public_resource_service as res
 from ..deps import ApiContext, require_scopes
 from ..errors import PublicAPIError
 from ..pagination import Page, PageParams, page_params, paginated
+from ...services.work_item_compat import to_public_task as serialize_task
 from ..schemas.resources import (
     PublicComment,
     PublicTask,
     PublicTaskActivity,
     serialize_activity,
     serialize_comment,
-    serialize_task,
 )
 from ..scopes import scope_docs
 
@@ -154,7 +154,7 @@ async def get_task_activity(
     )
     window = events[params.offset : params.offset + params.fetch_limit]
     return paginated(
-        [serialize_activity(e, task.task_type) for e in window], params
+        [serialize_activity(e, task.item_type) for e in window], params
     )
 
 

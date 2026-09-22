@@ -44,7 +44,7 @@ def world(pg_session, authz_grants):
 
     s.execute(
         sa_text(
-            "TRUNCATE task_comments, task_activity_events, tasks, "
+            "TRUNCATE work_items, work_item_participants, work_item_code_aliases, work_item_comments, work_item_events, task_comments, task_activity_events, tasks, "
             "task_assignment_relations, task_user_permissions, "
             "projects, customers CASCADE"
         )
@@ -337,8 +337,10 @@ def test_update_task_and_out_of_scope_404(world, public_http, pg_session):
 
 
 def _count_tasks(pg_session, title):
+    # P1.2: is kaydi = work_items satiri.
+    from app.models.work_item import WorkItem
     return (
-        pg_session.query(Task).filter(Task.title == title).count()
+        pg_session.query(WorkItem).filter(WorkItem.title == title).count()
     )
 
 

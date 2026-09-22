@@ -294,7 +294,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
                     "'medium', 'pending', :b, now(), now())"
                 ), {"t": tenant_id, "cid": customer_id, "pid": project_id, "b": batch})
 
-        _run_migration(disposable_db)      # 0008 → 0009 → 0010
+        _run_migration(disposable_db)      # 0008 → 0009 → 0010 → 0011
 
         with engine.connect() as conn:
             head = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
@@ -314,7 +314,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             )).scalar()
     finally:
         engine.dispose()
-    assert head == "0010_work_items_foundation"
+    assert head == "0011_work_items_cutover_sync"
     assert items == 1 and parts == 2, "2 kopyalik batch tek is kalemi olmali"
     assert watchers == 1
     assert forced == 3

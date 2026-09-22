@@ -242,3 +242,115 @@ describe('dayaniklilik', () => {
         expect(item.representative.id).toBe('a')
     })
 })
+
+// ── PM rework P1.2: is kalemi + katilimcilar ─────────────────────────────
+import {
+    assignmentRowOf,
+    expandAssignmentRows,
+    participantStatus,
+} from '../../features/tasks/model/grouping'
+
+const participant = (over = {}) => ({
+    id: over.id || 'pt1',
+    user_id: over.user_id || 'u1',
+    role: 'assignee',
+    accepted_at: null,
+    completed_at: null,
+    note: null,
+    status: 'pending',
+    ...over,
+})
+
+const item = (over = {}) => task({
+    id: 'wi1',
+    assignment_batch_id: null,
+    participants: [
+        participant({ id: 'pt1', user_id: 'u1' }),
+        participant({ id: 'pt2', user_id: 'u2', status: 'in_progress', accepted_at: 'x' }),
+        participant({ id: 'pt3', user_id: 'u3', status: 'completed', completed_at: 'y' }),
+    ],
+    ...over,
+})
+
+describe('is kalemi satiri (participants[])', () => {
+    it('anahtar kalemin KENDI id sidir; batch turetmesi yapilmaz', () => {
+        expect(logicalKeyOf(item())).toBe('item:wi1')
+        expect(logicalKeyOf(item({ assignment_batch_id: 'wi1' }))).toBe('item:wi1')
+    })
+
+    it('katilimci basina bir assignment; id = KATILIMCI id si', () => {
+        const [it1] = groupIntoLogicalItems([item()], resolveName)
+        expect(it1.assignmentCount).toBe(3)
+        expect(it1.assignments.map((a) => a.id).sort()).toEqual(['pt1', 'pt2', 'pt3'])
+        expect(it1.isGrouped).toBe(true)
+        expect(it1.batchId).toBe('wi1')
+        expect(it1.representative.id).toBe('wi1')
+    })
+
+    it('kisi bazli durum katilimcidan gelir; aggregate karisik → in_progress', () => {
+        const [it1] = groupIntoLogicalItems([item()], resolveName)
+        const byUser = Object.fromEntries(
+            it1.assignments.map((a) => [a.assigneeUserId, a.status])
+        )
+        expect(byUser).toEqual({ u1: 'pending', u2: 'in_progress', u3: 'completed' })
+        expect(it1.aggregateStatus).toBe('in_progress')
+        expect(matchesAnyAssignmentStatus(it1, ['completed'])).toBe(true)
+    })
+
+    it('tek katilimcili kalem singleton dur; assignee/watcher disi roller sayilmaz', () => {
+        const row = item({
+            participants: [
+                participant({ id: 'pt1', user_id: 'u1' }),
+                participant({ id: 'w1', user_id: 'u5', role: 'watcher' }),
+            ],
+        })
+        const [it1] = groupIntoLogicalItems([row], resolveName)
+        expect(it1.assignmentCount).toBe(1)
+        expect(it1.isGrouped).toBe(false)
+        expect(it1.batchId).toBeNull()
+        expect(it1.assignments[0].id).toBe('pt1')
+    })
+
+    it('katilimcisi olmayan kalem satirin kendisiyle gorunur — kart kaybolmaz', () => {
+        const row = item({ participants: [], status: 'pending', assignee_user_id: null })
+        const [it1] = groupIntoLogicalItems([row], resolveName)
+        expect(it1.assignmentCount).toBe(1)
+        expect(it1.assignments[0].id).toBe('wi1')
+    })
+
+    it('katilimci satiri eski satir seklindedir (mutation/izin sozlesmesi)', () => {
+        const row = assignmentRowOf(item(), participant({ id: 'pt9', user_id: 'u4', status: 'completed', completed_at: 'z' }))
+        expect(row.id).toBe('pt9')
+        expect(row.work_item_id).toBe('wi1')
+        expect(row.assignee_user_id).toBe('u4')
+        expect(row.status).toBe('completed')
+        expect(row.completed_at).toBe('z')
+        expect(row.title).toBe('API rate limit')
+        expect(row.assigner_user_id).toBe('boss')
+    })
+
+    it('sunucu status vermezse yerel kural: iptal > completed_at > accepted_at > pending', () => {
+        const base = { status: 'in_progress' }
+        expect(participantStatus(base, { completed_at: 'x', status: null })).toBe('completed')
+        expect(participantStatus(base, { accepted_at: 'x', status: null })).toBe('in_progress')
+        expect(participantStatus(base, { status: null })).toBe('pending')
+        expect(participantStatus({ status: 'cancelled' }, { completed_at: 'x', status: null })).toBe('cancelled')
+    })
+
+    it('expandAssignmentRows: kalem → kisi basina satir; eski satir aynen', () => {
+        const legacy = task({ id: 'old', assignment_batch_id: 'b' })
+        const rows = expandAssignmentRows([item(), legacy])
+        expect(rows.map((r) => r.id)).toEqual(['pt1', 'pt2', 'pt3', 'old'])
+        expect(rows[3]).toBe(legacy)
+    })
+
+    it('eski sekil (participants yok) batch kuraliyla AYNEN calisir', () => {
+        const rows = [
+            task({ id: 'a', assignment_batch_id: 'b1', assignee_user_id: 'u1' }),
+            task({ id: 'b', assignment_batch_id: 'b1', assignee_user_id: 'u2' }),
+        ]
+        const [it1] = groupIntoLogicalItems(rows, resolveName)
+        expect(it1.key).toBe('batch:b1')
+        expect(it1.assignmentCount).toBe(2)
+    })
+})

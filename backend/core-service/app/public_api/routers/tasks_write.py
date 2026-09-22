@@ -37,6 +37,12 @@ from ...routers.tasks import _notif_payload, _serialize_task
 from ...schemas.task import TaskCreate, TaskUpdate
 from ...services import api_access_service, public_resource_service as res
 from ...services import task_service
+from ...services import work_item_service as wi
+from ...services.work_item_compat import (
+    assignee_participants as _assignee_participants,
+    to_public_task as serialize_task,
+    to_response as _to_response,
+)
 from ...services.task_notifications import (
     send_assignment_notifications,
     send_status_notifications,
@@ -53,7 +59,6 @@ from ..schemas.resources import (
     PublicTaskGroupResult,
     PublicTaskUpdate,
     serialize_comment,
-    serialize_task,
 )
 from ..scopes import scope_docs
 from ..writes import (
@@ -139,7 +144,7 @@ async def create_task(
             priority=payload.priority,
             task_type=payload.task_type,
         )
-        task = task_service.create_task(db, actor, internal)
+        task = wi.create_item(db, actor, internal)
         serialized = _serialize_task(task)
         # Internal create ile ayni atama-bildirimi zinciri + admin kurallari.
         if task_service.notification_allowed(
@@ -214,13 +219,17 @@ async def create_task_group(
             db, payload.assignee_group_id
         )
 
-        batch_id, tasks = task_service.create_tasks_for_group(
+        # P1.2: TEK is kalemi + uye basina katilimci. Yanit SEKLI korunur:
+        # uye basina bir giris, hepsi ayni task_code, assignment_batch_id =
+        # is kaleminin id'si. Grup yoksa servis 404 yukseltir.
+        item = wi.create_item_bulk(
             db,
             actor,
             customer_id=payload.customer_id,
             project_id=payload.project_id,
             sub_project_id=payload.sub_project_id,
-            assignee_group_id=payload.assignee_group_id,
+            assignee_user_ids=[],
+            assignee_group_ids=[payload.assignee_group_id],
             title=payload.title,
             description=payload.description,
             scheduled_date=payload.scheduled_date,
@@ -228,9 +237,12 @@ async def create_task_group(
             estimated_duration_minutes=payload.estimated_duration_minutes,
             priority=payload.priority,
             task_type=payload.task_type,
+            group_must_exist=True,
         )
+        batch_id = item.id
+        tasks = _assignee_participants(item)
 
-        serialized = [_serialize_task(t) for t in tasks]
+        serialized = [_to_response(item, for_participant=p) for p in tasks]
 
         # Servis 404 yukselttigi icin bu noktada grup kesinlikle vardir.
         # (Sprint 8: sorgu bildirimden ONCE alinir — ad hem e-posta ekip
@@ -268,7 +280,7 @@ async def create_task_group(
             group_name=group.name if group else "",
             created_count=len(tasks),
             skipped_count=max(0, len(member_ids) - len(tasks)),
-            created_tasks=[serialize_task(t) for t in tasks],
+            created_tasks=[serialize_task(item, for_participant=p) for p in tasks],
         )
         return 201, _dump(result)
 
@@ -305,7 +317,7 @@ async def update_task(
         sub_project_id=payload.sub_project_id,
         assignee_user_id=payload.assignee_user_id,
     )
-    updated = task_service.update_task(db, actor, task.id, internal)
+    updated = wi.update_item(db, actor, task.id, internal)
     return serialize_task(updated)
 
 
@@ -328,9 +340,7 @@ async def add_comment(
     task = _visible_task_or_404(db, ctx, task_code)
 
     def run():
-        comment = task_service.create_task_comment(
-            db, actor, task.id, payload.body
-        )
+        comment = wi.create_comment(db, actor, task.id, payload.body)
         return 201, _dump(serialize_comment(comment))
 
     return _run_idempotent(
@@ -366,9 +376,7 @@ async def complete_task(
     task = _visible_task_or_404(db, ctx, task_code)
 
     def run():
-        updated = task_service.update_task_completion(
-            db, actor, task.id, True
-        )
+        updated = wi.set_completed(db, actor, task.id, True)
         _maybe_status_side_effects(
             db, background_tasks, updated, actor.id,
             tenant_id=ctx.client.tenant_id,
@@ -402,14 +410,15 @@ async def change_status(
     actor = _actor_of(ctx)
     task = _visible_task_or_404(db, ctx, task_code)
 
+    current = wi.legacy_status_of(task)
     if payload.action == "accept":
         new_status = "in_progress"
     elif payload.action == "reject":
         new_status = "rejected"
     else:  # reopen
-        if task.status == "completed":
+        if current == "completed":
             new_status = "in_progress"
-        elif task.status == "rejected":
+        elif current == "rejected":
             new_status = "pending"
         else:
             raise PublicAPIError(
@@ -418,9 +427,7 @@ async def change_status(
             )
 
     def run():
-        updated = task_service.update_task_status(
-            db, actor, task.id, new_status
-        )
+        updated = wi.update_status(db, actor, task.id, new_status=new_status)
         _maybe_status_side_effects(
             db, background_tasks, updated, actor.id,
             tenant_id=ctx.client.tenant_id,

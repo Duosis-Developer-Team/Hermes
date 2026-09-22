@@ -134,6 +134,52 @@ def resolve_access(db: Session, client: ApiClient) -> AccessScope:
 # ── Composable SQLAlchemy filtreleri (Stage 3 kaynak endpoint'leri) ─────
 
 
+def work_item_filter(scope: AccessScope, combine: str = "union"):
+    """work_items satirlari icin WHERE kosulu (task_filter'in P1.2 karsiligi).
+
+    user binding → reporter ∨ owner ∨ katilimci; customer → projenin
+    musterisi; project → project_id. Ayni fail-closed/union kurali.
+    """
+    from sqlalchemy import select as sa_select
+    from ..models.project import Project
+    from ..models.work_item import WorkItem, WorkItemParticipant
+
+    if scope.is_global:
+        return sa_true()
+    if scope.is_empty:
+        return sa_false()
+    parts = []
+    if scope.user_ids:
+        ids = list(scope.user_ids)
+        parts.append(
+            or_(
+                WorkItem.reporter_user_id.in_(ids),
+                WorkItem.owner_user_id.in_(ids),
+                WorkItem.id.in_(
+                    sa_select(WorkItemParticipant.work_item_id).where(
+                        WorkItemParticipant.user_id.in_(ids)
+                    )
+                ),
+            )
+        )
+    if scope.customer_ids:
+        parts.append(
+            WorkItem.project_id.in_(
+                sa_select(Project.id).where(
+                    Project.customer_id.in_(list(scope.customer_ids))
+                )
+            )
+        )
+    if scope.project_ids:
+        parts.append(WorkItem.project_id.in_(list(scope.project_ids)))
+    if combine == "intersect":
+        cond = parts[0]
+        for p in parts[1:]:
+            cond = cond & p
+        return cond
+    return or_(*parts)
+
+
 def task_filter(scope: AccessScope, combine: str = "union"):
     """Task/Issue/Suggestion satirlari icin WHERE kosulu.
     - empty  → FALSE (fail closed: hic satir donmez)

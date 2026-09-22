@@ -23,8 +23,13 @@ from app.main import app
 from app.models.customer import Customer
 from app.models.project import Project
 from app.models.task import Task
+from app.models.work_item import WorkItem
 from app.models.work_type import WorkType
 from app.models.work_log import WorkLog
+from app.services import work_item_service as wi
+from app.services.work_item_compat import participant_status
+
+from ._work_items import item_for_task, sync_work_items
 
 # WS3: CurrentUser artik tenant baglami ZORUNLU tasir.
 TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
@@ -33,6 +38,7 @@ ADMIN = uuid.UUID("00000000-0000-4000-8000-00000000e001")
 ASSIGNER = uuid.UUID("00000000-0000-4000-8000-00000000e002")
 WORKER = uuid.UUID("00000000-0000-4000-8000-00000000e003")
 STRANGER = uuid.UUID("00000000-0000-4000-8000-00000000e004")
+MATE = uuid.UUID("00000000-0000-4000-8000-00000000e005")
 
 
 @pytest.fixture()
@@ -40,7 +46,9 @@ def world(pg_session, authz_grants):
     s = pg_session
     s.execute(sa_text(
         "TRUNCATE task_comments, task_activity_events, work_logs, tasks, "
-        "task_lifecycle_policy, projects, customers CASCADE"
+        "work_item_participants, work_item_code_aliases, work_item_comments, "
+        "work_item_events, work_items, task_lifecycle_policy, projects, "
+        "customers CASCADE"
     ))
     s.commit()
     c = Customer(id=uuid.uuid4(), name="Vakko", is_active=True)
@@ -50,7 +58,7 @@ def world(pg_session, authz_grants):
     s.commit()
 
     authz_grants[str(ADMIN)] = [Perm.TASKS_ADMIN, Perm.TASK_PERMISSIONS_MANAGE]
-    for uid in (ASSIGNER, WORKER, STRANGER):
+    for uid in (ASSIGNER, WORKER, STRANGER, MATE):
         authz_grants[str(uid)] = [Perm.TASKS_ACCESS]
     return {"s": s, "customer": c, "project": p, "work_type": wt}
 
@@ -62,6 +70,10 @@ def http(world, pg_session):
     app.dependency_overrides[get_tenant_db] = lambda: pg_session
 
     def _as(user_id):
+        # PM rework P1.2: uclar work_items'tan okur; `Task(...)` tohumlari
+        # her istekten once is kalemine tasinir (tasima yeniden kosulabilir,
+        # tasinmis satirlar atlanir).
+        sync_work_items(pg_session)
         app.dependency_overrides[get_current_user] = lambda: CurrentUser(
             id=str(user_id), email=f"{user_id}@x.com", full_name="U",
             is_admin=False,
@@ -104,6 +116,20 @@ def _task(world, *, status="completed", assignee=WORKER, batch=None,
     s.add(row)
     s.commit()
     return row
+
+
+def _item(world, task):
+    world["s"].expire_all()
+    return item_for_task(world["s"], task.id)
+
+
+def _status(world, task):
+    """Eski satirin karsiligi: katilimcinin turetilmis durumu."""
+    world["s"].expire_all()
+    item, part = wi.resolve_ref(world["s"], task.id)
+    if part is not None:
+        return participant_status(item, part)
+    return wi.legacy_status_of(item)
 
 
 def _log_time(world, task):
@@ -168,14 +194,14 @@ def test_non_admin_sees_own_archived_items(world, http):
     res = http(WORKER).get("/api/v1/core/tasks?archive_state=archived")
     assert res.status_code == 200
     ids = {r["id"] for r in res.json()}
-    assert str(mine.id) in ids
+    assert str(_item(world, mine).id) in ids
     assert len(ids) == 1
 
 
 def test_non_admin_cannot_see_other_users_archived_items(world, http):
     other = _task(world, assignee=STRANGER, archived=True)
     res = http(WORKER).get("/api/v1/core/tasks?archive_state=archived")
-    assert str(other.id) not in {r["id"] for r in res.json()}
+    assert str(_item(world, other).id) not in {r["id"] for r in res.json()}
 
 
 def test_archived_count_does_not_leak(world, http):
@@ -196,8 +222,7 @@ def test_assigner_can_archive_terminal_item(world, http):
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["archive_reason"] == "manual"
-    world["s"].expire_all()
-    assert world["s"].query(Task).get(t.id).archived_at is not None
+    assert _item(world, t).archived_at is not None
 
 
 def test_plain_assignee_cannot_archive(world, http):
@@ -213,9 +238,10 @@ def test_active_item_cannot_be_archived(world, http):
 
 
 def test_mixed_group_cannot_be_archived(world, http):
+    # Grup = ayni batch'te FARKLI atananlar (uretimde uye basina bir satir).
     batch = uuid.uuid4()
-    a = _task(world, status="completed", batch=batch)
-    _task(world, status="pending", batch=batch)
+    a = _task(world, status="completed", batch=batch, assignee=WORKER)
+    _task(world, status="pending", batch=batch, assignee=MATE)
     res = http(ASSIGNER).post(f"/api/v1/core/tasks/{a.id}/archive")
     assert res.status_code == 409
 
@@ -240,15 +266,18 @@ def test_completed_with_log_time_can_be_archived(world, http):
 
 def test_archiving_one_row_archives_whole_group(world, http):
     batch = uuid.uuid4()
-    rows = [_task(world, status="completed", batch=batch) for _ in range(3)]
+    rows = [
+        _task(world, status="completed", batch=batch, assignee=u)
+        for u in (WORKER, MATE, STRANGER)
+    ]
     for r in rows:
         _log_time(world, r)
     res = http(ASSIGNER).post(f"/api/v1/core/tasks/{rows[0].id}/archive")
     assert res.status_code == 200
-    world["s"].expire_all()
-    assert all(
-        world["s"].query(Task).get(r.id).archived_at is not None for r in rows
-    )
+    # Uc eski satir TEK is kalemidir; arsiv o kalemin uzerindedir.
+    items = {_item(world, r).id for r in rows}
+    assert len(items) == 1
+    assert all(_item(world, r).archived_at is not None for r in rows)
 
 
 def test_archive_is_idempotent(world, http):
@@ -275,6 +304,7 @@ def test_archive_never_deletes_rows_or_work_logs(world, http):
     http(ASSIGNER).post(f"/api/v1/core/tasks/{t.id}/archive")
     world["s"].expire_all()
     assert world["s"].query(Task).count() == before_tasks
+    assert world["s"].query(WorkItem).count() == 1
     assert world["s"].query(WorkLog).count() == before_logs
 
 
@@ -283,30 +313,28 @@ def test_archive_never_deletes_rows_or_work_logs(world, http):
 
 def test_restore_reopens_only_selected_assignment(world, http):
     batch = uuid.uuid4()
-    a = _task(world, status="completed", batch=batch, archived=True)
-    b = _task(world, status="completed", batch=batch, archived=True)
+    a = _task(world, status="completed", batch=batch, archived=True, assignee=WORKER)
+    b = _task(world, status="completed", batch=batch, archived=True, assignee=MATE)
     res = http(ASSIGNER).post(
         f"/api/v1/core/tasks/{a.id}/restore",
         json={"assignment_task_id": str(a.id), "target_status": "in_progress"},
     )
     assert res.status_code == 200, res.text
-    world["s"].expire_all()
-    assert world["s"].query(Task).get(a.id).status == "in_progress"
-    # Secilmeyen sibling DEGISMEDI.
-    assert world["s"].query(Task).get(b.id).status == "completed"
+    assert _status(world, a) == "in_progress"
+    # Secilmeyen sibling (ayni kalemin diger katilimcisi) DEGISMEDI.
+    assert _status(world, b) == "completed"
 
 
 def test_restore_clears_archive_for_whole_group(world, http):
     batch = uuid.uuid4()
-    a = _task(world, status="completed", batch=batch, archived=True)
-    b = _task(world, status="completed", batch=batch, archived=True)
+    a = _task(world, status="completed", batch=batch, archived=True, assignee=WORKER)
+    b = _task(world, status="completed", batch=batch, archived=True, assignee=MATE)
     http(ASSIGNER).post(
         f"/api/v1/core/tasks/{a.id}/restore",
         json={"assignment_task_id": str(a.id), "target_status": "pending"},
     )
-    world["s"].expire_all()
     for row in (a, b):
-        fresh = world["s"].query(Task).get(row.id)
+        fresh = _item(world, row)
         assert fresh.archived_at is None
         assert fresh.archive_reason is None
         assert fresh.closed_at is None
@@ -355,7 +383,7 @@ def test_restored_item_returns_to_active_list(world, http):
         json={"assignment_task_id": str(t.id), "target_status": "in_progress"},
     )
     res = http(ADMIN).get("/api/v1/core/tasks")
-    assert str(t.id) in {r["id"] for r in res.json()}
+    assert str(_item(world, t).id) in {r["id"] for r in res.json()}
 
 
 # ── Politika API ───────────────────────────────────────────────────────

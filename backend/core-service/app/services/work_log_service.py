@@ -14,11 +14,11 @@ from ..models.work_log import WorkLog
 from ..models.customer import Customer
 from ..models.project import Project
 from ..models.work_type import WorkType
-from ..models.task import Task
 from ..models.meeting import Meeting
+from ..models.work_item import WorkItem
 from ..schemas.work_log import WorkLogCreate, WorkLogUpdate
 from shared.exceptions import NotFoundError, ForbiddenError
-from . import task_lifecycle, task_service
+from . import work_item_service as wi
 
 
 class WorkLogService:
@@ -66,19 +66,18 @@ class WorkLogService:
             issue_id=data.issue_id
         )
         
-        # Optional task link — Tasks → Log Time flow passes task_id so
-        # we can pin the work log to its source task. Verify the task
-        # actually exists; if not, drop the link silently rather than
-        # 404'ing the work log creation.
-        linked_task_id = data.task_id
-        if linked_task_id is not None:
-            exists = (
-                self.db.query(Task.id)
-                .filter(Task.id == linked_task_id)
-                .first()
-            )
-            if not exists:
-                linked_task_id = None
+        # Optional task link — Tasks → Log Time flow passes task_id.
+        # PM rework P1.2: bu deger is kalemi id'si, katilimci id'si YA DA
+        # eski tasks.id olabilir; hepsi is kalemine cozulur ve bag
+        # `work_item_id`ye yazilir. Cozulemeyen bag sessizce dusurulur
+        # (work log olusturma 404 vermez). `task_id` yalnizca gercek bir
+        # eski tasks satirina karsilik geliyorsa korunur (raporlar).
+        linked_item = None
+        linked_task_id = None
+        if data.task_id is not None:
+            linked_item, _p = wi.resolve_ref(self.db, data.task_id)
+            if linked_item is not None and data.task_id in (linked_item.legacy_task_ids or []):
+                linked_task_id = data.task_id
 
         # Optional meeting link — Meetings → Log Time flow passes
         # meeting_id. Same defensive pattern as task_id: drop the
@@ -115,31 +114,27 @@ class WorkLogService:
             billable_duration_hours=data.billable_duration_hours if data.billable_duration_hours is not None else data.duration_hours,
             description=data.description,
             task_id=linked_task_id,
+            work_item_id=linked_item.id if linked_item is not None else None,
             meeting_id=linked_meeting_id,
         )
 
         self.db.add(db_obj)
         self.db.flush()  # need db_obj.id for the activity event
 
-        if linked_task_id is not None:
-            task_service.record_log_time_event(
+        if linked_item is not None:
+            wi.record_log_time_event(
                 self.db,
-                task_id=linked_task_id,
+                work_item_id=linked_item.id,
                 actor_user_id=user_id,
                 work_log_id=db_obj.id,
                 duration_hours=float(db_obj.duration_hours),
                 date_worked=db_obj.date_worked,
             )
-            # Log Time BASARIYLA olustu → ilgili logical work item'in
-            # kapanisi yeniden hesaplanir. "completed ama saati
-            # girilmemis" is, bu an gelene kadar KAPANMIS sayilmaz ve
-            # otomatik arsiv sirasina girmez. Work log kaydinin
-            # KENDISINE bu akista asla dokunulmaz.
-            linked = (
-                self.db.query(Task).filter(Task.id == linked_task_id).first()
-            )
-            if linked is not None:
-                task_lifecycle.recompute_closure(self.db, linked)
+            # Log Time BASARIYLA olustu → is kaleminin kapanisi yeniden
+            # hesaplanir. "completed ama saati girilmemis" is, bu an
+            # gelene kadar KAPANMIS sayilmaz ve otomatik arsiv sirasina
+            # girmez. Work log kaydinin KENDISINE bu akista dokunulmaz.
+            wi.recompute_closure(self.db, linked_item)
 
         self.db.flush()
         self.db.refresh(db_obj)

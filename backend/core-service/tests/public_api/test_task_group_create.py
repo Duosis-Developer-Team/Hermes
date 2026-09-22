@@ -49,7 +49,7 @@ def world(pg_session, authz_grants):
 
     s.execute(
         sa_text(
-            "TRUNCATE task_comments, task_activity_events, tasks, "
+            "TRUNCATE work_items, work_item_participants, work_item_code_aliases, work_item_comments, work_item_events, task_comments, task_activity_events, tasks, "
             "task_assignment_relations, task_assignment_group_relations, "
             "task_user_permissions, task_group_member_overrides, "
             "task_group_permissions, user_group_members, user_groups, "
@@ -239,13 +239,13 @@ def test_all_rows_share_one_assignment_batch_id(
     assert batch
 
     codes = [t["task_code"] for t in r.json()["created_tasks"]]
-    rows = (
-        pg_session.query(Task)
-        .filter(Task.assignment_batch_id == uuid.UUID(batch))
-        .all()
-    )
-    assert len(rows) == len(codes) == 2
-    assert len({str(row.assignment_batch_id) for row in rows}) == 1
+    # P1.2: batch = TEK is kalemi; uye basina katilimci, kod ORTAK.
+    from app.models.work_item import WorkItem
+    item = pg_session.get(WorkItem, uuid.UUID(batch))
+    assert item is not None
+    parts = [p for p in item.participants if p.role == "assignee"]
+    assert len(parts) == len(codes) == 2
+    assert set(codes) == {item.item_key}
 
 
 def test_group_task_honours_dates_priority_and_type(
@@ -291,7 +291,8 @@ def test_inactive_group_rejected(world, public_http, pg_session):
     )
     assert r.status_code == 400
     assert r.json()["error"]["code"] in ("invalid_request", "validation_error")
-    assert pg_session.query(Task).count() == 0
+    from app.models.work_item import WorkItem
+    assert pg_session.query(WorkItem).count() == 0
 
 
 def test_group_without_active_members_rejected(
@@ -365,8 +366,12 @@ def test_idempotent_replay_does_not_double_fan_out(
     assert r2.headers.get("Idempotency-Replayed") == "true"
 
     assert r1.json() == r2.json()
-    # Tek fan-out: 2 satir, tek batch.
-    assert pg_session.query(Task).count() == 2
+    # Tek fan-out: 1 is kalemi, 2 katilimci.
+    from app.models.work_item import WorkItem, WorkItemParticipant
+    assert pg_session.query(WorkItem).count() == 1
+    assert pg_session.query(WorkItemParticipant).filter(
+        WorkItemParticipant.role == "assignee"
+    ).count() == 2
 
 
 def test_same_key_different_payload_conflicts(

@@ -169,7 +169,11 @@ def test_same_title_twice_is_not_grouped(http, world):
         json=_payload(world, assignee_user_ids=[str(U2)], assignee_group_ids=[]),
     ).json()
     assert first[0]["title"] == second[0]["title"]
-    assert first[0]["assignment_batch_id"] != second[0]["assignment_batch_id"]
+    # P1.2: tekil atamada grup kimligi yazilmaz; iki AYRI is kalemidir.
+    assert first[0]["assignment_batch_id"] is None
+    assert second[0]["assignment_batch_id"] is None
+    assert first[0]["id"] != second[0]["id"]
+    assert first[0]["task_code"] != second[0]["task_code"]
 
 
 # ── Kismi kayit ve tutarlilik ──────────────────────────────────────────
@@ -226,14 +230,17 @@ def test_status_change_does_not_touch_siblings(http, world, pg_session):
     )
     assert res.status_code == 200, res.text
 
+    # P1.2: uc satir = TEK is kalemi + uc katilimci; kisi bazli durum
+    # katilimcidan turetilir (assignment_batch_id = is kalemi id'si).
+    from app.models.work_item import WorkItem
+    from app.services.work_item_compat import participant_status
     pg_session.expire_all()
-    batch = str(target["assignment_batch_id"])
-    siblings = (
-        pg_session.query(Task)
-        .filter(Task.assignment_batch_id == uuid.UUID(batch))
-        .all()
-    )
-    by_user = {str(t.assignee_user_id): t.status for t in siblings}
+    item = pg_session.get(WorkItem, uuid.UUID(str(target["assignment_batch_id"])))
+    assert item is not None
+    by_user = {
+        str(p.user_id): participant_status(item, p)
+        for p in item.participants if p.role == "assignee"
+    }
     assert by_user[str(U1)] == "in_progress"
     assert by_user[str(U2)] == "pending"
     assert by_user[str(U3)] == "pending"

@@ -44,6 +44,7 @@ import useTasksQuery from '../features/tasks/hooks/useTasksQuery'
 import useTaskMutations from '../features/tasks/hooks/useTaskMutations'
 import useTaskStatusMutation from '../features/tasks/hooks/useTaskStatusMutation'
 import useTaskWorkLog from '../features/tasks/hooks/useTaskWorkLog'
+import useWorkflowStates from '../features/tasks/hooks/useWorkflowStates'
 import useTaskDialogs from '../features/tasks/hooks/useTaskDialogs'
 import TasksHeader from '../features/tasks/components/TasksHeader'
 import TaskQuickFilters from '../features/tasks/components/TaskQuickFilters'
@@ -137,6 +138,8 @@ function TasksPage() {
     })
     const status = useTaskStatusMutation()
     const workLog = useTaskWorkLog()
+    // PM rework P1: pano sutunlari is akisi durumlarindan (geri dusus: eski 3).
+    const { columns: boardColumns } = useWorkflowStates()
 
     // ── Tamamla → Log Time akisi ──────────────────────────────────────────
     // Cagiranlar ONCE onaylatir (kart checkbox'i onay modalinden gecer;
@@ -346,6 +349,7 @@ function TasksPage() {
                     onToggleCompletion={dialogs.requestToggle}
                     onCreate={dialogs.openCreate}
                     onCardDrop={handleCardDrop}
+                    columns={boardColumns}
                     onMultiAssignmentDrop={multi.start}
                     onOpenPanel={dialogs.openPanel}
                     onClosePanel={dialogs.closePanel}

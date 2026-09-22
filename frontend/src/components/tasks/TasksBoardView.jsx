@@ -41,17 +41,17 @@ import {
 
 import TaskCard from './TaskCard'
 import { canDragTaskStatus } from '../../features/tasks/model/permissions'
-import { groupIntoLogicalItems, userLabel } from '../../features/tasks/model/grouping'
+import {
+    expandAssignmentRows, groupIntoLogicalItems, userLabel,
+} from '../../features/tasks/model/grouping'
+import { FALLBACK_COLUMNS } from '../../features/tasks/hooks/useWorkflowStates'
 import { typeMeta } from '../../utils/workItemType'
 import './TasksBoardView.css'
 import { useT } from '../../i18n'
 
-// Sutun listesi ANAHTAR tasir; ceviri render'da yapilir.
-const COLUMNS = [
-    { status: 'pending', labelKey: 'plan.pending' },
-    { status: 'in_progress', labelKey: 'board.inProgress' },
-    { status: 'completed', labelKey: 'board.completed' },
-]
+// Sutun listesi ust katmandan gelir (`columns` prop'u — TasksPage
+// useWorkflowStates ile durumlardan turetir); verilmezse eski uc sutun.
+// Bilesen SAF kalir: sorgu/provider gerektirmez. Ceviri render'da yapilir.
 
 const VALID_STATUSES = new Set([
     'pending',
@@ -135,6 +135,8 @@ function TasksBoardView({
     // Card body click → open the docked detail panel. The Review (eye)
     // hover button still opens the full modal via onOpenReview.
     onOpenPanel,
+    /** Pano sutunlari (is akisi durumlarindan; bkz. useWorkflowStates). */
+    columns = FALLBACK_COLUMNS,
 }) {
     const t = useT()
     const sensors = useSensors(
@@ -146,11 +148,16 @@ function TasksBoardView({
 
     const [activeId, setActiveId] = useState(null)
 
+    // PM rework P1.2: is kalemi satiri participants[] tasir; satir bazli
+    // yollar (swimlane, surukleme hedefi) KISI BASINA acilmis satirlari
+    // okur — id'ler katilimci id'sidir, sunucu onlari cozer.
+    const rows = useMemo(() => expandAssignmentRows(tasks), [tasks])
+
     const tasksById = useMemo(() => {
         const m = {}
-        for (const t of tasks) m[t.id] = t
+        for (const t of rows) m[t.id] = t
         return m
-    }, [tasks])
+    }, [rows])
 
     // A card is drag-movable only when status drag is allowed for this
     // view AND the viewer may change this task's status. KURAL BURADA
@@ -196,7 +203,7 @@ function TasksBoardView({
     const swimlanes = useMemo(() => {
         if (!groupByAssignee) return []
         const byAssignee = new Map()
-        for (const t of tasks) {
+        for (const t of rows) {
             const key = t.assignee_user_id
             if (!byAssignee.has(key)) {
                 byAssignee.set(key, {
@@ -215,7 +222,7 @@ function TasksBoardView({
                 buckets: b,
             }))
             .sort((a, b) => a.label.localeCompare(b.label))
-    }, [groupByAssignee, tasks, userMap])
+    }, [groupByAssignee, rows, userMap])
 
     const activeTask = activeId
         ? (itemsByKey[activeId]?.representative ?? tasksById[activeId] ?? null)
@@ -394,7 +401,7 @@ function TasksBoardView({
                                     role="row"
                                 >
                                     <div className="tasks-board-swimlane-rowhead" />
-                                    {COLUMNS.map(({ status, labelKey }) => (
+                                    {columns.map(({ status, labelKey }) => (
                                         <div
                                             key={status}
                                             className="tasks-board-swimlane-colhead"
@@ -423,7 +430,7 @@ function TasksBoardView({
                                             {lane.label}
                                         </span>
                                     </div>
-                                    {COLUMNS.map(({ status }) => {
+                                    {columns.map(({ status }) => {
                                         const list = lane.buckets[status] || []
                                         return (
                                             <div
@@ -452,14 +459,14 @@ function TasksBoardView({
                     </div>
                 ) : (
                     <div className="tasks-board">
-                        {COLUMNS.map(({ status, label }) => {
+                        {columns.map(({ status, labelKey }) => {
                             const list = buckets[status] || []
                             return (
                                 <div
                                     key={status}
                                     className={`tasks-board-column tasks-board-column-${status}`}
                                 >
-                                    {renderColumnHeader(label, list.length)}
+                                    {renderColumnHeader(t(labelKey), list.length)}
                                     <DroppableColumn id={status}>
                                         {list.length === 0 ? (
                                             <div className="tasks-board-column-empty">

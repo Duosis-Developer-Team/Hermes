@@ -35,10 +35,26 @@ export function useTaskStatusMutation() {
     const optimisticPatchTask = async (taskId, patch) => {
         await queryClient.cancelQueries({ queryKey: queryKeys.tasks.all })
         const prev = queryClient.getQueriesData({ queryKey: queryKeys.tasks.all })
+        // PM rework P1.2: hedef bir KATILIMCI id'si olabilir (is kalemi
+        // satiri participants[] tasir). O zaman satirin kendisi degil,
+        // icindeki katilimci yamalanir; sunucu da ayni katilimciyi cozer.
+        const patchRow = (t) => {
+            if (t.id === taskId) return { ...t, ...patch }
+            if (
+                Array.isArray(t.participants)
+                && t.participants.some((p) => p?.id === taskId)
+            ) {
+                return {
+                    ...t,
+                    participants: t.participants.map((p) =>
+                        p?.id === taskId ? { ...p, ...patch } : p
+                    ),
+                }
+            }
+            return t
+        }
         queryClient.setQueriesData({ queryKey: queryKeys.tasks.all }, (old) =>
-            Array.isArray(old)
-                ? old.map((t) => (t.id === taskId ? { ...t, ...patch } : t))
-                : old
+            Array.isArray(old) ? old.map(patchRow) : old
         )
         return prev
     }

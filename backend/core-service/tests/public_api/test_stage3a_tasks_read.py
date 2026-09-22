@@ -24,6 +24,8 @@ from app.services import api_client_service as svc
 
 U1, U2, U3 = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
 
+from .._work_items import item_for_task, sync_work_items
+
 
 @pytest.fixture()
 def world(pg_session):
@@ -35,7 +37,7 @@ def world(pg_session):
 
     s.execute(
         sa_text(
-            "TRUNCATE task_comments, task_activity_events, tasks, "
+            "TRUNCATE work_items, work_item_participants, work_item_code_aliases, work_item_comments, work_item_events, task_comments, task_activity_events, tasks, "
             "user_group_members, user_groups, projects, customers CASCADE"
         )
     )
@@ -131,6 +133,8 @@ def world(pg_session):
         ]
     )
     s.commit()
+    # PM rework P1.2: uclar work_items'tan okur → tohumu is kalemine tasi.
+    sync_work_items(s)
     return {"c1": c1, "c2": c2, "p1": p1, "p2": p2, "g1": g1}
 
 

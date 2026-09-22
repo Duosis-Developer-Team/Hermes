@@ -160,6 +160,8 @@ const DEFS = {
         delete: ok(undefined),
     },
     taskService: {
+        // Bos liste → pano eski uc sutuna duser (fallback sozlesmesi).
+        listStates: ok([]),
         list: from('tasks'),
         getById: (id) =>
             Promise.resolve(mockState.tasks.find((t) => t.id === id) || null),

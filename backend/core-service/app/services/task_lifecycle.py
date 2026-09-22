@@ -2,6 +2,15 @@
 =============================================================================
 HERMES - Work item lifecycle: logical kimlik, kapanis ve arsiv (TEK KAYNAK)
 =============================================================================
+PM rework P1.2 NOTU: uclar `work_items` uzerinde calisir; is kaleminin
+runtime kapanisi/arsivi `work_item_service` (recompute_closure,
+archive_item, restore_item) ve otomatik arsiv `task_archive_service`
+tarafindan yurutulur. Bu modulde KALICI olanlar: retention politikasi
+(get_policy/set_policy/retention_cutoff), eski `tasks` semasi icin DDL
+ve backfill SQL (baseline_ddl) ve `task_service`nin eski satir yollari.
+Asagidaki Task tabanli yardimcilar F05'te eski tablolarla birlikte
+kaldirilir; sozlesme metni tarihsel referans olarak durur.
+
 Board, List, Explorer, scheduler ve API kendi logical-identity veya
 kapanis algoritmasini YAZMAZ; hepsi bu modulu cagirir.
 

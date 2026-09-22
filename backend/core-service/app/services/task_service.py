@@ -1068,11 +1068,19 @@ def delete_sub_project(db: Session, sub_project_id: UUID) -> None:
             detail="Sub project not found.",
         )
 
+    from ..models.work_item import WorkItem
     active_in_use = (
         db.query(Task.id)
         .filter(
             Task.sub_project_id == sub_project_id,
             Task.archived_at.is_(None),
+        )
+        .first()
+    ) or (
+        db.query(WorkItem.id)
+        .filter(
+            WorkItem.sub_project_id == sub_project_id,
+            WorkItem.archived_at.is_(None),
         )
         .first()
     )
@@ -1088,6 +1096,10 @@ def delete_sub_project(db: Session, sub_project_id: UUID) -> None:
         Task.archived_at.isnot(None),
     ).update({Task.sub_project_id: None}, synchronize_session=False)
 
+    db.query(WorkItem).filter(
+        WorkItem.sub_project_id == sub_project_id,
+        WorkItem.archived_at.isnot(None),
+    ).update({WorkItem.sub_project_id: None}, synchronize_session=False)
     db.delete(sub)
     db.flush()
 

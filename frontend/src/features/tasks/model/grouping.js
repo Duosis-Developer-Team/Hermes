@@ -70,16 +70,91 @@ const KNOWN_STATUSES = new Set([
 export const normalizeStatus = (status) =>
     KNOWN_STATUSES.has(status) ? status : 'pending'
 
+/*
+ * -----------------------------------------------------------------------
+ * PM REWORK P1.2 — IS KALEMI + KATILIMCILAR
+ * -----------------------------------------------------------------------
+ * `GET /core/tasks` artik is kalemi basina TEK satir doner ve satir
+ * `participants[]` tasir (rol: assignee/reviewer/watcher; her birinde
+ * kendi accepted_at/completed_at ve sunucunun turettigi `status`).
+ * Boyle bir satirda mantiksal is = satirin kendisi; assignment'lar =
+ * assignee rolundeki katilimcilar. Batch turetmesi YAPILMAZ.
+ *
+ * `participants` tasimayan satir (eski sekil, eski testler/mock'lar)
+ * yukaridaki batch kuraliyla AYNEN calisir — iki sekil yan yana yasar.
+ *
+ * Mutation'lar ve izin secicileri hala "satir" bekler; katilimci bu
+ * yuzden eski satir sekline ACILIR (`assignmentRowOf`): id = katilimci
+ * id'si (sunucu status/complete/restore uclarinda katilimci id'sini
+ * cozer), assignee_user_id = katilimcinin kullanicisi, status = kisi
+ * bazli durum. Ust katmanlar degismez.
+ */
+
+/** Satirin assignee rolundeki katilimcilari; eski sekilde null. */
+export const assigneeParticipantsOf = (task) =>
+    Array.isArray(task?.participants)
+        ? task.participants.filter(
+            (p) => p && (p.role == null || p.role === 'assignee')
+        )
+        : null
+
+/** Katilimcinin kisi bazli durumu. Sunucu `status` verir; vermezse
+ *  yerel kural (iptal edilmis is → herkes iptal; completed_at →
+ *  completed; accepted_at → in_progress; degilse pending). */
+export const participantStatus = (task, participant) => {
+    if (participant?.status) return normalizeStatus(participant.status)
+    const itemStatus = normalizeStatus(task?.status)
+    if (itemStatus === 'cancelled') return itemStatus
+    if (participant?.completed_at) return 'completed'
+    if (participant?.accepted_at) return 'in_progress'
+    return 'pending'
+}
+
+/** Katilimciyi eski satir sekline acar (bkz. yukaridaki not). */
+export const assignmentRowOf = (task, participant) => ({
+    ...task,
+    id: participant.id,
+    work_item_id: task.id,
+    participant_id: participant.id,
+    assignee_user_id: participant.user_id ?? null,
+    status: participantStatus(task, participant),
+    completed_at: participant.completed_at ?? null,
+    completed_by_user_id: participant.completed_at
+        ? (participant.user_id ?? null)
+        : null,
+})
+
+/**
+ * Satirlari KISI BASINA satirlara acar: is kalemi sekli → katilimci
+ * basina bir satir; eski sekil → satirin kendisi. Swimlane (kisi
+ * basina hucre) ve satir bazli araclar bunu okur.
+ */
+export function expandAssignmentRows(tasks) {
+    const out = []
+    for (const task of tasks || []) {
+        if (!task) continue
+        const parts = assigneeParticipantsOf(task)
+        if (parts && parts.length > 0) {
+            for (const p of parts) out.push(assignmentRowOf(task, p))
+        } else {
+            out.push(task)
+        }
+    }
+    return out
+}
+
 /**
  * Bir task satirinin ait oldugu logical work item'in anahtari.
- * Batch kimligi varsa O; yoksa satirin kendi id'si (singleton).
- * Onek, bir batch UUID'siyle bir task UUID'sinin cakismasini
- * yapisal olarak imkansiz kilar.
+ * Is kalemi sekli → kalemin kendi id'si; batch kimligi varsa O; yoksa
+ * satirin kendi id'si (singleton). Onek, bir batch UUID'siyle bir task
+ * UUID'sinin cakismasini yapisal olarak imkansiz kilar.
  */
-export const logicalKeyOf = (task) =>
-    task?.assignment_batch_id
+export const logicalKeyOf = (task) => {
+    if (Array.isArray(task?.participants)) return `item:${task.id}`
+    return task?.assignment_batch_id
         ? `batch:${task.assignment_batch_id}`
         : `task:${task?.id}`
+}
 
 /**
  * AGGREGATE STATUS (spesifikasyon §5)
@@ -130,24 +205,33 @@ const byStableOrder = (a, b) => {
 export function groupIntoLogicalItems(tasks, resolveName) {
     const byKey = new Map()
 
+    const toAssignment = (row) => ({
+        id: row.id,
+        assigneeUserId: row.assignee_user_id ?? null,
+        assigneeName: resolveName
+            ? (resolveName(row.assignee_user_id) || null)
+            : null,
+        status: normalizeStatus(row.status),
+        completedAt: row.completed_at ?? null,
+        completedByUserId: row.completed_by_user_id ?? null,
+        updatedAt: row.updated_at ?? null,
+        // Ham satir: mevcut permission seciciler ve mutation'lar
+        // task nesnesinin KENDISINI bekler; sarmalayip kopyalamak
+        // ikinci bir gercek kaynak yaratirdi.
+        task: row,
+    })
+
     for (const task of tasks || []) {
         if (!task) continue
         const key = logicalKeyOf(task)
-        const assignment = {
-            id: task.id,
-            assigneeUserId: task.assignee_user_id ?? null,
-            assigneeName: resolveName
-                ? (resolveName(task.assignee_user_id) || null)
-                : null,
-            status: normalizeStatus(task.status),
-            completedAt: task.completed_at ?? null,
-            completedByUserId: task.completed_by_user_id ?? null,
-            updatedAt: task.updated_at ?? null,
-            // Ham satir: mevcut permission seciciler ve mutation'lar
-            // task nesnesinin KENDISINI bekler; sarmalayip kopyalamak
-            // ikinci bir gercek kaynak yaratirdi.
-            task,
-        }
+        const parts = assigneeParticipantsOf(task)
+        // Is kalemi sekli: katilimci basina bir assignment; katilimcisi
+        // olmayan kalem (sahipsiz/triage) satirin kendisiyle tek
+        // assignment olur — kart ekrandan KAYBOLMAZ.
+        const rows = parts && parts.length > 0
+            ? parts.map((p) => assignmentRowOf(task, p))
+            : [task]
+        const assignment = toAssignment(rows[0])
 
         const existing = byKey.get(key)
         if (existing) {
@@ -159,8 +243,8 @@ export function groupIntoLogicalItems(tasks, resolveName) {
             key,
             // Ortak alanlar batch icindeki TUM satirlarda kopyalidir;
             // ilk satir temsilcidir (backend tek transaction'da yazar).
-            batchId: task.assignment_batch_id ?? null,
-            isGrouped: Boolean(task.assignment_batch_id),
+            batchId: task.assignment_batch_id ?? (rows.length > 1 ? task.id : null),
+            isGrouped: Boolean(task.assignment_batch_id) || rows.length > 1,
             representative: task,
             kind: task.task_type || 'task',
             title: task.title,
@@ -176,7 +260,7 @@ export function groupIntoLogicalItems(tasks, resolveName) {
             scheduledDate: task.scheduled_date ?? null,
             dueDate: task.due_date ?? null,
             assignerUserId: task.assigner_user_id ?? null,
-            assignments: [assignment],
+            assignments: [assignment, ...rows.slice(1).map(toAssignment)],
         })
     }
 

@@ -8,6 +8,11 @@ gizler ya da hicbir seyi temizlemez; ikisi de sessiz hatalardir.
 Kilitlenenler: retention siniri, aktif is dokunulmazligi, grup
 butunlugu, idempotency, advisory lock, dry-run, Never politikasi ve
 work_logs degismezligi.
+
+PM rework P1.2: job `work_items` uzerinde kosar. Dunya hala eski `Task`
+satirlariyla tohumlanir (uretim tasima yolu = test yolu) ve her kosudan
+once `sync_work_items` ile is kalemine tasinir; iddialar is kalemi
+uzerindedir. Eski batch = tek is kalemi + katilimcilar.
 =============================================================================
 """
 import uuid
@@ -21,8 +26,11 @@ from app.models.project import Project
 from app.models.task import Task, TaskLifecyclePolicy
 from app.models.work_log import WorkLog
 from app.models.work_type import WorkType
+from app.models.work_item import WorkItem
 from app.services import task_lifecycle as lc
-from app.services.task_archive_service import run_auto_archive
+from app.services.task_archive_service import run_auto_archive as _run_auto_archive
+
+from ._work_items import item_for_task, sync_work_items
 
 ASSIGNER = uuid.UUID("00000000-0000-4000-8000-00000000d001")
 
@@ -32,7 +40,9 @@ def world(pg_session):
     s = pg_session
     s.execute(sa_text(
         "TRUNCATE task_comments, task_activity_events, work_logs, tasks, "
-        "task_lifecycle_policy, projects, customers CASCADE"
+        "work_item_participants, work_item_code_aliases, work_item_comments, "
+        "work_item_events, work_items, task_lifecycle_policy, projects, "
+        "customers CASCADE"
     ))
     s.commit()
     c = Customer(id=uuid.uuid4(), name="Vakko", is_active=True)
@@ -72,6 +82,17 @@ def _task(world, status, *, closed_days_ago=None, batch=None, **over):
     return row
 
 
+def run_auto_archive(session, **kw):
+    """Tohum → is kalemi senkronu → job (uretimle ayni sira)."""
+    sync_work_items(session)
+    return _run_auto_archive(session, **kw)
+
+
+def _item(world, task):
+    world["s"].expire_all()
+    return item_for_task(world["s"], task.id)
+
+
 def _set_policy(world, days):
     s = world["s"]
     row = s.query(TaskLifecyclePolicy).first()
@@ -95,7 +116,7 @@ def test_closed_six_days_23h_is_not_archived(world):
     world["s"].expire_all()
     assert summary["status"] == "success"
     assert summary["logical_items_archived"] == 0
-    assert world["s"].query(Task).get(t.id).archived_at is None
+    assert _item(world, t).archived_at is None
 
 
 def test_closed_seven_days_is_archived(world):
@@ -104,7 +125,7 @@ def test_closed_seven_days_is_archived(world):
     summary = run_auto_archive(world["s"])
     world["s"].expire_all()
     assert summary["logical_items_archived"] == 1
-    row = world["s"].query(Task).get(t.id)
+    row = _item(world, t)
     assert row.archived_at is not None
     assert row.archive_reason == "auto_retention"
     # Otomatik arsiv AKTOR uretmez.
@@ -115,8 +136,7 @@ def test_fifty_day_old_terminal_item_is_archived(world):
     _set_policy(world, 7)
     t = _task(world, "completed", closed_days_ago=50)
     run_auto_archive(world["s"])
-    world["s"].expire_all()
-    assert world["s"].query(Task).get(t.id).archived_at is not None
+    assert _item(world, t).archived_at is not None
 
 
 @pytest.mark.parametrize("status", ["pending", "in_progress"])
@@ -128,7 +148,7 @@ def test_old_open_item_is_never_archived(world, status):
     summary = run_auto_archive(world["s"])
     world["s"].expire_all()
     assert summary["logical_items_archived"] == 0
-    assert world["s"].query(Task).get(t.id).archived_at is None
+    assert _item(world, t).archived_at is None
 
 
 def test_mixed_group_is_not_archived(world):
@@ -137,9 +157,12 @@ def test_mixed_group_is_not_archived(world):
     a = _task(world, "completed", closed_days_ago=30, batch=batch)
     b = _task(world, "in_progress", batch=batch)
     run_auto_archive(world["s"])
-    world["s"].expire_all()
-    assert world["s"].query(Task).get(a.id).archived_at is None
-    assert world["s"].query(Task).get(b.id).archived_at is None
+    # Iki satir = TEK is kalemi; bir katilimci acikken kalem terminal
+    # degildir, closed_at bos kalir ve aday olmaz.
+    item = _item(world, a)
+    assert item.id == _item(world, b).id
+    assert item.closed_at is None
+    assert item.archived_at is None
 
 
 # ── Grup butunlugu ─────────────────────────────────────────────────────
@@ -155,10 +178,12 @@ def test_whole_group_archived_together(world):
     ]
     summary = run_auto_archive(world["s"])
     world["s"].expire_all()
-    # UC satir ama TEK logical item.
+    # UC satir ama TEK is kalemi (uc katilimci).
     assert summary["logical_items_archived"] == 1
-    assert summary["assignment_rows_updated"] == 3
-    stamps = {world["s"].query(Task).get(r.id).archived_at for r in rows}
+    assert summary["assignment_rows_updated"] == 1
+    items = {_item(world, r).id for r in rows}
+    assert len(items) == 1
+    stamps = {_item(world, r).archived_at for r in rows}
     assert len(stamps) == 1 and None not in stamps
 
 
@@ -167,14 +192,14 @@ def test_batch_limit_never_splits_a_group(world):
     batch = uuid.uuid4()
     for _ in range(5):
         _task(world, "completed", closed_days_ago=10, batch=batch)
-    # Batch 1 olsa bile grup BOLUNMEZ: batch logical anahtar bazindadir.
+    # Batch 1 olsa bile grup BOLUNMEZ: grup tek is kalemidir.
     summary = run_auto_archive(world["s"], batch_size=1)
     world["s"].expire_all()
     assert summary["logical_items_archived"] == 1
-    assert summary["assignment_rows_updated"] == 5
+    assert summary["assignment_rows_updated"] == 1
     remaining = (
-        world["s"].query(Task)
-        .filter(Task.assignment_batch_id == batch, Task.archived_at.is_(None))
+        world["s"].query(WorkItem)
+        .filter(WorkItem.archived_at.is_(None))
         .count()
     )
     assert remaining == 0
@@ -191,7 +216,7 @@ def test_never_policy_skips_safely(world):
     assert summary["ok"] is True
     assert summary["status"] == "disabled"
     assert summary["policy_days"] is None
-    assert world["s"].query(Task).get(t.id).archived_at is None
+    assert _item(world, t).archived_at is None
 
 
 def test_policy_default_is_seven_days(world):
@@ -232,7 +257,7 @@ def test_dry_run_changes_nothing(world):
     assert summary["dry_run"] is True
     assert summary["logical_items_archived"] == 1  # ADAY sayisi
     assert summary["assignment_rows_updated"] == 0
-    assert world["s"].query(Task).get(t.id).archived_at is None
+    assert _item(world, t).archived_at is None
 
 
 def test_second_run_is_idempotent(world):
@@ -278,6 +303,7 @@ def test_no_row_is_ever_deleted(world):
     run_auto_archive(world["s"])
     world["s"].expire_all()
     assert world["s"].query(Task).count() == before
+    assert world["s"].query(WorkItem).count() == 2
 
 
 def test_work_logs_are_untouched(world):
@@ -314,8 +340,8 @@ def test_audit_uses_archive_terminology(world):
     kinds = {
         r[0]
         for r in world["s"].execute(sa_text(
-            "SELECT event_type FROM task_activity_events WHERE task_id = :i"
-        ), {"i": t.id}).fetchall()
+            "SELECT event_type FROM work_item_events WHERE work_item_id = :i"
+        ), {"i": _item(world, t).id}).fetchall()
     }
     assert "task_archived_auto" in kinds
     # Yeni islemlerde eski 'task_deleted' terminolojisi URETILMEZ.

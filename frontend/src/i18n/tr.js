@@ -324,6 +324,9 @@ export default {
     logTime: {
         logTime: 'Süre kaydet',
         logAnother: 'Bir kayıt daha',
+        workItem: 'İş kalemi (isteğe bağlı)',
+        workItemPlaceholder: 'Açık bir iş kalemine bağla',
+        workItemHint: 'Yalnızca seçilen projenin açık iş kalemleri listelenir.',
         savedReady: 'Kaydedildi! Sıradaki kayıt için hazır.',
         stepOf: 'Adım {n} / {total}',
         backToPrevious: 'Önceki adıma dön',

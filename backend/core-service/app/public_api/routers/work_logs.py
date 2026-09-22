@@ -118,9 +118,9 @@ async def list_work_logs(
         fetch_limit=params.fetch_limit,
         offset=params.offset,
     )
-    code_map = res.task_codes_for(db, [r.task_id for r in rows])
+    code_map = res.task_codes_for(db, [r.work_item_id or r.task_id for r in rows])
     return paginated(
-        [serialize_work_log(r, code_map.get(r.task_id)) for r in rows],
+        [serialize_work_log(r, code_map.get(r.work_item_id or r.task_id)) for r in rows],
         params,
     )
 
@@ -144,8 +144,8 @@ async def get_work_log(
     log = res.get_work_log_scoped(db, scope, log_id)
     if log is None:
         raise PublicAPIError("resource_not_found", "Work log not found.")
-    code_map = res.task_codes_for(db, [log.task_id])
-    return serialize_work_log(log, code_map.get(log.task_id))
+    code_map = res.task_codes_for(db, [log.work_item_id or log.task_id])
+    return serialize_work_log(log, code_map.get(log.work_item_id or log.task_id))
 
 
 @router.post(
@@ -178,12 +178,12 @@ async def create_work_log(
     # Baglanti cozumlemesi IS MANTIGINDAN ONCE: kapsam disi/var olmayan
     # baglanti ayni 404 zarfini alir; internal servisin sessizce-dusurme
     # yoluna hic girilmez.
-    task_id = None
+    work_item_id = None
     if payload.task_code is not None:
         task = res.get_task_by_code_scoped(db, scope, payload.task_code)
         if task is None:
             raise PublicAPIError("resource_not_found", "Task not found.")
-        task_id = task.id
+        work_item_id = task.id
     if payload.meeting_id is not None:
         meeting = res.get_meeting_scoped(db, scope, payload.meeting_id)
         if meeting is None:
@@ -201,15 +201,17 @@ async def create_work_log(
             activity_type_id=payload.activity_type_id,
             platform_id=payload.platform_id,
             work_line_id=payload.work_line_id,
-            task_id=task_id,
+            # P1.2: `task_id` bir is kalemi referansidir; servis onu
+            # work_items'a cozer ve bagi `work_item_id`ye yazar.
+            task_id=work_item_id,
             meeting_id=payload.meeting_id,
         )
         try:
             log = WorkLogService(db).create(internal, UUID(actor.id))
         except NotFoundError as exc:
             raise _ref_not_found(exc) from exc
-        code_map = res.task_codes_for(db, [log.task_id])
-        return 201, _dump(serialize_work_log(log, code_map.get(log.task_id)))
+        code_map = res.task_codes_for(db, [log.work_item_id or log.task_id])
+        return 201, _dump(serialize_work_log(log, code_map.get(log.work_item_id or log.task_id)))
 
     return _run_idempotent(
         db, ctx, idempotency_key, "/v1/work-logs", _dump(payload), run

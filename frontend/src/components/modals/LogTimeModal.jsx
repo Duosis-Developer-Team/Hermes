@@ -26,7 +26,9 @@ import {
     activityTypeService,
     platformService,
     workLineService,
+    taskService,
 } from '../../services/api'
+import { queryKeys } from '../../query/queryKeys'
 import './LogTimeModal.css'
 import { useT } from '../../i18n'
 
@@ -137,6 +139,34 @@ function LogTimeModal({
         queryFn: () => workLineService.getAll(),
         enabled: open,
     })
+
+    /*
+     * PM rework A10 — istege bagli IS KALEMI secici. Yalniz SERBEST
+     * giriste (Time Entry'den acilan modal) ve proje secildikten sonra
+     * gorunur: gorevden/toplantidan acilan akista bag zaten cagirandan
+     * gelir; duzenlemede bag degistirilmez. Liste = kullanicinin o
+     * projede GORDUGU is kalemleri; terminal (completed/cancelled)
+     * olanlar elenir. Secim `task_id` olarak gider; sunucu onu is
+     * kalemine cozer (work_logs.work_item_id) ve log_time olayi yazar.
+     */
+    const showWorkItemPicker = Boolean(
+        open && step === 2 && !editingLog && !prefillTask && selectedProjectId
+    )
+    const { data: projectItems = [] } = useQuery({
+        queryKey: queryKeys.tasks.list({
+            project_id: selectedProjectId, archive_state: 'active', purpose: 'log-time',
+        }),
+        queryFn: () => taskService.list({
+            project_id: selectedProjectId, archive_state: 'active',
+        }),
+        enabled: showWorkItemPicker,
+    })
+    const workItemOptions = (Array.isArray(projectItems) ? projectItems : [])
+        .filter((i) => i && i.status !== 'completed' && i.status !== 'cancelled')
+        .map((i) => ({
+            value: i.id,
+            label: i.task_code ? `${i.task_code} - ${i.title}` : i.title,
+        }))
 
     // Filter projects based on selected customer
     const filteredProjects = selectedCustomerId
@@ -296,6 +326,8 @@ function LogTimeModal({
             duration_hours: values.duration_hours,
             description: values.description,
         }
+        // A10: secici gorunuyorsa bag payload'a girer (bos → null).
+        if (showWorkItemPicker) data.task_id = values.task_id || null
 
         // 2) Gonderim — API hatasinin SAHIBI cagiranin mutation'idir
         //    (onError zaten sunucunun mesajini gosterir). Burada IKINCI
@@ -515,6 +547,25 @@ function LogTimeModal({
                                 placeholder={t('logTime.whatDidYouWorkOn')}
                             />
                         </Form.Item>
+
+                        {/* A10: istege bagli is kalemi bagi (yalniz serbest giris). */}
+                        {showWorkItemPicker && (
+                            <Form.Item
+                                name="task_id"
+                                label={t('logTime.workItem')}
+                                extra={t('logTime.workItemHint')}
+                            >
+                                <Select
+                                    allowClear
+                                    showSearch
+                                    placeholder={t('logTime.workItemPlaceholder')}
+                                    options={workItemOptions}
+                                    filterOption={(input, option) =>
+                                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                    }
+                                />
+                            </Form.Item>
+                        )}
 
                         {/* Work Type + Activity Type: tek satir (iki kolon).
                             Dikey yigin, modali kisa ekranlarda kaydiriyordu. */}

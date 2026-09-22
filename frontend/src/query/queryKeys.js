@@ -85,6 +85,9 @@ export const queryKeys = {
         get all() { return k('tasks') },
         list: (filters) => k('tasks', 'list', stableFilters(filters)),
         detail: (id) => k('tasks', 'detail', id),
+        /** Is akisi durumlari (workflow_states) — pano sutunlari ve durum
+         *  sozlugu tek kaynaktan (PM rework P1). */
+        states: () => k('tasks', 'states'),
     },
     /** Gorev aktivite akisi (Review modal + yorum thread'i ayni aileyi
      *  tuketir; kok anahtar DEGISTIRILEMEZ). */

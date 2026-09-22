@@ -39,6 +39,8 @@ NOW = datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
 WL_SCOPES = ["work-logs:read", "work-logs:write"]
 CREATE = "/api/public/v1/work-logs"
 
+from .._work_items import item_for_task, sync_work_items
+
 
 @pytest.fixture()
 def world(pg_session):
@@ -47,7 +49,7 @@ def world(pg_session):
 
     s.execute(
         sa_text(
-            "TRUNCATE task_activity_events, work_logs, meeting_attendees, "
+            "TRUNCATE work_items, work_item_participants, work_item_code_aliases, work_item_comments, work_item_events, task_activity_events, work_logs, meeting_attendees, "
             "meetings, tasks, work_types, projects, customers CASCADE"
         )
     )
@@ -102,6 +104,7 @@ def world(pg_session):
         ]
     )
     s.commit()
+    sync_work_items(s)
     return {
         "c1": c1, "c_off": c_off, "p1": p1, "wt": wt, "wt_off": wt_off,
         "t1": t1, "t_hidden": t_hidden, "m1": m1, "m_hidden": m_hidden,
@@ -319,16 +322,18 @@ def test_task_link_case_insensitive_and_recorded(
     assert r.status_code == 201
     assert r.json()["task_code"] == "TASK-301"
     row = pg_session.query(WorkLog).one()
-    assert row.task_id == world["t1"].id
-    # Internal parity: log_time_created activity event'i uretildi.
+    # P1.2: bag is kalemine yazilir (task_code → work_items).
+    item = item_for_task(pg_session, world["t1"].id)
+    assert row.work_item_id == item.id
+    # Internal parity: log_time_created olayi is kaleminde uretildi.
     from sqlalchemy import text as sa_text
 
     events = pg_session.execute(
         sa_text(
-            "SELECT event_type FROM task_activity_events "
-            "WHERE task_id = :tid"
+            "SELECT event_type FROM work_item_events "
+            "WHERE work_item_id = :iid"
         ),
-        {"tid": str(world["t1"].id)},
+        {"iid": str(item.id)},
     ).fetchall()
     assert ("log_time_created",) in events
 

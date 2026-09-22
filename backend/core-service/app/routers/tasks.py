@@ -26,7 +26,7 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from ..tenant_db import get_tenant_db
-from ..models.task import Task, TaskSubProject
+from ..models.task import TaskSubProject
 from ..schemas.task import (
     TaskActivityEventResponse,
     TaskCommentCreate,
@@ -41,13 +41,17 @@ from ..schemas.task import (
     TaskPermissionMeResponse,
     TaskScopePermissions,
     TaskResponse,
-    TaskStatusUpdate,
     TaskSubProjectCreate,
     TaskSubProjectResponse,
     TaskUpdate,
     TaskRestoreRequest,
 )
 from ..services import task_service
+from ..services import work_item_service as wi
+from ..services import work_item_compat as compat
+from ..schemas.work_item import (
+    WorkflowStateResponse, WorkItemResponse, WorkItemStatusUpdate,
+)
 from ..services.task_notifications import (
     send_assignment_notifications,
     send_status_notifications,
@@ -147,45 +151,10 @@ def _serialize_sub_project(sub: TaskSubProject) -> TaskSubProjectResponse:
     )
 
 
-_CODE_PREFIX = {"task": "TASK", "issue": "ISSUE", "suggestion": "SUGGESTION"}
-
-
-def _serialize_task(task: Task) -> TaskResponse:
-    prefix = _CODE_PREFIX.get(task.task_type or "task", "TASK")
-    # Per-type number drives the visible code (ISSUE-1, SUGGESTION-1 …);
-    # fall back to the global task_number only if a row predates the backfill.
-    number = task.type_number if task.type_number is not None else task.task_number
-    task_code = f"{prefix}-{number}" if number is not None else None
-    return TaskResponse(
-        id=task.id,
-        task_number=task.task_number,
-        task_code=task_code,
-        customer_id=task.customer_id,
-        customer_name=task.customer.name if task.customer else None,
-        project_id=task.project_id,
-        project_name=task.project.name if task.project else None,
-        sub_project_id=task.sub_project_id,
-        sub_project_name=task.sub_project.name if task.sub_project else None,
-        title=task.title,
-        description=task.description,
-        assignee_user_id=task.assignee_user_id,
-        assigner_user_id=task.assigner_user_id,
-        scheduled_date=task.scheduled_date,
-        due_date=task.due_date,
-        estimated_duration_minutes=task.estimated_duration_minutes,
-        priority=task.priority,
-        status=task.status,
-        task_type=task.task_type,
-        assignee_note=task.assignee_note,
-        completed_at=task.completed_at,
-        completed_by_user_id=task.completed_by_user_id,
-        created_at=task.created_at,
-        updated_at=task.updated_at,
-        archived_at=task.archived_at,
-        assignment_batch_id=task.assignment_batch_id,
-        closed_at=task.closed_at,
-        archive_reason=task.archive_reason,
-    )
+# PM rework P1.2: is kalemi tek nesne; eski TaskResponse sekli compat'tan
+# turer (work_item_compat.to_response). Buradaki ad eski cagri noktalari
+# icin korunur.
+_serialize_task = compat.to_response
 
 
 # =============================================================================
@@ -404,7 +373,26 @@ def create_sub_project_as_assigner(
 # Tasks — list / get / create / update
 # =============================================================================
 
-@router.get("", response_model=List[TaskResponse])
+@router.get("/states", response_model=List[WorkflowStateResponse])
+def list_workflow_states(
+    include_inactive: bool = Query(False),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_tenant_db),
+):
+    """Kiracinin durum akisi — pano sutunlari ve durum secenekleri buradan
+    gelir (A2 kabul olcutu: kiraci durum ekler, pano degisir)."""
+    if not (
+        task_service.can_access(db, current_user, "task")
+        or task_service.can_access(db, current_user, "issue")
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tasks module access is required.",
+        )
+    return [compat.state_response(st) for st in wi.list_states(db, include_inactive=include_inactive)]
+
+
+@router.get("", response_model=List[WorkItemResponse])
 def list_tasks(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
@@ -440,6 +428,9 @@ def list_tasks(
             "(not just scheduled_date) falls in [start_date, end_date]."
         ),
     ),
+    state_id: Optional[UUID] = Query(None, description="workflow_states.id"),
+    owner_user_id: Optional[UUID] = Query(None),
+    unassigned: Optional[bool] = Query(None, description="owner_user_id IS NULL (triage)"),
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_tenant_db),
 ):
@@ -453,12 +444,8 @@ def list_tasks(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="archive_state must be active, archived or all.",
         )
-    # Eski `include_archived` YALNIZ admin icin etkiliydi; o davranis
-    # aynen korunur. `archive_state` ise HERKESE aciktir — gorunurluk
-    # zaten sorgu seviyesinde RBAC ile kirpilir, yani kullanici yalniz
-    # KENDI gorebildigi arsiv kayitlarini gorur.
     effective_include_archived = bool(include_archived) and task_service.is_task_admin(current_user)
-    tasks = task_service.list_tasks_for_user(
+    items = wi.list_items_for_user(
         db,
         current_user,
         start_date=start_date,
@@ -480,11 +467,49 @@ def list_tasks(
         include_archived=effective_include_archived,
         include_due_in_range=bool(include_due_in_range),
         archive_state=archive_state,
+        state_id=state_id,
+        owner_user_id=owner_user_id,
+        unassigned=unassigned,
     )
-    return [_serialize_task(t) for t in tasks]
+    return [compat.to_response(i) for i in items]
 
 
-@router.post("", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
+def _notify_assignment(db, background_tasks, request, current_user, rows, *,
+                       direct_user_ids, group_names):
+    if not rows:
+        return
+    first = rows[0]
+    if task_service.notification_allowed(
+        db, task_type=first.task_type, priority=first.priority,
+        due_date=first.due_date, event="assignment",
+    ):
+        background_tasks.add_task(
+            send_assignment_notifications,
+            token=_extract_token(request),
+            tenant_id=current_user.tenant_id,
+            tasks=[_notif_payload(r) for r in rows],
+            assigner_user_id=str(current_user.id),
+            assignment_context={
+                "direct_user_ids": direct_user_ids,
+                "group_names": group_names,
+            },
+        )
+
+
+def _group_names(db, group_ids):
+    from ..models.user_group import UserGroup
+    if not group_ids:
+        return []
+    return [
+        row[0]
+        for row in db.query(UserGroup.name)
+        .filter(UserGroup.id.in_(list(group_ids)))
+        .order_by(UserGroup.name.asc())
+        .all()
+    ]
+
+
+@router.post("", response_model=WorkItemResponse, status_code=status.HTTP_201_CREATED)
 def create_task(
     payload: TaskCreate,
     background_tasks: BackgroundTasks,
@@ -495,30 +520,12 @@ def create_task(
     scope = task_service.perm_scope_for_type(payload.task_type)
     task_service.require_task_access(db, current_user, scope)
     task_service.require_task_assigner(db, current_user, scope)
-    task = task_service.create_task(db, current_user, payload)
-    serialized = _serialize_task(task)
-    # Fire-and-forget e-mail notification (assignee + assigner). Runs
-    # after the response; failures are logged, never surfaced. Gated by
-    # the admin-configured notification rules.
-    if task_service.notification_allowed(
-        db,
-        task_type=serialized.task_type,
-        priority=serialized.priority,
-        due_date=serialized.due_date,
-        event="assignment",
-    ):
-        background_tasks.add_task(
-            send_assignment_notifications,
-            token=_extract_token(request),
-            tenant_id=current_user.tenant_id,
-            tasks=[_notif_payload(serialized)],
-            assigner_user_id=str(current_user.id),
-            # Tek dogrudan atama: e-posta kisisel anlatimini korur.
-            assignment_context={
-                "direct_user_ids": [str(serialized.assignee_user_id)],
-                "group_names": [],
-            },
-        )
+    item = wi.create_item(db, current_user, payload)
+    serialized = compat.to_response(item)
+    _notify_assignment(
+        db, background_tasks, request, current_user, [serialized],
+        direct_user_ids=[str(payload.assignee_user_id)], group_names=[],
+    )
     return serialized
 
 
@@ -534,69 +541,37 @@ def create_tasks_for_group(
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_tenant_db),
 ):
-    """Fan a single create-task action out to every active member of a
-    group. One Task row per member; all rows share the same
-    assignment_batch_id so the assigner can track them as one batch.
-    """
+    """Grup atamasi: TEK is kalemi + her aktif uye bir katilimci (eskiden
+    uye basina satir). Yanit sekli korunur: her katilimci icin bir satir,
+    `assignment_batch_id` = is kaleminin id'si."""
     scope = task_service.perm_scope_for_type(payload.task_type)
     task_service.require_task_access(db, current_user, scope)
     task_service.require_task_assigner(db, current_user, scope)
-    batch_id, tasks = task_service.create_tasks_for_group(
-        db,
-        current_user,
-        customer_id=payload.customer_id,
-        project_id=payload.project_id,
+    item = wi.create_item_bulk(
+        db, current_user,
+        customer_id=payload.customer_id, project_id=payload.project_id,
         sub_project_id=payload.sub_project_id,
-        assignee_group_id=payload.assignee_group_id,
-        title=payload.title,
-        description=payload.description,
-        scheduled_date=payload.scheduled_date,
-        due_date=payload.due_date,
+        assignee_user_ids=[], assignee_group_ids=[payload.assignee_group_id],
+        title=payload.title, description=payload.description,
+        scheduled_date=payload.scheduled_date, due_date=payload.due_date,
         estimated_duration_minutes=payload.estimated_duration_minutes,
-        priority=payload.priority,
-        task_type=payload.task_type,
+        priority=payload.priority, task_type=payload.task_type, group_must_exist=True,
     )
-    serialized = [_serialize_task(t) for t in tasks]
-    # One notification batch: each member gets an assignee e-mail and the
-    # assigner gets a single group summary (see task_notifications).
-    # All fan-out rows share type/priority/due, so one gate check suffices.
-    if serialized and task_service.notification_allowed(
-        db,
-        task_type=serialized[0].task_type,
-        priority=serialized[0].priority,
-        due_date=serialized[0].due_date,
-        event="assignment",
-    ):
-        # Sprint 8: e-posta ekip baglami. Grup adi TEK sorguyla cozulur;
-        # uye listesi ISE fan-out satirlarindan gelir (olusturma anindaki
-        # snapshot — sonradan degisen uyelik e-postayi etkilemez).
-        from ..models.user_group import UserGroup
-        group_name = (
-            db.query(UserGroup.name)
-            .filter(UserGroup.id == payload.assignee_group_id)
-            .scalar()
-        )
-        background_tasks.add_task(
-            send_assignment_notifications,
-            token=_extract_token(request),
-            tenant_id=current_user.tenant_id,
-            tasks=[_notif_payload(s) for s in serialized],
-            assigner_user_id=str(current_user.id),
-            assignment_context={
-                "direct_user_ids": [],
-                "group_names": [group_name] if group_name else [],
-            },
-        )
+    rows = compat.to_rows(item)
+    _notify_assignment(
+        db, background_tasks, request, current_user, rows,
+        direct_user_ids=[], group_names=_group_names(db, [payload.assignee_group_id]),
+    )
     return TaskGroupCreateResponse(
-        assignment_batch_id=batch_id,
+        assignment_batch_id=item.id,
         assignee_group_id=payload.assignee_group_id,
-        tasks=serialized,
+        tasks=rows,
     )
 
 
 @router.post(
     "/bulk",
-    response_model=List[TaskResponse],
+    response_model=List[WorkItemResponse],
     status_code=status.HTTP_201_CREATED,
 )
 def create_tasks_bulk(
@@ -606,68 +581,32 @@ def create_tasks_bulk(
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_tenant_db),
 ):
-    """Create the same task for multiple assignees (users and/or groups) in
-    one action. Returns the created task rows; fires a single notification
-    batch (each assignee an individual e-mail, the assigner one summary)."""
+    """Coklu atama: TEK is kalemi + N katilimci; yanit katilimci basina
+    satir (istemci sayimlari degismez)."""
     scope = task_service.perm_scope_for_type(payload.task_type)
     task_service.require_task_access(db, current_user, scope)
     task_service.require_task_assigner(db, current_user, scope)
-    _batch_id, tasks = task_service.create_tasks_bulk(
-        db,
-        current_user,
-        customer_id=payload.customer_id,
-        project_id=payload.project_id,
+    item = wi.create_item_bulk(
+        db, current_user,
+        customer_id=payload.customer_id, project_id=payload.project_id,
         sub_project_id=payload.sub_project_id,
         assignee_user_ids=payload.assignee_user_ids,
         assignee_group_ids=payload.assignee_group_ids,
-        title=payload.title,
-        description=payload.description,
-        scheduled_date=payload.scheduled_date,
-        due_date=payload.due_date,
+        title=payload.title, description=payload.description,
+        scheduled_date=payload.scheduled_date, due_date=payload.due_date,
         estimated_duration_minutes=payload.estimated_duration_minutes,
-        priority=payload.priority,
-        task_type=payload.task_type,
+        priority=payload.priority, task_type=payload.task_type,
     )
-    serialized = [_serialize_task(t) for t in tasks]
-    # All bulk rows share type/priority/due — one gate check suffices.
-    if serialized and task_service.notification_allowed(
-        db,
-        task_type=serialized[0].task_type,
-        priority=serialized[0].priority,
-        due_date=serialized[0].due_date,
-        event="assignment",
-    ):
-        # Sprint 8: ekip baglami — grup adlari tek IN sorgusuyla.
-        from ..models.user_group import UserGroup
-        group_names = (
-            [
-                row[0]
-                for row in db.query(UserGroup.name)
-                .filter(UserGroup.id.in_(payload.assignee_group_ids))
-                .order_by(UserGroup.name.asc())
-                .all()
-            ]
-            if payload.assignee_group_ids
-            else []
-        )
-        background_tasks.add_task(
-            send_assignment_notifications,
-            token=_extract_token(request),
-            tenant_id=current_user.tenant_id,
-            tasks=[_notif_payload(s) for s in serialized],
-            assigner_user_id=str(current_user.id),
-            assignment_context={
-                "direct_user_ids": [str(u) for u in payload.assignee_user_ids],
-                "group_names": group_names,
-            },
-        )
-    return serialized
+    rows = compat.to_rows(item)
+    _notify_assignment(
+        db, background_tasks, request, current_user, rows,
+        direct_user_ids=[str(u) for u in payload.assignee_user_ids],
+        group_names=_group_names(db, payload.assignee_group_ids),
+    )
+    return rows
 
 
-# NOTE: /search MUST be declared before /{task_id} below — FastAPI
-# matches in declaration order and would otherwise treat "search" as
-# a task_id and 422 the request.
-@router.get("/search", response_model=List[TaskResponse])
+@router.get("/search", response_model=List[WorkItemResponse])
 def search_tasks(
     q: Optional[str] = Query(None, description="Free-text search."),
     task_status: Optional[str] = Query(None, alias="status"),
@@ -683,42 +622,28 @@ def search_tasks(
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_tenant_db),
 ):
-    """Visibility-bound free-text task search.
-
-    Non-admin callers can ONLY match tasks where they are the
-    assignee or the assigner — same gate as list_tasks_for_user.
-    """
     task_service.require_task_access(db, current_user)
-    tasks = task_service.search_tasks_for_user(
-        db,
-        current_user,
-        q=q,
-        task_status=task_status,
-        priority=priority,
-        task_type=task_type,
-        customer_id=customer_id,
-        project_id=project_id,
-        assignee_user_id=assignee_user_id,
-        assigner_user_id=assigner_user_id,
-        due_from=due_from,
-        due_to=due_to,
-        limit=limit,
+    items = wi.search_items_for_user(
+        db, current_user, q=q, task_status=task_status, priority=priority,
+        task_type=task_type, customer_id=customer_id, project_id=project_id,
+        assignee_user_id=assignee_user_id, assigner_user_id=assigner_user_id,
+        due_from=due_from, due_to=due_to, limit=limit,
     )
-    return [_serialize_task(t) for t in tasks]
+    return [compat.to_response(i) for i in items]
 
 
-@router.get("/{task_id}", response_model=TaskResponse)
+@router.get("/{task_id}", response_model=WorkItemResponse)
 def get_task(
     task_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
-    task = task_service.get_task_for_user(db, current_user, task_id)
-    return _serialize_task(task)
+    item = wi.get_item_for_user(db, current_user, task_id)
+    return compat.to_response(item)
 
 
-@router.put("/{task_id}", response_model=TaskResponse)
+@router.put("/{task_id}", response_model=WorkItemResponse)
 def update_task(
     task_id: UUID,
     payload: TaskUpdate,
@@ -728,13 +653,13 @@ def update_task(
     db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
-    task = task_service.update_task(db, current_user, task_id, payload)
-    serialized = _serialize_task(task)
-    _maybe_status_notify(task, serialized, background_tasks, request, db, tenant_id=current_user.tenant_id)
+    item = wi.update_item(db, current_user, task_id, payload)
+    serialized = compat.to_response(item)
+    _maybe_status_notify(item, serialized, background_tasks, request, db, tenant_id=current_user.tenant_id)
     return serialized
 
 
-@router.patch("/{task_id}/note", response_model=TaskResponse)
+@router.patch("/{task_id}/note", response_model=WorkItemResponse)
 def update_task_note(
     task_id: UUID,
     payload: TaskNoteUpdate,
@@ -742,27 +667,37 @@ def update_task_note(
     db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
-    task = task_service.update_task_note(db, current_user, task_id, payload)
-    return _serialize_task(task)
+    item = wi.update_note(db, current_user, task_id, payload.assignee_note)
+    return compat.to_response(item)
 
 
-@router.patch("/{task_id}/status", response_model=TaskResponse)
+@router.patch("/{task_id}/status", response_model=WorkItemResponse)
 def update_task_status(
     task_id: UUID,
-    payload: TaskStatusUpdate,
+    payload: WorkItemStatusUpdate,
     background_tasks: BackgroundTasks,
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_tenant_db),
 ):
+    """`status` (eski sozcuk) ya da `state_id` (kiracinin durumu). Yol
+    parametresi is kalemi, KATILIMCI ya da eski tasks.id olabilir; katilimci
+    verilirse degisiklik o kisinin ilerlemesine yazilir."""
     task_service.require_task_access(db, current_user)
-    task = task_service.update_task_status(db, current_user, task_id, payload.status)
-    serialized = _serialize_task(task)
-    _maybe_status_notify(task, serialized, background_tasks, request, db, tenant_id=current_user.tenant_id)
+    if payload.status is None and payload.state_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="status or state_id is required.",
+        )
+    item = wi.update_status(
+        db, current_user, task_id, new_status=payload.status, state_id=payload.state_id,
+    )
+    serialized = compat.to_response(item)
+    _maybe_status_notify(item, serialized, background_tasks, request, db, tenant_id=current_user.tenant_id)
     return serialized
 
 
-@router.patch("/{task_id}/complete", response_model=TaskResponse)
+@router.patch("/{task_id}/complete", response_model=WorkItemResponse)
 def complete_task(
     task_id: UUID,
     payload: TaskCompleteUpdate,
@@ -772,15 +707,13 @@ def complete_task(
     db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
-    task = task_service.update_task_completion(
-        db, current_user, task_id, payload.completed
-    )
-    serialized = _serialize_task(task)
-    _maybe_status_notify(task, serialized, background_tasks, request, db, tenant_id=current_user.tenant_id)
+    item = wi.set_completed(db, current_user, task_id, payload.completed)
+    serialized = compat.to_response(item)
+    _maybe_status_notify(item, serialized, background_tasks, request, db, tenant_id=current_user.tenant_id)
     return serialized
 
 
-@router.patch("/{task_id}/reject", response_model=TaskResponse)
+@router.patch("/{task_id}/reject", response_model=WorkItemResponse)
 def reject_task(
     task_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
@@ -788,8 +721,8 @@ def reject_task(
 ):
     """Mark a task as rejected (assignee/assigner/admin)."""
     task_service.require_task_access(db, current_user)
-    task = task_service.reject_task(db, current_user, task_id)
-    return _serialize_task(task)
+    item = wi.reject(db, current_user, task_id)
+    return compat.to_response(item)
 
 
 @router.delete("/{task_id}", status_code=200)
@@ -800,7 +733,7 @@ def delete_task(
 ):
     """Soft delete — sets archived_at, the row is preserved."""
     task_service.require_task_access(db, current_user)
-    task_service.delete_task(db, current_user, task_id)
+    wi.delete_item(db, current_user, task_id)
     return {"deleted": True}
 
 
@@ -813,36 +746,10 @@ def list_task_activity(
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_tenant_db),
 ):
-    """Newest-first activity feed for a task. Visible to admin, the
-    assignee, or the assigner."""
+    """Newest-first activity feed for a work item (gorunurluk = is kalemi)."""
     task_service.require_task_access(db, current_user)
-    events = task_service.list_task_activity(db, current_user, task_id)
-    return [
-        TaskActivityEventResponse(
-            id=e.id,
-            task_id=e.task_id,
-            actor_user_id=e.actor_user_id,
-            event_type=e.event_type,
-            event_data=e.event_data,
-            created_at=e.created_at,
-        )
-        for e in events
-    ]
-
-
-# =============================================================================
-# Comments
-# =============================================================================
-
-def _serialize_comment(c) -> TaskCommentResponse:
-    return TaskCommentResponse(
-        id=c.id,
-        task_id=c.task_id,
-        author_user_id=c.author_user_id,
-        body=c.body,
-        created_at=c.created_at,
-        updated_at=c.updated_at,
-    )
+    events = wi.list_activity(db, current_user, task_id)
+    return [compat.activity_response(e) for e in events]
 
 
 @router.get(
@@ -855,8 +762,7 @@ def list_comments(
     db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
-    comments = task_service.list_task_comments(db, current_user, task_id)
-    return [_serialize_comment(c) for c in comments]
+    return [compat.comment_response(c) for c in wi.list_comments(db, current_user, task_id)]
 
 
 @router.post(
@@ -871,10 +777,7 @@ def create_comment(
     db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
-    comment = task_service.create_task_comment(
-        db, current_user, task_id, payload.body
-    )
-    return _serialize_comment(comment)
+    return compat.comment_response(wi.create_comment(db, current_user, task_id, payload.body))
 
 
 @router.put(
@@ -889,10 +792,9 @@ def update_comment(
     db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
-    comment = task_service.update_task_comment(
-        db, current_user, task_id, comment_id, payload.body
+    return compat.comment_response(
+        wi.update_comment(db, current_user, task_id, comment_id, payload.body)
     )
-    return _serialize_comment(comment)
 
 
 @router.delete("/{task_id}/comments/{comment_id}", status_code=200)
@@ -903,26 +805,19 @@ def delete_comment(
     db: Session = Depends(get_tenant_db),
 ):
     task_service.require_task_access(db, current_user)
-    task_service.delete_task_comment(db, current_user, task_id, comment_id)
+    wi.delete_comment(db, current_user, task_id, comment_id)
     return {"deleted": True}
 
 
-# =============================================================================
-# Arsiv yasam dongusu (§11, §14, §15)
-# =============================================================================
 @router.post("/{task_id}/archive", status_code=200)
 def archive_work_item(
     task_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_tenant_db),
 ):
-    """Logical work item'in TAMAMINI arsivler (kalici silme DEGIL).
-
-    Kosullar sunucuda yeniden dogrulanir: butun assignment'lar terminal
-    olmali ve gerekli Log Time islemleri tamamlanmis olmali.
-    """
+    """Is kalemini arsivler (kalici silme DEGIL). Kosul: terminal kategori."""
     task_service.require_task_access(db, current_user)
-    return task_service.archive_work_item(db, current_user, task_id)
+    return wi.archive_item(db, current_user, task_id)
 
 
 @router.post("/{task_id}/restore", status_code=200)
@@ -932,16 +827,10 @@ def restore_work_item(
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_tenant_db),
 ):
-    """Arsivden cikarir VE ACIKCA secilen assignment'i yeniden acar.
-
-    Sessiz toplu reopen YOKTUR: hangi assignment'in acilacagi cagiranin
-    acik secimidir; secilmeyen sibling'larin durumu degismez.
-    """
+    """Arsivden cikarir VE secilen katilimciyi (assignment_task_id =
+    katilimci id, is kalemi id ya da eski satir id) yeniden acar."""
     task_service.require_task_access(db, current_user)
-    return task_service.restore_work_item(
-        db,
-        current_user,
-        task_id,
-        assignment_task_id=payload.assignment_task_id,
-        target_status=payload.target_status,
+    return wi.restore_item(
+        db, current_user, task_id,
+        assignment_ref=payload.assignment_task_id, target_status=payload.target_status,
     )

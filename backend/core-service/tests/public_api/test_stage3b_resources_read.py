@@ -25,6 +25,8 @@ from .test_stage3a_tasks_read import make_api_client
 U1, U2 = uuid.uuid4(), uuid.uuid4()
 NOW = datetime.now(timezone.utc)
 
+from .._work_items import item_for_task, sync_work_items
+
 
 @pytest.fixture()
 def world(pg_session):
@@ -33,7 +35,7 @@ def world(pg_session):
 
     s.execute(
         sa_text(
-            "TRUNCATE work_logs, meeting_attendees, meetings, tasks, "
+            "TRUNCATE work_items, work_item_participants, work_item_code_aliases, work_item_comments, work_item_events, work_logs, meeting_attendees, meetings, tasks, "
             "work_types, projects, customers CASCADE"
         )
     )
@@ -115,6 +117,7 @@ def world(pg_session):
         ]
     )
     s.commit()
+    sync_work_items(s)
     return {
         "c1": c1, "c2": c2, "c3": c3, "c4": c4,
         "p1": p1, "p2": p2, "p3": p3,
