@@ -4,9 +4,10 @@
  * =============================================================================
  * Uc kaynak TEK seritte (04-roller §4.3): toplantilar (Graph senkronu,
  * iptaller haric), planli zaman ve termini o gune dusen islerim. Ayri bir
- * takvim sayfasi degil, gun seridi; tiklama ilgili kaydi acar:
+ * takvim sayfasi degil, AJANDA: gun satirlari (tarih rozeti + kayitlar);
+ * bos gunler cizilmez (yalniz bugun bos ise "plan yok" der). Tiklama
+ * ilgili kaydi acar:
  *   toplanti → /meetings?date=   plan → /time-entry?week=   is → /work/KEY
- * Hafta sonu gunleri yalnizca icerigi varsa gorunur; bos gun sessizdir.
  * =============================================================================
  */
 import { useQuery } from '@tanstack/react-query'
@@ -25,7 +26,7 @@ function MeetingRow({ meeting }) {
     return (
         <li className="home-week__entry home-week__entry--meeting" data-entry="meeting">
             <Link to={`/meetings?date=${day}`} className="home-week__entry-link">
-                <span className="home-week__time">{hm(meeting.start_datetime)}–{hm(meeting.end_datetime)}</span>
+                <span className="home-week__time">{`${hm(meeting.start_datetime)}–${hm(meeting.end_datetime)}`}</span>
                 <span className="home-week__label">{meeting.subject}</span>
             </Link>
         </li>
@@ -61,11 +62,11 @@ function ItemRow({ item, today }) {
     )
 }
 
-function DayColumn({ day, today }) {
+function DayRow({ day, today }) {
     const t = useT()
     const empty = !day.meetings.length && !day.plans.length && !day.items.length
     return (
-        <li className={`home-week__day ${day.is_today ? 'home-week__day--today' : ''}`} data-date={day.date}>
+        <li className={`home-week__day${day.is_today ? ' home-week__day--today' : ''}`} data-date={day.date}>
             <div className="home-week__day-head">
                 <span className="home-week__day-name">{dayjs(day.date).format('ddd')}</span>
                 <span className="home-week__day-num">{dayjs(day.date).format('DD')}</span>
@@ -104,9 +105,12 @@ function WeekBlock() {
                 <Link to="/meetings" className="home-block__link">{t('home.week.openMeetings')}</Link>
             </div>
             {isError && <div className="h-inline-error">{t('home.loadFailed')}</div>}
+            {data && days.length === 0 && (
+                <p className="home-week__none">{t('home.week.nothingWeek')}</p>
+            )}
             {days.length > 0 && (
                 <ol className="home-week__days">
-                    {days.map((day) => <DayColumn key={day.date} day={day} today={data.today} />)}
+                    {days.map((day) => <DayRow key={day.date} day={day} today={data.today} />)}
                 </ol>
             )}
         </section>

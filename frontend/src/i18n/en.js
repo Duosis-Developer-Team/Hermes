@@ -59,6 +59,7 @@ export default {
             title: 'My calendar',
             openMeetings: 'Meetings',
             nothing: 'Nothing planned',
+            nothingWeek: 'Nothing planned this week.',
             allDay: 'All day',
             plan: 'Planned time',
             due: 'Due',

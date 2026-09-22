@@ -73,6 +73,7 @@ export default {
             title: 'Takvimim',
             openMeetings: 'Toplantılar',
             nothing: 'Plan yok',
+            nothingWeek: 'Bu hafta planlı bir şey yok.',
             allDay: 'Tüm gün',
             plan: 'Planlı zaman',
             due: 'Termin',

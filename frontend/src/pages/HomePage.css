@@ -1,64 +1,74 @@
 /**
- * HERMES - Ana sayfa stilleri (PM rework P3). Yalnizca token; ham hex yok.
- * Renk tasiyan TEK sinyal termin/eksik gun (04-roller §7, E4).
+ * HERMES - Ana sayfa stilleri (PM rework P3, CTO 23.09 yerlesim revizyonu).
+ * Yalnizca token; ham hex yok. Renk tasiyan TEK sinyal termin / eksik gun
+ * (04-roller §7, E4).
+ *
+ * Yerlesim: baslik → efor seridi (tam genislik) → iki sutun (ana 7 / yan 5).
+ * Sutunlar DIKEY yigin: her blok kendi icerigi kadar yuksek, komsusuna
+ * gore gerilmez (bos kart yok). Bloklar kart yuzeyinde, ic bosluk sik.
  */
 
 .home-page {
     display: flex;
     flex-direction: column;
-    gap: var(--h-space-5);
-    /* Tam genislik: ekrana sigar, sagda bos alan kalmaz (CTO 23.09). */
+    gap: var(--h-space-4);
     width: 100%;
     max-width: none;
+    padding: var(--h-space-2) 0 var(--h-space-8);
 }
 
-/* --- Akiskan izgara: bloklar satiri doldurur ---------------------------- */
-.home-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--h-space-5) var(--h-space-6);
-    align-items: stretch;
-}
-/* Hucre DIKEY yigin: bir blok iki bolum dondurebilir (Ekibim + Dikkat);
-   yan yana sikistirilmaz, alt alta durur. */
-.home-cell {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--h-space-5);
-}
-.home-cell > .home-block { min-width: 0; }
-.home-cell--full { flex: 1 1 100%; }
-.home-cell--wide { flex: 3 1 560px; }
-.home-cell--narrow { flex: 2 1 420px; }
-/* Bos kalan hucre (blok cizilmedi) yer kaplamaz. */
-.home-cell:empty { display: none; }
-
+/* --- Baslik ----------------------------------------------------------- */
 .home-page__head {
     display: flex;
     align-items: baseline;
+    justify-content: space-between;
     gap: var(--h-space-4);
     flex-wrap: wrap;
+    padding: 0 var(--h-space-1);
 }
 .home-page__title {
-    font-size: var(--h-font-page-title);
+    font-size: 24px;
     font-weight: 650;
+    letter-spacing: -0.01em;
     color: var(--h-text-primary);
     margin: 0;
 }
 .home-page__date {
-    font-size: var(--h-font-meta);
+    font-size: var(--h-font-body);
     color: var(--h-text-secondary);
 }
 
-/* --- Blok kabugu ------------------------------------------------------- */
-/* Her blok kendi kart yuzeyinde: bloklar birbirine KARISMAZ, ic bosluk
-   ve kenarlik tek kaynaktan. */
+/* --- Iki sutun ---------------------------------------------------------- */
+.home-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: var(--h-space-4);
+    align-items: start;
+}
+.home-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--h-space-4);
+    min-width: 0;
+}
+.home-slot { min-width: 0; display: flex; flex-direction: column; gap: var(--h-space-4); }
+.home-slot:empty { display: none; }
+@media (max-width: 1040px) {
+    .home-layout { grid-template-columns: minmax(0, 1fr); }
+    /* Tek sutunda sira: islerim · takvim · ekibim · organizasyon. */
+    .home-col { display: contents; }
+    .home-slot--work { order: 1; }
+    .home-slot--week { order: 2; }
+    .home-slot--team { order: 3; }
+    .home-slot--org { order: 4; }
+}
+
+/* --- Blok kabugu (kart) --------------------------------------------------- */
 .home-block {
     background: var(--h-bg-surface);
     border: 1px solid var(--h-border-subtle);
     border-radius: var(--h-radius-card);
-    padding: var(--h-space-4) var(--h-space-5) var(--h-space-5);
+    padding: var(--h-space-4) var(--h-space-5);
     min-width: 0;
     overflow: hidden;
 }
@@ -71,10 +81,10 @@
     margin-bottom: var(--h-space-3);
     min-width: 0;
 }
-.home-block__link { white-space: nowrap; }
 .home-block__title {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 650;
+    letter-spacing: -0.005em;
     color: var(--h-text-primary);
     margin: 0;
 }
@@ -88,17 +98,18 @@
     font-size: var(--h-font-label);
     font-weight: 600;
     color: var(--h-brand);
+    white-space: nowrap;
 }
 
-/* --- Efor seridi ------------------------------------------------------- */
+/* --- Efor seridi (tam genislik) ------------------------------------------ */
 .home-effort__fill {
     font-size: var(--h-font-meta);
-    font-weight: 600;
+    font-weight: 650;
     color: var(--h-text-primary);
     font-variant-numeric: tabular-nums;
 }
 .home-effort__bar {
-    height: 8px;
+    height: 6px;
     border-radius: var(--h-radius-pill);
     background: var(--h-bg-hover);
     overflow: hidden;
@@ -116,8 +127,8 @@
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: var(--h-space-3);
+    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+    gap: var(--h-space-2);
 }
 .home-effort__day-link {
     position: relative;
@@ -127,7 +138,7 @@
     padding: var(--h-space-2) var(--h-space-3);
     border: 1px solid var(--h-border-subtle);
     border-radius: var(--h-radius-control);
-    background: var(--h-bg-surface);
+    background: var(--h-bg-canvas);
     color: var(--h-text-primary);
     text-decoration: none;
     transition: border-color var(--h-motion-fast) var(--h-ease-standard);
@@ -145,7 +156,7 @@
     color: var(--h-text-secondary);
 }
 .home-effort__day-hours {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 650;
     font-variant-numeric: tabular-nums;
 }
@@ -175,18 +186,14 @@
     color: var(--h-warning);
 }
 
-/* --- Islerim: kovalar -------------------------------------------------- */
-.home-bucket {
-    padding: var(--h-space-3) 0;
-}
-.home-bucket + .home-bucket {
-    border-top: 1px dashed var(--h-border-subtle);
-}
+/* --- Islerim: kovalar --------------------------------------------------- */
+.home-bucket { padding: var(--h-space-2) 0; }
+.home-bucket + .home-bucket { border-top: 1px solid var(--h-border-subtle); }
 .home-bucket__head {
     display: flex;
     align-items: center;
     gap: var(--h-space-2);
-    margin-bottom: var(--h-space-2);
+    margin-bottom: var(--h-space-1);
 }
 .home-bucket__title {
     font-size: var(--h-font-label);
@@ -205,8 +212,7 @@
     font-size: var(--h-font-meta);
     color: var(--h-text-muted);
 }
-
-.home-group + .home-group { margin-top: var(--h-space-3); }
+.home-group + .home-group { margin-top: var(--h-space-2); }
 .home-group__head {
     display: flex;
     align-items: center;
@@ -214,7 +220,7 @@
     font-size: var(--h-font-meta);
     font-weight: 600;
     color: var(--h-text-primary);
-    margin-bottom: var(--h-space-1);
+    margin-bottom: 2px;
 }
 .home-group__count {
     color: var(--h-text-muted);
@@ -230,10 +236,10 @@
 }
 .home-item__link {
     display: grid;
-    grid-template-columns: 4px auto 1fr auto;
+    grid-template-columns: 4px auto minmax(0, 1fr) auto;
     align-items: center;
     gap: var(--h-space-3);
-    padding: var(--h-space-2) var(--h-space-3);
+    padding: 5px var(--h-space-2);
     border-radius: var(--h-radius-control);
     color: var(--h-text-primary);
     text-decoration: none;
@@ -259,49 +265,53 @@
     font-weight: 600;
     color: var(--h-text-secondary);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 .home-item__title {
-    font-size: 15px;
+    font-size: var(--h-font-body);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
 }
 .home-item__due {
     font-size: var(--h-font-meta);
     color: var(--h-text-secondary);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 /* Tek renkli sinyal: termin. */
 .home-item--overdue .home-item__due { color: var(--h-danger); font-weight: 600; }
 .home-item--today .home-item__due { color: var(--h-warning); font-weight: 600; }
 
-@media (max-width: 640px) {
-    .home-item__link { grid-template-columns: 4px auto 1fr; }
-    .home-item__due { grid-column: 2 / -1; }
-}
-
-/* --- Takvimim: gun seridi (D4) ------------------------------------------ */
+/* --- Takvimim: ajanda (D4) ----------------------------------------------- */
 .home-week__days {
     list-style: none;
     margin: 0;
     padding: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: var(--h-space-3);
+    display: flex;
+    flex-direction: column;
 }
 .home-week__day {
-    border: 1px solid var(--h-border-subtle);
-    border-radius: var(--h-radius-control);
-    padding: var(--h-space-3);
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: var(--h-space-3);
+    padding: var(--h-space-2) 0;
     min-width: 0;
-    min-height: 120px;
 }
-.home-week__day--today { border-color: var(--h-brand); }
+.home-week__day + .home-week__day { border-top: 1px solid var(--h-border-subtle); }
 .home-week__day-head {
     display: flex;
-    align-items: baseline;
-    gap: var(--h-space-2);
-    margin-bottom: var(--h-space-2);
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0;
+    padding-top: 2px;
+    border-radius: var(--h-radius-control);
+}
+.home-week__day--today .home-week__day-head {
+    background: var(--h-bg-selected);
+    padding: var(--h-space-1) 0;
 }
 .home-week__day-name {
     font-size: var(--h-font-label);
@@ -311,14 +321,16 @@
     color: var(--h-text-secondary);
 }
 .home-week__day-num {
-    font-size: var(--h-font-body);
+    font-size: 18px;
     font-weight: 650;
+    line-height: 1.1;
     color: var(--h-text-primary);
     font-variant-numeric: tabular-nums;
 }
 .home-week__day--today .home-week__day-num { color: var(--h-brand); }
 .home-week__empty {
     margin: 0;
+    align-self: center;
     font-size: var(--h-font-meta);
     color: var(--h-text-muted);
 }
@@ -328,13 +340,15 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--h-space-1);
+    gap: 2px;
+    min-width: 0;
 }
 .home-week__entry-link {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    padding: var(--h-space-1) var(--h-space-2);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: var(--h-space-2);
+    padding: 4px var(--h-space-2);
     border-left: 2px solid var(--h-border-strong);
     border-radius: 0 var(--h-radius-control) var(--h-radius-control) 0;
     color: var(--h-text-primary);
@@ -353,18 +367,25 @@
     font-size: var(--h-font-meta);
     color: var(--h-text-secondary);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    min-width: 44px;
 }
 .home-week__label {
     font-size: var(--h-font-body);
     color: var(--h-text-primary);
     overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
 }
 /* Termin satiri: tek renkli sinyal yine termin. */
 .home-week__entry--item.home-item--overdue .home-week__time { color: var(--h-danger); font-weight: 600; }
 .home-week__entry--item.home-item--today .home-week__time { color: var(--h-warning); font-weight: 600; }
+.home-week__none {
+    margin: 0;
+    font-size: var(--h-font-meta);
+    color: var(--h-text-muted);
+}
 
 /* --- Ekibim: kisi kuyrugu (D5) ------------------------------------------ */
 .home-team__members {
@@ -376,10 +397,10 @@
 }
 .home-team__member {
     display: grid;
-    grid-template-columns: minmax(160px, 1fr) repeat(3, minmax(110px, auto));
+    grid-template-columns: minmax(140px, 1fr) repeat(3, minmax(92px, auto));
     align-items: center;
-    gap: var(--h-space-4);
-    padding: var(--h-space-2) var(--h-space-2);
+    gap: var(--h-space-3);
+    padding: var(--h-space-2) var(--h-space-1);
     border-top: 1px solid var(--h-border-subtle);
 }
 .home-team__member:first-child { border-top: 0; }
@@ -390,18 +411,21 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
 }
 .home-team__stat {
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 0;
     min-width: 0;
 }
 .home-team__value {
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 650;
+    line-height: 1.2;
     color: var(--h-text-primary);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 .home-team__of { font-weight: 500; color: var(--h-text-muted); }
 .home-team__label {
@@ -417,8 +441,8 @@
 /* --- Dikkat gerektirenler --------------------------------------------- */
 .home-attention__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: var(--h-space-5);
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--h-space-4);
 }
 .home-attention__list {
     list-style: none;
@@ -428,18 +452,19 @@
     flex-direction: column;
 }
 .home-attention__list--names li {
-    padding: var(--h-space-1) var(--h-space-2);
+    padding: 3px var(--h-space-2);
     font-size: var(--h-font-body);
     color: var(--h-text-primary);
 }
 .home-attention__link {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
     column-gap: var(--h-space-2);
-    padding: var(--h-space-2) var(--h-space-2);
+    padding: 4px var(--h-space-2);
     border-radius: var(--h-radius-control);
     color: var(--h-text-primary);
     text-decoration: none;
+    min-width: 0;
 }
 .home-attention__link:hover,
 .home-attention__link:focus-visible {
@@ -451,19 +476,24 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
 }
 .home-attention__meta {
     grid-column: 1 / -1;
     font-size: var(--h-font-meta);
     color: var(--h-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* --- Organizasyon ozeti (D6) -------------------------------------------- */
-.home-org__metrics { margin-bottom: var(--h-space-4); }
+.home-org__metrics { margin: 0 0 var(--h-space-3); }
+.home-org__metrics .h-metric-strip__value { font-size: 22px; }
 .home-org__columns {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: var(--h-space-5);
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--h-space-4);
 }
 .home-org__signals,
 .home-org__customers {
@@ -472,25 +502,26 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--h-space-1);
+    gap: 2px;
 }
 .home-org__signal {
     display: flex;
     align-items: baseline;
-    gap: var(--h-space-3);
-    padding: var(--h-space-2) var(--h-space-3);
+    gap: var(--h-space-2);
+    padding: 4px var(--h-space-2);
     border-left: 3px solid var(--h-border-subtle);
     color: var(--h-text-secondary);
+    min-width: 0;
 }
 .home-org__signal-value {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     color: var(--h-text-primary);
     font-variant-numeric: tabular-nums;
     min-width: 2ch;
     text-align: right;
 }
-.home-org__signal-label { font-size: var(--h-font-meta); }
+.home-org__signal-label { font-size: var(--h-font-meta); min-width: 0; }
 .home-org__signal-delta { color: var(--h-text-muted); }
 /* Esik asildi: sinyal one cikar; digerleri notr kalir (§6). */
 .home-org__signal--warn { border-left-color: var(--h-danger); color: var(--h-text-primary); }
@@ -499,22 +530,27 @@
     display: flex;
     justify-content: space-between;
     gap: var(--h-space-3);
-    padding: var(--h-space-1) var(--h-space-2);
+    padding: 3px var(--h-space-2);
     font-size: var(--h-font-body);
     color: var(--h-text-primary);
+    min-width: 0;
 }
+.home-org__customer-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .home-org__customer-hours {
     color: var(--h-text-secondary);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 .home-org__shortcuts {
     display: flex;
     flex-wrap: wrap;
     gap: var(--h-space-2);
-    margin-top: var(--h-space-4);
+    margin-top: var(--h-space-3);
 }
 
 @media (max-width: 640px) {
+    .home-item__link { grid-template-columns: 4px auto minmax(0, 1fr); }
+    .home-item__due { grid-column: 2 / -1; }
     .home-team__member { grid-template-columns: 1fr 1fr; }
     .home-team__name { grid-column: 1 / -1; }
 }

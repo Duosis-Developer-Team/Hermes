@@ -7,11 +7,15 @@
  * hic cagirmaz). Dashboard (`/dashboard`) detay sayfasi olarak kalir;
  * ana sayfa onun yerine degil ONUNE gecer (§6).
  *
- *   Efor seridi   herkes
- *   Islerim       tasks.access | issues.access | tasks.admin
- *   Takvimim      herkes (termin satirlari yalniz is erisimi olana — sunucu)
+ *   Efor seridi   herkes — en ustte, tam genislik
+ *   Islerim       tasks.access | issues.access | tasks.admin — ana sutun
+ *   Takvimim      herkes — sag kolon (ajanda)
  *   Ekibim        tasks.assign ∨ proje lideri ∨ tasks.admin (sunucu karar verir)
  *   Organizasyon  reports.view
+ *
+ * Yerlesim (CTO 23.09): iki sutun, bloklar icerik yuksekliginde alt alta
+ * yigilir — esit yukseklige gerilen bos kart YOK. Dar ekranda tek sutun,
+ * sira: efor · islerim · takvim · ekibim · organizasyon.
  * =============================================================================
  */
 import dayjs from 'dayjs'
@@ -44,20 +48,23 @@ function HomePage() {
     const showOrg = can('reports.view')
 
     return (
-        <div className="home-page h-page">
+        <div className="home-page">
             <header className="home-page__head">
                 <h1 className="home-page__title">{t('home.greeting', { name: firstNameOf(user) })}</h1>
                 <span className="home-page__date">{dayjs().format('dddd, DD MMMM YYYY')}</span>
             </header>
 
-            {/* Akiskan izgara: bloklar satiri DOLDURUR (hangi blok cizilirse
-                cizilsin sagda bos alan kalmaz); dar ekranda alt alta. */}
-            <div className="home-grid">
-                <div className="home-cell home-cell--full"><EffortStrip /></div>
-                {showMyWork && <div className="home-cell home-cell--narrow"><MyWorkBlock /></div>}
-                <div className="home-cell home-cell--wide"><WeekBlock /></div>
-                <div className="home-cell home-cell--wide"><TeamBlock /></div>
-                {showOrg && <div className="home-cell home-cell--narrow"><OrgBlock /></div>}
+            <EffortStrip />
+
+            <div className="home-layout">
+                <div className="home-col home-col--main">
+                    {showMyWork && <div className="home-slot home-slot--work"><MyWorkBlock /></div>}
+                    <div className="home-slot home-slot--team"><TeamBlock /></div>
+                </div>
+                <div className="home-col home-col--rail">
+                    <div className="home-slot home-slot--week"><WeekBlock /></div>
+                    {showOrg && <div className="home-slot home-slot--org"><OrgBlock /></div>}
+                </div>
             </div>
         </div>
     )

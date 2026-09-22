@@ -87,14 +87,14 @@ export function effortSummary(week) {
     }
 }
 
-/** Takvimim (D4): Pazartesi–Cuma hep; hafta sonu yalnizca icerigi varsa. */
+/** Takvimim (D4) ajanda kurali: yalniz icerigi olan gunler + bugun (bos
+ *  olsa da). Bos gun satirlari cizilmez — "plan yok" yalniz bugunde. */
 export function weekDaysToShow(week) {
     if (!week || !Array.isArray(week.days)) return []
-    return week.days.filter((d) => {
-        const weekend = dayjs(d.date).isoWeekday() >= 6
-        if (!weekend) return true
-        return (d.meetings?.length || 0) + (d.plans?.length || 0) + (d.items?.length || 0) > 0
-    })
+    return week.days.filter((d) => (
+        d.is_today
+        || (d.meetings?.length || 0) + (d.plans?.length || 0) + (d.items?.length || 0) > 0
+    ))
 }
 
 /** Haftanin Pazartesi'si (ISO), API'nin bekledigi bicimde. */
