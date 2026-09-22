@@ -14,7 +14,7 @@ Kararlar: 7'nin 7'si + 2 yeni karar kapatıldı (batch → `participant.complete
 | A2 | Konfigüre edilebilir durum akışı | P1 | **Yapıldı (temel)** | `workflow_states` tohumu (Pending/todo · In Progress · Completed/done · Cancelled · **Rejected/cancelled**); `GET /tasks/states`; `PATCH /status` `state_id` kabul eder; pano sütunları durumlardan (`useWorkflowStates`, geri düşüş eski 3). Yönetim ekranı (durum ekle/sırala) P2 |
 | A3 | Görünürlük proje üyeliğine | P1 | **Yapıldı** | Görünürlük = admin ∨ proje üyesi ∨ reporter ∨ owner ∨ katılımcı (`visible_filter`/`can_view`); üyelik 0010'da backfill edildi (`member`). Üye olmayan → 404. Rol standardı `lead|member|viewer` |
 | A4 | Yönlendirme politikasının ayrılması | P1 | **Yapıldı** | `can_assign_to*`, atanabilir listeleri ve admin uçları (`/admin/task-assignment-*`) artık `routing_relations`tan; eski `task_assignment_*` tabloları okunmuyor (F05'e kadar durur). Yönlendirme görünürlük VERMEZ (testle kilitli) |
-| A5 | `issues` birleştirme | P1 | Başlamadı (F05'e ertelendi) | `issues` 0 kayıt → veri taşımasız; CRUD router'ının emekliliği 08 §6'da yok, eski tabloların düşürüldüğü F05 ile birlikte |
+| A5 | `issues` birleştirme | P1 | **Yapıldı (P3.6)** | Eski `/issues` CRUD uçları **410 Gone** (kimlik kapısı önce 401; mesaj `/tasks?task_type=issue`'a yönlendirir); frontend/MCP/Public API'de tüketici yoktu; `issues` tablosu + modeli F05'e kadar durur; `work_logs.issue_id` (Jira) dokunulmadı |
 | A6 | Talep → iş bağı | P1 | **Yapıldı** | `POST/GET /tickets/{id}/work-items` (hub, `tickets.respond` + `tasks.access`); iş `origin_type='ticket'`; ticket detayında `work_items[]`; hub'da "İş kalemi aç" modalı + liste, iş detayında "Kaynak: Ticket" bağı (`/tickets?ticket=`). Ticket olay kümesine dokunulmadı (sözleşme donmuş); SLA/otomatik dönüşüm yok |
 | A7 | Hiyerarşi ve ilişkiler | P1 | **Yapıldı** | `parent_id` iki seviye + aynı proje (servis kuralı), `parent_key`/`subtask_count`/`subtask_done_count` rollup, `GET /tasks/{id}/children`; bağlar `relates|duplicates|blocks` (`/tasks/{id}/links`), `blocks` hiçbir tarih/durum değiştirmez (test), döngü reddi. UI: detay panelinde üst iş/alt iş sayısı; bağ UI P3 |
 | A8 | Faturalanabilirlik iş kaleminde | P1 | **Yapıldı** | `projects.is_billable_default` (API + proje formu anahtarı) → iş kalemi `is_billable` (oluşturmada miras, düzenlemede çekirdek yetkiyle override; `billable_override_by/at` izlenir) → efor kaydı bağlı işten miras (açık değer kazanır). Detay panelinde "Faturalanabilir" satırı |
@@ -30,16 +30,16 @@ Kararlar: 7'nin 7'si + 2 yeni karar kapatıldı (batch → `participant.complete
 | C3 | Kanal ayrımı | P2 | **Yapıldı (P2.2)** | `task_notification_settings.email_enabled` + `in_app_enabled` (09 P2-2); `notification_allowed(channel=)`; PM ayarlarında "Kanallar" çipleri. E-postada kapalı, uygulamada açık mümkün (test) |
 | D1 | Kapasite ayarları | P0 | **Yapıldı · sapma** | `plan_times.plan_type` yerine `user_absences` (gerekçe §3) |
 | D2 | Efor şeridi + eksik gün dürtmesi | P0 | **Yapıldı** | Kurallar 04 §4.1/§7 birebir |
-| D3 | İşlerim blokları | P3 | Başlamadı | Ana sayfa yok; `owner` + `state.category` ister (A1, A2) |
-| D4 | Haftam bloğu | P3 | Başlamadı | |
-| D5 | Ekibim + dikkat bloğu | P3 | Başlamadı | |
-| D6 | Organizasyon özeti | P3 | Başlamadı | |
-| E1 | Üç eksen | P3 | Başlamadı | |
-| E2 | Kayıtlı görünümler | P3 | Başlamadı | |
-| E3 | Triage kuyruğu | P3 | Başlamadı | |
-| E4 | Görsel dil | P3 | Başlamadı | |
-| E5 | Takvim yerleşimi | P3 | Başlamadı | |
-| E6 | Derin link `/work/KEY` | P3 | Başlamadı | `?item=<uuid>` tek seferlik link zaten var; kalıcı adres yok |
+| D3 | İşlerim blokları | P3 | **Yapıldı (P3.1)** | Yeni ana sayfa `/` (izin başına blok, 04 §3; `/dashboard` detay olarak kalır). `GET /home/my-work`: gecikmiş / bugün / bu hafta kovaları (kiracı saat dilimi, hafta Pazartesi), terminli + açık + owner ∨ payını bitirmemiş assignee; kova içi `Müşteri · Proje` gruplu, termin → öncelik; boş kova sessiz, gecikmiş kırmızı rozet, bugün amber kenar; satır `/work/KEY` |
+| D4 | Haftam bloğu | P3 | **Yapıldı (P3.2)** | `GET /home/week?start=`: toplantılar (yalnız kendi katıldıkları, iptaller hariç, yerel gün) + planlı zaman (`plan_times/my` ile aynı tekrar kuralı, reddedilen hariç) + termini o güne düşen açık işler tek şeritte; tıklama `/meetings?date=` · `/time-entry?week=` · `/work/KEY` |
+| D5 | Ekibim + dikkat bloğu | P3 | **Yapıldı (P3.3)** | `GET /home/team`: ekip = yönlendirebildiğim kişiler (routing + grup) ∪ lideri olduğum projelerin üyeleri (admin: açık işlerde görünen herkes); kişi başına açık/gecikmiş/bu hafta efor÷beklenen; sıra **işe göre** (bekleyen iş), kırmızı yalnız gecikmede; Dikkat: sahipsiz (nötr sayaç) · termini geçmiş · bu hafta efor girmemiş. Uygun değilse 403 değil `eligible=false` (liderlik istemcide bilinmez) |
+| D6 | Organizasyon özeti | P3 | **Yapıldı (P3.3)** | `GET /home/org` (`reports.view`): dönem toplam efor, faturalanabilir oran/saat, müşteri kırılımı (ilk 5) + üç anomali sinyali mevcut tablolardan sayım (4 haftadır efor girip bu hafta girmeyen kişi · gecikmiş iş + son 7 günde gecikmeye düşen · sahipsiz birikme); eşikler sunucuda (1/5/3), eşik aşan sinyal öne çıkar; kısayollar raporlar/faturalanabilir/sözleşme/dashboard |
+| E1 | Üç eksen | P3 | **Yapıldı (P3.5)** | Kontrol çubuğunda yalnız **yerleşim** (pano · liste · takvim) + **gruplama** (pano: durum/sahip; liste: yok/proje/durum/sahip/termin); kapsam/tip/zaman/hızlı filtre eksenleri **sistem görünümü** oldu (Bana ait · Verdiğim · Sahipsiz · Gecikmiş · Bu hafta · Bu hafta biten · Issue'lar · Öneriler · Tüm işler). Eski Explorer ağacı sol kolonda "Projeler" (klasör = filtre). URL `?view&layout&group` |
+| E2 | Kayıtlı görünümler | P3 | **Yapıldı (P3.5)** | `saved_views` (P1.1 şeması) üzerinde `GET/POST/PATCH/DELETE /views` (kişisel + paylaşılan; yazma sahibi ∨ tasks.admin; `filter_json` şekli doğrulanır). Filtre/yerleşim/gruplama görünümden sapınca "Değişti" + "Görünüm olarak kaydet" / "Güncelle"; görünüm link ile açılır, aynı sonucu verir (test). Sistem görünümleri kodda (tohum satırı değil) |
+| E3 | Triage kuyruğu | P3 | **Yapıldı (P3.5 + P3.3)** | Sistem görünümü "Sahipsiz işler" (`unassigned=true`, görünür küme, liste yerleşimi); ana sayfa Dikkat bloğunda sahipsiz sayacı + ilk 5; org özetinde birikme sinyali |
+| E4 | Görsel dil | P3 | **Yapıldı (P3.4)** | Kartta tek renkli sinyal = termin (gecikmiş danger, bugün warning, yakında nötr); öncelik renksiz ince çubuk (ad erişilebilir etikette); durum nötr metin; tip rengi kalktı (kod öneki söyler); listede de aynı kural; ham hex → token. Kilit: `visualLanguage.test.jsx` |
+| E5 | Takvim yerleşimi | P3 | **Yapıldı (P3.5)** | Takvim ayrı sayfa değil, üçüncü yerleşim: seçili görünümün işleri termine göre hafta ızgarasında + kullanıcının toplantıları (`/home/week`); hafta dışı / terminsiz sayılır; aynı sorgu (parametre değişmez, test). Eski "Calendar üretilmedi" kilidi E5 ile ters çevrildi |
+| E6 | Derin link `/work/KEY` | P3 | **Yapıldı (P3.1)** | `GET /tasks/key/{key}` (kod + A9 alias, büyük/küçük harf duyarsız, görünmeyen 404) + `/work/:key` rotası → iş yüzeyi `?item=` ile açılır; `find_by_code`'daki ters koşul (alias yokken 500) düzeltildi |
 | F1 | İş kalemine dosya ekleme | P2 | **Yapıldı (P2.3, dev'de kurulu)** | `ticket_attachments.work_item_id` (0013; arc: ticket/mesaj/çözüm/iş kalemi); ticket ek altyapısı aynen (oturum → karantina → sniff → ClamAV → temiz → yetkili stream); `/tasks/{id}/attachments` uçları; temiz dosya anında bağlanır, `rejected` bağlanmaz/indirilemez; iş kalemi eki hub/portal'a giremez (test). UI: detay panelinde "Ekler" sekmesi (ticket dropzone'u). hermes-dev'de MinIO + ClamAV kuruldu (22.09, 09 §6 runbook'u uygulandı), `/ready` 200, MinIO put/stream/delete ve ClamAV EICAR testi canlı doğrulandı |
 | G1 | Durum kullanım ölçümü | P0 | **Yapıldı** | 182 iş: completed 109 · pending 51 · rejected 14 · in_progress 8; pending medyan 0,3 gün, çalışma 6,8 gün; 27 iş in_progress'i atlamış |
 
@@ -76,12 +76,12 @@ Prototip (`prototip.html`): P3 arayüzünün taslağı; olduğu gibi uygulanmad�
 ## 4. Yapılmayanlar ve neden
 
 - **P2:** tamam (B2, C1–C3, F1); dev'de MinIO/ClamAV kuruldu. Outbox/webhook ertelendi (CTO kararı).
-- **P3 (D3–D6, E1–E6):** A/B bölmesi gereği para katmanı ve e-fatura sonrası; ekran o zaman bir kez çizilir.
+- **P3:** CTO 22.09'da "kalanları da dev'de yapalım" dedi → gating kalktı; D3–D6, E1–E6 ve A5 tamam (§13). Kapsam dışı kalanlar 05 ile aynı: terminsiz işlerin ana sayfada gösterimi, takvime yazma/davet, performans puanı, yeni rapor türü, görünüm paylaşım izinleri (v2), tip rengi, genel arama. Ek: görünüm başına sayaç (prototipte var) çizilmedi — her görünüm ayrı sorgu ister; "Onay bekleyenler" bloğu para katmanının.
 
 ## 5. Sıradaki adımlar
 
-1. CTO P0 + P1 kalemlerini hermes-dev'de test eder → toplu ff-merge `test`'e (CTO "ff yapalım" deyince). Terfi öncesi hermes-test kopyasında kuru-koşu (`p1_dryrun.sh`) tekrar edilir.
-2. P3 (D3–D6, E1–E6): A/B bölmesi gereği para katmanı ve e-fatura sonrası.
+1. CTO P0–P3 kalemlerini hermes-dev'de test eder → toplu ff-merge `test`'e (CTO "ff yapalım" deyince). Terfi öncesi hermes-test kopyasında kuru-koşu (`p1_dryrun.sh`, 0008 → 0013) tekrar edilir; P3 şema getirmedi.
+2. Para katmanı / e-fatura (A/B bölmesi) ayrı plan.
 
 ## 6. P1.1 — şema + taşıma (22.09, dev)
 
@@ -183,3 +183,30 @@ Commit `a05121a`. Alembic **0013_p2_work_item_attachments** (additive): `ticket_
 - Datadog APM init container'ları (7 adet) her yeni pod'u ~3–5 dk geciktiriyor; rollout beklemeleri buna göre uzatıldı.
 
 **Canlı kanıt (core pod içinden):** `attachments_production_ready() = (True, None)`; MinIO put → stream → delete ✓ (SSE ile); `ClamAVScanner.healthy() = True`; temiz içerik → `clean/clamav`; EICAR → `rejected/malware_detected`.
+
+## 13. P3 — ana sayfa ve iş yüzeyi (22–23.09, dev; CTO "kalanları da dev'de yapalım" kararıyla)
+
+Plan `10-p3-plani.md` (CTO 4 seçimi de öneri yönünde onayladı: yeni `/` + dashboard kalır · tam üç-eksen geçişi · E4 görsel dil · A5 şimdi emekli). Şema değişikliği YOK (Alembic head 0013 aynen); `saved_views` P1.1'den. Yeni izin yok.
+
+| Adım | Commit | İçerik |
+|---|---|---|
+| P3.1 | `fffad42` | Ana sayfa `/` (`pages/HomePage.jsx`, izin başına blok), efor şeridi (kapasite haftası, eksik gün → `/time-entry?date=`), **İşlerim** (`GET /home/my-work`), **E6** `/work/:key` + `GET /tasks/key/{key}`; menüde "Ana sayfa", logo → `/` |
+| P3.2 | `4a11dd9` | **Takvimim** (`GET /home/week`: toplantı + plan + termin, yerel gün, plan tekrar kuralı frontend ile parite testi); `MeetingsPage ?date=`, `TimeEntryPage ?week=` |
+| P3.3 | `f78011a` | **Ekibim + Dikkat** (`GET /home/team`, `eligible=false` deseni) ve **Organizasyon özeti** (`GET /home/org`, eşikli sinyaller) |
+| P3.4 | `619f09d` | **E4 görsel dil**: kartta tek renkli sinyal (termin); öncelik nötr çubuk, durum nötr metin, tip rengi yok; liste aynı kural; kilit testi |
+| P3.5 | (bu commit) | **E1 + E2 + E3 + E5**: `GET/POST/PATCH/DELETE /views`; sol kolon görünümler (sistem/kişisel/paylaşılan) + "Projeler" ağacı (klasör = filtre); kontrol çubuğu yalnız yerleşim · gruplama; URL `?view&layout&group` (eski `?view=board|list|explorer` yerleşim olarak çalışır); "Değişti" → kaydet/güncelle; takvim yerleşimi; Explorer/QuickFilters/RangeBar bileşenleri kaldırıldı |
+| P3.6 | (bu commit) | **A5**: eski `/issues` uçları 410 Gone (kimlik önce 401); tablo/model F05'e |
+
+**Sapmalar / notlar (Can'ın metnine göre):**
+- Sistem görünümleri **kodda** (`features/tasks/model/views.js`), `saved_views`'a tohum satırı yazılmadı: kiracı başına tohum sürümlerle drift ederdi; kişisel/paylaşılan görünümler tabloda.
+- Prototipteki görünüm başına sayaç çizilmedi (her görünüm ayrı sorgu); "Projeler" ağacındaki sayaçlar mevcut sonuç kümesinden.
+- Explorer'ın mobil drill-down'ı ve "By user" ağacı kalktı; kişi ekseni artık gruplama (sahip) ve Ekibim bloğu. Eski Explorer varsayılan görünümü yerine varsayılan: "Bana ait işler" · pano · durum.
+- "Assigned by Me"/"Due This Week"/"Completed This Week" adları sistem görünümü olarak korundu (testler ve kullanıcı alışkanlığı); "Bu hafta biten" Can'ın listesinde yoktu, tutuldu.
+- Görünüm seçince drawer filtreleri o görünümün filtreleriyle başlar (görünüm = filtre kümesi); önce görünüm, sonra filtre.
+- Takvim: toplantılar yalnız okunur (`/home/week`), takvime yazma yok (05). Eski "Calendar üretilmedi" kilidi (featureStructure) E5 ile ters çevrildi.
+- D5 "ekip" tanımı: routing + grup üyeleri + liderlik ettiğim projelerin üyeleri; tasks.admin → açık işlerde görünen herkes. D6 "bu hafta giriş yapmamış" = son 4 haftada efor girmiş olup bu hafta girmemiş (core'da kullanıcı tablosu yok; work_logs'tan türetildi).
+- `find_by_code` alias dalındaki ters koşul (alias yokken 500) E6 ile bulunup düzeltildi; `TimeEntryPage`'deki çift `onError` (izin kaldırma mesajı hiç görünmüyordu) temizlendi.
+
+**Testler:** core `test_home_my_work.py` 11 · `test_saved_views.py` 3 · `test_issues_retired.py` 3 (tam suite bu commit'te koşuldu, bkz. commit mesajı); frontend `test/home` 31 · `test/tasks` yeniden yazılan/yeni: `viewRouting`, `viewsSidebar`, `views.model`, `savedViews.integration`, `visualLanguage`; `explorer.integration` kaldırıldı (ağaç `viewsSidebar`'da), `userAxis` Explorer bloğu düştü; hardening/i18n/shell/time-entry yeşil; lint temiz; vite build OK.
+
+**Canlı doğrulama (hermes-dev):** P3.1–P3.4 `619f09d` ile canlı (P3.2/P3.3 koşuları stale-run guard'a takıldı, son koşu hepsini taşıdı): `/home/my-work|week|team|org` ve `/tasks/key/*` token'sız 401, `/` ve `/work/TASK-1` 200 (SPA), pod logu temiz. P3.5/P3.6 push sonrası aynı probe (`/views` 401 bekleniyor).

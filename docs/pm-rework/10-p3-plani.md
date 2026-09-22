@@ -56,3 +56,7 @@ D5 görünme koşulu 04 §3 aynen: `tasks.assign` **veya** proje lideri; D6: `re
 - Tasks sayfası testleri (21 dosya) E1 geçişinde yeniden yazılır; `viewParity`/`featureStructure` kilitleri korunur, TasksPage <450 satır sınırı (sol kolon ayrı bileşen).
 - Ana sayfa blokları çok sorgu açar → blok başına tek uç (`/home/*`), react-query ile paralel; her blok kendi izniyle 403 yerine sunucu "yok" döner (blok render edilmez).
 - Görsel dil değişikliği kullanıcıya görünür; E4'ü kabul ölçütü olarak Can koydu, CTO onayı P3-3.
+
+## 5. Uygulama notları (23.09 — hepsi dev'de)
+
+Adımlar ve commit'ler 07 §13'te. Plandan sapmalar: (1) sistem görünümleri tohum satırı değil **kod** (drift yok); (2) görünüm başına sayaç yok; (3) Explorer ağacı sol kolonda "Projeler" olarak yaşıyor, mobil drill-down ve "By user" ağacı kalktı (kişi ekseni = gruplama/sahip + Ekibim); (4) "Bu hafta biten" sistem görünümü eklendi; (5) `/issues` uçları kaldırılmadı, **410 Gone** dönüyor (eski istemciye açık mesaj). Kapsam dışı liste aynen geçerli.
