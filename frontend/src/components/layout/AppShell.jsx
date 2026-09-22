@@ -35,6 +35,7 @@ import logoFullLight from '../../assets/logos/logo-full-light.png'
 import logoIconDark from '../../assets/logos/logo-icon-dark.jpg'
 import logoIconLight from '../../assets/logos/logo-icon-light.png'
 import PageSkeleton from '../common/PageSkeleton'
+import NotificationBell from './NotificationBell'
 import { RouteErrorBoundary } from '../common/ErrorBoundaries'
 import './MainLayout.css'
 
@@ -254,6 +255,9 @@ function AppShell({
                         onClick={toggleLocale}
                         className="locale-toggle-btn"
                     />
+
+                    {/* PM rework P2.2: uygulama ici bildirim zili. */}
+                    <NotificationBell />
 
                     {/* Kabuga ozel eklenti: tenant tarafinda organizasyon
                         secici, platform tarafinda duzlem rozeti. */}

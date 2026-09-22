@@ -257,6 +257,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
         with engine.begin() as conn:
             # 0009 + 0010'un getirdikleri gider; alembic isareti 0008'e.
             for table in (
+                "work_item_notifications",
                 "work_item_events", "work_item_comments", "work_item_links",
                 "work_item_code_aliases", "work_item_participants", "work_items",
                 "workflow_states", "routing_relations", "saved_views",
@@ -266,6 +267,10 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
                 conn.execute(text(f"DROP TABLE IF EXISTS {table} CASCADE"))
             conn.execute(text("ALTER TABLE projects DROP COLUMN IF EXISTS is_billable_default"))
             conn.execute(text("ALTER TABLE work_logs DROP COLUMN IF EXISTS work_item_id"))
+            # 0012'nin getirdikleri de gider.
+            conn.execute(text("ALTER TABLE task_notification_settings DROP COLUMN IF EXISTS email_enabled"))
+            conn.execute(text("ALTER TABLE task_notification_settings DROP COLUMN IF EXISTS in_app_enabled"))
+            conn.execute(text("ALTER TABLE project_memberships DROP CONSTRAINT IF EXISTS chk_project_memberships_role"))
             conn.execute(text(
                 "UPDATE alembic_version SET version_num = '0008_download_grants'"
             ))
@@ -294,7 +299,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
                     "'medium', 'pending', :b, now(), now())"
                 ), {"t": tenant_id, "cid": customer_id, "pid": project_id, "b": batch})
 
-        _run_migration(disposable_db)      # 0008 → 0009 → 0010 → 0011
+        _run_migration(disposable_db)      # 0008 → 0009 → 0010 → 0011 → 0012
 
         with engine.connect() as conn:
             head = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
@@ -309,15 +314,16 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             )).scalar()
             forced = conn.execute(text(
                 "SELECT count(*) FROM pg_class WHERE relname IN "
-                "('work_items','routing_relations','tenant_holidays') "
+                "('work_items','routing_relations','tenant_holidays',"
+                "'work_item_notifications') "
                 "AND relforcerowsecurity"
             )).scalar()
     finally:
         engine.dispose()
-    assert head == "0011_work_items_cutover_sync"
+    assert head == "0012_p2_notifications_channels"
     assert items == 1 and parts == 2, "2 kopyalik batch tek is kalemi olmali"
     assert watchers == 1
-    assert forced == 3
+    assert forced == 4
 
 
 def test_schema_guard_rejects_unmigrated_database(disposable_db):

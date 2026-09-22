@@ -450,6 +450,28 @@ def apply_work_items_expand(conn) -> None:
         conn.execute(text(stmt))
 
 
+# PM rework P2.2 (0012): kanal sutunlari + uyelik rolu kisiti. Tablo
+# (`work_item_notifications`) create_all ile gelir; bunlar mevcut tablolara
+# eklenen parcalar oldugu icin ACIKCA kosulur (yukaridaki uyari).
+P2_NOTIFICATIONS_EXPAND_STATEMENTS = (
+    "ALTER TABLE task_notification_settings ADD COLUMN IF NOT EXISTS "
+    "email_enabled BOOLEAN NOT NULL DEFAULT true",
+    "ALTER TABLE task_notification_settings ADD COLUMN IF NOT EXISTS "
+    "in_app_enabled BOOLEAN NOT NULL DEFAULT true",
+    "DO $$ BEGIN "
+    "IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_project_memberships_role') THEN "
+    "ALTER TABLE project_memberships ADD CONSTRAINT chk_project_memberships_role "
+    "CHECK (member_role IS NULL OR member_role IN ('lead','member','viewer')); "
+    "END IF; END $$",
+)
+
+
+def apply_p2_notifications_expand(conn) -> None:
+    """task_notification_settings kanal sutunlari + uyelik rolu CHECK (0012)."""
+    for stmt in P2_NOTIFICATIONS_EXPAND_STATEMENTS:
+        conn.execute(text(stmt))
+
+
 def apply_all(conn) -> None:
     """Testler icin: bugunku head semasinin tamami.
 
@@ -460,3 +482,4 @@ def apply_all(conn) -> None:
     apply_tenant_projection(conn)
     apply_tenant_expand(conn)
     apply_work_items_expand(conn)
+    apply_p2_notifications_expand(conn)

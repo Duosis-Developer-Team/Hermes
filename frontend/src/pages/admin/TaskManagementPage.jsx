@@ -519,6 +519,9 @@ function MailNotificationsTab() {
                 notify_assignment: row.notify_assignment,
                 notify_accept: row.notify_accept,
                 notify_complete: row.notify_complete,
+                // C3: kanal anahtarlari — eski satirlarda yoksa acik sayilir.
+                email_enabled: row.email_enabled !== false,
+                in_app_enabled: row.in_app_enabled !== false,
                 priorities: row.priorities,
                 due_date_rule: row.due_date_rule,
                 ...patch,
@@ -568,6 +571,34 @@ function MailNotificationsTab() {
                             />
                         </div>
                         <div className="tm-notif-controls">
+                            {/* C3 (PM rework P2.2): kanal ayrimi — bir olayi
+                                e-postada kapatip uygulama icinde acik birakmak. */}
+                            <div className="tm-notif-field">
+                                <span className="tm-notif-label">{t('pm.channels')}</span>
+                                <div className="tm-notif-chips">
+                                    {[
+                                        { key: 'email_enabled', labelKey: 'pm.channelEmail' },
+                                        { key: 'in_app_enabled', labelKey: 'pm.channelInApp' },
+                                    ].map((ch) => {
+                                        const on = row[ch.key] !== false
+                                        return (
+                                            <button
+                                                key={ch.key}
+                                                type="button"
+                                                className={`tm-notif-chip${on ? ' is-on' : ''}`}
+                                                aria-pressed={on}
+                                                disabled={disabled}
+                                                onClick={() =>
+                                                    save(row, { [ch.key]: !on })
+                                                }
+                                            >
+                                                <span className="tm-notif-chip-dot" aria-hidden="true" />
+                                                {t(ch.labelKey)}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </div>
                             <div className="tm-notif-field">
                                 <span className="tm-notif-label">{t('pm.events')}</span>
                                 {/*

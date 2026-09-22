@@ -579,6 +579,8 @@ _DEFAULT_NOTIFICATION_SETTING = {
     "notify_assignment": True,
     "notify_accept": True,
     "notify_complete": True,
+    "email_enabled": True,
+    "in_app_enabled": True,
     "priorities": ["low", "medium", "high", "urgent"],
     "due_date_rule": "any",
 }
@@ -594,6 +596,8 @@ def _notification_setting_dict(row: Optional[TaskNotificationSetting]) -> dict:
         "notify_assignment": bool(row.notify_assignment),
         "notify_accept": bool(row.notify_accept),
         "notify_complete": bool(row.notify_complete),
+        "email_enabled": row.email_enabled is not False,
+        "in_app_enabled": row.in_app_enabled is not False,
         "priorities": list(row.priorities or []),
         "due_date_rule": row.due_date_rule or "any",
     }
@@ -634,6 +638,8 @@ def upsert_notification_setting(
     row.notify_assignment = bool(data.notify_assignment)
     row.notify_accept = bool(data.notify_accept)
     row.notify_complete = bool(data.notify_complete)
+    row.email_enabled = bool(data.email_enabled)
+    row.in_app_enabled = bool(data.in_app_enabled)
     row.priorities = list(data.priorities)
     row.due_date_rule = data.due_date_rule
     db.flush()
@@ -648,11 +654,15 @@ def notification_allowed(
     priority: Optional[str],
     due_date,
     event: str,
+    channel: str = "email",
 ) -> bool:
-    """Gate for outgoing e-mails, evaluated in the request before the
-    background send is scheduled. `event` is 'assignment' | 'accept' |
-    'complete'. Fail-open on any unexpected error — a broken settings row
-    must never silence (or crash) task creation itself."""
+    """Gate for outgoing notifications, evaluated in the request before
+    the background send / in-app fan-out. `event` is 'assignment' |
+    'accept' | 'complete' (other in-app kinds pass the event filter and
+    only obey enabled/channel/priority/due rules). `channel` is 'email'
+    (default, eski davranis) or 'in_app' (C3). Fail-open on any unexpected
+    error — a broken settings row must never silence (or crash) task
+    creation itself."""
     try:
         t = task_type if task_type in _NOTIFICATION_TYPES else "task"
         row = (
@@ -662,6 +672,10 @@ def notification_allowed(
         )
         s = _notification_setting_dict(row)
         if not s["enabled"]:
+            return False
+        if channel == "in_app" and not s["in_app_enabled"]:
+            return False
+        if channel == "email" and not s["email_enabled"]:
             return False
         event_flag = {
             "assignment": "notify_assignment",

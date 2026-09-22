@@ -1,0 +1,70 @@
+# =============================================================================
+# HERMES - Uygulama ici bildirim temizligi (PM rework P2.2 / C2)
+# =============================================================================
+# Gunluk 03:30 UTC'de OKUNMUS ve 90 gunden eski work_item_notifications
+# satirlari silinir; okunmamislara ve is verisine dokunulmaz. Ayni
+# core-service image'i, ayni DB env'leri (api_cleanup ile ayni kalip).
+#
+# NOT (deploy mekanigi): CD yalnizca set-image/restart yapar — bu
+# manifest sunucuda MANUEL `kubectl apply -f k8s/notification-cleanup-cronjob.yaml`
+# ister. hermes-test'e AYRI karar olmadan uygulanmaz.
+# =============================================================================
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hermes-notification-cleanup
+  namespace: hermes-dev
+spec:
+  schedule: "30 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: OnFailure
+          # Deployment'larla ayni GHCR pull secret'i (3F review bulgusu:
+          # bu olmadan image cekilemez).
+          imagePullSecrets:
+            - name: ghcr-secret
+          containers:
+            - name: notification-cleanup
+              image: ghcr.io/duosis-developer-team/hermes-core-service:dev
+              imagePullPolicy: Always
+              command: ["python", "-m", "app.jobs.notification_cleanup"]
+              env:
+                - name: CORE_DB_HOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: DB_HOST_CORE
+                - name: CORE_DB_PORT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: DB_PORT
+                - name: CORE_DB_USER
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: POSTGRES_USER
+                - name: CORE_DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-secrets
+                      key: POSTGRES_PASSWORD
+                - name: CORE_DB_NAME
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: POSTGRES_DB_CORE
+                # shared/auth.py modul yuklemesi icin gerekli (dogrulama
+                # yapilmaz; job hicbir HTTP istegi almaz).
+                - name: JWT_PUBLIC_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-jwt-auth
+                      key: JWT_PUBLIC_KEY
+

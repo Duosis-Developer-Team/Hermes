@@ -317,6 +317,9 @@ class NotificationSettingUpdate(BaseModel):
     notify_assignment: bool = True
     notify_accept: bool = True
     notify_complete: bool = True
+    # C3: kanal anahtarlari (09 P2-2) — eski istemciler gondermezse true.
+    email_enabled: bool = True
+    in_app_enabled: bool = True
     # Only items whose priority is in this list notify. Empty → no e-mails.
     priorities: List[PriorityLiteral] = Field(
         default_factory=lambda: ["low", "medium", "high", "urgent"]

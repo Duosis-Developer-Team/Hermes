@@ -373,6 +373,41 @@ class RoutingRelation(TenantOwnedMixin, Base):
     )
 
 
+class WorkItemNotification(TenantOwnedMixin, Base):
+    """Uygulama ici bildirim (PM rework P2.2 / C2).
+
+    Olayla AYNI transaction'da yazilir (09 P2-1: outbox yok); alici =
+    aktör haric katilimcilar/reporter/owner (09 P2-3). `read_at` NULL =
+    okunmadi. Okunmuslar 90 gun sonra ayri job ile silinir.
+    """
+
+    __tablename__ = "work_item_notifications"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    work_item_id = Column(
+        UUID(as_uuid=True), ForeignKey("work_items.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    event_id = Column(
+        UUID(as_uuid=True), ForeignKey("work_item_events.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    kind = Column(String(64), nullable=False)
+    read_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_now, nullable=False, index=True)
+
+    work_item = relationship("WorkItem")
+    event = relationship("WorkItemEvent")
+
+    __table_args__ = (
+        Index("idx_work_item_notifications_user_unread", "user_id", "read_at"),
+    )
+
+
+NOTIFICATION_TABLES = ("work_item_notifications",)
+
+
 class SavedView(TenantOwnedMixin, Base):
     """Kayitli gorunum (filtre + yerlesim). Sema P1'de, UI P3'te (E2)."""
 

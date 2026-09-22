@@ -406,6 +406,10 @@ class TaskNotificationSetting(TenantOwnedMixin, Base):
     notify_assignment = Column(Boolean, nullable=False, default=True)
     notify_accept = Column(Boolean, nullable=False, default=True)
     notify_complete = Column(Boolean, nullable=False, default=True)
+    # PM rework P2.2 / C3: kanal ayrimi — e-posta ve uygulama ici ayri
+    # kapatilabilir; olay/oncelik/termin kurallari her iki kanal icin ortak.
+    email_enabled = Column(Boolean, nullable=False, default=True, server_default="true")
+    in_app_enabled = Column(Boolean, nullable=False, default=True, server_default="true")
     priorities = Column(
         JSONB,
         nullable=False,

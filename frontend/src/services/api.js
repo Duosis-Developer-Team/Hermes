@@ -633,6 +633,26 @@ export const apiManagementService = {
     },
 }
 
+// PM rework P2.2 (C2): uygulama ici bildirimler — kullanici yalniz kendini gorur.
+export const notificationService = {
+    list: async (params = {}) => {
+        const response = await coreApi.get('/api/v1/core/notifications', { params })
+        return response.data
+    },
+    unreadCount: async () => {
+        const response = await coreApi.get('/api/v1/core/notifications/unread-count')
+        return response.data
+    },
+    markRead: async (id) => {
+        const response = await coreApi.post(`/api/v1/core/notifications/${id}/read`)
+        return response.data
+    },
+    markAllRead: async () => {
+        const response = await coreApi.post('/api/v1/core/notifications/read-all')
+        return response.data
+    },
+}
+
 export const taskNotificationSettingsService = {
     /** Admin: one row per work-item type (task/issue/suggestion) with the
      * e-mail rules; unconfigured types come back with defaults (all ON). */

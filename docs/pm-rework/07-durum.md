@@ -3,7 +3,7 @@
 Can'ın 05-gelistirme-kapsami.md'de listelediği **31 kalem** ile yapılanların karşılaştırması.
 Kararlar ve kod doğrulaması ayrıntısı: `06-inceleme-ve-kararlar.md`.
 
-**Özet:** **P0 tamam** (D1 sapmayla, D2, G1, B1) · **P1 tamam** (A1–A4, A6–A10, B3–B5) · **P2 başladı** (P2.1 B2 üyelik dev'de) — 17 kalem dev'de · 15 başlamadı (A5 F05'e ertelendi · P2 4: C1–C3, F1 · P3 10; tablo 32 satır = Can'ın 31'i + A10). Sıradaki: P2.2 (C3 + C2 bildirim), P2.3 (F1 ek dosya), P2.4 (C1 kapanış); CTO'nun dev testi → toplu ff.
+**Özet:** **P0 tamam** (D1 sapmayla, D2, G1, B1) · **P1 tamam** (A1–A4, A6–A10, B3–B5) · **P2 sürüyor** (P2.1 B2, P2.2 C1–C3 dev'de) — 20 kalem dev'de · 12 başlamadı (A5 F05'e ertelendi · F1 · P3 10; tablo 32 satır = Can'ın 31'i + A10). Sıradaki: P2.3 (F1 ek dosya, dev'e MinIO/ClamAV); CTO'nun dev testi → toplu ff.
 Kararlar: 7'nin 7'si + 2 yeni karar kapatıldı (batch → `participant.completed_at`; A10 efor↔iş kalemi). Açık karar yok.
 
 ## 1. Can'ın istediği tüm geliştirmeler (05'teki liste)
@@ -25,9 +25,9 @@ Kararlar: 7'nin 7'si + 2 yeni karar kapatıldı (batch → `participant.complete
 | B3 | Düzenleme yetkisi kuralları | P1 | **Yapıldı** | Çekirdek (proje/atanan/tür/fatura/silme): admin ∨ reporter ∨ proje **lead**'i; sahip (owner) yalnız başlık/açıklama/tarihler/öncelik/tahmin (`OWNER_EDITABLE_FIELDS`) |
 | B4 | Kendine iş açma | P1 | **Yapıldı** | Yalnız kendine atama → erişim yeter (`require_create_authority`, `_validate_assignment_wi`); `permissions/me` `can_self_assign` + kendisi listede; UI: "My Tasks"ta Create, seçici kendisini listeler. Yönlendirmede `assigner==assignee` kısıtı kalktı |
 | B5 | Takipçi | P1 | **Yapıldı** | `participants.role='watcher'`: `POST/DELETE /tasks/{id}/watchers` (kendini: görünürlük yeter; başkasını: çekirdek yetki); görür, düzenleyemez; ilk kabul/tamamlama e-postası takipçilere de gider. UI: detay panelinde zil + "Takipçiler" satırı |
-| C1 | İş kalemi olay akışı | P2 | Başlamadı | A1 gerekli |
-| C2 | Uygulama içi bildirim | P2 | Başlamadı | C1 gerekli |
-| C3 | Kanal ayrımı | P2 | Başlamadı | C2 gerekli |
+| C1 | İş kalemi olay akışı | P2 | **Yapıldı (P1 + P2.2)** | `work_item_events` `sequence` ile 15 olay tipi (P1); bildirim olayla aynı transaction'da (P2.2). Giden kutusu (outbox) **ertelendi** — 09 P2-1 CTO kararı: tek tüketici için gereksiz, iş kalemi webhook'u istendiğinde eklenir |
+| C2 | Uygulama içi bildirim | P2 | **Yapıldı (P2.2)** | `work_item_notifications` (0012, RLS); alıcı = aktör hariç katılımcı/reporter/owner (09 P2-3); `GET /notifications`, `/unread-count`, `POST /{id}/read`, `/read-all`; kabukta zil + rozet + liste, tıklayınca işe gider; rozet mount + pencere odağında tazelenir. WebSocket yok (kapsam dışı). Okunmuşlar 90 gün sonra `notification_cleanup` job'ı ile silinir (manifest `k8s/notification-cleanup-cronjob.yaml`, manuel apply) |
+| C3 | Kanal ayrımı | P2 | **Yapıldı (P2.2)** | `task_notification_settings.email_enabled` + `in_app_enabled` (09 P2-2); `notification_allowed(channel=)`; PM ayarlarında "Kanallar" çipleri. E-postada kapalı, uygulamada açık mümkün (test) |
 | D1 | Kapasite ayarları | P0 | **Yapıldı · sapma** | `plan_times.plan_type` yerine `user_absences` (gerekçe §3) |
 | D2 | Efor şeridi + eksik gün dürtmesi | P0 | **Yapıldı** | Kurallar 04 §4.1/§7 birebir |
 | D3 | İşlerim blokları | P3 | Başlamadı | Ana sayfa yok; `owner` + `state.category` ister (A1, A2) |
@@ -75,13 +75,13 @@ Prototip (`prototip.html`): P3 arayüzünün taslağı; olduğu gibi uygulanmad�
 
 ## 4. Yapılmayanlar ve neden
 
-- **P2 (C1–C3, F1):** 09-p2-plani onaylı; P2.2 bildirim (C3+C2), P2.3 ek dosya (F1), P2.4 olay kataloğu (C1) sırada. B2 bitti (P2.1).
+- **P2 (F1):** 09-p2-plani onaylı; B2 (P2.1) ve C1–C3 (P2.2) bitti; P2.3 ek dosya (F1) sırada — hermes-dev'e MinIO/ClamAV manifestleri gerekir (manuel kubectl).
 - **P3 (D3–D6, E1–E6):** A/B bölmesi gereği para katmanı ve e-fatura sonrası; ekran o zaman bir kez çizilir.
 
 ## 5. Sıradaki adımlar
 
 1. CTO P0 + P1 kalemlerini hermes-dev'de test eder → toplu ff-merge `test`'e (CTO "ff yapalım" deyince). Terfi öncesi hermes-test kopyasında kuru-koşu (`p1_dryrun.sh`) tekrar edilir.
-2. P2 — `09-p2-plani.md` CTO onaylı (22.09). P2.1 B2 bitti; P2.2 → P2.3 → P2.4 sırada. P2.3 için hermes-dev'e MinIO + ClamAV manifestleri (manuel `kubectl`, komutları ben veririm).
+2. P2 — `09-p2-plani.md` CTO onaylı (22.09). P2.1 B2 ve P2.2 C1–C3 bitti; P2.3 F1 sırada: hermes-dev'e MinIO + ClamAV manifestleri (manuel `kubectl`, komutları ben veririm), `k8s/notification-cleanup-cronjob.yaml` da manuel apply.
 
 ## 6. P1.1 — şema + taşıma (22.09, dev)
 
@@ -141,9 +141,20 @@ Commit `b29904f` (hermes-dev). Şema değişikliği YOK (0010'daki tablolar yete
 
 ## 9. P2.1 — B2 proje üyeleri (22.09, dev)
 
-Commit `<p21sha>`. Şema değişikliği yok (`member_role` CHECK'i 0012'de gelecek; şema Literal `lead|member|viewer` ile korunuyor).
+Commit `1ba5a9f`. Şema değişikliği yok (`member_role` CHECK'i 0012'de gelecek; şema Literal `lead|member|viewer` ile korunuyor).
 
 - Backend: `routers/project_members.py` — `GET/POST/PATCH/DELETE /projects/{id}/members`; yanıt `{project_id, can_manage, can_assign_lead, items[]}` (UI düğmeleri sunucu kararına bağlı). Yetki: `projects.manage` ∨ o projenin lead'i; lead `member/viewer` ekler-çıkarır-değiştirir, `lead` rolüne dokunamaz (403); pasif üyelik yeniden etkinleştirilir (satır çoğaltılmaz); mükerrer 409; geçersiz rol 422. Eski `/project-memberships` uçları (admin) aynen.
 - Frontend: `components/projects/ProjectMembersDrawer.jsx` (liste, kullanıcı seçici — zaten üye olanlar listelenmez —, rol Select, çıkar; `can_assign_lead` yoksa "Lider" seçeneği yok); Ayarlar › Projeler satırında "Üyeler"; Explorer breadcrumb'ında proje seçiliyken `ProjectMembersButton` (provider yoksa kendini gizler — `QueryClientContext` guard'ı; `components/tasks` provider'sız render sınırı korunur). Query anahtarı `queryKeys.projectMembers` (merkezi sözleşme).
 - Testler: core +7 (`test_project_members.py`: yetki matrisi, lead sınırı, 409/422, üyeliğin görünürlüğü anında değiştirmesi); frontend +5 (`admin/projectMembers.test.jsx`).
 - Not: üyelik listesi kullanıcı adlarını `auth /users/lookup` ile çözer (en az ayrıcalıklı dizin); lead için proje-içi yönlendirme (05 B2 "proje içi yönlendirme") P2'de yok — yönlendirme kiracı düzeyinde (A4).
+
+## 10. P2.2 — C1–C3 uygulama içi bildirim + kanal ayrımı (22.09, dev)
+
+Commit `<p22sha>`. Alembic **0012_p2_notifications_channels** (additive): `work_item_notifications` (RLS+FORCE), `task_notification_settings.email_enabled/in_app_enabled` (DEFAULT true), `project_memberships.member_role` CHECK (`lead|member|viewer|NULL`). F1'in `ticket_attachments.work_item_id`'si P2.3'te ayrı migration'a (0013) alındı — 09 §3 "tek migration" demişti; adımların bağımsız kalması için bölündü.
+
+- `services/notification_service.py`: `fan_out` `record_event` içinden (aynı transaction, outbox yok); alıcı kuralları olay tipine göre (task_created → atananlar; durum/yorum → reporter+owner+katılımcılar; watcher_added → eklenen; log_time → reporter/owner); aktör hariç; kural tablosu `channel="in_app"` ile uygulanır (öncelik/termin/olay bayrağı). Hiçbir zaman istisna yükseltmez.
+- `routers/notifications.py`: liste (`unread`, sayfalı) + okunmamış sayısı + okundu/tümü okundu; kullanıcı yalnız kendi bildirimlerini görür (başkasınınki 404). Yanıt olay verisinden yalnız güvenli anahtarları taşır (`from/to/user_id/...`).
+- E-posta kapısı: `notification_allowed(channel="email")` — `email_enabled=false` e-postayı kapatır, uygulama içi sürer (ve tersi); eski istemciler alanları göndermezse iki kanal açık.
+- Temizlik: `app/jobs/notification_cleanup.py` (`purge_read`, 90 gün, tenant başına) + `k8s/notification-cleanup-cronjob.yaml` (03:30 UTC, dev; manuel apply, `kubectl diff` sonrası).
+- Frontend: `components/layout/NotificationBell.jsx` (rozet, liste, okundu, tümünü okundu, işe git; `refetchOnWindowFocus` + 60 sn), kabuk başlığında; PM ayarları › Mail Notifications sekmesinde "Kanallar: E-posta / Uygulama içi" çipleri; i18n.
+- Testler: core +7 (`test_work_item_notifications.py`: alıcı kümesi, aktör hariç, okundu/tümü, kanal kapama, öncelik kuralı, purge), migration zinciri 0012 (temiz DB + geride kalmış DB); frontend +5 (`shell/notificationBell.test.jsx`).

@@ -227,6 +227,23 @@ export default {
     // ---------------------------------------------------------------
     // Bu ekranlar AYNI CRUD sozlugunu paylasir; metin yer tutucuyla
     // uretilir, ayni cumle alti kez YAZILMAZ.
+    notifications: {
+        title: 'Notifications',
+        bell: 'Notifications',
+        bellWithCount: 'Notifications, {count} unread',
+        markAllRead: 'Mark all as read',
+        empty: 'Nothing new',
+        kind_created: '{item} was assigned to you: {title}',
+        kind_updated: '{item} was updated: {title}',
+        kind_completed: '{item} was completed: {title}',
+        kind_rejected: '{item} was rejected: {title}',
+        kind_restored: '{item} was reopened: {title}',
+        kind_status: '{item} changed status: {title}',
+        kind_comment: 'New comment on {item}: {title}',
+        kind_watcher: 'You now follow {item}: {title}',
+        kind_logTime: 'Time was logged on {item}: {title}',
+        kind_generic: '{item}: {title}',
+    },
     projects: {
         members: 'Members',
         membersOf: 'Members of {name}',
@@ -654,6 +671,9 @@ export default {
         accepted: 'Accepted',
         completed: 'Completed',
         events: 'Events',
+        channels: 'Channels',
+        channelEmail: 'E-mail',
+        channelInApp: 'In-app',
         nameRequired: 'Name is required.',
     },
 

@@ -364,6 +364,8 @@ def update_notification_setting(
         notify_assignment=row.notify_assignment,
         notify_accept=row.notify_accept,
         notify_complete=row.notify_complete,
+        email_enabled=row.email_enabled is not False,
+        in_app_enabled=row.in_app_enabled is not False,
         priorities=list(row.priorities or []),
         due_date_rule=row.due_date_rule,
         updated_at=row.updated_at,

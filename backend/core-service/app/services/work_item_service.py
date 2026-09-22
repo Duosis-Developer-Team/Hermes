@@ -360,6 +360,9 @@ def record_event(db: Session, item: WorkItem, *, actor_user_id: Optional[UUID],
     )
     db.add(ev)
     db.flush()
+    # C2: uygulama ici bildirim olayla AYNI transaction'da (09 P2-1).
+    from . import notification_service
+    notification_service.fan_out(db, item, ev)
     return ev
 
 

@@ -107,6 +107,13 @@ export const queryKeys = {
         get all() { return k('project-members') },
         byProject: (projectId) => k('project-members', projectId),
     },
+    /** Uygulama ici bildirimler (PM rework P2.2 / C2): rozet + liste ayni
+     *  aile; okundu isareti tek invalidation ile ikisini tazeler. */
+    notifications: {
+        get all() { return k('notifications') },
+        get unreadCount() { return k('notifications', 'unread-count') },
+        list: (filters) => k('notifications', 'list', stableFilters(filters)),
+    },
     /** auth-service /users/lookup — iki ayri cagri sekli var. */
     authUsersLookup: {
         get all() { return k('auth-users-lookup') },

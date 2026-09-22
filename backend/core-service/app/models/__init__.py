@@ -20,9 +20,9 @@ from .capacity import (
     TenantCapacitySettings, TenantHoliday, UserAbsence, UserCapacityOverride,
 )
 from .work_item import (
-    WORK_ITEM_TABLES, RoutingRelation, SavedView, WorkflowState, WorkItem,
-    WorkItemCodeAlias, WorkItemComment, WorkItemEvent, WorkItemLink,
-    WorkItemParticipant,
+    NOTIFICATION_TABLES, WORK_ITEM_TABLES, RoutingRelation, SavedView, WorkflowState,
+    WorkItem, WorkItemCodeAlias, WorkItemComment, WorkItemEvent, WorkItemLink,
+    WorkItemNotification, WorkItemParticipant,
 )
 from .task import (
     TaskUserPermission,
@@ -143,4 +143,6 @@ __all__ = [
     "RoutingRelation",
     "SavedView",
     "WORK_ITEM_TABLES",
+    "WorkItemNotification",
+    "NOTIFICATION_TABLES",
 ]
