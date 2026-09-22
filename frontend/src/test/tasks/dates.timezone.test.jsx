@@ -58,7 +58,8 @@ afterEach(() => {
 const weeklyParams = async () => {
     const user = setupUser()
     renderTasksPage()
-    await user.click(await screen.findByRole('tab', { name: 'Weekly' }))
+    // P3.5: haftalik pencere artik bir GORUNUMDUR (Due This Week).
+    await user.click(await screen.findByRole('tab', { name: 'Due This Week' }))
     await waitFor(() => {
         const last = taskService.list.mock.calls.at(-1)?.[0]
         expect(last?.due_from).toBeTruthy()
@@ -135,7 +136,8 @@ describe('hizli filtrelerin tarih parametreleri', () => {
     const clickChip = async (label) => {
         const user = setupUser()
         renderTasksPage()
-        await user.click(await screen.findByRole('button', { name: label }))
+        // P3.5: hizli filtreler sol kolonda sistem GORUNUMU (tab).
+        await user.click(await screen.findByRole('tab', { name: label }))
         await waitFor(() => {
             const last = taskService.list.mock.calls.at(-1)?.[0]
             expect(last?.due_to || last?.completed_to).toBeTruthy()

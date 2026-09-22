@@ -110,8 +110,9 @@ describe('salt okunurluk ve yetki', () => {
 
     it('sayfa arsivde durum degistirme ve olusturmayi KAPATIR', () => {
         const jsx = read('pages/TasksPage.jsx')
-        expect(jsx).toMatch(/allowStatusChange=\{!readOnly/)
-        expect(jsx).toMatch(/canCreate=\{!readOnly/)
+        // P3.5: kararlar prop'a gecmeden ONCE tek yerde hesaplanir.
+        expect(jsx).toMatch(/allowStatusChange = !readOnly/)
+        expect(jsx).toMatch(/canCreate = !readOnly/)
     })
 
     it('yalniz TERMINAL logical item arsivlenebilir', () => {

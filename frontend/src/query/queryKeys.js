@@ -93,6 +93,10 @@ export const queryKeys = {
         /** Is kalemi ekleri (PM rework P2.3 / F1). */
         attachments: (id) => k('tasks', 'attachments', id),
     },
+    /** Kayitli gorunumler (PM rework P3.5 / E2): kisisel + paylasilan. */
+    views: {
+        get all() { return k('views') },
+    },
     /** Gorev aktivite akisi (Review modal + yorum thread'i ayni aileyi
      *  tuketir; kok anahtar DEGISTIRILEMEZ). */
     taskActivity: {

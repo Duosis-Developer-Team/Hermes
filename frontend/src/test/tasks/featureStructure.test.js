@@ -206,10 +206,12 @@ describe('kapsam disi birakilan urun kararlari', () => {
         }
     })
 
-    it('Calendar gorunumu URETILMEDI', () => {
-        for (const f of TASK_SOURCES) {
-            expect(read(f)).not.toMatch(/TaskCalendar|calendarView|viewLayout === 'calendar'/)
-        }
+    it('Takvim bir YERLESIMDIR, ayri sayfa degil (PM rework P3.5 / E5)', () => {
+        // Onceki karar ("Calendar uretilmedi") Can'in E5 olcutuyle
+        // degisti: takvim, liste/pano ile ayni yuzeyde bir yerlesim tipi.
+        expect(read('features/tasks/components/TasksCalendarView.jsx')).toContain('tv-cal__grid')
+        expect(read('features/tasks/components/TasksSurface.jsx')).toMatch(/layout === 'calendar'/)
+        expect(read('routes/loaders.js')).not.toMatch(/calendar:/i)
     })
 
     it('Time Entry clipboard modeli DOKUNULMADAN durur', () => {

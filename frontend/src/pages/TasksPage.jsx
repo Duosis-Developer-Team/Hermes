@@ -1,62 +1,51 @@
 /**
  * =============================================================================
- * HERMES - Tasks Page (route orkestrasyonu)
+ * HERMES - Tasks sayfasi (route/orkestrasyon — PM rework P3.5)
  * =============================================================================
- * Board / List gorunumu, kullanicinin gorebildigi gorevlerle sinirli.
+ * Ekranin durumu = secili GORUNUM (sol kolon: sistem + kisisel +
+ * paylasilan; URL ?view=). Kontrol cubugunda yalniz iki eksen: gruplama
+ * · yerlesim (liste · pano · takvim). Kapsam/tip/zaman/hizli filtre
+ * eksenleri ayri kontrol DEGIL, gorunumun kendisidir (E1). Filtre
+ * degisince "gorunum olarak kaydet" onerilir (E2). Sahipsiz isler kalici
+ * "Triage" gorunumundedir (E3).
  *
- * Sprint 5C: bu dosya artik YALNIZCA baglayicidir — durum, sorgu,
- * mutasyon, tarih matematigi ve izin karari `src/features/tasks` altina
- * kendi sinirlarina ayrildi:
- *
- *   model/      permissions · constants · dates · taskQuery
- *   hooks/      useTaskTypeRoute · useTaskViewState · useTaskFilters
- *               useTaskDirectory · useTasksQuery · useTaskInvalidation
- *               useTaskMutations · useTaskStatusMutation · useTaskWorkLog
- *               useTaskDialogs
- *   components/ TasksHeader · TaskQuickFilters · TaskRangeBar
- *               TaskFilterBar · TasksSurface
- *   modals/     TaskArchiveModal · TaskRestoreModal · TaskStatusConfirmModal
- *
- * TEK bir "mega hook" YOKTUR: her hook tek bir soruyu cevaplar ve tek
- * basina test edilebilir. Burada kalan is, aralarindaki AKISI kurmak —
- * ozellikle "tamamla → Log Time" gecisi.
+ * Bu dosya yalnizca orkestrasyon yapar: kararlar hook/model katmaninda.
  * =============================================================================
  */
-
 import { useState } from 'react'
 import { Empty, message } from 'antd'
+import dayjs from 'dayjs'
 import useMultiAssignmentDrop from '../features/tasks/hooks/useMultiAssignmentDrop'
 import useAssigneeScope from '../features/tasks/hooks/useAssigneeScope'
 import useTaskArchiveWorkspace from '../features/tasks/hooks/useTaskArchiveWorkspace'
 import TaskArchiveDialogs from '../features/tasks/components/TaskArchiveDialogs'
 import MultiAssignmentConfirm from '../features/tasks/components/MultiAssignmentConfirm'
-
 import { useAuthStore } from '../stores/authStore'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
 import {
     canChangeTaskStatus, resolveViewedUserId, selectTaskPermissions,
 } from '../features/tasks/model/permissions'
 import useTaskTypeRoute from '../features/tasks/hooks/useTaskTypeRoute'
-import useTaskViewState from '../features/tasks/hooks/useTaskViewState'
-import useTaskFilters from '../features/tasks/hooks/useTaskFilters'
+import useViewWorkspace from '../features/tasks/hooks/useViewWorkspace'
+import useCalendarMeetings from '../features/tasks/hooks/useCalendarMeetings'
 import useTaskDirectory from '../features/tasks/hooks/useTaskDirectory'
 import useTasksQuery from '../features/tasks/hooks/useTasksQuery'
 import useTaskMutations from '../features/tasks/hooks/useTaskMutations'
 import useTaskStatusMutation from '../features/tasks/hooks/useTaskStatusMutation'
 import useTaskWorkLog from '../features/tasks/hooks/useTaskWorkLog'
-import useWorkflowStates from '../features/tasks/hooks/useWorkflowStates'
 import useTaskDialogs from '../features/tasks/hooks/useTaskDialogs'
 import TasksHeader from '../features/tasks/components/TasksHeader'
-import TaskQuickFilters from '../features/tasks/components/TaskQuickFilters'
-import TaskRangeBar from '../features/tasks/components/TaskRangeBar'
+import TaskViewsSidebar from '../features/tasks/components/TaskViewsSidebar'
+import TaskAxisBar from '../features/tasks/components/TaskAxisBar'
 import TaskFiltersDrawer from '../features/tasks/components/TaskFiltersDrawer'
-import { Badge, Button as AntButton } from 'antd'
-import { FilterOutlined } from '@ant-design/icons'
 import TasksSurface from '../features/tasks/components/TasksSurface'
+import SaveViewModal from '../features/tasks/modals/SaveViewModal'
 import TaskStatusConfirmModal from '../features/tasks/modals/TaskStatusConfirmModal'
 import CreateTaskModal from '../components/modals/CreateTaskModal'
 import TaskReviewModal from '../components/modals/TaskReviewModal'
 import LogTimeModal from '../components/modals/LogTimeModal'
+import { buildHierarchy } from '../features/tasks/model/hierarchy'
+import { groupIntoLogicalItems, userLabel } from '../features/tasks/model/grouping'
 import { useT } from '../i18n'
 import './TasksPage.css'
 
@@ -68,27 +57,29 @@ function TasksPage() {
     // ── Diyaloglar ────────────────────────────────────────────────────────
     // Once kurulur: derin baglanti (?item=) Review modalini acar.
     const dialogs = useTaskDialogs({ defaultCreateType: 'task' })
-    const { taskType, goToType } = useTaskTypeRoute({
-        onDeepLinkTask: dialogs.openReview,
-    })
+    useTaskTypeRoute({ onDeepLinkTask: dialogs.openReview })
 
-    // ── Izinler: TUM kararlar TEK selector katmanindan (Sprint 5 §4) ──────
+    // ── Izinler (baslangic: tur bagimsiz) ─────────────────────────────────
+    const basePerms = selectTaskPermissions({ scopes, isTaskAdmin, canAccessAny })
+
+    // ── Gorunum calisma alani: URL + kayitli gorunumler + filtreler ──────
+    const ws = useViewWorkspace({
+        canViewAssignedByMe: basePerms.canViewAssignedByMe, enabled: canAccessAny,
+    })
+    const q = ws.queryInputs
+    const permType = q.taskType || 'task'
+
     // Fail-closed: scopes yuklenmemisken her sey false — yetkisiz kontrol
     // flash etmez. UI gizleme backend authorization'in YERINE GECMEZ.
     const taskPerms = selectTaskPermissions({
-        scopes, isTaskAdmin, canAccessAny, taskType,
+        scopes, isTaskAdmin, canAccessAny, taskType: permType,
         createType: dialogs.createType,
     })
-
-    const view = useTaskViewState({
-        canViewAssignedByMe: taskPerms.canViewAssignedByMe,
-    })
-    const { filters, clearFilters, ...filterActions } = useTaskFilters()
 
     // Effective viewed user. Non-admin path always resolves to current user
     // regardless of the selector — backend also coerces, defense in depth.
     const viewedUserId = resolveViewedUserId({
-        isTaskAdmin, selectedUserId: view.selectedUserId, currentUserId: user?.id,
+        isTaskAdmin, selectedUserId: ws.selectedUserId, currentUserId: user?.id,
     })
 
     // Active | Archive ekseni URL'de yasar; arsiv havuzu SALT OKUNUR.
@@ -96,15 +87,18 @@ function TasksPage() {
     const { archiveState, readOnly } = archive
 
     const { tasks, isLoading } = useTasksQuery({
-        enabled: taskPerms.canAccessScope,
-        taskType,
-        taskScope: view.taskScope,
+        // Tipsiz gorunum (Bana ait / Tum isler): herhangi bir erisim yeter.
+        enabled: q.taskType ? taskPerms.canAccessScope : canAccessAny,
+        taskType: q.taskType,
+        taskScope: q.taskScope,
         viewedUserId,
-        rangeMode: view.rangeMode,
-        weekStart: view.weekStart,
-        quickFilter: view.quickFilter,
-        filters,
+        rangeMode: q.rangeMode,
+        weekStart: ws.weekStart,
+        quickFilter: q.quickFilter,
+        filters: ws.filters,
         archiveState,
+        scopeAll: q.scopeAll,
+        unassigned: q.unassigned,
     })
 
     const directory = useTaskDirectory({
@@ -112,15 +106,13 @@ function TasksPage() {
         isTaskAdmin,
         currentUser: user,
         tasks,
-        customerFilter: filters.customer,
-        projectFilter: filters.project,
+        customerFilter: ws.filters.customer,
+        projectFilter: ws.filters.project,
     })
 
     const mutations = useTaskMutations({
         createType: dialogs.createType,
         onWriteSettled: dialogs.closeCreate,
-        // Review modali acikken durum degisirse, kullanici kapatmadan
-        // once guncel bayragi gorsun (eski not modalinin deseni).
         onTaskRefreshed: (updated) => {
             if (dialogs.reviewTask && dialogs.reviewTask.id === updated?.id) {
                 dialogs.openReview(updated)
@@ -128,25 +120,25 @@ function TasksPage() {
         },
     })
 
-    // Kisi ekseni: secenekler + istemci tarafi daraltma (hook'ta).
-
     const { isAssignedByMe, assigneeOptions, visibleTasks } = useAssigneeScope({
         tasks,
-        taskScope: view.taskScope,
+        taskScope: q.taskScope,
         userMap: directory.userMap,
-        assigneeFilter: filters.assignee,
+        assigneeFilter: ws.filters.assignee,
     })
     const status = useTaskStatusMutation()
     const workLog = useTaskWorkLog()
-    const { columns: boardColumns } = useWorkflowStates() // P1: sutunlar durumlardan
+    const { meetings } = useCalendarMeetings({
+        enabled: ws.layout === 'calendar', weekStart: ws.weekStart,
+    })
+
+    // Sol kolon "Projeler": sonuc kumesinin Musteri → Proje agaci.
+    const projectTree = buildHierarchy(
+        groupIntoLogicalItems(tasks, (id) => userLabel(id, directory.userMap)),
+    )
 
     // ── Tamamla → Log Time akisi ──────────────────────────────────────────
-    // Cagiranlar ONCE onaylatir (kart checkbox'i onay modalinden gecer;
-    // Review modalinin kendi onayi vardir).
     const executeToggle = async (task, nextCompleted) => {
-        // Workflow gate: pending bir gorev DOGRUDAN tamamlanamaz. Ilk
-        // "tamamla" aksiyonu onu KABUL eder (→ In Progress); atanan bir
-        // sonraki aksiyonda tamamlar.
         if (nextCompleted && task.status === 'pending') {
             await mutations.acceptMutation.mutateAsync(task.id)
             return
@@ -159,8 +151,6 @@ function TasksPage() {
             return
         }
         if (nextCompleted) {
-            // Log Time YALNIZCA tamamlanmaya ILK geciste acilir.
-            // Yeniden acma (completed → pending) bilerek hicbir sey yapmaz.
             dialogs.closeReview()
             workLog.openLogTime(task)
         }
@@ -174,13 +164,8 @@ function TasksPage() {
     }
 
     // Board karti bir durum kolonuna birakildi → yalnizca durum degisir.
-    // Atanan olusturmada sabittir (surukleyerek yeniden atama YOK). Izin
-    // board tarafinda da kontrol edilir; bu ikinci savunmadir.
     const handleCardDrop = async (task, { newStatus }) => {
         if (!newStatus) return
-        // Board zaten surukleme kapisini uyguluyor; bu IKINCI savunmadir
-        // (orn. kart cizildikten sonra gorev baskasina atanirsa). Kural
-        // AYNI selector'dan gelir — kopya yok.
         const canStatus = canChangeTaskStatus({
             task, currentUserId: user?.id, isTaskAdmin,
         })
@@ -191,12 +176,9 @@ function TasksPage() {
         const result = await status.changeTaskStatus({
             id: task.id, status: newStatus,
         })
-        // Checkbox akisinin verdigi Log Time davetini KORU — yalnizca
-        // GERCEKTEN calisan bir gecisin ardindan.
         if (result.ok && newStatus === 'completed') workLog.openLogTime(task)
     }
 
-    // Coklu atama surukleme onayi — kural ve durum hook'ta (§11).
     const multi = useMultiAssignmentDrop({
         currentUserId: user?.id,
         applyDrop: handleCardDrop,
@@ -205,35 +187,54 @@ function TasksPage() {
 
     const handleReviewReopen = async (task) => {
         if (task.status === 'completed') {
-            // Yanlislikla tamamlamayi geri al → In Progress (kendi isini
-            // yeniden kabul etmeye gerek yok).
             const updated = await mutations.completionMutation.mutateAsync({
                 id: task.id, completed: false,
             })
             if (updated?.id) dialogs.openReview(updated)
         } else {
-            // Reddedilmis → Pending (yeniden kabul edilmeli).
             await mutations.reopenMutation.mutateAsync(task.id)
         }
     }
 
-    // Create requires assign permission AND at least one assignable target
-    // (user OR group): sadece grup eslemesi uzerinden atayabilen — ya da
-    // dogrudan eslemeleri bir izin kapatma cascade'iyle silinmis —
-    // kullanicilardan Create'i gizlememek icin ikisi de sayilir.
     const canCreateTask =
         isTaskAdmin ||
         (taskPerms.canAssignTasks &&
             (taskPerms.assignableUserIds.length > 0 ||
                 taskPerms.assignableGroupIds.length > 0))
 
-    // Premium: gelismis filtreler artik surekli acik bir serit degil —
-    // tek "Filters" aksiyonuyla acilan drawer (mobilde bottom sheet).
+    // ── Gorunum kaydet / guncelle / sil ───────────────────────────────────
+    const [saveOpen, setSaveOpen] = useState(false)
     const [filtersOpen, setFiltersOpen] = useState(false)
     const activeFilterCount = [
-        filters.status, filters.priority, filters.customer,
-        filters.project, filters.subProject,
+        ws.filters.status, ws.filters.priority, ws.filters.customer,
+        ws.filters.project, ws.filters.subProject,
     ].filter(Boolean).length
+
+    const handleSaveAs = async (values) => {
+        try {
+            await ws.saveAs(values)
+            setSaveOpen(false)
+            message.success(t('views.saved'))
+        } catch {
+            message.error(t('views.saveFailed'))
+        }
+    }
+    const handleUpdate = async () => {
+        try {
+            await ws.updateCurrent()
+            message.success(t('views.updated'))
+        } catch {
+            message.error(t('views.saveFailed'))
+        }
+    }
+    const handleDeleteView = async (view) => {
+        try {
+            await ws.removeView(view)
+            message.success(t('views.deleted'))
+        } catch {
+            message.error(t('views.saveFailed'))
+        }
+    }
 
     if (!canAccessAny) {
         return (
@@ -243,6 +244,13 @@ function TasksPage() {
         )
     }
 
+    // Durum degisikligi atanana aittir; "Verdigim isler" salt izleme.
+    const allowStatusChange = !readOnly && !isAssignedByMe
+    const canCreate = !readOnly && (
+        (canCreateTask && (isAssignedByMe || q.scopeAll))
+        || (taskPerms.canSelfAssign && !isAssignedByMe)
+    )
+
     return (
         <div className="tasks-page">
             <TasksHeader
@@ -250,115 +258,107 @@ function TasksPage() {
                 onArchiveStateChange={archive.setArchiveState}
                 user={user}
                 isTaskAdmin={isTaskAdmin}
-                canViewAssignedByMe={taskPerms.canViewAssignedByMe}
-                selectedUserId={view.selectedUserId}
-                onSelectUser={view.setSelectedUserId}
+                selectedUserId={ws.selectedUserId}
+                onSelectUser={ws.setSelectedUserId}
                 userSelectorOptions={directory.userSelectorOptions}
                 usersLoaded={directory.allActiveUsers.length > 0}
-                taskType={taskType}
-                onSelectType={goToType}
+                taskType={permType}
                 userMap={directory.userMap}
                 onOpenReview={dialogs.openReview}
-                taskScope={view.taskScope}
-                onSelectScope={view.setTaskScope}
-                viewLayout={view.viewLayout}
-                onSelectLayout={view.setViewLayout}
-                groupByAssignee={view.groupByAssignee}
-                onToggleGroupByAssignee={view.setGroupByAssignee}
             />
 
-            <TaskQuickFilters
-                value={view.quickFilter}
-                onToggle={view.toggleQuickFilter}
-                onClear={view.clearQuickFilter}
-            />
-
-            {/* Hizli filtre aktifken aralik seridi gizlenir: filtre kendi
-                tarih penceresini getirir, ikisi ayni anda anlamsizdir. */}
-            {!view.quickFilter && (
-                <TaskRangeBar
-                    rangeMode={view.rangeMode}
-                    onSelectRange={view.setRangeMode}
-                    weekStart={view.weekStart}
-                    weekEnd={view.weekStart.endOf('isoWeek')}
-                    onPreviousWeek={view.goToPreviousWeek}
-                    onCurrentWeek={view.goToCurrentWeek}
-                    onNextWeek={view.goToNextWeek}
+            <div className="tasks-body tv-workspace">
+                <TaskViewsSidebar
+                    systemViews={ws.systemViews}
+                    personalViews={ws.personalViews}
+                    sharedViews={ws.sharedViews}
+                    activeViewId={ws.view.id}
+                    onSelectView={ws.setViewId}
+                    onDeleteView={handleDeleteView}
+                    projectTree={projectTree}
+                    folderSelection={ws.folderSelection}
+                    onSelectFolder={ws.selectFolder}
                 />
-            )}
 
-            <div className="tasks-body">
-                <div className="tasks-filters-row">
-                    <Badge count={activeFilterCount} size="small" offset={[-2, 2]}>
-                        <AntButton
-                            icon={<FilterOutlined />}
-                            onClick={() => setFiltersOpen(true)}
-                            aria-label={t('tasks.filters')}
-                        >{t('tasks.filters')}</AntButton>
-                    </Badge>
-                    {activeFilterCount > 0 && (
-                        <AntButton type="text" onClick={clearFilters}>{t('common.clear')}</AntButton>
-                    )}
+                <div className="tv-main">
+                    <TaskAxisBar
+                        layout={ws.layout}
+                        onSelectLayout={ws.setLayout}
+                        groupBy={ws.groupBy}
+                        onSelectGroup={ws.setGroupBy}
+                        dirty={ws.dirty}
+                        canUpdate={ws.canUpdate}
+                        onSaveAs={() => setSaveOpen(true)}
+                        onUpdate={handleUpdate}
+                        saving={ws.isSaving}
+                        activeFilterCount={activeFilterCount}
+                        onOpenFilters={() => setFiltersOpen(true)}
+                        onClearFilters={ws.clearFilters}
+                    />
+
+                    <TaskFiltersDrawer
+                        open={filtersOpen}
+                        onClose={() => setFiltersOpen(false)}
+                        placement={
+                            typeof window !== 'undefined' && window.innerWidth < 768
+                                ? 'bottom' : 'right'
+                        }
+                        filters={ws.filters}
+                        customers={directory.customers}
+                        projects={directory.filteredProjects}
+                        subProjects={directory.subProjects}
+                        assigneeOptions={assigneeOptions}
+                        onStatusChange={ws.filterActions.setStatus}
+                        onPriorityChange={ws.filterActions.setPriority}
+                        onCustomerChange={ws.filterActions.setCustomer}
+                        onProjectChange={ws.filterActions.setProject}
+                        onSubProjectChange={ws.filterActions.setSubProject}
+                        onAssigneeChange={ws.filterActions.setAssignee}
+                        onClear={ws.clearFilters}
+                    />
+
+                    <TasksSurface
+                        isLoading={isLoading}
+                        layout={ws.layout}
+                        groupBy={ws.groupBy}
+                        tasks={visibleTasks}
+                        userMap={directory.userMap}
+                        currentUserId={user?.id}
+                        isAdmin={isTaskAdmin}
+                        taskType={permType}
+                        allowStatusChange={allowStatusChange}
+                        canCreate={canCreate}
+                        completionLoading={mutations.completionMutation.isPending}
+                        panelTask={dialogs.panelTask}
+                        onEditTask={dialogs.openEdit}
+                        onDeleteTask={dialogs.openDelete}
+                        onOpenReview={dialogs.openReview}
+                        onOpenLogTime={workLog.openLogTime}
+                        onToggleCompletion={dialogs.requestToggle}
+                        onCreate={dialogs.openCreate}
+                        onCardDrop={handleCardDrop}
+                        onMultiAssignmentDrop={multi.start}
+                        onOpenPanel={dialogs.openPanel}
+                        onClosePanel={dialogs.closePanel}
+                        onToggleWatch={mutations.toggleWatch}
+                        watchPending={mutations.watchPending}
+                        weekStart={ws.weekStart}
+                        onPreviousWeek={ws.goToPreviousWeek}
+                        onNextWeek={ws.goToNextWeek}
+                        onCurrentWeek={ws.goToCurrentWeek}
+                        meetings={meetings}
+                    />
                 </div>
-                <TaskFiltersDrawer
-                    open={filtersOpen}
-                    onClose={() => setFiltersOpen(false)}
-                    placement={
-                        typeof window !== 'undefined' && window.innerWidth < 768
-                            ? 'bottom' : 'right'
-                    }
-                    filters={filters}
-                    customers={directory.customers}
-                    projects={directory.filteredProjects}
-                    subProjects={directory.subProjects}
-                    assigneeOptions={assigneeOptions}
-                    onStatusChange={filterActions.setStatus}
-                    onPriorityChange={filterActions.setPriority}
-                    onCustomerChange={filterActions.setCustomer}
-                    onProjectChange={filterActions.setProject}
-                    onSubProjectChange={filterActions.setSubProject}
-                    onAssigneeChange={filterActions.setAssignee}
-                    onClear={clearFilters}
-                />
-
-                <TasksSurface
-                    isLoading={isLoading}
-                    viewLayout={view.viewLayout}
-                    tasks={visibleTasks}
-                    canGroupByUser={isAssignedByMe}
-                    userMap={directory.userMap}
-                    currentUserId={user?.id}
-                    isAdmin={isTaskAdmin}
-                    taskType={taskType}
-                    /* Durum degisikligi atanana aittir ve kendi "My Tasks"
-                       gorunumunde yapilir; "Assigned by Me" salt izleme. */
-                    allowStatusChange={!readOnly && view.taskScope === 'my-tasks'}
-                    /* Baskasina atamak "Assigned by Me" kapsaminda;
-                       KENDINE is acmak (B4) "My Tasks" kapsaminda — atama
-                       yetkisi gerekmez, secici zaten kendisini listeler. */
-                    canCreate={!readOnly && ((canCreateTask && view.taskScope === 'assigned-by-me')
-                        || (taskPerms.canSelfAssign && view.taskScope === 'my-tasks'))}
-                    groupByAssignee={
-                        view.groupByAssignee && view.taskScope === 'assigned-by-me'
-                    }
-                    completionLoading={mutations.completionMutation.isPending}
-                    panelTask={dialogs.panelTask}
-                    onEditTask={dialogs.openEdit}
-                    onDeleteTask={dialogs.openDelete}
-                    onOpenReview={dialogs.openReview}
-                    onOpenLogTime={workLog.openLogTime}
-                    onToggleCompletion={dialogs.requestToggle}
-                    onCreate={dialogs.openCreate}
-                    onCardDrop={handleCardDrop}
-                    columns={boardColumns}
-                    onMultiAssignmentDrop={multi.start}
-                    onOpenPanel={dialogs.openPanel}
-                    onClosePanel={dialogs.closePanel}
-                    onToggleWatch={mutations.toggleWatch} watchPending={mutations.watchPending}
-                />
             </div>
 
-            {/* Create / Edit modal — same Hermes Time Entry pattern */}
+            <SaveViewModal
+                open={saveOpen}
+                onClose={() => setSaveOpen(false)}
+                onSubmit={handleSaveAs}
+                loading={ws.isSaving}
+                initialName={ws.view.saved ? `${ws.view.name} (${dayjs().format('DD MMM')})` : ''}
+            />
+
             <CreateTaskModal
                 open={dialogs.createOpen}
                 onClose={dialogs.closeCreate}
@@ -366,27 +366,18 @@ function TasksPage() {
                 initialDate={dialogs.initialDate}
                 editingTask={dialogs.editingTask}
                 taskType={dialogs.createType}
-                /* Create modali OLUSTURULAN turun scope'unu kullanir —
-                   goruntulenen turden farkli olabilir ("+ New Issue"
-                   Tasks sekmesindeyken). */
                 assignableUserIds={taskPerms.createAssignableUserIds}
                 isAdmin={isTaskAdmin}
                 loading={mutations.isSavingTask}
             />
 
-            {/* Review modal — read-only details + decision actions. Same
-                canAct gate the backend enforces (admin, assignee, assigner). */}
             <TaskReviewModal
                 open={!!dialogs.reviewTask}
                 task={dialogs.reviewTask}
                 userMap={directory.userMap}
                 onClose={dialogs.closeReview}
                 canAct={
-                    // Durum aksiyonlari "My Tasks"ta yasar (atanan kendi
-                    // isine karar verir). "Assigned by Me"de atayan
-                    // yalnizca izler — modal orada salt okunurdur.
-                    // Gorev bazli kural yine TEK selector'dan gelir.
-                    view.taskScope === 'my-tasks' &&
+                    !isAssignedByMe &&
                     canChangeTaskStatus({
                         task: dialogs.reviewTask,
                         currentUserId: user?.id,
@@ -395,7 +386,6 @@ function TasksPage() {
                 }
                 onAccept={(task) => mutations.acceptMutation.mutateAsync(task.id)}
                 onMarkCompleted={async (task) => {
-                    // Modal icinde zaten onaylandi — dogrudan calistir.
                     dialogs.closeReview()
                     await executeToggle(task, true)
                 }}
@@ -422,9 +412,6 @@ function TasksPage() {
                 deleteMutation={mutations.deleteMutation}
             />
 
-            {/* Log Time modal — opens automatically after a task is
-                completed for the first time, and on the explicit
-                "Log Time" action for a completed task. */}
             <LogTimeModal
                 open={!!workLog.logTimeTask}
                 onClose={workLog.closeLogTime}

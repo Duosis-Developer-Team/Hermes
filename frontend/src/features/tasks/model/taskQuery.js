@@ -14,8 +14,9 @@ import { isoWeekWindow } from './dates'
  * "My Tasks"       → bana ATANAN isler
  * "Assigned by Me" → benim ATADIGIM isler (salt izleme)
  */
-export const scopeParams = (taskScope, viewedUserId) => {
-    if (!viewedUserId) return {}
+export const scopeParams = (taskScope, viewedUserId, scopeAll = false) => {
+    // P3.5: 'all' kapsami = gorunur kume (sunucu RBAC); kisi parametresi YOK.
+    if (!viewedUserId || scopeAll) return {}
     return taskScope === 'assigned-by-me'
         ? { assigner_user_id: viewedUserId }
         : { assignee_user_id: viewedUserId }
@@ -44,15 +45,20 @@ export function buildTaskListParams({
     weekStart,
     quickFilter = null,
     archiveState = 'active',
+    scopeAll = false,
+    unassigned = false,
 }) {
     const base = {
         status: statusFilter || undefined,
         priority: priorityFilter || undefined,
-        task_type: taskType,
+        // Tip verilmezse tum turler (gorunum "Tum isler" / "Bana ait isler").
+        task_type: taskType || undefined,
         customer_id: customerFilter || undefined,
         project_id: projectFilter || undefined,
         sub_project_id: subProjectFilter || undefined,
-        ...scopeParams(taskScope, viewedUserId),
+        ...scopeParams(taskScope, viewedUserId, scopeAll),
+        // E3 triage: sahipsiz isler (owner IS NULL).
+        unassigned: unassigned ? true : undefined,
         // Arsiv havuzu sorgu anahtarinin PARCASIDIR: Active ve Archive
         // cache'leri birbirine karismaz.
         archive_state: archiveState,

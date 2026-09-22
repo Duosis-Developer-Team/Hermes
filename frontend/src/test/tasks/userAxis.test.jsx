@@ -17,11 +17,8 @@
  * =============================================================================
  */
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { renderHook } from '@testing-library/react'
 
-import TasksExplorerView from '../../features/tasks/components/TasksExplorerView'
 import useAssigneeScope from '../../features/tasks/hooks/useAssigneeScope'
 import { groupIntoLogicalItems } from '../../features/tasks/model/grouping'
 import { buildUserHierarchy } from '../../features/tasks/model/hierarchy'
@@ -92,38 +89,8 @@ describe('kisi agaci (model)', () => {
     })
 })
 
-describe('eksen secici gorunurlugu (Explorer)', () => {
-    const renderExplorer = (canGroupByUser) => {
-        n = 0
-        return render(
-            <TasksExplorerView
-                tasks={[t({ assignee_user_id: 'u1' }), t({ assignee_user_id: 'u2' })]}
-                canGroupByUser={canGroupByUser}
-                boardProps={{ userMap: USER_MAP, currentUserId: 'boss' }}
-            />
-        )
-    }
-
-    it('My Tasks kapsaminda secici GORUNMEZ', () => {
-        renderExplorer(false)
-        expect(screen.queryByText('By user')).toBeNull()
-        expect(screen.getByRole('button', { name: /^All customers,/ })).toBeInTheDocument()
-    })
-
-    it('Assigned by Me kapsaminda secici gorunur', () => {
-        renderExplorer(true)
-        expect(screen.getByText('By user')).toBeInTheDocument()
-        expect(screen.getByText('By customer')).toBeInTheDocument()
-    })
-
-    it('By user secilince agac KISI klasorlerine doner', async () => {
-        renderExplorer(true)
-        await userEvent.click(screen.getByText('By user'))
-        expect(screen.getByRole('button', { name: /^Ahmet,/ })).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: /^Ayse,/ })).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: /^All users,/ })).toBeInTheDocument()
-    })
-})
+// P3.5: Explorer'in 'By user' secicisi KALKTI — kisi ekseni artik kontrol
+// cubugundaki 'Sahip' gruplamasidir (model/viewGroups, partitionTasks).
 
 describe('kisi filtresi (useAssigneeScope)', () => {
     const TASKS = [

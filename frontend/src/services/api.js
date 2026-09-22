@@ -686,6 +686,27 @@ export const homeService = {
     },
 }
 
+// =============================================================================
+// CORE SERVICE - Kayitli gorunumler (PM rework P3.5 / E2)
+// =============================================================================
+export const savedViewService = {
+    list: async () => {
+        const response = await coreApi.get('/api/v1/core/views')
+        return response.data
+    },
+    create: async (data) => {
+        const response = await coreApi.post('/api/v1/core/views', data)
+        return response.data
+    },
+    update: async (id, data) => {
+        const response = await coreApi.patch(`/api/v1/core/views/${id}`, data)
+        return response.data
+    },
+    remove: async (id) => {
+        await coreApi.delete(`/api/v1/core/views/${id}`)
+    },
+}
+
 export const taskNotificationSettingsService = {
     /** Admin: one row per work-item type (task/issue/suggestion) with the
      * e-mail rules; unconfigured types come back with defaults (all ON). */
@@ -1186,5 +1207,6 @@ export default {
     userGroupService,
     meetingService,
     homeService,
+    savedViewService,
 }
 

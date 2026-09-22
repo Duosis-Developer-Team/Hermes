@@ -22,7 +22,8 @@ import { buildTaskListParams } from '../model/taskQuery'
 
 export function useTasksQuery({
     enabled, taskType, taskScope, viewedUserId, rangeMode, weekStart,
-    quickFilter, filters, archiveState = 'active',
+    quickFilter, filters, archiveState = 'active', scopeAll = false,
+    unassigned = false,
 }) {
     const params = useMemo(
         () =>
@@ -37,15 +38,18 @@ export function useTasksQuery({
                 viewedUserId,
                 rangeMode,
                 weekStart,
-                quickFilter: quickFilterParams(quickFilter, {
-                    weekStart,
-                    yesterday: yesterdayKey(),
-                }),
+                // P3.5: gorunum hazir parametre nesnesi verir; eski cip
+                // adi (string) da hala cozulur.
+                quickFilter: typeof quickFilter === 'string'
+                    ? quickFilterParams(quickFilter, { weekStart, yesterday: yesterdayKey() })
+                    : quickFilter,
                 archiveState,
+                scopeAll,
+                unassigned,
             }),
         [
             taskType, filters, taskScope, viewedUserId, rangeMode, weekStart,
-            quickFilter, archiveState,
+            quickFilter, archiveState, scopeAll, unassigned,
         ]
     )
 

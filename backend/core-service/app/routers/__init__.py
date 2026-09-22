@@ -14,6 +14,7 @@ from .project_memberships import router as project_memberships_router
 from .project_members import router as project_members_router
 from .notifications import router as notifications_router
 from .home import router as home_router
+from .views import router as views_router
 
 from .timesheets import router as timesheets_router
 from .dashboard import router as dashboard_router
@@ -41,6 +42,7 @@ __all__ = [
     "project_members_router",
     "notifications_router",
     "home_router",
+    "views_router",
     "timesheets_router",
     "dashboard_router",
     "reports_router",

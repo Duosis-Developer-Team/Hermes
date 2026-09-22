@@ -1,0 +1,237 @@
+/**
+ * HERMES - Gorunumler sol kolonu, kontrol cubugu ve takvim yerlesimi
+ * (PM rework P3.5). Yalniz token; renk tasiyan tek sinyal termin (E4).
+ */
+
+/* --- Yerlesim: sol kolon + yuzey ---------------------------------------- */
+.tv-workspace {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    gap: var(--h-space-4);
+    align-items: start;
+}
+@media (max-width: 900px) {
+    .tv-workspace { grid-template-columns: minmax(0, 1fr); }
+    .tv-sidebar { position: static; }
+}
+
+/* --- Sol kolon ----------------------------------------------------------- */
+.tv-sidebar {
+    position: sticky;
+    top: var(--h-space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--h-space-2);
+    padding-right: var(--h-space-2);
+    border-right: 1px solid var(--h-border-subtle);
+    min-width: 0;
+}
+.tv-sidebar__label {
+    font-size: var(--h-font-label);
+    font-weight: 650;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--h-text-secondary);
+    padding: var(--h-space-2) var(--h-space-2) var(--h-space-1);
+}
+.tv-sidebar__label--sub { padding-top: var(--h-space-3); }
+.tv-sidebar__views { display: flex; flex-direction: column; }
+.tv-view {
+    display: flex;
+    align-items: center;
+    border-radius: var(--h-radius-control);
+}
+.tv-view:hover { background: var(--h-bg-hover); }
+.tv-view.is-active { background: var(--h-bg-selected); }
+.tv-view__btn {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--h-text-primary);
+    font: inherit;
+    font-size: var(--h-font-body);
+    padding: var(--h-space-2) var(--h-space-2);
+    border-radius: var(--h-radius-control);
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.tv-view.is-active .tv-view__btn { color: var(--h-brand); font-weight: 600; }
+.tv-view__btn:focus-visible { outline: 2px solid var(--h-focus); outline-offset: -2px; }
+.tv-view__delete {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--h-text-muted);
+    padding: 0 var(--h-space-2);
+    cursor: pointer;
+    opacity: 0;
+}
+.tv-view:hover .tv-view__delete,
+.tv-view__delete:focus-visible { opacity: 1; outline: none; color: var(--h-danger); }
+
+/* --- Projeler agaci ---------------------------------------------------- */
+.tv-sidebar__projects { display: flex; flex-direction: column; margin-top: var(--h-space-2); }
+.tv-folder__all {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    font: inherit;
+    font-size: var(--h-font-meta);
+    color: var(--h-text-secondary);
+    padding: var(--h-space-1) var(--h-space-2);
+    border-radius: var(--h-radius-control);
+    cursor: pointer;
+}
+.tv-folder__all.is-selected { color: var(--h-brand); font-weight: 600; }
+.tv-folder {
+    display: flex;
+    align-items: center;
+    border-radius: var(--h-radius-control);
+}
+.tv-folder--l1 { padding-left: var(--h-space-4); }
+.tv-folder--l2 { padding-left: var(--h-space-8); }
+.tv-folder:hover { background: var(--h-bg-hover); }
+.tv-folder.is-selected { background: var(--h-bg-selected); }
+.tv-folder__toggle {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    width: 18px;
+    color: var(--h-text-muted);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 0;
+}
+.tv-folder__toggle:disabled { cursor: default; }
+.tv-folder__label {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--h-space-2);
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--h-text-primary);
+    font: inherit;
+    font-size: var(--h-font-meta);
+    padding: var(--h-space-1) var(--h-space-1);
+    cursor: pointer;
+    text-align: left;
+}
+.tv-folder__label:disabled { color: var(--h-text-muted); cursor: default; }
+.tv-folder.is-selected .tv-folder__label { color: var(--h-brand); font-weight: 600; }
+.tv-folder__text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tv-folder__count { color: var(--h-text-muted); font-variant-numeric: tabular-nums; }
+
+/* --- Kontrol cubugu (iki eksen) ---------------------------------------- */
+.tv-axis {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--h-space-3);
+    padding: var(--h-space-2) 0 var(--h-space-3);
+}
+.tv-axis__segment { display: inline-flex; align-items: center; gap: var(--h-space-2); }
+.tv-axis__cap {
+    font-size: var(--h-font-label);
+    font-weight: 650;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--h-text-secondary);
+}
+.tv-axis__spacer { flex: 1; }
+.tv-axis__dirty {
+    font-size: var(--h-font-meta);
+    color: var(--h-text-secondary);
+    font-style: italic;
+}
+
+/* --- Liste gruplari ------------------------------------------------------ */
+.tv-group { margin-bottom: var(--h-space-5); }
+.tv-group__head {
+    display: flex;
+    align-items: center;
+    gap: var(--h-space-2);
+    margin-bottom: var(--h-space-2);
+    font-size: var(--h-font-meta);
+    font-weight: 650;
+    color: var(--h-text-primary);
+}
+.tv-group__count { color: var(--h-text-muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* --- Takvim yerlesimi (E5) ------------------------------------------------ */
+.tv-cal__nav {
+    display: flex;
+    align-items: center;
+    gap: var(--h-space-2);
+    margin-bottom: var(--h-space-3);
+}
+.tv-cal__title { font-weight: 650; color: var(--h-text-primary); }
+.tv-cal__grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--h-space-2);
+}
+@media (max-width: 900px) { .tv-cal__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tv-cal__day {
+    border: 1px solid var(--h-border-subtle);
+    border-radius: var(--h-radius-control);
+    padding: var(--h-space-2);
+    min-height: 140px;
+    min-width: 0;
+}
+.tv-cal__day--today { border-color: var(--h-brand); }
+.tv-cal__day--weekend { background: var(--h-bg-weekend); }
+.tv-cal__day-head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--h-space-2);
+    margin-bottom: var(--h-space-2);
+}
+.tv-cal__day-name {
+    font-size: var(--h-font-label);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--h-text-secondary);
+}
+.tv-cal__day-num { font-weight: 650; color: var(--h-text-primary); font-variant-numeric: tabular-nums; }
+.tv-cal__day--today .tv-cal__day-num { color: var(--h-brand); }
+.tv-cal__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--h-space-1); }
+.tv-cal__item {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    width: 100%;
+    appearance: none;
+    text-align: left;
+    border: 0;
+    border-left: 2px solid var(--h-border-strong);
+    border-radius: 0 var(--h-radius-control) var(--h-radius-control) 0;
+    background: transparent;
+    color: var(--h-text-primary);
+    font: inherit;
+    padding: var(--h-space-1) var(--h-space-2);
+    cursor: pointer;
+    min-width: 0;
+}
+.tv-cal__item:hover, .tv-cal__item:focus-visible { background: var(--h-bg-hover); outline: none; }
+.tv-cal__item--meeting { border-left-color: var(--h-brand); cursor: default; }
+.tv-cal__item--overdue { border-left-color: var(--h-danger); }
+.tv-cal__item--today { border-left-color: var(--h-warning); }
+.tv-cal__item--completed { color: var(--h-text-muted); }
+.tv-cal__key { font-size: var(--h-font-meta); font-weight: 600; color: var(--h-text-secondary); }
+.tv-cal__label { font-size: var(--h-font-meta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tv-cal__time { font-size: var(--h-font-meta); color: var(--h-text-secondary); font-variant-numeric: tabular-nums; }
+.tv-cal__outside {
+    margin-top: var(--h-space-3);
+    font-size: var(--h-font-meta);
+    color: var(--h-text-muted);
+}

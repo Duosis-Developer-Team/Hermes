@@ -98,6 +98,11 @@ describe('gorunum degisiminde baglam KORUNUR', () => {
         renderTasksPage()
         await screen.findByText('Bekleyen gorev')
 
+        // P3.5: ONCE gorunum secilir ('Overdue' sol kolon sekmesi) — gorunum
+        // degisimi drawer filtrelerini o gorunumun filtreleriyle baslatir;
+        // capraz filtre gorunumun USTUNE biner.
+        await user.click(screen.getByRole('tab', { name: 'Overdue' }))
+        await waitFor(() => expect(lastListParams().status_exclude).toEqual(['completed']))
         // Premium redesign: gelismis filtreler drawer'a tasindi —
         // once "Filters" aksiyonu acilir (davranis sozlesmesi ayni).
         await user.click(screen.getByRole('button', { name: /Filters/ }))
@@ -106,8 +111,6 @@ describe('gorunum degisiminde baglam KORUNUR', () => {
             await screen.findByRole('combobox', { name: 'Filter by status' })
         )
         await user.click(await screen.findByTitle('In Progress'))
-        // Ikincil filtre: Overdue
-        await user.click(screen.getByRole('button', { name: 'Overdue' }))
         await waitFor(() => expect(lastListParams().status).toBe('in_progress'))
         const paramsOnBoard = lastListParams()
 
@@ -117,8 +120,8 @@ describe('gorunum degisiminde baglam KORUNUR', () => {
         expect(lastListParams()).toEqual(paramsOnBoard)
         // Kontroller de secili kalir.
         expect(
-            screen.getByRole('button', { name: 'Overdue' })
-        ).toHaveAttribute('aria-pressed', 'true')
+            screen.getByRole('tab', { name: 'Overdue' })
+        ).toHaveAttribute('aria-selected', 'true')
     })
 
     it('kapsam (Assigned by Me) gorunum degisimini asar', async () => {

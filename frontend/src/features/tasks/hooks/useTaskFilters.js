@@ -42,6 +42,8 @@ export function useTaskFilters() {
          */
         setAssignee: (assignee) => setFilters((f) => ({ ...f, assignee })),
         clearFilters: () => setFilters(EMPTY),
+        /** P3.5: gorunum degisince drawer o gorunumun filtreleriyle baslar. */
+        replaceFilters: (next) => setFilters({ ...EMPTY, ...(next || {}) }),
     }
 }
 

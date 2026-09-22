@@ -118,6 +118,7 @@ const INITIAL = () => ({
     activity: [],
     comments: [],
     searchResults: [],
+    savedViews: { items: [] },
 })
 
 /** Testlerin okudugu/yazdigi paylasilan durum. */
@@ -166,6 +167,16 @@ const DEFS = {
         createInline: ok({ id: 'sp-new', name: 'Yeni' }),
     },
     taskPermissionService: { getMyPermissions: from('perms') },
+    // P3.5: kayitli gorunumler (varsayilan bos) ve takvim toplantilari.
+    savedViewService: {
+        list: from('savedViews'),
+        create: (data) => Promise.resolve({ id: 'v-new', can_edit: true, scope: data.scope, layout: data.layout, filter_json: data.filter_json, name: data.name }),
+        update: (id, data) => Promise.resolve({ id, ...data }),
+        remove: ok(undefined),
+    },
+    homeService: {
+        week: ok({ today: '2026-09-16', week_start: '2026-09-14', week_end: '2026-09-20', days: [] }),
+    },
     workLogService: {
         create: ok({ id: 'wl-new' }),
         getMyLogs: ok([]),
@@ -228,6 +239,8 @@ export const taskSubProjectService = build('taskSubProjectService')
 export const taskPermissionService = build('taskPermissionService')
 export const workLogService = build('workLogService')
 export const taskService = build('taskService')
+export const savedViewService = build('savedViewService')
+export const homeService = build('homeService')
 
 const SERVICES = {
     authService,
@@ -241,6 +254,8 @@ const SERVICES = {
     taskPermissionService,
     workLogService,
     taskService,
+    savedViewService,
+    homeService,
 }
 
 /**

@@ -47,11 +47,17 @@ export function useTaskInvalidation() {
         })
     }
 
+    /** Kayitli gorunum yazildi (P3.5 / E2) → yalniz gorunum listesi. */
+    const invalidateSavedViews = () => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.views.all })
+    }
+
     return {
         queryClient,
         invalidateTaskFamilies,
         invalidateWorkLogFamilies,
         invalidateLifecyclePolicy,
+        invalidateSavedViews,
     }
 }
 

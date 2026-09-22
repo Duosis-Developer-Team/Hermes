@@ -1,82 +1,103 @@
 /**
  * =============================================================================
- * HERMES - Tasks gorunum durumu (Sprint 5C)
+ * HERMES - Tasks gorunum durumu (Sprint 5C → PM rework P3.5 / E1, E2)
  * =============================================================================
- * Kapsam / layout / zaman araligi / hizli filtre / swimlane / admin
- * kullanici secimi — kullanicinin BAKIS ACISINI belirleyen eksenler.
- * Hepsi BAGIMSIZDIR: hicbiri digerini otomatik cevirmez.
+ * EKRANIN DURUMU = SECILI GORUNUM. Uc eksen URL'de yasar (tek kaynak,
+ * link ile paylasilabilir — E2):
  *
- * Capraz filtreler (status/priority/customer/...) buraya AIT DEGILDIR;
- * onlar useTaskFilters'ta durur — biri "neye bakiyorum", digeri "neyi
- * eliyorum" sorusunu cevaplar.
+ *   ?view=<sistem-kimligi | kayitli-uuid>   hangi gorunum
+ *   ?layout=board|list|calendar            yerlesim (E5: takvim de bir yerlesim)
+ *   ?group=status|owner|project|due|none   gruplama
+ *
+ * Varsayilan degerler URL'i KIRLETMEZ. Gorunum degisince yerlesim ve
+ * gruplama o gorunumun varsayilanina doner (parametreler silinir).
+ * Eski `?view=board|list|explorer` baglantilari yerlesim olarak
+ * onurlandirilir (explorer → board). setSearchParams PUSH yapar; geri/
+ * ileri calisir.
+ *
+ * Yerel state YOK: ilk boyama zaten dogru gorunumdur (gorsel flash yok).
+ * Hafta ve admin kullanici secimi eksen DEGILDIR, burada yasar.
  * =============================================================================
  */
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 
 import { currentWeekStart } from '../model/dates'
-import { DEFAULT_TASK_LAYOUT, isValidTaskLayout } from '../model/constants'
+import {
+    DEFAULT_LAYOUT, defaultGroupFor, isValidGroup, isValidLayout, legacyLayoutOf,
+    viewIdForTypeSegment,
+} from '../model/views'
 
-export function useTaskViewState({ canViewAssignedByMe }) {
+export function useTaskViewState({ resolveDefaults = null } = {}) {
     const [weekStart, setWeekStart] = useState(() => currentWeekStart())
-    /*
-     * GORUNUM URL'DE YASAR (§6.1) — tek kaynak.
-     *   /project-management/tasks                → Explorer (varsayilan)
-     *   /project-management/tasks?view=board     → Board
-     *   /project-management/tasks?view=list      → List
-     *
-     * Yerel state TUTULMAZ: ikisi birden olsaydi ilk render'da Board
-     * cizilip hemen Explorer'a gecen bir GORSEL FLASH olusurdu. Deger
-     * dogrudan URL'den okundugu icin ilk boyama zaten dogru gorunumdur.
-     * Gecersiz/eski bir deger sessizce varsayilana duser.
-     *
-     * setSearchParams PUSH yapar → tarayici geri/ileri tuslari gorunum
-     * degisikliklerinde dogru calisir.
-     */
     const [searchParams, setSearchParams] = useSearchParams()
-    const urlView = searchParams.get('view')
-    const viewLayout = isValidTaskLayout(urlView) ? urlView : DEFAULT_TASK_LAYOUT
+    const { type: typeSegment } = useParams()
 
-    const setViewLayout = (next) => {
+    const rawView = searchParams.get('view')
+    const legacyLayout = legacyLayoutOf(rawView)
+    // Eski baglanti (?view=board) gorunum DEGIL yerlesim soyler.
+    const viewId = rawView && !legacyLayout ? rawView : viewIdForTypeSegment(typeSegment)
+    // Gorunumun varsayilan yerlesim/gruplamasi (URL'de yoksa buna duser).
+    const viewDefaults = resolveDefaults ? resolveDefaults(viewId) : null
+
+    const rawLayout = searchParams.get('layout')
+    const layout = isValidLayout(rawLayout)
+        ? rawLayout
+        : (legacyLayout || (isValidLayout(viewDefaults?.layout) ? viewDefaults.layout : DEFAULT_LAYOUT))
+
+    // Gorunumun gruplama varsayilani YALNIZ kendi yerlesiminde gecerlidir;
+    // kullanici yerlesimi degistirince o yerlesimin varsayilani gelir.
+    const baseGroup = (viewDefaults?.layout === layout && isValidGroup(layout, viewDefaults?.group))
+        ? viewDefaults.group
+        : defaultGroupFor(layout)
+    const rawGroup = searchParams.get('group')
+    const groupBy = isValidGroup(layout, rawGroup) ? rawGroup : baseGroup
+
+    const setViewId = (next) => {
         const params = new URLSearchParams(searchParams)
-        // Varsayilan gorunum URL'i KIRLETMEZ.
-        if (next === DEFAULT_TASK_LAYOUT) params.delete('view')
+        if (!next || next === viewIdForTypeSegment(typeSegment)) params.delete('view')
         else params.set('view', next)
+        // Gorunum degisti → yerlesim/gruplama o gorunumun varsayilanina.
+        params.delete('layout')
+        params.delete('group')
         setSearchParams(params)
     }
-    const [rangeMode, setRangeMode] = useState('all')
-    const [groupByAssignee, setGroupByAssignee] = useState(false)
-    const [taskScope, setTaskScope] = useState('my-tasks')
-    const [quickFilter, setQuickFilter] = useState(null)
+
+    const setLayout = (next) => {
+        if (!isValidLayout(next)) return
+        const params = new URLSearchParams(searchParams)
+        if (legacyLayout) params.delete('view')
+        const base = isValidLayout(viewDefaults?.layout) ? viewDefaults.layout : DEFAULT_LAYOUT
+        if (next === base) params.delete('layout')
+        else params.set('layout', next)
+        // Mevcut gruplama yeni yerlesimde anlamsizsa parametre silinir.
+        if (!isValidGroup(next, params.get('group'))) params.delete('group')
+        setSearchParams(params)
+    }
+
+    const setGroupBy = (next) => {
+        if (!isValidGroup(layout, next)) return
+        const params = new URLSearchParams(searchParams)
+        if (next === baseGroup) params.delete('group')
+        else params.set('group', next)
+        setSearchParams(params)
+    }
+
     // Admin-only user selector (Time Entry parity). null → current user.
     const [selectedUserId, setSelectedUserId] = useState(null)
 
-    // Izin acikken kaldirilirsa ve kullanici Assigned-by-Me kapsamindaysa
-    // My Tasks'a duser (render sirasinda duzeltilir — bir sonraki render
-    // dogru kapsamla cizilir, yetkisiz veri istegi ACILMAZ).
-    if (taskScope === 'assigned-by-me' && !canViewAssignedByMe) {
-        setTaskScope('my-tasks')
-    }
-
     return {
+        viewId,
+        setViewId,
+        layout,
+        setLayout,
+        groupBy,
+        setGroupBy,
         weekStart,
         setWeekStart,
         goToPreviousWeek: () => setWeekStart((p) => p.subtract(1, 'week')),
         goToNextWeek: () => setWeekStart((p) => p.add(1, 'week')),
         goToCurrentWeek: () => setWeekStart(currentWeekStart()),
-        viewLayout,
-        setViewLayout,
-        rangeMode,
-        setRangeMode,
-        groupByAssignee,
-        setGroupByAssignee,
-        taskScope,
-        setTaskScope,
-        quickFilter,
-        // Aktif cipe tekrar tiklamak filtreyi TEMIZLER.
-        toggleQuickFilter: (value) =>
-            setQuickFilter((prev) => (prev === value ? null : value)),
-        clearQuickFilter: () => setQuickFilter(null),
         selectedUserId,
         setSelectedUserId,
     }
