@@ -80,27 +80,64 @@ def legacy_status_of(item: WorkItem) -> str:
     return LEGACY_BY_NAME.get(st.name) or LEGACY_BY_CATEGORY.get(st.category, "pending")
 
 
+def _session_tenant_id(db: Session) -> Optional[str]:
+    """Oturumun tenant baglami: once session isareti, yoksa GUC."""
+    from ..tenant_db import SESSION_TENANT_KEY, TENANT_GUC
+    marked = db.info.get(SESSION_TENANT_KEY)
+    if marked:
+        return str(marked)
+    value = db.execute(
+        text("SELECT current_setting(:name, true)"), {"name": TENANT_GUC}
+    ).scalar()
+    return str(value) if value else None
+
+
+def ensure_states(db: Session) -> bool:
+    """Kiracinin akisi yoksa varsayilani tohumlar (0010/0011 tohumunun
+    ayni kurali; varsa dokunmaz). 0010'dan SONRA acilan kiraci ya da bos
+    test DB'si aksi halde ilk is kaleminde 422 alirdi. Tohumlandiysa True."""
+    if db.query(WorkflowState.id).first() is not None:
+        return False
+    tenant_id = _session_tenant_id(db)
+    if not tenant_id:
+        return False
+    from ..migrations.work_item_migration import seed_states
+    seed_states(db.connection(), tenant_id)
+    db.flush()
+    return True
+
+
 def list_states(db: Session, *, include_inactive: bool = False) -> List[WorkflowState]:
+    ensure_states(db)
     q = db.query(WorkflowState)
     if not include_inactive:
         q = q.filter(WorkflowState.is_active.is_(True))
     return q.order_by(WorkflowState.position.asc(), WorkflowState.name.asc()).all()
 
 
-def state_for_legacy(db: Session, legacy: str) -> WorkflowState:
-    """Eski status sozcugu → kiracinin durumu. Ad eslesmezse kategori."""
+def _find_state_for_legacy(db: Session, legacy: str) -> Optional[WorkflowState]:
     name = NAME_BY_LEGACY.get(legacy)
     if name:
         st = db.query(WorkflowState).filter(WorkflowState.name == name).first()
         if st is not None:
             return st
     category = {v: k for k, v in LEGACY_BY_CATEGORY.items()}.get(legacy)
-    st = (
+    if not category:
+        return None
+    return (
         db.query(WorkflowState)
         .filter(WorkflowState.category == category, WorkflowState.is_active.is_(True))
         .order_by(WorkflowState.position.asc())
         .first()
-    ) if category else None
+    )
+
+
+def state_for_legacy(db: Session, legacy: str) -> WorkflowState:
+    """Eski status sozcugu → kiracinin durumu. Ad eslesmezse kategori;
+    kiracida hic durum yoksa once varsayilan akis tohumlanir."""
+    st = _find_state_for_legacy(db, legacy)
+    if st is None and ensure_states(db):
+        st = _find_state_for_legacy(db, legacy)
     if st is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

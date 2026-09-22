@@ -91,7 +91,7 @@ def world(pg_session, authz_grants):
     s = pg_session
     s.execute(
         sa_text(
-            "TRUNCATE user_group_members, user_groups, work_logs, "
+            "TRUNCATE work_items, work_item_participants, work_item_code_aliases, work_item_comments, work_item_events, user_group_members, user_groups, work_logs, "
             "meeting_attendees, meetings, task_comments, "
             "task_activity_events, tasks, task_assignment_relations, "
             "task_user_permissions, work_types, projects, customers "
@@ -125,6 +125,9 @@ def world(pg_session, authz_grants):
     )
     s.add(t1)
     s.commit()
+    from ._work_items import sync_work_items
+
+    sync_work_items(s)
     return {"c1": c1, "p1": p1, "wt": wt, "t1": t1}
 
 
@@ -154,9 +157,10 @@ def create_args(world, **over):
 
 
 def _task_count(s, title):
-    from app.models.task import Task
+    # P1.2: is kaydi = work_items satiri.
+    from app.models.work_item import WorkItem
 
-    return s.query(Task).filter(Task.title == title).count()
+    return s.query(WorkItem).filter(WorkItem.title == title).count()
 
 
 # ── Gorunurluk + annotation'lar ────────────────────────────────────────

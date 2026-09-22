@@ -59,6 +59,8 @@ def world(pg_session, authz_grants):
     s = pg_session
     s.execute(
         sa_text(
+            "TRUNCATE work_items, work_item_participants, work_item_code_aliases, "
+            "work_item_comments, work_item_events, "
             "TRUNCATE task_comments, task_activity_events, tasks, "
             "task_assignment_relations, task_assignment_group_relations, "
             "task_user_permissions, task_group_member_overrides, "
@@ -211,8 +213,6 @@ def test_transport_retry_does_not_double_fan_out(
 ):
     """Ayni JSON-RPC request id ile iki kez → tek fan-out (otomatik
     transport-retry katmani)."""
-    from app.models.task import Task
-
     token = _bound_token(pg_session)
     payload = {
         "jsonrpc": "2.0",
@@ -229,9 +229,10 @@ def test_transport_retry_does_not_double_fan_out(
     r2 = mcp_http.post("/mcp", json=payload, headers=headers)
     assert r1.status_code == 200 and r2.status_code == 200
 
-    batches = {
-        str(row.assignment_batch_id)
-        for row in pg_session.query(Task).all()
-    }
-    assert len(batches) == 1  # tek fan-out
-    assert pg_session.query(Task).count() == 2
+    # P1.2: tek fan-out = TEK is kalemi + iki katilimci.
+    from app.models.work_item import WorkItem, WorkItemParticipant
+
+    assert pg_session.query(WorkItem).count() == 1
+    assert pg_session.query(WorkItemParticipant).filter(
+        WorkItemParticipant.role == "assignee"
+    ).count() == 2

@@ -50,7 +50,7 @@ def world(pg_session):
     s = pg_session
     s.execute(
         sa_text(
-            "TRUNCATE user_group_members, user_groups, work_logs, "
+            "TRUNCATE work_items, work_item_participants, work_item_code_aliases, work_item_comments, work_item_events, user_group_members, user_groups, work_logs, "
             "meeting_attendees, meetings, task_comments, "
             "task_activity_events, tasks, projects, customers CASCADE"
         )
@@ -79,6 +79,9 @@ def world(pg_session):
                         is_active=True)
     )
     s.commit()
+    from ._work_items import sync_work_items
+
+    sync_work_items(s)
     return {"g1": g1}
 
 
