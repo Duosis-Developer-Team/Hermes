@@ -54,7 +54,7 @@ Kapsam DIŞI (05 aynen): proje bazlı workflow, olay replay arayüzü, WebSocket
 - Ek dosya arc değişikliği: ticket testleri (parite + sızıntı) aynen geçmeli; iş kalemi ekleri hub/portal serializer'larına ASLA girmez (sızıntı testi eklenir).
 - Dev'de MinIO/ClamAV kurulumu manifest işidir (CD değil) — CTO Termius'tan uygular, komutları ben veririm.
 
-## 6. P2.3 runbook — hermes-dev'de ek dosya (CTO Termius'tan uygular)
+## 6. P2.3 runbook — hermes-dev'de ek dosya (22.09'da Claude uyguladı; 07 §12'de kanıt)
 
 Kod tarafı `TICKET_ATTACHMENTS_ENABLED=false` iken de çalışır (uçlar 503 "not configured"); özelliği açmak için sırayla:
 

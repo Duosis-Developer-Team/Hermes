@@ -159,9 +159,11 @@ def mark_all_read(db: Session, user_id: UUID) -> int:
 
 
 def purge_read(db: Session, *, tenant_id=None, older_than_days: int = READ_RETENTION_DAYS,
-               dry_run: bool = False) -> dict:
-    """Okunmus ve eski bildirimleri siler. `tenant_id` tenant_runner'dan
-    gelir (baglam zaten kurulu; burada yalniz rapora yazilir)."""
+               dry_run: bool = False, **_runner_kwargs) -> dict:
+    """Okunmus ve eski bildirimleri siler. `tenant_id` (ve `trigger` gibi
+    diger anahtarlar) tenant_runner'dan gelir; baglam zaten kurulu, burada
+    yalniz rapora yazilir. Canli bulgu (dev, 22.09): `trigger` kabul
+    edilmeyince job TypeError ile dusuyordu — runner yolu testle kilitli."""
     cutoff = _now() - timedelta(days=older_than_days)
     q = db.query(WorkItemNotification).filter(
         WorkItemNotification.read_at.isnot(None), WorkItemNotification.read_at < cutoff

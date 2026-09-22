@@ -3,7 +3,7 @@
 Can'ın 05-gelistirme-kapsami.md'de listelediği **31 kalem** ile yapılanların karşılaştırması.
 Kararlar ve kod doğrulaması ayrıntısı: `06-inceleme-ve-kararlar.md`.
 
-**Özet:** **P0 tamam** (D1 sapmayla, D2, G1, B1) · **P1 tamam** (A1–A4, A6–A10, B3–B5) · **P2 tamam (kod)** (B2, C1–C3, F1 dev'de; F1 için dev'de MinIO/ClamAV kurulumu manuel) — 21 kalem dev'de · 11 başlamadı (A5 F05'e ertelendi · P3 10; tablo 32 satır = Can'ın 31'i + A10). Sıradaki: CTO'nun dev testi + 09 §6 runbook → toplu ff; P3 para katmanı sonrası.
+**Özet:** **P0 tamam** (D1 sapmayla, D2, G1, B1) · **P1 tamam** (A1–A4, A6–A10, B3–B5) · **P2 tamam** (B2, C1–C3, F1 dev'de, ek dosya altyapısı dev'de kurulu) — 21 kalem dev'de · 11 başlamadı (A5 F05'e ertelendi · P3 10; tablo 32 satır = Can'ın 31'i + A10). Sıradaki: CTO'nun dev testi → toplu ff; P3 para katmanı sonrası.
 Kararlar: 7'nin 7'si + 2 yeni karar kapatıldı (batch → `participant.completed_at`; A10 efor↔iş kalemi). Açık karar yok.
 
 ## 1. Can'ın istediği tüm geliştirmeler (05'teki liste)
@@ -40,7 +40,7 @@ Kararlar: 7'nin 7'si + 2 yeni karar kapatıldı (batch → `participant.complete
 | E4 | Görsel dil | P3 | Başlamadı | |
 | E5 | Takvim yerleşimi | P3 | Başlamadı | |
 | E6 | Derin link `/work/KEY` | P3 | Başlamadı | `?item=<uuid>` tek seferlik link zaten var; kalıcı adres yok |
-| F1 | İş kalemine dosya ekleme | P2 | **Yapıldı (P2.3, kod)** | `ticket_attachments.work_item_id` (0013; arc: ticket/mesaj/çözüm/iş kalemi); ticket ek altyapısı aynen (oturum → karantina → sniff → ClamAV → temiz → yetkili stream); `/tasks/{id}/attachments` uçları; temiz dosya anında bağlanır, `rejected` bağlanmaz/indirilemez; iş kalemi eki hub/portal'a giremez (test). UI: detay panelinde "Ekler" sekmesi (ticket dropzone'u). **hermes-dev'de MinIO/ClamAV kurulumu manuel (09 §6 runbook) — kurulana kadar uçlar 503 "not configured"** |
+| F1 | İş kalemine dosya ekleme | P2 | **Yapıldı (P2.3, dev'de kurulu)** | `ticket_attachments.work_item_id` (0013; arc: ticket/mesaj/çözüm/iş kalemi); ticket ek altyapısı aynen (oturum → karantina → sniff → ClamAV → temiz → yetkili stream); `/tasks/{id}/attachments` uçları; temiz dosya anında bağlanır, `rejected` bağlanmaz/indirilemez; iş kalemi eki hub/portal'a giremez (test). UI: detay panelinde "Ekler" sekmesi (ticket dropzone'u). hermes-dev'de MinIO + ClamAV kuruldu (22.09, 09 §6 runbook'u uygulandı), `/ready` 200, MinIO put/stream/delete ve ClamAV EICAR testi canlı doğrulandı |
 | G1 | Durum kullanım ölçümü | P0 | **Yapıldı** | 182 iş: completed 109 · pending 51 · rejected 14 · in_progress 8; pending medyan 0,3 gün, çalışma 6,8 gün; 27 iş in_progress'i atlamış |
 
 Prototip (`prototip.html`): P3 arayüzünün taslağı; olduğu gibi uygulanmadı, fikirleri D3–D6 ve E1–E6'ya eşleniyor.
@@ -75,14 +75,13 @@ Prototip (`prototip.html`): P3 arayüzünün taslağı; olduğu gibi uygulanmad�
 
 ## 4. Yapılmayanlar ve neden
 
-- **P2:** kod tarafı tamam (B2, C1–C3, F1). F1'in dev'de uçtan uca görülmesi MinIO/ClamAV kurulumuna bağlı (09 §6 runbook, CTO uygular). Outbox/webhook ertelendi (CTO kararı).
+- **P2:** tamam (B2, C1–C3, F1); dev'de MinIO/ClamAV kuruldu. Outbox/webhook ertelendi (CTO kararı).
 - **P3 (D3–D6, E1–E6):** A/B bölmesi gereği para katmanı ve e-fatura sonrası; ekran o zaman bir kez çizilir.
 
 ## 5. Sıradaki adımlar
 
 1. CTO P0 + P1 kalemlerini hermes-dev'de test eder → toplu ff-merge `test`'e (CTO "ff yapalım" deyince). Terfi öncesi hermes-test kopyasında kuru-koşu (`p1_dryrun.sh`) tekrar edilir.
-2. hermes-dev'de manuel `kubectl`: MinIO + ClamAV + configmap patch + bildirim temizlik CronJob'u (09 §6). Ardından F1 uçtan uca dev testi.
-3. P3 (D3–D6, E1–E6): A/B bölmesi gereği para katmanı ve e-fatura sonrası.
+2. P3 (D3–D6, E1–E6): A/B bölmesi gereği para katmanı ve e-fatura sonrası.
 
 ## 6. P1.1 — şema + taşıma (22.09, dev)
 
@@ -173,3 +172,14 @@ Commit `a05121a`. Alembic **0013_p2_work_item_attachments** (additive): `ticket_
 - Dev ortamı: `k8s/10-minio.yaml`, `k8s/11-clamav.yaml` (test kopyası, ns hermes-dev) + `k8s/notification-cleanup-cronjob.yaml`; adımlar 09 §6. Kurulana kadar dev'de uçlar 503 döner (ticket tarafındaki mevcut davranışla aynı).
 - Testler: core +6 (`test_work_item_attachments.py`), migration zinciri 0013; frontend +5 (`tasks/attachmentsTab.test.jsx`).
 - **Canlı doğrulama (hermes-dev, `a05121a`):** CD kapıları + migrate/deploy başarılı; `alembic_version = 0013`; `ticket_attachments.work_item_id` + 2 arc kısıtı; `/tasks/{id}/attachments` token'sız 401; `TICKET_ATTACHMENTS_ENABLED=false` (manuel kurulum bekliyor, 09 §6); 42 iş kalemi sabit; pod logu temiz. **Kuru-koşu (hermes-test kopyası, `a05121a`, 0008 → 0013):** 182 task → 120 iş kalemi (P1.1 ile aynı), 0012 ve 0013 sorunsuz; gerçek `core_db`'ye dokunulmadı.
+
+## 12. hermes-dev ek dosya altyapısı kurulumu (22.09, CTO isteğiyle Claude uyguladı)
+
+09 §6 runbook'u sunucuda (`/root/k8s-p2/p23_dev_setup.sh`, idempotent) koşuldu: `hermes-minio-root` + `hermes-ticket-storage` secret'ları üretildi (değerler yalnız kümede), `k8s/10-minio.yaml` + `k8s/11-clamav.yaml` apply, PVC'ler bound, bucket `hermes-ticket-attachments`, configmap anahtarları test ile aynı (dev DNS), `k8s/notification-cleanup-cronjob.yaml` apply.
+
+**Bulgular:**
+- Canlı dev `core-service` Deployment'ı repo manifestinden geride: `TICKET_S3_ACCESS_KEY_ID/SECRET` secret referansları yoktu → yeni pod `/ready` 503 (`object_storage_incomplete`) verdi; repo manifestini apply etmek yerine hedefli `kubectl set env deploy/core-service --from=secret/hermes-ticket-storage` uygulandı → `/ready` 200. (Drift notu: `k8s/03-backend-core.yaml` dev'de tam apply edilmemiş; ileride ayrı bakım.)
+- Bildirim temizlik job'ı ilk koşuda `TypeError`: `tenant_runner` `trigger` anahtarını geçiriyor, servis kabul etmiyordu → `purge_read(**_runner_kwargs)` + sözleşme testi (commit `<p24sha>`); job deploy sonrası kuru-koşu ile doğrulanır: __JOBRUN__
+- Datadog APM init container'ları (7 adet) her yeni pod'u ~3–5 dk geciktiriyor; rollout beklemeleri buna göre uzatıldı.
+
+**Canlı kanıt (core pod içinden):** `attachments_production_ready() = (True, None)`; MinIO put → stream → delete ✓ (SSE ile); `ClamAVScanner.healthy() = True`; temiz içerik → `clean/clamav`; EICAR → `rejected/malware_detected`.

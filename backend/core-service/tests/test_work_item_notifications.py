@@ -198,3 +198,14 @@ def test_purge_read_only_deletes_old_read_rows(world, http):
     s.commit()
     assert purge_read(s)["deleted"] == 1
     assert s.query(WorkItemNotification).count() == 0
+
+
+def test_cleanup_accepts_tenant_runner_contract(world, http):
+    """Job yolu: tenant_runner `work(db, tenant_id=..., dry_run=..., trigger=...)`
+    cagirir — servis fazla anahtari kabul etmeli (canli TypeError bulgusu,
+    dev 22.09). Runner'in kendi oturumu test DB'sine baglanamadigi icin
+    sozlesme dogrudan cagriyla kilitlenir."""
+    from app.services.notification_service import purge_read
+    out = purge_read(world["s"], tenant_id=uuid.UUID(TEST_TENANT_ID), dry_run=True, trigger="cron")
+    assert out["ok"] is True and out["dry_run"] is True
+    assert out["tenant_id"] == TEST_TENANT_ID
