@@ -55,6 +55,14 @@ export default {
             leave: 'Leave',
             missingDays: '{count} days without entries this week',
         },
+        week: {
+            title: 'My calendar',
+            openMeetings: 'Meetings',
+            nothing: 'Nothing planned',
+            allDay: 'All day',
+            plan: 'Planned time',
+            due: 'Due',
+        },
         myWork: {
             title: 'My work',
             openAll: 'All work items',

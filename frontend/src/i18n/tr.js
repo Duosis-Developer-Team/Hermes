@@ -69,6 +69,14 @@ export default {
             leave: 'İzin',
             missingDays: 'Bu hafta {count} gün boş',
         },
+        week: {
+            title: 'Takvimim',
+            openMeetings: 'Toplantılar',
+            nothing: 'Plan yok',
+            allDay: 'Tüm gün',
+            plan: 'Planlı zaman',
+            due: 'Termin',
+        },
         myWork: {
             title: 'İşlerim',
             openAll: 'Tüm işler',

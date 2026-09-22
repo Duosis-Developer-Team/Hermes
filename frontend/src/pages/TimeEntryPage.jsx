@@ -61,7 +61,9 @@ function TimeEntryPage() {
     // modal tekrar acilmasin.
     const [searchParams, setSearchParams] = useSearchParams()
     const [weekStart, setWeekStart] = useState(() => {
-        const wanted = searchParams.get('date')
+        // `?week=` yalnizca haftayi acar (D4 plan satiri); `?date=` ayrica
+        // Log Time'i o gune kurar.
+        const wanted = searchParams.get('date') || searchParams.get('week')
         const parsed = wanted ? dayjs(wanted) : null
         return (parsed && parsed.isValid() ? parsed : dayjs()).startOf('isoWeek')
     })
@@ -292,11 +294,12 @@ function TimeEntryPage() {
 
     useEffect(() => {
         const wanted = searchParams.get('date')
-        if (!wanted) return
-        const parsed = dayjs(wanted)
-        if (parsed.isValid()) handleLogTime(parsed)
+        if (!wanted && !searchParams.has('week')) return
+        const parsed = wanted ? dayjs(wanted) : null
+        if (parsed && parsed.isValid()) handleLogTime(parsed)
         const next = new URLSearchParams(searchParams)
         next.delete('date')
+        next.delete('week')
         setSearchParams(next, { replace: true })
         // Yalnizca mount'ta: derin baglanti tek seferliktir.
         // eslint-disable-next-line react-hooks/exhaustive-deps

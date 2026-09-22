@@ -245,3 +245,87 @@
     .home-item__link { grid-template-columns: 4px auto 1fr; }
     .home-item__due { grid-column: 2 / -1; }
 }
+
+/* --- Takvimim: gun seridi (D4) ------------------------------------------ */
+.home-week__days {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--h-space-2);
+}
+.home-week__day {
+    border: 1px solid var(--h-border-subtle);
+    border-radius: var(--h-radius-control);
+    padding: var(--h-space-2) var(--h-space-2) var(--h-space-3);
+    min-width: 0;
+}
+.home-week__day--today { border-color: var(--h-brand); }
+.home-week__day-head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--h-space-2);
+    margin-bottom: var(--h-space-2);
+}
+.home-week__day-name {
+    font-size: var(--h-font-label);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--h-text-secondary);
+}
+.home-week__day-num {
+    font-size: var(--h-font-body);
+    font-weight: 650;
+    color: var(--h-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.home-week__day--today .home-week__day-num { color: var(--h-brand); }
+.home-week__empty {
+    margin: 0;
+    font-size: var(--h-font-meta);
+    color: var(--h-text-muted);
+}
+.home-week__entries {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--h-space-1);
+}
+.home-week__entry-link {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: var(--h-space-1) var(--h-space-2);
+    border-left: 2px solid var(--h-border-strong);
+    border-radius: 0 var(--h-radius-control) var(--h-radius-control) 0;
+    color: var(--h-text-primary);
+    text-decoration: none;
+    min-width: 0;
+}
+.home-week__entry-link:hover,
+.home-week__entry-link:focus-visible {
+    background: var(--h-bg-hover);
+    outline: none;
+}
+.home-week__entry--meeting .home-week__entry-link { border-left-color: var(--h-brand); }
+.home-week__entry--plan .home-week__entry-link { border-left-color: var(--h-border-strong); }
+.home-week__entry--pending .home-week__entry-link { border-left-style: dashed; }
+.home-week__time {
+    font-size: var(--h-font-meta);
+    color: var(--h-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+.home-week__label {
+    font-size: var(--h-font-meta);
+    color: var(--h-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* Termin satiri: tek renkli sinyal yine termin. */
+.home-week__entry--item.home-item--overdue .home-week__time { color: var(--h-danger); font-weight: 600; }
+.home-week__entry--item.home-item--today .home-week__time { color: var(--h-warning); font-weight: 600; }

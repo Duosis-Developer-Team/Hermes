@@ -25,6 +25,7 @@ import {
     UserOutlined,
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 
@@ -52,9 +53,14 @@ function MeetingsPage() {
     useAuthStore((s) => s.permissions) // izinler degisince re-render
     const isAdmin = can('meetings.admin')
 
-    const [weekStart, setWeekStart] = useState(() =>
-        dayjs().startOf('isoWeek')
-    )
+    // PM rework P3 / D4: ana sayfa takvim seridinden `?date=` o gunun
+    // haftasini acar (derin baglanti; state URL'den bir kez okunur).
+    const [searchParams] = useSearchParams()
+    const [weekStart, setWeekStart] = useState(() => {
+        const wanted = searchParams.get('date')
+        const parsed = wanted ? dayjs(wanted) : null
+        return (parsed && parsed.isValid() ? parsed : dayjs()).startOf('isoWeek')
+    })
     const weekEnd = weekStart.endOf('isoWeek')
     const weekStartStr = weekStart.format('YYYY-MM-DD')
     const weekEndStr = weekEnd.format('YYYY-MM-DD')

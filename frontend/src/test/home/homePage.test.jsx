@@ -10,7 +10,7 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 
-const homeService = { myWork: vi.fn() }
+const homeService = { myWork: vi.fn(), week: vi.fn() }
 const capacityService = { getWeek: vi.fn() }
 const taskPermissionService = { getMyPermissions: vi.fn() }
 vi.mock('../../services/api', () => ({ homeService, capacityService, taskPermissionService }))
@@ -38,6 +38,9 @@ beforeEach(() => {
         today: '2026-09-16', week_start: '2026-09-14', week_end: '2026-09-20',
         overdue: EMPTY, due_today: EMPTY, this_week: EMPTY,
     })
+    homeService.week.mockResolvedValue({
+        today: '2026-09-16', week_start: '2026-09-14', week_end: '2026-09-20', days: [],
+    })
 })
 
 describe('ana sayfa', () => {
@@ -49,7 +52,9 @@ describe('ana sayfa', () => {
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Hello, Ada')
         expect(await screen.findByText('8h of 40h logged')).toBeInTheDocument()
         expect(await screen.findByText('My work')).toBeInTheDocument()
+        expect(await screen.findByText('My calendar')).toBeInTheDocument()
         await waitFor(() => expect(homeService.myWork).toHaveBeenCalledTimes(1))
+        await waitFor(() => expect(homeService.week).toHaveBeenCalledTimes(1))
     })
 
     it('is erisimi olmayan kullanici: Islerim yok, ucu cagrilmaz', async () => {
@@ -61,5 +66,7 @@ describe('ana sayfa', () => {
         await waitFor(() => expect(taskPermissionService.getMyPermissions).toHaveBeenCalled())
         expect(screen.queryByText('My work')).toBeNull()
         expect(homeService.myWork).not.toHaveBeenCalled()
+        // Takvimim herkese acik.
+        expect(await screen.findByText('My calendar')).toBeInTheDocument()
     })
 })

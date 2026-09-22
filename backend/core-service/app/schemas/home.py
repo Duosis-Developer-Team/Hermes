@@ -8,7 +8,7 @@ istemci blogu render etmez. Yanitlar EKRAN sekline gore hazirlanir
 hazir cevap verir (04-roller §4.2).
 =============================================================================
 """
-from datetime import date
+from datetime import date, datetime
 from typing import List, Optional
 from uuid import UUID
 
@@ -50,3 +50,43 @@ class MyWorkResponse(BaseModel):
     overdue: HomeBucket
     due_today: HomeBucket
     this_week: HomeBucket
+
+
+# -----------------------------------------------------------------------------
+# D4 Takvimim: uc kaynak tek seritte (toplanti · planli zaman · termin)
+# -----------------------------------------------------------------------------
+
+class WeekMeeting(BaseModel):
+    id: UUID
+    subject: str
+    start_datetime: datetime
+    end_datetime: datetime
+    is_online_meeting: bool = False
+    join_url: Optional[str] = None
+
+
+class WeekPlan(BaseModel):
+    id: UUID
+    assignment_id: UUID
+    customer_name: Optional[str] = None
+    project_name: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    description: Optional[str] = None
+    recurrence: str = "one_time"
+    status: str = "pending"
+
+
+class WeekDay(BaseModel):
+    date: date
+    is_today: bool
+    meetings: List[WeekMeeting]
+    plans: List[WeekPlan]
+    items: List[HomeWorkItem]
+
+
+class MyWeekResponse(BaseModel):
+    today: date
+    week_start: date
+    week_end: date
+    days: List[WeekDay]

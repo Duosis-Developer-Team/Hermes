@@ -664,6 +664,13 @@ export const homeService = {
         const response = await coreApi.get('/api/v1/core/home/my-work')
         return response.data
     },
+    /** Takvimim: toplanti + planli zaman + termin, gun gun (D4). `start`
+     *  haftanin herhangi bir gunu; bos = bu hafta. */
+    week: async ({ start } = {}) => {
+        const params = start ? { start } : {}
+        const response = await coreApi.get('/api/v1/core/home/week', { params })
+        return response.data
+    },
 }
 
 export const taskNotificationSettingsService = {

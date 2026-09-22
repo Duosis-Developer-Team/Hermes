@@ -87,6 +87,16 @@ export function effortSummary(week) {
     }
 }
 
+/** Takvimim (D4): Pazartesi–Cuma hep; hafta sonu yalnizca icerigi varsa. */
+export function weekDaysToShow(week) {
+    if (!week || !Array.isArray(week.days)) return []
+    return week.days.filter((d) => {
+        const weekend = dayjs(d.date).isoWeekday() >= 6
+        if (!weekend) return true
+        return (d.meetings?.length || 0) + (d.plans?.length || 0) + (d.items?.length || 0) > 0
+    })
+}
+
 /** Haftanin Pazartesi'si (ISO), API'nin bekledigi bicimde. */
 export function mondayOf(date = dayjs()) {
     return dayjs(date).startOf('isoWeek').format('YYYY-MM-DD')

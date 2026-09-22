@@ -1,6 +1,6 @@
 """
 =============================================================================
-PM rework P3.1 — Ana sayfa "Islerim" blogu (D3) + `/tasks/key/{key}` (E6)
+PM rework P3.1/P3.2 — Ana sayfa "Islerim" (D3), Takvimim (D4) + `/tasks/key/{key}` (E6)
 =============================================================================
 Kilitlenen sozlesmeler (04-roller §4.2, §7; 05 D3/E6):
   1. Uc kova: gecikmis (< bugun) · bugun (= bugun) · bu hafta (bugun <
@@ -15,7 +15,7 @@ Kilitlenen sozlesmeler (04-roller §4.2, §7; 05 D3/E6):
 =============================================================================
 """
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -203,3 +203,104 @@ def test_lookup_by_key_and_alias(http, world):
     # Gorunmeyen kayit = var olmayan kayit.
     assert http(STRANGER).get(f"{BASE}/key/{key}").status_code == 404
     assert http(NOBODY).get(f"{BASE}/key/{key}").status_code == 403
+
+
+# =============================================================================
+# D4 Takvimim — /home/week
+# =============================================================================
+
+def _seed_meeting(s, *, subject, start_utc, attendee, cancelled=False):
+    from app.models.meeting import Meeting, MeetingAttendee
+    m = Meeting(
+        id=uuid.uuid4(), external_event_id=f"ev-{uuid.uuid4()}", subject=subject,
+        start_datetime=start_utc, end_datetime=start_utc + timedelta(hours=1),
+        is_online_meeting=True, is_cancelled=cancelled, join_url="https://teams.example/x",
+    )
+    s.add(m)
+    s.flush()
+    s.add(MeetingAttendee(meeting_id=m.id, email=f"{attendee}@x.com", hermes_user_id=attendee))
+    s.commit()
+    return m
+
+
+def _seed_plan(s, world, *, start, end, recurrence="one_time", user=WORKER, status="pending",
+               start_time="09:00", end_time="11:00"):
+    from app.models.plan_time import PlanTime, PlanTimeAssignment
+    p = PlanTime(
+        id=uuid.uuid4(), created_by_id=REPORTER, customer_id=world["customer"].id,
+        project_id=world["project"].id, start_date=start, end_date=end,
+        start_time=start_time, end_time=end_time, recurrence=recurrence, description="plan",
+    )
+    s.add(p)
+    s.flush()
+    a = PlanTimeAssignment(id=uuid.uuid4(), plan_time_id=p.id, user_id=user, status=status)
+    s.add(a)
+    s.commit()
+    return p
+
+
+def test_week_merges_meetings_plans_and_due_items(http, world):
+    from datetime import timezone as _tz
+    s = world["s"]
+    s.execute(sa_text("TRUNCATE meeting_attendees, meetings, plan_time_assignments, plan_times CASCADE"))
+    s.commit()
+    # 16 Eylul 06:30 UTC = 09:30 Istanbul → Carsamba; 20 Eylul 22:30 UTC = 21 Eylul 01:30 Istanbul → hafta DISI.
+    _seed_meeting(s, subject="Standup", start_utc=datetime(2026, 9, 16, 6, 30, tzinfo=_tz.utc), attendee=WORKER)
+    _seed_meeting(s, subject="Iptal", start_utc=datetime(2026, 9, 16, 8, 0, tzinfo=_tz.utc), attendee=WORKER, cancelled=True)
+    _seed_meeting(s, subject="Baskasinin", start_utc=datetime(2026, 9, 16, 9, 0, tzinfo=_tz.utc), attendee=MATE)
+    _seed_meeting(s, subject="Pazar gecesi", start_utc=datetime(2026, 9, 20, 22, 30, tzinfo=_tz.utc), attendee=WORKER)
+    _seed_plan(s, world, start=date(2026, 9, 15), end=date(2026, 9, 16))                       # Sal + Car
+    _seed_plan(s, world, start=date(2026, 9, 2), end=date(2026, 9, 2), recurrence="weekly")    # her Carsamba
+    _seed_plan(s, world, start=date(2026, 9, 17), end=date(2026, 9, 17), status="rejected")    # reddedildi
+    _seed_plan(s, world, start=date(2026, 9, 17), end=date(2026, 9, 17), user=MATE)            # baskasinin
+    _create(http, world, "Termin Persembe", due=date(2026, 9, 17))
+    _create(http, world, "Gecen hafta", due=date(2026, 9, 11))                                 # hafta disi
+    _create(http, world, "Terminsiz")
+
+    body = http(WORKER).get("/api/v1/core/home/week").json()
+    assert body["week_start"] == "2026-09-14" and body["week_end"] == "2026-09-20" and body["today"] == "2026-09-16"
+    days = {d["date"]: d for d in body["days"]}
+    assert list(days) == [f"2026-09-{n}" for n in range(14, 21)]
+    assert [d["is_today"] for d in body["days"]] == [False, False, True, False, False, False, False]
+
+    wed = days["2026-09-16"]
+    assert [m["subject"] for m in wed["meetings"]] == ["Standup"]
+    assert wed["meetings"][0]["join_url"] == "https://teams.example/x"
+    assert len(wed["plans"]) == 2 and {p["recurrence"] for p in wed["plans"]} == {"one_time", "weekly"}
+    assert days["2026-09-15"]["plans"][0]["project_name"] == "ATM" and len(days["2026-09-15"]["plans"]) == 1
+    assert days["2026-09-17"]["plans"] == []          # reddedilen ve baskasinin plani yok
+    assert [i["title"] for i in days["2026-09-17"]["items"]] == ["Termin Persembe"]
+    assert days["2026-09-20"]["meetings"] == []       # yerel saatte Pazartesi'ye tasan toplanti bu haftada degil
+    assert sum(len(d["items"]) for d in body["days"]) == 1
+
+    # Baska hafta: `start` haftanin herhangi bir gunu olabilir.
+    prev = http(WORKER).get("/api/v1/core/home/week?start=2026-09-09").json()
+    assert prev["week_start"] == "2026-09-07"
+    assert [i["title"] for i in {d["date"]: d for d in prev["days"]}["2026-09-11"]["items"]] == ["Gecen hafta"]
+    assert all(d["is_today"] is False for d in prev["days"])
+
+
+def test_week_without_work_access_still_shows_calendar(http, world):
+    from datetime import timezone as _tz
+    s = world["s"]
+    s.execute(sa_text("TRUNCATE meeting_attendees, meetings, plan_time_assignments, plan_times CASCADE"))
+    s.commit()
+    _seed_meeting(s, subject="Sohbet", start_utc=datetime(2026, 9, 14, 10, 0, tzinfo=_tz.utc), attendee=NOBODY)
+    _seed_plan(s, world, start=date(2026, 9, 14), end=date(2026, 9, 14), user=NOBODY)
+    res = http(NOBODY).get("/api/v1/core/home/week")
+    assert res.status_code == 200
+    mon = res.json()["days"][0]
+    assert [m["subject"] for m in mon["meetings"]] == ["Sohbet"] and len(mon["plans"]) == 1
+    assert all(d["items"] == [] for d in res.json()["days"])
+
+
+def test_plan_recurrence_rule_matches_frontend():
+    from types import SimpleNamespace as NS
+    from app.services.home_service import plan_occurs_on
+    weekly = NS(start_date=date(2026, 9, 2), end_date=date(2026, 9, 2), recurrence="weekly")
+    monthly = NS(start_date=date(2026, 8, 19), end_date=date(2026, 8, 19), recurrence="monthly")
+    once = NS(start_date=date(2026, 9, 15), end_date=date(2026, 9, 16), recurrence="one_time")
+    assert plan_occurs_on(weekly, date(2026, 9, 16)) and not plan_occurs_on(weekly, date(2026, 9, 17))
+    assert not plan_occurs_on(weekly, date(2026, 8, 26))                # baslangictan once
+    assert plan_occurs_on(monthly, date(2026, 9, 16)) and not plan_occurs_on(monthly, date(2026, 9, 9))
+    assert plan_occurs_on(once, date(2026, 9, 16)) and not plan_occurs_on(once, date(2026, 9, 17))

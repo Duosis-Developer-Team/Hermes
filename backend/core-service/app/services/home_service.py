@@ -17,20 +17,25 @@ gruplar en erken termine gore.
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from shared.auth import CurrentUser
+from shared.permissions import Perm
 
+from ..authz import user_has
+from ..models.plan_time import PlanTime, PlanTimeAssignment
 from ..models.project import Project
 from ..models.work_item import (
     TERMINAL_CATEGORIES, WorkflowState, WorkItem, WorkItemParticipant,
 )
-from .capacity_service import today_in_tenant_tz, week_monday
+from .capacity_service import CAPACITY_TZ, today_in_tenant_tz, week_monday
+from .meeting_service import list_meetings_for_user
+from .task_service import is_task_admin
 from .work_item_service import _base_query, is_owner
 
 PRIORITY_RANK = {"urgent": 0, "high": 1, "medium": 2, "low": 3}
@@ -125,4 +130,119 @@ def my_work(db: Session, user: CurrentUser, *, today: Optional[date] = None) -> 
     }
 
 
-__all__ = ["my_work", "group_by_project", "PRIORITY_RANK"]
+def has_work_access(user: CurrentUser) -> bool:
+    """Islerim/termin verisi: herhangi bir is modulune erisim (task VEYA
+    issue) ya da tasks.admin. Fail-closed."""
+    return is_task_admin(user) or user_has(user, Perm.TASKS_ACCESS) or user_has(user, Perm.ISSUES_ACCESS)
+
+
+# -----------------------------------------------------------------------------
+# D4 Takvimim — toplanti + planli zaman + termin, gun gun (04-roller §4.3)
+# -----------------------------------------------------------------------------
+
+def plan_occurs_on(plan: PlanTime, day: date) -> bool:
+    """WeeklyListView ile AYNI kural (tek kaynak olmasi icin buraya da
+    yazildi; sapma testle kilitli): baslangictan once asla; weekly ayni
+    hafta gunu; monthly 28 gunde bir; one_time/daily baslangic–bitis."""
+    if day < plan.start_date:
+        return False
+    if plan.recurrence == "weekly":
+        return day.weekday() == plan.start_date.weekday()
+    if plan.recurrence == "monthly":
+        return (day - plan.start_date).days % 28 == 0
+    return plan.end_date is None or day <= plan.end_date
+
+
+def _my_plan_assignments(db: Session, me: UUID, *, week_start: date, week_end: date):
+    """plan_times.get_my_plan_times ile ayni pencere: tekrarli planlar
+    baslangictan sonra hep aday; tek seferlikler araligi kesmeli."""
+    return (
+        db.query(PlanTimeAssignment)
+        .join(PlanTime, PlanTimeAssignment.plan_time_id == PlanTime.id)
+        .options(joinedload(PlanTimeAssignment.plan_time).joinedload(PlanTime.customer),
+                 joinedload(PlanTimeAssignment.plan_time).joinedload(PlanTime.project))
+        .filter(
+            PlanTimeAssignment.user_id == me,
+            PlanTimeAssignment.status != "rejected",
+            PlanTime.start_date <= week_end,
+            or_(PlanTime.end_date >= week_start, PlanTime.recurrence.in_(["weekly", "monthly", "daily"])),
+        )
+        .all()
+    )
+
+
+def _plan_dict(assignment: PlanTimeAssignment) -> dict:
+    p = assignment.plan_time
+    return {
+        "id": p.id,
+        "assignment_id": assignment.id,
+        "customer_name": p.customer.name if p.customer else None,
+        "project_name": p.project.name if p.project else None,
+        "start_time": p.start_time,
+        "end_time": p.end_time,
+        "description": p.description,
+        "recurrence": p.recurrence or "one_time",
+        "status": assignment.status or "pending",
+    }
+
+
+def _meeting_dict(m) -> dict:
+    return {
+        "id": m.id,
+        "subject": m.subject,
+        "start_datetime": m.start_datetime,
+        "end_datetime": m.end_datetime,
+        "is_online_meeting": bool(m.is_online_meeting),
+        "join_url": m.join_url,
+    }
+
+
+def _local_date(dt: datetime) -> date:
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(CAPACITY_TZ).date()
+
+
+def my_week(db: Session, user: CurrentUser, *, start: Optional[date] = None,
+            today: Optional[date] = None) -> dict:
+    today = today or today_in_tenant_tz()
+    week_start = week_monday(start or today)
+    week_end = week_start + timedelta(days=6)
+    me = UUID(user.id)
+    days = [week_start + timedelta(days=i) for i in range(7)]
+
+    # Toplantilar: HEP kendi katildiklarim (meetings.admin olsam da) —
+    # "nerede olmam gerekiyor" sorusu kisiseldir. Gun, kiraci saat
+    # dilimine gore; UTC pencere bir gun genis tutulup yerelde kirpilir.
+    meetings = list_meetings_for_user(
+        db, user, start_date=week_start - timedelta(days=1),
+        end_date=week_end + timedelta(days=1), target_user_ids=[me],
+    )
+    by_day: Dict[date, dict] = {d: {"meetings": [], "plans": [], "items": []} for d in days}
+    for m in meetings:
+        d = _local_date(m.start_datetime)
+        if d in by_day:
+            by_day[d]["meetings"].append(_meeting_dict(m))
+
+    for a in _my_plan_assignments(db, me, week_start=week_start, week_end=week_end):
+        for d in days:
+            if plan_occurs_on(a.plan_time, d):
+                by_day[d]["plans"].append(_plan_dict(a))
+
+    if has_work_access(user):
+        for item in sorted(_mine_open_due_items(db, user, due_to=week_end), key=_item_sort_key):
+            if item.due_date >= week_start:
+                by_day[item.due_date]["items"].append(_item_dict(item, user))
+
+    for d in days:
+        by_day[d]["plans"].sort(key=lambda p: (p["start_time"] or "", p["project_name"] or ""))
+
+    return {
+        "today": today,
+        "week_start": week_start,
+        "week_end": week_end,
+        "days": [{"date": d, "is_today": d == today, **by_day[d]} for d in days],
+    }
+
+
+__all__ = ["my_work", "my_week", "group_by_project", "plan_occurs_on", "has_work_access", "PRIORITY_RANK"]

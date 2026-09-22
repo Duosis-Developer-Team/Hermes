@@ -9,13 +9,15 @@
  *
  *   Efor seridi   herkes
  *   Islerim       tasks.access | issues.access | tasks.admin
- *   (P3.2) Takvimim, (P3.3) Ekibim / Organizasyon ozeti
+ *   Takvimim      herkes (termin satirlari yalniz is erisimi olana — sunucu)
+ *   (P3.3) Ekibim / Organizasyon ozeti
  * =============================================================================
  */
 import dayjs from 'dayjs'
 
 import EffortStrip from '../features/home/components/EffortStrip'
 import MyWorkBlock from '../features/home/components/MyWorkBlock'
+import WeekBlock from '../features/home/components/WeekBlock'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
 import { useAuthStore } from '../stores/authStore'
 import { useT } from '../i18n'
@@ -42,6 +44,7 @@ function HomePage() {
 
             <EffortStrip />
             {showMyWork && <MyWorkBlock />}
+            <WeekBlock />
         </div>
     )
 }
