@@ -6,9 +6,26 @@
 .home-page {
     display: flex;
     flex-direction: column;
-    gap: var(--h-space-6);
-    max-width: 1040px;
+    gap: var(--h-space-5);
+    /* Tam genislik: ekrana sigar, sagda bos alan kalmaz (CTO 23.09). */
+    width: 100%;
+    max-width: none;
 }
+
+/* --- Akiskan izgara: bloklar satiri doldurur ---------------------------- */
+.home-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--h-space-5) var(--h-space-6);
+    align-items: stretch;
+}
+.home-cell { min-width: 0; display: flex; }
+.home-cell > .home-block { flex: 1; min-width: 0; }
+.home-cell--full { flex: 1 1 100%; }
+.home-cell--wide { flex: 3 1 560px; }
+.home-cell--narrow { flex: 2 1 420px; }
+/* Bos kalan hucre (blok cizilmedi) yer kaplamaz. */
+.home-cell:empty { display: none; }
 
 .home-page__head {
     display: flex;
@@ -31,6 +48,7 @@
 .home-block {
     border-top: 1px solid var(--h-border-subtle);
     padding-top: var(--h-space-4);
+    min-width: 0;
 }
 .home-block__head {
     display: flex;
@@ -39,7 +57,7 @@
     margin-bottom: var(--h-space-3);
 }
 .home-block__title {
-    font-size: var(--h-font-section-title);
+    font-size: 18px;
     font-weight: 650;
     color: var(--h-text-primary);
     margin: 0;
@@ -64,7 +82,7 @@
     font-variant-numeric: tabular-nums;
 }
 .home-effort__bar {
-    height: 6px;
+    height: 8px;
     border-radius: var(--h-radius-pill);
     background: var(--h-bg-hover);
     overflow: hidden;
@@ -82,8 +100,8 @@
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-    gap: var(--h-space-2);
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--h-space-3);
 }
 .home-effort__day-link {
     position: relative;
@@ -111,8 +129,8 @@
     color: var(--h-text-secondary);
 }
 .home-effort__day-hours {
-    font-size: var(--h-font-body);
-    font-weight: 600;
+    font-size: 18px;
+    font-weight: 650;
     font-variant-numeric: tabular-nums;
 }
 .home-effort__day--off .home-effort__day-link { color: var(--h-text-muted); background: transparent; }
@@ -199,7 +217,7 @@
     grid-template-columns: 4px auto 1fr auto;
     align-items: center;
     gap: var(--h-space-3);
-    padding: var(--h-space-2) var(--h-space-2);
+    padding: var(--h-space-2) var(--h-space-3);
     border-radius: var(--h-radius-control);
     color: var(--h-text-primary);
     text-decoration: none;
@@ -227,7 +245,7 @@
     font-variant-numeric: tabular-nums;
 }
 .home-item__title {
-    font-size: var(--h-font-body);
+    font-size: 15px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -252,14 +270,15 @@
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--h-space-2);
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: var(--h-space-3);
 }
 .home-week__day {
     border: 1px solid var(--h-border-subtle);
     border-radius: var(--h-radius-control);
-    padding: var(--h-space-2) var(--h-space-2) var(--h-space-3);
+    padding: var(--h-space-3);
     min-width: 0;
+    min-height: 120px;
 }
 .home-week__day--today { border-color: var(--h-brand); }
 .home-week__day-head {
@@ -320,11 +339,12 @@
     font-variant-numeric: tabular-nums;
 }
 .home-week__label {
-    font-size: var(--h-font-meta);
+    font-size: var(--h-font-body);
     color: var(--h-text-primary);
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 /* Termin satiri: tek renkli sinyal yine termin. */
 .home-week__entry--item.home-item--overdue .home-week__time { color: var(--h-danger); font-weight: 600; }
@@ -340,7 +360,7 @@
 }
 .home-team__member {
     display: grid;
-    grid-template-columns: minmax(140px, 1fr) repeat(3, minmax(88px, auto));
+    grid-template-columns: minmax(160px, 1fr) repeat(3, minmax(110px, auto));
     align-items: center;
     gap: var(--h-space-4);
     padding: var(--h-space-2) var(--h-space-2);
@@ -362,7 +382,7 @@
     min-width: 0;
 }
 .home-team__value {
-    font-size: var(--h-font-body);
+    font-size: 17px;
     font-weight: 650;
     color: var(--h-text-primary);
     font-variant-numeric: tabular-nums;

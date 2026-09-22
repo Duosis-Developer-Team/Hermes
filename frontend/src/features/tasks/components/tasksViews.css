@@ -10,6 +10,7 @@
     gap: var(--h-space-4);
     align-items: start;
 }
+.tv-main { min-width: 0; }
 @media (max-width: 900px) {
     .tv-workspace { grid-template-columns: minmax(0, 1fr); }
     .tv-sidebar { position: static; }
@@ -173,19 +174,32 @@
     gap: var(--h-space-2);
     margin-bottom: var(--h-space-3);
 }
-.tv-cal__title { font-weight: 650; color: var(--h-text-primary); }
+.tv-cal__title { font-weight: 650; color: var(--h-text-primary); font-size: var(--h-font-section-title); }
+.tv-cal {
+    /* Takvim, yuzeyin tam genisligini kullanir; dar ekranda yatay kayar
+       (yedi gun kolonu 132px'in altina inmez, kartlar okunur kalir). */
+    width: 100%;
+    min-width: 0;
+}
 .tv-cal__grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
     display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(132px, 1fr));
     gap: var(--h-space-2);
+    min-width: 0;
 }
 @media (max-width: 900px) { .tv-cal__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .tv-cal__day {
     border: 1px solid var(--h-border-subtle);
     border-radius: var(--h-radius-control);
+    background: var(--h-bg-surface);
     padding: var(--h-space-2);
-    min-height: 140px;
+    min-height: 220px;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
 }
 .tv-cal__day--today { border-color: var(--h-brand); }
 .tv-cal__day--weekend { background: var(--h-bg-weekend); }
@@ -204,7 +218,7 @@
 }
 .tv-cal__day-num { font-weight: 650; color: var(--h-text-primary); font-variant-numeric: tabular-nums; }
 .tv-cal__day--today .tv-cal__day-num { color: var(--h-brand); }
-.tv-cal__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--h-space-1); }
+.tv-cal__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--h-space-1); min-width: 0; }
 .tv-cal__item {
     display: flex;
     flex-direction: column;
@@ -228,7 +242,14 @@
 .tv-cal__item--today { border-left-color: var(--h-warning); }
 .tv-cal__item--completed { color: var(--h-text-muted); }
 .tv-cal__key { font-size: var(--h-font-meta); font-weight: 600; color: var(--h-text-secondary); }
-.tv-cal__label { font-size: var(--h-font-meta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tv-cal__label {
+    font-size: var(--h-font-meta);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.35;
+}
 .tv-cal__time { font-size: var(--h-font-meta); color: var(--h-text-secondary); font-variant-numeric: tabular-nums; }
 .tv-cal__outside {
     margin-top: var(--h-space-3);

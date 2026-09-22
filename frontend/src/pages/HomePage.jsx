@@ -50,11 +50,15 @@ function HomePage() {
                 <span className="home-page__date">{dayjs().format('dddd, DD MMMM YYYY')}</span>
             </header>
 
-            <EffortStrip />
-            {showMyWork && <MyWorkBlock />}
-            <WeekBlock />
-            <TeamBlock />
-            {showOrg && <OrgBlock />}
+            {/* Akiskan izgara: bloklar satiri DOLDURUR (hangi blok cizilirse
+                cizilsin sagda bos alan kalmaz); dar ekranda alt alta. */}
+            <div className="home-grid">
+                <div className="home-cell home-cell--full"><EffortStrip /></div>
+                {showMyWork && <div className="home-cell home-cell--narrow"><MyWorkBlock /></div>}
+                <div className="home-cell home-cell--wide"><WeekBlock /></div>
+                <div className="home-cell home-cell--wide"><TeamBlock /></div>
+                {showOrg && <div className="home-cell home-cell--narrow"><OrgBlock /></div>}
+            </div>
         </div>
     )
 }
