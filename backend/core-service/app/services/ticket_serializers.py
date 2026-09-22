@@ -364,7 +364,33 @@ def agent_detail(
         allowed_transitions=list(
             ticket_state.agent_targets(ticket.status, is_admin=is_admin)
         ),
+        work_items=work_item_refs(db, ticket.id),
     )
+
+
+def work_item_refs(db: Session, ticket_id) -> list:
+    """A6: ticket'tan dogan (arsivlenmemis) is kalemleri — hub'a ozel."""
+    from ..models.work_item import WorkItem
+    from ..services.work_item_service import legacy_status_of
+    from ..schemas.ticketing import TicketWorkItemRef
+
+    rows = (
+        db.query(WorkItem)
+        .filter(
+            WorkItem.origin_type == "ticket",
+            WorkItem.origin_ref_id == ticket_id,
+            WorkItem.archived_at.is_(None),
+        )
+        .order_by(WorkItem.created_at.asc())
+        .all()
+    )
+    return [
+        TicketWorkItemRef(
+            id=w.id, item_key=w.item_key, title=w.title,
+            status=legacy_status_of(w), owner_user_id=w.owner_user_id,
+        )
+        for w in rows
+    ]
 
 
 # =============================================================================

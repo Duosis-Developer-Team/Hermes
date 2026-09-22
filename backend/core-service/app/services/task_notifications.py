@@ -582,6 +582,27 @@ def _status_assigner_email_html(
     return _shell(title_line, intro, _task_card_html(task), app_base_url, task)
 
 
+def _status_watcher_email_html(
+    task: dict, assignee_name: str, event: str, app_base_url: str
+) -> str:
+    """E-mail to a watcher (B5) when an item they follow is accepted/done."""
+    noun = _TYPE_NOUN[_ttype(task)]
+    who = "<strong>" + _esc(assignee_name) + "</strong>"
+    if event == "accept":
+        title_line = "A " + noun + " you follow was accepted"
+        intro = _intro(
+            who + " <strong>accepted</strong> the " + noun
+            + " you follow and started working on it:"
+        )
+    else:  # complete
+        title_line = "A " + noun + " you follow was completed"
+        intro = _intro(
+            who + " <strong>successfully completed</strong> the " + noun
+            + " you follow:"
+        )
+    return _shell(title_line, intro, _task_card_html(task), app_base_url, task)
+
+
 def _assigner_group_email_html(
     sample_task: dict,
     assignee_names: List[str],
@@ -791,6 +812,7 @@ async def send_status_notifications(
     task: dict,
     assigner_user_id: str,
     event: str,
+    watcher_user_ids: Optional[List[str]] = None,
 ) -> None:
     """One-time accept/complete notification. `event` is "accept" or
     "complete". E-mails the assignee (the actor) and — when enabled — the
@@ -818,7 +840,12 @@ async def send_status_notifications(
         title = task.get("title") or "Task"
 
         assignee_id = str(task.get("assignee_user_id") or "")
-        wanted = {assignee_id, str(assigner_user_id)}
+        # B5: takipciler (atanan/atayan haric — onlar kendi mailini alir).
+        watchers = [
+            str(w) for w in (watcher_user_ids or [])
+            if str(w) not in (assignee_id, str(assigner_user_id))
+        ]
+        wanted = {assignee_id, str(assigner_user_id), *watchers}
         users = await _resolve_users(
             token, list(wanted), tenant_id=tenant_id
         )
@@ -842,6 +869,23 @@ async def send_status_notifications(
                 assignee["email"],
                 subject,
                 _status_assignee_email_html(task, event, app_url),
+            )
+
+        # 3) Watchers — "an item you follow was accepted/completed".
+        for wid in watchers:
+            watcher = users.get(wid, {})
+            if not watcher.get("email"):
+                continue
+            subject = (
+                f"[Hermes] A {noun} you follow was accepted: {title}"
+                if event == "accept"
+                else f"[Hermes] A {noun} you follow was completed: {title}"
+            )
+            await _send(
+                sender,
+                watcher["email"],
+                subject,
+                _status_watcher_email_html(task, assignee_name, event, app_url),
             )
 
         # 2) The assigner — "your assigned item was accepted/completed".

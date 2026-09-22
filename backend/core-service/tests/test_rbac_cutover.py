@@ -33,7 +33,8 @@ from app.database import get_db
 from app.tenant_db import get_tenant_db
 from app.models.customer import Customer
 from app.models.project import Project
-from app.models.task import TaskAssignmentRelation, TaskUserPermission
+from app.models.task import TaskUserPermission
+from app.models.work_item import RoutingRelation
 from app.models.user_group import (
     TaskGroupMemberOverride,
     TaskGroupPermission,
@@ -93,7 +94,7 @@ def world(pg_session, authz_grants):
     s.execute(
         sa_text(
             "TRUNCATE task_comments, task_activity_events, tasks, "
-            "task_assignment_relations, task_assignment_group_relations, "
+            "routing_relations, task_assignment_relations, task_assignment_group_relations, "
             "task_user_permissions, task_group_member_overrides, "
             "task_group_permissions, user_group_members, user_groups, "
             "projects, customers CASCADE"
@@ -112,7 +113,7 @@ def world(pg_session, authz_grants):
                 can_access_tasks=True,
                 can_assign_tasks=True,
             ),
-            TaskAssignmentRelation(
+            RoutingRelation(
                 assigner_user_id=ASSIGNER, assignee_user_id=TARGET,
                 scope="task",
             ),
@@ -250,7 +251,8 @@ def test_permissions_me_admin_lists_full_reach(world, http_for, monkeypatch):
     body = r0.json()
     assert body["is_admin"] is True
     got_users = set(body["task"]["assignable_user_ids"])
-    assert got_users == {u for u in everyone if u != str(ADMIN_U)}
+    # B4 (P1.3): kendine is acilabilir → admin listesinde kendisi de var.
+    assert got_users == set(everyone)
 
 
 # ── Legacy admin uclari: ACIK 410 ──────────────────────────────────────

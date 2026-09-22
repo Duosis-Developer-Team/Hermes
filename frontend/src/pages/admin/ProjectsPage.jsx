@@ -42,6 +42,8 @@ import { useT } from '../../i18n'
 const FORM_SHAPE = {
     name: '', customer_id: undefined, is_active: true,
     contract_start_date: null, contract_duration_days: undefined,
+    // PM rework A8 (karar 3): is kalemleri bu varsayilani miras alir.
+    is_billable_default: true,
 }
 
 
@@ -368,6 +370,14 @@ function ProjectsPage() {
                             <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
                         </Form.Item>
                     )}
+                    <Form.Item
+                        name="is_billable_default"
+                        label={t('admin.billableDefault')}
+                        valuePropName="checked"
+                        extra={t('admin.billableDefaultHint')}
+                    >
+                        <Switch />
+                    </Form.Item>
                     <Form.Item
                         name="contract_start_date"
                         label={t('admin.contractStartOptional')}

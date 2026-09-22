@@ -12,8 +12,9 @@
  * =============================================================================
  */
 
+import { Link } from 'react-router-dom'
 import { Tabs, Tag, Tooltip } from 'antd'
-import { CloseOutlined, EyeOutlined } from '@ant-design/icons'
+import { BellFilled, BellOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons'
 
 import { ActivityTimeline } from '../modals/TaskReviewModal'
 import TaskCommentsThread from './TaskCommentsThread'
@@ -57,8 +58,15 @@ function Row({ label, children }) {
     )
 }
 
+/** B5: satirdaki takipciler (participants[].role === 'watcher'). */
+const watchersOf = (task) =>
+    Array.isArray(task?.participants)
+        ? task.participants.filter((p) => p?.role === 'watcher')
+        : []
+
 function DetailsBody({ task, userMap, assignments }) {
     const t = useT()
+    const watchers = watchersOf(task)
     /*
      * §12: coklu atamada detay, BUTUN assignee'leri ve her birinin
      * BIREYSEL durumunu eksiksiz gostermeli. Aggregate durum ayrica
@@ -85,6 +93,11 @@ function DetailsBody({ task, userMap, assignments }) {
                     {userLabel(task.assignee_user_id, userMap)}
                 </Row>
             )}
+            {watchers.length > 0 && (
+                <Row label={`${t('taskUi.watchers')} (${watchers.length})`}>
+                    {watchers.map((w) => userLabel(w.user_id, userMap)).join(', ')}
+                </Row>
+            )}
             <Row label={t('review.scheduled')}>{task.scheduled_date || '—'}</Row>
             {task.due_date && <Row label={t('review.due')}>{task.due_date}</Row>}
             <Row label={t('task.priority')}>
@@ -92,6 +105,26 @@ function DetailsBody({ task, userMap, assignments }) {
                     {task.priority}
                 </Tag>
             </Row>
+            {typeof task.is_billable === 'boolean' && (
+                <Row label={t('task.billable')}>
+                    {task.is_billable ? t('common.yes') : t('common.no')}
+                </Row>
+            )}
+            {task.parent_key && (
+                <Row label={t('task.parentItem')}>{task.parent_key}</Row>
+            )}
+            {task.origin_type === 'ticket' && task.origin_ref_id && (
+                <Row label={t('task.origin')}>
+                    <Link to={`/tickets?ticket=${task.origin_ref_id}`}>
+                        {t('task.originTicket')}
+                    </Link>
+                </Row>
+            )}
+            {task.subtask_count > 0 && (
+                <Row label={t('task.subItems')}>
+                    {`${task.subtask_done_count || 0} / ${task.subtask_count}`}
+                </Row>
+            )}
             <Row label={isGrouped ? 'Aggregate status' : 'Status'}>
                 <Tag
                     color={
@@ -127,9 +160,15 @@ function TaskDetailPanel({
     onOpenReview,
     /** Coklu atamali logical work item'in TUM gorunur assignment'lari. */
     assignments = null,
+    /** B5: takip et / birak — verilmezse dugme cizilmez (salt okunur). */
+    onToggleWatch,
+    watchPending = false,
 }) {
     const t = useT()
     if (!task) return null
+    const isWatching = watchersOf(task).some(
+        (w) => String(w.user_id) === String(currentUserId)
+    )
     return (
         <aside className="task-detail-panel" aria-label={t('taskUi.taskDetails')}>
             <div className="tdp-head">
@@ -140,6 +179,22 @@ function TaskDetailPanel({
                     <div className="tdp-title">{task.title}</div>
                 </div>
                 <div className="tdp-head-actions">
+                    {onToggleWatch && currentUserId && (
+                        <Tooltip title={isWatching ? t('taskUi.unwatch') : t('taskUi.watch')}>
+                            <button
+                                type="button"
+                                className={`tdp-icon-btn${isWatching ? ' is-active' : ''}`}
+                                disabled={watchPending}
+                                aria-pressed={isWatching}
+                                onClick={() => onToggleWatch(task, {
+                                    userId: currentUserId, watching: isWatching,
+                                })}
+                                aria-label={isWatching ? t('taskUi.unwatch') : t('taskUi.watch')}
+                            >
+                                {isWatching ? <BellFilled /> : <BellOutlined />}
+                            </button>
+                        </Tooltip>
+                    )}
                     {onOpenReview && (
                         <Tooltip title={t('taskUi.openFullReview')}>
                             <button

@@ -53,14 +53,17 @@ def world(pg_session, authz_grants):
     s.commit()
     c = Customer(id=uuid.uuid4(), name="Vakko", is_active=True)
     p = Project(id=uuid.uuid4(), customer_id=c.id, name="ATM", is_active=True)
+    # P1.3/A3: proje uyeligi gorunurluk verir (tasima uyeligi backfill
+    # eder). "Baskasinin isi" testleri bu yuzden AYRI projede tohumlanir.
+    p_other = Project(id=uuid.uuid4(), customer_id=c.id, name="Other", is_active=True)
     wt = WorkType(id=uuid.uuid4(), name="Dev", is_active=True)
-    s.add_all([c, p, wt])
+    s.add_all([c, p, p_other, wt])
     s.commit()
 
     authz_grants[str(ADMIN)] = [Perm.TASKS_ADMIN, Perm.TASK_PERMISSIONS_MANAGE]
     for uid in (ASSIGNER, WORKER, STRANGER, MATE):
         authz_grants[str(uid)] = [Perm.TASKS_ACCESS]
-    return {"s": s, "customer": c, "project": p, "work_type": wt}
+    return {"s": s, "customer": c, "project": p, "other_project": p_other, "work_type": wt}
 
 
 @pytest.fixture()
@@ -87,8 +90,9 @@ def http(world, pg_session):
 
 
 def _task(world, *, status="completed", assignee=WORKER, batch=None,
-          archived=False, closed_days_ago=1, **over):
+          archived=False, closed_days_ago=1, project=None, **over):
     s = world["s"]
+    project = project or world["project"]
     closed_at = (
         datetime.now(timezone.utc) - timedelta(days=closed_days_ago)
         if status in ("completed", "rejected") else None
@@ -99,7 +103,7 @@ def _task(world, *, status="completed", assignee=WORKER, batch=None,
     row = Task(
         id=uuid.uuid4(),
         customer_id=world["customer"].id,
-        project_id=world["project"].id,
+        project_id=project.id,
         title="Work item",
         assignee_user_id=assignee,
         assigner_user_id=ASSIGNER,
@@ -190,7 +194,7 @@ def test_legacy_include_archived_still_works(world, http):
 
 def test_non_admin_sees_own_archived_items(world, http):
     mine = _task(world, assignee=WORKER, archived=True)
-    _task(world, assignee=STRANGER, archived=True)
+    _task(world, assignee=STRANGER, archived=True, project=world["other_project"])
     res = http(WORKER).get("/api/v1/core/tasks?archive_state=archived")
     assert res.status_code == 200
     ids = {r["id"] for r in res.json()}
@@ -199,14 +203,14 @@ def test_non_admin_sees_own_archived_items(world, http):
 
 
 def test_non_admin_cannot_see_other_users_archived_items(world, http):
-    other = _task(world, assignee=STRANGER, archived=True)
+    other = _task(world, assignee=STRANGER, archived=True, project=world["other_project"])
     res = http(WORKER).get("/api/v1/core/tasks?archive_state=archived")
     assert str(_item(world, other).id) not in {r["id"] for r in res.json()}
 
 
 def test_archived_count_does_not_leak(world, http):
     for _ in range(4):
-        _task(world, assignee=STRANGER, archived=True)
+        _task(world, assignee=STRANGER, archived=True, project=world["other_project"])
     res = http(WORKER).get("/api/v1/core/tasks?archive_state=archived")
     # Sayidan bile baskasinin kayitlari sizmaz.
     assert res.json() == []
@@ -290,7 +294,7 @@ def test_archive_is_idempotent(world, http):
 
 
 def test_invisible_item_returns_404_not_403(world, http):
-    t = _task(world, assignee=STRANGER, status="rejected")
+    t = _task(world, assignee=STRANGER, status="rejected", project=world["other_project"])
     res = http(WORKER).post(f"/api/v1/core/tasks/{t.id}/archive")
     # Var olmayan kayitla AYNI zarf — varligi sizmaz.
     assert res.status_code == 404

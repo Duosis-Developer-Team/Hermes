@@ -96,6 +96,7 @@ def to_response(item: WorkItem, *, for_participant: Optional[WorkItemParticipant
         me = next((p for p in parts if item.owner_user_id and p.user_id == item.owner_user_id), None)
         note = me.note if me else (parts[0].note if len(parts) == 1 else None)
         completed_by = (me.user_id if me and me.completed_at else None)
+    live_children = [c for c in (item.children or []) if c.archived_at is None]
     return WorkItemResponse(
         id=row_id,
         task_number=item.legacy_task_number,
@@ -133,9 +134,15 @@ def to_response(item: WorkItem, *, for_participant: Optional[WorkItemParticipant
         reporter_user_id=item.reporter_user_id,
         participants=[participant_response(item, p) for p in item.participants],
         is_billable=item.is_billable,
+        billable_override_by=item.billable_override_by,
         origin_type=item.origin_type,
         origin_ref_id=item.origin_ref_id,
         parent_id=item.parent_id,
+        parent_key=item.parent.item_key if item.parent is not None else None,
+        subtask_count=len(live_children),
+        subtask_done_count=sum(
+            1 for c in live_children if c.state is not None and c.state.category == "done"
+        ),
     )
 
 

@@ -106,4 +106,6 @@ class ProjectService(BaseCRUDService[Project, ProjectCreate, ProjectUpdate]):
             "created_at": project.created_at,
             "contract_start_date": project.contract_start_date,
             "contract_duration_days": project.contract_duration_days,
+            # PM rework A8 (karar 3): is kalemleri bu varsayilani miras alir.
+            "is_billable_default": bool(project.is_billable_default),
         }

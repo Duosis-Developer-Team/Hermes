@@ -48,6 +48,8 @@ function TasksSurface({
     canGroupByUser = false,
     onOpenPanel,
     onClosePanel,
+    onToggleWatch,
+    watchPending = false,
 }) {
     /* Referans kararliligi: alt agaclar memo'lu oldugu icin bu nesne
        her render'da yeniden uretilirse memo hicbir zaman tutmaz. */
@@ -131,6 +133,8 @@ function TasksSurface({
                     currentUserId={currentUserId}
                     isAdmin={isAdmin}
                     onClose={onClosePanel}
+                    onToggleWatch={onToggleWatch}
+                    watchPending={watchPending}
                     onOpenReview={(t) => {
                         onClosePanel()
                         onOpenReview(t)

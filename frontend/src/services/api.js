@@ -887,6 +887,22 @@ export const taskService = {
     },
 
     /** Newest-first activity feed for a task. */
+    /** Takipci (B5): govde bos → kendini ekler; user_id → reporter/lead baskasini ekler. */
+    addWatcher: async (taskId, userId = null) => {
+        const response = await coreApi.post(
+            `/api/v1/core/tasks/${taskId}/watchers`,
+            userId ? { user_id: userId } : {}
+        )
+        return response.data
+    },
+
+    removeWatcher: async (taskId, userId) => {
+        const response = await coreApi.delete(
+            `/api/v1/core/tasks/${taskId}/watchers/${userId}`
+        )
+        return response.data
+    },
+
     listActivity: async (taskId) => {
         const response = await coreApi.get(
             `/api/v1/core/tasks/${taskId}/activity`

@@ -13,6 +13,7 @@
 # =============================================================================
 
 import uuid
+from app.models.work_item import RoutingRelation
 from datetime import date
 
 import pytest
@@ -24,10 +25,6 @@ from app.database import get_db
 from app.tenant_db import get_tenant_db
 from app.models.customer import Customer
 from app.models.project import Project
-from app.models.task import (
-    TaskAssignmentGroupRelation,
-    TaskAssignmentRelation,
-)
 from app.models.user_group import (
     UserGroup,
     UserGroupMember,
@@ -57,7 +54,7 @@ def world(pg_session, authz_grants):
     s.execute(
         sa_text(
             "TRUNCATE task_comments, task_activity_events, tasks, "
-            "task_assignment_relations, task_assignment_group_relations, "
+            "routing_relations, task_assignment_relations, task_assignment_group_relations, "
             "task_user_permissions, task_group_member_overrides, "
             "task_group_permissions, user_group_members, user_groups, "
             "projects, customers CASCADE"
@@ -79,19 +76,19 @@ def world(pg_session, authz_grants):
             UserGroupMember(group_id=g.id, user_id=M1, is_active=True),
             UserGroupMember(group_id=g.id, user_id=M2, is_active=True),
             # Hiyerarsi: BU → AS1/AS2/M1/M2 (task scope) + BU → grup.
-            TaskAssignmentRelation(
+            RoutingRelation(
                 assigner_user_id=BU, assignee_user_id=AS1, scope="task"
             ),
-            TaskAssignmentRelation(
+            RoutingRelation(
                 assigner_user_id=BU, assignee_user_id=AS2, scope="task"
             ),
-            TaskAssignmentRelation(
+            RoutingRelation(
                 assigner_user_id=BU, assignee_user_id=M1, scope="task"
             ),
-            TaskAssignmentRelation(
+            RoutingRelation(
                 assigner_user_id=BU, assignee_user_id=M2, scope="task"
             ),
-            TaskAssignmentGroupRelation(
+            RoutingRelation(
                 assigner_user_id=BU, assignee_group_id=g.id, scope="task"
             ),
         ]

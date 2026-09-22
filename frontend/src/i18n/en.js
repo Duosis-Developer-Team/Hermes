@@ -267,6 +267,8 @@ export default {
         customerNameLabel: 'Customer Name',
         customerNameExample: 'e.g. ABC Tech Inc.',
         projectNameLabel: 'Project Name',
+        billableDefault: 'Billable by default',
+        billableDefaultHint: 'New work items in this project inherit this; each item can override it.',
         projectNameExample: 'e.g. E-Commerce Platform',
         customerOptional: 'Customer (Optional)',
         selectCustomerHint: 'Select customer (leave empty for internal projects)',
@@ -357,6 +359,12 @@ export default {
     },
 
     task: {
+        origin: 'Origin',
+        originTicket: 'Ticket',
+        billable: 'Billable',
+        billableHint: 'Inherited from the project default; changing it here is tracked as an override.',
+        parentItem: 'Parent item',
+        subItems: 'Sub-items (done / total)',
         priority: 'Priority',
         low: 'Low',
         medium: 'Medium',
@@ -778,6 +786,12 @@ export default {
         outOfScope: 'It may no longer be in your scope.',
         changedWhileViewing: 'This ticket changed while you were looking at it',
         changedHint: 'The latest version was loaded. Your text was kept — you can send it again.',
+        workItems: 'Work items',
+        createWorkItem: 'Create work item',
+        convertTitle: 'Create a work item from this ticket',
+        convertHint: 'The item is assigned to you and keeps a link back to the ticket.',
+        workItemCreated: 'Work item created.',
+        openWorkItem: 'Open',
     },
 
     portal: {
@@ -795,6 +809,9 @@ export default {
     taskUi: {
         taskDetails: 'Task details',
         closePanel: 'Close panel',
+        watch: 'Watch this item',
+        unwatch: 'Stop watching',
+        watchers: 'Watchers',
         openFullReview: 'Open full review',
         taskTitle: 'Task Title',
         code: 'Code',

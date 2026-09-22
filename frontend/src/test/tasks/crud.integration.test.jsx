@@ -483,7 +483,7 @@ describe('izin gorunurlugu', () => {
         expect(user).toBeTruthy()
     })
 
-    it('atama yetkisi olmayan kullanici "Assigned by Me" ve Create GOREMEZ', async () => {
+    it('atama yetkisi olmayan kullanici "Assigned by Me" GOREMEZ ama KENDINE is acar (B4)', async () => {
         resetTasksApi({ tasks: [FOREIGN], perms: PERMS_NO_ASSIGN })
         const user = setupUser()
         renderTasksPage()
@@ -491,10 +491,31 @@ describe('izin gorunurlugu', () => {
         expect(
             screen.queryByRole('tab', { name: 'Assigned by Me' })
         ).toBeNull()
+        // B4 (PM rework P1.3): Create "My Tasks" kapsaminda gorunur; secici
+        // yalniz kendisini listeler (sunucu assignable_user_ids = [ben]).
+        await user.click(
+            await screen.findByRole('button', { name: 'New work item' })
+        )
+        await user.click(await screen.findByRole('menuitem', { name: 'New Task' }))
+        await screen.findByRole('dialog', { name: 'Create Task' })
+        await user.click(screen.getByLabelText('Assignees'))
+        expect(await screen.findByTitle('Ada Lovelace')).toBeInTheDocument()
+        expect(screen.queryByTitle('Grace Hopper')).toBeNull()
+        expect(screen.queryByTitle('Alan Turing')).toBeNull()
+    })
+
+    it('atama yetkisi olmayan kullanici sunucu bayragi YOKSA Create goremez (fail-closed)', async () => {
+        const legacy = {
+            ...PERMS_NO_ASSIGN,
+            task: { ...PERMS_NO_ASSIGN.task, can_self_assign: undefined, assignable_user_ids: [] },
+            issue: { ...PERMS_NO_ASSIGN.issue, can_self_assign: undefined, assignable_user_ids: [] },
+        }
+        resetTasksApi({ tasks: [FOREIGN], perms: legacy })
+        renderTasksPage()
+        await screen.findByText('Yabanci gorev')
         expect(
             screen.queryByRole('button', { name: 'New work item' })
         ).toBeNull()
-        expect(user).toBeTruthy()
     })
 
     it('admin her gorevde Edit/Delete gorur (izin katmani TEK kaynak)', async () => {

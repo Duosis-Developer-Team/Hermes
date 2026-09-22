@@ -261,6 +261,8 @@ export default {
         customerNameLabel: 'Müşteri Adı',
         customerNameExample: 'örn. ABC Teknoloji A.Ş.',
         projectNameLabel: 'Proje Adı',
+        billableDefault: 'Varsayılan faturalanabilir',
+        billableDefaultHint: 'Bu projede açılan iş kalemleri bunu miras alır; her kalem ayrıca değiştirebilir.',
         projectNameExample: 'örn. E-Ticaret Platformu',
         customerOptional: 'Müşteri (İsteğe bağlı)',
         selectCustomerHint: 'Müşteri seçin (iç projeler için boş bırakın)',
@@ -351,6 +353,12 @@ export default {
     },
 
     task: {
+        origin: 'Kaynak',
+        originTicket: 'Destek talebi',
+        billable: 'Faturalanabilir',
+        billableHint: 'Proje varsayılanından miras alınır; burada değiştirmek override olarak izlenir.',
+        parentItem: 'Üst iş',
+        subItems: 'Alt işler (biten / toplam)',
         priority: 'Öncelik',
         low: 'Düşük',
         medium: 'Orta',
@@ -747,6 +755,12 @@ export default {
     },
 
     hub: {
+        workItems: 'İş kalemleri',
+        createWorkItem: 'İş kalemi aç',
+        convertTitle: 'Bu ticket\'tan iş kalemi aç',
+        convertHint: 'İş size atanır ve ticket\'a geri bağ taşır.',
+        workItemCreated: 'İş kalemi açıldı.',
+        openWorkItem: 'Aç',
         tickets: 'Talepler',
         unavailable: 'Bu ekran kullanılamıyor',
         noQueueVisible: 'Görebileceğiniz bir kuyruk yok',
@@ -789,6 +803,9 @@ export default {
     taskUi: {
         taskDetails: 'Görev ayrıntıları',
         closePanel: 'Paneli kapat',
+        watch: 'Bu işi takip et',
+        unwatch: 'Takibi bırak',
+        watchers: 'Takipçiler',
         openFullReview: 'Tam incelemeyi aç',
         taskTitle: 'Görev Başlığı',
         code: 'Kod',

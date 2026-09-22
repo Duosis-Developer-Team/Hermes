@@ -48,7 +48,7 @@ def world(pg_session, authz_grants):
 
     from app.models.customer import Customer
     from app.models.project import Project
-    from app.models.task import TaskAssignmentGroupRelation
+    from app.models.work_item import RoutingRelation
     from app.models.user_group import (
         TaskGroupMemberOverride,
         TaskGroupPermission,
@@ -62,7 +62,7 @@ def world(pg_session, authz_grants):
             "TRUNCATE work_items, work_item_participants, work_item_code_aliases, "
             "work_item_comments, work_item_events, "
             "task_comments, task_activity_events, tasks, "
-            "task_assignment_relations, task_assignment_group_relations, "
+            "routing_relations, task_assignment_relations, task_assignment_group_relations, "
             "task_user_permissions, task_group_member_overrides, "
             "task_group_permissions, user_group_members, user_groups, "
             "projects, customers CASCADE"
@@ -90,7 +90,7 @@ def world(pg_session, authz_grants):
                 user_id=M_NOACCESS,
                 can_access_tasks_override=False,
             ),
-            TaskAssignmentGroupRelation(
+            RoutingRelation(
                 assigner_user_id=BU, assignee_group_id=g.id, scope="task"
             ),
             UserGroupMember(group_id=g.id, user_id=BU, is_active=True),

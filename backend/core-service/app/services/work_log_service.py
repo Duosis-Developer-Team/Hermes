@@ -110,8 +110,14 @@ class WorkLogService:
 
             date_worked=data.date_worked,
             duration_hours=data.duration_hours,
-            # Varsayılan olarak billable = duration
-            billable_duration_hours=data.billable_duration_hours if data.billable_duration_hours is not None else data.duration_hours,
+            # Varsayilan billable = duration; is kalemine bagliysa is kaleminin
+            # faturalanabilirligi miras alinir (karar 3 — satir bazinda
+            # acikca verilen deger her zaman kazanir).
+            billable_duration_hours=(
+                data.billable_duration_hours
+                if data.billable_duration_hours is not None
+                else (0 if (linked_item is not None and not linked_item.is_billable) else data.duration_hours)
+            ),
             description=data.description,
             task_id=linked_task_id,
             work_item_id=linked_item.id if linked_item is not None else None,

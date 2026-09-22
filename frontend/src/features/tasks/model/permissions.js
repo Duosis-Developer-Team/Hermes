@@ -46,6 +46,9 @@ export function selectTaskPermissions({
         canAccessScope: !!active.canAccess,
         // Atama yetkisi ve aday listeleri (hiyerarsi kaynakli)
         canAssignTasks: canAssign,
+        // B4 (PM rework P1.3): erisimi olan herkes KENDINE is acabilir —
+        // atama yetkisi/yonlendirme gerekmez. Sunucu ayni bayragi verir.
+        canSelfAssign: !!active.canSelfAssign,
         assignableUserIds: active.assignableUserIds || [],
         assignableGroupIds: active.assignableGroupIds || [],
         // Create modal'i OLUSTURULAN turun scope'unu kullanir (goruntulenen

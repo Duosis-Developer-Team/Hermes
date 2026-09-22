@@ -43,6 +43,7 @@ function scopeView(data, scope) {
         return {
             canAccess: !!s.can_access,
             canAssign: !!s.can_assign,
+            canSelfAssign: !!s.can_self_assign,
             assignableUserIds: arr(s.assignable_user_ids),
             assignableGroupIds: arr(s.assignable_group_ids),
         }
@@ -50,6 +51,8 @@ function scopeView(data, scope) {
     return {
         canAccess: !!(s.can_access ?? data.can_access_tasks),
         canAssign: !!(s.can_assign ?? data.can_assign_tasks),
+        // B4: sunucu vermezse (eski surum) fail-closed — false.
+        canSelfAssign: !!s.can_self_assign,
         assignableUserIds: arr(s.assignable_user_ids).length
             ? arr(s.assignable_user_ids)
             : arr(data.assignable_user_ids),

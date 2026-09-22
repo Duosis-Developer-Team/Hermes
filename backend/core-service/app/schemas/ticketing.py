@@ -18,7 +18,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import List, Literal, Optional
 from uuid import UUID
 
@@ -218,6 +218,15 @@ class TicketEventOut(BaseModel):
     occurred_at: datetime
 
 
+class TicketWorkItemRef(BaseModel):
+    """Ticket → is kalemi bagi (yalniz hub; portal gormez)."""
+    id: UUID
+    item_key: str
+    title: str
+    status: str
+    owner_user_id: Optional[UUID] = None
+
+
 class TicketAgentOut(TicketAgentListItem):
     requester_source_user_id: str
     requester_email: Optional[str] = None
@@ -238,6 +247,24 @@ class TicketAgentOut(TicketAgentListItem):
     )
     attachments: List[AttachmentOut] = Field(default_factory=list)
     allowed_transitions: List[str] = Field(default_factory=list)
+    # PM rework A6: bu ticket'tan dogan is kalemleri (origin_type='ticket').
+    work_items: List[TicketWorkItemRef] = Field(default_factory=list)
+
+
+class TicketWorkItemCreateRequest(_Strict):
+    """POST /tickets/{id}/work-items — ticket'tan is kalemi acar.
+
+    `customer_id` verilmezse projeden turetilir; `assignee_user_id`
+    verilmezse cagiranin kendisi (B4). Baslik/aciklama bos ise ticket'tan.
+    """
+    project_id: UUID
+    customer_id: Optional[UUID] = None
+    assignee_user_id: Optional[UUID] = None
+    title: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = None
+    due_date: Optional[date] = None
+    priority: Literal["low", "medium", "high", "urgent"] = "medium"
+    task_type: Literal["task", "issue", "suggestion"] = "task"
 
 
 class TicketListResponse(BaseModel):

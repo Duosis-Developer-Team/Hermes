@@ -18,8 +18,8 @@ from fastapi.testclient import TestClient
 from app.database import get_db
 from app.models.task import (
     Task,
-    TaskAssignmentGroupRelation,
 )
+from app.models.work_item import RoutingRelation
 from app.models.customer import Customer
 from app.models.project import Project
 from app.models.user_group import (
@@ -50,7 +50,7 @@ def world(pg_session, authz_grants):
     s.execute(
         sa_text(
             "TRUNCATE work_items, work_item_participants, work_item_code_aliases, work_item_comments, work_item_events, task_comments, task_activity_events, tasks, "
-            "task_assignment_relations, task_assignment_group_relations, "
+            "routing_relations, task_assignment_relations, task_assignment_group_relations, "
             "task_user_permissions, task_group_member_overrides, "
             "task_group_permissions, user_group_members, user_groups, "
             "projects, customers CASCADE"
@@ -104,15 +104,15 @@ def world(pg_session, authz_grants):
                 can_access_tasks_override=False,
             ),
             # Atayan → grup eslemesi (task scope). can_assign_to_group.
-            TaskAssignmentGroupRelation(
+            RoutingRelation(
                 assigner_user_id=BU, assignee_group_id=g.id, scope="task"
             ),
-            TaskAssignmentGroupRelation(
+            RoutingRelation(
                 assigner_user_id=BU,
                 assignee_group_id=g_inactive.id,
                 scope="task",
             ),
-            TaskAssignmentGroupRelation(
+            RoutingRelation(
                 assigner_user_id=BU,
                 assignee_group_id=g_empty.id,
                 scope="task",

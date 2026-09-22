@@ -32,7 +32,8 @@ from app.tenant_db import get_tenant_db
 from app.main import app
 from app.models.customer import Customer
 from app.models.project import Project
-from app.models.task import Task, TaskAssignmentRelation
+from app.models.task import Task
+from app.models.work_item import RoutingRelation
 
 # WS3: CurrentUser artik tenant baglami ZORUNLU tasir.
 TEST_TENANT_ID = "00000000-0000-0000-0000-0000000000a1"
@@ -49,7 +50,7 @@ def world(pg_session, authz_grants):
     s.execute(
         sa_text(
             "TRUNCATE task_comments, task_activity_events, tasks, "
-            "task_assignment_relations, task_assignment_group_relations, "
+            "routing_relations, task_assignment_relations, task_assignment_group_relations, "
             "task_user_permissions, task_group_member_overrides, "
             "task_group_permissions, user_group_members, user_groups, "
             "projects, customers CASCADE"
@@ -65,7 +66,7 @@ def world(pg_session, authz_grants):
     # Assigner uc kisiye de atayabilir.
     s.add_all(
         [
-            TaskAssignmentRelation(
+            RoutingRelation(
                 assigner_user_id=ASSIGNER, assignee_user_id=uid, scope="task"
             )
             for uid in (U1, U2, U3)
@@ -193,7 +194,10 @@ def test_no_eligible_assignee_creates_nothing(http, world, pg_session):
     assert pg_session.query(Task).count() == before
 
 
-def test_assigner_is_never_assigned_to_self(http, world):
+def test_assigner_may_include_self_explicitly(http, world):
+    """B4 (P1.3): atayan kendini ACIKCA secerse katilimci olur — kendine
+    is acmak gecerlidir. (Grup fan-out'unda atayan yine haric tutulur;
+    bkz. test_task_notification_context_flow.)"""
     res = http.post(
         "/api/v1/core/tasks/bulk",
         json=_payload(
@@ -203,7 +207,7 @@ def test_assigner_is_never_assigned_to_self(http, world):
         ),
     )
     assert res.status_code == 201
-    assert {r["assignee_user_id"] for r in res.json()} == {str(U1)}
+    assert {r["assignee_user_id"] for r in res.json()} == {str(ASSIGNER), str(U1)}
 
 
 # ── Bireysel status digerlerini ETKILEMEZ ──────────────────────────────

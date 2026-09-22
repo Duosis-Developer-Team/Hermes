@@ -36,6 +36,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from ..models.customer import Customer
 from ..models.project import Project
+from ..models.project_membership import ProjectMembership
+from ..models.work_item import WorkItemLink
 from ..models.task import TaskSubProject
 from ..models.user_group import UserGroup
 from ..models.work_item import (
@@ -231,8 +233,33 @@ def resolve_ref(db: Session, ref: UUID) -> Tuple[Optional[WorkItem], Optional[Wo
 # Gorunurluk ve yetki
 # -----------------------------------------------------------------------------
 
+# Proje uyeligi rolleri (08 §2.6 standardi: lead | member | viewer).
+LEAD_ROLES = ("lead",)
+
+
+def _member_project_ids(user_id: UUID):
+    return select(ProjectMembership.project_id).where(
+        ProjectMembership.user_id == user_id,
+        ProjectMembership.is_active.is_(True),
+    )
+
+
+def is_project_member(db: Session, user_id, project_id, *, roles=None) -> bool:
+    q = db.query(ProjectMembership.id).filter(
+        ProjectMembership.user_id == user_id,
+        ProjectMembership.project_id == project_id,
+        ProjectMembership.is_active.is_(True),
+    )
+    if roles:
+        q = q.filter(ProjectMembership.member_role.in_(list(roles)))
+    return q.first() is not None
+
+
 def visible_filter(user: CurrentUser):
-    """SQLAlchemy kosulu: admin → hepsi; degilse reporter ∨ owner ∨ katilimci."""
+    """SQLAlchemy kosulu (A3): admin → hepsi; degilse proje uyesi ∨ reporter
+    ∨ owner ∨ katilimci. Son ucu "kimse is kaybetmesin" garantisi; F04'te
+    proje uyeligi tek kaynak olur. Yonlendirme (routing) gorunurluk
+    VERMEZ (A4)."""
     if is_task_admin(user):
         return True  # noqa: E712 — filter(True) tum satirlar
     me = UUID(user.id)
@@ -240,6 +267,7 @@ def visible_filter(user: CurrentUser):
         WorkItemParticipant.user_id == me
     )
     return or_(
+        WorkItem.project_id.in_(_member_project_ids(me)),
         WorkItem.reporter_user_id == me,
         WorkItem.owner_user_id == me,
         WorkItem.id.in_(participant_items),
@@ -255,19 +283,46 @@ def participant_of(item: WorkItem, user_id) -> Optional[WorkItemParticipant]:
     return next((p for p in item.participants if p.role == "assignee" and str(p.user_id) == uid), None)
 
 
-def can_view(user: CurrentUser, item: WorkItem) -> bool:
+def is_owner(user: CurrentUser, item: WorkItem) -> bool:
+    return bool(item.owner_user_id) and str(item.owner_user_id) == str(user.id)
+
+
+def can_view(user: CurrentUser, item: WorkItem, db: Optional[Session] = None) -> bool:
+    """visible_filter'in tekil karsiligi; `db` verilirse proje uyeligi de sayilir."""
     if is_task_admin(user):
         return True
     me = str(user.id)
-    if str(item.reporter_user_id) == me or (item.owner_user_id and str(item.owner_user_id) == me):
+    if str(item.reporter_user_id) == me or is_owner(user, item):
         return True
-    return any(str(p.user_id) == me for p in item.participants)
+    if any(str(p.user_id) == me for p in item.participants):
+        return True
+    return db is not None and is_project_member(db, UUID(user.id), item.project_id)
 
 
-def can_edit_core(user: CurrentUser, item: WorkItem) -> bool:
+def can_edit_core(user: CurrentUser, item: WorkItem, db: Optional[Session] = None) -> bool:
+    """Cekirdek alanlar (musteri/proje/atanan/tur) ve silme: admin ∨
+    reporter ∨ proje lead'i (B3: yetki proje rolunden)."""
     if is_task_admin(user):
         return True
-    return str(item.reporter_user_id) == str(user.id)
+    if str(item.reporter_user_id) == str(user.id):
+        return True
+    return db is not None and is_project_member(
+        db, UUID(user.id), item.project_id, roles=LEAD_ROLES
+    )
+
+
+#: B3: sahip (owner) KENDI isini duzenler — yalniz bu alanlar; atanan,
+#: musteri/proje ve tur degisikligi cekirdek yetki ister.
+OWNER_EDITABLE_FIELDS = frozenset({
+    "title", "description", "scheduled_date", "due_date",
+    "estimated_duration_minutes", "priority",
+})
+
+
+def can_edit_fields(db: Session, user: CurrentUser, item: WorkItem, fields) -> bool:
+    if can_edit_core(user, item, db):
+        return True
+    return is_owner(user, item) and set(fields) <= OWNER_EDITABLE_FIELDS
 
 
 def can_update_status(user: CurrentUser, item: WorkItem) -> bool:
@@ -281,7 +336,7 @@ def can_update_status(user: CurrentUser, item: WorkItem) -> bool:
 
 def _load(db: Session, ref: UUID, user: CurrentUser) -> Tuple[WorkItem, Optional[WorkItemParticipant]]:
     item, part = resolve_ref(db, ref)
-    if item is None or not can_view(user, item):
+    if item is None or not can_view(user, item, db):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.")
     return item, part
 
@@ -511,15 +566,20 @@ def _new_item(
     sub_project_id: Optional[UUID], title: str, description: str, scheduled_date: date,
     due_date: Optional[date], estimated_duration_minutes: Optional[int], priority: str,
     task_type: str, assignees: Sequence[UUID], origin_type: Optional[str] = None,
-    origin_ref_id: Optional[UUID] = None,
+    origin_ref_id: Optional[UUID] = None, is_billable: Optional[bool] = None,
+    parent_id: Optional[UUID] = None,
 ) -> WorkItem:
     _ensure_customer(db, customer_id)
     _ensure_project(db, project_id, customer_id)
     _ensure_sub_project_for_create(db, sub_project_id, customer_id, project_id)
     _check_dates(scheduled_date, due_date)
     description = _check_description(description)
+    if parent_id is not None:
+        _validate_parent(db, user, None, parent_id, project_id)
     number = _next_number(db, user.tenant_id, task_type)
     reporter = UUID(user.id)
+    billable_default = _project_billable_default(db, project_id)
+    billable = billable_default if is_billable is None else bool(is_billable)
     item = WorkItem(
         project_id=project_id, sub_project_id=sub_project_id,
         item_key=code_of(task_type, number), item_number=number, item_type=task_type,
@@ -527,8 +587,11 @@ def _new_item(
         priority=priority, reporter_user_id=reporter,
         owner_user_id=assignees[0] if len(assignees) == 1 else None,
         estimate_minutes=estimated_duration_minutes, start_date=scheduled_date,
-        due_date=due_date, is_billable=_project_billable_default(db, project_id),
-        origin_type=origin_type, origin_ref_id=origin_ref_id,
+        due_date=due_date, is_billable=billable,
+        # A8: varsayilandan sapma izlenir (kim / ne zaman).
+        billable_override_by=reporter if billable != billable_default else None,
+        billable_override_at=_now() if billable != billable_default else None,
+        origin_type=origin_type, origin_ref_id=origin_ref_id, parent_id=parent_id,
     )
     db.add(item)
     db.flush()
@@ -551,14 +614,87 @@ def _new_item(
     return item
 
 
+def _validate_assignment_wi(db: Session, user: CurrentUser, assignee_user_id: UUID, scope: str) -> None:
+    """B4: kendine is acmak yonlendirme/atama yetkisi istemez — hedefin
+    (kendisinin) erisimi yeter. Baskasina atama eski kuralla."""
+    if str(assignee_user_id) == str(user.id):
+        if not user_has_access(db, assignee_user_id, scope, tenant_id=user.tenant_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Selected assignee does not have access to this work item type.",
+            )
+        return
+    _validate_assignment(db, user, assignee_user_id, scope)
+
+
+def require_create_authority(
+    db: Session, user: CurrentUser, scope: str, *,
+    assignee_user_ids: Sequence[UUID], assignee_group_ids: Sequence[UUID],
+) -> None:
+    """Olusturma kapisi: baskasina ya da gruba atama → atama yetkisi (eski
+    kural); YALNIZ kendine atama → erisim yeter (B4)."""
+    if is_task_admin(user) or task_service.can_assign(db, user, scope):
+        return
+    targets = {str(u) for u in assignee_user_ids}
+    if not assignee_group_ids and targets and targets == {str(user.id)}:
+        return
+    task_service.require_task_assigner(db, user, scope)
+
+
 def create_item(db: Session, user: CurrentUser, data: TaskCreate) -> WorkItem:
-    _validate_assignment(db, user, data.assignee_user_id, perm_scope_for_type(data.task_type))
+    _validate_assignment_wi(db, user, data.assignee_user_id, perm_scope_for_type(data.task_type))
     return _new_item(
         db, user, customer_id=data.customer_id, project_id=data.project_id,
         sub_project_id=data.sub_project_id, title=data.title, description=data.description,
         scheduled_date=data.scheduled_date, due_date=data.due_date,
         estimated_duration_minutes=data.estimated_duration_minutes,
         priority=data.priority, task_type=data.task_type, assignees=[data.assignee_user_id],
+        is_billable=data.is_billable, parent_id=data.parent_id,
+    )
+
+
+def create_from_ticket(
+    db: Session, user: CurrentUser, *, ticket, project_id: UUID,
+    customer_id: Optional[UUID] = None, assignee_user_id: Optional[UUID] = None,
+    title: Optional[str] = None, description: Optional[str] = None,
+    due_date: Optional[date] = None, priority: str = "medium", task_type: str = "task",
+) -> WorkItem:
+    """A6: talep → is. Kaynak `origin_type='ticket'` / `origin_ref_id`
+    ile izlenir; SLA/otomatik donusum YOK (05 §A6 kapsam disi)."""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if project is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found.")
+    customer_id = customer_id or project.customer_id
+    if customer_id is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Project has no customer; provide customer_id.")
+    assignee = assignee_user_id or UUID(user.id)
+    scope = perm_scope_for_type(task_type)
+    task_service.require_task_access(db, user, scope)
+    require_create_authority(db, user, scope, assignee_user_ids=[assignee], assignee_group_ids=[])
+    _validate_assignment_wi(db, user, assignee, scope)
+    body = (description or "").strip()
+    if not body:
+        # Ticket'in aciklamasi ILK PUBLIC mesajdir (canonical modelde ayri
+        # kolon yok); internal notlar is kalemine ASLA tasinmaz.
+        from ..ticket_contract import format_ticket_number
+        from .ticket_serializers import load_messages
+        parts = [f"Ticket {format_ticket_number(ticket.number)}: {ticket.title}"]
+        first = next(iter(load_messages(db, ticket.id, include_internal=False)), None)
+        if first is not None and first.body:
+            parts.append(first.body)
+        for label, attr in (("Steps", "reproduction_steps"), ("Expected", "expected_result"),
+                            ("Actual", "actual_result")):
+            val = getattr(ticket, attr, None)
+            if val:
+                parts.append(f"{label}: {val}")
+        body = "\n\n".join(parts)
+    return _new_item(
+        db, user, customer_id=customer_id, project_id=project_id, sub_project_id=None,
+        title=(title or ticket.title).strip(), description=body,
+        scheduled_date=date.today(), due_date=due_date, estimated_duration_minutes=None,
+        priority=priority, task_type=task_type, assignees=[assignee],
+        origin_type="ticket", origin_ref_id=ticket.id,
     )
 
 
@@ -590,6 +726,13 @@ def _eligible_assignees(
         eligible.append(uid)
 
     for uid in assignee_user_ids:
+        if uid == assigner:
+            # B4: acikca kendini secmek yonlendirme istemez; erisim yeter.
+            # (Grup fan-out'unda atayan yine haric tutulur — eski kural.)
+            if uid not in seen and access_code in perm_map.get(str(uid), frozenset()):
+                seen.add(uid)
+                eligible.append(uid)
+            continue
         if not admin and not can_assign_to(db, user, uid, scope):
             continue
         _add(uid)
@@ -649,6 +792,8 @@ def _snapshot(item: WorkItem) -> dict:
         "due_date": item.due_date.isoformat() if item.due_date else None,
         "priority": item.priority, "project_id": str(item.project_id),
         "sub_project_id": str(item.sub_project_id) if item.sub_project_id else None,
+        "is_billable": item.is_billable,
+        "parent_id": str(item.parent_id) if item.parent_id else None,
     }
 
 
@@ -657,7 +802,7 @@ def update_item(db: Session, user: CurrentUser, ref: UUID, data: TaskUpdate) -> 
     # Yalnizca durum degisiyorsa durum yetkisi yeter (eski PUT ile ayni).
     non_status = {k: v for k, v in data.model_dump(exclude_unset=True).items()
                   if k != "status" and v is not None}
-    if non_status and not can_edit_core(user, item):
+    if non_status and not can_edit_fields(db, user, item, non_status.keys()):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="You are not allowed to edit this task.")
     before = _snapshot(item)
@@ -687,7 +832,7 @@ def update_item(db: Session, user: CurrentUser, ref: UUID, data: TaskUpdate) -> 
     if data.assignee_user_id is not None and (
         item.owner_user_id is None or data.assignee_user_id != item.owner_user_id
     ):
-        _validate_assignment(db, user, data.assignee_user_id, perm_scope_for_type(item.item_type))
+        _validate_assignment_wi(db, user, data.assignee_user_id, perm_scope_for_type(item.item_type))
         _reassign(db, item, data.assignee_user_id, actor=UUID(user.id))
     new_scheduled = data.scheduled_date or item.start_date
     new_due = data.due_date if data.due_date is not None else item.due_date
@@ -713,6 +858,15 @@ def update_item(db: Session, user: CurrentUser, ref: UUID, data: TaskUpdate) -> 
         item.estimate_minutes = data.estimated_duration_minutes
     if data.priority is not None:
         item.priority = data.priority
+    if data.is_billable is not None and bool(data.is_billable) != item.is_billable:
+        item.is_billable = bool(data.is_billable)
+        item.billable_override_by = UUID(user.id)
+        item.billable_override_at = _now()
+    if data.clear_parent:
+        item.parent_id = None
+    elif data.parent_id is not None and data.parent_id != item.parent_id:
+        _validate_parent(db, user, item, data.parent_id, item.project_id)
+        item.parent_id = data.parent_id
     if data.task_type is not None and data.task_type != item.item_type:
         new_scope = perm_scope_for_type(data.task_type)
         old_scope = perm_scope_for_type(item.item_type)
@@ -923,7 +1077,7 @@ def update_note(db: Session, user: CurrentUser, ref: UUID, note: Optional[str]) 
 
 def delete_item(db: Session, user: CurrentUser, ref: UUID) -> None:
     item, _ = _load(db, ref, user)
-    if not can_edit_core(user, item):
+    if not can_edit_core(user, item, db):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="You are not allowed to delete this task.")
     if item.archived_at is None:
@@ -999,6 +1153,189 @@ def restore_item(db: Session, user: CurrentUser, ref: UUID, *, assignment_ref: U
         "reopened_assignment_id": str(target.id if target else item.id),
         "target_status": target_status,
     }
+
+
+# -----------------------------------------------------------------------------
+# Hiyerarsi (A7): iki seviye, ayni proje — kural SERVISTE (karar 6)
+# -----------------------------------------------------------------------------
+
+def _validate_parent(db: Session, user: CurrentUser, item: Optional[WorkItem],
+                     parent_id: UUID, project_id: UUID) -> WorkItem:
+    parent, _ = resolve_ref(db, parent_id)
+    if parent is None or not can_view(user, parent, db):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent work item not found.")
+    if item is not None and parent.id == item.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="A work item cannot be its own parent.")
+    if parent.project_id != project_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Parent must belong to the same project.")
+    if parent.parent_id is not None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Only two levels are allowed: the parent is already a sub-item.")
+    if item is not None and any(c.archived_at is None for c in item.children):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Only two levels are allowed: this item already has sub-items.")
+    if parent.archived_at is not None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Parent is archived.")
+    return parent
+
+
+def list_children(db: Session, user: CurrentUser, ref: UUID) -> List[WorkItem]:
+    item, _ = _load(db, ref, user)
+    return [c for c in item.children if c.archived_at is None and can_view(user, c, db)]
+
+
+# -----------------------------------------------------------------------------
+# Baglar (A7): relates | duplicates | blocks — `blocks` GORSEL + filtre;
+# hicbir tarih/durum etkisi YOK (kabul olcutu 8). Dongu kontrolu burada.
+# -----------------------------------------------------------------------------
+
+def _can_link(db: Session, user: CurrentUser, item: WorkItem) -> bool:
+    if can_edit_core(user, item, db) or is_owner(user, item):
+        return True
+    return participant_of(item, user.id) is not None
+
+
+def list_links(db: Session, user: CurrentUser, ref: UUID) -> List[dict]:
+    item, _ = _load(db, ref, user)
+    rows = db.query(WorkItemLink).filter(
+        or_(WorkItemLink.from_item_id == item.id, WorkItemLink.to_item_id == item.id)
+    ).order_by(WorkItemLink.created_at.asc()).all()
+    out = []
+    for link in rows:
+        outbound = link.from_item_id == item.id
+        other = db.get(WorkItem, link.to_item_id if outbound else link.from_item_id)
+        if other is None or not can_view(user, other, db):
+            continue
+        out.append({
+            "id": link.id, "link_type": link.link_type,
+            "direction": "outbound" if outbound else "inbound",
+            "item_id": other.id, "item_key": other.item_key, "title": other.title,
+            "status": legacy_status_of(other),
+        })
+    return out
+
+
+def _blocks_reaches(db: Session, start: UUID, target: UUID) -> bool:
+    # start'tan `blocks` kenarlariyla target'a ulasiliyor mu (dongu)?
+    seen, stack = set(), [start]
+    while stack:
+        cur = stack.pop()
+        if cur == target:
+            return True
+        if cur in seen:
+            continue
+        seen.add(cur)
+        for (nxt,) in db.query(WorkItemLink.to_item_id).filter(
+            WorkItemLink.from_item_id == cur, WorkItemLink.link_type == "blocks"
+        ).all():
+            stack.append(nxt)
+    return False
+
+
+def create_link(db: Session, user: CurrentUser, ref: UUID, *, to_ref: UUID, link_type: str) -> WorkItemLink:
+    item, _ = _load(db, ref, user)
+    if not _can_link(db, user, item):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="You are not allowed to link this work item.")
+    other, _ = resolve_ref(db, to_ref)
+    if other is None or not can_view(user, other, db):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Linked work item not found.")
+    if other.id == item.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="A work item cannot be linked to itself.")
+    dup = db.query(WorkItemLink.id).filter(
+        WorkItemLink.link_type == link_type,
+        or_(
+            and_(WorkItemLink.from_item_id == item.id, WorkItemLink.to_item_id == other.id),
+            and_(WorkItemLink.from_item_id == other.id, WorkItemLink.to_item_id == item.id),
+        ),
+    ).first()
+    if dup is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Link already exists.")
+    if link_type == "blocks" and _blocks_reaches(db, other.id, item.id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="This link would create a blocking cycle.")
+    link = WorkItemLink(from_item_id=item.id, to_item_id=other.id, link_type=link_type,
+                        created_by_user_id=UUID(user.id))
+    db.add(link)
+    db.flush()
+    record_event(db, item, actor_user_id=UUID(user.id), event_type="link_added",
+                 event_data={"link_type": link_type, "to": other.item_key})
+    return link
+
+
+def delete_link(db: Session, user: CurrentUser, ref: UUID, link_id: UUID) -> None:
+    item, _ = _load(db, ref, user)
+    if not _can_link(db, user, item):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="You are not allowed to unlink this work item.")
+    link = db.query(WorkItemLink).filter(
+        WorkItemLink.id == link_id,
+        or_(WorkItemLink.from_item_id == item.id, WorkItemLink.to_item_id == item.id),
+    ).first()
+    if link is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found.")
+    db.delete(link)
+    db.flush()
+    record_event(db, item, actor_user_id=UUID(user.id), event_type="link_removed",
+                 event_data={"link_type": link.link_type})
+
+
+# -----------------------------------------------------------------------------
+# Takipci (B5): participants.role = watcher — gorur ve durum degisiminde
+# bildirim alir; DUZENLEYEMEZ, durum DEGISTIREMEZ.
+# -----------------------------------------------------------------------------
+
+def watcher_user_ids(item: WorkItem) -> List[str]:
+    return [str(p.user_id) for p in item.participants if p.role == "watcher"]
+
+
+def _watcher_target(db: Session, user: CurrentUser, item: WorkItem, user_id) -> UUID:
+    target = UUID(str(user_id)) if user_id else UUID(user.id)
+    if target != UUID(user.id) and not can_edit_core(user, item, db):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the reporter or a project lead can manage other watchers.",
+        )
+    return target
+
+
+def add_watcher(db: Session, user: CurrentUser, ref: UUID, *, user_id=None) -> WorkItem:
+    """Kendini takipci yapmak gorunurluk yeter (zaten goruyor); baskasini
+    eklemek cekirdek yetki ister. Idempotent; atanan zaten bildirim alir."""
+    item, _ = _load(db, ref, user)
+    target = _watcher_target(db, user, item, user_id)
+    if any(str(p.user_id) == str(target) and p.role in ("watcher", "assignee")
+           for p in item.participants):
+        return item
+    db.add(WorkItemParticipant(
+        work_item_id=item.id, user_id=target, role="watcher", added_by_user_id=UUID(user.id),
+    ))
+    db.flush()
+    db.refresh(item)
+    record_event(db, item, actor_user_id=UUID(user.id), event_type="watcher_added",
+                 event_data={"user_id": str(target)})
+    db.refresh(item)
+    return item
+
+
+def remove_watcher(db: Session, user: CurrentUser, ref: UUID, *, user_id) -> WorkItem:
+    item, _ = _load(db, ref, user)
+    target = _watcher_target(db, user, item, user_id)
+    part = next((p for p in item.participants
+                 if p.role == "watcher" and str(p.user_id) == str(target)), None)
+    if part is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watcher not found.")
+    db.delete(part)
+    db.flush()
+    db.refresh(item)
+    record_event(db, item, actor_user_id=UUID(user.id), event_type="watcher_removed",
+                 event_data={"user_id": str(target)})
+    db.refresh(item)
+    return item
 
 
 # -----------------------------------------------------------------------------

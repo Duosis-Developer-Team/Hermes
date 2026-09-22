@@ -18,9 +18,9 @@ from app.models.customer import Customer
 from app.models.project import Project
 from app.models.task import (
     Task,
-    TaskAssignmentRelation,
     TaskUserPermission,
 )
+from app.models.work_item import RoutingRelation
 
 from .test_stage3a_tasks_read import make_api_client
 
@@ -45,7 +45,7 @@ def world(pg_session, authz_grants):
     s.execute(
         sa_text(
             "TRUNCATE work_items, work_item_participants, work_item_code_aliases, work_item_comments, work_item_events, task_comments, task_activity_events, tasks, "
-            "task_assignment_relations, task_user_permissions, "
+            "routing_relations, task_assignment_relations, task_user_permissions, "
             "projects, customers CASCADE"
         )
     )
@@ -65,10 +65,10 @@ def world(pg_session, authz_grants):
                 can_access_tasks=True,
                 can_assign_tasks=True,
             ),
-            TaskAssignmentRelation(
+            RoutingRelation(
                 assigner_user_id=BU, assignee_user_id=AS, scope="task"
             ),
-            TaskAssignmentRelation(
+            RoutingRelation(
                 assigner_user_id=BU, assignee_user_id=NOACCESS, scope="task"
             ),
         ]

@@ -3,7 +3,7 @@
 Can'ın 05-gelistirme-kapsami.md'de listelediği **31 kalem** ile yapılanların karşılaştırması.
 Kararlar ve kod doğrulaması ayrıntısı: `06-inceleme-ve-kararlar.md`.
 
-**Özet:** 4 kalem yapıldı (D1 sapmayla, D2, G1, B1) — **P0 tamam** · **P1.1 + P1.2 yapıldı** (A1, A2, A9 ve A10 dev'de; A3–A8, B3–B5 P1.3'te) · 24 başlamadı (P1.3 9 · P2 5 · P3 10; tablo 32 satır = Can'ın 31'i + A10). Sıradaki: P1.3 görünürlük + yetki + bağlar.
+**Özet:** **P0 tamam** (D1 sapmayla, D2, G1, B1) · **P1 tamam** (P1.1 şema/taşıma, P1.2 servis/API geçişi, P1.3 görünürlük + yetki + bağlar: A1–A4, A6–A10, B3–B5) — 16 kalem dev'de · 16 başlamadı (A5 F05'e ertelendi · P2 5 · P3 10; tablo 32 satır = Can'ın 31'i + A10). Sıradaki: CTO'nun dev testi → toplu ff; sonra P2.
 Kararlar: 7'nin 7'si + 2 yeni karar kapatıldı (batch → `participant.completed_at`; A10 efor↔iş kalemi). Açık karar yok.
 
 ## 1. Can'ın istediği tüm geliştirmeler (05'teki liste)
@@ -12,19 +12,19 @@ Kararlar: 7'nin 7'si + 2 yeni karar kapatıldı (batch → `participant.complete
 |---|---|---|---|---|
 | A1 | İş kalemi nesnesi + katılımcılar | P1 | **Yapıldı (P1.1 + P1.2)** | `work_items` + `work_item_participants` (kişi başı `completed_at`); Alembic 0010 + 0011 cutover; tüm internal/public uçlar iş kaleminden okur/yazar (`work_item_service`); frontend katılımcı bazlı |
 | A2 | Konfigüre edilebilir durum akışı | P1 | **Yapıldı (temel)** | `workflow_states` tohumu (Pending/todo · In Progress · Completed/done · Cancelled · **Rejected/cancelled**); `GET /tasks/states`; `PATCH /status` `state_id` kabul eder; pano sütunları durumlardan (`useWorkflowStates`, geri düşüş eski 3). Yönetim ekranı (durum ekle/sırala) P2 |
-| A3 | Görünürlük proje üyeliğine | P1 | Başlamadı | `project_memberships` 0 satır, `member_role` serbest metin; backfill sıfırdan |
-| A4 | Yönlendirme politikasının ayrılması | P1 | Başlamadı | |
-| A5 | `issues` birleştirme | P1 | Başlamadı | `issues` 0 kayıt → veri taşımasız; CRUD router'ının emekliliği kod işi |
-| A6 | Talep → iş bağı | P1 | Başlamadı | |
-| A7 | Hiyerarşi ve ilişkiler | P1 | Başlamadı | Karar: **alt-proje proje ağacında kalır** (işlerin %63'ü kategori adlı 16 alt-projede); `parent_id` yalnız gerçek kırılım |
-| A8 | Faturalanabilirlik iş kaleminde | P1 | Başlamadı | Karar 3 kapandı: `projects.is_billable_default` → iş kalemi → efor override. Veri: %100 billable, %0,6 işe bağlı → A10 |
+| A3 | Görünürlük proje üyeliğine | P1 | **Yapıldı** | Görünürlük = admin ∨ proje üyesi ∨ reporter ∨ owner ∨ katılımcı (`visible_filter`/`can_view`); üyelik 0010'da backfill edildi (`member`). Üye olmayan → 404. Rol standardı `lead|member|viewer` |
+| A4 | Yönlendirme politikasının ayrılması | P1 | **Yapıldı** | `can_assign_to*`, atanabilir listeleri ve admin uçları (`/admin/task-assignment-*`) artık `routing_relations`tan; eski `task_assignment_*` tabloları okunmuyor (F05'e kadar durur). Yönlendirme görünürlük VERMEZ (testle kilitli) |
+| A5 | `issues` birleştirme | P1 | Başlamadı (F05'e ertelendi) | `issues` 0 kayıt → veri taşımasız; CRUD router'ının emekliliği 08 §6'da yok, eski tabloların düşürüldüğü F05 ile birlikte |
+| A6 | Talep → iş bağı | P1 | **Yapıldı** | `POST/GET /tickets/{id}/work-items` (hub, `tickets.respond` + `tasks.access`); iş `origin_type='ticket'`; ticket detayında `work_items[]`; hub'da "İş kalemi aç" modalı + liste, iş detayında "Kaynak: Ticket" bağı (`/tickets?ticket=`). Ticket olay kümesine dokunulmadı (sözleşme donmuş); SLA/otomatik dönüşüm yok |
+| A7 | Hiyerarşi ve ilişkiler | P1 | **Yapıldı** | `parent_id` iki seviye + aynı proje (servis kuralı), `parent_key`/`subtask_count`/`subtask_done_count` rollup, `GET /tasks/{id}/children`; bağlar `relates|duplicates|blocks` (`/tasks/{id}/links`), `blocks` hiçbir tarih/durum değiştirmez (test), döngü reddi. UI: detay panelinde üst iş/alt iş sayısı; bağ UI P3 |
+| A8 | Faturalanabilirlik iş kaleminde | P1 | **Yapıldı** | `projects.is_billable_default` (API + proje formu anahtarı) → iş kalemi `is_billable` (oluşturmada miras, düzenlemede çekirdek yetkiyle override; `billable_override_by/at` izlenir) → efor kaydı bağlı işten miras (açık değer kazanır). Detay panelinde "Faturalanabilir" satırı |
 | A9 | `/v1` ve MCP uyumluluk | P1 | **Yapıldı** | `/v1` şekli değişmedi (`work_item_compat.to_public_task`); `task_code` = `item_key` ∨ alias; eski `tasks.id`, katılımcı id ve iş kalemi id'si aynı uçlarda çözülür (`resolve_ref`); 335 public API testi yeşil. **MCP istemci matrisi yeniden koşulmadı** (gerçek istemci gerekir) — CTO dev testinde; matris dokunulmadı |
 | A10 | Efor girişinde iş kalemi seçimi (**yeni**, CTO 22.09) | P1 | **Yapıldı** | LogTimeModal: serbest girişte proje seçilince "İş kalemi (isteğe bağlı)" — kullanıcının o projede gördüğü açık işler; seçim `task_id` → `work_logs.work_item_id` + `log_time_created` olayı. Görevden/toplantıdan açılan akışta seçici yok |
 | B1 | Ayarların tek çatı altına alınması | P0 | **Yapıldı** | Tek `/settings`, beş bölüm, bölüm başına izin; menüde tek "Ayarlar" (Yönetim grubunda, prototipteki yerleşim); eski adresler yönlendirilir; yeni izin kodu yok |
 | B2 | Proje ayarları sayfası | P2 | Başlamadı | A3'e bağlı |
-| B3 | Düzenleme yetkisi kuralları | P1 | Başlamadı | A1+A3 ile gelir |
-| B4 | Kendine iş açma | P1 | Başlamadı | A1+A3 ile gelir |
-| B5 | Takipçi | P1 | Başlamadı | A1 ile gelir |
+| B3 | Düzenleme yetkisi kuralları | P1 | **Yapıldı** | Çekirdek (proje/atanan/tür/fatura/silme): admin ∨ reporter ∨ proje **lead**'i; sahip (owner) yalnız başlık/açıklama/tarihler/öncelik/tahmin (`OWNER_EDITABLE_FIELDS`) |
+| B4 | Kendine iş açma | P1 | **Yapıldı** | Yalnız kendine atama → erişim yeter (`require_create_authority`, `_validate_assignment_wi`); `permissions/me` `can_self_assign` + kendisi listede; UI: "My Tasks"ta Create, seçici kendisini listeler. Yönlendirmede `assigner==assignee` kısıtı kalktı |
+| B5 | Takipçi | P1 | **Yapıldı** | `participants.role='watcher'`: `POST/DELETE /tasks/{id}/watchers` (kendini: görünürlük yeter; başkasını: çekirdek yetki); görür, düzenleyemez; ilk kabul/tamamlama e-postası takipçilere de gider. UI: detay panelinde zil + "Takipçiler" satırı |
 | C1 | İş kalemi olay akışı | P2 | Başlamadı | A1 gerekli |
 | C2 | Uygulama içi bildirim | P2 | Başlamadı | C1 gerekli |
 | C3 | Kanal ayrımı | P2 | Başlamadı | C2 gerekli |
@@ -75,14 +75,13 @@ Prototip (`prototip.html`): P3 arayüzünün taslağı; olduğu gibi uygulanmad�
 
 ## 4. Yapılmayanlar ve neden
 
-- **P1.3 (A3–A8, B3–B5):** Sıradaki — proje üyeliği görünürlüğü, routing, düzenleme yetkisi, kendine iş, takipçi, talep→iş, hiyerarşi, faturalanabilirlik.
-- **P2 (B2, C1–C3, F1):** A1 tamam; P1.3 sonrası.
+- **P2 (B2, C1–C3, F1):** P1 tamam; sıradaki tur. B2 (proje ayarları sayfası: üyelik/rol yönetimi — bugün üyelik yalnız API + backfill) A3'ün doğal devamı.
 - **P3 (D3–D6, E1–E6):** A/B bölmesi gereği para katmanı ve e-fatura sonrası; ekran o zaman bir kez çizilir.
 
 ## 5. Sıradaki adımlar
 
-1. **P1.3** (A3–A8, B3–B5) — 08-p1-plani §6.
-2. CTO tüm kalemleri hermes-dev'de test eder → toplu ff-merge `test`'e (CTO "ff yapalım" deyince). Terfi öncesi hermes-test kopyasında kuru-koşu (`p1_dryrun.sh`) tekrar edilir.
+1. CTO P0 + P1 kalemlerini hermes-dev'de test eder → toplu ff-merge `test`'e (CTO "ff yapalım" deyince). Terfi öncesi hermes-test kopyasında kuru-koşu (`p1_dryrun.sh`) tekrar edilir.
+2. P2 (B2, C1–C3, F1).
 
 ## 6. P1.1 — şema + taşıma (22.09, dev)
 
@@ -121,3 +120,19 @@ Commit `044651e` + `704db53` + `d9e558c` (hermes-dev). Eski `tasks` ailesi hâl�
 **Kuru-koşu (hermes-test kopyası, `d9e558c`, 0008 → 0011):** 182 task → **120 iş kalemi**, 182 katılımcı, 62 alias, 25 sahipsiz (triage), 18 yorum, 690 olay, 18 efor bağı, üyelik +40, routing +68; iki kiracıda 5'er durum; dağılım Completed 78 · Pending 18 · In Progress 15 · Rejected 9. Gerçek `core_db`'ye dokunulmadı (kopya + pod silindi). Not: kopya DB'de migrator rolüne `GRANT ALL ON DATABASE` gerekiyor (script'e eklendi); gerçek DB'de yetki zaten var.
 
 **Sapmalar:** `assignment_batch_id` yalnız çok katılımcılı kalemde dolu (08 §4 "= id" diyordu) — tekil oluşturma sözleşmesi (`assignment_batch_id is None`) korunur. Pasif grup → 400, yok → 404 (eski grup ucu sözleşmesi).
+
+## 8. P1.3 — görünürlük + yetki + bağlar (22.09, dev)
+
+Commit `<p13sha>` (hermes-dev). Şema değişikliği YOK (0010'daki tablolar yeter); hepsi servis/API + küçük UI.
+
+- **A3** görünürlük: `visible_filter`/`can_view` proje üyeliğini sayar; üyelik olmadan kişi yalnız reporter/owner/katılımcı olduğu işi görür. Testler: üye görür, üye olmayan 404, başka projedeki üyelik sızmaz, yönlendirme görünürlük vermez.
+- **A4** yönlendirme: `task_service` okuma/yazma `routing_relations`a geçti; admin uçları aynı yol/şekil. Testler `RoutingRelation` tohumlar (7 dosya).
+- **B3** düzenleme: `can_edit_core(user, item, db)` (admin/reporter/lead) + `can_edit_fields` (owner alan listesi). Silme/arşiv çekirdek yetki.
+- **B4** kendine iş: `require_create_authority` + `_validate_assignment_wi`; bulk'ta açıkça kendini seçmek geçerli (grup fan-out'unda atayan yine hariç); eski "atayan kendine atanmaz" sözleşme testi B4'e göre güncellendi; admin listesi kendisini de içerir.
+- **B5** takipçi: servis + uçlar + olaylar (`watcher_added/removed`); `send_status_notifications(watcher_user_ids=…)` — atanan/atayan çift mail almaz, adressiz atlanır; UI zil düğmesi (sayfa mutation'ı, panel saf).
+- **A7** hiyerarşi/bağlar: `_validate_parent` (iki seviye, aynı proje, görünür, arşivli değil, alt işi olan kalem alt olamaz); `parent` ilişkisi + `children` selectin (liste rollup'ı satır başına sorgu açmaz); bağ uçları + `blocks` döngü reddi; kabul ölçütü 8 testle kilitli.
+- **A8** faturalanabilirlik: proje şeması/serializer/formu; iş kalemi miras + override izi; efor kaydı bağlı işten miras. Detay panelinde satır; düzenleme modalında anahtar (yalnız değiştiyse gönderilir).
+- **A6** talep → iş: hub uçları, `TicketAgentOut.work_items`, açıklama = ticket başlığı + ilk **public** mesaj + adımlar (internal not asla taşınmaz), varsayılan tür `task` (issue ayrı izin scope'u). Hub UI: modal + liste; iş detayında kaynak bağı; `/tickets?ticket=<id>` derin linki.
+- **Testler:** +4 core dosyası (`test_work_item_access/watchers/hierarchy_billing`, `ticketing/test_work_item_link`) + güncellenen sözleşme testleri; frontend +2 (`watchers`, B4 crud senaryosu); tam core paketi ve frontend paketleri yeşil (kanıt aşağıda).
+
+**Sapmalar / notlar:** `member_role` bugün serbest metin (`member` backfill'i); `lead` rolü verilmesi B2 (proje ayarları sayfası) gelene kadar API/DB ile. Bağ (links) UI'si P3 (08 §2.9). MCP istemci matrisi hâlâ yeniden koşulmadı (gerçek istemci gerekir).

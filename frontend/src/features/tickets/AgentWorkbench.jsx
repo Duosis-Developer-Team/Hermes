@@ -10,6 +10,7 @@
  * bu ekrana güvenini bitiren türden bir davranıştır.
  */
 import { Fragment, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, Drawer, Select, Skeleton, Typography } from 'antd'
 
@@ -20,6 +21,7 @@ import {
 import { queryKeys } from '../../query/queryKeys'
 import AgentComposer from './AgentComposer'
 import ResolveModal from './ResolveModal'
+import ConvertToWorkItemModal from './ConvertToWorkItemModal'
 import TicketTimeline from './TicketTimeline'
 import {
     AGENT_STATUS_LABELS, CATEGORY_LABELS, IMPACT_LABELS,
@@ -64,6 +66,25 @@ function ContextPanel({ ticket, groups, onAssignGroup, canAssign, pending }) {
                         {ticket.first_response_at
                             ? new Date(ticket.first_response_at).toLocaleString()
                             : 'Pending'}
+                    </dd>
+                    {/* A6: bu ticket'tan dogan is kalemleri */}
+                    <dt>{t('hub.workItems')}</dt>
+                    <dd>
+                        {(ticket.work_items ?? []).length === 0 ? '—' : (
+                            <ul className="h-ticket-work-items">
+                                {ticket.work_items.map((w) => (
+                                    <li key={w.id}>
+                                        <Link to={`/project-management/tasks?item=${w.id}`}>
+                                            {w.item_key}
+                                        </Link>
+                                        {' '}
+                                        <span className="h-ticket-work-items__title">{w.title}</span>
+                                        {' '}
+                                        <StatusBadge tone="neutral">{w.status}</StatusBadge>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </dd>
                 </dl>
 
@@ -119,6 +140,7 @@ export default function AgentWorkbench({
     const queryClient = useQueryClient()
     const [draft, setDraft] = useState('')
     const [resolveOpen, setResolveOpen] = useState(false)
+    const [convertOpen, setConvertOpen] = useState(false)
     const [conflict, setConflict] = useState(false)
 
     useEffect(() => {
@@ -230,6 +252,11 @@ export default function AgentWorkbench({
                             onClick={() => setResolveOpen(true)}
                         >{t('hub.resolve')}</Button>
                     )}
+                    {/* A6: talep → is */}
+                    <Button
+                        disabled={!canRespond}
+                        onClick={() => setConvertOpen(true)}
+                    >{t('hub.createWorkItem')}</Button>
                 </Inline>
             ) : null}
         >
@@ -324,6 +351,18 @@ export default function AgentWorkbench({
                     </div>
                 </Stack>
             )}
+
+            <ConvertToWorkItemModal
+
+                open={convertOpen}
+
+                ticket={ticket}
+
+                onClose={() => setConvertOpen(false)}
+
+                onCreated={() => refresh()}
+
+            />
 
             <ResolveModal
                 open={resolveOpen}

@@ -141,6 +141,26 @@ export function useTaskMutations({ createType, onWriteSettled, onTaskRefreshed }
         onError: (err) => message.error(detail(err, 'Failed to accept task.')),
     })
 
+    // B5: takip et / birak — tek kapi. Katilimci listesi tasks
+    // ailesinde yasadigi icin ayni invalidation yeter.
+    const watchMutation = useMutation({
+        mutationFn: ({ id, userId, watching }) =>
+            watching
+                ? taskService.removeWatcher(id, userId)
+                : taskService.addWatcher(id),
+        onSuccess: (_res, vars) =>
+            afterWrite(vars.watching ? 'You stopped watching this item.' : 'You are now watching this item.'),
+        onError: (err) => message.error(detail(err, 'Failed to update watch state.')),
+    })
+
+    const toggleWatch = async (task, { userId, watching }) => {
+        try {
+            await watchMutation.mutateAsync({ id: task.id, userId, watching })
+        } catch {
+            // toast zaten gosterildi
+        }
+    }
+
     /**
      * Create/edit modalinin tek gonderim kapisi. `meta` hangi ucun
      * kullanilacagini modal belirler: { taskId? , isBulk? , isGroup? }.
@@ -163,6 +183,8 @@ export function useTaskMutations({ createType, onWriteSettled, onTaskRefreshed }
 
     return {
         submitTask,
+        toggleWatch,
+        watchPending: watchMutation.isPending,
         completionMutation,
         deleteMutation,
         rejectMutation,

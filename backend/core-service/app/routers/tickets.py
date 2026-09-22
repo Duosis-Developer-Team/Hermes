@@ -17,7 +17,7 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, status
 from starlette.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -34,6 +34,8 @@ from ..models.ticketing import (
 )
 from ..models.user_group import UserGroup, UserGroupMember
 from ..schemas.ticketing import (
+    TicketWorkItemCreateRequest,
+    TicketWorkItemRef,
     ApplicationOut,
     AssignGroupRequest,
     AssignUserRequest,
@@ -485,6 +487,47 @@ def assign_user(
         )
     except Exception as exc:  # noqa: BLE001
         raise translate(exc)
+    return _detail(db, ticket, scope)
+
+
+# =============================================================================
+# Talep → is (PM rework A6)
+# =============================================================================
+
+@router.get("/{ticket_id}/work-items", response_model=List[TicketWorkItemRef])
+def list_ticket_work_items(
+    ticket_id: UUID,
+    current_user: CurrentUser = Depends(require_support_surface),
+    scope: visibility.HubScope = Depends(hub_scope),
+    db: Session = Depends(get_support_db),
+):
+    ticket = _load_ticket(db, ticket_id, scope)
+    return ser.work_item_refs(db, ticket.id)
+
+
+@router.post(
+    "/{ticket_id}/work-items", response_model=TicketAgentOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_ticket_work_item(
+    ticket_id: UUID,
+    payload: TicketWorkItemCreateRequest,
+    current_user: CurrentUser = Depends(require_support_surface),
+    scope: visibility.HubScope = Depends(hub_scope),
+    db: Session = Depends(get_support_db),
+):
+    """Ticket'tan is kalemi acar (origin_type='ticket'). Ticket olay
+    kumesine DOKUNULMAZ (sozlesme donmus); bag is kaleminde tasinir."""
+    from ..services import work_item_service as wi
+
+    _require(scope, Perm.TICKETS_RESPOND)
+    ticket = _load_ticket(db, ticket_id, scope)
+    wi.create_from_ticket(
+        db, current_user, ticket=ticket, project_id=payload.project_id,
+        customer_id=payload.customer_id, assignee_user_id=payload.assignee_user_id,
+        title=payload.title, description=payload.description, due_date=payload.due_date,
+        priority=payload.priority, task_type=payload.task_type,
+    )
     return _detail(db, ticket, scope)
 
 

@@ -21,6 +21,7 @@ from sqlalchemy import and_
 from ..models.customer import Customer
 from ..models.project import Project
 from . import task_lifecycle
+from ..models.work_item import RoutingRelation
 from ..models.task import (
     Task,
     TaskAssignmentGroupRelation,
@@ -406,11 +407,15 @@ def get_assignable_user_ids(
     user→user mappings so callers (e.g. /permissions/me) can present the
     two columns independently.
     """
+    # A4: kaynak `routing_relations` (eski tablolar F05'e kadar durur,
+    # OKUNMAZ). Yonlendirme yalniz "kim kime is acabilir" politikasidir;
+    # gorunurlugu ETKILEMEZ.
     rows = (
-        db.query(TaskAssignmentRelation.assignee_user_id)
+        db.query(RoutingRelation.assignee_user_id)
         .filter(
-            TaskAssignmentRelation.assigner_user_id == UUID(user.id),
-            TaskAssignmentRelation.scope == scope,
+            RoutingRelation.assigner_user_id == UUID(user.id),
+            RoutingRelation.assignee_user_id.isnot(None),
+            RoutingRelation.scope == scope,
         )
         .all()
     )
@@ -422,10 +427,11 @@ def get_assignable_group_ids(
 ) -> List[UUID]:
     """Return group IDs the assigner may target via Create-for-Group in `scope`."""
     rows = (
-        db.query(TaskAssignmentGroupRelation.assignee_group_id)
+        db.query(RoutingRelation.assignee_group_id)
         .filter(
-            TaskAssignmentGroupRelation.assigner_user_id == UUID(user.id),
-            TaskAssignmentGroupRelation.scope == scope,
+            RoutingRelation.assigner_user_id == UUID(user.id),
+            RoutingRelation.assignee_group_id.isnot(None),
+            RoutingRelation.scope == scope,
         )
         .all()
     )
@@ -462,15 +468,15 @@ def _is_target_reachable_via_group(
     as an active member of an active group.
     """
     return (
-        db.query(TaskAssignmentGroupRelation.id)
+        db.query(RoutingRelation.id)
         .join(
             UserGroup,
-            UserGroup.id == TaskAssignmentGroupRelation.assignee_group_id,
+            UserGroup.id == RoutingRelation.assignee_group_id,
         )
         .join(UserGroupMember, UserGroupMember.group_id == UserGroup.id)
         .filter(
-            TaskAssignmentGroupRelation.assigner_user_id == assigner_user_id,
-            TaskAssignmentGroupRelation.scope == scope,
+            RoutingRelation.assigner_user_id == assigner_user_id,
+            RoutingRelation.scope == scope,
             UserGroup.is_active.is_(True),
             UserGroupMember.user_id == assignee_user_id,
             UserGroupMember.is_active.is_(True),
@@ -496,12 +502,14 @@ def can_assign_to(
     if not can_assign(db, user, scope):
         return False
     user_uuid = UUID(user.id)
+    if str(assignee_user_id) == str(user_uuid):
+        return True  # B4: kendine is acmak yonlendirme istemez
     direct = (
-        db.query(TaskAssignmentRelation.id)
+        db.query(RoutingRelation.id)
         .filter(
-            TaskAssignmentRelation.assigner_user_id == user_uuid,
-            TaskAssignmentRelation.assignee_user_id == assignee_user_id,
-            TaskAssignmentRelation.scope == scope,
+            RoutingRelation.assigner_user_id == user_uuid,
+            RoutingRelation.assignee_user_id == assignee_user_id,
+            RoutingRelation.scope == scope,
         )
         .first()
     )
@@ -519,11 +527,11 @@ def can_assign_to_group(
     if not can_assign(db, user, scope):
         return False
     rel = (
-        db.query(TaskAssignmentGroupRelation.id)
+        db.query(RoutingRelation.id)
         .filter(
-            TaskAssignmentGroupRelation.assigner_user_id == UUID(user.id),
-            TaskAssignmentGroupRelation.assignee_group_id == group_id,
-            TaskAssignmentGroupRelation.scope == scope,
+            RoutingRelation.assigner_user_id == UUID(user.id),
+            RoutingRelation.assignee_group_id == group_id,
+            RoutingRelation.scope == scope,
         )
         .first()
     )
@@ -681,11 +689,11 @@ def notification_allowed(
 
 def list_assignment_relations(
     db: Session, scope: str = "task"
-) -> List[TaskAssignmentRelation]:
+) -> List[RoutingRelation]:
     return (
-        db.query(TaskAssignmentRelation)
-        .filter(TaskAssignmentRelation.scope == scope)
-        .order_by(TaskAssignmentRelation.created_at.desc())
+        db.query(RoutingRelation)
+        .filter(RoutingRelation.scope == scope, RoutingRelation.assignee_user_id.isnot(None))
+        .order_by(RoutingRelation.created_at.desc())
         .all()
     )
 
@@ -715,26 +723,22 @@ def create_assignment_relations(
     caller. So even if a mapping exists, a non-permitted assigner
     can't actually create tasks against it.
     """
-    created_or_existing: List[TaskAssignmentRelation] = []
+    # B4: assigner == assignee artik GECERLI (kendine is acma); kisit kalkti.
+    created_or_existing: List[RoutingRelation] = []
     for assignee_id in assignee_user_ids:
-        if assignee_id == assigner_user_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Assigner and assignee cannot be the same user.",
-            )
         existing = (
-            db.query(TaskAssignmentRelation)
+            db.query(RoutingRelation)
             .filter(
-                TaskAssignmentRelation.assigner_user_id == assigner_user_id,
-                TaskAssignmentRelation.assignee_user_id == assignee_id,
-                TaskAssignmentRelation.scope == scope,
+                RoutingRelation.assigner_user_id == assigner_user_id,
+                RoutingRelation.assignee_user_id == assignee_id,
+                RoutingRelation.scope == scope,
             )
             .first()
         )
         if existing:
             created_or_existing.append(existing)
             continue
-        relation = TaskAssignmentRelation(
+        relation = RoutingRelation(
             assigner_user_id=assigner_user_id,
             assignee_user_id=assignee_id,
             scope=scope,
@@ -745,11 +749,11 @@ def create_assignment_relations(
         except IntegrityError:
             db.rollback()
             existing = (
-                db.query(TaskAssignmentRelation)
+                db.query(RoutingRelation)
                 .filter(
-                    TaskAssignmentRelation.assigner_user_id == assigner_user_id,
-                    TaskAssignmentRelation.assignee_user_id == assignee_id,
-                    TaskAssignmentRelation.scope == scope,
+                    RoutingRelation.assigner_user_id == assigner_user_id,
+                    RoutingRelation.assignee_user_id == assignee_id,
+                    RoutingRelation.scope == scope,
                 )
                 .first()
             )
@@ -766,8 +770,8 @@ def create_assignment_relations(
 
 def delete_assignment_relation(db: Session, relation_id: UUID) -> None:
     relation = (
-        db.query(TaskAssignmentRelation)
-        .filter(TaskAssignmentRelation.id == relation_id)
+        db.query(RoutingRelation)
+        .filter(RoutingRelation.id == relation_id, RoutingRelation.assignee_user_id.isnot(None))
         .first()
     )
     if not relation:
@@ -785,11 +789,11 @@ def delete_assignment_relation(db: Session, relation_id: UUID) -> None:
 
 def list_assignment_group_relations(
     db: Session, scope: str = "task"
-) -> List[TaskAssignmentGroupRelation]:
+) -> List[RoutingRelation]:
     return (
-        db.query(TaskAssignmentGroupRelation)
-        .filter(TaskAssignmentGroupRelation.scope == scope)
-        .order_by(TaskAssignmentGroupRelation.created_at.desc())
+        db.query(RoutingRelation)
+        .filter(RoutingRelation.scope == scope, RoutingRelation.assignee_group_id.isnot(None))
+        .order_by(RoutingRelation.created_at.desc())
         .all()
     )
 
@@ -799,7 +803,7 @@ def create_assignment_group_relation(
     assigner_user_id: UUID,
     assignee_group_id: UUID,
     scope: str = "task",
-) -> TaskAssignmentGroupRelation:
+) -> RoutingRelation:
     """Idempotent — returns the existing row when the pair already maps.
 
     Same configuration-not-grant stance as create_assignment_relations:
@@ -823,18 +827,18 @@ def create_assignment_group_relation(
         )
 
     existing = (
-        db.query(TaskAssignmentGroupRelation)
+        db.query(RoutingRelation)
         .filter(
-            TaskAssignmentGroupRelation.assigner_user_id == assigner_user_id,
-            TaskAssignmentGroupRelation.assignee_group_id == assignee_group_id,
-            TaskAssignmentGroupRelation.scope == scope,
+            RoutingRelation.assigner_user_id == assigner_user_id,
+            RoutingRelation.assignee_group_id == assignee_group_id,
+            RoutingRelation.scope == scope,
         )
         .first()
     )
     if existing:
         return existing
 
-    relation = TaskAssignmentGroupRelation(
+    relation = RoutingRelation(
         assigner_user_id=assigner_user_id,
         assignee_group_id=assignee_group_id,
         scope=scope,
@@ -847,8 +851,8 @@ def create_assignment_group_relation(
 
 def delete_assignment_group_relation(db: Session, relation_id: UUID) -> None:
     relation = (
-        db.query(TaskAssignmentGroupRelation)
-        .filter(TaskAssignmentGroupRelation.id == relation_id)
+        db.query(RoutingRelation)
+        .filter(RoutingRelation.id == relation_id, RoutingRelation.assignee_group_id.isnot(None))
         .first()
     )
     if not relation:

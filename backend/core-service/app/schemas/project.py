@@ -32,6 +32,8 @@ class ProjectCreate(ProjectBase):
         ge=1,
         description="Sözleşme süresi (gün)"
     )
+    # PM rework A8 (karar 3): iş kalemleri bu varsayılanı miras alır.
+    is_billable_default: bool = True
 
 
 class ProjectUpdate(BaseModel):
@@ -42,6 +44,7 @@ class ProjectUpdate(BaseModel):
     is_active: Optional[bool] = None
     contract_start_date: Optional[datetime] = None
     contract_duration_days: Optional[int] = Field(None, ge=1)
+    is_billable_default: Optional[bool] = None
 
 
 class ProjectResponse(ProjectBase):
@@ -52,5 +55,6 @@ class ProjectResponse(ProjectBase):
     customer_name: Optional[str] = Field(None, description="Müşteri adı (varsa)")
     contract_start_date: Optional[datetime] = None
     contract_duration_days: Optional[int] = None
+    is_billable_default: bool = True
 
     model_config = ConfigDict(from_attributes=True)

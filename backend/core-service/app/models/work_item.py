@@ -35,7 +35,7 @@ from sqlalchemy import (
     Index, Integer, String, Text, UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import backref, relationship
 
 from ..database import Base
 from .mixins import TenantOwnedMixin
@@ -165,6 +165,12 @@ class WorkItem(TenantOwnedMixin, Base):
     participants = relationship(
         "WorkItemParticipant", back_populates="work_item",
         cascade="all, delete-orphan",
+    )
+    # A7: iki seviye hiyerarsi. `children` selectin ile yuklenir: liste
+    # yanitindaki rollup (alt is sayisi) satir basina sorgu acmaz.
+    parent = relationship(
+        "WorkItem", remote_side="WorkItem.id", foreign_keys=[parent_id],
+        backref=backref("children", lazy="selectin"),
     )
 
     __table_args__ = (

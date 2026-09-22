@@ -52,6 +52,8 @@ class TaskScopePermissions(BaseModel):
     """Effective capability for the calling user in one permission scope."""
     can_access: bool = False
     can_assign: bool = False
+    # B4: erisimi olan herkes kendine is acabilir (atama yetkisi gerekmez).
+    can_self_assign: bool = False
     # IDs only — frontend resolves names via auth-service /users/lookup.
     assignable_user_ids: List[UUID] = Field(default_factory=list)
     assignable_group_ids: List[UUID] = Field(default_factory=list)
@@ -165,6 +167,10 @@ class TaskCreate(BaseModel):
     estimated_duration_minutes: Optional[int] = Field(None, gt=0)
     priority: PriorityLiteral = "medium"
     task_type: TaskTypeLiteral = "task"
+    # PM rework P1.3 — A8: proje varsayilanini ezer (izlenir); A7: ust is
+    # (iki seviye, ayni proje).
+    is_billable: Optional[bool] = None
+    parent_id: Optional[UUID] = None
 
     @field_validator("description")
     @classmethod
@@ -222,6 +228,10 @@ class TaskUpdate(BaseModel):
     priority: Optional[PriorityLiteral] = None
     status: Optional[StatusLiteral] = None
     task_type: Optional[TaskTypeLiteral] = None
+    # PM rework P1.3 — A8 / A7 (cekirdek yetki ister).
+    is_billable: Optional[bool] = None
+    parent_id: Optional[UUID] = None
+    clear_parent: Optional[bool] = None
 
 
 class TaskNoteUpdate(BaseModel):

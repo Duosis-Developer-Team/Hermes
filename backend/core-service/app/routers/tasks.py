@@ -50,7 +50,8 @@ from ..services import task_service
 from ..services import work_item_service as wi
 from ..services import work_item_compat as compat
 from ..schemas.work_item import (
-    WorkflowStateResponse, WorkItemResponse, WorkItemStatusUpdate,
+    WatcherAdd, WorkflowStateResponse, WorkItemLinkCreate, WorkItemLinkResponse,
+    WorkItemResponse, WorkItemStatusUpdate,
 )
 from ..services.task_notifications import (
     send_assignment_notifications,
@@ -83,6 +84,8 @@ def _maybe_status_notify(
             task=_notif_payload(serialized),
             assigner_user_id=str(serialized.assigner_user_id),
             event=event,
+            # B5: takipciler de durum degisiminde haber alir.
+            watcher_user_ids=wi.watcher_user_ids(task),
         )
 
 
@@ -225,9 +228,15 @@ def get_my_task_permissions(
             if is_admin:
                 user_ids = admin_user_ids or user_ids
                 group_ids = admin_group_ids or group_ids
+        # B4: erisimi olan herkes KENDINE is acabilir — secici listesinde
+        # kendisi de yer alir (atama yetkisi/yonlendirme gerekmez).
+        me = UUID(current_user.id)
+        if access and me not in user_ids:
+            user_ids = [*user_ids, me]
         return TaskScopePermissions(
             can_access=access,
             can_assign=assign,
+            can_self_assign=access,
             assignable_user_ids=user_ids,
             assignable_group_ids=group_ids,
         )
@@ -519,7 +528,7 @@ def create_task(
 ):
     scope = task_service.perm_scope_for_type(payload.task_type)
     task_service.require_task_access(db, current_user, scope)
-    task_service.require_task_assigner(db, current_user, scope)
+    wi.require_create_authority(db, current_user, scope, assignee_user_ids=[payload.assignee_user_id], assignee_group_ids=[])
     item = wi.create_item(db, current_user, payload)
     serialized = compat.to_response(item)
     _notify_assignment(
@@ -546,7 +555,7 @@ def create_tasks_for_group(
     `assignment_batch_id` = is kaleminin id'si."""
     scope = task_service.perm_scope_for_type(payload.task_type)
     task_service.require_task_access(db, current_user, scope)
-    task_service.require_task_assigner(db, current_user, scope)
+    wi.require_create_authority(db, current_user, scope, assignee_user_ids=[], assignee_group_ids=[payload.assignee_group_id])
     item = wi.create_item_bulk(
         db, current_user,
         customer_id=payload.customer_id, project_id=payload.project_id,
@@ -585,7 +594,7 @@ def create_tasks_bulk(
     satir (istemci sayimlari degismez)."""
     scope = task_service.perm_scope_for_type(payload.task_type)
     task_service.require_task_access(db, current_user, scope)
-    task_service.require_task_assigner(db, current_user, scope)
+    wi.require_create_authority(db, current_user, scope, assignee_user_ids=payload.assignee_user_ids, assignee_group_ids=payload.assignee_group_ids)
     item = wi.create_item_bulk(
         db, current_user,
         customer_id=payload.customer_id, project_id=payload.project_id,
@@ -834,3 +843,92 @@ def restore_work_item(
         db, current_user, task_id,
         assignment_ref=payload.assignment_task_id, target_status=payload.target_status,
     )
+
+
+# =============================================================================
+# Takipciler (B5)
+# =============================================================================
+
+@router.post(
+    "/{task_id}/watchers",
+    response_model=WorkItemResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_watcher(
+    task_id: UUID,
+    payload: Optional[WatcherAdd] = None,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_tenant_db),
+):
+    """Kendini (govde bos) ya da bir kullaniciyi (reporter/lead) takipci
+    yapar. Takipci isi gorur, durum degisiminde bildirim alir; duzenleyemez."""
+    task_service.require_task_access(db, current_user)
+    item = wi.add_watcher(
+        db, current_user, task_id, user_id=payload.user_id if payload else None,
+    )
+    return compat.to_response(item)
+
+
+@router.delete("/{task_id}/watchers/{user_id}", response_model=WorkItemResponse)
+def remove_watcher(
+    task_id: UUID,
+    user_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_tenant_db),
+):
+    task_service.require_task_access(db, current_user)
+    item = wi.remove_watcher(db, current_user, task_id, user_id=user_id)
+    return compat.to_response(item)
+
+
+# =============================================================================
+# Hiyerarsi ve baglar (A7)
+# =============================================================================
+
+@router.get("/{task_id}/children", response_model=List[WorkItemResponse])
+def list_children(
+    task_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_tenant_db),
+):
+    task_service.require_task_access(db, current_user)
+    return [compat.to_response(c) for c in wi.list_children(db, current_user, task_id)]
+
+
+@router.get("/{task_id}/links", response_model=List[WorkItemLinkResponse])
+def list_links(
+    task_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_tenant_db),
+):
+    task_service.require_task_access(db, current_user)
+    return [WorkItemLinkResponse(**row) for row in wi.list_links(db, current_user, task_id)]
+
+
+@router.post(
+    "/{task_id}/links",
+    response_model=List[WorkItemLinkResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+def create_link(
+    task_id: UUID,
+    payload: WorkItemLinkCreate,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_tenant_db),
+):
+    """`blocks` dahil hicbir bag tarih/durum degistirmez (kabul olcutu 8)."""
+    task_service.require_task_access(db, current_user)
+    wi.create_link(db, current_user, task_id, to_ref=payload.to_item_id, link_type=payload.link_type)
+    return [WorkItemLinkResponse(**row) for row in wi.list_links(db, current_user, task_id)]
+
+
+@router.delete("/{task_id}/links/{link_id}", response_model=List[WorkItemLinkResponse])
+def delete_link(
+    task_id: UUID,
+    link_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_tenant_db),
+):
+    task_service.require_task_access(db, current_user)
+    wi.delete_link(db, current_user, task_id, link_id)
+    return [WorkItemLinkResponse(**row) for row in wi.list_links(db, current_user, task_id)]

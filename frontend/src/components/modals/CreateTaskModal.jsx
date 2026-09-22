@@ -25,6 +25,7 @@ import {
     Button,
     Divider,
     message,
+    Switch,
 } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -229,6 +230,8 @@ function CreateTaskModal({
                     : null,
                 due_date: editingTask.due_date ? dayjs(editingTask.due_date) : null,
                 priority: editingTask.priority || 'medium',
+                // A8: faturalanabilirlik (proje varsayilanindan miras; burada ezilir)
+                is_billable: editingTask.is_billable !== false,
             })
         } else {
             form.resetFields()
@@ -297,6 +300,11 @@ function CreateTaskModal({
                     assignee_user_id: assigneeId,
                     clear_sub_project:
                         !!editingTask.sub_project_id && !subProjectId,
+                    // A8: yalniz degistiyse gonderilir (override izi bosuna yazilmasin)
+                    ...(typeof values.is_billable === 'boolean'
+                        && values.is_billable !== (editingTask.is_billable !== false)
+                        ? { is_billable: values.is_billable }
+                        : {}),
                 },
                 { taskId: editingTask.id }
             )
@@ -571,6 +579,19 @@ function CreateTaskModal({
                         <Select options={priorityOptions} />
                     </Form.Item>
                 </div>
+
+                {/* A8: faturalanabilirlik yalniz duzenlemede (olusturmada proje
+                    varsayilani miras alinir; sunucu override'i izler). */}
+                {isEditing && (
+                    <Form.Item
+                        label={t('task.billable')}
+                        name="is_billable"
+                        valuePropName="checked"
+                        extra={t('task.billableHint')}
+                    >
+                        <Switch />
+                    </Form.Item>
+                )}
             </Form>
         </Modal>
     )

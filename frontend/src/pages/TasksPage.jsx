@@ -138,8 +138,7 @@ function TasksPage() {
     })
     const status = useTaskStatusMutation()
     const workLog = useTaskWorkLog()
-    // PM rework P1: pano sutunlari is akisi durumlarindan (geri dusus: eski 3).
-    const { columns: boardColumns } = useWorkflowStates()
+    const { columns: boardColumns } = useWorkflowStates() // P1: sutunlar durumlardan
 
     // ── Tamamla → Log Time akisi ──────────────────────────────────────────
     // Cagiranlar ONCE onaylatir (kart checkbox'i onay modalinden gecer;
@@ -334,9 +333,11 @@ function TasksPage() {
                     /* Durum degisikligi atanana aittir ve kendi "My Tasks"
                        gorunumunde yapilir; "Assigned by Me" salt izleme. */
                     allowStatusChange={!readOnly && view.taskScope === 'my-tasks'}
-                    /* Gorev olusturmak = birine ATAMAK; yalnizca
-                       "Assigned by Me" kapsaminda anlamlidir. */
-                    canCreate={!readOnly && canCreateTask && view.taskScope === 'assigned-by-me'}
+                    /* Baskasina atamak "Assigned by Me" kapsaminda;
+                       KENDINE is acmak (B4) "My Tasks" kapsaminda — atama
+                       yetkisi gerekmez, secici zaten kendisini listeler. */
+                    canCreate={!readOnly && ((canCreateTask && view.taskScope === 'assigned-by-me')
+                        || (taskPerms.canSelfAssign && view.taskScope === 'my-tasks'))}
                     groupByAssignee={
                         view.groupByAssignee && view.taskScope === 'assigned-by-me'
                     }
@@ -353,6 +354,7 @@ function TasksPage() {
                     onMultiAssignmentDrop={multi.start}
                     onOpenPanel={dialogs.openPanel}
                     onClosePanel={dialogs.closePanel}
+                    onToggleWatch={mutations.toggleWatch} watchPending={mutations.watchPending}
                 />
             </div>
 

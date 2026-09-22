@@ -8,7 +8,7 @@
 # (work_item_compat.py) — ikinci bir gercek kaynak yok.
 # =============================================================================
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -48,12 +48,42 @@ class WorkItemResponse(TaskResponse):
     reporter_user_id: Optional[UUID] = None
     participants: List[ParticipantResponse] = []
     is_billable: Optional[bool] = None
+    billable_override_by: Optional[UUID] = None
     origin_type: Optional[str] = None
     origin_ref_id: Optional[UUID] = None
     parent_id: Optional[UUID] = None
+    # A7 rollup: ust isin kodu ve alt is sayilari (arsivli alt isler haric).
+    parent_key: Optional[str] = None
+    subtask_count: int = 0
+    subtask_done_count: int = 0
 
 
 class WorkItemStatusUpdate(BaseModel):
     """PATCH /tasks/{id}/status — eski `status` YA DA yeni `state_id`."""
     status: Optional[str] = None
     state_id: Optional[UUID] = None
+
+
+class WatcherAdd(BaseModel):
+    """POST /tasks/{id}/watchers — `user_id` yoksa cagiran kendini ekler."""
+    user_id: Optional[UUID] = None
+
+
+LinkTypeLiteral = Literal["relates", "duplicates", "blocks"]
+
+
+class WorkItemLinkCreate(BaseModel):
+    """POST /tasks/{id}/links — `blocks` GORSEL + filtre; tarih/durum etkisi YOK."""
+    to_item_id: UUID
+    link_type: LinkTypeLiteral = "relates"
+
+
+class WorkItemLinkResponse(BaseModel):
+    id: UUID
+    link_type: LinkTypeLiteral
+    #: outbound = bu is → diger; inbound = diger → bu is
+    direction: Literal["outbound", "inbound"]
+    item_id: UUID
+    item_key: Optional[str] = None
+    title: str
+    status: str

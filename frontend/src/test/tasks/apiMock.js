@@ -48,28 +48,34 @@ export const PERMS_ASSIGNER = {
     task: {
         can_access: true,
         can_assign: true,
+        can_self_assign: true,
         assignable_user_ids: ['u2', 'u3'],
         assignable_group_ids: [],
     },
     issue: {
         can_access: true,
         can_assign: true,
+        can_self_assign: true,
         assignable_user_ids: ['u2'],
         assignable_group_ids: [],
     },
 }
+// B4: atama yetkisi olmayan kullanici da KENDINE is acar — sunucu
+// can_self_assign verir ve secici listesine kendisini (u1) ekler.
 export const PERMS_NO_ASSIGN = {
     is_admin: false,
     task: {
         can_access: true,
         can_assign: false,
-        assignable_user_ids: [],
+        can_self_assign: true,
+        assignable_user_ids: ['u1'],
         assignable_group_ids: [],
     },
     issue: {
         can_access: true,
         can_assign: false,
-        assignable_user_ids: [],
+        can_self_assign: true,
+        assignable_user_ids: ['u1'],
         assignable_group_ids: [],
     },
 }
@@ -188,6 +194,8 @@ const DEFS = {
             return Promise.resolve({ id, status: 'rejected' })
         },
         delete: ok({ ok: true }),
+        addWatcher: (id) => Promise.resolve({ id }),
+        removeWatcher: (id) => Promise.resolve({ id }),
         listActivity: from('activity'),
         listComments: from('comments'),
         createComment: ok({ id: 'cm-new' }),

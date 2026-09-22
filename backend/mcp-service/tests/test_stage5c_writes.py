@@ -84,8 +84,8 @@ def world(pg_session, authz_grants):
     from app.models.project import Project
     from app.models.task import (
         Task,
-        TaskAssignmentRelation,
     )
+    from app.models.work_item import RoutingRelation
     from app.models.work_type import WorkType
 
     s = pg_session
@@ -93,7 +93,7 @@ def world(pg_session, authz_grants):
         sa_text(
             "TRUNCATE work_items, work_item_participants, work_item_code_aliases, work_item_comments, work_item_events, user_group_members, user_groups, work_logs, "
             "meeting_attendees, meetings, task_comments, "
-            "task_activity_events, tasks, task_assignment_relations, "
+            "task_activity_events, tasks, routing_relations, task_assignment_relations, "
             "task_user_permissions, work_types, projects, customers "
             "CASCADE"
         )
@@ -110,7 +110,7 @@ def world(pg_session, authz_grants):
     authz_grants[str(AS)] = ["tasks.access"]
     s.add_all(
         [
-            TaskAssignmentRelation(
+            RoutingRelation(
                 assigner_user_id=BU, assignee_user_id=AS, scope="task"
             ),
         ]

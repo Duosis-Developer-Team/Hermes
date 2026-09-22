@@ -49,6 +49,17 @@ export default function TicketHubPage() {
 
     const [selectedId, setSelectedId] = useState(null)
 
+    // A6 derin link: is kaleminden gelen `?ticket=<id>` calisma alanini acar
+    // (tek seferlik; parametre okunup temizlenir).
+    useEffect(() => {
+        const wanted = params.get('ticket')
+        if (!wanted) return
+        setSelectedId(wanted)
+        const next = new URLSearchParams(params)
+        next.delete('ticket')
+        setParams(next, { replace: true })
+    }, [params, setParams])
+
     // Yuzey karari SUNUCUDAN: portal kullanicisi buraya gelirse kendi
     // ekranina yonlendirilir (404 yerine dogru yer).
     useEffect(() => {

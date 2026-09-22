@@ -86,6 +86,15 @@ export const ticketHubService = {
         )
         return data
     },
+    /** PM rework A6: ticket'tan is kalemi acar; yanit guncel ticket detayi. */
+    createWorkItem: async (id, payload) => {
+        const { data } = await coreClient.post(`${CORE}/tickets/${id}/work-items`, payload)
+        return data
+    },
+    listWorkItems: async (id) => {
+        const { data } = await coreClient.get(`${CORE}/tickets/${id}/work-items`)
+        return data
+    },
     setPriority: async (id, payload) => {
         const { data } = await coreClient.post(
             `${CORE}/tickets/${id}/priority`, payload,
