@@ -212,7 +212,7 @@ export default {
         // PM rework P0 / D2 — effort strip and missing-day nudge
         missingDaysWeek: '{count} day(s) without entries: {days}',
         weekFill: '{percent}% of expected',
-        dayEmpty: 'Nothing logged for this day',
+        dayEmpty: 'No entries yet',
         markLeave: 'Mark leave',
         leaveMarked: 'Leave marked',
         leaveRemoved: 'Leave removed',

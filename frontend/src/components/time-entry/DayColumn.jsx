@@ -153,26 +153,34 @@ function DayColumn({
             {/* Eksik gun durtmesi: sari, tiklanabilir, suclayici DEGIL (04-roller §7).
                 Modal yok, toast yok — uyari bulundugu kutunun icinde. */}
             {isMissing && (
-                <div className="day-column-missing-hint" onClick={(e) => e.stopPropagation()}>
-                    <span className="day-column-missing-text">{t('timeEntry.dayEmpty')}</span>
-                    <div className="day-column-missing-actions">
+                <div
+                    className="day-column-missing-hint"
+                    role="status"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="day-column-missing-row">
+                        <span className="day-column-missing-dot day-column-missing-dot--inline" aria-hidden="true" />
+                        <span className="day-column-missing-text">{t('timeEntry.dayEmpty')}</span>
+                    </div>
+                    {/* Birincil eylem tek ve belirgin: efor gir. Izin ikincil,
+                        kucuk bir baglanti — gunun tam icinde, modal/toast yok. */}
+                    <button
+                        type="button"
+                        className="day-column-missing-primary"
+                        onClick={() => onLogTime?.(date)}
+                    >
+                        <PlusOutlined aria-hidden="true" />
+                        <span>{t('taskUi.logTime')}</span>
+                    </button>
+                    {onMarkAbsence && (
                         <button
                             type="button"
-                            className="day-column-mini-btn"
-                            onClick={() => onLogTime?.(date)}
+                            className="day-column-missing-link"
+                            onClick={() => onMarkAbsence(dateKey)}
                         >
-                            {t('taskUi.logTime')}
+                            {t('timeEntry.markLeave')}
                         </button>
-                        {onMarkAbsence && (
-                            <button
-                                type="button"
-                                className="day-column-mini-btn"
-                                onClick={() => onMarkAbsence(dateKey)}
-                            >
-                                {t('timeEntry.markLeave')}
-                            </button>
-                        )}
-                    </div>
+                    )}
                 </div>
             )}
 
@@ -212,9 +220,13 @@ function DayColumn({
             {/* Worklog Kartları */}
             <div className="day-column-logs">
                 {workLogs.length === 0 ? (
-                    <div className={`day-column-empty${hasCopiedLog ? ' day-column-empty-paste' : ''}`}>
-                        {hasCopiedLog ? '↓ Click here or press Ctrl+V' : 'No logs'}
-                    </div>
+                    /* Eksik gunde durtme kutusu zaten "giris yok" diyor;
+                       jenerik bos metin tekrar edilmez (cift mesaj yok). */
+                    (isMissing && !hasCopiedLog) ? null : (
+                        <div className={`day-column-empty${hasCopiedLog ? ' day-column-empty-paste' : ''}`}>
+                            {hasCopiedLog ? '↓ Click here or press Ctrl+V' : 'No logs'}
+                        </div>
+                    )
                 ) : (
                     workLogs.map(log => (
                         <WorkLogCard

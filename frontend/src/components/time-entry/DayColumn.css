@@ -213,24 +213,88 @@
 }
 
 .day-column-missing-hint {
-    margin: 4px 8px 6px;
-    padding: 8px 10px;
-    border: 1px solid var(--h-warning);
-    border-radius: 8px;
-    background: rgba(245, 205, 71, 0.10);
-    font-size: 12px;
-    color: var(--text-secondary);
+    /* Yumusak sicak zemin, sert sari cerceve yok; kutu gunun icinde. */
+    margin: 6px 10px 8px;
+    padding: 10px 10px 8px;
+    border: 1px solid color-mix(in srgb, var(--h-warning) 35%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--h-warning) 9%, var(--h-bg-surface));
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
 }
 
-.day-column-missing-actions {
+.day-column-missing-row {
     display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
 }
 
+.day-column-missing-dot--inline {
+    margin-left: 0;
+    width: 8px;
+    height: 8px;
+}
+
+.day-column-missing-text {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--h-text-primary);
+    line-height: 1.3;
+}
+
+/* Birincil eylem: tam genislik, marka tonlu hayalet buton. */
+.day-column-missing-primary {
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--h-brand) 45%, transparent);
+    background: var(--h-bg-surface);
+    color: var(--h-brand);
+    cursor: pointer;
+    transition: background var(--h-motion-fast) var(--h-ease-standard),
+        border-color var(--h-motion-fast) var(--h-ease-standard);
+}
+.day-column-missing-primary:hover {
+    background: var(--h-bg-selected);
+    border-color: var(--h-brand);
+}
+.day-column-missing-primary:focus-visible {
+    outline: 2px solid var(--h-focus);
+    outline-offset: 2px;
+}
+
+/* Ikincil eylem: kucuk, sessiz baglanti. */
+.day-column-missing-link {
+    font: inherit;
+    font-size: 11.5px;
+    align-self: center;
+    padding: 0 2px;
+    border: 0;
+    background: transparent;
+    color: var(--h-text-muted);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--h-text-muted) 45%, transparent);
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+.day-column-missing-link:hover { color: var(--h-text-primary); }
+.day-column-missing-link:focus-visible {
+    outline: 2px solid var(--h-focus);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* Eski kucuk buton sinifi izin etiketinin kaldirma dugmesinde durur. */
 .day-column-mini-btn {
     font: inherit;
     font-size: 12px;
@@ -241,12 +305,10 @@
     color: var(--text-primary);
     cursor: pointer;
 }
-
 .day-column-mini-btn:hover {
     border-color: var(--h-warning);
     color: var(--h-warning);
 }
-
 .day-column-mini-btn:focus-visible {
     outline: 2px solid var(--h-focus);
     outline-offset: 2px;
