@@ -36,6 +36,7 @@ from app.routers import (
     project_memberships_router,
     project_members_router,
     notifications_router,
+    home_router,
     timesheets_router,
     dashboard_router,
     reports_router,
@@ -189,6 +190,7 @@ app.include_router(issues_router, prefix=API_PREFIX)
 app.include_router(project_memberships_router, prefix=API_PREFIX)
 app.include_router(project_members_router, prefix=API_PREFIX)
 app.include_router(notifications_router, prefix=API_PREFIX)
+app.include_router(home_router, prefix=API_PREFIX)
 app.include_router(timesheets_router, prefix=API_PREFIX)
 app.include_router(dashboard_router, prefix=API_PREFIX)
 app.include_router(reports_router, prefix=API_PREFIX)

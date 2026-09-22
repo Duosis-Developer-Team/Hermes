@@ -85,6 +85,8 @@ export const queryKeys = {
         get all() { return k('tasks') },
         list: (filters) => k('tasks', 'list', stableFilters(filters)),
         detail: (id) => k('tasks', 'detail', id),
+        /** E6: `/work/:key` cozumu — kod buyuk/kucuk harf duyarsiz. */
+        byKey: (key) => k('tasks', 'by-key', String(key || '').toUpperCase()),
         /** Is akisi durumlari (workflow_states) — pano sutunlari ve durum
          *  sozlugu tek kaynaktan (PM rework P1). */
         states: () => k('tasks', 'states'),
@@ -111,6 +113,14 @@ export const queryKeys = {
     },
     /** Uygulama ici bildirimler (PM rework P2.2 / C2): rozet + liste ayni
      *  aile; okundu isareti tek invalidation ile ikisini tazeler. */
+    // PM rework P3: ana sayfa bloklari (blok basina tek uc).
+    home: {
+        get all() { return k('home') },
+        get myWork() { return k('home', 'my-work') },
+        week: (filters) => k('home', 'week', stableFilters(filters)),
+        get team() { return k('home', 'team') },
+        org: (filters) => k('home', 'org', stableFilters(filters)),
+    },
     notifications: {
         get all() { return k('notifications') },
         get unreadCount() { return k('notifications', 'unread-count') },

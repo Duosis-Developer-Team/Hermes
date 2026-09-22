@@ -14,6 +14,7 @@ import {
     DeleteOutlined
 } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import 'dayjs/locale/en'
@@ -54,7 +55,16 @@ function TimeEntryPage() {
     // State
     // ==========================================================================
     const [viewMode, setViewMode] = useState('list') // 'list' | 'timesheet'
-    const [weekStart, setWeekStart] = useState(() => dayjs().startOf('isoWeek'))
+    // PM rework P3: ana sayfa efor seridinden gelen `?date=` o gunun
+    // haftasini acar ve Log Time'i o gune kurar (04-roller §4.1 "tiklayinca
+    // o gune giris acilir"); parametre URL'den silinir ki yenilemede
+    // modal tekrar acilmasin.
+    const [searchParams, setSearchParams] = useSearchParams()
+    const [weekStart, setWeekStart] = useState(() => {
+        const wanted = searchParams.get('date')
+        const parsed = wanted ? dayjs(wanted) : null
+        return (parsed && parsed.isValid() ? parsed : dayjs()).startOf('isoWeek')
+    })
 
     // Modal states
     const [logTimeModalOpen, setLogTimeModalOpen] = useState(false)
@@ -268,10 +278,6 @@ function TimeEntryPage() {
         onError: (error) => {
             message.error(error.response?.data?.detail || t('timeEntry.leaveFailed'))
         },
-        onError: (error) => {
-            message.error(error.response?.data?.detail || 'An error occurred')
-            setDeletingLog(null)
-        },
     })
 
 
@@ -283,6 +289,18 @@ function TimeEntryPage() {
         setEditingLog(null)
         setLogTimeModalOpen(true)
     }
+
+    useEffect(() => {
+        const wanted = searchParams.get('date')
+        if (!wanted) return
+        const parsed = dayjs(wanted)
+        if (parsed.isValid()) handleLogTime(parsed)
+        const next = new URLSearchParams(searchParams)
+        next.delete('date')
+        setSearchParams(next, { replace: true })
+        // Yalnizca mount'ta: derin baglanti tek seferliktir.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     const handlePlanTime = (date) => {
         setSelectedDate(date)

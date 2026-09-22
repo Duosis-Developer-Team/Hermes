@@ -51,6 +51,8 @@ const AuthCallbackPage = lazy(routeLoaders.authCallback)
 const PlatformConsole = lazy(routeLoaders.platformConsole)
 const DashboardPage = lazy(routeLoaders.dashboard)
 const TimeEntryPage = lazy(routeLoaders.timeEntry)
+const HomePage = lazy(routeLoaders.home)
+const WorkLinkPage = lazy(routeLoaders.workLink)
 const CustomersPage = lazy(routeLoaders.customers)
 const ProjectsPage = lazy(routeLoaders.projects)
 const WorkTypesPage = lazy(routeLoaders.workTypes)
@@ -247,8 +249,13 @@ function App() {
                     </ProtectedRoute>
                 }
             >
-                {/* Default redirect */}
-                <Route index element={<Navigate to="/time-entry" replace />} />
+                {/* PM rework P3: ana sayfa — izin basina blok kompozisyonu
+                    (04-roller §3). Dashboard detay olarak kalir. */}
+                <Route index element={<HomePage />} />
+
+                {/* E6: bir ise link verilebilir — /work/TASK-56 kodu cozer
+                    ve is yuzeyini ?item= ile acar. */}
+                <Route path="work/:key" element={<WorkLinkPage />} />
 
                 {/* Standard User Pages */}
                 <Route path="time-entry" element={<TimeEntryPage />} />

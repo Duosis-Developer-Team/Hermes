@@ -1,0 +1,247 @@
+/**
+ * HERMES - Ana sayfa stilleri (PM rework P3). Yalnizca token; ham hex yok.
+ * Renk tasiyan TEK sinyal termin/eksik gun (04-roller §7, E4).
+ */
+
+.home-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--h-space-6);
+    max-width: 1040px;
+}
+
+.home-page__head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--h-space-4);
+    flex-wrap: wrap;
+}
+.home-page__title {
+    font-size: var(--h-font-page-title);
+    font-weight: 650;
+    color: var(--h-text-primary);
+    margin: 0;
+}
+.home-page__date {
+    font-size: var(--h-font-meta);
+    color: var(--h-text-secondary);
+}
+
+/* --- Blok kabugu ------------------------------------------------------- */
+.home-block {
+    border-top: 1px solid var(--h-border-subtle);
+    padding-top: var(--h-space-4);
+}
+.home-block__head {
+    display: flex;
+    align-items: center;
+    gap: var(--h-space-3);
+    margin-bottom: var(--h-space-3);
+}
+.home-block__title {
+    font-size: var(--h-font-section-title);
+    font-weight: 650;
+    color: var(--h-text-primary);
+    margin: 0;
+}
+.home-block__meta {
+    font-size: var(--h-font-meta);
+    color: var(--h-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+.home-block__spacer { flex: 1; }
+.home-block__link {
+    font-size: var(--h-font-label);
+    font-weight: 600;
+    color: var(--h-brand);
+}
+
+/* --- Efor seridi ------------------------------------------------------- */
+.home-effort__fill {
+    font-size: var(--h-font-meta);
+    font-weight: 600;
+    color: var(--h-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.home-effort__bar {
+    height: 6px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-bg-hover);
+    overflow: hidden;
+    margin-bottom: var(--h-space-3);
+}
+.home-effort__bar-fill {
+    display: block;
+    height: 100%;
+    background: var(--h-grad-primary);
+    border-radius: inherit;
+    transition: width var(--h-motion-base) var(--h-ease-standard);
+}
+.home-effort__days {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+    gap: var(--h-space-2);
+}
+.home-effort__day-link {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--h-space-2) var(--h-space-3);
+    border: 1px solid var(--h-border-subtle);
+    border-radius: var(--h-radius-control);
+    background: var(--h-bg-surface);
+    color: var(--h-text-primary);
+    text-decoration: none;
+    transition: border-color var(--h-motion-fast) var(--h-ease-standard);
+}
+.home-effort__day-link:hover,
+.home-effort__day-link:focus-visible {
+    border-color: var(--h-border-strong);
+    outline: none;
+}
+.home-effort__day-name {
+    font-size: var(--h-font-label);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--h-text-secondary);
+}
+.home-effort__day-hours {
+    font-size: var(--h-font-body);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.home-effort__day--off .home-effort__day-link { color: var(--h-text-muted); background: transparent; }
+.home-effort__day--future .home-effort__day-link,
+.home-effort__day--partial .home-effort__day-link { color: var(--h-text-secondary); }
+.home-effort__day--today .home-effort__day-link { border-color: var(--h-brand); }
+.home-effort__day--missing .home-effort__day-link { border-color: color-mix(in srgb, var(--h-warning) 55%, transparent); }
+.home-effort__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--h-warning);
+    flex: none;
+}
+.home-effort__day-link .home-effort__dot {
+    position: absolute;
+    top: var(--h-space-2);
+    right: var(--h-space-2);
+}
+.home-effort__missing {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--h-space-2);
+    margin-top: var(--h-space-3);
+    font-size: var(--h-font-meta);
+    color: var(--h-warning);
+}
+
+/* --- Islerim: kovalar -------------------------------------------------- */
+.home-bucket {
+    padding: var(--h-space-3) 0;
+}
+.home-bucket + .home-bucket {
+    border-top: 1px dashed var(--h-border-subtle);
+}
+.home-bucket__head {
+    display: flex;
+    align-items: center;
+    gap: var(--h-space-2);
+    margin-bottom: var(--h-space-2);
+}
+.home-bucket__title {
+    font-size: var(--h-font-label);
+    font-weight: 650;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--h-text-secondary);
+}
+/* Bugun kovasi: uyari degil, vurgu — amber kenar (§7). */
+.home-bucket--due_today {
+    border-left: 3px solid var(--h-warning);
+    padding-left: var(--h-space-3);
+}
+.home-bucket__empty {
+    margin: 0;
+    font-size: var(--h-font-meta);
+    color: var(--h-text-muted);
+}
+
+.home-group + .home-group { margin-top: var(--h-space-3); }
+.home-group__head {
+    display: flex;
+    align-items: center;
+    gap: var(--h-space-2);
+    font-size: var(--h-font-meta);
+    font-weight: 600;
+    color: var(--h-text-primary);
+    margin-bottom: var(--h-space-1);
+}
+.home-group__count {
+    color: var(--h-text-muted);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+.home-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+.home-item__link {
+    display: grid;
+    grid-template-columns: 4px auto 1fr auto;
+    align-items: center;
+    gap: var(--h-space-3);
+    padding: var(--h-space-2) var(--h-space-2);
+    border-radius: var(--h-radius-control);
+    color: var(--h-text-primary);
+    text-decoration: none;
+}
+.home-item__link:hover,
+.home-item__link:focus-visible {
+    background: var(--h-bg-hover);
+    outline: none;
+}
+/* Oncelik: renksiz ince cubuk; yukseklik onceligi soyler (E4). */
+.home-item__priority {
+    width: 3px;
+    height: 6px;
+    border-radius: 2px;
+    background: var(--h-border-strong);
+    align-self: center;
+}
+.home-item__priority--medium { height: 10px; }
+.home-item__priority--high { height: 14px; }
+.home-item__priority--urgent { height: 18px; }
+.home-item__key {
+    font-size: var(--h-font-meta);
+    font-weight: 600;
+    color: var(--h-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+.home-item__title {
+    font-size: var(--h-font-body);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.home-item__due {
+    font-size: var(--h-font-meta);
+    color: var(--h-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+/* Tek renkli sinyal: termin. */
+.home-item--overdue .home-item__due { color: var(--h-danger); font-weight: 600; }
+.home-item--today .home-item__due { color: var(--h-warning); font-weight: 600; }
+
+@media (max-width: 640px) {
+    .home-item__link { grid-template-columns: 4px auto 1fr; }
+    .home-item__due { grid-column: 2 / -1; }
+}

@@ -14,6 +14,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import {
     CodeOutlined,
     DashboardOutlined,
+    HomeOutlined,
     ClockCircleOutlined,
     FileTextOutlined,
     LogoutOutlined,
@@ -146,6 +147,13 @@ function MainLayout() {
 
     // Menu items
     const menuItems = [
+        // PM rework P3: ana sayfa — herkese acik, bloklar kendi iznini ister.
+        {
+            key: '/',
+            icon: <HomeOutlined />,
+            label: t('nav.home'),
+        },
+
         // Standart Kullanıcı Menüsü
         {
             key: '/time-entry',
@@ -296,7 +304,7 @@ function MainLayout() {
             mobileMenuItems={navItems}
             selectedKey={selectedKey}
             onMenuClick={handleMenuClick}
-            onLogoClick={() => navigate('/time-entry')}
+            onLogoClick={() => navigate('/')}
             accountName={user?.full_name || user?.email}
             accountRole={isAdmin ? 'Admin' : 'User'}
             accountMenuItems={userMenuItems}

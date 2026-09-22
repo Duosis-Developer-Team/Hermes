@@ -14,6 +14,9 @@ export const routeLoaders = {
     // kullanicisi bu kodu HIC indirmez.
     platformConsole: () => import('../pages/platform/PlatformConsole'),
     authCallback: () => import('../pages/AuthCallbackPage'),
+    // PM rework P3: ana sayfa (`/`) ve `/work/:key` derin baglantisi.
+    home: () => import('../pages/HomePage'),
+    workLink: () => import('../pages/WorkLinkPage'),
     timeEntry: () => import('../pages/TimeEntryPage'),
     tasks: () => import('../pages/TasksPage'),
     meetings: () => import('../pages/MeetingsPage'),
@@ -47,6 +50,7 @@ export const routeLoaders = {
  *  indirir — API verisi cekmez; menu zaten izin-filtreli oldugu icin
  *  izinsiz route prefetch'i yapisal olarak imkansiz. */
 export const loaderByPath = {
+    '/': routeLoaders.home,
     '/time-entry': routeLoaders.timeEntry,
     '/project-management': routeLoaders.tasks,
     '/meetings': routeLoaders.meetings,

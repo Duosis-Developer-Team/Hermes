@@ -25,6 +25,7 @@
 
 export default {
     nav: {
+        home: 'Ana Sayfa',
         dashboard: 'Panel',
         billableHours: 'Faturalanabilir Saatler',
         reports: 'Raporlar',
@@ -54,6 +55,42 @@ export default {
     // ---------------------------------------------------------------
     // Ayarlar çatısı (PM rework P0 / B1)
     // ---------------------------------------------------------------
+    // ---------------------------------------------------------------
+    // Ana sayfa (PM rework P3 / D3–D6, E6)
+    // ---------------------------------------------------------------
+    home: {
+        greeting: 'Merhaba, {name}',
+        loadFailed: 'Bu blok yüklenemedi.',
+        effort: {
+            title: 'Bu hafta',
+            logged: '{expected} saatin {logged} saati girildi',
+            open: 'Zaman girişine git',
+            off: 'Kapalı',
+            leave: 'İzin',
+            missingDays: 'Bu hafta {count} gün boş',
+        },
+        myWork: {
+            title: 'İşlerim',
+            openAll: 'Tüm işler',
+            overdue: 'Gecikmiş',
+            dueToday: 'Bugün',
+            thisWeek: 'Bu hafta',
+            noneToday: 'Bugün için terminli işin yok.',
+        },
+        priority: {
+            low: 'Düşük öncelik',
+            medium: 'Orta öncelik',
+            high: 'Yüksek öncelik',
+            urgent: 'Acil',
+        },
+        workLink: {
+            resolving: '{key} açılıyor…',
+            notFound: 'İş bulunamadı',
+            notFoundHint: '{key} yok ya da sana görünür değil.',
+            backToWork: 'İş listesine git',
+        },
+    },
+
     settings: {
         title: 'Ayarlar',
         subtitle: 'Organizasyon, iş yönetimi, referans verileri, müşteriler ve entegrasyonlar',

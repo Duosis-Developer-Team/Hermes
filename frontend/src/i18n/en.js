@@ -14,6 +14,7 @@ export default {
     // Kabuk: gezinme, tema, dil
     // ---------------------------------------------------------------
     nav: {
+        home: 'Home',
         dashboard: 'Dashboard',
         billableHours: 'Billable Hours',
         reports: 'Reports',
@@ -38,6 +39,42 @@ export default {
         support: 'Support',
         groupManagement: 'MANAGEMENT',
         logout: 'Logout',
+    },
+
+    // ---------------------------------------------------------------
+    // Ana sayfa (PM rework P3 / D3–D6, E6)
+    // ---------------------------------------------------------------
+    home: {
+        greeting: 'Hello, {name}',
+        loadFailed: 'This block could not be loaded.',
+        effort: {
+            title: 'This week',
+            logged: '{logged}h of {expected}h logged',
+            open: 'Open time entry',
+            off: 'Off',
+            leave: 'Leave',
+            missingDays: '{count} days without entries this week',
+        },
+        myWork: {
+            title: 'My work',
+            openAll: 'All work items',
+            overdue: 'Overdue',
+            dueToday: 'Due today',
+            thisWeek: 'Later this week',
+            noneToday: 'Nothing due today.',
+        },
+        priority: {
+            low: 'Low priority',
+            medium: 'Medium priority',
+            high: 'High priority',
+            urgent: 'Urgent',
+        },
+        workLink: {
+            resolving: 'Opening {key}…',
+            notFound: 'Work item not found',
+            notFoundHint: '{key} does not exist or is not visible to you.',
+            backToWork: 'Go to work items',
+        },
     },
 
     // ---------------------------------------------------------------

@@ -201,7 +201,9 @@ def find_by_code(db: Session, code: str) -> Optional[WorkItem]:
     if item is not None:
         return item
     alias = db.query(WorkItemCodeAlias).filter(WorkItemCodeAlias.code == code).first()
-    return alias.work_item if alias is None else db.get(WorkItem, alias.work_item_id)
+    # Kosul onceden tersti (alias yokken `alias.work_item` → 500); E6 kod
+    # cozumu bu yolu ilk kez canli kullaniyor.
+    return None if alias is None else db.get(WorkItem, alias.work_item_id)
 
 
 # -----------------------------------------------------------------------------

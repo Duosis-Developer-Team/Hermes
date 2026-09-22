@@ -653,6 +653,19 @@ export const notificationService = {
     },
 }
 
+// =============================================================================
+// CORE SERVICE - Ana sayfa bloklari (PM rework P3)
+// =============================================================================
+// Blok basina TEK uc; istemci izni olmayan blogu HIC cagirmaz.
+
+export const homeService = {
+    /** Islerim: gecikmis / bugun / bu hafta, projeye gore gruplu (D3). */
+    myWork: async () => {
+        const response = await coreApi.get('/api/v1/core/home/my-work')
+        return response.data
+    },
+}
+
 export const taskNotificationSettingsService = {
     /** Admin: one row per work-item type (task/issue/suggestion) with the
      * e-mail rules; unconfigured types come back with defaults (all ON). */
@@ -901,6 +914,12 @@ export const taskService = {
         return response.data
     },
 
+    /** E6: kod ile cozum (`TASK-56`, eski alias'lar dahil) — `/work/:key`. */
+    getByKey: async (key) => {
+        const response = await coreApi.get(`/api/v1/core/tasks/key/${encodeURIComponent(key)}`)
+        return response.data
+    },
+
     /** Update a task's core fields (assigner / admin only). */
     update: async (taskId, data) => {
         const response = await coreApi.put(`/api/v1/core/tasks/${taskId}`, data)
@@ -1146,5 +1165,6 @@ export default {
     taskService,
     userGroupService,
     meetingService,
+    homeService,
 }
 

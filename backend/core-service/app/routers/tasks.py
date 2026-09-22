@@ -642,6 +642,22 @@ def search_tasks(
     return [compat.to_response(i) for i in items]
 
 
+@router.get("/key/{key}", response_model=WorkItemResponse)
+def get_task_by_key(
+    key: str,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_tenant_db),
+):
+    """E6 derin baglanti: `/work/TASK-56` → kod (veya birlesmede kaybolan
+    eski kod, A9 alias) cozulur. Gorunurluk `get_item_for_user` ile ayni;
+    gorunmeyen kayit = var olmayan kayit (404)."""
+    task_service.require_task_access(db, current_user)
+    item = wi.find_by_code(db, key)
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Work item not found.")
+    return compat.to_response(wi.get_item_for_user(db, current_user, item.id))
+
+
 @router.get("/{task_id}", response_model=WorkItemResponse)
 def get_task(
     task_id: UUID,
