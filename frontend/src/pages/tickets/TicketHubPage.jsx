@@ -17,18 +17,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ReloadOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-    Card, Input, message, Select, Skeleton, Space, Table, Tabs,
-} from 'antd'
+import { Input, message, Select, Skeleton } from 'antd'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
 
 import { ticketErrorCode, ticketHubService } from '../../api/ticketsApi'
-import {
-    Button, EmptyState, FilterChip, Inline, Page, PageHeader, Toolbar,
-} from '../../components/ui'
+import { Button, EmptyState, Page } from '../../components/ui'
+import { GlassCard, LiquidSegmented, PageHero } from '../../components/liquid'
 import AgentWorkbench from '../../features/tickets/AgentWorkbench'
 import {
-    AGENT_STATUS_LABELS, ERROR_MESSAGES, QUEUE_LABELS,
-    isResolvedLike, labelOf,
+    AGENT_STATUS_LABELS, ERROR_MESSAGES, QUEUE_LABELS, labelOf,
 } from '../../features/tickets/constants'
 import {
     TicketPriorityBadge, TicketStatusBadge,
@@ -38,7 +36,12 @@ import { queryKeys } from '../../query/queryKeys'
 import '../../features/tickets/tickets.css'
 import { useT } from '../../i18n'
 
+dayjs.extend(relativeTime)
+
 const DEFAULT_QUEUE = 'my_group_open'
+// Bu genislikten itibaren liste + satir ici calisma bolmesi yan yana
+// (prototip); daha darda liste tek basina, detay cekmecede acilir.
+const SPLIT_QUERY = '(min-width: 1100px)'
 
 export default function TicketHubPage() {
     const t = useT()
@@ -48,6 +51,15 @@ export default function TicketHubPage() {
     const context = useTicketContext()
 
     const [selectedId, setSelectedId] = useState(null)
+    const [split, setSplit] = useState(
+        () => typeof window !== 'undefined' && window.matchMedia(SPLIT_QUERY).matches,
+    )
+    useEffect(() => {
+        const mq = window.matchMedia(SPLIT_QUERY)
+        const onChange = (e) => setSplit(e.matches)
+        mq.addEventListener('change', onChange)
+        return () => mq.removeEventListener('change', onChange)
+    }, [])
 
     // A6 derin link: is kaleminden gelen `?ticket=<id>` calisma alanini acar
     // (tek seferlik; parametre okunup temizlenir).
@@ -167,83 +179,76 @@ export default function TicketHubPage() {
     const rows = list.data?.items ?? []
     const total = list.data?.total ?? 0
 
-    const columns = [
-        {
-            title: t('hub.code'), dataIndex: 'ticket_number', width: 130,
-            render: (value, row) => (
-                <span className={isResolvedLike(row.status)
-                    ? 'h-ticket-row--resolved' : undefined}
-                >
-                    {value}
-                </span>
-            ),
-        },
-        { title: t('hub.title'), dataIndex: 'title', ellipsis: true },
-        {
-            title: t('integrations.application'), dataIndex: ['application', 'display_name'],
-            width: 130,
-        },
-        {
-            title: t('entity.customer'), dataIndex: ['source_tenant', 'display_name'],
-            width: 150,
-        },
-        {
-            title: t('common.status'), dataIndex: 'status', width: 190,
-            render: (status) => (
-                <TicketStatusBadge status={status} surface="hub" />
-            ),
-        },
-        {
-            title: t('hub.priority'), dataIndex: 'priority', width: 110,
-            render: (priority) => <TicketPriorityBadge priority={priority} />,
-        },
-        {
-            title: t('hub.team'), dataIndex: ['assigned_group', 'name'], width: 150,
-        },
-        {
-            title: t('hub.updated'), dataIndex: 'updated_at', width: 170,
-            render: (value) => new Date(value).toLocaleString(),
-        },
-    ]
+    // Genis ekranda secim yoksa listenin ilk talebi acilir (prototip).
+    const firstId = rows[0]?.id
+    const activeId = selectedId || (split ? firstId : null)
 
-    const appTabs = [
-        { key: 'all', label: t('common.all') },
+    const appOptions = [
+        { value: 'all', label: t('common.all') },
         ...(applications.data ?? []).map((app) => ({
-            key: app.id,
-            label: `${app.display_name} (${app.open_ticket_count})`,
+            value: app.id,
+            label: `${app.display_name} ${app.open_ticket_count ?? ''}`.trim(),
         })),
     ]
 
     return (
-        <Page className="tickets-page fade-in">
-            <PageHeader
+        <Page className="tickets-page">
+            <PageHero
                 title={t('hub.tickets')}
-                subtitle={`${total} tickets · ${labelOf(QUEUE_LABELS, queue)}`}
-                extra={(
-                    <Space wrap>
+                subtitle={`${t('hub.countLabel', { count: total })} \u00b7 ${labelOf(QUEUE_LABELS, queue)}`}
+                actions={(
+                    <>
                         <Input.Search
                             allowClear
+                            className="tickets-search"
                             placeholder={t('hub.searchPlaceholder')}
                             defaultValue={search}
                             onSearch={(value) => patchParams({ q: value || null })}
-                            style={{ width: 260 }}
                         />
                         <Button
                             icon={<ReloadOutlined />}
                             onClick={() => list.refetch()}
                             loading={list.isFetching}
                         >{t('common.refresh')}</Button>
-                    </Space>
+                    </>
                 )}
             />
 
-            <Tabs
-                activeKey={applicationId ?? 'all'}
-                items={appTabs}
-                onChange={(key) => patchParams({
-                    application: key === 'all' ? null : key,
-                })}
-            />
+            <div className="tickets-filters">
+                <LiquidSegmented
+                    ariaLabel={t('integrations.application')}
+                    value={applicationId ?? 'all'}
+                    onChange={(key) => patchParams({ application: key === 'all' ? null : key })}
+                    options={appOptions}
+                />
+                <div className="tickets-queues">
+                    {(queues.data ?? []).map((item) => (
+                        <button
+                            key={item.key}
+                            type="button"
+                            className={`lq-chip${item.key === queue ? ' is-on' : ''}`}
+                            aria-pressed={item.key === queue}
+                            onClick={() => patchParams({ queue: item.key })}
+                        >
+                            {labelOf(QUEUE_LABELS, item.key)} <b>{item.count}</b>
+                        </button>
+                    ))}
+                    <Select
+                        mode="multiple"
+                        allowClear
+                        className="tickets-status-filter"
+                        placeholder={t('common.status')}
+                        value={statuses}
+                        onChange={(value) => patchParams({ status: value })}
+                        options={Object.entries(AGENT_STATUS_LABELS).map(
+                            ([value, label]) => ({ value, label }),
+                        )}
+                    />
+                    {hasFilters && (
+                        <Button onClick={() => setParams(new URLSearchParams())}>{t('common.clear')}</Button>
+                    )}
+                </div>
+            </div>
 
             {!context.hasScope ? (
                 <EmptyState
@@ -253,71 +258,57 @@ export default function TicketHubPage() {
                         + 'you to the relevant group.'}
                 />
             ) : (
-                <Card
-                    variant="borderless"
-                    title={`Tickets (${total})`}
-                    className="tickets-page__card"
-                >
-                    {/* Filtreler kartin ICINDE: sablonda icerik ve onu
-                        daraltan kontroller ayni yuzeyde yasar. */}
-                    <Toolbar>
-                        <Inline gap={2}>
-                            {(queues.data ?? []).map((item) => (
-                                <FilterChip
-                                    key={item.key}
-                                    active={item.key === queue}
-                                    onClick={() => patchParams({ queue: item.key })}
-                                >
-                                    {labelOf(QUEUE_LABELS, item.key)} · {item.count}
-                                </FilterChip>
+                <div className={`tickets-split${split ? ' is-split' : ''}`}>
+                    <GlassCard className="tickets-list" aria-busy={list.isLoading}>
+                        {list.isLoading && <Skeleton active paragraph={{ rows: 6 }} />}
+                        {!list.isLoading && rows.length === 0 && (
+                            <EmptyState title={t('hub.noTickets')} description={t('hub.tryAnotherQueue')} />
+                        )}
+                        <ul className="tickets-list__rows">
+                            {rows.map((row, i) => (
+                                <li key={row.id} style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
+                                    <button
+                                        type="button"
+                                        className={`tickets-row${row.id === activeId ? ' is-active' : ''}`}
+                                        aria-current={row.id === activeId ? 'true' : undefined}
+                                        onClick={() => setSelectedId(row.id)}
+                                    >
+                                        <span className="tickets-row__main">
+                                            <span className="tickets-row__title">
+                                                <span className="tickets-row__code">{row.ticket_number}</span>
+                                                {row.title}
+                                            </span>
+                                            <span className="tickets-row__meta">
+                                                {[row.application?.display_name, row.source_tenant?.display_name,
+                                                    row.assigned_group?.name, row.updated_at ? dayjs(row.updated_at).fromNow() : null]
+                                                    .filter(Boolean).join(' \u00b7 ')}
+                                            </span>
+                                        </span>
+                                        <span className="tickets-row__badges">
+                                            <TicketPriorityBadge priority={row.priority} />
+                                            <TicketStatusBadge status={row.status} surface="hub" />
+                                        </span>
+                                    </button>
+                                </li>
                             ))}
-                        </Inline>
-                        <Toolbar.Spacer />
-                        <Inline gap={2}>
-                            <Select
-                                mode="multiple"
-                                allowClear
-                                style={{ minWidth: 220 }}
-                                placeholder={t('common.status')}
-                                value={statuses}
-                                onChange={(value) => patchParams({ status: value })}
-                                options={Object.entries(AGENT_STATUS_LABELS).map(
-                                    ([value, label]) => ({ value, label }),
-                                )}
-                            />
-                            {hasFilters && (
-                                <Button onClick={() => setParams(new URLSearchParams())}>{t('common.clear')}</Button>
-                            )}
-                        </Inline>
-                    </Toolbar>
+                        </ul>
+                    </GlassCard>
 
-                    <Table
-                        rowKey="id"
-                        loading={list.isLoading}
-                        dataSource={rows}
-                        columns={columns}
-                        /* Sablon kalibi: dar ekranda sayfa DEGIL tablo
-                           kayar; sayfalama diger listelerle ayni. */
-                        scroll={{ x: 'max-content' }}
-                        pagination={{ pageSize: 20, hideOnSinglePage: true,
-                            showSizeChanger: false }}
-                        showSorterTooltip={false}
-                        onRow={(row) => ({
-                            onClick: () => setSelectedId(row.id),
-                            style: { cursor: 'pointer' },
-                        })}
-                        locale={{
-                            emptyText: (
-                                <EmptyState
-                                    title={t('hub.noTickets')}
-                                    description={t('hub.tryAnotherQueue')}
-                                />
-                            ),
-                        }}
-                    />
-                </Card>
+                    {split && (
+                        <AgentWorkbench
+                            inline
+                            ticketId={activeId}
+                            open={Boolean(activeId)}
+                            onClose={() => setSelectedId(null)}
+                            context={context}
+                            onChanged={invalidate}
+                            onError={onCommandError}
+                        />
+                    )}
+                </div>
             )}
 
+            {!split && (
             <AgentWorkbench
                 ticketId={selectedId}
                 open={Boolean(selectedId)}
@@ -326,6 +317,7 @@ export default function TicketHubPage() {
                 onChanged={invalidate}
                 onError={onCommandError}
             />
+            )}
         </Page>
     )
 }

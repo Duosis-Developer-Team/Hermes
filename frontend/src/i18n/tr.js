@@ -955,6 +955,9 @@ export default {
     },
 
     hub: {
+        countLabel: '{count} talep',
+        pickTicket: 'Bir talep seç',
+        pickTicketHint: 'Konuşmayı görmek için listeden bir talep seç.',
         workItems: 'İş kalemleri',
         createWorkItem: 'İş kalemi aç',
         convertTitle: 'Bu ticket\'tan iş kalemi aç',

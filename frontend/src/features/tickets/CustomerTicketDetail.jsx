@@ -179,6 +179,7 @@ export default function CustomerTicketDetail({
 
                     <Surface>
                         <TicketTimeline
+                            selfType="requester"
                             messages={ticket.messages}
                             downloadUrl={(fileId) =>
                                 supportPortalService.downloadUrl(ticket.id, fileId)}

@@ -7,21 +7,33 @@
 
 .h-ticket-timeline { width: 100%; }
 
+.h-ticket-timeline { display: flex; flex-direction: column; }
+/* Sohbet balonu (prototip): karsi taraf solda, kendi mesajin sagda. */
 .h-ticket-message {
+    align-self: flex-start;
+    max-width: min(82%, 640px);
     border: 1px solid var(--h-border-subtle);
-    border-radius: var(--h-radius-md);
-    padding: var(--h-space-3);
-    background: var(--h-bg-elevated);
+    border-radius: 18px 18px 18px 6px;
+    padding: 10px 14px;
+    background: var(--h-bg-hover);
+    animation: lq-rise 450ms var(--h-ease-enter) both;
+}
+.h-ticket-message.is-own {
+    align-self: flex-end;
+    border-radius: 18px 18px 6px 18px;
+    border-color: transparent;
+    background: color-mix(in srgb, var(--hp-blue-500) 14%, var(--h-bg-elevated));
 }
 
 /* Musterinin kendi mesaji: hafif vurgulu ama sessiz. */
-.h-ticket-message--requester { background: var(--h-bg-base); }
+.h-ticket-message--requester:not(.is-own) { background: var(--h-bg-hover); }
 
 /* Ic not: amber cerceve + arka plan. Renk TEK basina anlam tasimaz;
    yaninda kilit ikonu ve "müşteri göremez" metni bulunur. */
-.h-ticket-message--internal {
-    border-color: var(--h-warning);
-    background: color-mix(in srgb, var(--h-warning) 8%, transparent);
+.h-ticket-message--internal,
+.h-ticket-message--internal.is-own {
+    border: 1px dashed color-mix(in srgb, var(--h-warning) 60%, transparent);
+    background: color-mix(in srgb, var(--h-warning) 12%, transparent);
 }
 
 .h-ticket-message__head {
@@ -29,7 +41,9 @@
     align-items: center;
     gap: var(--h-space-2);
     flex-wrap: wrap;
-    margin-bottom: var(--h-space-2);
+    margin-bottom: 4px;
+    font-size: 12px;
+    color: var(--h-text-secondary);
 }
 
 .h-ticket-message__when { margin-left: auto; font-size: var(--h-font-meta); }
@@ -168,3 +182,57 @@
     padding-right: 0 !important;
     padding-bottom: 0 !important;
 }
+
+
+/* =============================================================================
+   Hermes Liquid (prototip): hub = filtre seridi + [liste | calisma bolmesi]
+   ========================================================================== */
+.tickets-page .lq-hero { margin-bottom: var(--h-space-4); }
+.tickets-search { width: 280px; }
+.tickets-search .ant-input-affix-wrapper,
+.tickets-search .ant-input { border-radius: var(--h-radius-pill) 0 0 var(--h-radius-pill); height: 40px; }
+.tickets-search .ant-input-search-button { height: 40px; border-radius: 0 var(--h-radius-pill) var(--h-radius-pill) 0; }
+
+.tickets-filters { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom: var(--h-space-4); }
+.tickets-queues { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tickets-status-filter { min-width: 200px; }
+
+.tickets-split { display: grid; gap: var(--h-space-4); align-items: start; }
+.tickets-split.is-split { grid-template-columns: minmax(360px, 5fr) minmax(0, 7fr); }
+
+.tickets-list.lq-card { padding: 8px; }
+.tickets-list__rows { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.tickets-list__rows > li { animation: lq-rise 500ms var(--h-ease-enter) both; }
+.tickets-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid transparent;
+    border-radius: 16px;
+    background: transparent;
+    color: var(--h-text-primary);
+    text-align: left;
+    cursor: pointer;
+    transition: background 150ms, border-color 150ms, transform 220ms var(--h-ease-spring);
+}
+.tickets-row:hover { background: var(--h-bg-hover); }
+.tickets-row.is-active {
+    background: var(--h-bg-elevated);
+    border-color: color-mix(in srgb, var(--h-brand) 45%, transparent);
+    box-shadow: 0 0 0 3px var(--h-bg-selected);
+}
+.tickets-row:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
+.tickets-row__main { display: flex; flex: 1; flex-direction: column; gap: 4px; min-width: 0; }
+.tickets-row__title { font-size: 14px; font-weight: 650; line-height: 1.35; }
+.tickets-row__code { margin-right: 6px; color: var(--h-text-muted); font: 500 12px var(--h-font-mono); }
+.tickets-row__meta { overflow: hidden; color: var(--h-text-secondary); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.tickets-row__badges { display: flex; flex: none; flex-direction: column; align-items: flex-end; gap: 6px; }
+
+.ticket-pane.lq-card { padding: 20px 22px; min-height: 420px; animation: lq-rise 500ms var(--h-ease-enter) both; }
+.ticket-pane__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.ticket-pane__titles { min-width: 0; }
+.ticket-pane__code { color: var(--h-text-muted); font: 500 12.5px var(--h-font-mono); }
+.ticket-pane__title { margin: 2px 0 0; font-size: 20px; font-weight: 650; letter-spacing: -0.02em; text-wrap: balance; }
+.ticket-pane .h-ticket-workbench { grid-template-columns: minmax(0, 1fr); }

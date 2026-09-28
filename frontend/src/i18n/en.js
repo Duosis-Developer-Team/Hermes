@@ -961,6 +961,9 @@ export default {
     },
 
     hub: {
+        countLabel: '{count} tickets',
+        pickTicket: 'Pick a ticket',
+        pickTicketHint: 'Choose a ticket from the list to see the conversation.',
         tickets: 'Tickets',
         unavailable: 'This screen is unavailable',
         noQueueVisible: 'No queue is visible to you',

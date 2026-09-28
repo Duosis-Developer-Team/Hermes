@@ -134,7 +134,7 @@ function ContextPanel({ ticket, groups, onAssignGroup, canAssign, pending }) {
 }
 
 export default function AgentWorkbench({
-    ticketId, open, onClose, context, onChanged, onError,
+    ticketId, open, onClose, context, onChanged, onError, inline = false,
 }) {
     const t = useT()
     const queryClient = useQueryClient()
@@ -208,20 +208,9 @@ export default function AgentWorkbench({
     const canAssign = context?.can('tickets.assign')
         || context?.can('tickets.admin')
 
-    return (
-        <Drawer
-            open={open}
-            onClose={onClose}
-            width="min(1100px, 96vw)"
-            className="ticket-workbench-drawer"
-            title={ticket
-                ? `${ticket.ticket_number} · ${ticket.title}`
-                : 'Ticket'}
-            destroyOnHidden
-            /* Eylemler SABIT footer'da: uzun bir zaman cizelgesinin
-               altinda kaybolmasinlar. Sablonda birincil eylem her zaman
-               gorunur bir yerde durur. */
-            footer={ticket ? (
+    // Eylemler (gecis, coz, is kalemi ac) — cekmecede sabit altlikta,
+    // satir ici bolmede basligin sagindadir (Hermes Liquid prototipi).
+    const actions = ticket ? (
                 <Inline gap={2} className="ticket-workbench-drawer__actions">
                     {(ticket.allowed_transitions ?? [])
                         .filter((target) => target !== 'resolved')
@@ -258,8 +247,10 @@ export default function AgentWorkbench({
                         onClick={() => setConvertOpen(true)}
                     >{t('hub.createWorkItem')}</Button>
                 </Inline>
-            ) : null}
-        >
+            ) : null
+
+    const body = (
+        <>
             {detail.isLoading && (
                 <Skeleton active paragraph={{ rows: 8 }} />
             )}
@@ -375,6 +366,48 @@ export default function AgentWorkbench({
                     })
                 }}
             />
+        </>
+    )
+
+    if (inline) {
+        return (
+            <section className="ticket-pane lq-card" aria-live="polite">
+                {!ticketId ? (
+                    <EmptyState title={t('hub.pickTicket')} description={t('hub.pickTicketHint')} />
+                ) : (
+                    <>
+                        {ticket && (
+                            <header className="ticket-pane__head">
+                                <div className="ticket-pane__titles">
+                                    <span className="ticket-pane__code">{ticket.ticket_number}</span>
+                                    <h2 className="ticket-pane__title">{ticket.title}</h2>
+                                </div>
+                                {actions}
+                            </header>
+                        )}
+                        {body}
+                    </>
+                )}
+            </section>
+        )
+    }
+
+    return (
+        <Drawer
+            open={open}
+            onClose={onClose}
+            width="min(1100px, 96vw)"
+            className="ticket-workbench-drawer"
+            title={ticket
+                ? `${ticket.ticket_number} · ${ticket.title}`
+                : 'Ticket'}
+            destroyOnHidden
+            /* Eylemler SABIT footer'da: uzun bir zaman cizelgesinin
+               altinda kaybolmasinlar. Sablonda birincil eylem her zaman
+               gorunur bir yerde durur. */
+            footer={actions}
+        >
+            {body}
         </Drawer>
     )
 }

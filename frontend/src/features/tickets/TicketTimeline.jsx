@@ -61,13 +61,19 @@ function AttachmentList({ attachments = [], downloadUrl }) {
     )
 }
 
-export function TicketTimeline({ messages = [], downloadUrl }) {
+/**
+ * Hermes Liquid: sohbet balonlari. `selfType` bakis acisini soyler —
+ * hub'da ('agent') temsilci mesajlari, portalda ('requester') talep
+ * edenin kendi mesajlari SAGDA; karsi taraf solda; ic not amber.
+ */
+export function TicketTimeline({ messages = [], downloadUrl, selfType = 'agent' }) {
     const t = useT()
     return (
         <Stack gap={3} className="h-ticket-timeline">
             {messages.map((message) => {
                 const internal = message.visibility === 'internal'
                 const mine = message.author_type === 'requester'
+                const own = selfType === 'requester' ? mine : !mine
                 return (
                     <article
                         key={message.id}
@@ -75,6 +81,7 @@ export function TicketTimeline({ messages = [], downloadUrl }) {
                             'h-ticket-message',
                             internal && 'h-ticket-message--internal',
                             mine && 'h-ticket-message--requester',
+                            own && 'is-own',
                         ].filter(Boolean).join(' ')}
                         aria-label={internal ? 'Internal note' : 'Conversation message'}
                     >
