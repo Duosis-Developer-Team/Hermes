@@ -32,6 +32,9 @@ CONTROL_PLANE_TABLES = (
     "platform_audit_events",
 )
 
+# 0005: Microsoft Graph profil fotograflari (users'a FK, CASCADE).
+USER_PHOTO_TABLES = ("user_photos",)
+
 # Mevcut tablolara eklenen kolonlar. create_all bunlari EKLEYEMEZ, bu
 # yuzden acik ALTER gerekir; hepsi idempotenttir.
 EXPAND_STATEMENTS: List[str] = [
@@ -112,8 +115,14 @@ def apply_tenant_constraints(conn) -> None:
         conn.execute(text(stmt))
 
 
+def apply_user_photos(conn) -> None:
+    """Profil fotografi tablosu (0005). Yalnizca EKLER; idempotent."""
+    _create(conn, USER_PHOTO_TABLES)
+
+
 def apply_all(conn) -> None:
     """Testler icin: bugunku head semasinin tamami."""
     apply_baseline(conn)
     apply_control_plane(conn)
     apply_tenant_constraints(conn)
+    apply_user_photos(conn)

@@ -12,7 +12,7 @@
 
 from typing import List, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -237,6 +237,18 @@ async def lookup_users(
 
     users = query.order_by(User.full_name.asc().nulls_last(), User.email.asc()).all()
 
+    # Profil fotografi bilgisi (ADDITIVE alanlar): N ayri istek atmadan
+    # frontend kimin fotografi oldugunu bilsin. Yalnizca foto ucunun
+    # GERCEKTEN servis edecegi kayitlar true olur (ayni tenant kurali).
+    from ..services.user_photo_service import photo_meta_for
+
+    photo_etags = photo_meta_for(
+        db,
+        caller_id=current_user.id,
+        tenant_id=current_user.tenant_id,
+        user_ids=[u.id for u in users],
+    )
+
     return [
         {
             "id": str(u.id),
@@ -245,9 +257,82 @@ async def lookup_users(
             "role": u.role.value if hasattr(u.role, "value") else (str(u.role) if u.role else None),
             "is_admin": bool(u.is_admin),
             "is_active": bool(u.is_active),
+            "has_photo": str(u.id) in photo_etags,
+            "photo_etag": photo_etags.get(str(u.id)),
         }
         for u in users
     ]
+
+
+# =============================================================================
+# GET /users/{user_id}/photo - Profil fotografi (Microsoft Graph kaynakli)
+# =============================================================================
+
+PHOTO_CACHE_CONTROL = "private, max-age=86400"
+
+
+def _etag_matches(if_none_match: Optional[str], etag_header: str) -> bool:
+    """RFC 9110 If-None-Match: zayif karsilastirma, '*' ve liste destekli."""
+    if not if_none_match:
+        return False
+    for candidate in if_none_match.split(","):
+        candidate = candidate.strip()
+        if candidate == "*":
+            return True
+        if candidate.startswith("W/"):
+            candidate = candidate[2:]
+        if candidate == etag_header:
+            return True
+    return False
+
+
+@router.get(
+    "/{user_id}/photo",
+    summary="User profile photo",
+    description=(
+        "Returns the user's profile photo (synced from Microsoft Graph at "
+        "SSO login) as image bytes. Visible only for the caller and for "
+        "active members of the caller's current tenant; otherwise 404. "
+        "Supports ETag / If-None-Match (304)."
+    ),
+    responses={
+        200: {"content": {"image/jpeg": {}, "image/png": {}}},
+        304: {"description": "Not modified"},
+        404: {"description": "No photo (or user not visible)"},
+    },
+)
+async def get_user_photo(
+    user_id: UUID,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from ..services.user_photo_service import visible_photo
+
+    photo = visible_photo(
+        db,
+        caller_id=current_user.id,
+        tenant_id=current_user.tenant_id,
+        user_id=user_id,
+    )
+    if photo is None:
+        # Gorunmeyen kullanici ile fotografi olmayan kullanici AYNI
+        # yaniti alir — uyelik bilgisi sizmaz.
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Photo not found"
+        )
+
+    etag_header = f'"{photo.etag}"'
+    headers = {
+        "ETag": etag_header,
+        "Cache-Control": PHOTO_CACHE_CONTROL,
+        "X-Content-Type-Options": "nosniff",
+    }
+    if _etag_matches(request.headers.get("if-none-match"), etag_header):
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED,
+                        headers=headers)
+    return Response(content=bytes(photo.data), media_type=photo.content_type,
+                    headers=headers)
 
 
 # =============================================================================

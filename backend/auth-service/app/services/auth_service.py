@@ -312,6 +312,15 @@ class AuthService:
             self.db.rollback()
             raise UnauthorizedError(generic_failure)
 
+        # 4b. Profil fotografi — kimlik VE uyelik dogrulandiktan SONRA,
+        #     AYNI delegated token ile. Basarisizlik girisi bozmaz
+        #     (servis hicbir zaman firlatmaz; sure sinirli, uyari loglar).
+        from . import user_photo_service
+
+        await user_photo_service.sync_from_graph(
+            self.db, user_id=user.id, access_token=access_token
+        )
+
         # 5. Tenant-scoped JWT
         jwt = self._create_token_for_user(
             user, tenant=tenant, membership=membership,

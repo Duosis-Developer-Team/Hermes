@@ -454,4 +454,16 @@ async def get_current_user_info(
         else None
     )
     payload["membership_id"] = current_user.membership_id
+
+    # Profil fotografi (ADDITIVE): kendi fotografi her zaman gorunur.
+    from ..services.user_photo_service import photo_meta_for
+
+    photo_etags = photo_meta_for(
+        db,
+        caller_id=current_user.id,
+        tenant_id=current_user.tenant_id,
+        user_ids=[user.id],
+    )
+    payload["has_photo"] = str(user.id) in photo_etags
+    payload["photo_etag"] = photo_etags.get(str(user.id))
     return payload
