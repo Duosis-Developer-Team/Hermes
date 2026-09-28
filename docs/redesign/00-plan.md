@@ -74,3 +74,29 @@ Prototip: https://claude.ai/artifact/HXXunk5DuR4VXEAVonnQfp · kopya
 - Geçişler: View Transitions (sayfa ve pano güncellemesi), yay (spring)
   eğrileri, kaynağından büyüyen modal, sayı sayma, halka çizimi,
   `prefers-reduced-motion` ile hepsi kapanır.
+
+### Revizyon 2 (28.09, CTO geri bildirimi)
+- Zemin: Hermes'in asıl rengi — uzay siyahı + koyu lacivert sıvı (mavi
+  `#0C66E4` ışımalarıyla); iki temada da aynı. Açık tema = beyaz buzlu cam
+  yüzeyler, koyu tema = koyu buzlu cam.
+- Ana sayfa: satır başına eşit yükseklik (Efor 8 + Dikkat 4 · İşlerim 7 +
+  Takvimim 5 · Ekibim 7 + Organizasyon 5), boşluk yok; görseller: efor
+  halkası + gün çubukları + özet, Dikkat sinyal satırları (mini grafik),
+  İşlerim kova dağılım çubuğu + proje grupları, Takvimim gün şeridi +
+  "sıradaki" kartı + bugünün zaman çizelgesi (şimdi çizgisi), Ekibim iş yükü
+  çubuğu + 5 günlük efor ısı hücreleri, Organizasyon faturalanabilir halkası
+  + 8 haftalık trend + müşteri çubukları.
+- Toplantılar: sol ray (sıradaki toplantı, mini ay takvimi, haftalık özet +
+  "kaydedilmemişleri efora dönüştür", takvim filtreleri) + katılımcı avatarlı
+  zaman ızgarası; toplantı penceresi degrade başlıklı, gündem + katılımcı
+  yanıtları + tek tıkla efor.
+- Pencereler: ikon karolu başlık + alt başlık, gruplanmış form, yapışık
+  eylem çubuğu, etiketli adım göstergesi.
+- Arama: kompakt Spotlight (560 px): son kullanılanlar + eylemler, gruplu
+  sonuçlar, ↑↓ ↵ klavye.
+- Profil: kimlik kartı, organizasyon değiştirici (onay işaretiyle), tercihler
+  (tema, dil), ayarlar/kısayollar, masaüstü sürümü, çıkış.
+- Dock: macOS mantığı — alt kenarda büyüyen (magnification) dock: Yönetim
+  (Panel, Faturalanabilir, Raporlar, Sözleşmeler) · Sistem (Ayarlar,
+  Developer, Destek portalı, Platform) · hızlı eylemler (Efor gir, Yeni iş).
+- Ayarlar/Developer yan menüsü: 16 px ikon, 28 px karo.

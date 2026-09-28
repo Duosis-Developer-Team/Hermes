@@ -13,13 +13,17 @@
   --amber-300:#F5CD47; --amber-500:#E2B203; --amber-700:#946F00;
   --red-300:#F87168; --red-500:#E2483D; --red-700:#C9372C;
 
-  --base:#EAF0F9;
-  --blob-a:rgba(56,139,255,.55); --blob-b:rgba(143,126,231,.45); --blob-c:rgba(75,206,151,.38);
-  --blob-d:rgba(133,184,255,.55); --blob-e:rgba(245,205,71,.25);
-  --glass: rgba(255,255,255,.56);
-  --glass-strong: rgba(255,255,255,.78);
-  --glass-edge: rgba(255,255,255,.75);
-  --glass-shadow: 0 1px 0 rgba(255,255,255,.8) inset, 0 12px 32px -12px rgba(17,23,32,.18), 0 2px 6px rgba(17,23,32,.04);
+  /* Hermes zemini: uzay siyahi + koyu lacivert sivi — IKI temada da ayni.
+     Tema yalniz yuzeyleri degistirir: acik = beyaz buzlu cam, koyu = koyu cam. */
+  --base:#03050B;
+  --blob-a:rgba(10,32,84,.95); --blob-b:rgba(12,102,228,.42); --blob-c:rgba(24,18,70,.9);
+  --blob-d:rgba(6,22,58,.95); --blob-e:rgba(56,139,255,.22);
+  --on-bg:#F2F6FC; --on-bg-2:#9DAAC1; --on-bg-fill:rgba(255,255,255,.08);
+  --seg-bg:rgba(120,134,154,.16);
+  --glass: rgba(255,255,255,.9);
+  --glass-strong: rgba(255,255,255,.97);
+  --glass-edge: rgba(255,255,255,.55);
+  --glass-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 24px 48px -20px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.18);
   --hair: rgba(17,23,32,.08);
   --hair-2: rgba(17,23,32,.12);
   --fill: rgba(17,23,32,.045);
@@ -42,11 +46,8 @@
    profil menusunden secilince. */
 :root[data-theme="dark"]{
   color-scheme: dark;
-  --base:#070B12;
-  --blob-a:rgba(12,102,228,.5); --blob-b:rgba(110,93,211,.42); --blob-c:rgba(31,132,90,.32);
-  --blob-d:rgba(56,139,255,.35); --blob-e:rgba(148,111,0,.2);
-  --glass: rgba(17,23,32,.52); --glass-strong: rgba(17,23,32,.8); --glass-edge: rgba(255,255,255,.1);
-  --glass-shadow: 0 1px 0 rgba(255,255,255,.07) inset, 0 16px 40px -12px rgba(0,0,0,.55);
+  --glass: rgba(13,20,34,.56); --glass-strong: rgba(17,25,41,.84); --glass-edge: rgba(255,255,255,.09);
+  --glass-shadow: 0 1px 0 rgba(255,255,255,.07) inset, 0 24px 48px -20px rgba(0,0,0,.7);
   --hair: rgba(255,255,255,.08); --hair-2: rgba(255,255,255,.14);
   --fill: rgba(255,255,255,.05); --fill-2: rgba(255,255,255,.09);
   --ink:#F2F5F9; --ink-2:#A8B3C2; --ink-3:#78869A;
@@ -71,20 +72,20 @@ a{color:var(--primary);text-decoration:none}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
 /* ---------- Sivi zemin ---------- */
-.liquid{position:fixed;inset:-10%;z-index:0;pointer-events:none;filter:blur(70px) saturate(1.15);overflow:hidden}
+.liquid{position:fixed;inset:-12%;z-index:0;pointer-events:none;filter:blur(80px) saturate(1.2);overflow:hidden;background:radial-gradient(120% 90% at 50% 0%, #0A1733 0%, #050914 55%, #03050B 100%)}
 .blob{position:absolute;border-radius:42% 58% 63% 37% / 43% 38% 62% 57%;will-change:transform,border-radius;animation:morph 26s var(--ease) infinite alternate}
 .b1{width:48vw;height:48vw;left:-6vw;top:-8vw;background:var(--blob-a);animation-duration:28s}
 .b2{width:42vw;height:42vw;right:-8vw;top:6vh;background:var(--blob-b);animation-duration:33s;animation-delay:-9s}
 .b3{width:38vw;height:38vw;left:24vw;bottom:-14vw;background:var(--blob-c);animation-duration:30s;animation-delay:-4s}
 .b4{width:30vw;height:30vw;right:18vw;bottom:-6vw;background:var(--blob-d);animation-duration:24s;animation-delay:-14s}
 .b5{width:18vw;height:18vw;left:44vw;top:10vh;background:var(--blob-e);animation-duration:21s}
-.bm{width:26vw;height:26vw;background:var(--blob-d);left:0;top:0;transform:translate(var(--mx,40vw),var(--my,40vh));transition:transform 2.4s var(--ease);animation:none;border-radius:50%}
+.bm{width:30vw;height:30vw;background:rgba(12,102,228,.28);left:0;top:0;transform:translate(var(--mx,40vw),var(--my,40vh));transition:transform 2.4s var(--ease);animation:none;border-radius:50%}
 @keyframes morph{
   0%{transform:translate(0,0) rotate(0) scale(1);border-radius:42% 58% 63% 37% / 43% 38% 62% 57%}
   50%{transform:translate(6vw,4vh) rotate(40deg) scale(1.12);border-radius:61% 39% 44% 56% / 58% 51% 49% 42%}
   100%{transform:translate(-4vw,8vh) rotate(-30deg) scale(.94);border-radius:37% 63% 51% 49% / 37% 58% 42% 63%}
 }
-.grain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.35;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+.grain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.22;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
 
 /* ---------- Cam ---------- */
 .glass{background:var(--glass);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid var(--glass-edge);box-shadow:var(--glass-shadow)}
@@ -115,40 +116,50 @@ a{color:var(--primary);text-decoration:none}
 @keyframes ping{70%{box-shadow:0 0 0 8px rgba(75,206,151,0)}100%{box-shadow:0 0 0 0 rgba(75,206,151,0)}}
 .me{width:36px;height:36px;border-radius:50%;border:0;background:linear-gradient(135deg,var(--blue-400),var(--purple-500));color:#fff;font-weight:700;font-size:12.5px;flex:none}
 /* Adanin genisleyen yuzu */
-.drop{position:absolute;left:50%;top:calc(100% + 10px);transform:translateX(-50%) scale(.92);transform-origin:top center;width:min(620px, calc(100vw - 32px));opacity:0;pointer-events:none;
-  background:var(--island);color:var(--island-ink);border-radius:30px;padding:18px;box-shadow:0 30px 60px -18px rgba(3,8,20,.6);transition:opacity .2s, transform .38s var(--spring)}
+.drop{--d-bg:var(--glass-strong);--d-ink:var(--ink);--d-ink-2:var(--ink-3);--d-2:var(--fill);--d-3:var(--fill-2);--d-line:var(--hair);
+  position:absolute;left:50%;top:calc(100% + 10px);transform:translateX(-50%) translateY(-6px) scale(.96);transform-origin:top center;width:min(560px, calc(100vw - 32px));opacity:0;pointer-events:none;
+  background:var(--d-bg);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glass-edge);color:var(--d-ink);border-radius:24px;padding:10px;box-shadow:0 30px 70px -20px rgba(0,0,0,.6);transition:opacity .18s, transform .38s var(--spring)}
+.drop.dark{--d-bg:rgba(2,5,10,.94);--d-ink:var(--island-ink);--d-ink-2:var(--island-ink-2);--d-2:rgba(255,255,255,.07);--d-3:rgba(255,255,255,.12);--d-line:rgba(255,255,255,.08);border-color:rgba(255,255,255,.08);padding:18px;width:min(460px,calc(100vw - 32px))}
+.drop.narrow{width:min(340px,calc(100vw - 32px));left:auto;right:0;transform:translateY(-6px) scale(.96);transform-origin:top right}
+.drop.narrow.open{transform:none}
 .drop.open{opacity:1;transform:translateX(-50%) scale(1);pointer-events:auto}
-.drop h5{margin:0 0 10px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--island-ink-2);font-weight:600}
-.cmdk{display:flex;align-items:center;gap:10px;background:var(--island-2);border-radius:16px;padding:12px 14px;margin-bottom:14px}
-.cmdk input{flex:1;background:transparent;border:0;outline:none;color:var(--island-ink)}
-.cmdk input::placeholder{color:var(--island-ink-2)}
-.kbd{font:500 11px var(--mono);border:1px solid rgba(255,255,255,.16);border-radius:6px;padding:1px 6px;color:var(--island-ink-2)}
-.dock{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.dock button{border:0;background:var(--island-2);color:var(--island-ink);border-radius:18px;padding:14px 10px;display:flex;flex-direction:column;align-items:flex-start;gap:10px;text-align:left;transition:transform .25s var(--spring), background .2s;min-width:0}
-.dock button:hover{transform:translateY(-3px);background:rgba(255,255,255,.13)}
-.dock .ic{width:34px;height:34px;border-radius:11px;display:grid;place-items:center}
-.dock .ic svg{width:18px;height:18px}
-.dock b{font-weight:600;font-size:13px}
-.dock small{color:var(--island-ink-2);font-size:11.5px;line-height:1.3}
-.results{display:flex;flex-direction:column;gap:2px;margin-bottom:12px}
-.results button{border:0;background:transparent;color:var(--island-ink);display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:12px;text-align:left}
-.results button:hover,.results button.sel{background:var(--island-2)}
-.results .k{font:500 11.5px var(--mono);color:var(--island-ink-2);min-width:74px}
-.results .ty{margin-left:auto;font-size:11.5px;color:var(--island-ink-2)}
+.drop h5{margin:10px 10px 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--d-ink-2);font-weight:600}
+.cmdk{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--d-line);padding:6px 10px 12px;margin-bottom:4px}
+.cmdk svg{width:18px;height:18px;color:var(--d-ink-2);flex:none}
+.cmdk input{flex:1;background:transparent;border:0;outline:none;color:var(--d-ink);font-size:15.5px}
+.cmdk input::placeholder{color:var(--d-ink-2)}
+.kbd{font:500 11px var(--mono);border:1px solid var(--d-line,rgba(255,255,255,.16));background:var(--d-2,transparent);border-radius:6px;padding:1px 6px;color:var(--d-ink-2,var(--island-ink-2))}
+
+
+
+
+
+
+
+.results{display:flex;flex-direction:column;gap:1px;max-height:360px;overflow:auto}
+.results button{border:0;background:transparent;color:var(--d-ink);display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:12px;text-align:left;font-size:13.5px}
+.results .ri{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:var(--d-2);color:var(--d-ink-2);flex:none}
+.results .ri svg{width:15px;height:15px}
+.results button:hover,.results button.sel{background:var(--d-3)}
+.results button.sel .ri{background:var(--primary);color:#fff}
+.results .k{font:500 11.5px var(--mono);color:var(--d-ink-2)}
+.results .ty{margin-left:auto;font-size:11.5px;color:var(--d-ink-2)}
+.cmd-foot{display:flex;gap:14px;align-items:center;border-top:1px solid var(--d-line);margin-top:6px;padding:10px 10px 4px;font-size:11.5px;color:var(--d-ink-2)}
 .timer-big{font:500 48px/1 var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
 .drop .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-.ibtn{border:0;border-radius:999px;padding:9px 16px;font-weight:600;background:var(--island-2);color:var(--island-ink)}
-.ibtn.pri{background:var(--island-ink);color:var(--island)}
+.ibtn{border:0;border-radius:999px;padding:9px 16px;font-weight:600;background:var(--d-2,var(--island-2));color:var(--d-ink,var(--island-ink))}
+.ibtn.pri{background:var(--d-ink,var(--island-ink));color:var(--d-bg,var(--island))}
+.drop:not(.dark) .ibtn.pri{background:var(--primary);color:#fff}
 .notif{display:flex;gap:12px;padding:10px;border-radius:14px;align-items:flex-start}
-.notif:hover{background:var(--island-2)}
+.notif:hover{background:var(--d-2)}
 .notif .nd{width:8px;height:8px;border-radius:50%;background:var(--blue-400);margin-top:6px;flex:none}
 .notif.read .nd{background:transparent}
 .notif p{margin:0;font-size:13px}
-.notif small{color:var(--island-ink-2)}
-.prof-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 4px;border-top:1px solid rgba(255,255,255,.08)}
-.iseg{display:inline-flex;background:var(--island-2);border-radius:999px;padding:3px}
-.iseg button{border:0;background:transparent;color:var(--island-ink-2);border-radius:999px;padding:5px 12px;font-size:12.5px}
-.iseg button.on{background:var(--island-ink);color:var(--island)}
+.notif small{color:var(--d-ink-2)}
+
+
+
+
 /* Ada bildirimi (toast adadan akar) */
 .island.toasting{border-radius:26px}
 .itoast{display:none;align-items:center;gap:10px;padding:4px 10px 4px 6px;white-space:nowrap}
@@ -157,11 +168,52 @@ a{color:var(--primary);text-decoration:none}
 .itoast .ok{width:26px;height:26px;border-radius:50%;background:var(--green-500);display:grid;place-items:center}
 .itoast .ok svg{width:14px;height:14px;color:#fff}
 
+
+/* ---------- Profil kartı ---------- */
+.prof-h{display:flex;align-items:center;gap:12px;padding:8px 8px 12px}
+.prof-h .me{width:46px;height:46px;font-size:15px}
+.prof-h b{display:block;font-size:15px}
+.prof-h small{color:var(--d-ink-2)}
+.prof-role{margin-left:auto}
+.psec{border-top:1px solid var(--d-line);padding:8px 2px}
+.psec h6{margin:4px 8px 6px;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--d-ink-2);font-weight:600}
+.prow{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:var(--d-ink);padding:8px;border-radius:12px;text-align:left;font-size:13.5px}
+.prow:hover{background:var(--d-2)}
+.prow .pi{width:28px;height:28px;border-radius:9px;background:var(--d-2);display:grid;place-items:center;flex:none;color:var(--d-ink-2)}
+.prow .pi svg{width:15px;height:15px}
+.prow .end{margin-left:auto;color:var(--d-ink-2);font-size:12px;display:flex;align-items:center;gap:6px}
+.prow.org .oav{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font:700 11px var(--sans);color:#fff;flex:none}
+.prow .chk{color:var(--primary)}
+.prow.danger{color:var(--bad)}
+.prow.danger .pi{background:var(--bad-bg);color:var(--bad)}
+.iseg{display:inline-flex;background:var(--d-2);border-radius:999px;padding:3px;gap:2px}
+.iseg button{border:0;background:transparent;color:var(--d-ink-2);border-radius:999px;padding:5px 11px;font-size:12.5px;display:flex;align-items:center;gap:5px}
+.iseg button svg{width:13px;height:13px}
+.iseg button.on{background:var(--glass-strong);color:var(--d-ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.drop.dark .iseg button.on{background:var(--island-ink);color:var(--island)}
+.nhead{display:flex;align-items:center;justify-content:space-between;padding:6px 8px 8px}
+.nhead b{font-size:15px}
+.nhead button{border:0;background:transparent;color:var(--primary);font-weight:600;font-size:12.5px}
+.notif{display:flex;gap:10px;padding:10px 8px;border-radius:14px;align-items:flex-start}
+.notif .nav{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:700 10.5px var(--sans);color:#fff;flex:none}
+.notif .nd{width:8px;height:8px;border-radius:50%;background:var(--primary);margin-top:11px;flex:none}
+.notif.read .nd{visibility:hidden}
+
+/* ---------- Alt dock (macOS mantigi: ikincil moduller + hizli eylemler) ---------- */
+.mdock-d{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:45;display:flex;align-items:flex-end;gap:6px;padding:8px 10px;border-radius:24px;
+  background:rgba(10,16,30,.55);backdrop-filter:blur(26px) saturate(180%);-webkit-backdrop-filter:blur(26px) saturate(180%);border:1px solid rgba(255,255,255,.12);box-shadow:0 20px 50px -20px rgba(0,0,0,.7)}
+.mdock-d .di{position:relative;width:44px;height:44px;border:0;border-radius:13px;display:grid;place-items:center;color:#fff;transform-origin:bottom center;transition:width .18s var(--ease), height .18s var(--ease);flex:none}
+.mdock-d .di svg{width:52%;height:52%}
+.mdock-d .di::after{content:attr(data-label);position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(4px);background:rgba(10,16,30,.92);color:#fff;font-size:12px;font-weight:500;padding:4px 10px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s, transform .2s var(--ease)}
+.mdock-d .di:hover::after,.mdock-d .di:focus-visible::after{opacity:1;transform:translateX(-50%)}
+.mdock-d .di.on::before{content:"";position:absolute;bottom:-6px;left:50%;width:4px;height:4px;border-radius:50%;background:#fff;transform:translateX(-50%)}
+.mdock-d .dsep{width:1px;align-self:stretch;margin:6px 4px;background:rgba(255,255,255,.16)}
+
 /* ---------- Sayfa ---------- */
 main{position:relative;z-index:1;padding-top:8px}
 .ph{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:18px 4px 18px}
-.ph h1{font-size:34px;font-weight:600;letter-spacing:-.035em;margin:0;line-height:1.05}
-.ph .sub{color:var(--ink-2);margin-top:6px}
+.ph h1{font-size:34px;font-weight:600;letter-spacing:-.035em;margin:0;line-height:1.05;color:var(--on-bg)}
+.ph .sub{color:var(--on-bg-2);margin-top:6px}
 .ph .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--hair-2);background:var(--glass-strong);border-radius:999px;padding:9px 16px;font-weight:500;white-space:nowrap;transition:transform .2s var(--spring), background .2s, box-shadow .2s}
 .btn:hover{transform:translateY(-1px)}
@@ -169,9 +221,11 @@ main{position:relative;z-index:1;padding-top:8px}
 .btn svg{width:15px;height:15px}
 .btn.pri{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 8px 20px -8px rgba(12,102,228,.7)}
 .btn.ghost{background:transparent}
+.ph .btn.ghost,.axis .btn.ghost,.wsum .btn.ghost{color:inherit}
+.ph .btn.ghost{color:var(--on-bg)}
 .btn.sm{padding:6px 12px;font-size:13px}
 .btn.danger{color:var(--bad)}
-.seg{position:relative;display:inline-flex;background:var(--fill-2);border-radius:999px;padding:3px;gap:0}
+.seg{position:relative;display:inline-flex;background:var(--seg-bg);border-radius:999px;padding:3px;gap:0}
 .seg .ind{position:absolute;top:3px;bottom:3px;border-radius:999px;background:var(--glass-strong);box-shadow:0 2px 8px rgba(17,23,32,.12);transition:left .4s var(--spring), width .4s var(--spring)}
 .seg button{position:relative;z-index:1;border:0;background:transparent;padding:6px 14px;border-radius:999px;color:var(--ink-2);font-weight:500;white-space:nowrap}
 .seg button.on{color:var(--ink)}
@@ -220,7 +274,7 @@ tbody tr:hover{background:var(--fill)}
 .ring .rv{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
 .ring .rv b{display:block;font-size:34px;font-weight:600;letter-spacing:-.03em}
 .ring .rv span{font-size:12px;color:var(--ink-3)}
-.ring .arc{transition:stroke-dashoffset 1.6s var(--ease)}
+.ring .arc,.donut .arc{transition:stroke-dashoffset 1.6s var(--ease)}
 .effort{display:flex;gap:26px;align-items:center}
 .days{flex:1;display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end;min-width:0}
 .day{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0;min-width:0}
@@ -277,6 +331,85 @@ tbody tr:hover{background:var(--fill)}
 .hbar .tr i{display:block;height:100%;border-radius:4px;background:var(--grad);transform-origin:left;animation:growx 1.2s var(--ease) both}
 @keyframes growx{from{transform:scaleX(0)}}
 
+
+/* ---------- Ana sayfa: esit satirli bento ---------- */
+.hgrid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;align-items:stretch}
+.hgrid > .card{display:flex;flex-direction:column}
+.a-effort{grid-column:span 8}.a-focus{grid-column:span 4}.a-work{grid-column:span 7}.a-cal{grid-column:span 5}.a-team{grid-column:span 7}.a-org{grid-column:span 5}
+.fill{flex:1;display:flex;flex-direction:column;min-height:0}
+.foot-line{margin-top:auto;padding-top:12px;border-top:1px solid var(--hair);display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-3)}
+.eff{display:grid;grid-template-columns:150px minmax(0,1fr) 150px;gap:22px;align-items:center}
+.estats{display:flex;flex-direction:column;gap:12px}
+.estats div{display:flex;flex-direction:column}
+.estats b{font-size:20px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.estats span{font-size:12px;color:var(--ink-3)}
+.fsig{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border-radius:18px;background:var(--fill);border:0;width:100%;text-align:left;transition:background .2s, transform .25s var(--spring)}
+.fsig + .fsig{margin-top:8px}
+.fsig:hover{background:var(--fill-2);transform:translateX(3px)}
+.fsig .fi{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.fsig b{display:block;font-size:13.5px}
+.fsig small{color:var(--ink-3);font-size:12px}
+.mini{display:flex;gap:3px;align-items:flex-end;height:22px}
+.mini i{width:6px;border-radius:2px;background:var(--red-500);opacity:.85}
+.stack{display:flex;height:10px;border-radius:999px;overflow:hidden;background:var(--fill-2);gap:2px}
+.stack i{display:block;height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0 4px;font-size:12.5px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:8px;height:8px;border-radius:50%}
+.gh{display:flex;align-items:center;gap:8px;margin:12px 4px 4px;font-size:12px;font-weight:600;color:var(--ink-2)}
+.gh .pd{width:8px;height:8px;border-radius:3px}
+.gh .c{margin-left:auto;font-weight:500;color:var(--ink-3)}
+.strip{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:12px}
+.strip button{border:0;border-radius:14px;padding:8px 0;background:var(--fill);display:flex;flex-direction:column;align-items:center;gap:2px;transition:background .2s}
+.strip button small{font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
+.strip button b{font-size:16px;font-weight:600}
+.strip button .dots{display:flex;gap:3px;height:6px}
+.strip button .dots i{width:5px;height:5px;border-radius:50%;background:var(--primary)}
+.strip button .dots i.v{background:var(--purple-500)}
+.strip button.on{background:var(--ink);color:var(--glass-strong)}
+.strip button.on small{color:inherit;opacity:.7}
+.next{border-radius:20px;padding:14px 16px;color:#fff;background:linear-gradient(135deg,#0C66E4 0%,#0A2A6B 70%,#0B1433 100%);position:relative;overflow:hidden;margin-bottom:12px}
+.next::after{content:"";position:absolute;right:-30px;top:-40px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(133,184,255,.45),transparent 70%)}
+.next small{opacity:.75;font-size:12px}
+.next b{display:block;font-size:17px;margin:2px 0 8px;letter-spacing:-.01em}
+.next .row2{display:flex;align-items:center;gap:10px;position:relative;z-index:1}
+.next .cd{font:600 13px var(--mono);background:rgba(255,255,255,.14);border-radius:999px;padding:4px 10px}
+.next .btn{margin-left:auto;background:#fff;color:#0A2A6B;border-color:transparent}
+.dayline{position:relative;flex:1;min-height:150px;border-left:2px solid var(--hair-2);margin-left:58px;padding-left:14px;display:flex;flex-direction:column;gap:8px}
+.dl-i{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:8px 10px;border-radius:12px;background:var(--fill);font-size:13px;align-items:center}
+.dl-i::before{content:attr(data-t);position:absolute;left:-60px;top:9px;width:40px;text-align:right;font:500 11.5px var(--mono);color:var(--ink-3)}
+.dl-i::after{content:"";position:absolute;left:-20px;top:13px;width:10px;height:10px;border-radius:50%;background:var(--glass-strong);border:2px solid var(--hair-2)}
+.dl-i.m{background:var(--info-bg)}.dl-i.m::after{border-color:var(--primary)}
+.dl-i.p{background:var(--violet-bg)}.dl-i.p::after{border-color:var(--purple-500)}
+.dl-i.d::after{border-color:var(--amber-500)}
+.dl-i.past{opacity:.55}
+.dl-i b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dl-now{position:relative;height:0;border-top:2px dashed var(--red-500);margin:2px 0}
+.dl-now::before{content:"Şimdi 11:24";position:absolute;left:-60px;top:-8px;font:600 10.5px var(--mono);color:var(--red-500)}
+.tm-row{display:grid;grid-template-columns:30px minmax(110px,1fr) minmax(120px,1.2fr) 150px 52px;gap:14px;align-items:center;padding:10px 4px;border-top:1px solid var(--hair)}
+.tm-row:first-of-type{border-top:0}
+.tm-row .nm{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-row .nm small{display:block;color:var(--ink-3);font-weight:400;font-size:11.5px}
+.load{display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--fill-2)}
+.load i{height:100%}
+.heat{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.heat i{height:22px;border-radius:6px;background:var(--fill-2);position:relative}
+.heat i[data-h]:hover::after{content:attr(data-h);position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:var(--ink);color:var(--glass-strong);font:500 11px var(--mono);padding:2px 6px;border-radius:6px;white-space:nowrap}
+.tm-head{display:grid;grid-template-columns:30px minmax(110px,1fr) minmax(120px,1.2fr) 150px 52px;gap:14px;font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding:0 4px 6px}
+.orgtop{display:grid;grid-template-columns:118px minmax(0,1fr);gap:16px;align-items:center}
+.donut{position:relative;width:118px;height:118px}
+.donut svg{width:100%;height:100%;transform:rotate(-90deg)}
+.donut .rv{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.donut .rv b{display:block;font-size:24px;font-weight:600;letter-spacing:-.02em}
+.donut .rv span{font-size:11px;color:var(--ink-3)}
+.okpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.okpis div{padding:10px 12px;border-radius:14px;background:var(--fill)}
+.okpis b{display:block;font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+.okpis span{font-size:11.5px;color:var(--ink-3)}
+.spark{width:100%;height:56px;margin-top:12px}
+@media (max-width:1180px){.a-effort,.a-focus,.a-work,.a-cal,.a-team,.a-org{grid-column:span 12}.eff{grid-template-columns:150px minmax(0,1fr)}.eff .estats{grid-column:1/-1;flex-direction:row;justify-content:space-between}}
+@media (max-width:760px){.eff{grid-template-columns:1fr}.eff .ring{margin:0 auto}.tm-row,.tm-head{grid-template-columns:30px minmax(0,1fr) 120px}.tm-row .heat,.tm-row .hrs,.tm-head .hh{display:none}}
+
 /* ---------- Zaman ---------- */
 .week{display:grid;grid-template-columns:repeat(7,minmax(150px,1fr));gap:12px}
 .wd{border-radius:22px;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:340px;min-width:0}
@@ -314,7 +447,10 @@ tbody tr:hover{background:var(--fill)}
 .side button span{font-variant-numeric:tabular-nums;font-size:12px;opacity:.7}
 .side .fold{padding-left:22px;font-size:13px}
 .axis{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-.axis .cap{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.axis{color:var(--on-bg)}
+.axis .cap{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--on-bg-2)}
+.axis > .muted{color:var(--on-bg-2)}
+.card .axis,.modal .axis{color:inherit}
 .axis .sp{flex:1}
 .board{display:grid;grid-template-columns:repeat(3,minmax(250px,1fr));gap:14px;overflow-x:auto;padding-bottom:6px}
 .col{border-radius:24px;padding:10px;min-height:420px;transition:background .2s, box-shadow .2s}
@@ -367,6 +503,68 @@ tbody tr:hover{background:var(--fill)}
 .mt.logged{border-left-color:var(--green-500);background:var(--ok-bg)}
 .nowline{position:absolute;left:0;right:0;height:2px;background:var(--red-500);z-index:3}
 .nowline::before{content:"";position:absolute;left:-5px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--red-500)}
+
+
+/* ---------- Toplantilar v2 ---------- */
+.mtg{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start}
+.mrail{display:flex;flex-direction:column;gap:16px;position:sticky;top:84px}
+.mcal{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;font-size:12.5px}
+.mcal .w{font-size:10.5px;font-weight:600;color:var(--ink-3);padding:4px 0;letter-spacing:.05em}
+.mcal button{border:0;background:transparent;border-radius:10px;padding:6px 0;font-variant-numeric:tabular-nums;position:relative}
+.mcal button:hover{background:var(--fill)}
+.mcal button.o{color:var(--ink-3);opacity:.5}
+.mcal button.wk{background:var(--info-bg)}
+.mcal button.td{background:var(--primary);color:#fff;font-weight:600}
+.mcal button.ev::after{content:"";position:absolute;left:50%;bottom:2px;width:4px;height:4px;border-radius:50%;background:var(--primary);transform:translateX(-50%)}
+.mcal button.td.ev::after{background:#fff}
+.mstat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mstat div{border-radius:14px;background:var(--fill);padding:10px}
+.mstat b{display:block;font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.mstat span{font-size:11.5px;color:var(--ink-3)}
+.calsrc label{display:flex;align-items:center;gap:10px;padding:6px 4px;font-size:13.5px}
+.calsrc .cs{width:14px;height:14px;border-radius:4px}
+.mgrid{border-radius:26px;overflow:hidden;padding:0}
+.mg-top{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--hair);flex-wrap:wrap}
+.mg-top b{font-size:17px;letter-spacing:-.01em}
+.tg2{display:grid;grid-template-columns:60px repeat(5,minmax(130px,1fr));min-width:720px}
+.tg2 .hd{padding:12px 8px 10px;text-align:center;border-bottom:1px solid var(--hair);display:flex;flex-direction:column;align-items:center;gap:2px}
+.tg2 .hd small{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.tg2 .hd b{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:16px;font-weight:600}
+.tg2 .hd.now b{background:var(--primary);color:#fff}
+.tg2 .hd .ct{font-size:11px;color:var(--ink-3)}
+.tg2 .hours div{height:56px;font:500 11px var(--mono);color:var(--ink-3);text-align:right;padding-right:10px;transform:translateY(-7px)}
+.tg2 .dcol{position:relative;border-left:1px solid var(--hair);background-image:linear-gradient(var(--hair) 1px, transparent 1px);background-size:100% 56px}
+.tg2 .dcol.now{background-color:rgba(12,102,228,.035)}
+.ev2{position:absolute;left:5px;right:5px;border-radius:12px;padding:7px 9px 7px 12px;font-size:12px;overflow:hidden;cursor:pointer;background:var(--glass-strong);border:1px solid var(--hair);box-shadow:0 4px 14px -8px rgba(0,0,0,.35);transition:transform .25s var(--spring), box-shadow .25s}
+.ev2::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c,var(--primary))}
+.ev2:hover{transform:translateY(-2px) scale(1.015);box-shadow:0 16px 30px -14px rgba(0,0,0,.5);z-index:3}
+.ev2 .et{display:flex;align-items:center;gap:6px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev2 .et svg{width:12px;height:12px;flex:none;color:var(--c,var(--primary))}
+.ev2 .em{color:var(--ink-3);font:500 11px var(--mono);margin-top:1px}
+.ev2 .avs{margin-top:6px}
+.ev2 .avs .av{width:20px;height:20px;font-size:8.5px}
+.ev2.priv{--c:var(--ink-3);background:repeating-linear-gradient(135deg,var(--fill) 0 6px,var(--glass-strong) 6px 12px)}
+.ev2.can{opacity:.55}
+.ev2.can .et span{text-decoration:line-through}
+.ev2.logged{--c:var(--green-500)}
+.ev2.logged .lg{position:absolute;right:7px;top:7px;width:16px;height:16px;border-radius:50%;background:var(--green-500);display:grid;place-items:center}
+.ev2.logged .lg svg{width:10px;height:10px;color:#fff}
+.nowl{position:absolute;left:0;right:0;height:0;border-top:2px solid var(--red-500);z-index:4}
+.nowl span{position:absolute;left:4px;top:-10px;background:var(--red-500);color:#fff;font:600 10px var(--mono);padding:1px 6px;border-radius:999px}
+/* toplanti penceresi */
+.mhero{margin:-24px -24px 18px;padding:22px 24px 20px;color:#fff;background:linear-gradient(135deg,#0C66E4 0%,#0A2A6B 60%,#08122B 100%);position:relative;overflow:hidden}
+.mhero::after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(133,184,255,.4),transparent 70%)}
+.mhero .x{position:absolute;right:16px;top:16px;z-index:2;background:rgba(255,255,255,.14);color:#fff;border-color:transparent}
+.mhero small{opacity:.8}
+.mhero h2{color:#fff;font-size:24px;margin:6px 0 10px}
+.mhero .chips{display:flex;gap:6px;flex-wrap:wrap;position:relative;z-index:1}
+.mhero .chips span{background:rgba(255,255,255,.14);border-radius:999px;padding:4px 11px;font-size:12.5px;font-weight:500}
+.mcols{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px}
+.att{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--hair);font-size:13px}
+.att:first-of-type{border-top:0}
+.att .rs{margin-left:auto}
+@media (max-width:1180px){.mtg{grid-template-columns:1fr}.mrail{position:static;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}}
+@media (max-width:760px){.mcols{grid-template-columns:1fr}}
 
 /* ---------- Talepler ---------- */
 .hub{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1.25fr);gap:16px;align-items:start}
@@ -444,6 +642,32 @@ tbody tr:hover{background:var(--fill)}
 .mf{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;align-items:center}
 .mf .l{margin-right:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2)}
 
+
+/* ---------- Pencereler v2 ---------- */
+.modal{padding:24px 26px 0;border-radius:28px}
+.mh{align-items:flex-start}
+.mhl{display:flex;gap:14px;align-items:center}
+.mico{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;flex:none;color:#fff;background:linear-gradient(145deg,#579DFF,#0C66E4);box-shadow:0 8px 18px -8px rgba(12,102,228,.7)}
+.mico svg{width:20px;height:20px}
+.mh .msub{color:var(--ink-3);font-size:13px;margin-top:2px}
+.mf{position:sticky;bottom:0;margin:22px -26px 0;padding:14px 26px;border-top:1px solid var(--hair);background:var(--glass-strong);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:0 0 28px 28px}
+.inp{min-height:42px}
+.frm .grp{grid-column:1/-1;display:flex;align-items:center;gap:10px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-top:4px}
+.frm .grp::after{content:"";flex:1;height:1px;background:var(--hair)}
+.steps2{display:flex;gap:6px;margin:4px 0 18px}
+.steps2 span{flex:1;display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:500;color:var(--ink-3)}
+.steps2 span::before{content:"";height:4px;border-radius:2px;background:var(--fill-2)}
+.steps2 span.on{color:var(--ink)}
+.steps2 span.on::before{background:var(--grad)}
+.steps2 span.cur{color:var(--primary)}
+.opt button{display:flex;align-items:center;gap:12px}
+.opt .oi{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font:700 14px var(--sans);color:#fff;flex:none}
+/* ---------- Yan menuler: ikon boyutu ---------- */
+.snav button svg,.side button svg{width:16px;height:16px;flex:none}
+.snav .si{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:var(--fill);color:var(--ink-3);flex:none;transition:background .2s,color .2s}
+.snav button.on .si{background:rgba(255,255,255,.14);color:inherit}
+.snav button{padding:6px 8px;font-size:13.5px}
+
 /* ---------- Giris ---------- */
 .login{min-height:100vh;display:grid;place-items:center;position:relative;z-index:1;padding:40px 0}
 .lcard{width:min(420px,100%);border-radius:34px;padding:34px 30px;text-align:center}
@@ -457,7 +681,7 @@ tbody tr:hover{background:var(--fill)}
 /* ---------- Mobil dock ---------- */
 .mdock{display:none}
 .note{margin:22px 4px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
-.note div{border-radius:20px;padding:14px 16px;font-size:13px;color:var(--ink-2)}
+.note div{border-radius:20px;padding:14px 16px;font-size:13px;color:var(--ink-2);background:var(--glass)}
 .note b{display:block;color:var(--ink);margin-bottom:4px}
 
 @media (max-width:1180px){
@@ -473,6 +697,7 @@ tbody tr:hover{background:var(--fill)}
   body{padding-bottom:120px}
   .tabs,.isep.hide-m,.iconb.hide-m{display:none}
   .island{width:100%;justify-content:space-between}
+  .mdock-d{display:none}
   .mdock{display:flex;position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:55;justify-content:space-around;padding:8px;border-radius:26px;background:var(--island)}
   .mdock button{border:0;background:transparent;color:var(--island-ink-2);display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;padding:6px 8px;border-radius:14px}
   .mdock button.on{color:var(--island-ink);background:var(--island-2)}
@@ -506,9 +731,8 @@ tbody tr:hover{background:var(--fill)}
         <span class="ind" id="tabind"></span>
       </div>
       <span class="isep hide-m" aria-hidden="true"></span>
-      <button type="button" class="iconb hide-m" id="dockBtn" aria-label="Tüm modüller" aria-expanded="false"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7.5" height="7.5" rx="2.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="3.75"/></svg></button>
       <button type="button" class="live" id="liveBtn" aria-expanded="false"><span class="dot"></span><span class="t" id="liveT">01:24:10</span><span class="l">TASK-56 Sertifika</span></button>
-      <button type="button" class="iconb" id="searchBtn" aria-label="Ara (⌘K)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg></button>
+      <button type="button" class="iconb" id="searchBtn" aria-label="Ara (⌘K)" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg></button>
       <button type="button" class="iconb" id="bellBtn" aria-label="Bildirimler, 3 okunmamış" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="cnt" id="bellCnt">3</span></button>
       <button type="button" class="me" id="meBtn" aria-label="Profil: Ada Lovelace" aria-expanded="false">AL</button>
       <div class="itoast" id="itoast"><span class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span><span id="itoastT">Kaydedildi</span></div>
@@ -518,6 +742,7 @@ tbody tr:hover{background:var(--fill)}
   <main id="main"></main>
 </div>
 
+<nav class="mdock-d" id="dockD" aria-label="Diğer modüller ve hızlı eylemler"></nav>
 <nav class="mdock" id="mdock" aria-label="Alt gezinme"></nav>
 
 <aside class="panel glass" id="panel" aria-label="İş detayı"></aside>
@@ -591,12 +816,14 @@ const MORE = [
 let page = 'home'
 const tabs = $('#tabs')
 tabs.insertAdjacentHTML('beforeend', PRIMARY.map(([id, l, ic]) => `<button type="button" data-go="${id}">${svg(ic)}<span>${l}</span></button>`).join(''))
+$('#dockD').innerHTML = MORE.map(([, items], gi) => (gi ? '<span class="dsep" aria-hidden="true"></span>' : '') + items.map(([id, l, ic, , c]) => `<button type="button" class="di" data-go="${id}" data-label="${l}" aria-label="${l}" style="background:linear-gradient(145deg, ${c}, color-mix(in srgb, ${c} 55%, #03050B))">${svg(ic)}</button>`).join('')).join('') +
+  `<span class="dsep" aria-hidden="true"></span><button type="button" class="di" data-open="log" data-label="Efor gir" aria-label="Efor gir" style="background:linear-gradient(145deg,#579DFF,#0C66E4)">${svg('time')}</button><button type="button" class="di" data-open="task" data-label="Yeni iş" aria-label="Yeni iş" style="background:linear-gradient(145deg,#4BCE97,#1F845A)">${svg('plus')}</button>`
 $('#mdock').innerHTML = PRIMARY.map(([id, l, ic]) => `<button type="button" data-go="${id}">${svg(ic)}${l}</button>`).join('') + `<button type="button" data-open="dock">${svg('gear')}Tümü</button>`
 
 function moveInd() {
   const on = $(`#tabs button[data-go="${page}"]`)
   $$('#tabs button').forEach((b) => b.classList.toggle('on', b === on))
-  $$('#mdock button').forEach((b) => b.classList.toggle('on', b.dataset.go === page))
+  $$('#mdock button, #dockD .di').forEach((b) => b.classList.toggle('on', b.dataset.go === page))
   const ind = $('#tabind')
   if (!on || getComputedStyle(tabs).display === 'none') { ind.style.width = '0px'; return }
   ind.style.left = on.offsetLeft + 'px'; ind.style.width = on.offsetWidth + 'px'
@@ -618,7 +845,7 @@ function go(p) {
   }
   if (document.startViewTransition && !reduce && page !== p) document.startViewTransition(run)
   else run()
-  if (p === 'login') { $('#topbar').hidden = true; $('#mdock').hidden = true } else { $('#topbar').hidden = false; $('#mdock').hidden = false }
+  const lg = p === 'login'; $('#topbar').hidden = lg; $('#mdock').hidden = lg; $('#dockD').hidden = lg
 }
 
 // ---------------------------------------------------------------- ada
@@ -628,11 +855,14 @@ function openDrop(kind) {
   if (dropKind === kind) { closeDrop(); return }
   dropKind = kind
   drop.innerHTML = DROPS[kind]()
-  drop.classList.add('open')
+  drop.className = 'drop' + (kind === 'live' ? ' dark' : '') + (kind === 'me' || kind === 'bell' ? ' narrow' : '')
+  drop.style.width = kind === 'bell' ? 'min(380px, calc(100vw - 32px))' : ''
+  requestAnimationFrame(() => drop.classList.add('open'))
+  if (kind === 'cmd') setTimeout(() => renderCmd(''), 0)
   ;['dockBtn', 'liveBtn', 'bellBtn', 'meBtn'].forEach((id) => $('#' + id).setAttribute('aria-expanded', String(
-    (id === 'dockBtn' && (kind === 'dock' || kind === 'cmd')) || (id === 'liveBtn' && kind === 'live') || (id === 'bellBtn' && kind === 'bell') || (id === 'meBtn' && kind === 'me'))))
+    (id === 'searchBtn' && kind === 'cmd') || (id === 'liveBtn' && kind === 'live') || (id === 'bellBtn' && kind === 'bell') || (id === 'meBtn' && kind === 'me'))))
   wire(drop)
-  if (kind === 'cmd' || kind === 'dock') setTimeout(() => $('#cmdIn')?.focus(), 60)
+  if (kind === 'cmd') setTimeout(() => $('#cmdIn')?.focus(), 60)
 }
 function closeDrop() { dropKind = null; drop.classList.remove('open'); $$('#island [aria-expanded]').forEach((b) => b.setAttribute('aria-expanded', 'false')) }
 const cmdItems = [
@@ -643,28 +873,38 @@ const cmdItems = [
   { k: 'Kişi', t: 'Grace Hopper', go: 'home' }, { k: 'Ayar', t: 'Kapasite', go: 'settings' },
 ]
 const DROPS = {
-  dock: () => `<label class="cmdk">${svg('search')}<input id="cmdIn" placeholder="Modül, iş kodu, kişi ya da eylem ara…" autocomplete="off"><span class="kbd">⌘K</span></label><div class="results" id="cmdRes"></div>` +
-    MORE.map(([g, items]) => `<h5>${g}</h5><div class="dock" style="margin-bottom:14px">${items.map(([id, l, ic, d, c]) => `<button type="button" data-go="${id}"><span class="ic" style="background:${c}33;color:${c}">${svg(ic)}</span><span><b>${l}</b><br><small>${d}</small></span></button>`).join('')}</div>`).join(''),
-  cmd: () => DROPS.dock(),
-  live: () => `<h5>Şu an çalışıyor</h5><div class="timer-big" id="liveBig">${fmt(secs)}</div><div style="color:var(--island-ink-2);margin-top:8px"><b style="color:var(--island-ink)">TASK-56</b> · Sertifika yenileme otomasyonu · Vakko · ATM</div>
+  cmd: () => `<label class="cmdk">${svg('search')}<input id="cmdIn" placeholder="Ara ya da bir eylem yaz…" autocomplete="off" aria-label="Ara"><span class="kbd">esc</span></label><div class="results" id="cmdRes"></div><div class="cmd-foot"><span><span class="kbd">↑</span> <span class="kbd">↓</span> gezin</span><span><span class="kbd">↵</span> aç</span><span style="margin-left:auto">Hermes araması</span></div>`,
+  live: () => `<h5 style="margin:0 0 10px">Şu an çalışıyor</h5><div class="timer-big" id="liveBig">${fmt(secs)}</div><div style="color:var(--island-ink-2);margin-top:8px"><b style="color:var(--island-ink)">TASK-56</b> · Sertifika yenileme otomasyonu · Vakko · ATM</div>
     <div class="row"><button type="button" class="ibtn pri" data-act="stoplog">Durdur ve kaydet</button><button type="button" class="ibtn" data-act="pause">${paused ? 'Devam et' : 'Duraklat'}</button><button type="button" class="ibtn" data-task="TASK-56">İşe git</button></div>
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;font-size:13px"><span style="width:8px;height:8px;border-radius:50%;background:var(--blue-400)"></span><span><b>Haftalık planlama</b> <span style="color:var(--island-ink-2)">14 dk sonra · Teams</span></span><button type="button" class="ibtn" style="margin-left:auto;padding:6px 12px" data-go="meetings">Katıl</button></div>`,
-  bell: () => `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h5 style="margin:0">Bildirimler</h5><button type="button" class="ibtn" style="padding:5px 12px;font-size:12px" data-act="readall">Tümünü okundu say</button></div>` +
-    [['TASK-61', 'Grace sana <b>Beymen rapor şablonu</b> işini atadı', '4 dk önce', 0], ['ISSUE-12', 'Alan <b>SSO dönüşü</b> işine yorum yazdı', '1 sa önce', 0], ['TASK-56', '<b>Sertifika yenileme</b> durumu Devam ediyor oldu', '3 sa önce', 0], ['TASK-52', 'Katherine <b>Kapasite ayarları</b> işini tamamladı', 'Dün', 1]]
-      .map(([k, t, w, r]) => `<div class="notif ${r ? 'read' : ''}" role="button" tabindex="0" data-task="${k}"><span class="nd"></span><div><p>${t}</p><small>${k} · ${w}</small></div></div>`).join(''),
-  me: () => `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><span class="me" style="width:44px;height:44px">AL</span><div><b>Ada Lovelace</b><div style="color:var(--island-ink-2);font-size:12.5px">Admin · Duosis</div></div></div>
-    <div class="prof-row"><span>Organizasyon</span><span class="iseg"><button type="button" class="on">Duosis</button><button type="button" data-act="org">Techart</button></span></div>
-    <div class="prof-row"><span>Tema</span><span class="iseg" id="themeSeg"><button type="button" data-theme-set="light">Açık</button><button type="button" data-theme-set="dark">Koyu</button></span></div>
-    <div class="prof-row"><span>Dil</span><span class="iseg"><button type="button" class="on">TR</button><button type="button">EN</button></span></div>
-    <div class="prof-row"><span>Masaüstü uygulaması</span><span style="color:var(--island-ink-2);font-size:12.5px">Hermes for macOS 0.1</span></div>
-    <div class="prof-row" style="border-bottom:0"><button type="button" class="ibtn" data-go="login" style="background:rgba(226,72,61,.18);color:#F87168">Çıkış yap</button></div>`,
+  bell: () => `<div class="nhead"><b>Bildirimler</b><button type="button" data-act="readall">Tümünü okundu say</button></div>` +
+    [['TASK-61', 'GH', '<b>Grace</b> sana <b>Beymen rapor şablonu</b> işini atadı', '4 dk', 0], ['ISSUE-12', 'AT', '<b>Alan</b> <b>SSO dönüşü</b> işine yorum yazdı', '1 sa', 0], ['TASK-56', 'AL', '<b>Sertifika yenileme</b> Devam ediyor oldu', '3 sa', 0], ['TASK-52', 'KJ', '<b>Katherine</b> <b>Kapasite ayarları</b> işini tamamladı', 'Dün', 1]]
+      .map(([k, u, t, w, r]) => `<div class="notif ${r ? 'read' : ''}" role="button" tabindex="0" data-task="${k}"><span class="nav" style="background:${U[u][1]}">${u}</span><div style="flex:1;min-width:0"><div style="font-size:13px">${t}</div><small>${k} · ${w} önce</small></div><span class="nd"></span></div>`).join(''),
+  me: () => `<div class="prof-h"><span class="me">AL</span><div><b>Ada Lovelace</b><small>ada@duosis.com</small></div><span class="tag violet prof-role">Admin</span></div>
+    <div class="psec"><h6>Organizasyon</h6>
+      <button type="button" class="prow org"><span class="oav" style="background:linear-gradient(135deg,#0C66E4,#0A2A6B)">D</span>Duosis<span class="end chk"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg></span></button>
+      <button type="button" class="prow org" data-toast="Techart'a geçildi"><span class="oav" style="background:linear-gradient(135deg,#8F7EE7,#3B2A7A)">T</span>Techart<span class="end">8 üye</span></button></div>
+    <div class="psec"><h6>Tercihler</h6>
+      <div class="prow"><span class="pi">${svg('sun')}</span>Görünüm<span class="end"><span class="iseg" id="themeSeg"><button type="button" data-theme-set="light">Açık</button><button type="button" data-theme-set="dark">Koyu</button></span></span></div>
+      <div class="prow"><span class="pi">${svg('report')}</span>Dil<span class="end"><span class="iseg"><button type="button" class="on">TR</button><button type="button">EN</button></span></span></div>
+      <button type="button" class="prow" data-go="settings"><span class="pi">${svg('gear')}</span>Ayarlar<span class="end"><span class="kbd">⌘,</span></span></button>
+      <button type="button" class="prow"><span class="pi">${svg('key')}</span>Klavye kısayolları<span class="end"><span class="kbd">?</span></span></button></div>
+    <div class="psec"><button type="button" class="prow"><span class="pi">${svg('code')}</span>Hermes for macOS<span class="end">0.1.0 · güncel</span></button>
+      <button type="button" class="prow danger" data-go="login"><span class="pi">${svg('x')}</span>Çıkış yap</button></div>`,
 }
+const cmdIcon = { Sayfa: 'home', Eylem: 'plus', 'Kişi': 'users', Ayar: 'gear' }
 function renderCmd(q = '') {
   const res = $('#cmdRes'); if (!res) return
   const qq = q.trim().toLocaleLowerCase('tr')
-  if (!qq) { res.innerHTML = ''; return }
-  const hits = cmdItems.filter((x) => (x.t + ' ' + x.k).toLocaleLowerCase('tr').includes(qq)).slice(0, 7)
-  res.innerHTML = hits.length ? hits.map((x, i) => `<button type="button" class="${i === 0 ? 'sel' : ''}" ${x.go ? `data-go="${x.go}"` : ''} ${x.task ? `data-task="${x.task}"` : ''} ${x.act ? `data-open="${x.act}"` : ''}><span class="k">${esc(x.k)}</span>${esc(x.t)}<span class="ty">↵</span></button>`).join('') : '<div style="padding:10px;color:var(--island-ink-2)">Sonuç yok</div>'
+  const pool = qq ? cmdItems.filter((x) => (x.t + ' ' + x.k).toLocaleLowerCase('tr').includes(qq)) : [
+    { k: 'Son', t: 'TASK-56 · Sertifika yenileme otomasyonu', task: 'TASK-56', ic: 'work' },
+    { k: 'Son', t: 'Zaman girişi', go: 'time', ic: 'time' },
+    { k: 'Eylem', t: 'Efor gir', act: 'log' }, { k: 'Eylem', t: 'Yeni iş', act: 'task' }, { k: 'Eylem', t: 'Plan zamanı oluştur', act: 'plan' },
+  ]
+  const groups = {}
+  pool.slice(0, 9).forEach((x) => { const g = x.task && qq ? 'İşler' : x.k === 'Son' ? 'Son kullanılanlar' : x.k === 'Eylem' ? 'Eylemler' : x.k === 'Kişi' ? 'Kişiler' : x.k === 'Ayar' ? 'Ayarlar' : x.task ? 'İşler' : 'Sayfalar'; (groups[g] = groups[g] || []).push(x) })
+  let i = 0
+  res.innerHTML = pool.length ? Object.entries(groups).map(([g, items]) => `<h5>${g}</h5>` + items.map((x) => `<button type="button" class="${i++ === 0 ? 'sel' : ''}" ${x.go ? `data-go="${x.go}"` : ''} ${x.task ? `data-task="${x.task}"` : ''} ${x.act ? `data-open="${x.act}"` : ''}><span class="ri">${svg(x.ic || (x.task ? 'work' : cmdIcon[x.k] || 'right'))}</span>${x.task && qq ? `<span class="k">${esc(x.k)}</span>` : ''}${esc(x.t)}<span class="ty">${x.act ? 'Eylem' : x.task ? 'İş' : '↵'}</span></button>`).join('')).join('') : '<div style="padding:18px 10px;color:var(--d-ink-2);text-align:center">Sonuç yok</div>'
   wire(res)
 }
 function toast(text) {
@@ -703,56 +943,79 @@ PAGES.login = () => `<div class="login"><div class="lcard glass enter">
 
 // ---------------- Ana sayfa
 PAGES.home = () => ph('Günaydın, Ada', 'Çarşamba, 30 Eylül · 2 gecikmiş iş · bugün 2 toplantı', `<button type="button" class="btn" data-open="plan">${svg('meet')}Plan zamanı</button><button type="button" class="btn" data-open="task">${svg('plus')}Yeni iş</button><button type="button" class="btn pri" data-open="log">${svg('time')}Efor gir</button>`) +
-`<div class="bento enter">
-  <article class="card glass c8">
+`<div class="hgrid enter">
+  <article class="card glass a-effort">
     <div class="ch"><h3>Bu hafta efor</h3><a href="#" data-go="time">Zaman girişi →</a></div>
-    <div class="effort">
-      <div class="ring"><svg viewBox="0 0 120 120"><defs><linearGradient id="rg" x1="0" x2="1"><stop offset="0" stop-color="#579DFF"/><stop offset="1" stop-color="#8F7EE7"/></linearGradient></defs><circle cx="60" cy="60" r="50" fill="none" stroke="var(--fill-2)" stroke-width="12"/><circle class="arc" id="arc" cx="60" cy="60" r="50" fill="none" stroke="url(#rg)" stroke-width="12" stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314"/></svg><div class="rv"><div><b class="num" data-count="18">0</b><span>/ 40 saat · %45</span></div></div></div>
+    <div class="eff">
+      <div class="ring"><svg viewBox="0 0 120 120"><defs><linearGradient id="rg" x1="0" x2="1"><stop offset="0" stop-color="#579DFF"/><stop offset="1" stop-color="#0C66E4"/></linearGradient></defs><circle cx="60" cy="60" r="50" fill="none" stroke="var(--fill-2)" stroke-width="12"/><circle class="arc" id="arc" cx="60" cy="60" r="50" fill="none" stroke="url(#rg)" stroke-width="12" stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314"/></svg><div class="rv"><div><b class="num" data-count="13">0</b><span>/ 40 saat</span></div></div></div>
       <div class="days">
         ${[['Pzt', 8, ''], ['Sal', 0, 'gap'], ['Çar', 5, 'today'], ['Per', 0, 'fut'], ['Cum', 0, 'fut'], ['Cmt', 0, 'off'], ['Paz', 0, 'off']].map(([d, h, s]) => `<button type="button" class="day ${s}" data-go="time" title="${d}: ${h} saat"><div class="bar">${h ? `<i style="height:${h / 8 * 100}%"></i>` : ''}</div><b>${s === 'fut' || s === 'off' ? '—' : h + 'h'}</b><small>${d}</small></button>`).join('')}
       </div>
+      <div class="estats"><div><b>%33</b><span>beklenenin dolumu</span></div><div><b>27h</b><span>kalan · 2 iş günü</span></div><div><b style="color:var(--ok)">%86</b><span>faturalanabilir</span></div></div>
     </div>
-    <div class="nudge"><span class="d"></span>Salı için giriş yok<span style="margin-left:auto;display:flex;gap:6px"><button type="button" class="btn sm ghost">İzin işaretle</button><button type="button" class="btn sm pri" data-open="log">+ Efor gir</button></span></div>
-  </article>
-  <article class="card glass c4 kpi">
-    <div class="ch"><h3>Dikkat</h3></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px"><div><b class="num" data-count="3">0</b><span>Sahipsiz iş</span></div><div><b class="num" style="color:var(--bad)" data-count="5">0</b><span>Termini geçmiş</span></div></div>
-    <div class="sig" style="margin-top:14px"><span class="av" style="background:#E2483D">KJ</span><span style="font-size:13px"><b style="font-size:13px">Katherine</b> bu hafta efor girmedi</span></div>
-    <button type="button" class="btn sm" style="margin-top:12px" data-go="work">Sahipsiz işleri aç</button>
+    <div class="nudge" style="margin-top:auto"><span class="d"></span>Salı için giriş yok<span style="margin-left:auto;display:flex;gap:6px"><button type="button" class="btn sm ghost">İzin işaretle</button><button type="button" class="btn sm pri" data-open="log">+ Efor gir</button></span></div>
   </article>
 
-  <article class="card glass c7">
-    <div class="ch"><h3>İşlerim</h3><a href="#" data-go="work">Tüm işler →</a></div>
-    <div class="bk"><div class="bk-h">Gecikmiş <span class="tag bad">2</span></div>
-      <div class="proj-g">Vakko · ATM</div>${wrow(TASKS[0])}
-      <div class="proj-g">Duosis · Hermes</div>${wrow(TASKS[1])}</div>
-    <div class="bk" style="border-left:3px solid var(--amber-500);padding-left:10px"><div class="bk-h">Bugün <span class="tag warn">2</span></div>
-      <div class="proj-g">Vakko · ATM</div>${wrow(TASKS[2])}
-      <div class="proj-g">Beymen · Portal</div>${wrow(TASKS[3])}</div>
-    <div class="bk"><div class="bk-h">Bu hafta <span class="tag">1</span></div><div class="proj-g">Duosis · İç</div>${wrow(TASKS[4])}</div>
+  <article class="card glass a-focus">
+    <div class="ch"><h3>Dikkat</h3><span class="tag bad">3 konu</span></div>
+    <div class="fill">
+      <button type="button" class="fsig" data-go="work"><span class="fi" style="background:var(--bad-bg);color:var(--bad)">5</span><span><b>Termini geçmiş iş</b><small>en eskisi 9 gün · 2'si bu hafta</small></span><span class="mini" aria-hidden="true"><i style="height:40%"></i><i style="height:55%"></i><i style="height:70%"></i><i style="height:85%"></i><i style="height:100%"></i></span></button>
+      <button type="button" class="fsig" data-go="work"><span class="fi" style="background:var(--warn-bg);color:var(--warn)">3</span><span><b>Sahipsiz iş</b><small>Triage kuyruğunda bekliyor</small></span><span class="avs" aria-hidden="true"><span class="av" style="background:transparent;border:1.5px dashed var(--ink-3);color:var(--ink-3)">?</span><span class="av" style="background:transparent;border:1.5px dashed var(--ink-3);color:var(--ink-3)">?</span></span></button>
+      <button type="button" class="fsig" data-go="home"><span class="fi" style="background:var(--info-bg);color:var(--info)">1</span><span><b>Efor girmeyen</b><small>Katherine · bu hafta 0 saat</small></span>${av('KJ')}</button>
+    </div>
   </article>
-  <article class="card glass c5">
+
+  <article class="card glass a-work">
+    <div class="ch"><h3>İşlerim <span class="muted" style="font-weight:400">· 7 terminli</span></h3><a href="#" data-go="work">Tüm işler →</a></div>
+    <div class="stack" aria-hidden="true"><i style="flex:2;background:var(--red-500)"></i><i style="flex:2;background:var(--amber-500)"></i><i style="flex:3;background:var(--blue-500)"></i></div>
+    <div class="legend"><span><i style="background:var(--red-500)"></i>Gecikmiş 2</span><span><i style="background:var(--amber-500)"></i>Bugün 2</span><span><i style="background:var(--blue-500)"></i>Bu hafta 3</span></div>
+    <div class="fill">
+      <div class="gh"><span class="pd" style="background:#388BFF"></span>Vakko · ATM<span class="c">2 iş</span></div>${wrow(TASKS[0])}${wrow(TASKS[2])}
+      <div class="gh"><span class="pd" style="background:#8F7EE7"></span>Duosis · Hermes<span class="c">1 iş</span></div>${wrow(TASKS[1])}
+      <div class="gh"><span class="pd" style="background:#22A06B"></span>Beymen · Portal<span class="c">1 iş</span></div>${wrow(TASKS[3])}
+      <div class="gh"><span class="pd" style="background:#E2B203"></span>Duosis · İç<span class="c">2 iş</span></div>${wrow(TASKS[4])}${wrow(TASKS[6])}
+      <div class="foot-line"><span>Terminsiz 5 iş iş yüzeyinde</span><button type="button" class="btn sm" style="margin-left:auto" data-open="task">${svg('plus')}Yeni iş</button></div>
+    </div>
+  </article>
+
+  <article class="card glass a-cal">
     <div class="ch"><h3>Takvimim</h3><a href="#" data-go="meetings">Toplantılar →</a></div>
-    <div class="ag"><div class="dt now"><small>Çar</small><b>30</b></div><div><div class="ev m"><span class="tm">09:30–09:45</span><span class="lb">Günlük standup</span></div><div class="ev m"><span class="tm">14:00–15:00</span><span class="lb">Haftalık planlama</span></div><div class="ev"><span class="tm">Termin</span><span class="lb">TASK-56 Sertifika yenileme</span></div></div></div>
-    <div class="ag"><div class="dt"><small>Per</small><b>01</b></div><div><div class="ev p"><span class="tm">09:00–13:00</span><span class="lb">Vakko · ATM planlı zaman</span></div></div></div>
-    <div class="ag"><div class="dt"><small>Cum</small><b>02</b></div><div><div class="ev m"><span class="tm">11:00–12:00</span><span class="lb">Beymen demo</span></div><div class="ev"><span class="tm">Termin</span><span class="lb">TASK-63 Sprint planı</span></div></div></div>
+    <div class="strip">${[['Pzt', 28, 'mm'], ['Sal', 29, 'm'], ['Çar', 30, 'mmv', 1], ['Per', 1, 'v'], ['Cum', 2, 'mm']].map(([d, n, dots, on]) => `<button type="button" class="${on ? 'on' : ''}"><small>${d}</small><b>${n}</b><span class="dots">${[...dots].map((x) => `<i class="${x === 'v' ? 'v' : ''}"></i>`).join('')}</span></button>`).join('')}</div>
+    <div class="next"><small>Sıradaki · Microsoft Teams</small><b>Haftalık planlama</b><div class="row2"><span class="cd">14 dk sonra</span><span class="avs">${['GH', 'AT', 'KJ'].map(av).join('')}</span><button type="button" class="btn sm" data-open="meeting">Katıl</button></div></div>
+    <div class="dayline">
+      <div class="dl-i m past" data-t="09:30"><b>Günlük standup</b><span class="tag ok">Kaydedildi</span></div>
+      <div class="dl-now" aria-label="Şimdi"></div>
+      <div class="dl-i d" data-t="Gün"><b>TASK-56 · Sertifika yenileme</b><span class="due today">Termin</span></div>
+      <div class="dl-i m" data-t="14:00"><b>Haftalık planlama</b><span class="muted" style="font-size:12px">60 dk</span></div>
+      <div class="dl-i p" data-t="16:00"><b>Vakko · ATM planlı zaman</b><span class="muted" style="font-size:12px">2 sa</span></div>
+    </div>
   </article>
 
-  <article class="card glass c7">
-    <div class="ch"><h3>Ekibim <span class="muted" style="font-weight:400">· 3 kişi</span></h3><a href="#" data-go="work">Verdiğim işler →</a></div>
-    ${[['GH', 6, 2, 32], ['AT', 4, 0, 22], ['KJ', 3, 1, 0]].map(([k, o, l, h]) => `<div class="mem">${av(k)}<span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${U[k][0]}</span><span class="stt"><b>${o}</b><small>açık</small></span><span class="stt ${l ? 'bad' : ''}"><b>${l}</b><small>gecikmiş</small></span><span class="mw"><div class="meter"><i style="width:${h / 40 * 100}%;${h ? '' : 'background:var(--amber-500)'}"></i></div><small class="muted" style="font-size:11px">${h} / 40 saat${h ? '' : ' · giriş yok'}</small></span></div>`).join('')}
+  <article class="card glass a-team">
+    <div class="ch"><h3>Ekibim <span class="muted" style="font-weight:400">· 4 kişi · kapasite %56</span></h3><a href="#" data-go="work">Verdiğim işler →</a></div>
+    <div class="tm-head"><span></span><span>Kişi</span><span>İş yükü</span><span class="hh">Pzt – Cum</span><span class="hh" style="text-align:right">Saat</span></div>
+    <div class="fill">
+    ${[['GH', 6, 2, [8, 7, 8, 6, 3]], ['AT', 4, 0, [8, 8, 6, 0, 0]], ['LT', 5, 1, [6, 8, 7, 0, 0]], ['KJ', 3, 1, [0, 0, 0, 0, 0]]].map(([k, o, l, hs]) => { const tot = hs.reduce((a, b) => a + b, 0); return `<div class="tm-row">${av(k)}<span class="nm">${U[k][0]}<small>${o} açık${l ? ` · <b style="color:var(--bad);font-weight:600">${l} gecikmiş</b>` : ''}</small></span><span class="load" title="${o} açık, ${l} gecikmiş"><i style="width:${(o - l) / 8 * 100}%;background:var(--ink-2)"></i><i style="width:${l / 8 * 100}%;background:var(--red-500)"></i></span><span class="heat">${hs.map((h, i) => `<i data-h="${['Pzt', 'Sal', 'Çar', 'Per', 'Cum'][i]} ${h}h" style="${h ? `background:rgba(12,102,228,${.18 + h / 8 * .7})` : i < 3 ? 'background:var(--warn-bg);box-shadow:inset 0 0 0 1.5px var(--amber-500)' : ''}"></i>`).join('')}</span><span class="mono hrs" style="text-align:right;font-size:13px">${tot}h</span></div>` }).join('')}
+      <div class="foot-line"><span class="legend" style="margin:0"><span><i style="background:rgba(12,102,228,.8)"></i>Efor yoğunluğu</span><span><i style="background:var(--amber-500)"></i>Girişsiz gün</span><span><i style="background:var(--red-500)"></i>Gecikmiş</span></span></div>
+    </div>
   </article>
-  <article class="card glass c5">
+
+  <article class="card glass a-org">
     <div class="ch"><h3>Organizasyon · Eylül</h3><a href="#" data-go="dashboard">Panel →</a></div>
-    <div class="kgrid kpi"><div><b class="num" data-count="1284">0</b><span>Toplam saat</span></div><div><b class="num">%<i data-count="78" style="font-style:normal">0</i></b><span>Faturalanabilir</span></div><div><b class="num" data-count="1002">0</b><span>Fat. saat</span></div></div>
-    <div class="sig warn"><b>5</b><span style="font-size:13px">termini geçmiş iş <span class="muted">(+2 bu hafta)</span></span></div>
-    <div class="sig"><b>1</b><span style="font-size:13px">kişi bu hafta giriş yapmadı</span></div>
-    ${[['Vakko', 412], ['Beymen', 305], ['Duosis', 288]].map(([c, h]) => `<div class="hbar"><span>${c}</span><span class="tr"><i style="width:${h / 412 * 100}%"></i></span><span class="mono num" style="text-align:right">${h}h</span></div>`).join('')}
+    <div class="orgtop">
+      <div class="donut"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="48" fill="none" stroke="var(--fill-2)" stroke-width="14"/><circle class="arc" id="arc2" cx="60" cy="60" r="48" fill="none" stroke="#22A06B" stroke-width="14" stroke-dasharray="301.6" stroke-dashoffset="301.6"/></svg><div class="rv"><div><b>%78</b><span>fatura</span></div></div></div>
+      <div class="okpis"><div><b data-count="1284">0</b><span>toplam saat</span></div><div><b data-count="1002">0</b><span>fat. saat</span></div><div><b style="color:var(--bad)">5</b><span>gecikmiş iş</span></div><div><b>1</b><span>girişsiz kişi</span></div></div>
+    </div>
+    <svg class="spark" viewBox="0 0 300 56" preserveAspectRatio="none" role="img" aria-label="Son 8 hafta efor"><defs><linearGradient id="sg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#388BFF" stop-opacity=".35"/><stop offset="1" stop-color="#388BFF" stop-opacity="0"/></linearGradient></defs><path d="M0 40 L43 34 L86 38 L129 26 L172 30 L215 18 L258 22 L300 12 L300 56 L0 56Z" fill="url(#sg)"/><path d="M0 40 L43 34 L86 38 L129 26 L172 30 L215 18 L258 22 L300 12" fill="none" stroke="#388BFF" stroke-width="2"/><circle cx="300" cy="12" r="3.5" fill="#0C66E4"/></svg>
+    <div class="fill">
+      ${[['Vakko', 412], ['Beymen', 305], ['Duosis', 288]].map(([c, h]) => `<div class="hbar"><span>${c}</span><span class="tr"><i style="width:${h / 412 * 100}%"></i></span><span class="mono num" style="text-align:right">${h}h</span></div>`).join('')}
+      <div class="foot-line"><button type="button" class="chip" data-go="reports">Raporlar</button><button type="button" class="chip" data-go="billable">Faturalanabilir</button><button type="button" class="chip" data-go="contracts">Sözleşmeler</button></div>
+    </div>
   </article>
 </div>`
 function wrow(x) { return `<button type="button" class="wrow" data-task="${x.k}"><span class="pb p-${x.pr}" title="Öncelik: ${prLabel[x.pr]}"></span><span class="lk">${x.k}</span><span class="t">${esc(x.t)}</span><span class="due ${x.tone}">${x.due}</span></button>` }
 AFTER.home = () => {
-  requestAnimationFrame(() => { const a = $('#arc'); if (a) a.style.strokeDashoffset = String(314 * (1 - 0.45)) })
+  requestAnimationFrame(() => { const a = $('#arc'); if (a) a.style.strokeDashoffset = String(314 * (1 - 13 / 40)); const b = $('#arc2'); if (b) b.style.strokeDashoffset = String(301.6 * (1 - 0.78)) })
   countUp()
 }
 function countUp() {
@@ -842,19 +1105,44 @@ function bindBoard() {
 }
 
 // ---------------- Toplantilar
-PAGES.meetings = () => ph('Toplantılar', 'Teams ve Outlook takviminden · 28 Eyl – 2 Eki', `<div class="field" style="width:220px">${svg('users')}<select aria-label="Kullanıcılar"><option>Tüm kullanıcılar</option><option>Ada Lovelace</option></select></div><button type="button" class="btn sm ghost">${svg('left')}</button><button type="button" class="btn sm">Bugün</button><button type="button" class="btn sm ghost">${svg('right')}</button><button type="button" class="btn">Takvimi eşitle</button>`) +
-`<div style="overflow-x:auto" class="enter"><div class="tg glass">
-  <div></div>${[['Pzt', 28], ['Sal', 29], ['Çar', 30, 1], ['Per', 1], ['Cum', 2]].map(([d, n, now]) => `<div class="hd ${now ? 'now' : ''}">${d} ${n}<small>${now ? 'Bugün' : ''}</small></div>`).join('')}
-  <div class="hours">${Array.from({ length: 11 }, (_, i) => `<div>${String(8 + i).padStart(2, '0')}:00</div>`).join('')}</div>
-  ${[
-    [['09:30', 15, 'Günlük standup', 6, 'logged'], ['13:00', 60, 'Vakko sprint review', 8, '']],
-    [['09:30', 15, 'Günlük standup', 6, 'logged'], ['15:00', 90, 'Özel', 0, 'priv']],
-    [['09:30', 15, 'Günlük standup', 6, ''], ['14:00', 60, 'Haftalık planlama', 12, ''], ['16:30', 30, 'İK görüşmesi', 2, 'can']],
-    [['10:00', 45, 'Mimari tartışma', 4, '']],
-    [['11:00', 60, 'Beymen demo', 7, ''], ['16:00', 45, 'Retro', 9, '']],
-  ].map((ms, di) => `<div class="dcol" style="height:${11 * 52}px">${di === 2 ? `<div class="nowline" style="top:${(11.5 - 8) * 52}px"></div>` : ''}${ms.map(([s, m, t, n, cls]) => { const [h, mm] = s.split(':').map(Number); const top = (h - 8 + mm / 60) * 52; return `<div class="mt ${cls}" style="top:${top}px;height:${Math.max(26, m / 60 * 52 - 3)}px" data-open="meeting" tabindex="0"><b>${cls === 'priv' ? '🔒 ' : ''}${t}</b><small>${s} · ${m} dk${n ? ' · ' + n + ' kişi' : ''}${cls === 'logged' ? ' · kaydedildi' : ''}</small></div>` }).join('')}</div>`).join('')}
-</div></div>`
-
+const MTG = [
+  [['09:30', 15, 'Günlük standup', ['AL', 'GH', 'AT', 'KJ'], 'logged', 'Teams'], ['13:00', 60, 'Vakko sprint review', ['AL', 'GH', 'LT'], '', 'Teams']],
+  [['09:30', 15, 'Günlük standup', ['AL', 'GH', 'AT'], 'logged', 'Teams'], ['15:00', 90, 'Özel', [], 'priv', '']],
+  [['09:30', 15, 'Günlük standup', ['AL', 'GH', 'AT', 'KJ'], 'logged', 'Teams'], ['14:00', 60, 'Haftalık planlama', ['GH', 'AT', 'KJ', 'LT'], '', 'Teams'], ['16:30', 30, 'İK görüşmesi', ['AL'], 'can', 'Outlook']],
+  [['10:00', 45, 'Mimari tartışma', ['AL', 'LT'], '', 'Teams']],
+  [['11:00', 60, 'Beymen demo', ['AL', 'GH', 'AT'], '', 'Teams'], ['16:00', 45, 'Retro', ['AL', 'GH', 'AT', 'KJ', 'LT'], '', 'Teams']],
+]
+const H0 = 8, HN = 11, RH = 56
+PAGES.meetings = () => ph('Toplantılar', 'Microsoft Teams ve Outlook takviminden eşitlenir', `<div class="field" style="width:210px">${svg('users')}<select aria-label="Kullanıcılar"><option>Yalnız ben</option><option>Tüm ekip</option></select></div><button type="button" class="btn" data-toast="Takvim eşitlendi · 12 toplantı">Takvimi eşitle</button>`) +
+`<div class="mtg enter">
+  <aside class="mrail">
+    <div class="next" style="margin:0"><small>Sıradaki · Microsoft Teams</small><b>Haftalık planlama</b><div class="row2" style="margin-bottom:10px"><span class="cd">14:00 · 14 dk sonra</span></div><div class="row2"><span class="avs">${['GH', 'AT', 'KJ', 'LT'].map(av).join('')}</span><button type="button" class="btn sm" data-open="meeting">Katıl</button></div></div>
+    <article class="card glass" style="padding:16px">
+      <div class="ch" style="margin-bottom:8px"><h3>Eylül 2026</h3><span style="display:flex;gap:2px"><button type="button" class="btn sm ghost" aria-label="Önceki ay">${svg('left')}</button><button type="button" class="btn sm ghost" aria-label="Sonraki ay">${svg('right')}</button></span></div>
+      <div class="mcal">${['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'].map((d) => `<span class="w">${d}</span>`).join('')}${[31, ...Array.from({ length: 30 }, (_, i) => i + 1), 1, 2, 3, 4].map((d, i) => { const out = i === 0 || i > 30; const wk = i >= 28 && i <= 32; const td = i === 30; const ev = !out && [1, 2, 3, 7, 8, 9, 10, 14, 15, 16, 17, 21, 22, 23, 24, 28, 29, 30].includes(d); return `<button type="button" class="${out ? 'o' : ''} ${wk && !td ? 'wk' : ''} ${td ? 'td' : ''} ${ev ? 'ev' : ''}">${d}</button>` }).join('')}</div>
+    </article>
+    <article class="card glass" style="padding:16px">
+      <div class="ch" style="margin-bottom:10px"><h3>Bu hafta</h3></div>
+      <div class="mstat"><div><b>12</b><span>toplantı</span></div><div><b>8,5</b><span>saat</span></div><div><b style="color:var(--warn)">7</b><span>efor yok</span></div></div>
+      <button type="button" class="btn pri sm" style="width:100%;justify-content:center;margin-top:12px" data-toast="7 toplantı efor olarak kaydedildi">Kaydedilmemişleri efora dönüştür</button>
+    </article>
+    <article class="card glass calsrc" style="padding:16px">
+      <div class="ch" style="margin-bottom:6px"><h3>Takvimler</h3></div>
+      <label><input type="checkbox" checked><span class="cs" style="background:var(--primary)"></span>Microsoft Teams</label>
+      <label><input type="checkbox" checked><span class="cs" style="background:var(--purple-500)"></span>Outlook</label>
+      <label><input type="checkbox" checked><span class="cs" style="background:var(--green-500)"></span>Efor kaydedilmiş</label>
+      <label><input type="checkbox"><span class="cs" style="background:var(--ink-3)"></span>İptal edilenler</label>
+    </article>
+  </aside>
+  <article class="card glass mgrid">
+    <div class="mg-top"><button type="button" class="btn sm ghost" aria-label="Önceki hafta">${svg('left')}</button><button type="button" class="btn sm ghost" aria-label="Sonraki hafta">${svg('right')}</button><b>28 Eylül – 2 Ekim</b><button type="button" class="btn sm">Bugün</button><span style="flex:1"></span>${seg('mview', [['day', 'Gün'], ['week', 'Hafta'], ['agenda', 'Ajanda']], 'week')}</div>
+    <div style="overflow-x:auto"><div class="tg2">
+      <div></div>${[['Pzt', 28], ['Sal', 29], ['Çar', 30, 1], ['Per', 1], ['Cum', 2]].map(([d, n, now], i) => `<div class="hd ${now ? 'now' : ''}"><small>${d}</small><b>${n}</b><span class="ct">${MTG[i].length} toplantı</span></div>`).join('')}
+      <div class="hours">${Array.from({ length: HN }, (_, i) => `<div>${String(H0 + i).padStart(2, '0')}:00</div>`).join('')}</div>
+      ${MTG.map((ms, di) => `<div class="dcol ${di === 2 ? 'now' : ''}" style="height:${HN * RH}px">${di === 2 ? `<div class="nowl" style="top:${(11.4 - H0) * RH}px"><span>11:24</span></div>` : ''}${ms.map(([st, m, t, who, cls, src]) => { const [h, mm] = st.split(':').map(Number); const top = (h - H0 + mm / 60) * RH; const ht = Math.max(30, m / 60 * RH - 4); const end = new Date(0, 0, 0, h, mm + m); const et = String(end.getHours()).padStart(2, '0') + ':' + String(end.getMinutes()).padStart(2, '0'); return `<div class="ev2 ${cls}" style="top:${top + 2}px;height:${ht}px;${src === 'Outlook' ? '--c:var(--purple-500)' : ''}" data-open="meeting" tabindex="0" role="button" aria-label="${t}, ${st}–${et}">${cls === 'logged' ? `<span class="lg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2"><path d="M5 12l5 5L20 7"/></svg></span>` : ''}<div class="et">${cls === 'priv' ? svg('lock') : svg('meet')}<span>${cls === 'priv' ? 'Özel toplantı' : t}</span></div><div class="em">${st}–${et}</div>${ht > 60 && who.length ? `<div class="avs">${who.slice(0, 4).map(av).join('')}</div>` : ''}</div>` }).join('')}</div>`).join('')}
+    </div></div>
+  </article>
+</div>`
 // ---------------- Talepler (agent hub)
 let tkSel = 'SUP-1042'
 const TK = [['SUP-1042', 'Mağaza kasasında fiş basılmıyor', 'LogiSlot', 'Vakko', 'open', 'high', '12 dk'], ['SUP-1039', 'Rapor ekranı yavaş açılıyor', 'Hermes', 'Beymen', 'progress', 'normal', '1 sa'], ['SUP-1033', 'Yeni kullanıcı daveti ulaşmadı', 'Hermes', 'Duosis', 'waiting', 'low', '3 sa'], ['SUP-1030', 'Sevkiyat planında saat dilimi hatası', 'LogiSlot', 'Arçelik', 'open', 'urgent', 'Dün'], ['SUP-1021', 'Fatura PDF adı yanlış', 'Hermes', 'Vakko', 'resolved', 'normal', '2 gün']]
@@ -923,7 +1211,7 @@ const SETS = [
   ['Entegrasyonlar', [['api', 'API yönetimi', 'key'], ['tint', 'Talep entegrasyonları', 'plug']]],
 ]
 PAGES.settings = () => ph('Ayarlar', 'Organizasyon, iş yönetimi, referans veriler, müşteriler ve entegrasyonlar') +
-`<div class="two enter"><nav class="snav glass" aria-label="Ayarlar"><input id="set-q" placeholder="Ayar ara…" aria-label="Ayar ara">${SETS.map(([g, it]) => `<h6>${g}</h6>${it.map(([id, l, ic]) => `<button type="button" data-set="${id}" class="${setPage === id ? 'on' : ''}">${svg(ic)}${l}</button>`).join('')}`).join('')}</nav><div id="sbody" style="min-width:0">${SET[setPage]()}</div></div>`
+`<div class="two enter"><nav class="snav glass" aria-label="Ayarlar"><input id="set-q" placeholder="Ayar ara…" aria-label="Ayar ara">${SETS.map(([g, it]) => `<h6>${g}</h6>${it.map(([id, l, ic]) => `<button type="button" data-set="${id}" class="${setPage === id ? 'on' : ''}"><span class="si">${svg(ic)}</span>${l}</button>`).join('')}`).join('')}</nav><div id="sbody" style="min-width:0">${SET[setPage]()}</div></div>`
 const refTable = (title, code, rows) => `<article class="card glass"><div class="ch"><div><h3 style="font-size:18px">${title}</h3><div class="muted" style="font-size:13px">${title} listesini yönet</div></div><div style="display:flex;gap:8px"><label class="field" style="width:200px">${svg('search')}<input placeholder="Ara"></label><button type="button" class="btn pri sm" data-open="refform">${svg('plus')}Ekle</button></div></div><div class="tw"><table><thead><tr><th>Ad</th><th>Kod</th><th>Açıklama</th><th>Aktif</th><th></th></tr></thead><tbody>${rows.map(([n, c, d, a]) => `<tr><td style="font-weight:500">${n}</td><td>${tag(code, c)}</td><td class="muted">${d}</td><td><button type="button" class="sw ${a ? 'on' : ''}" aria-label="Aktif" data-sw></button></td><td style="text-align:right"><button type="button" class="btn sm ghost">Düzenle</button></td></tr>`).join('')}</tbody></table></div></article>`
 const SET = {
   users: () => `<article class="card glass"><div class="ch"><div><h3 style="font-size:18px">Kullanıcılar ve roller</h3><div class="muted" style="font-size:13px">Kullanıcıları, rolleri ve grupları yönet</div></div>${seg('utab', [['users', 'Kullanıcılar'], ['roles', 'Roller'], ['groups', 'Gruplar']], userTab)}</div>${userTab === 'users' ? `<div class="axis"><label class="field" style="width:240px">${svg('search')}<input placeholder="İsim ya da e-posta"></label><span class="sp"></span><button type="button" class="btn pri sm" data-open="user">${svg('plus')}Yeni kullanıcı</button></div><div class="tw"><table><thead><tr><th>Kişi</th><th>Roller</th><th>Durum</th><th></th></tr></thead><tbody>${[['AL', 'ada@duosis.com', ['Sistem yöneticisi'], 1], ['GH', 'grace@duosis.com', ['Proje lideri', 'Raporlar'], 1], ['AT', 'alan@duosis.com', ['Çalışan'], 1], ['KJ', 'katherine@duosis.com', ['Çalışan'], 0]].map(([k, e, r, a]) => `<tr><td><div style="display:flex;gap:10px;align-items:center">${av(k)}<div><b style="font-weight:600">${U[k][0]}</b><div class="muted" style="font-size:12px">${e}</div></div></div></td><td>${r.map((x) => tag(x === 'Sistem yöneticisi' ? 'violet' : 'info', x)).join(' ')}</td><td>${a ? tag('ok', 'Aktif', 1) : tag('', 'Pasif', 1)}</td><td style="text-align:right"><button type="button" class="btn sm ghost" data-open="user">Düzenle</button></td></tr>`).join('')}</tbody></table></div>` : userTab === 'roles' ? `<div class="axis"><span class="sp"></span><button type="button" class="btn pri sm">${svg('plus')}Yeni rol</button></div><div class="bento">${[['Sistem yöneticisi', 'system-admin', 25, 1, 1], ['Proje lideri', 'project-lead', 9, 4], ['Raporlar', 'reports', 3, 2], ['Çalışan', 'member', 3, 18], ['Destek ajanı', 'support-agent', 6, 5]].map(([n, c, p, m, sys]) => `<article class="card glass c4" style="padding:16px"><div style="display:flex;justify-content:space-between;align-items:start"><div><b>${sys ? '🔒 ' : ''}${n}</b><div class="lk">${c}</div></div>${tag('ok', 'Aktif')}</div><div style="display:flex;gap:18px;margin-top:14px" class="kpi"><div><b style="font-size:22px">${p}</b><span>izin</span></div><div><b style="font-size:22px">${m}</b><span>üye</span></div></div></article>`).join('')}</div>` : `<div class="axis"><span class="sp"></span><button type="button" class="btn pri sm">${svg('plus')}Grup oluştur</button></div>${[['Yöneticiler', 'Yerleşik', 2], ['Genel kullanıcılar', 'Yerleşik', 22], ['Destek-1', 'Vakko ve Beymen talepleri', 5], ['Mobil ekip', 'iOS ve Android', 4]].map(([n, d, m]) => `<details class="sec glass" style="margin-bottom:8px"><summary><span class="ic">${svg('users')}</span><span><b>${n}</b><small>${d}</small></span><span class="tag" style="margin-left:auto">${m} üye</span><span class="chev">${svg('down')}</span></summary><div class="in"><div class="avs">${['AL', 'GH', 'AT', 'KJ'].slice(0, Math.min(4, m)).map(av).join('')}</div><button type="button" class="btn sm" style="margin-top:10px">Üye ekle</button></div></details>`).join('')}`}</article>`,
@@ -968,37 +1256,42 @@ PAGES.platform = () => ph('Platform konsolu', '<span class="tag violet">PLATFORM
 <article class="card glass c12" style="padding:8px"><div class="tw"><table><thead><tr><th>Organizasyon</th><th>Slug</th><th>Durum</th><th>Plan</th><th>Üye</th><th></th></tr></thead><tbody>${[['Duosis', 'duosis', 'ok', 'Enterprise', 24], ['Techart', 'techart', 'ok', 'Team', 8], ['Demo A.Ş.', 'demo', 'warn', 'Trial', 2]].map(([n, s, st, p, m]) => `<tr><td style="font-weight:600">${n}</td><td class="mono">${s}</td><td>${tag(st, st === 'ok' ? 'Aktif' : 'Askıda', 1)}</td><td>${tag('violet', p)}</td><td>${m}</td><td style="text-align:right;white-space:nowrap"><button type="button" class="btn sm">Destek erişimi</button><button type="button" class="btn sm ghost">Düzenle</button></td></tr>`).join('')}</tbody></table></div></article></div>`
 
 // ================================================================ MODALLAR
+const MH = (ic, title, sub, color) => `<div class="mh"><div class="mhl"><span class="mico" ${color ? `style="background:${color}"` : ''}>${svg(ic)}</span><div><h2>${title}</h2>${sub ? `<div class="msub">${sub}</div>` : ''}</div></div><button type="button" class="btn sm ghost" data-close aria-label="Kapat">${svg('x')}</button></div>`
 const scrim = $('#scrim'), modal = $('#modal')
 let logStep = 0, logSel = {}
 const MODALS = {
   log: () => {
-    const head = `<div class="mh"><div><div class="muted" style="font-size:12.5px">Adım ${logStep + 1} / 3</div><h2>${['Müşteri seç', 'Proje seç', 'Efor gir'][logStep]}</h2></div><button type="button" class="btn sm ghost" data-close aria-label="Kapat">${svg('x')}</button></div><div class="steps">${[0, 1, 2].map((i) => `<i class="${i <= logStep ? 'on' : ''}"></i>`).join('')}</div>`
-    if (logStep === 0) return head + `<label class="field" style="margin-bottom:12px">${svg('search')}<input id="lt-c" placeholder="Müşteri ara"></label><div class="opt">${[['Vakko', '3 proje · son: ATM'], ['Beymen', '2 proje · son: Portal'], ['Duosis', '5 proje · iç'], ['Arçelik', '2 proje']].map(([n, d]) => `<button type="button" data-pick="c" data-v="${n}"><b>${n}</b><small>${d}</small></button>`).join('')}</div>`
-    if (logStep === 1) return head + `<button type="button" class="btn sm ghost" data-back>${svg('left')}${logSel.c}</button><div class="opt" style="margin-top:12px">${[['ATM', '9 açık iş'], ['Mağaza', '3 açık iş']].map(([n, d]) => `<button type="button" data-pick="p" data-v="${n}"><b>${n}</b><small>${d}</small></button>`).join('')}</div>`
+    const head = MH('time', 'Efor gir', 'Çarşamba, 30 Eylül · bu hafta 13 / 40 saat') + `<div class="steps2">${['Müşteri', 'Proje', 'Ayrıntılar'].map((l, i) => `<span class="${i <= logStep ? 'on' : ''} ${i === logStep ? 'cur' : ''}">${i + 1}. ${l}${i < logStep ? ` · <b style="color:var(--ink)">${i ? logSel.p : logSel.c}</b>` : ''}</span>`).join('')}</div>`
+    if (logStep === 0) return head + `<label class="field" style="margin-bottom:12px">${svg('search')}<input id="lt-c" placeholder="Müşteri ara"></label><div class="bk-h" style="margin-top:0">Son kullanılanlar</div><div class="opt">${[['Vakko', '3 proje · son: ATM', '#0C66E4'], ['Beymen', '2 proje · son: Portal', '#8F7EE7'], ['Duosis', '5 proje · iç', '#22A06B'], ['Arçelik', '2 proje', '#E2B203']].map(([n, d, c]) => `<button type="button" data-pick="c" data-v="${n}"><span class="oi" style="background:${c}">${n[0]}</span><span><b>${n}</b><small>${d}</small></span></button>`).join('')}</div><div style="height:6px"></div>`
+    if (logStep === 1) return head + `<button type="button" class="btn sm ghost" data-back>${svg('left')}${logSel.c}</button><div class="opt" style="margin-top:12px">${[['ATM', '9 açık iş · faturalanabilir'], ['Mağaza', '3 açık iş · faturalanabilir']].map(([n, d]) => `<button type="button" data-pick="p" data-v="${n}"><span class="oi" style="background:var(--fill-2);color:var(--ink)">${n[0]}</span><span><b>${n}</b><small>${d}</small></span></button>`).join('')}</div><div style="height:6px"></div>`
     return head + `<button type="button" class="btn sm ghost" data-back>${svg('left')}${logSel.c} · ${logSel.p}</button>
-    <div class="frm" style="margin-top:14px"><label>Tarih<input class="inp" id="lt-d" value="30 Eylül 2026"></label><label>Süre<span class="dur">${['15dk', '30dk', '1s', '2s', '4s', '8s'].map((x, i) => `<button type="button" class="${i === 3 ? 'on' : ''}" data-tg1>${x}</button>`).join('')}</span></label>
-    <label class="full">Açıklama<textarea class="inp" id="lt-desc" rows="2" placeholder="Ne üzerinde çalıştın?"></textarea></label>
-    <label>İş kalemi (isteğe bağlı)<select class="inp" id="lt-w"><option>TASK-56 · Sertifika yenileme</option><option>TASK-48 · Log rotasyonu</option><option>—</option></select></label><label>İş türü<select class="inp" id="lt-t"><option>Geliştirme</option><option>Toplantı</option></select></label>
+    <div class="frm" style="margin-top:14px"><span class="grp">Ne zaman, ne kadar</span><label>Tarih<input class="inp" id="lt-d" value="30 Eylül 2026"></label><label>Süre<span class="dur">${['15dk', '30dk', '1s', '2s', '4s', '8s'].map((x, i) => `<button type="button" class="${i === 3 ? 'on' : ''}" data-tg1>${x}</button>`).join('')}</span></label>
+    <span class="grp">Ne yaptın</span><label class="full">Açıklama<textarea class="inp" id="lt-desc" rows="2" placeholder="Ne üzerinde çalıştın?"></textarea></label>
+    <label>İş kalemi (isteğe bağlı)<select class="inp" id="lt-w"><option>TASK-56 · Sertifika yenileme</option><option>TASK-48 · Log rotasyonu</option><option>—</option></select></label><span class="grp" style="display:none"></span><label>İş türü<select class="inp" id="lt-t"><option>Geliştirme</option><option>Toplantı</option></select></label>
     <label>Faaliyet türü<select class="inp" id="lt-a"><option>Kodlama</option><option>Analiz</option></select></label><label>Platform<select class="inp" id="lt-pl"><option>Backend</option><option>Web</option></select></label></div>
     <div class="mf"><span class="l"><input type="checkbox" id="lt-more"><label for="lt-more">Bir tane daha gir</label></span><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn pri" data-save="Efor kaydedildi · 2 saat">Kaydet</button></div>`
   },
-  task: () => `<div class="mh"><h2>Yeni iş</h2><button type="button" class="btn sm ghost" data-close aria-label="Kapat">${svg('x')}</button></div>${seg('ttype', [['task', 'Görev'], ['issue', 'Issue'], ['sug', 'Öneri']], 'task')}
-    <div class="frm" style="margin-top:16px"><label class="full">Başlık<input class="inp" id="nt-t" placeholder="Kısa ve net bir başlık"></label><label>Müşteri<select class="inp"><option>Vakko</option></select></label><label>Proje<select class="inp"><option>ATM</option></select></label><label>Alt proje<select class="inp"><option>—</option><option>Faz 1</option></select></label><label>Atananlar<div class="field" style="border-radius:12px"><span class="avs">${av('AL')}${av('AT')}</span><span class="muted" style="font-size:12.5px">+ kişi ya da grup</span></div></label>
-    <label class="full">Açıklama<textarea class="inp" rows="3"></textarea></label><label>Planlanan tarih<input class="inp" value="30 Eyl 2026"></label><label>Termin<input class="inp" value="3 Eki 2026"></label>
+  task: () => `${MH('work', 'Yeni iş', 'Vakko · ATM projesine eklenir')}${seg('ttype', [['task', 'Görev'], ['issue', 'Issue'], ['sug', 'Öneri']], 'task')}
+    <div class="frm" style="margin-top:16px"><label class="full">Başlık<input class="inp" id="nt-t" placeholder="Kısa ve net bir başlık"></label><span class="grp">Nerede, kimde</span><label>Müşteri<select class="inp"><option>Vakko</option></select></label><label>Proje<select class="inp"><option>ATM</option></select></label><label>Alt proje<select class="inp"><option>—</option><option>Faz 1</option></select></label><label>Atananlar<div class="field" style="border-radius:12px"><span class="avs">${av('AL')}${av('AT')}</span><span class="muted" style="font-size:12.5px">+ kişi ya da grup</span></div></label>
+    <label class="full">Açıklama<textarea class="inp" rows="3"></textarea></label><span class="grp">Zaman ve öncelik</span><label>Planlanan tarih<input class="inp" value="30 Eyl 2026"></label><label>Termin<input class="inp" value="3 Eki 2026"></label>
     <label>Öncelik<span class="dur">${['Düşük', 'Orta', 'Yüksek', 'Acil'].map((x, i) => `<button type="button" class="${i === 1 ? 'on' : ''}" data-tg1>${x}</button>`).join('')}</span></label><label style="flex-direction:row;align-items:center;gap:10px;margin-top:22px"><button type="button" class="sw on" data-sw aria-label="Faturalanabilir"></button>Faturalanabilir (projeden)</label></div>
     <div class="mf"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn pri" data-save="İş oluşturuldu · TASK-64">Oluştur</button></div>`,
-  plan: () => `<div class="mh"><h2>Plan zamanı</h2><button type="button" class="btn sm ghost" data-close aria-label="Kapat">${svg('x')}</button></div><div class="frm"><label>Müşteri<select class="inp"><option>Vakko</option></select></label><label>Proje<select class="inp"><option>ATM</option></select></label><label>Başlangıç<input class="inp" value="1 Eki 2026"></label><label>Bitiş<input class="inp" value="1 Eki 2026"></label><label>Saat<input class="inp" value="09:00 – 13:00"></label><label>Tekrar<span class="dur"><button type="button" class="on" data-tg1>Tek sefer</button><button type="button" data-tg1>Haftalık</button><button type="button" data-tg1>Aylık</button></span></label><label class="full">Davetliler<div class="field" style="border-radius:12px"><span class="avs">${av('GH')}${av('AT')}${av('KJ')}</span><span class="muted" style="font-size:12.5px">3 kişi · kabul bekliyor</span></div></label><label class="full">Açıklama<textarea class="inp" rows="2"></textarea></label></div><div class="mf"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn pri" data-save="Plan gönderildi">Gönder</button></div>`,
-  meeting: () => `<div class="mh"><div><div class="muted" style="font-size:12.5px">Microsoft Teams</div><h2>Haftalık planlama</h2></div><button type="button" class="btn sm ghost" data-close aria-label="Kapat">${svg('x')}</button></div><dl class="dl"><dt>Tarih</dt><dd>Çarşamba, 30 Eylül</dd><dt>Saat</dt><dd>14:00 – 15:00 · 60 dk</dd><dt>Düzenleyen</dt><dd>Grace Hopper</dd><dt>Katılımcılar</dt><dd><span class="avs">${['AL', 'GH', 'AT', 'KJ', 'LT'].map(av).join('')}</span> <span class="muted">+7</span></dd></dl><p class="muted" style="margin-top:14px">Sprint hedefleri, kapasite ve riskler.</p><div class="mf"><a class="btn" href="#">Teams'te aç</a><button type="button" class="btn pri" data-save="Toplantı eforu kaydedildi · 1 saat">Efor olarak kaydet</button></div>`,
-  saveview: () => `<div class="mh"><h2>Görünümü kaydet</h2><button type="button" class="btn sm ghost" data-close aria-label="Kapat">${svg('x')}</button></div><div class="frm" style="grid-template-columns:1fr"><label>Ad<input class="inp" id="sv-n" placeholder="örn. Vakko gecikmişler"></label><label>Görünürlük${seg('vis', [['me', 'Yalnız ben'], ['all', 'İş erişimi olan herkes']], 'me')}</label></div><div class="mf"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn pri" data-save="Görünüm kaydedildi">Kaydet</button></div>`,
-  convert: () => `<div class="mh"><h2>Talepten iş kalemi</h2><button type="button" class="btn sm ghost" data-close aria-label="Kapat">${svg('x')}</button></div><div class="sig">İş sana atanır ve talebe geri bağlanır.</div><div class="frm" style="margin-top:12px"><label>Müşteri<select class="inp"><option>Vakko</option></select></label><label>Proje<select class="inp"><option>Mağaza</option></select></label><label class="full">Başlık<input class="inp" value="Mağaza kasasında fiş basılmıyor"></label><label>Öncelik<span class="dur"><button type="button" data-tg1>Orta</button><button type="button" class="on" data-tg1>Yüksek</button></span></label><label>Termin<input class="inp" value="2 Eki 2026"></label></div><div class="mf"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn pri" data-save="İş kalemi oluşturuldu · ISSUE-13">Oluştur</button></div>`,
-  newticket: () => `<div class="mh"><h2>Yeni destek talebi</h2><button type="button" class="btn sm ghost" data-close aria-label="Kapat">${svg('x')}</button></div><div class="bk-h">Kategori</div><div class="dur">${['Hata', 'Kesinti', 'İyileştirme', 'Soru', 'Veri düzeltme'].map((x, i) => `<button type="button" class="${i ? '' : 'on'}" data-tg1>${x}</button>`).join('')}</div><div class="bk-h" style="margin-top:14px">Etki</div><div class="opt">${[['Tek kullanıcı', 'Yalnız ben etkileniyorum'], ['Birden fazla kullanıcı', 'Ekip etkileniyor'], ['Çalışamıyoruz', 'İş durdu'], ['Güvenlik / veri riski', 'Hemen bakılmalı']].map(([a, b]) => `<button type="button"><b>${a}</b><small>${b}</small></button>`).join('')}</div><div class="frm" style="grid-template-columns:1fr;margin-top:14px"><label>Başlık<input class="inp" maxlength="160"></label><label>Açıklama<textarea class="inp" rows="3"></textarea></label></div><div class="mf"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn pri" data-save="Talep gönderildi · SUP-1043">Gönder</button></div>`,
-  user: () => `<div class="mh"><h2>Kullanıcı</h2><button type="button" class="btn sm ghost" data-close aria-label="Kapat">${svg('x')}</button></div><div class="frm"><label>E-posta<input class="inp" value="alan@duosis.com"></label><label>Ad soyad<input class="inp" value="Alan Turing"></label><label class="full">Roller<div class="dur"><button type="button" data-tg>Sistem yöneticisi</button><button type="button" class="on" data-tg>Çalışan</button><button type="button" data-tg>Proje lideri</button><button type="button" data-tg>Raporlar</button></div></label><label style="flex-direction:row;align-items:center;gap:10px"><button type="button" class="sw on" data-sw aria-label="Aktif"></button>Aktif</label></div><div class="mf"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn pri" data-save="Kullanıcı kaydedildi">Kaydet</button></div>`,
-  members: () => `<div class="mh"><h2>ATM üyeleri</h2><button type="button" class="btn sm ghost" data-close aria-label="Kapat">${svg('x')}</button></div>${['AL', 'GH', 'AT'].map((k, i) => `<div class="mem" style="grid-template-columns:30px 1fr auto auto">${av(k)}<span>${U[k][0]}</span><span class="seg" style="transform:scale(.9)"><button type="button" class="${i === 0 ? 'on' : ''}">Lider</button><button type="button" class="${i ? 'on' : ''}">Üye</button><button type="button">İzleyici</button></span><button type="button" class="btn sm ghost danger">Çıkar</button></div>`).join('')}<div class="mf"><button type="button" class="btn">${svg('plus')}Üye ekle</button><button type="button" class="btn pri" data-close>Tamam</button></div>`,
-  token: () => `<div class="mh"><h2>API token oluşturuldu</h2><button type="button" class="btn sm ghost" data-close aria-label="Kapat">${svg('x')}</button></div><div class="sig warn">Bu token bir daha gösterilmeyecek. Şimdi güvenli bir yere kaydet.</div><div class="code" style="margin-top:12px"><button type="button" class="cp" data-copy>Kopyala</button>hms_live_••••••••••••••••••••3f9a</div><div class="mf"><span class="l"><input type="checkbox" id="tk-ok"><label for="tk-ok">Kopyaladım ve güvenle sakladım</label></span><button type="button" class="btn pri" data-close>Kapat</button></div>`,
-  refform: () => `<div class="mh"><h2>Yeni kayıt</h2><button type="button" class="btn sm ghost" data-close aria-label="Kapat">${svg('x')}</button></div><div class="frm"><label>Ad<input class="inp" id="rf-n"></label><label>Kod<input class="inp mono" id="rf-c" placeholder="otomatik"></label><label class="full">Açıklama<textarea class="inp" rows="2"></textarea></label></div><div class="mf"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn pri" data-save="Kaydedildi">Kaydet</button></div>`,
+  plan: () => `${MH('meet', 'Plan zamanı', 'Ekibe zaman daveti gönder', 'linear-gradient(145deg,#B8ACF6,#6E5DD3)')}<div class="frm"><label>Müşteri<select class="inp"><option>Vakko</option></select></label><label>Proje<select class="inp"><option>ATM</option></select></label><label>Başlangıç<input class="inp" value="1 Eki 2026"></label><label>Bitiş<input class="inp" value="1 Eki 2026"></label><label>Saat<input class="inp" value="09:00 – 13:00"></label><label>Tekrar<span class="dur"><button type="button" class="on" data-tg1>Tek sefer</button><button type="button" data-tg1>Haftalık</button><button type="button" data-tg1>Aylık</button></span></label><label class="full">Davetliler<div class="field" style="border-radius:12px"><span class="avs">${av('GH')}${av('AT')}${av('KJ')}</span><span class="muted" style="font-size:12.5px">3 kişi · kabul bekliyor</span></div></label><label class="full">Açıklama<textarea class="inp" rows="2"></textarea></label></div><div class="mf"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn pri" data-save="Plan gönderildi">Gönder</button></div>`,
+  meeting: () => `<div class="mhero"><button type="button" class="btn sm x" data-close aria-label="Kapat">${svg('x')}</button><small>Microsoft Teams · Grace Hopper düzenliyor</small><h2>Haftalık planlama</h2><div class="chips"><span>Çarşamba, 30 Eylül</span><span>14:00 – 15:00</span><span>60 dk</span><span>12 katılımcı</span></div></div>
+    <div class="mcols"><div><div class="bk-h" style="margin-top:0">Gündem</div><ol style="margin:0;padding-left:18px;color:var(--ink-2);line-height:1.8"><li>Sprint hedefleri ve kapasite</li><li>Vakko ATM sertifika riski</li><li>Beymen demo hazırlığı</li></ol>
+      <div class="bk-h">Efor olarak kaydet</div><div class="field" style="border-radius:14px;justify-content:space-between"><span><b>Duosis · İç</b><span class="muted"> · Toplantı</span></span><span class="dur"><button type="button" data-tg1>30 dk</button><button type="button" class="on" data-tg1>1 sa</button></span></div></div>
+      <div><div class="bk-h" style="margin-top:0">Katılımcılar</div>${[['GH', 'Düzenleyen', 'ok', 'Kabul'], ['AL', '', 'ok', 'Kabul'], ['AT', '', 'warn', 'Belki'], ['KJ', '', '', 'Yanıt yok'], ['LT', '', 'ok', 'Kabul']].map(([k, r, c, st]) => `<div class="att">${av(k)}<span>${U[k][0]}${r ? ` <span class="muted" style="font-size:12px">· ${r}</span>` : ''}</span><span class="rs">${tag(c, st)}</span></div>`).join('')}<div class="muted" style="font-size:12.5px;margin-top:6px">+7 kişi</div></div></div>
+    <div class="mf"><a class="btn" href="#">${svg('meet')}Teams'te aç</a><button type="button" class="btn pri" data-save="Toplantı eforu kaydedildi · 1 saat">${svg('time')}Efor olarak kaydet</button></div>`,
+  saveview: () => `${MH('filter', 'Görünümü kaydet', 'Filtre, yerleşim ve gruplama birlikte saklanır')}<div class="frm" style="grid-template-columns:1fr"><label>Ad<input class="inp" id="sv-n" placeholder="örn. Vakko gecikmişler"></label><label>Görünürlük${seg('vis', [['me', 'Yalnız ben'], ['all', 'İş erişimi olan herkes']], 'me')}</label></div><div class="mf"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn pri" data-save="Görünüm kaydedildi">Kaydet</button></div>`,
+  convert: () => `${MH('ticket', 'Talepten iş kalemi', 'SUP-1042 · Mağaza kasasında fiş basılmıyor', 'linear-gradient(145deg,#F87168,#C9372C)')}<div class="sig">İş sana atanır ve talebe geri bağlanır.</div><div class="frm" style="margin-top:12px"><label>Müşteri<select class="inp"><option>Vakko</option></select></label><label>Proje<select class="inp"><option>Mağaza</option></select></label><label class="full">Başlık<input class="inp" value="Mağaza kasasında fiş basılmıyor"></label><label>Öncelik<span class="dur"><button type="button" data-tg1>Orta</button><button type="button" class="on" data-tg1>Yüksek</button></span></label><label>Termin<input class="inp" value="2 Eki 2026"></label></div><div class="mf"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn pri" data-save="İş kalemi oluşturuldu · ISSUE-13">Oluştur</button></div>`,
+  newticket: () => `${MH('ticket', 'Yeni destek talebi', 'Duosis destek ekibine iletilir', 'linear-gradient(145deg,#F87168,#C9372C)')}<div class="bk-h">Kategori</div><div class="dur">${['Hata', 'Kesinti', 'İyileştirme', 'Soru', 'Veri düzeltme'].map((x, i) => `<button type="button" class="${i ? '' : 'on'}" data-tg1>${x}</button>`).join('')}</div><div class="bk-h" style="margin-top:14px">Etki</div><div class="opt">${[['Tek kullanıcı', 'Yalnız ben etkileniyorum'], ['Birden fazla kullanıcı', 'Ekip etkileniyor'], ['Çalışamıyoruz', 'İş durdu'], ['Güvenlik / veri riski', 'Hemen bakılmalı']].map(([a, b]) => `<button type="button"><b>${a}</b><small>${b}</small></button>`).join('')}</div><div class="frm" style="grid-template-columns:1fr;margin-top:14px"><label>Başlık<input class="inp" maxlength="160"></label><label>Açıklama<textarea class="inp" rows="3"></textarea></label></div><div class="mf"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn pri" data-save="Talep gönderildi · SUP-1043">Gönder</button></div>`,
+  user: () => `${MH('users', 'Kullanıcıyı düzenle', 'Alan Turing · alan@duosis.com')}<div class="frm"><label>E-posta<input class="inp" value="alan@duosis.com"></label><label>Ad soyad<input class="inp" value="Alan Turing"></label><label class="full">Roller<div class="dur"><button type="button" data-tg>Sistem yöneticisi</button><button type="button" class="on" data-tg>Çalışan</button><button type="button" data-tg>Proje lideri</button><button type="button" data-tg>Raporlar</button></div></label><label style="flex-direction:row;align-items:center;gap:10px"><button type="button" class="sw on" data-sw aria-label="Aktif"></button>Aktif</label></div><div class="mf"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn pri" data-save="Kullanıcı kaydedildi">Kaydet</button></div>`,
+  members: () => `${MH('users', 'ATM üyeleri', 'Vakko · lider kendi ekibini yönetir')}${['AL', 'GH', 'AT'].map((k, i) => `<div class="mem" style="grid-template-columns:30px 1fr auto auto">${av(k)}<span>${U[k][0]}</span><span class="seg" style="transform:scale(.9)"><button type="button" class="${i === 0 ? 'on' : ''}">Lider</button><button type="button" class="${i ? 'on' : ''}">Üye</button><button type="button">İzleyici</button></span><button type="button" class="btn sm ghost danger">Çıkar</button></div>`).join('')}<div class="mf"><button type="button" class="btn">${svg('plus')}Üye ekle</button><button type="button" class="btn pri" data-close>Tamam</button></div>`,
+  token: () => `${MH('key', 'API token oluşturuldu', 'Reporting Bot · canlı ortam', 'linear-gradient(145deg,#4BCE97,#1F845A)')}<div class="sig warn">Bu token bir daha gösterilmeyecek. Şimdi güvenli bir yere kaydet.</div><div class="code" style="margin-top:12px"><button type="button" class="cp" data-copy>Kopyala</button>hms_live_••••••••••••••••••••3f9a</div><div class="mf"><span class="l"><input type="checkbox" id="tk-ok"><label for="tk-ok">Kopyaladım ve güvenle sakladım</label></span><button type="button" class="btn pri" data-close>Kapat</button></div>`,
+  refform: () => `${MH('ref', 'Yeni kayıt', 'Kod addan otomatik üretilir')}<div class="frm"><label>Ad<input class="inp" id="rf-n"></label><label>Kod<input class="inp mono" id="rf-c" placeholder="otomatik"></label><label class="full">Açıklama<textarea class="inp" rows="2"></textarea></label></div><div class="mf"><button type="button" class="btn ghost" data-close>Vazgeç</button><button type="button" class="btn pri" data-save="Kaydedildi">Kaydet</button></div>`,
 }
 function openModal(kind, origin) {
-  if (kind === 'dock') { openDrop('dock'); return }
+  if (kind === 'dock') { openDrop('cmd'); return }
   if (kind === 'log') { logStep = 0; logSel = {} }
   modal.innerHTML = MODALS[kind]()
   if (origin && !reduce) {
@@ -1079,7 +1372,6 @@ document.addEventListener('click', (e) => {
     if (id === 'arch') { archive = d.v; toast(archive === 'archive' ? 'Arşiv havuzu · salt okunur' : 'Aktif işler') }
     return
   }
-  if (t.id === 'dockBtn') { openDrop('dock'); return }
   if (t.id === 'searchBtn') { openDrop('cmd'); return }
   if (t.id === 'liveBtn') { openDrop('live'); return }
   if (t.id === 'bellBtn') { openDrop('bell'); return }
@@ -1088,10 +1380,14 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { closeDrop(); closeModal(); closePanel() }
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openDrop('cmd') }
+  if (e.target.id === 'cmdIn' && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); const bs = $$('#cmdRes button'); const i = bs.findIndex((b) => b.classList.contains('sel')); const n = (i + (e.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length; bs.forEach((b, j) => b.classList.toggle('sel', j === n)); bs[n]?.scrollIntoView({ block: 'nearest' }) }
   if (e.key === 'Enter' && e.target.id === 'cmdIn') { $('#cmdRes button.sel')?.click() }
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[role="button"][data-task], .tc[data-task], .mt[data-open]')) { e.preventDefault(); e.target.click() }
 })
 addEventListener('pointermove', (e) => { const bm = $('#bm'); bm.style.setProperty('--mx', e.clientX - innerWidth * .13 + 'px'); bm.style.setProperty('--my', e.clientY - innerWidth * .13 + 'px') }, { passive: true })
+const dockD = $('#dockD')
+dockD.addEventListener('pointermove', (e) => { if (reduce) return; $$('.di', dockD).forEach((b) => { const r = b.getBoundingClientRect(); const d = Math.abs(e.clientX - (r.left + r.width / 2)); const k = Math.max(0, 1 - d / 150); const sz = 44 + 22 * k * k; b.style.width = sz + 'px'; b.style.height = sz + 'px' }) })
+dockD.addEventListener('pointerleave', () => $$('.di', dockD).forEach((b) => { b.style.width = ''; b.style.height = '' }))
 addEventListener('resize', () => { moveInd(); $$('.seg').forEach(segInd) })
 
 try { const th = localStorage.getItem('hermes-liquid-theme'); if (th === 'dark' || th === 'light') document.documentElement.setAttribute('data-theme', th) } catch {}
