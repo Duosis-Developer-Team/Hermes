@@ -173,6 +173,10 @@ Prototip: https://claude.ai/artifact/HXXunk5DuR4VXEAVonnQfp · kopya
 | Kalanlar | `956d332` | Çizelge, iş detay paneli (öncelik/durum i18n), tüm modallar (cam sayfa + yaylanan giriş), Platform konsolu |
 | Masaüstü | `8e42adc` | İlk boya sıvı zemin tonunda; .dmg yeniden üretildi (`desktop/dist`, 28.09 22:15) |
 
+| Zemin + işaret | `917c2a5` | Açık tema: nötr gümüş sıvı + %30 cam (saydam his); kutulu Hermes işareti iki temada (`--h-mark-*`); masaüstü vibrancy denemesi geri alındı (uygulama web ile aynı zemin) |
+| Pencereler v2 | `c62ef0a` … `9d25805` | Tüm modallar prototip anatomisinde: ModalHead (ikon kutusu), adım çubuğu, seçenek kartları, çip seçici (anlamsal radyo), bölüm etiketleri, yapışkan cam alt çubuk; Efor gir 3 adım kartlarla; Yeni iş/Plan/Toplantı (kahraman şerit)/İş inceleme; onaylar; Filtreler ve tüm çekmeceler yüzen cam panel (`lq-sheet`) |
+| Dev mock veri | `03157e6` | `app.jobs.dev_seed` (auth + core), yalnız hermes-dev (4 katlı kapı); 29.09 hermes-dev'e tohumlandı — runbook `docs/dev-seed.md` |
+
 Akıcılık: CDP ile ölçüldü — ana sayfa kart bulanıklığıyla 60 fps (p95 16.8 ms).
 Electron = Chromium, dolayısıyla View Transitions / backdrop-filter / dock web ile
 masaüstünde AYNI; masaüstü ek olarak başlıksız pencere + sürükleme bölgesi taşır.
