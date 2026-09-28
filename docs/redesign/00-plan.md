@@ -4,8 +4,8 @@ CTO kararları (28.09): masaüstü = yerel kabuk, sunucudaki Hermes'i açar ·
 varsayılan sunucu test, menüden dev · şimdilik imzasız (ad-hoc) .dmg ·
 tasarım: önce tasarım sistemi + kabuk, sonra modül modül (dev'de).
 
-Referans: Dribbble "AgroControl" (dynamic island). Sayfa bu ortamdan
-okunamadı; yön prototipte yorumlandı ve onaya sunuldu:
+Referans: Dribbble "AgroControl" — ekran görüntüsü `referans-goruntuler/image.png`.
+Prototip v2 referansa göre yeniden yazıldı (onay bekliyor):
 https://claude.ai/artifact/BuBrMnUhjW3ysM2VV3CYGB
 
 ## 1. Masaüstü uygulaması — YAPILDI (`18a1109`)
@@ -14,16 +14,20 @@ https://claude.ai/artifact/BuBrMnUhjW3ysM2VV3CYGB
 imza + notarization, otomatik güncelleme, yeni tasarımla `hiddenInset`
 başlık çubuğu.
 
-## 2. Tasarım dili (prototipte)
+## 2. Tasarım dili (prototip v2, referanstan)
 
 | Öğe | Karar |
 |---|---|
-| Gezinme | Sol kenar menüsü kalkar. Üstte ortada yüzen koyu **ada**: 4–5 ana modül (Ana sayfa, İşler, Zaman, Toplantılar, +Talepler izinle), canlı durum (çalışan zamanlayıcı / 15 dk içindeki toplantı), arama, bildirim, profil. Diğer modüller **Tümü** başlatıcısı ve ⌘K komut paletinde (Çalışma · Yönetim · Sistem). |
-| Canlı ada | Duruma göre genişler (zamanlayıcı kontrolleri, toplantıya katıl). Masaüstünde pencere başlığının yerine oturur. |
-| Yüzeyler | Zemin açık mavi-gri; kartlar beyaz, 28 px radius, yumuşak gölge, içerik kadar yüksek (bento). Koyu tema eşdeğeri. |
-| Renk | Mürekkep `#11141B`, vurgu `#5B6CFF` (yalnız birincil eylem + seçim). Anlamsal: gecikmiş kırmızı, bugün amber, tamam yeşil — E4 kuralı korunur (kartta tek renkli sinyal = termin). |
-| Tip | Başlık/sayılar Bricolage Grotesque, gövde Onest, kodlar JetBrains Mono (self-host edilecek). |
-| Kontroller | Hap (pill) segmentler, siyah seçili durum; antd tema token'larıyla (ConfigProvider) hizalanır — bileşen kütüphanesi değişmez. |
+| Zemin | Tam ekran fotoğraf/doku; üstünde koyu yeşil **buzlu cam** uygulama paneli (`rgba(20,29,22,.78)` + blur 28, radius 34). Tek, koyu görünüm (referans gibi). |
+| Gezinme (ada) | Üst bar: solda logo + ad, **ortada hap segmentli gezinme** (aktif = neredeyse beyaz hap, koyu yazı), sağda yuvarlak arama/bildirim/ayar + avatar. Adada 4 ana modül + `···` (tüm modüller başlatıcısı, ⌘K) + canlı zamanlayıcı hapı (tıklayınca ada genişler). Sol menü kalkar. |
+| Vurgu | Tek parlak renk **limon** `#FAED7E` — yalnız birincil eylem ("+ Yeni iş") ve bugünün vurgusu. |
+| Kontroller | Hap arama/filtre/yerleşim; seçili = beyaz hap. |
+| Kanban | Sütun başlığı yarı saydam bant + renkli durum rozeti (Bekliyor mor, Devam mavi, Tamam yeşil, Gecikmiş turuncu) + sayı dairesi. Kart: yarı saydam, iş kodu, başlık, tarih \| süre ikonlu satır, Müşteri · Proje, ayırıcı, bayraklı öncelik çipi (Yüksek turuncu / Orta sarı / Düşük mavi) + avatar yığını (+N). |
+| Tip | Space Grotesk (referans), kod/süre JetBrains Mono. |
+
+Not — E4 (P3.4) ile fark: referans öncelik bayrağını renkli ve durum rozetlerini
+renkli kullanıyor; E4 "kartta tek renkli sinyal = termin" diyordu. Prototip
+referansı izliyor; CTO onayıyla E4 kilidi yeni dile göre güncellenir.
 
 ## 3. Uygulama adımları (her biri ayrı dev commit'i, eski ekranlar çalışmaya devam eder)
 
