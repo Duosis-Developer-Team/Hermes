@@ -236,3 +236,19 @@
 .ticket-pane__code { color: var(--h-text-muted); font: 500 12.5px var(--h-font-mono); }
 .ticket-pane__title { margin: 2px 0 0; font-size: 20px; font-weight: 650; letter-spacing: -0.02em; text-wrap: balance; }
 .ticket-pane .h-ticket-workbench { grid-template-columns: minmax(0, 1fr); }
+
+/* Destek portali (Hermes Liquid prototipi): segment + cam kart izgarasi */
+.support-portal .support-tabs { margin-bottom: var(--h-space-4); }
+.support-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.support-grid .support-card.h-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px 20px;
+    border-radius: 24px;
+    cursor: pointer;
+}
+.support-card__code { color: var(--h-text-muted); font: 500 12px var(--h-font-mono); }
+.support-card__title { font-size: 15.5px; font-weight: 650; letter-spacing: -0.01em; line-height: 1.35; }
+.support-card__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.support-card__when { color: var(--h-text-muted); font-size: 12px; }

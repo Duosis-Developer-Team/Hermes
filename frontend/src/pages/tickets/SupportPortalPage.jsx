@@ -13,14 +13,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-    Alert, Card as AntCard, Input, message, Skeleton, Space, Tabs, Typography,
-} from 'antd'
+import { Alert, Input, message, Skeleton } from 'antd'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
 
 import { supportPortalService, ticketErrorCode } from '../../api/ticketsApi'
 import {
-    Button, Card, EmptyState, Inline, Page, PageHeader, Stack, StatusBadge,
+    Button, Card, EmptyState, Page, StatusBadge,
 } from '../../components/ui'
+import { LiquidSegmented, PageHero } from '../../components/liquid'
 import CreateTicketModal from '../../features/tickets/CreateTicketModal'
 import CustomerTicketDetail from '../../features/tickets/CustomerTicketDetail'
 import {
@@ -32,7 +33,8 @@ import { queryKeys } from '../../query/queryKeys'
 import '../../features/tickets/tickets.css'
 import { useT } from '../../i18n'
 
-const { Text } = Typography
+dayjs.extend(relativeTime)
+
 
 // Sekme listesi ANAHTAR tasir; ceviri render'da yapilir.
 const TABS = [
@@ -132,19 +134,19 @@ export default function SupportPortalPage() {
     const routeReady = Boolean(context.route?.configured)
 
     return (
-        <Page className="tickets-page fade-in">
-            <PageHeader
+        <Page className="tickets-page support-portal">
+            <PageHero
                 title={t('portal.support')}
                 subtitle={routeReady
                     ? `Your requests go to the ${context.route.group_name} team.`
                     : 'Support routing has not been configured yet.'}
-                extra={(
-                    <Space wrap>
+                actions={(
+                    <>
                         <Input.Search
                             allowClear
+                            className="tickets-search"
                             placeholder={t('portal.searchPlaceholder')}
                             onSearch={setSearch}
-                            style={{ width: 260 }}
                         />
                         <Button
                             icon={<ReloadOutlined />}
@@ -157,7 +159,7 @@ export default function SupportPortalPage() {
                             disabled={!context.canCreate}
                             onClick={() => setCreateOpen(true)}
                         >{t('portal.newRequest')}</Button>
-                    </Space>
+                    </>
                 )}
             />
 
@@ -173,26 +175,21 @@ export default function SupportPortalPage() {
                 />
             )}
 
-            <Tabs
-                activeKey={tab}
-                onChange={setTab}
-                items={TABS.map((item) => ({
-                    key: item.key, label: t(item.labelKey),
-                }))}
-            />
+            <div className="support-tabs">
+                <LiquidSegmented
+                    ariaLabel={t('portal.support')}
+                    value={tab}
+                    onChange={setTab}
+                    options={TABS.map((item) => ({ value: item.key, label: t(item.labelKey) }))}
+                />
+            </div>
 
-            <AntCard
-                variant="borderless"
-                title={`Requests (${rows.length})`}
-                className="tickets-page__card"
-            >
-                <Stack gap={2}>
+            <div className="support-grid lq-enter">
                 {rows.map((ticket) => (
                     <Card
                         key={ticket.id}
                         interactive
-                        className={isResolvedLike(ticket.status)
-                            ? 'h-ticket-row--resolved' : undefined}
+                        className={`support-card${isResolvedLike(ticket.status) ? ' h-ticket-row--resolved' : ''}`}
                         onClick={() => setSelectedId(ticket.id)}
                         onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
@@ -202,31 +199,30 @@ export default function SupportPortalPage() {
                         }}
                         aria-label={`${ticket.ticket_number} ${ticket.title}`}
                     >
-                        <Inline gap={2}>
-                            <Text strong>{ticket.ticket_number}</Text>
-                            {/* Baslik STRIKETHROUGH YAPILMAZ: cozulmus bir
-                                talebin basligi da okunabilir kalmali. */}
-                            <Text>{ticket.title}</Text>
+                        <span className="support-card__code">{ticket.ticket_number}</span>
+                        {/* Baslik STRIKETHROUGH YAPILMAZ: cozulmus bir
+                            talebin basligi da okunabilir kalmali. */}
+                        <b className="support-card__title">{ticket.title}</b>
+                        <span className="support-card__tags">
                             <TicketStatusBadge status={ticket.status} />
                             <StatusBadge tone="neutral">
                                 {labelOf(CATEGORY_LABELS, ticket.category)}
                             </StatusBadge>
-                            <Text type="secondary" style={{ marginLeft: 'auto' }}>
-                                {new Date(ticket.updated_at).toLocaleString()}
-                            </Text>
-                        </Inline>
+                        </span>
+                        <span className="support-card__when">
+                            {dayjs(ticket.updated_at).fromNow()}
+                        </span>
                     </Card>
                 ))}
-                    {!rows.length && !list.isLoading && (
-                        <EmptyState
-                            title={t('portal.noRequests')}
-                            description={context.canCreate
-                                ? 'You can open a new support request.'
-                                : 'You do not have permission to open requests.'}
-                        />
-                    )}
-                </Stack>
-            </AntCard>
+            </div>
+            {!rows.length && !list.isLoading && (
+                <EmptyState
+                    title={t('portal.noRequests')}
+                    description={context.canCreate
+                        ? 'You can open a new support request.'
+                        : 'You do not have permission to open requests.'}
+                />
+            )}
 
             <CreateTicketModal
                 open={createOpen}
