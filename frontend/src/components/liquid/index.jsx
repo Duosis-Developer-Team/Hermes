@@ -154,3 +154,28 @@ export function Avatar({ id, name, size = 28, title }) {
         </span>
     )
 }
+
+/**
+ * Yatay cubuk listesi (prototip "Musteriye / Projeye gore"): ad · soldan
+ * buyuyen cubuk · deger. En buyuk degere oranlanir. `tone`: 'blue' |
+ * 'violet' | 'green'.
+ */
+export function BarList({ items = [], tone = 'blue', format = (v) => v, emptyText }) {
+    const max = Math.max(0, ...items.map((it) => Number(it.value) || 0))
+    if (!items.length || max <= 0) {
+        return emptyText ? <p className="lq-barlist__empty" role="status">{emptyText}</p> : null
+    }
+    return (
+        <ul className={`lq-barlist lq-barlist--${tone}`}>
+            {items.map((it, i) => (
+                <li key={it.key ?? it.name} className="lq-barlist__row">
+                    <span className="lq-barlist__name" title={it.name}>{it.name}</span>
+                    <span className="lq-barlist__track" aria-hidden="true">
+                        <i style={{ width: `${((Number(it.value) || 0) / max) * 100}%`, animationDelay: `${i * 60}ms` }} />
+                    </span>
+                    <span className="lq-barlist__value">{format(it.value)}</span>
+                </li>
+            ))}
+        </ul>
+    )
+}

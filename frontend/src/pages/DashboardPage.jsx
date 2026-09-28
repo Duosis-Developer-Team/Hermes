@@ -7,33 +7,22 @@
  */
 
 import { useMemo, useState } from 'react'
-import { Card, Row, Col, Spin, Button } from 'antd'
-import {
-    BarChartOutlined, FolderOpenOutlined, LeftOutlined, RightOutlined,
-    TeamOutlined, UserOutlined,
-} from '@ant-design/icons'
+import { Spin, Button } from 'antd'
+import { BarChartOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts'
 import dayjs from 'dayjs'
 import { reportsService, authService } from '../services/api'
 import { useT } from '../i18n'
 import { queryKeys } from '../query/queryKeys'
+import { BarList, CountUp, GlassCard, PageHero } from '../components/liquid'
 import {
-    chartState, dashboardSummary, resolveUserNames, toChartSeries,
+    chartState, dashboardSummary, formatDuration, resolveUserNames, toChartSeries,
 } from '../features/dashboard/model/dashboardData'
 
-// Grafik renkleri SEMANTIC token'dan gelir; ham hex tekrarlanmaz.
-// Recharts SVG attribute'lari CSS degiskenini dogrudan kabul ettigi icin
-// var(--...) referansi yeterli — tema degisiminde renk kendiliginde
-// dogru tarafa gecer.
-// Seriler ayri bir CHART paletinden gelir: iki temada da ayni canlilik
-// ve birbirinden ayrisan tonlar (semantic tokenlar durum icindir, veri
-// gorsellestirme icin degil).
-const CHART_SERIES_COLOR = {
-    customer: 'var(--h-chart-2)',
-    project: 'var(--h-chart-1)',
-    user: 'var(--h-chart-3)',
-}
+// Hermes Liquid (prototip): musteri/proje = animasyonlu cubuk listeler
+// (BarList), kisi = yuvarlak koseli degradeli sutun grafik. Renkler
+// token; Recharts SVG'si CSS degiskenini dogrudan kabul eder.
 
 function DashboardPage() {
     const t = useT()
@@ -115,7 +104,7 @@ function DashboardPage() {
             >
                 <BarChartOutlined aria-hidden="true" style={{ fontSize: 20, opacity: 0.45 }} />
                 {state === 'empty'
-                    ? 'No data for the selected date range.'
+                    ? t('dashboard.noData')
                     : 'Records exist but no hours were logged in this range.'}
             </div>
         )
@@ -148,107 +137,75 @@ function DashboardPage() {
         )
     }
 
+    const emptyText = t('dashboard.noData')
+    const listItems = (series) => series.map((d) => ({ key: d.name, name: d.name, value: d.hours }))
+    const kpis = [
+        // Saat: HAM sayi sayilir, bicim (1284h 30m) her karede uygulanir.
+        { key: 'hours', value: Number(data?.total_hours) || 0, format: formatDuration, decimals: 2, label: t('dashboard.totalHours') },
+        { key: 'customers', value: summary.customerCount, label: t('entity.customers') },
+        { key: 'projects', value: summary.projectCount, label: t('entity.projects') },
+        { key: 'members', value: summary.memberCount, label: t('dashboard.activeMembers') },
+    ]
+
     return (
-        <div className="dashboard-page fade-in">
-            {/* Page Header */}
-            <div className="page-header">
-                <Row justify="space-between" align="middle">
-                    <Col>
-                        <h1>{t('dashboard.title')}</h1>
-                        <p>{t('dashboard.subtitle')}</p>
-                    </Col>
-                    <Col>
-                        {/* Premium: buyuk gri segmented kutu yerine baslik
-                            hizasinda sade inline date navigator. */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <Button type="text" aria-label={t('dashboard.previousMonth')} icon={<LeftOutlined />} onClick={goToPreviousMonth} style={{ color: 'var(--c-text)' }} />
-                            <span style={{ color: 'var(--c-text)', fontWeight: 500, minWidth: 160, textAlign: 'center' }}>
-                                {dateRange[0].format('DD MMM')} - {dateRange[1].format('DD MMM, YYYY')}
-                            </span>
-                            <Button type="text" aria-label={t('dashboard.nextMonth')} icon={<RightOutlined />} onClick={goToNextMonth} style={{ color: 'var(--c-text)' }} />
-                            <div style={{ width: 1, height: 20, background: 'var(--c-border)', margin: '0 4px' }} />
-                            <Button type="text" onClick={goToThisMonth} style={{ color: 'var(--c-text)' }}>{t('dashboard.today')}</Button>
-                        </div>
-                    </Col>
-                </Row>
+        <div className="dashboard-page">
+            <PageHero
+                title={t('dashboard.title')}
+                subtitle={t('dashboard.subtitle')}
+                actions={(
+                    <>
+                        <Button shape="circle" aria-label={t('dashboard.previousMonth')} icon={<LeftOutlined />} onClick={goToPreviousMonth} />
+                        <span className="dashboard-range">
+                            {dateRange[0].format('D MMM')} – {dateRange[1].format('D MMM YYYY')}
+                        </span>
+                        <Button shape="circle" aria-label={t('dashboard.nextMonth')} icon={<RightOutlined />} onClick={goToNextMonth} />
+                        <Button onClick={goToThisMonth}>{t('dashboard.thisMonth')}</Button>
+                    </>
+                )}
+            />
+
+            {/* KPI karolari: acilista sayarak dolar (h-metric-strip rolu). */}
+            <div className="lq-kpis lq-enter h-metric-strip" role="group" aria-label={t('dashboard.summaryMetrics')}>
+                {kpis.map((k) => (
+                    <GlassCard key={k.key} className="lq-kpi">
+                        <span className="lq-kpi__dash" aria-hidden="true" />
+                        <span className="lq-kpi__value"><CountUp value={k.value} format={k.format} decimals={k.decimals} /></span>
+                        <span className="lq-kpi__label">{k.label}</span>
+                    </GlassCard>
+                ))}
             </div>
 
-            {/* Premium: dort gri KPI karti yerine TEK kesintisiz metric
-                strip — buyuk deger + kucuk label, ince dikey ayiricilar. */}
-            <div className="h-metric-strip" role="group" aria-label={t('dashboard.summaryMetrics')}>
-                <div className="h-metric-strip__item h-metric-strip__item--accent">
-                    <span className="h-metric-strip__accent" aria-hidden="true" />
-                    <div className="h-metric-strip__value">{summary.totalHours}</div>
-                    <div className="h-metric-strip__label">{t('dashboard.totalHours')}</div>
-                </div>
-                <div className="h-metric-strip__item">
-                    <div className="h-metric-strip__value">{summary.customerCount}</div>
-                    <div className="h-metric-strip__label">{t('entity.customers')}</div>
-                </div>
-                <div className="h-metric-strip__item">
-                    <div className="h-metric-strip__value">{summary.projectCount}</div>
-                    <div className="h-metric-strip__label">{t('entity.projects')}</div>
-                </div>
-                <div className="h-metric-strip__item">
-                    <div className="h-metric-strip__value">{summary.memberCount}</div>
-                    <div className="h-metric-strip__label">{t('dashboard.activeMembers')}</div>
-                </div>
+            <div className="lq-bento lq-enter">
+                <GlassCard className="lq-c6" title={t('dashboard.byCustomer')} link={<span className="dashboard-unit">{t('dashboard.hoursUnit')}</span>}>
+                    <BarList items={listItems(customerData)} tone="blue" emptyText={emptyText} />
+                </GlassCard>
+                <GlassCard className="lq-c6" title={t('dashboard.byProject')} link={<span className="dashboard-unit">{t('dashboard.hoursUnit')}</span>}>
+                    <BarList items={listItems(projectData)} tone="violet" emptyText={emptyText} />
+                </GlassCard>
+                <GlassCard className="lq-c12" title={t('dashboard.byUser')} link={<span className="dashboard-unit">{t('dashboard.hoursUnit')}</span>}>
+                    <ChartFrame series={userData}>
+                        <ResponsiveContainer width="100%" height={320}>
+                            <BarChart data={userData} margin={{ top: 28, right: 8, left: -12, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="dash-user-bar" x1="0" x2="0" y1="0" y2="1">
+                                        {/* SVG ozniteligi CSS degiskenini cozmez; stil cozer. */}
+                                        <stop offset="0" style={{ stopColor: 'var(--hp-blue-400)' }} />
+                                        <stop offset="1" style={{ stopColor: 'var(--hp-blue-600)' }} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid vertical={false} stroke="var(--h-chart-grid)" />
+                                <XAxis dataKey="name" stroke="var(--h-chart-axis)" tickLine={false} axisLine={false} />
+                                <YAxis stroke="var(--h-chart-axis)" tickLine={false} axisLine={false} />
+                                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--h-bg-hover)', radius: 12 }} />
+                                <Bar dataKey="hours" name="Hours" fill="url(#dash-user-bar)" radius={[14, 14, 14, 14]} maxBarSize={72} animationDuration={900}
+                                    isAnimationActive={!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches}>
+                                    <LabelList dataKey="hours" position="top" fill="var(--h-text-secondary)" fontSize={12} />
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </ChartFrame>
+                </GlassCard>
             </div>
-
-            {/* Charts */}
-            <Row gutter={[24, 24]}>
-                {/* By Customer - Pie Chart */}
-                <Col xs={24} lg={12}>
-                    <Card variant="borderless" title={<span className="h-section__head" style={{ margin: 0 }}><span className="h-section__icon"><TeamOutlined /></span><span className="h-section__title">{t('dashboard.byCustomer')}</span></span>}>
-                        <ChartFrame series={customerData}>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={customerData} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--h-chart-grid)" />
-                                <XAxis type="number" stroke="var(--h-chart-axis)" />
-                                <YAxis dataKey="name" type="category" width={100} stroke="var(--h-chart-axis)" tick={{ fontSize: 12 }} />
-                                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-                                <Bar dataKey="hours" fill={CHART_SERIES_COLOR.customer} radius={[0, 4, 4, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                        </ChartFrame>
-                    </Card>
-                </Col>
-
-                {/* By Project - Bar Chart */}
-                <Col xs={24} lg={12}>
-                    <Card variant="borderless" title={<span className="h-section__head" style={{ margin: 0 }}><span className="h-section__icon"><FolderOpenOutlined /></span><span className="h-section__title">{t('dashboard.byProject')}</span></span>}>
-                        <ChartFrame series={projectData}>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={projectData} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--h-chart-grid)" />
-                                <XAxis type="number" stroke="var(--h-chart-axis)" />
-                                <YAxis dataKey="name" type="category" width={100} stroke="var(--h-chart-axis)" tick={{ fontSize: 12 }} />
-                                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-                                <Bar dataKey="hours" fill={CHART_SERIES_COLOR.project} radius={[0, 4, 4, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                        </ChartFrame>
-                    </Card>
-                </Col>
-
-                {/* By User - Bar Chart */}
-                <Col xs={24}>
-                    <Card variant="borderless" title={<span className="h-section__head" style={{ margin: 0 }}><span className="h-section__icon"><UserOutlined /></span><span className="h-section__title">{t('dashboard.byUser')}</span></span>}>
-                        <ChartFrame series={userData}>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={userData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--h-chart-grid)" />
-                                <XAxis dataKey="name" stroke="var(--h-chart-axis)" />
-                                <YAxis stroke="var(--h-chart-axis)" />
-                                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-                                <Legend />
-                                <Bar dataKey="hours" name="Hours" fill={CHART_SERIES_COLOR.user} radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                        </ChartFrame>
-                    </Card>
-                </Col>
-            </Row>
         </div>
     )
 }

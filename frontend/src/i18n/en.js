@@ -350,6 +350,9 @@ export default {
     },
 
     dashboard: {
+        noData: 'No data for the selected date range.',
+        hoursUnit: 'hours',
+        thisMonth: 'This month',
         title: 'Dashboard',
         subtitle: 'Team performance and time distribution',
         summaryMetrics: 'Summary metrics',

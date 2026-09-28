@@ -349,6 +349,9 @@ export default {
     },
 
     dashboard: {
+        noData: 'Seçili tarih aralığında veri yok.',
+        hoursUnit: 'saat',
+        thisMonth: 'Bu ay',
         title: 'Panel',
         subtitle: 'Ekip performansı ve zaman dağılımı',
         summaryMetrics: 'Özet göstergeler',
