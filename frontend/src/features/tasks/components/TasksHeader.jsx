@@ -9,6 +9,8 @@
  * kararlar prop olarak gelir (features/tasks/model/permissions tek kaynak).
  * =============================================================================
  */
+import { useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Button, Dropdown, Select } from 'antd'
 import { DownOutlined, PlusOutlined, TeamOutlined } from '@ant-design/icons'
 
@@ -42,6 +44,18 @@ function TasksHeader({
     onCreate,
 }) {
     const t = useT()
+    // Derin baglanti ?new=task|issue|suggestion (dock'taki "Yeni is"):
+    // olusturma yetkisi varsa ilgili pencere acilir, parametre tuketilir.
+    const [searchParams, setSearchParams] = useSearchParams()
+    const wantedNew = searchParams.get('new')
+    useEffect(() => {
+        if (!wantedNew || !canCreate) return
+        const next = new URLSearchParams(searchParams)
+        next.delete('new')
+        setSearchParams(next, { replace: true })
+        if (['task', 'issue', 'suggestion'].includes(wantedNew)) onCreate?.(wantedNew)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [wantedNew, canCreate])
     const viewName = view ? (view.saved ? view.name : t(view.labelKey)) : null
     const subtitle = [viewName, itemCount != null ? t('tasksPage.count', { count: itemCount }) : null]
         .filter(Boolean).join(' \u00b7 ')

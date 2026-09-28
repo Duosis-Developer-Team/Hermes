@@ -1282,6 +1282,7 @@ export default {
         liveIn: 'in {n} min',
         liveInHours: 'in {h}h {m}m',
         liveOpen: 'Open meetings',
+        quickActions: 'Quick actions',
     },
 
     timesheet: {

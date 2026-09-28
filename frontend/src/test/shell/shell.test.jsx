@@ -49,6 +49,7 @@ const renderShell = ({ permissions = [], route = '/time-entry', user } = {}) => 
                             <Route path="time-entry" element={<div>ROUTE-CONTENT</div>} />
                             <Route path="customers" element={<div>CUSTOMERS</div>} />
                             <Route path="settings/*" element={<div>SETTINGS</div>} />
+                            <Route path="project-management" element={<div>PM</div>} />
                         </Route>
                     </Routes>
                 </MemoryRouter>
@@ -208,5 +209,16 @@ describe('offline davranisi (§9)', () => {
         expect(document.querySelector('.offline-banner')).toBeTruthy()
         fireEvent(window, new Event('online'))
         expect(document.querySelector('.offline-banner')).toBeNull()
+    })
+})
+
+describe('dock hizli eylemleri (prototip)', () => {
+    it('Efor gir bugunun tarihiyle Zaman girisine, Yeni is Isler sayfasina gider', async () => {
+        renderShell({ route: '/settings/x' })
+        const group = screen.getByRole('group', { name: 'Quick actions' })
+        fireEvent.click(within(group).getByRole('button', { name: 'Log time' }))
+        expect(await screen.findByText('ROUTE-CONTENT')).toBeInTheDocument()
+        fireEvent.click(within(group).getByRole('button', { name: 'New Task' }))
+        expect(await screen.findByText('PM')).toBeInTheDocument()
     })
 })

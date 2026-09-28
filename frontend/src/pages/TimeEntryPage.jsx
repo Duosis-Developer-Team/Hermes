@@ -299,9 +299,10 @@ function TimeEntryPage() {
         next.delete('date')
         next.delete('week')
         setSearchParams(next, { replace: true })
-        // Yalnizca mount'ta: derin baglanti tek seferliktir.
+        // Derin baglanti tuketilince URL'den silinir; sayfa zaten acikken
+        // gelen yeni ?date= (ornegin dock'taki "Efor gir") de islenir.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [searchParams])
 
     const handlePlanTime = (date) => {
         setSelectedDate(date)

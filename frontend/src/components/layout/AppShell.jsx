@@ -16,6 +16,8 @@
  *   selectedKey / onMenuClick / onLogoClick / accountName / accountRole /
  *   accountMenuItems / headerExtra / contentKey / children
  *   islandLive       (ops.) adanin canli yuvasi: { tone, label, meta, onClick }
+ *   dockActions      (ops.) dock'un sagindaki hizli eylemler:
+ *                    [{ key, label, icon, tone, onClick }]
  *
  * HAREKET (prototip): sekmelerde yayli kayan gosterge; kabuktan yapilan
  * gezinme View Transitions ile (destek yoksa aninda); paneller adadan
@@ -94,6 +96,7 @@ function AppShell({
     headerExtra = null,
     contentKey,
     islandLive = null,
+    dockActions = [],
     children,
 }) {
     const t = useT()
@@ -416,8 +419,8 @@ function AppShell({
                 </RouteErrorBoundary>
             </main>
 
-            {/* Dock — yonetim/sistem modulleri (masaustu) */}
-            {groups.length > 0 && (
+            {/* Dock — yonetim/sistem modulleri + hizli eylemler (masaustu) */}
+            {(groups.length > 0 || dockActions.length > 0) && (
                 <nav
                     className="app-dock"
                     aria-label={t('shellExtra.allModules')}
@@ -460,6 +463,31 @@ function AppShell({
                             })}
                         </div>
                     ))}
+                    {dockActions.length > 0 && (
+                        <div className="app-dock__group" role="group" aria-label={t('shellExtra.quickActions')}>
+                            {groups.length > 0 && <span className="app-dock__sep" aria-hidden="true" />}
+                            {dockActions.map((a) => (
+                                <Tooltip key={a.key} title={a.label} placement="top" mouseEnterDelay={0.05}>
+                                    <button
+                                        type="button"
+                                        className="dock-item"
+                                        style={{ '--dock-tone': a.tone }}
+                                        aria-label={a.label}
+                                        onClick={(e) => {
+                                            const el = e.currentTarget
+                                            el.classList.remove('is-bouncing')
+                                            void el.offsetWidth
+                                            el.classList.add('is-bouncing')
+                                            a.onClick?.()
+                                        }}
+                                        onAnimationEnd={(e) => e.currentTarget.classList.remove('is-bouncing')}
+                                    >
+                                        {a.icon}
+                                    </button>
+                                </Tooltip>
+                            ))}
+                        </div>
+                    )}
                 </nav>
             )}
 

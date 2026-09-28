@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useRef } from 'react'
+import dayjs from 'dayjs'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import {
     CodeOutlined,
@@ -23,6 +24,7 @@ import {
     CheckSquareOutlined,
     CalendarOutlined,
     CustomerServiceOutlined,
+    PlusOutlined,
 } from '@ant-design/icons'
 import AppShell from './AppShell'
 import OrganizationSwitcher from './OrganizationSwitcher'
@@ -264,6 +266,19 @@ function MainLayout() {
         onClick: () => navigate('/meetings'),
     } : null
 
+    // Dock hizli eylemleri (prototip): efor gir ve yeni is — mevcut derin
+    // baglantilar uzerinden (yeni akis yok; izinler hedef sayfada ayni).
+    const dockActions = [
+        {
+            key: 'log', label: t('home.quickLog'), icon: <ClockCircleOutlined />, tone: '#388BFF',
+            onClick: () => navigate(`/time-entry?date=${dayjs().format('YYYY-MM-DD')}`),
+        },
+        ...(showTasksItem ? [{
+            key: 'new-work', label: t('board.newTask'), icon: <PlusOutlined />, tone: '#22A06B',
+            onClick: () => navigate('/project-management?new=task'),
+        }] : []),
+    ]
+
     const handleMenuClick = ({ key }) => {
         // Mobil drawer'i kapatmak kabugun isi (AppShell).
         if (key.startsWith('/')) navigate(key)
@@ -302,6 +317,7 @@ function MainLayout() {
             headerExtra={<OrganizationSwitcher />}
             contentKey={location.pathname}
             islandLive={islandLive}
+            dockActions={dockActions}
         >
             <Outlet />
         </AppShell>

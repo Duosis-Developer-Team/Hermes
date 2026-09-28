@@ -1276,6 +1276,7 @@ export default {
         liveIn: '{n} dk sonra',
         liveInHours: '{h} sa {m} dk sonra',
         liveOpen: 'Toplantıları aç',
+        quickActions: 'Hızlı eylemler',
     },
 
     timesheet: {
