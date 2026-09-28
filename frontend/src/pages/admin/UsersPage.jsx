@@ -36,6 +36,7 @@ import RolesTab from './RolesTab'
 import './UsersPage.css'
 import { useT } from '../../i18n'
 import { Avatar } from '../../components/liquid'
+import { ModalHead } from '../../components/liquid'
 /**
  * Formda GERCEKTEN olan alanlar. `password` bilerek `undefined`: bos
  * string yazilirsa duzenlemede sunucuya BOS PAROLA gonderilebilirdi.
@@ -320,7 +321,7 @@ export function UsersTab() {
                 />
                 <AdminRefreshHint isFetching={isFetching} hasData={users.length > 0} />
             </Card>
-            <Modal title={editingId ? 'Edit User' : 'New User'} open={modalOpen} onCancel={handleCloseModal} footer={null}>
+            <Modal title={<ModalHead icon={<UserOutlined />} tone="blue" title={editingId ? t('modalTitles.editUser') : t('modalTitles.newUser')} />} open={modalOpen} onCancel={handleCloseModal} footer={null}>
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <Form.Item name="email" label={t('users.email')} rules={[{ required: true, type: 'email', message: t('users.emailInvalid') }]}>
                         <Input placeholder={t('users.emailExample')} disabled={!!editingId} />

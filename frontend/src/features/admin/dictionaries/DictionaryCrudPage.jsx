@@ -32,15 +32,14 @@ import {
     Alert, Button, Card, Form, Input, Modal, Space, Switch, Table, Tag,
     message,
 } from 'antd'
-import {
-    DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined,
-} from '@ant-design/icons'
+import { BookOutlined, DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import DeleteModal from '../../../components/common/DeleteModal'
 import { generateCode } from '../../../utils/codeGenerator'
 import { applyErrorToForm, normalizeApiError } from '../shared/normalizeApiError'
 import { useT } from '../../../i18n'
+import { ModalHead } from '../../../components/liquid'
 
 const FORM_FIELDS = ['name', 'code', 'description', 'is_active']
 
@@ -326,7 +325,7 @@ function DictionaryCrudPage({
             </Card>
 
             <Modal
-                title={editingItem ? `Edit ${singular}` : `Add ${singular}`}
+                title={<ModalHead icon={<BookOutlined />} tone="blue" title={editingItem ? `Edit ${singular}` : `Add ${singular}`} />}
                 open={modalOpen}
                 onCancel={closeModal}
                 onOk={handleSubmit}

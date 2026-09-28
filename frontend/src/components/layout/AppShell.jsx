@@ -524,6 +524,7 @@ function AppShell({
                 height="auto"
                 closable={false}
                 className="mobile-nav-drawer"
+                rootClassName="lq-sheet"
                 styles={{ body: { padding: 0 } }}
             >
                 <div className="mobile-nav">

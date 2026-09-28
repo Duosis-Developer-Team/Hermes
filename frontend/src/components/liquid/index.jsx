@@ -259,12 +259,14 @@ export function OptionGrid({ options, onPick, emptyText, ariaLabel }) {
  * Cip secici (sure hizli secimi, oncelik, tur). antd Form.Item icinde
  * kontrol olarak calisir (`value` / `onChange`). Tek secimde anlamsal
  * olarak RADYO grubudur (role=radiogroup, ok tuslari secimi tasir);
- * `multiple` ile basili dugmeler (aria-pressed).
+ * `multiple` ile basili dugmeler (aria-pressed). `allowDeselect` ile
+ * secili cipe yeniden basmak secimi temizler (filtre kullanimi).
  */
-export function ChipGroup({ options, value, onChange, multiple = false, ariaLabel, mono = false, id }) {
+export function ChipGroup({ options, value, onChange, multiple = false, ariaLabel, mono = false, id, allowDeselect = false }) {
     const isOn = (v) => (multiple ? (value || []).includes(v) : value === v)
     const toggle = (v) => {
-        if (!multiple) return onChange?.(v)
+        // allowDeselect: secili cipe yeniden basmak secimi kaldirir (filtre).
+        if (!multiple) return onChange?.(allowDeselect && value === v ? undefined : v)
         const cur = value || []
         onChange?.(cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v])
     }

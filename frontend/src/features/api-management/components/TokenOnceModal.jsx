@@ -12,8 +12,9 @@
  */
 import { useState } from 'react'
 import { Alert, Button, Checkbox, Modal, Space, Tooltip, message } from 'antd'
-import { CopyOutlined, EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons'
+import { CopyOutlined, EyeInvisibleOutlined, EyeOutlined, KeyOutlined } from '@ant-design/icons'
 import { useT } from '../../../i18n'
+import { ModalHead } from '../../../components/liquid'
 
 export default function TokenOnceModal({ issued, onDone }) {
     const t = useT()
@@ -37,7 +38,7 @@ export default function TokenOnceModal({ issued, onDone }) {
     return (
         <Modal
             open
-            title={t('token.created')}
+            title={<ModalHead icon={<KeyOutlined />} tone="green" title={t('token.created')} />}
             closable={false}
             maskClosable={false}
             keyboard={false}

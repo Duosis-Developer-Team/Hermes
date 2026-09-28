@@ -107,10 +107,9 @@ describe('gorunum degisiminde baglam KORUNUR', () => {
         // once "Filters" aksiyonu acilir (davranis sozlesmesi ayni).
         await user.click(screen.getByRole('button', { name: /Filters/ }))
         // Capraz filtre: Status = In Progress
-        await user.click(
-            await screen.findByRole('combobox', { name: 'Filter by status' })
-        )
-        await user.click(await screen.findByTitle('In Progress'))
+        // Durum filtresi cip grubu (anlamsal radyo grubu).
+        const statusGroup = await screen.findByRole('radiogroup', { name: 'Filter by status' })
+        await user.click(within(statusGroup).getByRole('radio', { name: 'In Progress' }))
         await waitFor(() => expect(lastListParams().status).toBe('in_progress'))
         const paramsOnBoard = lastListParams()
 

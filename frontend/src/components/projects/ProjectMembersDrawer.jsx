@@ -13,13 +13,14 @@
  */
 import { useMemo, useState } from 'react'
 import { Button, Drawer, Empty, Select, Space, Tag, Typography, message } from 'antd'
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+import { DeleteOutlined, PlusOutlined, TeamOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { projectService } from '../../services/api'
 import { authService } from '../../api/authApi'
 import { queryKeys } from '../../query/queryKeys'
 import { useT } from '../../i18n'
+import { ModalHead } from '../liquid'
 
 const { Text } = Typography
 
@@ -90,7 +91,13 @@ function ProjectMembersDrawer({ open, projectId, projectName, onClose }) {
             open={open}
             onClose={onClose}
             width="min(560px, 96vw)"
-            title={t('projects.membersOf', { name: projectName || '' })}
+            rootClassName="lq-sheet"
+            title={(
+                <ModalHead
+                    icon={<TeamOutlined />}
+                    title={t('projects.membersOf', { name: projectName || '' })}
+                />
+            )}
             destroyOnHidden
         >
             {canManage && (

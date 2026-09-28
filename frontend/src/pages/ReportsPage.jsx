@@ -238,6 +238,7 @@ function ReportsPage() {
                         open={filterSheetOpen}
                         onClose={() => setFilterSheetOpen(false)}
                         className="reports-filter-sheet"
+                        rootClassName="lq-sheet"
                     >
                         {controls}
                     </Drawer>

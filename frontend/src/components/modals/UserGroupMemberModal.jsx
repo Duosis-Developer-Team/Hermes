@@ -28,6 +28,8 @@ import {
 } from '../../features/admin/shared/normalizeApiError'
 import { resetAndFill } from '../../features/admin/shared/formLifecycle'
 import { useT } from '../../i18n'
+import { ModalHead } from '../../components/liquid'
+import { UserAddOutlined } from '@ant-design/icons'
 
 const FORM_FIELDS = ['user_ids', 'title']
 
@@ -129,7 +131,7 @@ function UserGroupMemberModal({
 
     return (
         <Modal
-            title={isEditing ? 'Edit Member Title' : 'Add Members'}
+            title={<ModalHead icon={<UserAddOutlined />} tone="blue" title={isEditing ? t('modalTitles.editMemberTitle') : t('modalTitles.addMembers')} />}
             open={open}
             onCancel={onClose}
             okText={okText}

@@ -12,9 +12,10 @@
  */
 import { useMemo } from 'react'
 import { Button, Form, Input, InputNumber, Modal, Select } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+import { KeyOutlined, PlusOutlined } from '@ant-design/icons'
 import { BINDING_LABEL, SCOPE_HELP } from '../model/format'
 import { useT } from '../../../i18n'
+import { ModalHead } from '../../../components/liquid'
 
 export default function ClientModal({ open, editing, scopes, pickers, onClose, onSubmit, saving }) {
     const t = useT()
@@ -69,7 +70,7 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
     return (
         <Modal
             open={open}
-            title={editing ? 'Edit API Client' : 'Create API Client'}
+            title={<ModalHead icon={<KeyOutlined />} tone="ink" title={editing ? t('modalTitles.editClient') : t('modalTitles.createClient')} />}
             okText={editing ? 'Save Changes' : 'Create Client'}
             onOk={() => form.submit()}
             onCancel={onClose}

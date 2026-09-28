@@ -11,10 +11,7 @@ import {
     Card, Table, Button, Space, Modal, Form, Input, Select,
     message, Switch, Tag, InputNumber, DatePicker
 } from 'antd'
-import {
-    PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined,
-    WarningOutlined, ClockCircleOutlined, SearchOutlined, TeamOutlined,
-} from '@ant-design/icons'
+import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, EditOutlined, FolderOutlined, PlusOutlined, SearchOutlined, TeamOutlined, WarningOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { projectService, customerService, workLogService } from '../../services/api'
 
@@ -31,6 +28,7 @@ import {
     contractToForm, contractToPayload,
 } from '../../features/admin/shared/contractFields'
 import { useT } from '../../i18n'
+import { ModalHead } from '../../components/liquid'
 
 // Formda GERCEKTEN olan alanlar: API kaydindaki id/created_at gibi
 // alanlar form store'una sizmaz, eksik alan da bayat deger BIRAKMAZ.
@@ -358,7 +356,7 @@ function ProjectsPage() {
                 />
             </Card>
 
-            <Modal title={editingId ? 'Edit Project' : 'New Project'} open={modalOpen} onCancel={handleCloseModal} footer={null}>
+            <Modal title={<ModalHead icon={<FolderOutlined />} tone="blue" title={editingId ? t('modalTitles.editProject') : t('modalTitles.newProject')} />} open={modalOpen} onCancel={handleCloseModal} footer={null}>
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <Form.Item name="name" label={t('admin.projectNameLabel')} rules={[{ required: true, message: t('admin.nameRequired', { entity: t('entity.project') }) }]}>
                         <Input placeholder={t('admin.projectNameExample')} />

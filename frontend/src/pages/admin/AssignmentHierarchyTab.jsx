@@ -28,13 +28,7 @@ import {
     Tooltip,
     message,
 } from 'antd'
-import {
-    DeleteOutlined,
-    SearchOutlined,
-    PlusOutlined,
-    TeamOutlined,
-    UserOutlined,
-} from '@ant-design/icons'
+import { ApartmentOutlined, DeleteOutlined, PlusOutlined, SearchOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
@@ -47,6 +41,7 @@ import DangerConfirmModal from '../../components/common/DangerConfirmModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import { resetAndFill } from '../../features/admin/shared/formLifecycle'
 import { useT } from '../../i18n'
+import { ModalHead } from '../../components/liquid'
 
 function userLabel(u) {
     if (!u) return '—'
@@ -313,7 +308,7 @@ function AddRuleModal({
 
     return (
         <Modal
-            title={t('assignment.addRules')}
+            title={<ModalHead icon={<ApartmentOutlined />} tone="violet" title={t('assignment.addRules')} />}
             open={open}
             onCancel={onClose}
             onOk={() => {

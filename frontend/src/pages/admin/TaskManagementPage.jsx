@@ -55,6 +55,7 @@ import DangerConfirmModal from '../../components/common/DangerConfirmModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import { resetAndFill } from '../../features/admin/shared/formLifecycle'
 import { useT } from '../../i18n'
+import { ModalHead } from '../../components/liquid'
 
 // =============================================================================
 // Sub Projects
@@ -325,7 +326,7 @@ export function SubProjectsTab() {
             />
 
             <Modal
-                title={editing ? 'Edit Sub Project' : 'Create Sub Project'}
+                title={<ModalHead icon={<FolderOpenOutlined />} tone="blue" title={editing ? t('modalTitles.editSubProject') : t('modalTitles.createSubProject')} />}
                 open={modalOpen}
                 onCancel={() => {
                     setModalOpen(false)

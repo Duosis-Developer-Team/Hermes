@@ -15,6 +15,8 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { customerService, projectService } from '../../services/api'
 import { ticketHubService } from '../../api/ticketsApi'
 import { useT } from '../../i18n'
+import { ModalHead } from '../../components/liquid'
+import { SwapOutlined } from '@ant-design/icons'
 
 const { TextArea } = Input
 
@@ -92,7 +94,7 @@ function ConvertToWorkItemModal({ open, ticket, onClose, onCreated }) {
     return (
         <Modal
             open={open}
-            title={t('hub.convertTitle')}
+            title={<ModalHead icon={<SwapOutlined />} tone="red" title={t('hub.convertTitle')} />}
             onCancel={() => { if (!create.isPending) onClose?.() }}
             onOk={handleOk}
             okText={t('hub.createWorkItem')}

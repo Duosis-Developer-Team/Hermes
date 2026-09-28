@@ -63,8 +63,9 @@ describe('gorunum kaydet (E2)', () => {
         await user.click(screen.getByRole('tab', { name: 'Overdue' }))
         await user.click(screen.getByRole('button', { name: 'List' }))
         await user.click(screen.getByRole('button', { name: /Filters/ }))
-        await user.click(await screen.findByRole('combobox', { name: 'Filter by priority' }))
-        await user.click(await screen.findByTitle('High'))
+        // Oncelik filtresi cip grubu (anlamsal radyo grubu).
+        const prio = await screen.findByRole('radiogroup', { name: 'Filter by priority' })
+        await user.click(within(prio).getByRole('radio', { name: 'High' }))
         expect(await screen.findByText('Modified')).toBeInTheDocument()
 
         await user.click(screen.getByRole('button', { name: 'Save as view' }))

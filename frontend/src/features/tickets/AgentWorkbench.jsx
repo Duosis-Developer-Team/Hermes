@@ -30,6 +30,8 @@ import {
 import { TicketPriorityBadge, TicketStatusBadge } from './TicketStatusBadge'
 import './tickets.css'
 import { useT } from '../../i18n'
+import { ModalHead } from '../../components/liquid'
+import { CustomerServiceOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 
@@ -398,9 +400,15 @@ export default function AgentWorkbench({
             onClose={onClose}
             width="min(1100px, 96vw)"
             className="ticket-workbench-drawer"
-            title={ticket
-                ? `${ticket.ticket_number} · ${ticket.title}`
-                : 'Ticket'}
+            rootClassName="lq-sheet"
+            title={(
+                <ModalHead
+                    icon={<CustomerServiceOutlined />}
+                    tone="red"
+                    title={ticket ? ticket.title : 'Ticket'}
+                    subtitle={ticket?.ticket_number}
+                />
+            )}
             destroyOnHidden
             /* Eylemler SABIT footer'da: uzun bir zaman cizelgesinin
                altinda kaybolmasinlar. Sablonda birincil eylem her zaman

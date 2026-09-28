@@ -21,9 +21,7 @@ import { useMemo, useState } from 'react'
 import {
     Button, DatePicker, Input, Modal, Select, Space, Table, Tag, Tooltip, message
 } from 'antd'
-import {
-    ApiOutlined, FileTextOutlined, KeyOutlined, PlusOutlined, ReloadOutlined, SafetyCertificateOutlined, StopOutlined, UnorderedListOutlined
-} from '@ant-design/icons'
+import { ApiOutlined, ClockCircleOutlined, FileTextOutlined, KeyOutlined, PlusOutlined, ReloadOutlined, SafetyCertificateOutlined, StopOutlined, UnorderedListOutlined } from '@ant-design/icons'
 import {
     keepPreviousData, useMutation, useQuery, useQueryClient,
 } from '@tanstack/react-query'
@@ -54,6 +52,7 @@ import TokenOnceModal from '../../features/api-management/components/TokenOnceMo
 import ClientModal from '../../features/api-management/modals/ClientModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import { useT } from '../../i18n'
+import { ModalHead } from '../../components/liquid'
 
 
 // =============================================================================
@@ -1030,7 +1029,7 @@ function ApiManagementPage() {
 
             <Modal
                 open={!!expiryModal}
-                title={t('api.updateTokenExpiry')}
+                title={<ModalHead icon={<ClockCircleOutlined />} tone="amber" title={t('api.updateTokenExpiry')} />}
                 okText={t('common.save')}
                 onOk={() => {
                     // Cift gonderim kilidi KAYNAKTA.

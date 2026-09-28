@@ -21,15 +21,7 @@ import {
     InputNumber, Modal, Select, Space, Table,
     Tag, Typography, message,
 } from 'antd'
-import {
-    CustomerServiceOutlined,
-    ApartmentOutlined,
-    PlusOutlined,
-    DashboardOutlined,
-    FileSearchOutlined,
-    LogoutOutlined,
-    SafetyCertificateOutlined,
-} from '@ant-design/icons'
+import { ApartmentOutlined, CheckCircleOutlined, CustomerServiceOutlined, DashboardOutlined, FileSearchOutlined, LogoutOutlined, PlusOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
 
 import AppShell from '../../components/layout/AppShell'
 import { CountUp, GlassCard, PageHero } from '../../components/liquid'
@@ -38,6 +30,7 @@ import SupportRoutingTab from './SupportRoutingTab'
 import { usePlatformAuthStore } from '../../stores/platformAuthStore'
 import SupportSessionBanner from './SupportSessionBanner'
 import { useT } from '../../i18n'
+import { ModalHead } from '../../components/liquid'
 
 const { Text } = Typography
 
@@ -263,7 +256,7 @@ export function CreateTenantModal({ open, onClose, onDone }) {
         const close = () => { setCreated(null); onDone() }
         return (
             <Modal
-                open title={t('platform.tenantCreated')} onCancel={close}
+                open title={<ModalHead icon={<CheckCircleOutlined />} tone="green" title={t('platform.tenantCreated')} />} onCancel={close}
                 onOk={close}
                 okText={created.one_time_password ? t('platform.savedPassword') : undefined}
                 cancelButtonProps={{ style: { display: 'none' } }}
@@ -301,7 +294,7 @@ export function CreateTenantModal({ open, onClose, onDone }) {
 
     return (
         <Modal
-            open={open} title={t('platform.newTenant')} onCancel={onClose} onOk={submit}
+            open={open} title={<ModalHead icon={<ApartmentOutlined />} tone="violet" title={t('platform.newTenant')} />} onCancel={onClose} onOk={submit}
             confirmLoading={busy} okText={t('common.create')} destroyOnHidden
         >
             <Form form={form} layout="vertical" preserve={false}>

@@ -17,9 +17,7 @@ import {
     Alert, Button, Card, Checkbox, Form, Input, Modal, Space, Switch,
     Table, Tag, Typography, message,
 } from 'antd'
-import {
-    EditOutlined, LockOutlined, PlusOutlined, StopOutlined,
-} from '@ant-design/icons'
+import { EditOutlined, LockOutlined, PlusOutlined, SafetyCertificateOutlined, StopOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { rbacService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
@@ -28,6 +26,7 @@ import {
 } from '../../features/admin/shared/normalizeApiError'
 import { resetAndFill } from '../../features/admin/shared/formLifecycle'
 import { useT } from '../../i18n'
+import { ModalHead } from '../../components/liquid'
 
 // Formda GERCEKTEN olan alanlar. Alanlar MODA GORE kosullu cizildigi
 // icin (code yalniz olusturmada, is_active yalniz edit-ve-system-degil)
@@ -325,7 +324,7 @@ function RolesTab() {
 
             <Modal
                 className="h-modal-scroll"
-                title={editing ? `Edit Role — ${editing.name}` : 'New Role'}
+                title={<ModalHead icon={<SafetyCertificateOutlined />} tone="ink" title={editing ? t('modalTitles.editRole', { name: editing.name }) : t('modalTitles.newRole')} />}
                 open={modalOpen} onCancel={close} footer={null} width={640}
                 closable={!isSaving}
                 maskClosable={!isSaving}

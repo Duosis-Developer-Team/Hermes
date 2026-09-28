@@ -1,21 +1,31 @@
 /**
  * =============================================================================
- * HERMES - Capraz filtre cubugu (Sprint 5C)
+ * HERMES - Capraz filtre cubugu (Sprint 5C → Hermes Liquid)
  * =============================================================================
- * Status / Priority / Customer / Project / Sub Project. Hiyerarsi
- * kilitlidir: musteri secilmeden proje, proje secilmeden alt proje
- * secilemez — kararin kendisi useTaskFilters'ta (secim temizleme
- * kurali orada), burada yalnizca sunumu vardir.
+ * Durum / Oncelik (cip; secili cipe yeniden basmak temizler) + Kisi /
+ * Musteri / Proje / Alt proje (etiketli secim). Hiyerarsi kilitlidir:
+ * musteri secilmeden proje, proje secilmeden alt proje secilemez — kararin
+ * kendisi useTaskFilters'ta (secim temizleme kurali orada), burada yalnizca
+ * sunumu vardir.
  *
- * Etiketsiz kontroller: her Select acik bir erisilebilir ad tasir (§8);
+ * Erisilebilir ad (§8): cip gruplari ve her Select acik bir ad tasir;
  * placeholder erisilebilir ad DEGILDIR.
  * =============================================================================
  */
-import { Button, Select, Space } from 'antd'
-import { FilterOutlined } from '@ant-design/icons'
+import { Button, Select } from 'antd'
 
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '../model/constants'
+import { ChipGroup, FormSection } from '../../../components/liquid'
 import { useT } from '../../../i18n'
+
+function Field({ id, label, children }) {
+    return (
+        <div className="task-filterbar__field">
+            <label htmlFor={id}>{label}</label>
+            {children}
+        </div>
+    )
+}
 
 function TaskFilterBar({
     filters, customers, projects, subProjects,
@@ -25,83 +35,89 @@ function TaskFilterBar({
 }) {
     const t = useT()
     return (
-        /* Premium redesign: bu blok artik surekli acik bir serit DEGIL —
-           TasksPage'deki "Filters" aksiyonunun actigi drawer'in icidir.
-           Kontroller dikey akar; genislikler drawer'a uyar. */
         <div className="task-filterbar">
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                <FilterOutlined style={{ color: 'var(--c-text-muted)' }} />
-                {/* Kisi filtresi YALNIZ "Assigned by Me" kapsaminda
-                    anlamlidir; ust katman secenek listesini yalnizca o
-                    kapsamda verir (My Tasks'ta zaten tek kisi vardir). */}
-                {assigneeOptions && (
+            <FormSection>{t('taskUi.filterGroupState')}</FormSection>
+            <Field label={t('common.status')}>
+                <ChipGroup
+                    allowDeselect
+                    ariaLabel={t('taskUi.filterByStatus')}
+                    value={filters.status}
+                    onChange={(v) => onStatusChange(v)}
+                    options={STATUS_OPTIONS.map((o) => ({ value: o.value, label: t(`taskUi.filterStatus.${o.value}`) }))}
+                />
+            </Field>
+            <Field label={t('task.priority')}>
+                <ChipGroup
+                    allowDeselect
+                    ariaLabel={t('taskUi.filterByPriority')}
+                    value={filters.priority}
+                    onChange={(v) => onPriorityChange(v)}
+                    options={PRIORITY_OPTIONS.map((o) => ({ value: o.value, label: t(`taskCard.priority.${o.value}`) }))}
+                />
+            </Field>
+
+            <FormSection>{t('taskUi.filterGroupWhere')}</FormSection>
+            {/* Kisi filtresi YALNIZ "Assigned by Me" kapsaminda anlamlidir;
+                ust katman secenek listesini yalnizca o kapsamda verir. */}
+            {assigneeOptions && (
+                <Field id="tf-assignee" label={t('entity.user')}>
                     <Select
+                        id="tf-assignee"
                         allowClear
                         showSearch
                         optionFilterProp="label"
                         aria-label={t('taskUi.filterByUser')}
-                        placeholder={t('entity.user')}
-                        style={{ width: '100%' }}
+                        placeholder={t('taskUi.any')}
                         value={filters.assignee || undefined}
                         onChange={(v) => onAssigneeChange?.(v ?? null)}
                         options={assigneeOptions}
                     />
-                )}
+                </Field>
+            )}
+            <Field id="tf-customer" label={t('entity.customer')}>
                 <Select
-                    allowClear
-                    aria-label={t('taskUi.filterByStatus')}
-                    placeholder={t('common.status')}
-                    style={{ width: '100%' }}
-                    value={filters.status}
-                    onChange={onStatusChange}
-                    options={STATUS_OPTIONS}
-                />
-                <Select
-                    allowClear
-                    aria-label={t('taskUi.filterByPriority')}
-                    placeholder={t('task.priority')}
-                    style={{ width: '100%' }}
-                    value={filters.priority}
-                    onChange={onPriorityChange}
-                    options={PRIORITY_OPTIONS}
-                />
-                <Select
+                    id="tf-customer"
                     allowClear
                     showSearch
                     aria-label={t('taskUi.filterByCustomer')}
-                    placeholder={t('entity.customer')}
-                    style={{ width: '100%' }}
+                    placeholder={t('taskUi.any')}
                     value={filters.customer}
                     onChange={onCustomerChange}
                     optionFilterProp="label"
                     options={customers.map((c) => ({ value: c.id, label: c.name }))}
                 />
+            </Field>
+            <Field id="tf-project" label={t('entity.project')}>
                 <Select
+                    id="tf-project"
                     allowClear
                     showSearch
                     aria-label={t('taskUi.filterByProject')}
-                    placeholder={t('entity.project')}
-                    style={{ width: '100%' }}
+                    placeholder={filters.customer ? t('taskUi.any') : t('taskModal.customerFirst')}
                     value={filters.project}
                     disabled={!filters.customer}
                     onChange={onProjectChange}
                     optionFilterProp="label"
                     options={projects.map((p) => ({ value: p.id, label: p.name }))}
                 />
+            </Field>
+            <Field id="tf-sub" label={t('task.subProject')}>
                 <Select
+                    id="tf-sub"
                     allowClear
                     showSearch
                     aria-label={t('taskUi.filterBySubProject')}
-                    placeholder={t('task.subProject')}
-                    style={{ width: '100%' }}
+                    placeholder={filters.project ? t('taskUi.any') : t('taskModal.projectFirst')}
                     value={filters.subProject}
                     disabled={!filters.project}
                     onChange={onSubProjectChange}
                     optionFilterProp="label"
                     options={subProjects.map((s) => ({ value: s.id, label: s.name }))}
                 />
+            </Field>
+            <div className="task-filterbar__foot">
                 <Button onClick={onClear} block>{t('common.clear')}</Button>
-            </Space>
+            </div>
         </div>
     )
 }

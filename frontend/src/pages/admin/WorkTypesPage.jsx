@@ -8,9 +8,7 @@
 
 import { useMemo, useState } from 'react'
 import { Card, Table, Button, Space, Modal, Form, Input, message, Switch, Tag } from 'antd'
-import {
-    PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
-} from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, ToolOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { workTypeService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
@@ -21,6 +19,7 @@ import {
 import { adminEmptyText } from '../../features/admin/shared/adminEmptyText'
 import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecycle'
 import { useT } from '../../i18n'
+import { ModalHead } from '../../components/liquid'
 
 // Formda GERCEKTEN olan alanlar. API kaydindaki id/created_at gibi
 // alanlar form store'una sizmaz.
@@ -215,7 +214,7 @@ function WorkTypesPage() {
                 />
             </Card>
             <Modal
-                title={editingId ? 'Edit Work Type' : 'New Work Type'}
+                title={<ModalHead icon={<ToolOutlined />} tone="amber" title={editingId ? t('modalTitles.editWorkType') : t('modalTitles.newWorkType')} />}
                 open={modalOpen}
                 onCancel={handleCloseModal}
                 footer={null}

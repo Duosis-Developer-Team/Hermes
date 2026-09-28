@@ -105,7 +105,7 @@ const confirmDialog = (nameRe) => screen.findByRole('dialog', { name: nameRe })
  * benzersizdir; bu bir TEST ORTAMI artefaktidir, urun kusuru degil.
  */
 const dialogByTitle = async (titleRe) => {
-    const title = await screen.findByText(titleRe, { selector: '.ant-modal-title' })
+    const title = await screen.findByText(titleRe, { selector: '.ant-modal-title, .lq-mh__title' })
     return title.closest('[role="dialog"]')
 }
 

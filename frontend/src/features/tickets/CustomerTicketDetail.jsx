@@ -23,6 +23,8 @@ import {
 import { TicketStatusBadge } from './TicketStatusBadge'
 import './tickets.css'
 import { useT } from '../../i18n'
+import { ModalHead } from '../../components/liquid'
+import { CustomerServiceOutlined } from '@ant-design/icons'
 
 const { Text, Paragraph } = Typography
 
@@ -80,7 +82,15 @@ export default function CustomerTicketDetail({
             open={open}
             onClose={onClose}
             width="min(820px, 96vw)"
-            title={ticket ? `${ticket.ticket_number} · ${ticket.title}` : 'Request'}
+            rootClassName="lq-sheet"
+            title={(
+                <ModalHead
+                    icon={<CustomerServiceOutlined />}
+                    tone="red"
+                    title={ticket ? ticket.title : 'Request'}
+                    subtitle={ticket?.ticket_number}
+                />
+            )}
             destroyOnHidden
         >
             {detail.isLoading && <Text type="secondary">Loading…</Text>}

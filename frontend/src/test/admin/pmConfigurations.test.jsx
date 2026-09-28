@@ -107,7 +107,7 @@ const invalidatedKeys = (spy) =>
  * ORTAMI artefaktidir, urun kusuru degil; Sprint 5C'de de belgelendi.
  */
 const dialog = async (titleRe) => {
-    const title = await screen.findByText(titleRe, { selector: '.ant-modal-title' })
+    const title = await screen.findByText(titleRe, { selector: '.ant-modal-title, .lq-mh__title' })
     return title.closest('[role="dialog"]')
 }
 

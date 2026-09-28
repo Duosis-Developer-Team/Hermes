@@ -3,11 +3,14 @@
  * HERMES - Filtre paneli (drawer)
  * =============================================================================
  * Sayfadan cikarildi: TasksPage bir ORKESTRASYON dosyasidir ve yapisal
- * kilit onu <450 satirda tutar. Davranis birebir aynidir.
+ * kilit onu <450 satirda tutar. Hermes Liquid: kenardan kopuk yuzen cam
+ * panel (`lq-sheet`), ikonlu baslik. Davranis birebir aynidir.
  * =============================================================================
  */
 import { Drawer } from 'antd'
+import { FilterOutlined } from '@ant-design/icons'
 
+import { ModalHead } from '../../../components/liquid'
 import TaskFilterBar from './TaskFilterBar'
 import { useT } from '../../../i18n'
 
@@ -19,13 +22,20 @@ function TaskFiltersDrawer({
     const t = useT()
     return (
         <Drawer
-            title={t('tasks.filters')}
+            title={(
+                <ModalHead
+                    icon={<FilterOutlined />}
+                    title={t('tasks.filters')}
+                    subtitle={t('taskUi.filtersHint')}
+                />
+            )}
             open={open}
             onClose={onClose}
             placement={placement}
             height="auto"
             width={360}
             className="task-filters-drawer"
+            rootClassName="lq-sheet"
         >
             <TaskFilterBar
                 filters={filters}

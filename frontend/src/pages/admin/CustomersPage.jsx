@@ -11,9 +11,7 @@ import {
     Card, Table, Button, Space, Modal, Form, Input, InputNumber, DatePicker,
     message, Switch, Tag
 } from 'antd'
-import {
-    PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
-} from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, ShopOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { customerService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
@@ -42,6 +40,7 @@ const FORM_SHAPE = {
 }
 import { Page, PageHeader } from '../../components/ui'
 import { useT } from '../../i18n'
+import { ModalHead } from '../../components/liquid'
 
 function CustomersPage() {
     const [form] = Form.useForm()
@@ -300,7 +299,7 @@ function CustomersPage() {
 
             {/* Edit/Create Modal */}
             <Modal
-                title={editingId ? 'Edit Customer' : 'New Customer'}
+                title={<ModalHead icon={<ShopOutlined />} tone="green" title={editingId ? t('modalTitles.editCustomer') : t('modalTitles.newCustomer')} />}
                 open={modalOpen}
                 onCancel={handleCloseModal}
                 footer={null}

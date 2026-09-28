@@ -11,6 +11,8 @@ import { Checkbox, Modal } from 'antd'
 
 import { userLabel } from '../model/grouping'
 import { useT } from '../../../i18n'
+import { ModalHead } from '../../../components/liquid'
+import { TeamOutlined } from '@ant-design/icons'
 
 const label = (status) => (status === 'in_progress' ? 'In Progress' : status)
 
@@ -19,7 +21,7 @@ function MultiAssignmentConfirm({ pending, userMap, onToggle, onCancel, onConfir
     return (
         <Modal
             open={!!pending}
-            title={t('explorer.whichAssignments')}
+            title={<ModalHead icon={<TeamOutlined />} tone="blue" title={t('explorer.whichAssignments')} />}
             okText={`Move ${pending?.selected.length || 0} to ${label(pending?.newStatus || '')}`}
             okButtonProps={{ disabled: !pending?.selected.length }}
             onOk={onConfirm}

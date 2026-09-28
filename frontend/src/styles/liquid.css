@@ -539,3 +539,63 @@
 .lq-confirm__item b { font-size: 13.5px; font-weight: 600; color: var(--h-text-primary); }
 .lq-confirm__item small { font-size: 12px; color: var(--h-text-muted); }
 .lq-confirm__body { margin: 0; color: var(--h-text-secondary); font-size: 14px; line-height: 1.6; }
+
+/* ==========================================================================
+   Yan panel (Drawer) — kenardan kopuk yuzen cam sayfa (`rootClassName=lq-sheet`)
+   ========================================================================== */
+:root .lq-sheet.ant-drawer-right > .ant-drawer-content-wrapper,
+:root .lq-sheet .ant-drawer-right > .ant-drawer-content-wrapper,
+:root .lq-sheet.ant-drawer-left > .ant-drawer-content-wrapper { top: 12px; bottom: 12px; }
+:root .lq-sheet.ant-drawer-right > .ant-drawer-content-wrapper { right: 12px; }
+:root .lq-sheet.ant-drawer-left > .ant-drawer-content-wrapper { left: 12px; }
+:root .lq-sheet.ant-drawer-bottom > .ant-drawer-content-wrapper { left: 8px; right: 8px; bottom: 8px; max-height: 85vh; }
+:root .lq-sheet > .ant-drawer-content-wrapper {
+  overflow: hidden;
+  border-radius: 28px;
+  box-shadow: var(--h-shadow-modal);
+}
+:root .lq-sheet .ant-drawer-content {
+  border: 1px solid var(--h-glass-edge);
+  border-radius: 28px;
+  background: var(--h-modal-bg);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+}
+:root .lq-sheet .ant-drawer-header { padding: 22px 22px 8px; border-bottom: 0; }
+:root .lq-sheet .ant-drawer-header-title { flex-direction: row-reverse; gap: 12px; }
+:root .lq-sheet .ant-drawer-close {
+  margin: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--h-radius-pill);
+  background: var(--h-ghost-bg);
+  border: 1px solid var(--h-ghost-border);
+  color: var(--h-text-secondary);
+}
+:root .lq-sheet .ant-drawer-body { padding: 8px 22px 0; }
+:root .lq-sheet .ant-drawer-mask {
+  background: color-mix(in srgb, var(--h-liquid-base) 30%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Filtre cubugu (TaskFilterBar) — panel icinde dikey akar. */
+.task-filterbar { display: flex; flex-direction: column; min-height: 100%; }
+.task-filterbar__field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.task-filterbar__field > label { font-size: 12.5px; font-weight: 600; color: var(--h-text-secondary); }
+.task-filterbar .ant-select .ant-select-selector { border-radius: 12px; background: var(--h-field-bg); }
+.task-filterbar__foot {
+  position: sticky;
+  bottom: 0;
+  margin: auto -22px 0;
+  padding: 14px 22px 18px;
+  border-top: 1px solid var(--h-border-subtle);
+  background: color-mix(in srgb, var(--h-modal-bg) 80%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+:root .lq-sheet .ant-drawer-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--h-border-subtle);
+  background: color-mix(in srgb, var(--h-modal-bg) 80%, transparent);
+}

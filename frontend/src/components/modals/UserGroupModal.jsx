@@ -15,6 +15,8 @@ import {
 } from '../../features/admin/shared/normalizeApiError'
 import { resetAndFill } from '../../features/admin/shared/formLifecycle'
 import { useT } from '../../i18n'
+import { ModalHead } from '../../components/liquid'
+import { TeamOutlined } from '@ant-design/icons'
 
 const FORM_FIELDS = ['name', 'description']
 
@@ -66,7 +68,7 @@ function UserGroupModal({
 
     return (
         <Modal
-            title={isEditing ? 'Edit Group' : 'Create Group'}
+            title={<ModalHead icon={<TeamOutlined />} tone="violet" title={isEditing ? t('modalTitles.editGroup') : t('modalTitles.createGroup')} />}
             open={open}
             onCancel={onClose}
             okText={isEditing ? 'Save Changes' : 'Create Group'}
