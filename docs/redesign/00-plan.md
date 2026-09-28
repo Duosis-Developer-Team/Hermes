@@ -43,3 +43,34 @@ referansı izliyor; CTO onayıyla E4 kilidi yeni dile göre güncellenir.
 Açık soru: canlı adadaki **zamanlayıcı** (başlat/durdur → efor kaydı)
 yeni bir özellik; backend'de çalışan zamanlayıcı yok. İstenirse R4'te
 ayrı küçük bir uç (`/timers`) ile eklenir.
+
+
+## 4. Revizyon (28.09, CTO): Hermes Liquid
+
+CTO: referans birebir değil; **Hermes renkleri**, **tüm modüller eksiksiz**,
+**koyu olmayan sıvı (liquid) zemin**, sayfa sayfa en estetik + kullanışlı,
+animasyonlu; godly.design'dan uygun fikirler.
+
+Prototip: https://claude.ai/artifact/HXXunk5DuR4VXEAVonnQfp · kopya
+`docs/redesign/prototype-liquid.html` (tek dosya, örnek veri).
+
+- Zemin: Hermes mavi/mor/yeşil (+az amber) blob'larından akan mesh, biri
+  imleci izler; grain. Varsayılan AÇIK; koyu tema profil menüsünden.
+- Yüzey: liquid glass (blur 24 + saturate 180 + üst kenar ışığı), kartlarda
+  imleci izleyen parıltı.
+- Ada (godly: dynamic island, Liquid Glass toolbar, two-step dock): logo,
+  5 ana modül + kayan aktif gösterge, dock (Yönetim · Sistem kartları + ⌘K
+  sonuçları: sayfa/iş/eylem/kişi), canlı zamanlayıcı (genişler: durdur ve
+  kaydet), bildirimler, profil (organizasyon, tema, dil, çıkış). Kayıt
+  sonrası toast adanın içinde akar. Mobilde alt dock.
+- Sayfalar: Giriş, Ana sayfa, Zaman (hafta + çizelge, 3 adımlı efor
+  sihirbazı), İşler (görünümler, pano sürükle-bırak, gruplu liste, takvim,
+  sağdan kayan detay paneli 4 sekme), Toplantılar (saat ızgarası + şimdi
+  çizgisi), Talepler (liste + yan yana çalışma alanı), Destek portalı,
+  Panel, Faturalanabilir, Raporlar, Sözleşmeler, Ayarlar (11 sayfa),
+  Developer (16 bölüm), Platform konsolu; modallar: efor, yeni iş, plan,
+  toplantı, görünüm kaydet, talepten iş, yeni talep, kullanıcı, üyeler,
+  token, referans kaydı.
+- Geçişler: View Transitions (sayfa ve pano güncellemesi), yay (spring)
+  eğrileri, kaynağından büyüyen modal, sayı sayma, halka çizimi,
+  `prefers-reduced-motion` ile hepsi kapanır.
