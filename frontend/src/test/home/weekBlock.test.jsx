@@ -2,7 +2,8 @@
  * =============================================================================
  * PM rework P3.2 — "Takvimim" blogu (D4)
  * =============================================================================
- *   1. Uc kaynak tek seritte: toplanti, plan, termin — ayni gun kolonunda.
+ *   1. Iki kaynak tek seritte: toplanti, termin — ayni gun kolonunda
+ *      (Plan Time 29.09'da kaldirildi).
  *   2. Tiklama ilgili kaydi acar: /meetings?date= · /time-entry?week= ·
  *      /work/KEY.
  *   3. AJANDA: yalniz icerigi olan gunler + bugun; bos gun satiri yok,
@@ -20,13 +21,13 @@ import { renderWithProviders } from '../utils'
 import { weekDaysToShow } from '../../features/home/model/home'
 const WeekBlock = (await import('../../features/home/components/WeekBlock')).default
 
-const day = (date, over = {}) => ({ date, is_today: false, meetings: [], plans: [], items: [], ...over })
+const day = (date, over = {}) => ({ date, is_today: false, meetings: [], items: [], ...over })
 const WEEK = {
     today: '2026-09-16', week_start: '2026-09-14', week_end: '2026-09-20',
     days: [
         day('2026-09-14'),
         day('2026-09-15', {
-            plans: [{ id: 'pl1', assignment_id: 'as1', customer_name: 'Vakko', project_name: 'ATM', start_time: '09:00', end_time: '11:00', recurrence: 'one_time', status: 'accepted' }],
+            meetings: [{ id: 'm0', subject: 'Vakko · ATM kickoff', start_datetime: '2026-09-15T06:00:00Z', end_datetime: '2026-09-15T07:00:00Z', is_online_meeting: true, join_url: null }],
         }),
         day('2026-09-16', {
             is_today: true,
@@ -47,7 +48,7 @@ beforeEach(() => {
 })
 
 describe('Takvimim blogu', () => {
-    it('gun kolonlari, uc kaynak ve baglantilar', async () => {
+    it('gun kolonlari, iki kaynak ve baglantilar', async () => {
         homeService.week.mockResolvedValue(WEEK)
         renderWithProviders(<WeekBlock />)
         expect(screen.getByText('My calendar')).toBeInTheDocument()
@@ -62,8 +63,7 @@ describe('Takvimim blogu', () => {
         expect(screen.queryByText('Nothing planned')).toBeNull()
 
         const tue = within(days[0])
-        expect(tue.getByRole('link', { name: /Vakko · ATM/ })).toHaveAttribute('href', '/time-entry?week=2026-09-15')
-        expect(tue.getByText('09:00–11:00')).toBeInTheDocument()
+        expect(tue.getByRole('link', { name: /Vakko · ATM kickoff/ })).toHaveAttribute('href', '/meetings?date=2026-09-15')
 
         const wed = within(days[1])
         expect(wed.getByRole('link', { name: /Standup/ })).toHaveAttribute('href', '/meetings?date=2026-09-16')

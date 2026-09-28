@@ -69,11 +69,6 @@ vi.mock('../../services/api', () => ({
         update: vi.fn(() => Promise.resolve({})),
         delete: vi.fn(() => Promise.resolve({})),
     },
-    planTimeService: {
-        getAll: vi.fn(() => Promise.resolve({ data: [] })),
-        getMyPlanTimes: vi.fn(() => Promise.resolve({ data: [] })),
-        respond: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(),
-    },
     customerService: { getAll: vi.fn(() => Promise.resolve({ data: [] })) },
     projectService: { getAll: vi.fn(() => Promise.resolve({ data: [] })) },
     workTypeService: { getAll: vi.fn(() => Promise.resolve({ data: [] })) },

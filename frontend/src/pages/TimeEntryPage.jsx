@@ -1,18 +1,14 @@
 /**
  * =============================================================================
- * HERMES PLATFORM - Time Entry Page (Jira Tempo Style)
+ * HERMES PLATFORM - Zaman Girisi
  * =============================================================================
- * Yeni tasarım: List ve Timesheet görünümleri, haftalık navigasyon,
- * Log Time ve Plan Time modal'ları.
+ * Hafta ve Cizelge gorunumleri, haftalik gezinme; efor girisi, inceleme ve
+ * silme onayi pencereleri (Plan Time 29.09'da kaldirildi).
  * =============================================================================
  */
 
 import { useState, useMemo, useEffect } from 'react'
-import { Button, Modal, message } from 'antd'
-import {
-    ExclamationCircleOutlined,
-    DeleteOutlined
-} from '@ant-design/icons'
+import { message } from 'antd'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import dayjs from 'dayjs'
@@ -21,8 +17,9 @@ import isoWeek from 'dayjs/plugin/isoWeek'
 import WeeklyListView from '../components/time-entry/WeeklyListView'
 import TimesheetView from '../components/time-entry/TimesheetView'
 import LogTimeModal from '../components/modals/LogTimeModal'
-import PlanTimeModal from '../components/modals/PlanTimeModal'
-import { workLogService, reportsService, authService, planTimeService, capacityService } from '../services/api'
+import WorkLogReviewModal from '../components/modals/WorkLogReviewModal'
+import DangerConfirmModal from '../components/common/DangerConfirmModal'
+import { workLogService, reportsService, authService, capacityService } from '../services/api'
 import { queryKeys } from '../query/queryKeys'
 import { useAuthStore } from '../stores/authStore'
 import {
@@ -68,13 +65,11 @@ function TimeEntryPage() {
 
     // Modal states
     const [logTimeModalOpen, setLogTimeModalOpen] = useState(false)
-    const [planTimeModalOpen, setPlanTimeModalOpen] = useState(false)
     const [selectedDate, setSelectedDate] = useState(null)
     const [editingLog, setEditingLog] = useState(null)
-    const [editingPlan, setEditingPlan] = useState(null)
     const [selectedUserId, setSelectedUserId] = useState(null) // Admin override
     const [deletingLog, setDeletingLog] = useState(null)   // log pending delete confirmation
-    const [deletingPlan, setDeletingPlan] = useState(null) // plan pending delete confirmation
+    const [reviewingLog, setReviewingLog] = useState(null) // incelenen efor kaydi
 
     // ==========================================================================
     // Week Navigation
@@ -117,57 +112,6 @@ function TimeEntryPage() {
         enabled: !!user?.id,
     })
 
-    // Fetch Plan Times (haftalık takvim için)
-    // Admin: getAll → oluşturduğu dahil tüm plan time'lar görünür
-    // User: getMyPlanTimes → yalnızca kendisine atananlar
-    const { data: planTimesResponse,  } = useQuery({
-        queryKey: ['planTimes', weekStart.format('YYYY-MM-DD'), user?.id, canWorklogsAdmin],
-        queryFn: () => canWorklogsAdmin
-            ? planTimeService.getAll({
-                start_date: weekStart.format('YYYY-MM-DD'),
-                end_date: weekEnd.format('YYYY-MM-DD'),
-            })
-            : planTimeService.getMyPlanTimes({
-                start_date: weekStart.format('YYYY-MM-DD'),
-                end_date: weekEnd.format('YYYY-MM-DD'),
-            }),
-        enabled: !!user?.id,
-    })
-    // Admin için getAll dönüyor — assignments array'inden görüntülenen kullanıcının status'unu enrich et
-    const planTimes = useMemo(() => {
-        const raw = planTimesResponse?.data || []
-        if (!canWorklogsAdmin) return raw
-
-        // Hangi kullanıcının takvimi görüntüleniyor?
-        const viewedId = selectedUserId || user.id
-        const isViewingOwnCalendar = viewedId === user.id
-
-        return raw.map(pt => {
-            // Görüntülenen kullanıcının assignment'ı
-            const viewedAssignment = pt.assignments?.find(a => a.user_id === viewedId)
-            // Admin'in kendi assignment'ı (edit/delete yetkisi için)
-            const myAssignment = pt.assignments?.find(a => a.user_id === user.id)
-
-            if (viewedAssignment) {
-                return {
-                    ...pt,
-                    // Accept/Reject sadece kendi takvimine bakarken çalışsın
-                    assignment_id: isViewingOwnCalendar ? `${pt.id}_self` : undefined,
-                    status: viewedAssignment.status,
-                }
-            }
-            if (myAssignment && isViewingOwnCalendar) {
-                return { ...pt, assignment_id: `${pt.id}_self`, status: myAssignment.status }
-            }
-            return pt
-        })
-        /*
-         * `canWorklogsAdmin` GERCEK bir bagimlilik: izin sorgusu sonradan
-         * cozuldugunde (false → true) admin zenginlestirmesi yeniden
-         * hesaplanmali. Eksik oldugu icin izin geldiginde plan time
-         * status'lari eski haliyle kaliyordu.
-         */
-    }, [planTimesResponse, user, selectedUserId, canWorklogsAdmin])
 
     /*
      * `workLogsResponse?.data || []` her render'da YENI bir dizi uretir.
@@ -304,12 +248,6 @@ function TimeEntryPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams])
 
-    const handlePlanTime = (date) => {
-        setSelectedDate(date)
-        setEditingPlan(null)
-        setPlanTimeModalOpen(true)
-    }
-
     const handleEditLog = (log) => {
         setEditingLog(log)
         setLogTimeModalOpen(true)
@@ -335,79 +273,6 @@ function TimeEntryPage() {
         }
     }
 
-    const createPlanTimeMutation = useMutation({
-        mutationFn: (data) => planTimeService.create(data),
-        onSuccess: () => {
-            message.success(t('timeEntry.meetingInviteSent'))
-            setPlanTimeModalOpen(false)
-            queryClient.invalidateQueries({ queryKey: ['planTimes'] })
-        },
-        onError: (error) => {
-            message.error(error.response?.data?.detail || 'Failed to create plan time')
-        },
-    })
-
-    const updatePlanTimeMutation = useMutation({
-        mutationFn: ({ id, data }) => planTimeService.update(id, data),
-        onSuccess: () => {
-            message.success(t('timeEntry.planUpdated'))
-            setPlanTimeModalOpen(false)
-            setEditingPlan(null)
-            queryClient.invalidateQueries({ queryKey: ['planTimes'] })
-        },
-        onError: (error) => {
-            message.error(error.response?.data?.detail || 'Failed to update plan')
-        },
-    })
-
-    const deletePlanTimeMutation = useMutation({
-        mutationFn: (id) => planTimeService.delete(id),
-        onSuccess: () => {
-            message.success(t('timeEntry.planDeleted'))
-            setDeletingPlan(null)
-            queryClient.invalidateQueries({ queryKey: ['planTimes'] })
-        },
-        onError: () => {
-            message.error(t('timeEntry.deletePlanFailed'))
-            setDeletingPlan(null)
-        },
-    })
-
-    const respondPlanTimeMutation = useMutation({
-        mutationFn: ({ planTimeId, status }) => planTimeService.respond(planTimeId, status),
-        onSuccess: (_, { status }) => {
-            message.success(status === 'accepted' ? 'Accepted' : 'Rejected')
-            queryClient.invalidateQueries({ queryKey: ['planTimes'] })
-        },
-        onError: () => {
-            message.error(t('timeEntry.respondFailed'))
-        },
-    })
-
-    const handlePlanTimeSubmit = (data) => {
-        if (editingPlan) {
-            updatePlanTimeMutation.mutate({ id: editingPlan.id, data })
-        } else {
-            createPlanTimeMutation.mutate(data)
-        }
-    }
-
-    const handleEditPlanTime = (plan) => {
-        setEditingPlan(plan)
-        setPlanTimeModalOpen(true)
-    }
-
-    const handleDeletePlanTime = (plan) => {
-        setDeletingPlan(plan)
-    }
-
-    const handleDeletePlanConfirm = () => {
-        if (deletingPlan) deletePlanTimeMutation.mutate(deletingPlan.id)
-    }
-
-    const handlePlanTimeRespond = (planTimeId, status) => {
-        respondPlanTimeMutation.mutate({ planTimeId, status })
-    }
 
 
     // ==========================================================================
@@ -581,14 +446,10 @@ function TimeEntryPage() {
                     <WeeklyListView
                         weekStart={weekStart}
                         workLogs={workLogs}
-                        planTimes={planTimes}
                         onLogTime={handleLogTime}
-                        onPlanTime={canWorklogsAdmin ? handlePlanTime : undefined}
                         onEditLog={handleEditLog}
                         onDeleteLog={handleDeleteLog}
-                        onPlanTimeRespond={handlePlanTimeRespond}
-                        onDeletePlanTime={handleDeletePlanTime}
-                        onEditPlanTime={handleEditPlanTime}
+                        onReviewLog={setReviewingLog}
                         selectedLogId={selectedLogId}
                         copiedLogId={copiedLog?.sourceId ?? null}
                         copiedLog={copiedLog}
@@ -596,7 +457,6 @@ function TimeEntryPage() {
                         onSelectLog={handleSelectLog}
                         onSelectDay={handleSelectDay}
                         onClearClipboard={handleClearClipboard}
-                        isAdmin={canWorklogsAdmin}
                         capacityDays={capacityDays}
                         onMarkAbsence={(dateKey) => markAbsenceMutation.mutate(dateKey)}
                         onRemoveAbsence={(absenceId) => removeAbsenceMutation.mutate(absenceId)}
@@ -625,169 +485,32 @@ function TimeEntryPage() {
                 loading={createMutation.isPending || updateMutation.isPending}
             />
 
-            <PlanTimeModal
-                open={planTimeModalOpen}
-                onClose={() => { setPlanTimeModalOpen(false); setEditingPlan(null) }}
-                onSubmit={handlePlanTimeSubmit}
-                initialDate={selectedDate}
-                editingPlan={editingPlan}
-                currentUserId={user?.id}
-                loading={createPlanTimeMutation.isPending || updatePlanTimeMutation.isPending}
+            {/* Efor inceleme: ayrintilar + Duzenle / Sil (is incelemesiyle ayni dil). */}
+            <WorkLogReviewModal
+                log={reviewingLog}
+                onClose={() => setReviewingLog(null)}
+                onEdit={(log) => { setReviewingLog(null); handleEditLog(log) }}
+                onDelete={(log) => { setReviewingLog(null); handleDeleteLog(log) }}
             />
 
-
-            {/* Plan Time Delete Confirmation Modal */}
-            <Modal
-                open={!!deletingPlan}
-                onCancel={() => setDeletingPlan(null)}
-                footer={null}
-                width={420}
-                centered
-                closable={false}
-                styles={{
-                    content: {
-                        background: 'var(--c-surface-2)',
-                        border: '1px solid var(--c-border)',
-                        borderRadius: 12,
-                        padding: '28px 28px 24px',
-                    }
-                }}
-            >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{
-                            width: 40, height: 40, borderRadius: 10,
-                            background: 'rgba(239,68,68,0.15)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            flexShrink: 0
-                        }}>
-                            <ExclamationCircleOutlined style={{ color: '#ef4444', fontSize: 20 }} />
-                        </div>
-                        <div>
-                            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--c-text-strong)' }}>{t('timeEntry.deletePlan')}</div>
-                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 2 }}>{t('timeEntry.assignmentsWillBeRemoved')}</div>
-                        </div>
-                    </div>
-
-                    {deletingPlan && (
-                        <div style={{
-                            background: 'var(--c-border)',
-                            border: '1px solid var(--c-border-strong)',
-                            borderRadius: 8,
-                            padding: '10px 14px',
-                        }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text)' }}>
-                                {deletingPlan.project_name || 'Plan Time'}
-                            </div>
-                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 3 }}>
-                                {deletingPlan.customer_name}
-                            </div>
-                        </div>
-                    )}
-
-                    <p style={{ margin: 0, color: 'var(--c-text-muted)', fontSize: 14, lineHeight: 1.6 }}>
-                        Are you sure you want to delete this plan?
-                    </p>
-
-                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
-                        <Button
-                            onClick={() => setDeletingPlan(null)}
-                            style={{ background: 'transparent', borderColor: 'var(--c-border-strong)', color: 'var(--c-text)', borderRadius: 8 }}
-                        >{t('common.cancel')}</Button>
-                        <Button
-                            type="primary"
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={handleDeletePlanConfirm}
-                            loading={deletePlanTimeMutation.isPending}
-                            style={{ borderRadius: 8 }}
-                        >{t('common.delete')}</Button>
-                    </div>
-                </div>
-            </Modal>
-
-            {/* Delete Confirmation Modal */}
-            <Modal
+            {/* Silme onayi: ortak onay penceresi (kayit onizlemeli). */}
+            <DangerConfirmModal
                 open={!!deletingLog}
+                title={t('timeEntry.confirmDeletion')}
+                subtitle={t('timeEntry.cannotBeUndone')}
+                itemName={deletingLog
+                    ? [deletingLog.customer_name, deletingLog.project_name].filter(Boolean).join(' · ')
+                    : undefined}
+                itemSubtitle={deletingLog?.description
+                    ? (deletingLog.description.length > 80
+                        ? `${deletingLog.description.substring(0, 80)}…`
+                        : deletingLog.description)
+                    : undefined}
+                body={t('timeEntry.deleteLogBody')}
                 onCancel={handleDeleteCancel}
-                footer={null}
-                width={420}
-                centered
-                closable={false}
-                styles={{
-                    content: {
-                        background: 'var(--c-surface-2)',
-                        border: '1px solid var(--c-border)',
-                        borderRadius: 12,
-                        padding: '28px 28px 24px',
-                    }
-                }}
-            >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {/* Icon + Title */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{
-                            width: 40, height: 40, borderRadius: 10,
-                            background: 'rgba(239,68,68,0.15)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            flexShrink: 0
-                        }}>
-                            <ExclamationCircleOutlined style={{ color: '#ef4444', fontSize: 20 }} />
-                        </div>
-                        <div>
-                            <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--c-text-strong)' }}>{t('timeEntry.confirmDeletion')}</div>
-                            <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 2 }}>{t('timeEntry.cannotBeUndone')}</div>
-                        </div>
-                    </div>
-
-                    {/* Log preview */}
-                    {deletingLog && (
-                        <div style={{
-                            background: 'var(--c-border)',
-                            border: '1px solid var(--c-border-strong)',
-                            borderRadius: 8,
-                            padding: '10px 14px',
-                        }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text)' }}>
-                                {deletingLog.project_name || 'Log Entry'}
-                            </div>
-                            {deletingLog.description && (
-                                <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 3 }}>
-                                    {deletingLog.description.length > 60
-                                        ? deletingLog.description.substring(0, 60) + '…'
-                                        : deletingLog.description}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Message */}
-                    <p style={{ margin: 0, color: 'var(--c-text-muted)', fontSize: 14, lineHeight: 1.6 }}>
-                        Are you sure you want to delete this time log?
-                    </p>
-
-                    {/* Buttons */}
-                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
-                        <Button
-                            onClick={handleDeleteCancel}
-                            style={{
-                                background: 'transparent',
-                                borderColor: 'var(--c-border-strong)',
-                                color: 'var(--c-text)',
-                                borderRadius: 8,
-                            }}
-                        >{t('common.cancel')}</Button>
-                        <Button
-                            type="primary"
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={handleDeleteConfirm}
-                            loading={deleteMutation.isPending}
-                            style={{ borderRadius: 8 }}
-                        >{t('common.delete')}</Button>
-                    </div>
-                </div>
-            </Modal>
+                onConfirm={handleDeleteConfirm}
+                loading={deleteMutation.isPending}
+            />
         </div>
     )
 }

@@ -615,3 +615,7 @@
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
+
+/* Efor inceleme penceresi: aciklama metni (WorkLogReviewModal). */
+.worklog-review-desc { margin: 0; color: var(--h-text-primary); font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; }
+.lq-kv + .lq-grp { margin-top: 18px; }

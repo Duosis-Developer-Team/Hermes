@@ -9,14 +9,14 @@
  */
 
 import { Tooltip } from 'antd'
-import { EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import { EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons'
 import { formatHours } from '../../features/time-entry/model/timeEntry'
 import './WorkLogCard.css'
 import { useT } from '../../i18n'
 
 
 function WorkLogCard({
-    workLog, onEdit, onDelete, isSelected = false, isCopied = false, onSelect,
+    workLog, onEdit, onDelete, onReview, isSelected = false, isCopied = false, onSelect,
 }) {
     const t = useT()
     const {
@@ -77,6 +77,17 @@ function WorkLogCard({
 
             {/* Hover actions — stopPropagation so they don't trigger card select or day select */}
             <div className="worklog-card-actions">
+                {onReview && (
+                    <Tooltip title={t('workLog.reviewLog')}>
+                        <button
+                            className="worklog-action-btn"
+                            aria-label={t('workLog.reviewLog')}
+                            onClick={(e) => { e.stopPropagation(); onReview(workLog) }}
+                        >
+                            <EyeOutlined />
+                        </button>
+                    </Tooltip>
+                )}
                 <Tooltip title={t('common.edit')}>
                     <button
                         className="worklog-action-btn"

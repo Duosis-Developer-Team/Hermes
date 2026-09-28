@@ -22,7 +22,6 @@ const renderDay = (props = {}) =>
         <DayColumn
             date="2026-08-04"
             workLogs={[]}
-            planTimes={[]}
             onLogTime={vi.fn()}
             onSelectDay={vi.fn()}
             {...props}

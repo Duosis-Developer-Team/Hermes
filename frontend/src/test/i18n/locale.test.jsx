@@ -42,7 +42,6 @@ describe('i18n sozlukleri', () => {
             // Urun adi / odunc sozcuk: cevrilmez.
             'meeting.teams', 'meetingCard.teams', 'platform.plan',
             // "Efor · Plan" alt eylemi: Plan Turkcede de ayni sozcuk.
-            'timeEntry.addShortPlan',
             'meetingsPage.filter.online',
             'platform.emailDomainsExample',
         ])

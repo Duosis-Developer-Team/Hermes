@@ -2,12 +2,13 @@
  * =============================================================================
  * HERMES - "Takvimim" blogu (ana sayfa, PM rework P3 / D4)
  * =============================================================================
- * Uc kaynak TEK seritte (04-roller §4.3): toplantilar (Graph senkronu,
- * iptaller haric), planli zaman ve termini o gune dusen islerim. Ayri bir
+ * Iki kaynak TEK seritte (04-roller §4.3): toplantilar (Graph senkronu,
+ * iptaller haric) ve termini o gune dusen islerim (Plan Time 29.09'da
+ * kaldirildi). Ayri bir
  * takvim sayfasi degil, AJANDA: gun satirlari (tarih rozeti + kayitlar);
  * bos gunler cizilmez (yalniz bugun bos ise "plan yok" der). Tiklama
  * ilgili kaydi acar:
- *   toplanti → /meetings?date=   plan → /time-entry?week=   is → /work/KEY
+ *   toplanti → /meetings?date=   is → /work/KEY
  * =============================================================================
  */
 import { useQuery } from '@tanstack/react-query'
@@ -34,20 +35,6 @@ function MeetingRow({ meeting }) {
     )
 }
 
-function PlanRow({ plan, date }) {
-    const t = useT()
-    const time = plan.start_time && plan.end_time ? `${plan.start_time}–${plan.end_time}` : t('home.week.allDay')
-    const label = [plan.customer_name, plan.project_name].filter(Boolean).join(' · ') || plan.description || t('home.week.plan')
-    return (
-        <li className={`home-week__entry home-week__entry--plan home-week__entry--${plan.status}`} data-entry="plan">
-            <Link to={`/time-entry?week=${date}`} className="home-week__entry-link">
-                <span className="home-week__time">{time}</span>
-                <span className="home-week__label">{label}</span>
-            </Link>
-        </li>
-    )
-}
-
 function ItemRow({ item, today }) {
     const t = useT()
     const tone = dueTone(item.due_date, today)
@@ -65,7 +52,7 @@ function ItemRow({ item, today }) {
 
 function DayRow({ day, today }) {
     const t = useT()
-    const empty = !day.meetings.length && !day.plans.length && !day.items.length
+    const empty = !day.meetings.length && !day.items.length
     return (
         <li className={`home-week__day${day.is_today ? ' home-week__day--today' : ''}`} data-date={day.date}>
             <div className="home-week__day-head">
@@ -77,7 +64,6 @@ function DayRow({ day, today }) {
             ) : (
                 <ul className="home-week__entries">
                     {day.meetings.map((m) => <MeetingRow key={m.id} meeting={m} />)}
-                    {day.plans.map((p) => <PlanRow key={p.assignment_id} plan={p} date={day.date} />)}
                     {day.items.map((i) => <ItemRow key={i.id} item={i} today={today} />)}
                 </ul>
             )}
@@ -90,7 +76,7 @@ function DayRow({ day, today }) {
 function DayChips({ week }) {
     const days = (week?.days || []).filter((d) => {
         const wd = dayjs(d.date).isoWeekday()
-        const n = (d.meetings?.length || 0) + (d.plans?.length || 0) + (d.items?.length || 0)
+        const n = (d.meetings?.length || 0) + (d.items?.length || 0)
         return wd <= 5 || n > 0
     })
     if (!days.length) return null
@@ -101,7 +87,7 @@ function DayChips({ week }) {
     return (
         <div className="home-week__chips">
             {days.map((d) => {
-                const n = (d.meetings?.length || 0) + (d.plans?.length || 0) + (d.items?.length || 0)
+                const n = (d.meetings?.length || 0) + (d.items?.length || 0)
                 return (
                     <button
                         key={d.date}

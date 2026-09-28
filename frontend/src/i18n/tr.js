@@ -97,7 +97,6 @@ export default {
             nothing: 'Plan yok',
             nothingWeek: 'Bu hafta planlı bir şey yok.',
             allDay: 'Tüm gün',
-            plan: 'Planlı zaman',
             due: 'Termin',
         },
         team: {
@@ -251,8 +250,6 @@ export default {
     },
 
     timeEntry: {
-        addShortLog: 'Efor',
-        addShortPlan: 'Plan',
         noLogs: 'Kayıt yok',
         weekend: 'Hafta sonu',
         pasteHere: '+ Buraya yapıştır (Ctrl+V)',
@@ -260,18 +257,11 @@ export default {
         timeLogged: 'Süre kaydedildi',
         timeUpdated: 'Süre güncellendi',
         logEntryDeleted: 'İş kaydı silindi',
-        planUpdated: 'Plan güncellendi',
-        planDeleted: 'Plan silindi',
-        deletePlan: 'Planı Sil',
-        deletePlanFailed: 'Plan silinemedi',
         confirmDeletion: 'Silmeyi Onayla',
         cannotBeUndone: 'Bu işlem geri alınamaz',
-        assignmentsWillBeRemoved: 'Tüm atamalar kaldırılacak',
         selectTargetDay: 'Önce hedef günü seçin, sonra yapıştırın',
         reportDownloaded: 'Haftalık rapor (CSV) indirildi',
         reportFailed: 'Rapor indirilemedi',
-        meetingInviteSent: 'Toplantı daveti gönderildi',
-        respondFailed: 'Yanıt gönderilemedi',
         // PM rework P0 / D2 — efor şeridi ve eksik gün dürtmesi
         missingDaysWeek: '{count} gün boş: {days}',
         weekFill: 'beklenenin %{percent}\'i',
@@ -283,6 +273,7 @@ export default {
         onLeave: 'İzinli',
         holiday: 'Tatil',
         removeLeave: 'İzni kaldır',
+        deleteLogBody: 'Bu efor kaydı kalıcı olarak silinsin mi?',
     },
 
     // ---------------------------------------------------------------
@@ -634,31 +625,8 @@ export default {
         users: 'Kullanıcılar',
     },
     plan: {
-        assignTo: 'Ata',
-        selectMembers: 'Ekip üyelerini seçin…',
-        atLeastOneUser: 'En az bir kullanıcı seçilmelidir',
-        recurrence: 'Tekrar',
-        oneTime: 'Tek Seferlik',
-        weekly: 'Haftalık',
-        monthly: 'Aylık',
-        startDate: 'Başlangıç Tarihi',
-        endDate: 'Bitiş Tarihi',
-        startTime: 'Başlangıç Saati',
-        endTime: 'Bitiş Saati',
-        selectCustomer: 'Müşteri seçin',
-        selectProject: 'Proje seçin',
-        meetingDescription: 'Toplantı açıklaması veya gündem ekleyin…',
-        accepted: 'Kabul edildi',
         pending: 'Bekliyor',
         rejected: 'Reddedildi',
-        title: 'Plan zamanı',
-        editTitle: 'Planı düzenle',
-        subtitle: 'Ekibe zaman daveti gönder',
-        editSubtitle: 'Toplantı ayrıntılarını güncelle',
-        groupWhere: 'Nerede',
-        groupWhen: 'Ne zaman',
-        groupWho: 'Kimler',
-        sendInvite: 'Davet gönder',
     },
 
     group: {
@@ -1385,13 +1353,17 @@ export default {
         logged: 'Kaydedilen',
         total: 'Toplam',
         noEntries: 'Bu dönem için kayıt bulunamadı',
-        planTime: 'Süre Planla',
         clearEsc: 'Temizle (Esc)',
     },
 
     workLog: {
         editLog: 'Kaydı düzenle',
         deleteLog: 'Kaydı sil',
+        reviewLog: 'Kaydı incele',
+        untitled: 'Efor kaydı',
+        linkedItem: 'İş kalemi',
+        linked: 'Bağlı',
+        updated: 'Son güncelleme',
     },
 
     memberModal: {

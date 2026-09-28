@@ -411,7 +411,6 @@ body {
 @media (hover: none) {
   .task-card-actions,
   .worklog-card-actions,
-  .plan-time-card-actions,
   .task-comment-actions {
     opacity: 1 !important;
   }

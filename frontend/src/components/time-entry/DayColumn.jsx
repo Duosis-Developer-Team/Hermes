@@ -3,16 +3,15 @@
  * HERMES - Day Column Component
  * =============================================================================
  * Tek bir günü temsil eden kolon - haftalık List view'da kullanılır.
- * Jira Tempo tarzı: Gün başlığı, progress, + butonu, worklog kartları.
+ * Gun basligi, dolum cubugu, efor kartlari ve altta tek "+" (o gun icin
+ * dogrudan efor girisi acar — Plan Time 29.09'da kaldirildi).
  * Copy-paste: hasCopiedLog=true iken kolona tıklamak onu paste hedefi yapar.
  * =============================================================================
  */
 
-import { Dropdown } from 'antd'
-import { PlusOutlined, ClockCircleOutlined, ScheduleOutlined } from '@ant-design/icons'
+import { PlusOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import WorkLogCard from './WorkLogCard'
-import PlanTimeCard from './PlanTimeCard'
 import './DayColumn.css'
 import { useT } from '../../i18n'
 
@@ -22,16 +21,11 @@ const DAILY_TARGET_HOURS = 8
 function DayColumn({
     date,
     workLogs = [],
-    planTimes = [],
     onLogTime,
-    onPlanTime,
     onEditLog,
     onDeleteLog,
-    onPlanTimeRespond,
-    onDeletePlanTime,
-    onEditPlanTime,
+    onReviewLog,
     isToday = false,
-    isAdmin = false,
     // Copy-paste props
     selectedLogId,
     copiedLogId,
@@ -50,9 +44,6 @@ function DayColumn({
     const dateKey = dayjs(date).format('YYYY-MM-DD')
     const dayName = dayjs(date).format('ddd')
     const dayNumber = dayjs(date).format('DD')
-    const addLabel = isAdmin
-        ? `${t('timeEntry.addShortLog')} \u00b7 ${t('timeEntry.addShortPlan')}`
-        : t('timeEntry.addShortLog')
 
     // 0.75 → "45m", 2.75 → "2h 45m", 2.0 → "2h"
     const formatDuration = (decimal) => {
@@ -88,22 +79,6 @@ function DayColumn({
             onSelectDay?.(dateKey)
         }
     }
-
-    // + butonu dropdown menü — Plan Time sadece Admin için
-    const menuItems = [
-        {
-            key: 'log-time',
-            label: t('taskUi.logTime'),
-            icon: <ClockCircleOutlined />,
-            onClick: () => onLogTime?.(date),
-        },
-        ...(isAdmin ? [{
-            key: 'plan-time',
-            label: t('timesheet.planTime'),
-            icon: <ScheduleOutlined />,
-            onClick: () => onPlanTime?.(date),
-        }] : []),
-    ]
 
     return (
         <div
@@ -224,6 +199,7 @@ function DayColumn({
                             workLog={log}
                             onEdit={onEditLog}
                             onDelete={onDeleteLog}
+                            onReview={onReviewLog}
                             isSelected={selectedLogId === log.id}
                             isCopied={copiedLogId === log.id}
                             onSelect={onSelectLog}
@@ -239,37 +215,17 @@ function DayColumn({
                 )}
             </div>
 
-            {/* Plan Time Kartları */}
-            {planTimes.length > 0 && (
-                <>
-                    <div className="day-column-logs day-column-plans">
-                        {planTimes.map(pt => (
-                            <PlanTimeCard
-                                key={pt.assignment_id || pt.id}
-                                planTime={pt}
-                                onRespond={onPlanTimeRespond}
-                                onDelete={onDeletePlanTime}
-                                onEdit={onEditPlanTime}
-                                isAdmin={isAdmin}
-                                calendarDate={dateKey}
-                            />
-                        ))}
-                    </div>
-                </>
-            )}
-
-            {/* Alt eylem (prototip): kesikli "+ Efor · Plan" — Plan yalniz
-                admin. stopPropagation: gun secimini tetiklemez. */}
-            <Dropdown menu={{ items: menuItems }} trigger={['click']}>
-                <button
-                    type="button"
-                    className="day-column-add-btn"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <PlusOutlined aria-hidden="true" />
-                    <span>{addLabel}</span>
-                </button>
-            </Dropdown>
+            {/* Alt eylem: tek "+" — o gun icin dogrudan efor girisi.
+                stopPropagation: gun secimini (yapistirma hedefi) tetiklemez. */}
+            <button
+                type="button"
+                className="day-column-add-btn"
+                aria-label={`${t('taskUi.logTime')} — ${dayName} ${dayNumber}`}
+                title={t('taskUi.logTime')}
+                onClick={(e) => { e.stopPropagation(); onLogTime?.(date) }}
+            >
+                <PlusOutlined aria-hidden="true" />
+            </button>
         </div>
     )
 }

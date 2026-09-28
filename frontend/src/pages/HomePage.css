@@ -638,8 +638,6 @@
     outline: none;
 }
 .home-week__entry--meeting .home-week__entry-link { border-left-color: var(--h-brand); }
-.home-week__entry--plan .home-week__entry-link { border-left-color: var(--h-border-strong); }
-.home-week__entry--pending .home-week__entry-link { border-left-style: dashed; }
 .home-week__time {
     font: 500 12px var(--h-font-mono);
     color: var(--h-text-secondary);

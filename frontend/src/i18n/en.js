@@ -83,7 +83,6 @@ export default {
             nothing: 'Nothing planned',
             nothingWeek: 'Nothing planned this week.',
             allDay: 'All day',
-            plan: 'Planned time',
             due: 'Due',
         },
         team: {
@@ -249,8 +248,6 @@ export default {
     // Zaman girisi
     // ---------------------------------------------------------------
     timeEntry: {
-        addShortLog: 'Log',
-        addShortPlan: 'Plan',
         noLogs: 'No logs',
         weekend: 'Weekend',
         pasteHere: '+ Paste here (Ctrl+V)',
@@ -258,18 +255,11 @@ export default {
         timeLogged: 'Time logged',
         timeUpdated: 'Time updated',
         logEntryDeleted: 'Log entry deleted successfully',
-        planUpdated: 'Plan updated',
-        planDeleted: 'Plan deleted',
-        deletePlan: 'Delete Plan',
-        deletePlanFailed: 'Failed to delete plan',
         confirmDeletion: 'Confirm Deletion',
         cannotBeUndone: 'This action cannot be undone',
-        assignmentsWillBeRemoved: 'All assignments will be removed',
         selectTargetDay: 'Select a target day first, then paste',
         reportDownloaded: 'Weekly report (CSV) downloaded',
         reportFailed: 'Failed to download report',
-        meetingInviteSent: 'Meeting invite sent',
-        respondFailed: 'Failed to respond',
         // PM rework P0 / D2 — effort strip and missing-day nudge
         missingDaysWeek: '{count} day(s) without entries: {days}',
         weekFill: '{percent}% of expected',
@@ -281,6 +271,7 @@ export default {
         onLeave: 'On leave',
         holiday: 'Holiday',
         removeLeave: 'Remove leave',
+        deleteLogBody: 'Delete this time log permanently?',
     },
 
     // ---------------------------------------------------------------
@@ -640,31 +631,8 @@ export default {
         users: 'Users',
     },
     plan: {
-        assignTo: 'Assign To',
-        selectMembers: 'Select team members…',
-        atLeastOneUser: 'At least one user must be selected',
-        recurrence: 'Recurrence',
-        oneTime: 'One-Time',
-        weekly: 'Weekly',
-        monthly: 'Monthly',
-        startDate: 'Start Date',
-        endDate: 'End Date',
-        startTime: 'Start Time',
-        endTime: 'End Time',
-        selectCustomer: 'Select customer',
-        selectProject: 'Select project',
-        meetingDescription: 'Add a meeting description or agenda…',
-        accepted: 'Accepted',
         pending: 'Pending',
         rejected: 'Rejected',
-        title: 'Plan Time',
-        editTitle: 'Edit Plan Time',
-        subtitle: 'Create a meeting invite and assign to team members',
-        editSubtitle: 'Update meeting details',
-        groupWhere: 'Where',
-        groupWhen: 'When',
-        groupWho: 'Who',
-        sendInvite: 'Send Invite',
     },
 
     group: {
@@ -1391,13 +1359,17 @@ export default {
         logged: 'Logged',
         total: 'Total',
         noEntries: 'No entries found for this period',
-        planTime: 'Plan Time',
         clearEsc: 'Clear (Esc)',
     },
 
     workLog: {
         editLog: 'Edit log',
         deleteLog: 'Delete log',
+        reviewLog: 'Review log',
+        untitled: 'Time log',
+        linkedItem: 'Work item',
+        linked: 'Linked',
+        updated: 'Last updated',
     },
 
     memberModal: {

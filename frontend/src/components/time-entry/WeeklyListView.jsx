@@ -20,15 +20,10 @@ dayjs.extend(isoWeek)
 function WeeklyListView({
     weekStart,
     workLogs = [],
-    planTimes = [],
     onLogTime,
-    onPlanTime,
     onEditLog,
     onDeleteLog,
-    onPlanTimeRespond,
-    onDeletePlanTime,
-    onEditPlanTime,
-    isAdmin = false,
+    onReviewLog,
     // Copy-paste props
     selectedLogId,
     copiedLogId,
@@ -64,30 +59,6 @@ function WeeklyListView({
         })
         return grouped
     }, [weekDays, workLogs])
-
-    // Plan times'ı günlere göre grupla — recurrence mantığıyla
-    const planTimesByDate = useMemo(() => {
-        const grouped = {}
-        weekDays.forEach(day => {
-            const dateKey = day.format('YYYY-MM-DD')
-            grouped[dateKey] = planTimes.filter(pt => {
-                if (dateKey < pt.start_date) return false
-
-                if (pt.recurrence === 'weekly') {
-                    // Haftanın aynı günü (start_date ile aynı gün)
-                    return dayjs(dateKey).day() === dayjs(pt.start_date).day()
-                }
-                if (pt.recurrence === 'monthly') {
-                    // 28 günde bir (4 haftada bir) aynı hafta içi gün
-                    const diffDays = dayjs(dateKey).diff(dayjs(pt.start_date), 'day')
-                    return diffDays >= 0 && diffDays % 28 === 0
-                }
-                // one_time / daily (legacy): start_date ile end_date arasındaki tüm günler
-                return dateKey <= pt.end_date
-            })
-        })
-        return grouped
-    }, [weekDays, planTimes])
 
     // Bugünün tarihi
     const today = dayjs().format('YYYY-MM-DD')
@@ -130,16 +101,11 @@ function WeeklyListView({
                             key={dateKey}
                             date={day}
                             workLogs={logsByDate[dateKey] || []}
-                            planTimes={planTimesByDate[dateKey] || []}
                             onLogTime={onLogTime}
-                            onPlanTime={isAdmin ? onPlanTime : undefined}
                             onEditLog={onEditLog}
                             onDeleteLog={onDeleteLog}
-                            onPlanTimeRespond={onPlanTimeRespond}
-                            onDeletePlanTime={onDeletePlanTime}
-                            onEditPlanTime={onEditPlanTime}
+                            onReviewLog={onReviewLog}
                             isToday={dateKey === today}
-                            isAdmin={isAdmin}
                             selectedLogId={selectedLogId}
                     copiedLogId={copiedLogId}
                             isTargeted={dateKey === targetDate}

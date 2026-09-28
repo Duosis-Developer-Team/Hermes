@@ -71,10 +71,6 @@ export const queryKeys = {
         get overrides() { return k('capacity', 'overrides') },
         absences: (filters) => k('capacity', 'absences', stableFilters(filters)),
     },
-    planTimes: {
-        get all() { return k('planTimes') },
-        list: (filters) => k('planTimes', 'list', stableFilters(filters)),
-    },
     periods: { get all() { return k('periods') } },
     /** Time Entry'nin donem durumu ailesi — Tasks'tan Log Time sonrasi
      *  da tazelenir (ayni core_db kaydi yazilir). */
