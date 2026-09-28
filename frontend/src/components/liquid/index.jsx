@@ -9,6 +9,8 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
+import { userPhotoUrl, useUserPhotoStore } from '../../stores/userPhotoStore'
+
 const reducedMotion = () =>
     typeof window !== 'undefined'
     && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
@@ -141,16 +143,25 @@ export function initialsOf(name = '') {
     return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || '?'
 }
 
-/** Bas harfli yuvarlak avatar. */
-export function Avatar({ id, name, size = 28, title }) {
+/**
+ * Yuvarlak avatar: Microsoft profil fotografi varsa o, yoksa (ya da
+ * yuklenemezse) bas harfler. Foto dizini kabuktan gelir (userPhotoStore).
+ */
+export function Avatar({ id, name, size = 28, title, className = '' }) {
+    const etag = useUserPhotoStore((s) => (id ? s.etags[id] : undefined))
+    const [failed, setFailed] = useState(false)
+    const showPhoto = etag && !failed
     return (
         <span
-            className="lq-av"
-            style={{ background: avatarTone(id || name), width: size, height: size, fontSize: Math.round(size * 0.38) }}
+            className={`lq-av${showPhoto ? ' lq-av--photo' : ''} ${className}`}
+            style={{ background: showPhoto ? undefined : avatarTone(id || name), width: size, height: size, fontSize: Math.round(size * 0.38) }}
             title={title ?? name}
             aria-label={name}
+            role="img"
         >
-            {initialsOf(name)}
+            {showPhoto ? (
+                <img src={userPhotoUrl(id, etag)} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
+            ) : initialsOf(name)}
         </span>
     )
 }

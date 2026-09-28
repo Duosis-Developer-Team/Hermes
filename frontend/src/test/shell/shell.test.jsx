@@ -100,10 +100,9 @@ describe('shell iskeleti', () => {
     })
 })
 
-describe('tema kontrolu (profil karti)', () => {
-    it('erisilebilir adli karo temayi degistirir ve persist eder', () => {
+describe('tema kontrolu (ada)', () => {
+    it('adadaki erisilebilir adli tema dugmesi temayi degistirir ve persist eder', () => {
         renderShell()
-        openProfile()
         const light = screen.getByRole('button', { name: /Switch to light theme/i })
         expect(light).toHaveAttribute('aria-pressed', 'false')
         fireEvent.click(light)

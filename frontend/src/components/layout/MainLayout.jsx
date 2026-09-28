@@ -36,6 +36,9 @@ import { useT } from '../../i18n'
 import { loaderByPath } from '../../routes/loaders'
 import { hasAnySettings } from '../../features/settings/sections'
 import { useNextMeeting } from '../../features/home/hooks/useNextMeeting'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '../../query/queryKeys'
+import { useUserPhotoStore } from '../../stores/userPhotoStore'
 
 /**
  * Main Layout Component — izin filtreli menu, prefetch ve hesap menusu.
@@ -48,6 +51,23 @@ function MainLayout() {
     const navigate = useNavigate()
     const location = useLocation()
     const { user, logout } = useAuthStore()
+
+    /*
+     * Profil fotografi dizini: auth dizini (has_photo + photo_etag) TEK
+     * sorguyla okunur ve depoya yazilir; Avatar yalniz depoyu okur. Ayni
+     * sorgu anahtari ana sayfa bloklari ile paylasilir (tek istek).
+     */
+    const setPhotoIndex = useUserPhotoStore((s) => s.setFromUsers)
+    const directory = useQuery({
+        queryKey: queryKeys.users.lookup,
+        queryFn: () => authService.lookupUsers(),
+        enabled: !!user?.id,
+        staleTime: 10 * 60 * 1000,
+    })
+    useEffect(() => {
+        const rows = Array.isArray(directory.data) ? directory.data : []
+        setPhotoIndex(user ? [...rows, user] : rows)
+    }, [directory.data, user, setPhotoIndex])
 
     const isAdmin = user?.is_admin === true
     const { canAccessAny } = useTaskPermissions()
@@ -233,8 +253,8 @@ function MainLayout() {
 
     // User dropdown menu
     const userMenuItems = [
-
-
+        { key: 'time', icon: <ClockCircleOutlined />, label: t('nav.timeEntry'), onClick: () => navigate('/time-entry') },
+        ...settingsItems.map((it) => ({ ...it, onClick: () => navigate(it.key) })),
         {
             key: 'logout',
             icon: <LogoutOutlined />,
@@ -310,6 +330,8 @@ function MainLayout() {
             onMenuClick={handleMenuClick}
             onLogoClick={() => navigate('/')}
             accountName={user?.full_name || user?.email}
+            accountEmail={user?.email}
+            accountId={user?.id}
             accountRole={isAdmin ? 'Admin' : 'User'}
             accountMenuItems={userMenuItems}
             /* WS8: organizasyon secici — YALNIZCA birden fazla aktif

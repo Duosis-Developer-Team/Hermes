@@ -451,159 +451,159 @@
     background: var(--h-text-primary);
 }
 
-/* ---------- Profil karti ---------- */
-.profile-card {
-    width: min(340px, calc(100vw - 32px));
-    overflow: hidden;
-    border-radius: 22px;
-    background: var(--h-bg-elevated);
-    color: var(--h-text-primary);
-    border: 1px solid var(--h-glass-edge);
-    backdrop-filter: blur(28px) saturate(190%);
-    -webkit-backdrop-filter: blur(28px) saturate(190%);
-    box-shadow: var(--h-shadow-modal);
+/* ---------- Ada tercihleri: tema + dil hapi ---------- */
+.island-prefs { display: inline-flex; align-items: center; gap: 4px; }
+.island-seg {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-nav-hover);
 }
-.profile-card__cover {
-    position: relative;
-    height: 72px;
-    overflow: hidden;
-    background: linear-gradient(120deg, var(--hp-blue-500) 0%, var(--hp-blue-600) 45%, #6E5DD3 100%);
-}
-.profile-card__cover::before {
-    content: "";
-    position: absolute;
-    inset: -40% -10% auto auto;
-    width: 60%;
-    height: 180%;
-    background: radial-gradient(closest-side, rgba(255, 255, 255, 0.35), transparent);
-}
-.profile-card__id { position: relative; margin-top: -28px; padding: 0 16px 12px; }
-.profile-card__avatar {
-    position: relative;
+.island-seg button {
     display: grid;
     place-items: center;
-    width: 56px;
-    height: 56px;
-    border-radius: 18px;
-    background: linear-gradient(135deg, var(--hp-blue-400), var(--hp-purple-500));
-    color: #FFFFFF;
-    font-weight: 700;
-    font-size: 19px;
-    box-shadow: 0 0 0 4px var(--h-bg-elevated), 0 10px 24px -10px rgba(0, 0, 0, 0.5);
+    min-width: 28px;
+    height: 28px;
+    padding: 0 7px;
+    border: 0;
+    border-radius: var(--h-radius-pill);
+    background: transparent;
+    color: var(--h-nav-ink-2);
+    font: 600 11.5px/1 var(--h-font-family);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: background 200ms var(--h-ease-standard), color 200ms, transform 250ms var(--h-ease-spring);
 }
+.island-seg button:hover { color: var(--h-nav-ink); }
+.island-seg button.is-on {
+    background: var(--h-nav-ind);
+    color: var(--h-nav-on);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+.island-seg button:active { transform: scale(0.92); }
+.island-seg button:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 1px; }
+
+/* Ada avatari: foto ya da bas harfler (Avatar), ince halka. */
+.island-avatar {
+    display: grid;
+    place-items: center;
+    padding: 0;
+    background: transparent;
+    box-shadow: 0 0 0 2px var(--h-nav-edge);
+}
+
+/* ---------- Profil karti (yeniden tasarim, 29.09) ---------- */
+.profile-card {
+    width: min(320px, calc(100vw - 32px));
+    overflow: hidden;
+    border-radius: 26px;
+    background: var(--h-modal-bg);
+    color: var(--h-text-primary);
+    border: 1px solid var(--h-glass-edge);
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    box-shadow: var(--h-shadow-modal);
+}
+.profile-card__hero {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 26px 20px 18px;
+    overflow: hidden;
+    text-align: center;
+}
+.profile-card__glow {
+    position: absolute;
+    inset: -40% -20% 30%;
+    background:
+        radial-gradient(closest-side at 30% 60%, color-mix(in srgb, var(--hp-blue-400) 45%, transparent), transparent),
+        radial-gradient(closest-side at 75% 45%, color-mix(in srgb, var(--hp-purple-500) 35%, transparent), transparent);
+    filter: blur(24px);
+    opacity: 0.8;
+    pointer-events: none;
+}
+.profile-card__photo { position: relative; margin-bottom: 8px; border-radius: 50%; box-shadow: 0 0 0 3px var(--h-modal-bg), 0 12px 28px -12px rgba(0, 0, 0, 0.5); }
+.profile-card__photo .lq-av { font-size: 24px !important; }
 .profile-card__presence {
     position: absolute;
-    right: -3px;
-    bottom: -3px;
-    width: 15px;
-    height: 15px;
+    right: 2px;
+    bottom: 4px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
-    background: var(--hp-green-500);
-    box-shadow: 0 0 0 3px var(--h-bg-elevated);
+    background: var(--h-success);
+    box-shadow: 0 0 0 3px var(--h-modal-bg);
 }
-.profile-card__name { display: flex; align-items: center; gap: 8px; margin-top: 10px; min-width: 0; }
-.profile-card__name .user-name {
+.profile-card__name {
+    position: relative;
+    max-width: 100%;
     overflow: hidden;
-    font-size: 16px;
+    font-size: 17px;
+    font-weight: 650;
     letter-spacing: -0.01em;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+.profile-card__email {
+    position: relative;
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--h-text-muted);
+    font-size: 12.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .profile-card__role {
-    flex: none;
-    padding: 2px 8px;
+    position: relative;
+    margin-top: 6px;
+    padding: 3px 10px;
     border-radius: var(--h-radius-pill);
-    background: color-mix(in srgb, var(--hp-purple-500) 16%, transparent);
-    color: var(--h-text-secondary);
+    background: var(--h-bg-selected);
+    color: var(--h-brand);
     font-size: 11.5px;
     font-weight: 600;
 }
-.profile-card__section { padding: 10px 12px; border-top: 1px solid var(--h-border-subtle); }
-.profile-card__label {
-    margin: 0 4px 8px;
-    color: var(--h-text-muted);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-}
-.theme-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.theme-tile {
+.profile-card__actions {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 6px;
-    border: 1.5px solid var(--h-border-default);
-    border-radius: 14px;
-    background: transparent;
-    color: var(--h-text-primary);
-    font-size: 12.5px;
-    font-weight: 500;
-    text-align: left;
-    cursor: pointer;
-    transition: border-color var(--h-motion-fast) var(--h-ease-standard),
-        box-shadow var(--h-motion-fast) var(--h-ease-standard);
+    gap: 2px;
+    padding: 8px;
+    border-top: 1px solid var(--h-border-subtle);
 }
-.theme-tile.is-on { border-color: var(--h-brand); box-shadow: 0 0 0 3px var(--h-bg-selected); }
-.theme-tile__label { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
-.theme-tile__label .anticon { color: var(--h-brand); }
-.theme-tile__preview { position: relative; height: 42px; overflow: hidden; border-radius: 9px; }
-.theme-tile__preview i { position: absolute; left: 6px; right: 6px; height: 8px; border-radius: 4px; }
-.theme-tile__preview i:first-child { top: 8px; width: 40%; }
-.theme-tile__preview i:last-child { top: 22px; }
-.theme-tile__preview--light { background: linear-gradient(135deg, #F4F7FB, #C9D8F0 60%, #DCD6F7); }
-.theme-tile__preview--light i { background: rgba(255, 255, 255, 0.75); }
-.theme-tile__preview--dark { background: linear-gradient(135deg, #2A2D34, #0C0D10 60%, #1A1C21); }
-.theme-tile__preview--dark i { background: rgba(255, 255, 255, 0.12); }
-.profile-card__row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 10px;
-    padding: 0 4px;
-    font-size: 13px;
-}
-.seg {
-    display: inline-flex;
-    padding: 3px;
-    border-radius: var(--h-radius-pill);
-    background: var(--h-bg-hover);
-}
-.seg button {
-    padding: 4px 12px;
-    border: 0;
-    border-radius: var(--h-radius-pill);
-    background: transparent;
-    color: var(--h-text-secondary);
-    font: 600 12px/1.4 var(--h-font-family);
-    cursor: pointer;
-}
-.seg button.is-on { background: var(--h-bg-elevated); color: var(--h-text-primary); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
-.profile-card__actions { display: flex; flex-direction: column; padding: 6px; }
 .profile-card__action {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
+    width: 100%;
     padding: 9px 10px;
     border: 0;
-    border-radius: 12px;
+    border-radius: 14px;
     background: transparent;
     color: var(--h-text-primary);
-    font-size: 13.5px;
+    font: 500 13.5px var(--h-font-family);
     text-align: left;
     cursor: pointer;
+    transition: background 150ms var(--h-ease-standard), transform 200ms var(--h-ease-spring);
 }
-.profile-card__action:hover { background: var(--h-bg-hover); }
-.profile-card__action.is-danger { color: var(--h-danger); }
+.profile-card__action:hover { background: var(--h-bg-hover); transform: translateX(2px); }
 .profile-card__action-icon {
     display: grid;
     place-items: center;
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
+    width: 30px;
+    height: 30px;
+    flex: none;
+    border-radius: 10px;
     background: var(--h-bg-hover);
+    color: var(--h-text-secondary);
 }
-.profile-card__action.is-danger .profile-card__action-icon { background: var(--h-surface-danger); }
+.profile-card__action-label { flex: 1; }
+.profile-card__chev { color: var(--h-text-muted); font-size: 11px; }
+.profile-card__action.is-danger { color: var(--h-danger); }
+.profile-card__action.is-danger .profile-card__action-icon { background: var(--h-surface-danger); color: var(--h-danger); }
 
 /* ---------- ⌘K paleti ---------- */
 .command-palette .ant-modal-content {

@@ -36,8 +36,10 @@ import { flushSync } from 'react-dom'
 import { Drawer, Dropdown, Tooltip } from 'antd'
 import {
     AppstoreOutlined,
-    CheckOutlined,
+    MoonOutlined,
+    RightOutlined,
     SearchOutlined,
+    SunOutlined,
 } from '@ant-design/icons'
 
 import { useThemeStore } from '../../stores/themeStore'
@@ -48,6 +50,7 @@ import NotificationBell from './NotificationBell'
 import LiquidBackdrop from './LiquidBackdrop'
 import CommandPalette from './CommandPalette'
 import { RouteErrorBoundary } from '../common/ErrorBoundaries'
+import { Avatar } from '../liquid'
 import './MainLayout.css'
 
 // Bu genislikin altinda ada sekmeleri gizlenir; alt sekme cubugu +
@@ -58,11 +61,6 @@ const DOCK_TONES = ['#388BFF', '#22A06B', '#8F7EE7', '#E2B203', '#526174', '#0C6
 const MOBILE_TABS = 4
 
 const textOf = (it) => it.text ?? (typeof it.label === 'string' ? it.label : it.key)
-
-const initialsOf = (name = '') => {
-    const parts = String(name).replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean)
-    return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || 'H'
-}
 
 /** Menu listesini ada sekmeleri + dock gruplari olarak ayristirir. */
 function splitNav(items) {
@@ -91,6 +89,8 @@ function AppShell({
     onMenuClick,
     onLogoClick,
     accountName,
+    accountEmail,
+    accountId,
     accountRole,
     accountMenuItems = [],
     headerExtra = null,
@@ -242,63 +242,59 @@ function AppShell({
     let toneIndex = 0
     const isActive = (key) => key === selectedKey
 
+    // Ada tercihleri: tema (gunes/ay) + dil (TR/EN). Iki parcali haplar;
+    // her parca ayri erisilebilir ada ve aria-pressed durumuna sahip.
+    const islandPrefs = (
+        <span className="island-prefs">
+            <span className="island-seg" role="group" aria-label={t('shellExtra.appearance')}>
+                {[['light', <SunOutlined key="s" />], ['dark', <MoonOutlined key="m" />]].map(([mode, icon]) => (
+                    <button
+                        key={mode}
+                        type="button"
+                        className={themeMode === mode ? 'is-on' : undefined}
+                        aria-pressed={themeMode === mode}
+                        aria-label={mode === 'light' ? t('shell.switchToLight') : t('shell.switchToDark')}
+                        title={mode === 'light' ? t('shellExtra.light') : t('shellExtra.dark')}
+                        onClick={() => setTheme(mode)}
+                    >
+                        {icon}
+                    </button>
+                ))}
+            </span>
+            <span className="island-seg island-seg--text" role="group" aria-label={t('shell.language')}>
+                {['tr', 'en'].map((code) => (
+                    <button
+                        key={code}
+                        type="button"
+                        className={locale === code ? 'is-on' : undefined}
+                        aria-pressed={locale === code}
+                        aria-label={code === 'tr' ? t('shell.switchToTurkish') : t('shell.switchToEnglish')}
+                        onClick={() => { if (locale !== code) toggleLocale() }}
+                    >
+                        {code.toUpperCase()}
+                    </button>
+                ))}
+            </span>
+        </span>
+    )
+
     const profileCard = (
         <div className="profile-card" role="dialog" aria-label={t('shellExtra.account')}>
-            <div className="profile-card__cover" />
-            <div className="profile-card__id">
-                <span className="profile-card__avatar" aria-hidden="true">
-                    {initialsOf(accountName)}
-                    <span className="profile-card__presence" />
+            <div className="profile-card__hero">
+                <span className="profile-card__glow" aria-hidden="true" />
+                <span className="profile-card__photo">
+                    <Avatar id={accountId} name={accountName} size={72} />
+                    <span className="profile-card__presence" aria-hidden="true" />
                 </span>
-                <div className="profile-card__name">
-                    <strong className="user-name">{accountName}</strong>
-                    {accountRole && <span className="profile-card__role">{accountRole}</span>}
-                </div>
-            </div>
-
-            <div className="profile-card__section">
-                <div className="profile-card__label">{t('shellExtra.appearance')}</div>
-                <div className="theme-tiles" role="group" aria-label={t('shellExtra.appearance')}>
-                    {['light', 'dark'].map((mode) => (
-                        <button
-                            key={mode}
-                            type="button"
-                            className={`theme-tile${themeMode === mode ? ' is-on' : ''}`}
-                            aria-pressed={themeMode === mode}
-                            aria-label={mode === 'light' ? t('shell.switchToLight') : t('shell.switchToDark')}
-                            onClick={() => setTheme(mode)}
-                        >
-                            <span className={`theme-tile__preview theme-tile__preview--${mode}`}>
-                                <i /><i />
-                            </span>
-                            <span className="theme-tile__label">
-                                {mode === 'light' ? t('shellExtra.light') : t('shellExtra.dark')}
-                                {themeMode === mode && <CheckOutlined aria-hidden="true" />}
-                            </span>
-                        </button>
-                    ))}
-                </div>
-                <div className="profile-card__row">
-                    <span>{t('shell.language')}</span>
-                    <div className="seg" role="group" aria-label={t('shell.language')}>
-                        {['tr', 'en'].map((code) => (
-                            <button
-                                key={code}
-                                type="button"
-                                className={locale === code ? 'is-on' : undefined}
-                                aria-pressed={locale === code}
-                                aria-label={code === 'tr' ? t('shell.switchToTurkish') : t('shell.switchToEnglish')}
-                                onClick={() => { if (locale !== code) toggleLocale() }}
-                            >
-                                {code.toUpperCase()}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                <strong className="profile-card__name user-name">{accountName}</strong>
+                {accountEmail && accountEmail !== accountName && (
+                    <span className="profile-card__email">{accountEmail}</span>
+                )}
+                {accountRole && <span className="profile-card__role">{accountRole}</span>}
             </div>
 
             {accountMenuItems.length > 0 && (
-                <div className="profile-card__section profile-card__actions">
+                <div className="profile-card__actions">
                     {accountMenuItems.map((it) => (
                         <button
                             key={it.key}
@@ -306,8 +302,9 @@ function AppShell({
                             className={`profile-card__action${it.danger ? ' is-danger' : ''}`}
                             onClick={() => { setProfileOpen(false); it.onClick?.() }}
                         >
-                            <span className="profile-card__action-icon">{it.icon}</span>
-                            {it.label}
+                            <span className="profile-card__action-icon" aria-hidden="true">{it.icon}</span>
+                            <span className="profile-card__action-label">{it.label}</span>
+                            {!it.danger && <RightOutlined className="profile-card__chev" aria-hidden="true" />}
                         </button>
                     ))}
                 </div>
@@ -376,6 +373,7 @@ function AppShell({
                     >
                         <SearchOutlined />
                     </button>
+                    {islandPrefs}
                     {/* PM rework P2.2: uygulama ici bildirim zili. */}
                     <NotificationBell />
                     {/* Kabuga ozel eklenti: tenant tarafinda organizasyon
@@ -397,7 +395,7 @@ function AppShell({
                             aria-haspopup="dialog"
                             aria-expanded={profileOpen}
                         >
-                            {initialsOf(accountName)}
+                            <Avatar id={accountId} name={accountName} size={36} />
                         </button>
                     </Dropdown>
                 </nav>
