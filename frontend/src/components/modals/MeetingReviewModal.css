@@ -1,31 +1,80 @@
-/* =============================================================================
-   Meeting Review Modal — dark theme polish (mirrors TaskReviewModal)
-   ============================================================================= */
+/**
+ * Toplanti penceresi — Hermes Liquid (prototip "mhero"). Kahraman seridi
+ * pencerenin ust kenarina kadar uzanir; renkler bilerek sabit koyu mavi
+ * (iki temada ayni kimlik), uzerindeki metin beyaz.
+ */
 
-.meeting-review-modal .ant-modal-title {
+.meeting-review-modal .mr-hero {
+    position: relative;
+    overflow: hidden;
+    /* Govde kayan kutudur: ust negatif pay kirpilir. Bu yuzden icerik
+       kutusunun ust dolgusu sifirlanir, serit en ustten baslar. */
+    margin: 0 -26px 18px;
+    padding: 24px 26px 20px;
+    color: #fff;
+    background: linear-gradient(135deg, #0C66E4 0%, #0A2A6B 60%, #08122B 100%);
+}
+.meeting-review-modal .mr-hero::after {
+    content: "";
+    position: absolute;
+    right: -60px;
+    top: -60px;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(133, 184, 255, 0.4), transparent 70%);
+    pointer-events: none;
+}
+.meeting-review-modal .mr-hero small { opacity: 0.8; font-size: 12.5px; }
+.meeting-review-modal .mr-hero h2 {
+    margin: 6px 56px 12px 0;
+    color: #fff;
+    font-size: 24px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+.meeting-review-modal .mr-hero__chips { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 6px; }
+.meeting-review-modal .mr-hero__chips span {
+    padding: 4px 11px;
+    border-radius: var(--h-radius-pill);
+    background: rgba(255, 255, 255, 0.14);
+    font-size: 12.5px;
+    font-weight: 500;
+}
+.meeting-review-modal .mr-hero__chips span.is-bad { background: rgba(248, 113, 104, 0.35); }
+:root .ant-modal-root .meeting-review-modal .ant-modal-content { padding-top: 0; }
+:root .ant-modal-root .meeting-review-modal .ant-modal-close {
+    z-index: 3;
+    background: rgba(255, 255, 255, 0.14);
+    border-color: transparent;
     color: #fff;
 }
-.meeting-review-modal .ant-modal-close {
-    color: var(--c-text-muted);
-}
 
-/* ── Mobile (≤480px) ─────────────────────────────────────────────────────
-   Detail rows are inline-styled flex rows: <div><Text width:110/><div/>
-   </div>. Letting the row wrap + forcing the label to a full-width line
-   stacks "label over value" without touching the JSX. The same child
-   selector also lets the footer's right-hand button cluster (an inner
-   <Space>) wrap instead of pushing the modal wider than the phone. */
-@media (max-width: 480px) {
-    .meeting-review-modal .ant-modal-body .ant-space-item > div > div {
-        flex-wrap: wrap;
-    }
-    .meeting-review-modal
-        .ant-modal-body
-        .ant-space-item
-        > div
-        > div
-        > .ant-typography {
-        width: 100% !important;
-        flex: 0 0 100%;
-    }
+.mr-cols { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 22px; }
+.mr-cols h3 { margin-top: 0; }
+.mr-body {
+    max-height: 180px;
+    margin: 0;
+    overflow-y: auto;
+    color: var(--h-text-primary);
+    font-size: 13.5px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+.mr-muted { margin: 6px 0 0; color: var(--h-text-muted); font-size: 12.5px; }
+.mr-att { max-height: 240px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.mr-att li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    border-top: 1px solid var(--h-border-subtle);
+    font-size: 13px;
+}
+.mr-att li:first-child { border-top: 0; }
+.mr-att__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 640px) {
+    .mr-cols { grid-template-columns: 1fr; }
 }

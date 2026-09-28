@@ -1,6 +1,6 @@
 /**
  * =============================================================================
- * HERMES - Meeting Review Modal (Stage 4 — read-only)
+ * HERMES - Meeting Review Modal (read-only)
  * =============================================================================
  * Detail view for a synced meeting: title, time, organizer, attendees,
  * Teams join link, optional preview body. Stage 5 will add the Log
@@ -13,31 +13,25 @@
  * =============================================================================
  */
 
-import { Alert, Button, Modal, Space, Tag, Typography } from 'antd'
+import { Button, Modal } from 'antd'
 import {
-    CalendarOutlined,
     CheckCircleOutlined,
     FieldTimeOutlined,
     LinkOutlined,
     LockOutlined,
-    TeamOutlined,
-    UsergroupAddOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import './MeetingReviewModal.css'
 import { useT } from '../../i18n'
+import { Avatar } from '../liquid'
 
-const { Text, Paragraph } = Typography
-
-function Row({ label, children }) {
-    return (
-        <div style={{ display: 'flex', gap: 12, padding: '6px 0' }}>
-            <Text style={{ width: 110, color: 'var(--c-text-muted)' }}>{label}</Text>
-            <div style={{ flex: 1, color: 'var(--c-text-strong)' }}>{children}</div>
-        </div>
-    )
-}
-
+/*
+ * Hermes Liquid (prototip "toplanti" penceresi): koyu mavi kahraman seridi
+ * (kaynak · duzenleyen, konu, tarih/saat/sure/katilimci cipleri), altinda
+ * iki kolon — aciklama | katilimcilar — ve cam alt cubuk. Davranis ayni:
+ * gizli toplantida ayrinti yok, iptal/kaydedildi durumlari gorunur,
+ * "Efor gir" yalniz kaydedilmemisse.
+ */
 function MeetingReviewModal({
     open,
     meeting,
@@ -48,34 +42,24 @@ function MeetingReviewModal({
     const t = useT()
     if (!meeting) return null
 
-    const start = meeting.start_datetime
-        ? dayjs(meeting.start_datetime)
-        : null
+    const start = meeting.start_datetime ? dayjs(meeting.start_datetime) : null
     const end = meeting.end_datetime ? dayjs(meeting.end_datetime) : null
     const isPrivate =
         meeting.sensitivity === 'private' ||
         meeting.sensitivity === 'confidential'
     const isCancelled = !!meeting.is_cancelled
+    const subject = meeting.subject || t('meetingsPage.untitled')
 
-    const dateStr = start ? start.format('YYYY-MM-DD') : '—'
-    const timeRange =
-        start && end
-            ? `${start.format('HH:mm')} – ${end.format('HH:mm')}`
-            : '—'
     const durationMin = meeting.duration_minutes || 0
-    const durationLabel =
-        durationMin >= 60
-            ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m`.replace(
-                  / 0m$/,
-                  ''
-              )
-            : durationMin > 0
-            ? `${durationMin}m`
-            : '—'
+    const h = Math.floor(durationMin / 60)
+    const m = durationMin % 60
+    const durationLabel = durationMin <= 0
+        ? null
+        : h && m ? `${t('logTime.hourShort', { n: h })} ${t('logTime.minShort', { n: m })}`
+            : h ? t('logTime.hourShort', { n: h }) : t('logTime.minShort', { n: m })
 
     const attendees = meeting.attendees || []
-    const organizer =
-        meeting.organizer_name || meeting.organizer_email || '—'
+    const organizer = meeting.organizer_name || meeting.organizer_email
 
     const handleOpenTeams = () => {
         if (meeting.join_url) {
@@ -83,194 +67,97 @@ function MeetingReviewModal({
         }
     }
 
+    const chips = [
+        start && start.format('dddd, D MMMM'),
+        start && end && `${start.format('HH:mm')} – ${end.format('HH:mm')}`,
+        durationLabel,
+        attendees.length > 0 && t('meeting.attendeeCount', { count: attendees.length }),
+    ].filter(Boolean)
+
     return (
         <Modal
-            title={
-                <span>
-                    {isPrivate ? (
-                        <LockOutlined style={{ marginRight: 8, color: 'var(--c-text-muted)' }} />
-                    ) : (
-                        <CalendarOutlined
-                            style={{ marginRight: 8, color: '#22d3ee' }}
-                        />
-                    )}
-                    {meeting.subject || '(Untitled meeting)'}
-                </span>
-            }
+            /* Diyalog ADI konu; gorunur baslik kahraman seridinde. */
+            title={<span className="h-sr-only">{subject}</span>}
+            classNames={{ header: 'h-sr-only' }}
             open={open}
             onCancel={onClose}
             footer={null}
-            width={560}
+            width={720}
             destroyOnHidden
             className="meeting-review-modal"
         >
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                {isCancelled && (
-                    <Alert
-                        type="error"
-                        showIcon
-                        message={
-                            <Tag color="red" style={{ marginRight: 8 }}>
-                                CANCELLED
-                            </Tag>
-                        }
-                    />
-                )}
-                {isLogged && (
-                    <Alert
-                        type="success"
-                        showIcon
-                        icon={<CheckCircleOutlined />}
-                        message={t('meeting.timeLogged')}
-                    />
-                )}
-                {isPrivate && (
-                    <Alert
-                        type="info"
-                        showIcon
-                        icon={<LockOutlined />}
-                        message={t('meeting.privateMeeting')}
-                    />
-                )}
-
-                <div>
-                    <Row label={t('reports.date')}>{dateStr}</Row>
-                    <Row label={t('meeting.time')}>{timeRange}</Row>
-                    <Row label={t('meeting.duration')}>{durationLabel}</Row>
-                    <Row label={t('meeting.organizer')}>
-                        {organizer}
-                        {meeting.organizer_email &&
-                        meeting.organizer_name ? (
-                            <span style={{ color: 'var(--c-text-muted)', marginLeft: 8 }}>
-                                {meeting.organizer_email}
-                            </span>
-                        ) : null}
-                    </Row>
-                    <Row label={t('meeting.attendees')}>
-                        <span>
-                            <UsergroupAddOutlined
-                                style={{ marginRight: 6, color: 'var(--c-text-muted)' }}
-                            />
-                            {attendees.length}
-                        </span>
-                    </Row>
-                    {meeting.is_online_meeting && (
-                        <Row label={t('meeting.type')}>
-                            <Tag color="cyan">
-                                <TeamOutlined />{t('meeting.teams')}</Tag>
-                        </Row>
-                    )}
+            <header className="mr-hero">
+                <small>
+                    {meeting.is_online_meeting || meeting.join_url ? t('meeting.teams') : t('meetingsPage.filter.offline')}
+                    {organizer ? ` · ${t('meeting.organizes', { name: organizer })}` : ''}
+                </small>
+                <h2>
+                    {isPrivate && <LockOutlined aria-hidden="true" />} {subject}
+                </h2>
+                <div className="mr-hero__chips">
+                    {chips.map((c) => <span key={c}>{c}</span>)}
+                    {isCancelled && <span className="is-bad">{t('meetingCard.cancelled')}</span>}
                 </div>
+            </header>
 
-                {meeting.body_preview && !isPrivate && (
-                    <div>
-                        <Text style={{ color: 'var(--c-text-muted)' }}>{t('common.description')}</Text>
-                        <Paragraph
-                            style={{
-                                color: 'var(--c-text-strong)',
-                                background: 'var(--c-surface-raised)',
-                                border: '1px solid var(--c-border)',
-                                borderRadius: 6,
-                                padding: 10,
-                                marginTop: 4,
-                                whiteSpace: 'pre-wrap',
-                                maxHeight: 132,
-                                overflowY: 'auto',
-                            }}
-                        >
-                            {meeting.body_preview}
-                        </Paragraph>
-                    </div>
-                )}
+            {isLogged && (
+                <p className="lq-note lq-note--ok" role="status">
+                    <CheckCircleOutlined aria-hidden="true" /> {t('meeting.timeLogged')}
+                </p>
+            )}
+            {isPrivate && (
+                <p className="lq-note" role="note">
+                    <LockOutlined aria-hidden="true" /> {t('meeting.privateMeeting')}
+                </p>
+            )}
 
-                {attendees.length > 0 && (
-                    <div>
-                        <Text style={{ color: 'var(--c-text-muted)' }}>{t('meeting.invited')}</Text>
-                        <div
-                            style={{
-                                marginTop: 6,
-                                background: 'var(--c-surface-raised)',
-                                border: '1px solid var(--c-border)',
-                                borderRadius: 6,
-                                padding: 8,
-                                maxHeight: 116,
-                                overflowY: 'auto',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 2,
-                            }}
-                        >
-                            {attendees.map((a) => (
-                                <div
-                                    key={a.id}
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        fontSize: 12,
-                                        gap: 8,
-                                    }}
-                                >
-                                    <span style={{ color: 'var(--c-text)' }}>
-                                        {a.display_name || a.email}
-                                    </span>
-                                    <span
-                                        style={{
-                                            color: a.hermes_user_id
-                                                ? '#22d3ee'
-                                                : 'var(--c-text-faint)',
-                                            fontSize: 10,
-                                            fontWeight: 600,
-                                            textTransform: 'uppercase',
-                                            letterSpacing: 0.04,
-                                        }}
-                                    >
-                                        {a.hermes_user_id
-                                            ? 'Hermes user'
-                                            : 'External'}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                <div
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        gap: 8,
-                        paddingTop: 4,
-                        flexWrap: 'wrap',
-                    }}
-                >
-                    {/* Log Time is the primary post-meeting action.
-                        It opens the existing Time Entry modal pre-
-                        filled with the meeting's date/duration/
-                        description; customer + project stay user-
-                        selected. Cancelled meetings can still be
-                        logged (the user may have done prep work). */}
-                    {onLogTime && !isLogged && (
-                        <Button
-                            type="primary"
-                            icon={<FieldTimeOutlined />}
-                            onClick={() => onLogTime(meeting)}
-                        >{t('meeting.logTime')}</Button>
+            <div className="mr-cols">
+                <section>
+                    <h3 className="lq-grp">{t('common.description')}</h3>
+                    {meeting.body_preview && !isPrivate ? (
+                        <p className="mr-body">{meeting.body_preview}</p>
+                    ) : (
+                        <p className="mr-muted">—</p>
                     )}
-                    {/* Right-aligned cluster: Teams + Close. The
-                        spacer <span/> keeps Close pinned right when
-                        Log Time isn't shown. */}
-                    {(!onLogTime || isLogged) && <span />}
-                    <Space>
-                        {meeting.join_url && (
-                            <Button
-                                icon={<LinkOutlined />}
-                                onClick={handleOpenTeams}
-                            >{t('meeting.openInTeams')}</Button>
-                        )}
-                        <Button onClick={onClose}>{t('common.close')}</Button>
-                    </Space>
-                </div>
-            </Space>
+                    {meeting.organizer_email && meeting.organizer_name && (
+                        <p className="mr-muted">{t('meeting.organizer')}: {meeting.organizer_email}</p>
+                    )}
+                </section>
+                <section>
+                    <h3 className="lq-grp">{t('meeting.attendees')}</h3>
+                    {attendees.length === 0 ? (
+                        <p className="mr-muted">—</p>
+                    ) : (
+                        <ul className="mr-att">
+                            {attendees.map((a) => {
+                                const name = a.display_name || a.email
+                                return (
+                                    <li key={a.id}>
+                                        <Avatar id={a.hermes_user_id || a.email} name={name} size={28} />
+                                        <span className="mr-att__name">{name}</span>
+                                        <span className={`lq-tag ${a.hermes_user_id ? 'lq-tag--info' : ''}`}>
+                                            {a.hermes_user_id ? t('meeting.hermesUser') : t('meeting.external')}
+                                        </span>
+                                    </li>
+                                )
+                            })}
+                        </ul>
+                    )}
+                </section>
+            </div>
+
+            <div className="lq-mf">
+                {meeting.join_url && (
+                    <Button icon={<LinkOutlined />} onClick={handleOpenTeams}>{t('meeting.openInTeams')}</Button>
+                )}
+                {onLogTime && !isLogged ? (
+                    <Button type="primary" icon={<FieldTimeOutlined />} onClick={() => onLogTime(meeting)}>
+                        {t('meeting.logTime')}
+                    </Button>
+                ) : (
+                    <Button onClick={onClose}>{t('common.close')}</Button>
+                )}
+            </div>
         </Modal>
     )
 }

@@ -1,99 +1,75 @@
+/**
+ * Is inceleme penceresi — Hermes Liquid. Kabuk, baslik, notlar, anahtar–
+ * deger izgarasi ve alt cubuk ortak pencere katmanindan gelir
+ * (styles/liquid.css). Burada: sekmeler, aciklama ve hareket akisi.
+ * Renkler YALNIZ token.
+ */
+
 .task-review-tab-body {
+    max-height: 380px;
     padding-top: 6px;
-    max-height: 360px;
     overflow-y: auto;
 }
 
-/* ── Dark-theme tab text inside Review Task modal ─────────────────────────
-   AntD's default tab colors lean toward near-black, which disappears on
-   the Hermes dark modal background. Lift inactive tabs to the same
-   light grey used elsewhere; keep the indigo accent on the active tab
-   plus its underline ink bar. */
-.task-review-modal .ant-tabs-nav {
-    margin-bottom: 8px;
-}
-.task-review-modal .ant-tabs-tab {
-    color: var(--c-text);
-    transition: color 140ms ease;
-}
-.task-review-modal .ant-tabs-tab:hover {
-    color: var(--c-text-strong);
-}
-.task-review-modal .ant-tabs-tab:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4);
-    border-radius: 4px;
-}
-.task-review-modal .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn,
-.task-review-modal .ant-tabs-tab-active {
-    color: #6366f1 !important;
-}
-.task-review-modal .ant-tabs-ink-bar {
-    background: #6366f1;
-}
-.task-review-modal .ant-tabs-nav::before {
-    border-bottom-color: var(--c-border);
+.task-review-desc {
+    margin: 0;
+    color: var(--h-text-primary);
+    font-size: 13.5px;
+    line-height: 1.6;
+    white-space: pre-wrap;
 }
 
+/* Sekmeler: metin + marka alti cizgi. */
+.task-review-modal .ant-tabs-nav { margin-bottom: 10px; }
+.task-review-modal .ant-tabs-nav::before { border-bottom-color: var(--h-border-subtle); }
+.task-review-modal .ant-tabs-tab { color: var(--h-text-secondary); transition: color 140ms var(--h-ease-standard); }
+.task-review-modal .ant-tabs-tab:hover { color: var(--h-text-primary); }
+.task-review-modal .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn { color: var(--h-text-primary); font-weight: 600; }
+.task-review-modal .ant-tabs-ink-bar { height: 2px; background: var(--h-grad-primary); }
+.task-review-modal .ant-tabs-tab:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; border-radius: 6px; }
+
+/* Hareket akisi: dikey cizgi uzerinde noktalar (prototip .tl). */
 .task-activity-timeline {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
+    padding-left: 18px;
 }
-
-.task-activity-event {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
+.task-activity-timeline::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--h-border-subtle);
 }
-
+.task-activity-event { position: relative; display: flex; gap: 10px; align-items: flex-start; }
 .task-activity-dot {
-    flex: 0 0 auto;
-    width: 8px;
-    height: 8px;
+    position: absolute;
+    left: -18px;
+    top: 5px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
-    background: #6366f1;
-    margin-top: 6px;
+    background: var(--h-modal-bg);
+    border: 2px solid var(--h-brand);
 }
+.task-activity-body { display: flex; flex: 1 1 auto; flex-direction: column; gap: 2px; min-width: 0; }
+.task-activity-line { color: var(--h-text-secondary); font-size: 13px; line-height: 1.45; }
+.task-activity-actor { color: var(--h-text-primary); font-weight: 600; }
+.task-activity-text { color: var(--h-text-secondary); }
+.task-activity-time { color: var(--h-text-muted); font-size: 11.5px; }
 
-.task-activity-body {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-    flex: 1 1 auto;
-}
-
-.task-activity-line {
-    font-size: 13px;
-    line-height: 1.4;
-    color: var(--c-text);
-}
-
-.task-activity-actor {
-    color: var(--c-text-strong);
-    font-weight: 600;
-}
-
-.task-activity-text {
-    color: var(--c-text);
-}
-
-.task-activity-time {
-    font-size: 11px;
-    color: var(--c-text-muted);
-}
-
-/* ── Phones (≤480px) ─────────────────────────────────────────────────────
-   The decision footer (Accept / Mark as Completed / Reject / Reopen /
-   Close) already wraps via inline flex-wrap on its containers; these
-   rules make sure an individual button can never push past a 390px-wide
-   modal — long labels wrap inside the button instead of overflowing. */
+/* Telefon: uzun dugme etiketleri pencereyi genisletmez, kirilir. */
 @media (max-width: 480px) {
+    .task-review-modal .lq-mf { flex-wrap: wrap; }
     .task-review-modal .ant-modal-body .ant-btn {
         max-width: 100%;
-        white-space: normal;
         height: auto;
         min-height: 32px;
+        white-space: normal;
     }
 }

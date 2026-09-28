@@ -497,3 +497,30 @@
   .lq-frm { grid-template-columns: 1fr; }
   .lq-opt { grid-template-columns: 1fr; }
 }
+
+/* Pencere ici durum notu (tamamlandi / reddedildi / gizli toplanti). */
+.lq-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border-left: 3px solid var(--h-border-default);
+  background: var(--h-bg-hover);
+  color: var(--h-text-secondary);
+  font-size: 13px;
+}
+.lq-note--ok { border-left-color: var(--h-success); color: var(--h-success); }
+.lq-note--bad { border-left-color: var(--h-danger); color: var(--h-danger); }
+
+/* Anahtar–deger izgarasi: etiket soluk, deger belirgin, iki sutun. */
+.lq-kv {
+  display: grid;
+  grid-template-columns: minmax(110px, max-content) minmax(0, 1fr);
+  gap: 8px 18px;
+  margin: 0;
+  font-size: 13.5px;
+}
+.lq-kv dt { color: var(--h-text-muted); }
+.lq-kv dd { margin: 0; min-width: 0; color: var(--h-text-primary); overflow-wrap: anywhere; }

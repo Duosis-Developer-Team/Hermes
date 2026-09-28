@@ -20,13 +20,16 @@
  */
 
 import { useState } from 'react'
-import { Alert, Button, Modal, Space, Spin, Tabs, Tag, Typography } from 'antd'
+import { Button, Modal, Spin, Tabs } from 'antd'
 import {
+    BugOutlined,
+    BulbOutlined,
     CheckCircleOutlined,
+    CheckSquareOutlined,
     CloseCircleOutlined,
-    UndoOutlined,
-    PlayCircleOutlined,
     ExclamationCircleOutlined,
+    PlayCircleOutlined,
+    UndoOutlined,
 } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -35,32 +38,17 @@ import DangerConfirmModal from '../common/DangerConfirmModal'
 import { taskService } from '../../services/api'
 import { typeMeta } from '../../utils/workItemType'
 import TaskCommentsThread from '../tasks/TaskCommentsThread'
+import { ModalHead } from '../liquid'
 import './TaskReviewModal.css'
 import { useT } from '../../i18n'
 
-const { Text, Paragraph } = Typography
-
-const PRIORITY_COLOR = {
-    low: 'default',
-    medium: 'blue',
-    high: 'orange',
-    urgent: 'red',
-}
-
-const STATUS_COLOR = {
-    pending: 'default',
-    in_progress: 'blue',
-    completed: 'green',
-    cancelled: 'magenta',
-    rejected: 'magenta',
-}
-
-const STATUS_LABEL = {
-    pending: 'Pending',
-    in_progress: 'In Progress',
-    completed: 'Completed',
-    cancelled: 'Cancelled',
-    rejected: 'Rejected',
+// Ton → ortak lq-tag paleti; metin i18n'den (kart/panel ile ayni anahtarlar).
+const PRIORITY_TONE = { medium: 'info', high: 'warn', urgent: 'bad' }
+const STATUS_TONE = { in_progress: 'info', completed: 'ok', rejected: 'bad' }
+const TYPE_ICON = {
+    task: [<CheckSquareOutlined key="i" />, 'blue'],
+    issue: [<BugOutlined key="i" />, 'red'],
+    suggestion: [<BulbOutlined key="i" />, 'amber'],
 }
 
 function userLabel(id, userMap) {
@@ -188,10 +176,10 @@ export function ActivityTimeline({ taskId, userMap, taskType = 'task' }) {
 
 function Row({ label, children }) {
     return (
-        <div style={{ display: 'flex', gap: 12, padding: '6px 0' }}>
-            <Text style={{ width: 130, color: 'var(--c-text-muted)' }}>{label}</Text>
-            <div style={{ flex: 1, color: 'var(--c-text-strong)' }}>{children}</div>
-        </div>
+        <>
+            <dt>{label}</dt>
+            <dd>{children}</dd>
+        </>
     )
 }
 
@@ -217,10 +205,9 @@ function TaskReviewModal({
 
     if (!task) return null
 
-    // Type-aware nouns so copy reads "Issue"/"Suggestion" where relevant.
-    const tMeta = typeMeta(task.task_type)
-    const N = tMeta.singular // Task | Issue | Suggestion
-    const n = tMeta.lower // task | issue | suggestion
+    // Ture duyarli adlar ("Issue"/"Oneri"); metinler i18n'den.
+    const kind = typeMeta(task.task_type).lower in TYPE_ICON ? typeMeta(task.task_type).lower : 'task'
+    const noun = { noun: t(`review.noun.${kind}`), Noun: t(`review.nounCap.${kind}`) }
 
     const status = task.status
     const isCompleted = status === 'completed'
@@ -234,17 +221,17 @@ function TaskReviewModal({
             tone: 'primary',
             badgeIcon: <PlayCircleOutlined />,
             confirmIcon: <PlayCircleOutlined />,
-            title: `Accept this ${n}?`,
-            body: `The ${n} will move to In Progress so you can start working on it.`,
-            confirmLabel: `Accept ${N}`,
+            title: t('review.confirm.acceptTitle', noun),
+            body: t('review.confirm.acceptBody', noun),
+            confirmLabel: t('review.accept', noun),
             action: onAccept,
         },
         complete: {
             tone: 'primary',
             badgeIcon: <CheckCircleOutlined />,
             confirmIcon: <CheckCircleOutlined />,
-            title: `Mark ${n} as completed?`,
-            body: `This marks the ${n} as completed. You can reopen it afterwards if needed.`,
+            title: t('review.confirm.completeTitle', noun),
+            body: t('review.confirm.completeBody', noun),
             confirmLabel: t('review.markCompleted'),
             action: onMarkCompleted,
         },
@@ -252,19 +239,19 @@ function TaskReviewModal({
             tone: 'danger',
             badgeIcon: <ExclamationCircleOutlined />,
             confirmIcon: <CloseCircleOutlined />,
-            title: `Reject ${n}?`,
-            body: `This will mark the ${n} as not completed. Are you sure you want to continue?`,
-            confirmLabel: `Reject ${N}`,
+            title: t('review.confirm.rejectTitle', noun),
+            body: t('review.confirm.rejectBody', noun),
+            confirmLabel: t('review.reject', noun),
             action: onReject,
         },
         reopen: {
             tone: 'primary',
             badgeIcon: <UndoOutlined />,
             confirmIcon: <UndoOutlined />,
-            title: `Reopen this ${n}?`,
+            title: t('review.confirm.reopenTitle', noun),
             body: isCompleted
-                ? `The ${n} will move back to In Progress so it can be worked on again.`
-                : `The ${n} will move back to Pending so it can be re-accepted.`,
+                ? t('review.confirm.reopenBodyCompleted', noun)
+                : t('review.confirm.reopenBodyRejected', noun),
             confirmLabel: t('review.reopen'),
             action: onReopen,
         },
@@ -280,220 +267,145 @@ function TaskReviewModal({
     return (
         <>
             <Modal
-                title={
-                    task.task_code
-                        ? `${task.task_code} · ${task.title}`
-                        : `Review ${N} · ${task.title}`
-                }
+                title={(
+                    <ModalHead
+                        icon={TYPE_ICON[kind][0]}
+                        tone={TYPE_ICON[kind][1]}
+                        title={task.title}
+                        subtitle={[task.task_code, task.customer_name, task.project_name].filter(Boolean).join(' · ')}
+                    />
+                )}
                 open={open}
                 onCancel={onClose}
                 footer={null}
-                width={560}
+                width={640}
                 className="task-review-modal"
                 /* AntD 5.x: destroyOnClose deprecated → destroyOnHidden. */
                 destroyOnHidden
             >
-                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                    {isCompleted && (
-                        <Alert
-                            type="success"
-                            showIcon
-                            icon={<CheckCircleOutlined />}
-                            message={
-                                <span>
-                                    <Tag color="green" style={{ marginRight: 8 }}>
-                                        COMPLETED
-                                    </Tag>
-                                    {task.completed_at
-                                        ? `on ${dayjs(task.completed_at).format(
-                                              'YYYY-MM-DD HH:mm'
-                                          )}`
-                                        : null}
-                                    {task.completed_by_user_id
-                                        ? ` by ${userLabel(
-                                              task.completed_by_user_id,
-                                              userMap
-                                          )}`
-                                        : null}
-                                </span>
-                            }
-                        />
-                    )}
-                    {isRejected && (
-                        <Alert
-                            type="error"
-                            showIcon
-                            icon={<CloseCircleOutlined />}
-                            message={
-                                <Tag color="magenta" style={{ marginRight: 8 }}>
-                                    REJECTED
-                                </Tag>
-                            }
-                        />
-                    )}
+                {isCompleted && (
+                    <p className="lq-note lq-note--ok" role="status">
+                        <CheckCircleOutlined aria-hidden="true" />
+                        {task.completed_at
+                            ? t('review.completedOn', { date: dayjs(task.completed_at).format('D MMM YYYY HH:mm') })
+                            : t('taskCard.status.completed')}
+                        {task.completed_by_user_id
+                            ? t('review.completedBy', { name: userLabel(task.completed_by_user_id, userMap) })
+                            : null}
+                    </p>
+                )}
+                {isRejected && (
+                    <p className="lq-note lq-note--bad" role="status">
+                        <CloseCircleOutlined aria-hidden="true" /> {t('taskCard.status.rejected')}
+                    </p>
+                )}
 
-                    <Tabs
-                        defaultActiveKey="details"
-                        items={[
-                            {
-                                key: 'details',
-                                label: t('review.details'),
-                                children: (
-                                    <div className="task-review-tab-body">
-                                        <Row label={t('entity.customer')}>
-                                            {task.customer_name || '—'}
-                                        </Row>
-                                        <Row label={t('entity.project')}>
-                                            {task.project_name || '—'}
-                                        </Row>
+                <Tabs
+                    className="task-review-tabs"
+                    defaultActiveKey="details"
+                    items={[
+                        {
+                            key: 'details',
+                            label: t('review.details'),
+                            children: (
+                                <div className="task-review-tab-body">
+                                    <dl className="lq-kv">
+                                        <Row label={t('entity.customer')}>{task.customer_name || '—'}</Row>
+                                        <Row label={t('entity.project')}>{task.project_name || '—'}</Row>
                                         {task.sub_project_name && (
-                                            <Row label={t('task.subProject')}>
-                                                {task.sub_project_name}
-                                            </Row>
+                                            <Row label={t('task.subProject')}>{task.sub_project_name}</Row>
                                         )}
-                                        <Row label={t('review.assigner')}>
-                                            {userLabel(
-                                                task.assigner_user_id,
-                                                userMap
-                                            )}
-                                        </Row>
-                                        <Row label={t('review.assignee')}>
-                                            {userLabel(
-                                                task.assignee_user_id,
-                                                userMap
-                                            )}
-                                        </Row>
-                                        <Row label={t('review.scheduled')}>
-                                            {task.scheduled_date || '—'}
-                                        </Row>
-                                        {task.due_date && (
-                                            <Row label={t('review.due')}>
-                                                {task.due_date}
-                                            </Row>
-                                        )}
+                                        <Row label={t('review.assigner')}>{userLabel(task.assigner_user_id, userMap)}</Row>
+                                        <Row label={t('review.assignee')}>{userLabel(task.assignee_user_id, userMap)}</Row>
+                                        <Row label={t('review.scheduled')}>{task.scheduled_date || '—'}</Row>
+                                        {task.due_date && <Row label={t('review.due')}>{task.due_date}</Row>}
                                         <Row label={t('task.priority')}>
-                                            <Tag
-                                                color={
-                                                    PRIORITY_COLOR[
-                                                        task.priority
-                                                    ] || 'default'
-                                                }
-                                            >
-                                                {task.priority}
-                                            </Tag>
+                                            {task.priority ? (
+                                                <span className={`lq-tag lq-tag--${PRIORITY_TONE[task.priority] || 'muted'}`}>
+                                                    {t(`taskCard.priority.${task.priority}`)}
+                                                </span>
+                                            ) : '—'}
                                         </Row>
                                         <Row label={t('common.status')}>
-                                            <Tag
-                                                color={
-                                                    STATUS_COLOR[status] ||
-                                                    'default'
-                                                }
-                                            >
-                                                {STATUS_LABEL[status] || status}
-                                            </Tag>
+                                            <span className={`lq-tag lq-tag--${STATUS_TONE[status] || 'muted'}`}>
+                                                {t(`taskCard.status.${status}`)}
+                                            </span>
                                         </Row>
-                                        {task.description && (
-                                            <div style={{ marginTop: 10 }}>
-                                                <Text style={{ color: 'var(--c-text-muted)' }}>{t('common.description')}</Text>
-                                                <Paragraph
-                                                    style={{
-                                                        color: 'var(--c-text-strong)',
-                                                        background: 'var(--c-surface-raised)',
-                                                        border:
-                                                            '1px solid var(--c-border)',
-                                                        borderRadius: 6,
-                                                        padding: 10,
-                                                        marginTop: 4,
-                                                        whiteSpace: 'pre-wrap',
-                                                    }}
-                                                >
-                                                    {task.description}
-                                                </Paragraph>
-                                            </div>
-                                        )}
-                                    </div>
-                                ),
-                            },
-                            {
-                                key: 'activity',
-                                label: t('review.activity'),
-                                children: (
-                                    <div className="task-review-tab-body">
-                                        <ActivityTimeline
-                                            taskId={task.id}
-                                            userMap={userMap}
-                                            taskType={task.task_type}
-                                        />
-                                    </div>
-                                ),
-                            },
-                            {
-                                key: 'comments',
-                                label: t('review.comments'),
-                                children: (
-                                    <div className="task-review-tab-body">
-                                        <TaskCommentsThread
-                                            taskId={task.id}
-                                            currentUserId={currentUserId}
-                                            isAdmin={isAdmin}
-                                            userMap={userMap}
-                                        />
-                                    </div>
-                                ),
-                            },
-                        ]}
-                    />
-
-                    <div
-                        style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            gap: 8,
-                            flexWrap: 'wrap',
-                            paddingTop: 4,
-                        }}
-                    >
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            {canAct && isOpenStatus && (
-                                <>
-                                    {isPending ? (
-                                        <Button
-                                            type="primary"
-                                            icon={<PlayCircleOutlined />}
-                                            disabled={actionLoading}
-                                            onClick={() => setConfirmType('accept')}
-                                        >
-                                            Accept {N}
-                                        </Button>
-                                    ) : (
-                                        <Button
-                                            type="primary"
-                                            icon={<CheckCircleOutlined />}
-                                            disabled={actionLoading}
-                                            onClick={() => setConfirmType('complete')}
-                                        >{t('review.markCompleted')}</Button>
+                                    </dl>
+                                    {task.description && (
+                                        <>
+                                            <h3 className="lq-grp">{t('common.description')}</h3>
+                                            <p className="task-review-desc">{task.description}</p>
+                                        </>
                                     )}
-                                    <Button
-                                        danger
-                                        icon={<CloseCircleOutlined />}
-                                        disabled={actionLoading}
-                                        onClick={() => setConfirmType('reject')}
-                                    >
-                                        Reject {N}
-                                    </Button>
-                                </>
-                            )}
-                            {canAct && (isRejected || isCompleted) && onReopen && (
-                                <Button
-                                    icon={<UndoOutlined />}
-                                    disabled={actionLoading}
-                                    onClick={() => setConfirmType('reopen')}
-                                >{t('review.reopen')}</Button>
-                            )}
-                        </div>
-                        <Button onClick={onClose}>{t('common.close')}</Button>
-                    </div>
-                </Space>
+                                </div>
+                            ),
+                        },
+                        {
+                            key: 'activity',
+                            label: t('review.activity'),
+                            children: (
+                                <div className="task-review-tab-body">
+                                    <ActivityTimeline
+                                        taskId={task.id}
+                                        userMap={userMap}
+                                        taskType={task.task_type}
+                                    />
+                                </div>
+                            ),
+                        },
+                        {
+                            key: 'comments',
+                            label: t('review.comments'),
+                            children: (
+                                <div className="task-review-tab-body">
+                                    <TaskCommentsThread
+                                        taskId={task.id}
+                                        currentUserId={currentUserId}
+                                        isAdmin={isAdmin}
+                                        userMap={userMap}
+                                    />
+                                </div>
+                            ),
+                        },
+                    ]}
+                />
+
+                <div className="lq-mf">
+                    <span className="lq-mf__left">
+                        {canAct && isOpenStatus && (
+                            <Button
+                                danger
+                                icon={<CloseCircleOutlined />}
+                                disabled={actionLoading}
+                                onClick={() => setConfirmType('reject')}
+                            >{t('review.reject', noun)}</Button>
+                        )}
+                        {canAct && (isRejected || isCompleted) && onReopen && (
+                            <Button
+                                icon={<UndoOutlined />}
+                                disabled={actionLoading}
+                                onClick={() => setConfirmType('reopen')}
+                            >{t('review.reopen')}</Button>
+                        )}
+                    </span>
+                    <Button onClick={onClose}>{t('common.close')}</Button>
+                    {canAct && isOpenStatus && (isPending ? (
+                        <Button
+                            type="primary"
+                            icon={<PlayCircleOutlined />}
+                            disabled={actionLoading}
+                            onClick={() => setConfirmType('accept')}
+                        >{t('review.accept', noun)}</Button>
+                    ) : (
+                        <Button
+                            type="primary"
+                            icon={<CheckCircleOutlined />}
+                            disabled={actionLoading}
+                            onClick={() => setConfirmType('complete')}
+                        >{t('review.markCompleted')}</Button>
+                    ))}
+                </div>
             </Modal>
 
             <DangerConfirmModal

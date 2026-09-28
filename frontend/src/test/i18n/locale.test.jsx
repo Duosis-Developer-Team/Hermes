@@ -33,6 +33,8 @@ describe('i18n sozlukleri', () => {
         // Liste bilerek kisa: her eklenen madde "cevrilmedi mi, yoksa
         // gercekten ayni mi?" sorusunu bir kez daha sordurur.
         const SAME_BY_DESIGN = new Set([
+            // "Issue" urun terimi; Turkce arayuzde de aynen kullanilir.
+            'review.noun.issue', 'review.nounCap.issue',
             'nav.apiManagement', 'nav.platforms', 'nav.projects',
             'entity.platform', 'entity.platforms',
             // Saf BICIM dizgesi (prose degil): "{entity} ({n})".

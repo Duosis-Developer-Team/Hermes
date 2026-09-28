@@ -16,6 +16,8 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { customerService, projectService, authService } from '../../services/api'
+import { TeamOutlined } from '@ant-design/icons'
+import { ChipGroup, FormSection, ModalHead } from '../liquid'
 import './PlanTimeModal.css'
 import { useT } from '../../i18n'
 
@@ -148,104 +150,88 @@ function PlanTimeModal({
         }
     }
 
+    // Durum rozeti: renk YALNIZ ton sinifindan (lq-tag), metin i18n.
+    const statusTag = (status, assigned) => {
+        if (status === 'accepted') return <span className="lq-tag lq-tag--ok">{t('plan.accepted')}</span>
+        if (status === 'rejected') return <span className="lq-tag lq-tag--bad">{t('plan.rejected')}</span>
+        return assigned ? <span className="lq-tag lq-tag--warn">{t('plan.pending')}</span> : null
+    }
+    const timePicker = (
+        <TimePicker
+            format="HH:mm"
+            style={{ width: '100%' }}
+            minuteStep={15}
+            disabledTime={() => ({
+                disabledHours: () => [0,1,2,3,4,5,6,7,8,18,19,20,21,22,23]
+            })}
+            hideDisabledOptions
+            popupClassName="plan-time-picker-popup"
+            needConfirm={false}
+        />
+    )
+
     return (
         <Modal
             open={open}
             onCancel={handleClose}
             footer={null}
-            width={540}
+            width={640}
             className="plan-time-modal"
-            title={
-                <div style={{ padding: '4px 0' }}>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-strong)' }}>
-                        {editingPlan ? 'Edit Plan Time' : 'Plan Time'}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--c-text-muted)', marginTop: 2 }}>
-                        {editingPlan ? 'Update meeting details' : 'Create a meeting invite and assign to team members'}
-                    </div>
-                </div>
-            }
+            title={(
+                <ModalHead
+                    icon={<TeamOutlined />}
+                    tone="violet"
+                    title={editingPlan ? t('plan.editTitle') : t('plan.title')}
+                    subtitle={editingPlan ? t('plan.editSubtitle') : t('plan.subtitle')}
+                />
+            )}
             closable
         >
-            <Form form={form} layout="vertical" className="plan-time-form" style={{ marginTop: 8 }}>
-
-                {/* Customer & Project */}
-                <div className="form-row">
-                    <Form.Item
-                        name="customer_id"
-                        label={t('entity.customer')}
-                        rules={[{ required: true, message: t('logTime.required') }]}
-                    >
-                        <Select
-                            placeholder={t('plan.selectCustomer')}
-                            showSearch
-                            optionFilterProp="label"
-                            options={customers.map(c => ({ value: c.id, label: c.name }))}
-                            onChange={handleCustomerChange}
-                        />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="project_id"
-                        label={t('entity.project')}
-                        rules={[{ required: true, message: t('logTime.required') }]}
-                    >
-                        <Select
-                            placeholder={t('plan.selectProject')}
-                            showSearch
-                            optionFilterProp="label"
-                            options={filteredProjects.map(p => ({ value: p.id, label: p.name }))}
-                            disabled={!selectedCustomerId}
-                        />
-                    </Form.Item>
-                </div>
-
-                {/* Date & Time */}
-                <div className="form-row four-cols">
-                    <Form.Item name="start_date" label={t('plan.startDate')} rules={[{ required: true }]}>
-                        <DatePicker format="DD/MMM/YY" style={{ width: '100%' }} />
-                    </Form.Item>
-
-                    <Form.Item name="end_date" label={t('plan.endDate')} rules={[{ required: true }]}>
-                        <DatePicker format="DD/MMM/YY" style={{ width: '100%' }} />
-                    </Form.Item>
-
-                    <Form.Item name="start_time" label={t('plan.startTime')}>
-                        <TimePicker
-                            format="HH:mm"
-                            style={{ width: '100%' }}
-                            minuteStep={15}
-                            disabledTime={() => ({
-                                disabledHours: () => [0,1,2,3,4,5,6,7,8,18,19,20,21,22,23]
-                            })}
-                            hideDisabledOptions
-                            popupClassName="plan-time-picker-popup"
-                            needConfirm={false}
-                        />
-                    </Form.Item>
-
-                    <Form.Item name="end_time" label={t('plan.endTime')}>
-                        <TimePicker
-                            format="HH:mm"
-                            style={{ width: '100%' }}
-                            minuteStep={15}
-                            disabledTime={() => ({
-                                disabledHours: () => [0,1,2,3,4,5,6,7,8,18,19,20,21,22,23]
-                            })}
-                            hideDisabledOptions
-                            popupClassName="plan-time-picker-popup"
-                            needConfirm={false}
-                        />
-                    </Form.Item>
-                </div>
-
-                {/* Recurrence */}
-                <Form.Item name="recurrence" label={t('plan.recurrence')} rules={[{ required: true }]}>
-                    <Select options={recurrenceOptions} />
+            <Form form={form} layout="vertical" className="plan-time-form lq-frm">
+                <FormSection>{t('plan.groupWhere')}</FormSection>
+                <Form.Item
+                    name="customer_id"
+                    label={t('entity.customer')}
+                    rules={[{ required: true, message: t('logTime.required') }]}
+                >
+                    <Select
+                        placeholder={t('plan.selectCustomer')}
+                        showSearch
+                        optionFilterProp="label"
+                        options={customers.map(c => ({ value: c.id, label: c.name }))}
+                        onChange={handleCustomerChange}
+                    />
+                </Form.Item>
+                <Form.Item
+                    name="project_id"
+                    label={t('entity.project')}
+                    rules={[{ required: true, message: t('logTime.required') }]}
+                >
+                    <Select
+                        placeholder={t('plan.selectProject')}
+                        showSearch
+                        optionFilterProp="label"
+                        options={filteredProjects.map(p => ({ value: p.id, label: p.name }))}
+                        disabled={!selectedCustomerId}
+                    />
                 </Form.Item>
 
-                {/* Assign Users */}
+                <FormSection>{t('plan.groupWhen')}</FormSection>
+                <Form.Item name="start_date" label={t('plan.startDate')} rules={[{ required: true }]}>
+                    <DatePicker format="D MMM YYYY" style={{ width: '100%' }} />
+                </Form.Item>
+                <Form.Item name="end_date" label={t('plan.endDate')} rules={[{ required: true }]}>
+                    <DatePicker format="D MMM YYYY" style={{ width: '100%' }} />
+                </Form.Item>
+                <Form.Item name="start_time" label={t('plan.startTime')}>{timePicker}</Form.Item>
+                <Form.Item name="end_time" label={t('plan.endTime')}>{timePicker}</Form.Item>
+                <Form.Item className="lq-full" name="recurrence" label={t('plan.recurrence')} rules={[{ required: true }]}>
+                    <ChipGroup ariaLabel={t('plan.recurrence')} options={recurrenceOptions} />
+                </Form.Item>
+
+                <FormSection>{t('plan.groupWho')}</FormSection>
                 <Form.Item
+                    className="lq-full"
                     name="user_ids"
                     label={t('plan.assignTo')}
                     rules={[{ required: true, message: t('plan.atLeastOneUser') }]}
@@ -263,53 +249,25 @@ function PlanTimeModal({
                             const assignment = editingPlan?.assignments?.find(
                                 a => a.user_id === option.value
                             )
-                            const status = assignment?.status
-                            const badgeStyle = {
-                                fontSize: 10,
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.04em',
-                                padding: '2px 6px',
-                                borderRadius: 4,
-                                flexShrink: 0,
-                            }
-                            const statusBadge = status === 'accepted'
-                                ? <span style={{ ...badgeStyle, background: 'rgba(82,196,26,0.15)', color: '#52c41a' }}>{t('plan.accepted')}</span>
-                                : status === 'rejected'
-                                ? <span style={{ ...badgeStyle, background: 'rgba(255,77,79,0.15)', color: '#ff4d4f' }}>{t('plan.rejected')}</span>
-                                : assignment
-                                ? <span style={{ ...badgeStyle, background: 'rgba(250,173,20,0.15)', color: '#faad14' }}>{t('plan.pending')}</span>
-                                : null
-
                             return (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                                <div className="plan-time-option">
                                     <span>{option.label}</span>
-                                    {statusBadge}
+                                    {statusTag(assignment?.status, Boolean(assignment))}
                                 </div>
                             )
                         }}
                         maxTagCount={4}
                     />
                 </Form.Item>
-
-                {/* Description */}
-                <Form.Item name="description" label={t('common.description')}>
-                    <TextArea
-                        rows={2}
-                        placeholder={t('plan.meetingDescription')}
-                    />
+                <Form.Item className="lq-full" name="description" label={t('common.description')}>
+                    <TextArea rows={2} placeholder={t('plan.meetingDescription')} />
                 </Form.Item>
 
-                {/* Actions */}
-                <div className="form-actions">
-                    <Button
-                        type="primary"
-                        onClick={handleSubmit}
-                        loading={loading}
-                    >
-                        {editingPlan ? 'Save Changes' : 'Send Invite'}
-                    </Button>
+                <div className="lq-mf lq-full">
                     <Button onClick={handleClose}>{t('common.cancel')}</Button>
+                    <Button type="primary" onClick={handleSubmit} loading={loading}>
+                        {editingPlan ? t('taskModal.saveChanges') : t('plan.sendInvite')}
+                    </Button>
                 </div>
             </Form>
         </Modal>
