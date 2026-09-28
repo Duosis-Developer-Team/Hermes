@@ -111,11 +111,14 @@ describe('buyuk gri seritler ve panel yiginlari kalkti', () => {
 })
 
 describe('Tasks yuzeyi', () => {
-    it('board kolonlari zeminsiz (buyuk gri dikdortgen yok)', () => {
+    it('board kolonlari opak gri dikdortgen DEGIL (seffaf cam serit)', () => {
+        /* Hermes Liquid (28.09): kolon zemini yalniz yari saydam cam
+           token'i — ham renk / opak yuzey yok; sivi arkadan gorunur. */
         const css = noComments(read('components/tasks/TasksBoardView.css'))
         const block = css.slice(css.indexOf('.tasks-board-column {'), css.indexOf('.tasks-board-column-header'))
-        expect(block).toContain('background: transparent')
-        expect(block).toMatch(/border:\s*0/)
+        expect(block).toMatch(/background:\s*var\(--h-surface-subtle\)/)
+        expect(block).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
+        expect(block).toContain('backdrop-filter')
     })
 
     it('gelismis filtreler drawer icinde (surekli acik serit degil)', () => {

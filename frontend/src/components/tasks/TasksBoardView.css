@@ -6,81 +6,36 @@
 
 .tasks-board-toolbar {
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
     align-items: center;
-    padding: 4px 0 2px;
+    padding: 0;
 }
 
-/* Centered, gradient "New Task" CTA. Brand-blue → indigo gradient is a
-   constant accent (doesn't flip with the theme), so white text reads
-   well in both dark and light mode. AntD v5 component styles use
-   :where() (zero specificity), so this single class overrides them. */
+/* "Yeni" eylemi: Hermes Liquid birincil hap (tek dil — --h-action-*).
+   Eski indigo animasyonlu gradyan ve !important kalkti. */
 .tasks-board-new-btn {
-    height: 42px;
-    padding: 0 30px;
+    height: 40px;
+    padding: 0 20px;
     border: none;
-    border-radius: 12px;
+    border-radius: var(--h-radius-pill);
     font-weight: 600;
     font-size: 14px;
-    letter-spacing: 0.01em;
-    color: #fff;
-    background: linear-gradient(
-        135deg,
-        #388bff 0%,
-        #6366f1 50%,
-        #7c5cff 100%
-    );
-    background-size: 200% 200%;
-    animation: tasks-new-btn-shift 7s ease infinite;
-    box-shadow: 0 6px 20px rgba(79, 102, 241, 0.35),
-        inset 0 1px 0 rgba(255, 255, 255, 0.18);
-    transition: transform 0.16s ease, box-shadow 0.16s ease,
-        filter 0.16s ease;
+    color: var(--h-action-text);
+    background: var(--h-action-bg);
+    box-shadow: var(--h-action-shadow);
+    transition: transform var(--h-motion-base) var(--h-ease-spring),
+        box-shadow var(--h-motion-fast) var(--h-ease-standard);
 }
-
-.tasks-board-new-btn:hover {
-    color: #fff !important;
-    filter: brightness(1.08) saturate(1.05);
-    transform: translateY(-1px);
-    box-shadow: 0 10px 26px rgba(79, 102, 241, 0.48),
-        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+:root .tasks-board-new-btn:not(:disabled):hover {
+    color: var(--h-action-text);
+    background: var(--h-action-bg-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--h-action-shadow-hover);
 }
-
-.tasks-board-new-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 4px 14px rgba(79, 102, 241, 0.32),
-        inset 0 1px 0 rgba(255, 255, 255, 0.18);
-}
-
+.tasks-board-new-btn:active { transform: translateY(0) scale(0.985); }
 .tasks-board-new-btn:focus-visible {
-    outline: 2px solid #85b8ff;
+    outline: 2px solid var(--h-focus);
     outline-offset: 2px;
-}
-
-/* Light mode: deepen the shadow tint a touch so the button still feels
-   grounded against the bright surface. */
-:root[data-theme='light'] .tasks-board-new-btn {
-    box-shadow: 0 6px 18px rgba(56, 139, 255, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.35);
-}
-
-@keyframes tasks-new-btn-shift {
-    0% {
-        background-position: 0% 50%;
-    }
-    50% {
-        background-position: 100% 50%;
-    }
-    100% {
-        background-position: 0% 50%;
-    }
-}
-
-/* Respect reduced-motion preferences — hold a static gradient. */
-@media (prefers-reduced-motion: reduce) {
-    .tasks-board-new-btn {
-        animation: none;
-    }
 }
 
 .tasks-board {
@@ -89,21 +44,15 @@
     gap: 20px;
     align-items: start;
 }
-/* Kolonlar arasi cok ince dikey ayirici (kutu degil). */
-.tasks-board-column + .tasks-board-column {
-    border-left: 1px solid var(--h-border-subtle);
-    padding-left: 20px;
-    margin-left: -10px;
-}
-
 .tasks-board-column {
-    /* Premium redesign: kolon ZEMINSIZ — buyuk gri dikdortgen yok.
-       Ayrim; kolonlar arasi bosluk + baslik alt-cizgi accent'i +
-       aradaki ince dikey ayiricidir. Kartlar zaten kendi yuzeyini
-       tasir (gercek icerik nesnesi). */
-    background: transparent;
-    border: 0;
-    border-radius: 0;
+    /* Hermes Liquid: kolon opak gri dikdortgen DEGIL — sivinin ustunde
+       cok hafif seffaf cam serit; kartlar onun icinde kendi camini tasir. */
+    background: var(--h-surface-subtle);
+    border: 1px solid var(--h-glass-edge);
+    border-radius: 22px;
+    padding: 4px;
+    backdrop-filter: blur(var(--h-glass-blur)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--h-glass-blur)) saturate(140%);
     display: flex;
     flex-direction: column;
     max-height: calc(100vh - 280px);
@@ -115,16 +64,25 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--h-border-subtle);
+    padding: 10px 12px 6px;
+    border-bottom: 0;
     background: transparent;
 }
 .tasks-board-column-label {
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--c-text);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13.5px;
+    font-weight: 650;
+    color: var(--h-text-primary);
+}
+/* Durum = baslikta renkli nokta (eski alt cizgi accent'inin yerine). */
+.tasks-board-column-label::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--col-accent, var(--h-text-muted));
 }
 .tasks-board-column-count {
     font-size: 11px;
@@ -154,10 +112,10 @@
 
 /* Premium redesign: kolon durumu KUCUK bir accent cizgisiyle anlatilir —
    dolu renk blogu/bagiran cizgi yok; tokenlardan dusuk-alfa turetim. */
-.tasks-board-column-pending     .tasks-board-column-header { border-bottom-color: var(--h-border-default); }
-.tasks-board-column-in_progress .tasks-board-column-header { border-bottom-color: color-mix(in srgb, var(--h-brand) 45%, transparent); }
-.tasks-board-column-completed   .tasks-board-column-header { border-bottom-color: color-mix(in srgb, var(--h-success) 45%, transparent); }
-.tasks-board-column-rejected    .tasks-board-column-header { border-bottom-color: color-mix(in srgb, var(--h-danger) 35%, transparent); }
+.tasks-board-column-pending     { --col-accent: var(--h-text-muted); }
+.tasks-board-column-in_progress { --col-accent: var(--h-brand); }
+.tasks-board-column-completed   { --col-accent: var(--h-success); }
+.tasks-board-column-rejected    { --col-accent: var(--h-danger); }
 
 /* ── Drag & drop ──────────────────────────────────────────────────── */
 .tasks-board-draggable {
