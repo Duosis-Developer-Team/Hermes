@@ -4,24 +4,24 @@
  * =============================================================================
  * Proje sözleşme sürelerini ve kalan günlerini gösteren dashboard.
  * Veri kaynağı: projectService (proje bazlı contract alanları).
- * Modern Dark UI Design.
+ * Hermes Liquid (prototip): üç durum kartı + cam tablo; kalan süre
+ * token renkli çubukla. Eski sayfa içi <style> bloğu (global !important
+ * kurallar, TÜM uygulamaya sızıyordu) kaldırıldı.
  * =============================================================================
  */
 
 import { useState } from 'react'
-import {
-    Alert, Button, Card, Input, Progress, Table, Tag, Typography,
-} from 'antd'
-import { SearchOutlined, ClockCircleOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons'
+import { Alert, Button, Input, Table } from 'antd'
+import { SearchOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { projectService, workLogService } from '../../services/api'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import dayjs from 'dayjs'
 import { useT } from '../../i18n'
+import { CountUp, GlassCard, PageHero } from '../../components/liquid'
+import './ContractStatusPage.css'
 
 const HOURS_PER_DAY = 8
-
-const { Text } = Typography
 
 function ContractStatusPage() {
     const t = useT()
@@ -76,18 +76,13 @@ function ContractStatusPage() {
         let progressPercent = Math.min(100, (usedDays / totalDays) * 100)
 
         let status = 'safe'
-        let color = '#4ade80'
-
         if (usedDays >= totalDays) {
             status = 'expired'
-            color = '#ef4444'
             progressPercent = 100
         } else if (progressPercent >= 80) {
             status = 'critical'
-            color = '#ef4444'
         } else if (progressPercent >= 50) {
             status = 'warning'
-            color = '#f59e0b'
         }
 
         return {
@@ -96,7 +91,6 @@ function ContractStatusPage() {
             remainingDays,
             totalDays,
             status,
-            color,
             progressPercent
         }
     }).filter(Boolean)
@@ -111,80 +105,57 @@ function ContractStatusPage() {
         (p.name || '').toLowerCase().includes(query)
     )
 
-    // Columns — Görev 7 sıralaması: Customer, Project, Status, Remaining Time, End Date
+    const STATUS_TONE = { expired: 'bad', critical: 'bad', warning: 'warn', safe: 'ok' }
     const columns = [
         {
-            title: 'CUSTOMER',
+            title: t('contracts.colCustomer'),
             dataIndex: 'customer_name',
             key: 'customer_name',
-            width: 200,
-            render: (name) => (
-                <Text strong style={{ fontSize: '0.95rem', color: 'var(--c-text-strong)' }}>
-                    {name || 'Internal Project'}
-                </Text>
-            )
+            width: 190,
+            render: (name) => <span className="cs-customer">{name || t('contracts.internal')}</span>,
         },
         {
-            title: 'PROJECT',
+            title: t('contracts.colProject'),
             dataIndex: 'name',
             key: 'name',
             width: 200,
-            render: (text) => (
-                <Text style={{ fontSize: '0.95rem', color: 'var(--c-text)' }}>{text}</Text>
-            )
         },
         {
-            title: 'STATUS',
+            title: t('contracts.colStatus'),
             key: 'status',
-            width: 180,
-            render: (_, record) => {
-                if (record.status === 'expired') return <Tag color="error" style={{ fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', width: 'fit-content', gap: 6 }} icon={<WarningOutlined />}>EXPIRED</Tag>
-                if (record.status === 'critical') return <Tag color="error" style={{ fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', width: 'fit-content', gap: 6 }} icon={<WarningOutlined />}>CRITICAL</Tag>
-                if (record.status === 'warning') return <Tag color="warning" style={{ fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', width: 'fit-content', gap: 6 }} icon={<ClockCircleOutlined />}>WARNING</Tag>
-                return <Tag color="success" style={{ fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', width: 'fit-content', gap: 6 }} icon={<CheckCircleOutlined />}>ACTIVE</Tag>
-            }
+            width: 140,
+            render: (_, record) => (
+                <span className={`lq-tag lq-tag--${STATUS_TONE[record.status]}`}>
+                    <span className="cs-dot" aria-hidden="true" />{t(`contracts.status.${record.status}`)}
+                </span>
+            ),
         },
         {
             title: t('contracts.remainingTime'),
             key: 'remaining',
-            width: 300,
+            width: 360,
             render: (_, record) => (
-                <div style={{ width: '100%' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <span style={{ color: 'var(--c-text-muted)', fontSize: 11 }}>
-                            {record.usedDays} days used
-                        </span>
-                        <span style={{ color: record.color, fontSize: 11, fontWeight: 600 }}>
-                            {record.remainingDays} days left
-                        </span>
-                    </div>
-                    <Progress
-                        percent={record.progressPercent}
-                        showInfo={false}
-                        strokeColor={record.color}
-                        trailColor="rgba(var(--overlay-rgb),0.1)"
-                        /*
-                         * AntD 5.x: `strokeWidth` deprecated → `size`.
-                         * Onceki deger cifti (`size="small"` + strokeWidth 6)
-                         * antd icinde height=6'ya cozuluyordu; nesne bicimi
-                         * ayni yuksekligi ACIKCA korur, genislik otomatik
-                         * kalir.
-                         */
-                        size={{ height: 6 }}
-                    />
+                <div className={`cs-remaining cs-remaining--${STATUS_TONE[record.status]}`}>
+                    <span className="cs-bar" aria-hidden="true"><i style={{ width: `${record.progressPercent}%` }} /></span>
+                    <span className="cs-left">
+                        {record.status === 'expired'
+                            ? t('contracts.expiredLabel')
+                            : t('contracts.daysLeft', { days: record.remainingDays })}
+                    </span>
+                    <span className="cs-used">{t('contracts.daysUsed', { days: record.usedDays })}</span>
                 </div>
-            )
+            ),
         },
         {
             title: t('contracts.startDate'),
             dataIndex: 'contract_start_date',
             key: 'contract_start_date',
-            width: 150,
+            width: 140,
             align: 'right',
             render: (date) => date
-                ? <Text style={{ color: 'var(--c-text)' }}>{dayjs(date).format('DD.MM.YYYY')}</Text>
-                : <Text style={{ color: 'var(--c-text-faint)' }}>—</Text>
-        }
+                ? <span className="cs-date">{dayjs(date).format('D MMM YYYY')}</span>
+                : <span className="cs-date">—</span>,
+        },
     ]
 
     // Statistics
@@ -192,28 +163,42 @@ function ContractStatusPage() {
     const warningCount = processedData.filter(c => c.status === 'warning').length
     const safeCount = processedData.filter(c => c.status === 'safe').length
 
+    const summary = [
+        { key: 'critical', tone: 'bad', count: criticalCount, title: t('contracts.critical') },
+        { key: 'warning', tone: 'warn', count: warningCount, title: t('contracts.approaching') },
+        { key: 'safe', tone: 'ok', count: safeCount, title: t('contracts.onTrack') },
+    ]
+
     return (
-        <div className="contract-status-page fade-in" style={{ padding: '24px', maxWidth: 1400, margin: '0 auto', color: 'var(--c-text-strong)' }}>
-            {/* Header Section */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
-                <div>
-                    <h1 style={{
-                        margin: 0,
-                        fontSize: '2rem',
-                        background: 'linear-gradient(to right, var(--c-text-strong), var(--c-text-muted))',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        fontWeight: 800
-                    }}>{t('contracts.title')}</h1>
-                    <Text style={{ color: 'var(--c-text-faint)', fontSize: '1rem' }}>{t('contracts.subtitle')}</Text>
-                </div>
-            </div>
+        <div className="contract-status-page">
+            <PageHero
+                title={t('contracts.title')}
+                subtitle={t('contracts.subtitle')}
+                actions={(
+                    <div className="contract-filter-bar h-inline-toolbar">
+                        <Input
+                            allowClear
+                            prefix={<SearchOutlined />}
+                            placeholder={t('contracts.searchPlaceholder')}
+                            aria-label={t('contracts.searchLabel')}
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
+                            className="cs-search"
+                        />
+                        <span className="cs-count" role="status">
+                            {isFetching && projects.length > 0
+                                ? t('contracts.refreshing')
+                                : t('contracts.recordsFound', { count: filteredData.length })}
+                        </span>
+                    </div>
+                )}
+            />
 
             {loadError && (
                 <Alert
                     type="error"
                     showIcon
-                    style={{ marginBottom: 24 }}
+                    className="cs-alert"
                     message={loadError.message}
                     action={
                         <Button size="small" onClick={() => loadError.retry()}>{t('common.retry')}</Button>
@@ -221,142 +206,40 @@ function ContractStatusPage() {
                 />
             )}
 
-            {/* Premium: uc buyuk status karti yerine TEK health strip —
-                ince dikey ayiricilar, ikon + sayi + label hiyerarsisi. */}
-            <div className="h-metric-strip" role="group" aria-label={t('contracts.health')}>
-                <div className="h-metric-strip__item">
-                    <div className="h-metric-strip__value" style={{ color: 'var(--h-danger)' }}>
-                        <WarningOutlined style={{ fontSize: 18, marginRight: 8 }} />{criticalCount}
-                    </div>
-                    <div className="h-metric-strip__label">{t('contracts.critical')}</div>
-                </div>
-                <div className="h-metric-strip__item">
-                    <div className="h-metric-strip__value" style={{ color: 'var(--h-warning)' }}>
-                        <ClockCircleOutlined style={{ fontSize: 18, marginRight: 8 }} />{warningCount}
-                    </div>
-                    <div className="h-metric-strip__label">Approaching (50–80% used)</div>
-                </div>
-                <div className="h-metric-strip__item">
-                    <div className="h-metric-strip__value" style={{ color: 'var(--h-success)' }}>
-                        <CheckCircleOutlined style={{ fontSize: 18, marginRight: 8 }} />{safeCount}
-                    </div>
-                    <div className="h-metric-strip__label">On Track (&lt;50% used)</div>
-                </div>
+            {/* Saglik ozeti: uc cam kart (h-metric-strip rolu). */}
+            <div className="cs-summary lq-enter h-metric-strip" role="group" aria-label={t('contracts.health')}>
+                {summary.map((c) => (
+                    <GlassCard key={c.key} className={`cs-card cs-card--${c.tone}`}>
+                        <span className="cs-card__count"><CountUp value={c.count} /></span>
+                        <span className="cs-card__text">
+                            <b>{c.title}</b>
+                            <small>{t('contracts.activeProjects')}</small>
+                        </span>
+                    </GlassCard>
+                ))}
             </div>
 
-            {/* Premium: gri search paneli KALKTI — search + kayit sayisi
-                tek ince toolbar'da. */}
-            <div className="contract-filter-bar h-inline-toolbar" style={{ justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <SearchOutlined style={{ color: 'var(--c-text-faint)', fontSize: 18 }} />
-                    <Input
-                        placeholder={t('contracts.searchPlaceholder')}
-                        aria-label={t('contracts.searchLabel')}
-                        /* AntD 5.x: bordered deprecated → variant. */
-                        variant="borderless"
-                        value={searchText}
-                        onChange={e => setSearchText(e.target.value)}
-                        style={{ color: 'var(--c-text-strong)', fontSize: 16, width: 350 }}
-                        className="modern-search-input"
-                    />
-                </div>
-                <div style={{ color: 'var(--c-text-faint)' }} role="status">
-                    {isFetching && projects.length > 0
-                        ? 'Refreshing…'
-                        : `${filteredData.length} records found`}
-                </div>
-            </div>
-
-            {/* Data Table */}
-            <Card
-                variant="borderless"
-                styles={{ body: { padding: 0 } }}
-                className="h-dataview"
-                style={{ background: 'transparent' }}
-            >
+            <GlassCard className="cs-table lq-card--flush">
                 <Table
                     dataSource={filteredData}
                     columns={columns}
                     rowKey="id"
                     loading={isLoading && projects.length === 0}
-                    pagination={{ pageSize: 10 }}
-                    rowClassName="modern-row"
+                    pagination={{ pageSize: 10, hideOnSinglePage: true }}
                     scroll={{ x: 'max-content' }}
                     locale={{
                         // ILK KULLANIM boslugu ile FILTRE sonucu yoklugu
                         // AYRI mesajlanir: ikisi ayni sey degil.
                         emptyText: (
-                            <div style={{ padding: 20, color: 'var(--c-text-faint)' }}>
+                            <div className="cs-empty">
                                 {query
-                                    ? `No contracts match “${searchText.trim()}”.`
-                                    : 'No contract data found. Add contract duration to your projects.'}
+                                    ? t('contracts.noMatch', { query: searchText.trim() })
+                                    : t('contracts.noData')}
                             </div>
                         ),
                     }}
                 />
-            </Card>
-
-            <style>{`
-                .modern-row td {
-                    background: transparent !important;
-                    border-bottom: 1px solid var(--c-border) !important;
-                    padding: 20px 24px !important;
-                    color: var(--c-text) !important;
-                }
-                .modern-row:hover td {
-                    background-color: rgba(var(--overlay-rgb),0.03) !important;
-                }
-                .ant-table {
-                    background: transparent !important;
-                    color: var(--c-text-strong) !important;
-                }
-                .ant-table-thead > tr > th {
-                    background: var(--c-surface) !important;
-                    color: var(--c-text-faint) !important;
-                    border-bottom: 1px solid var(--c-border) !important;
-                    font-size: 11px;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    padding: 16px 24px !important;
-                }
-                .ant-pagination {
-                    margin: 16px 24px !important;
-                }
-                .ant-pagination-item {
-                    background: transparent !important;
-                    border-color: var(--c-border-strong) !important;
-                }
-                .ant-pagination-item a {
-                    color: var(--c-text-muted) !important;
-                }
-                .ant-pagination-item-active {
-                    border-color: #1677ff !important;
-                }
-                .ant-pagination-item-active a {
-                    color: #1677ff !important;
-                }
-                .modern-search-input::placeholder {
-                    color: var(--c-text-faint);
-                }
-                .modern-search-input:focus {
-                     box-shadow: none !important;
-                }
-
-                /* Mobile: filter bar stacks; the 350px search input
-                   flexes to the remaining row width instead. */
-                @media (max-width: 480px) {
-                    .contract-filter-bar {
-                        flex-direction: column;
-                        align-items: stretch;
-                        gap: 8px;
-                    }
-                    .contract-filter-bar .modern-search-input {
-                        width: auto !important;
-                        flex: 1 1 auto;
-                        min-width: 0;
-                    }
-                }
-            `}</style>
+            </GlassCard>
         </div>
     )
 }

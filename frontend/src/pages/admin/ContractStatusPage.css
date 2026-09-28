@@ -1,0 +1,50 @@
+/* HERMES - Sozlesme durumu (Hermes Liquid prototipi) */
+.contract-status-page .lq-hero { margin-bottom: var(--h-space-4); }
+.contract-status-page .contract-filter-bar.h-inline-toolbar {
+    margin: 0;
+    padding: 0;
+    gap: 12px;
+    background: none;
+    border: 0;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+.cs-search.ant-input-affix-wrapper { width: 300px; height: 40px; border-radius: var(--h-radius-pill); }
+.cs-count { color: var(--h-text-muted); font-size: 12.5px; }
+.cs-alert { margin-bottom: var(--h-space-4); border-radius: 16px; }
+
+.cs-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0 0 16px; }
+.cs-card.lq-card { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
+.cs-card { --cs-tone: var(--h-danger); }
+.cs-card--warn { --cs-tone: var(--h-warning); }
+.cs-card--ok { --cs-tone: var(--h-success); }
+.cs-card__count {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex: none;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--cs-tone) 16%, transparent);
+    color: var(--cs-tone);
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.cs-card__text { display: flex; flex-direction: column; }
+.cs-card__text b { font-size: 14px; }
+.cs-card__text small { color: var(--h-text-muted); font-size: 12px; }
+@media (max-width: 900px) { .cs-summary { grid-template-columns: 1fr; } }
+
+.cs-table .ant-table-wrapper .ant-table-tbody > tr > td { padding: 14px 16px; }
+.cs-customer { font-weight: 650; }
+.cs-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.cs-remaining { --cs-tone: var(--h-success); display: grid; grid-template-columns: 130px auto; grid-template-rows: auto auto; align-items: center; column-gap: 12px; }
+.cs-remaining--warn { --cs-tone: var(--h-warning); }
+.cs-remaining--bad { --cs-tone: var(--h-danger); }
+.cs-bar { height: 8px; overflow: hidden; border-radius: var(--h-radius-pill); background: var(--h-bg-hover); }
+.cs-bar i { display: block; height: 100%; border-radius: inherit; background: var(--cs-tone); transform-origin: left; animation: lq-grow-x 900ms var(--h-ease-enter) both; }
+.cs-left { font-size: 13px; font-weight: 600; }
+.cs-used { grid-column: 2; font-size: 11.5px; color: var(--h-text-muted); }
+.cs-date { color: var(--h-text-secondary); font-variant-numeric: tabular-nums; }
+.cs-empty { padding: 24px; color: var(--h-text-muted); }
