@@ -1,0 +1,70 @@
+{
+  "name": "hermes-desktop",
+  "productName": "Hermes",
+  "version": "0.1.0",
+  "description": "Hermes for macOS — native shell around the Hermes web app",
+  "author": "Duosis",
+  "private": true,
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "icons": "node scripts/make-icons.mjs",
+    "dist": "electron-builder --mac dmg --arm64 --x64",
+    "dist:arm64": "electron-builder --mac dmg --arm64"
+  },
+  "build": {
+    "appId": "com.duosis.hermes",
+    "productName": "Hermes",
+    "copyright": "© Duosis",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "protocols": [
+      {
+        "name": "Hermes",
+        "schemes": [
+          "hermes"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "target": [
+        "dmg"
+      ]
+    },
+    "dmg": {
+      "title": "Hermes ${version}",
+      "artifactName": "Hermes-${version}-${arch}.${ext}",
+      "contents": [
+        {
+          "x": 150,
+          "y": 190
+        },
+        {
+          "x": 390,
+          "y": 190,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 380
+      }
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3"
+  }
+}

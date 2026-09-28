@@ -95,3 +95,17 @@ describe('bildirim zili', () => {
         expect(await screen.findByText('Nothing new')).toBeInTheDocument()
     })
 })
+
+describe('masaustu Dock rozeti', () => {
+    it('okunmamis sayisi hermesDesktop kopruse iletilir; kopru yoksa hata yok', async () => {
+        const setBadgeCount = vi.fn()
+        window.hermesDesktop = { isDesktop: true, setBadgeCount }
+        try {
+            renderBell()
+            await screen.findByRole('button', { name: 'Notifications, 1 unread' })
+            await waitFor(() => expect(setBadgeCount).toHaveBeenLastCalledWith(1))
+        } finally {
+            delete window.hermesDesktop
+        }
+    })
+})

@@ -9,7 +9,7 @@
  * (react-query `refetchOnWindowFocus`), 60 sn'de bir de tazelenir.
  * =============================================================================
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Button, Dropdown, Empty, Spin } from 'antd'
 import { BellOutlined } from '@ant-design/icons'
@@ -73,6 +73,12 @@ function NotificationBell() {
 
     const unread = count.data?.unread_count ?? 0
     const items = list.data?.items ?? []
+
+    // Hermes masaustu (macOS): okunmamis sayisi Dock rozetine yansir.
+    // Tarayicida `window.hermesDesktop` yoktur — etkisiz.
+    useEffect(() => {
+        window.hermesDesktop?.setBadgeCount?.(unread)
+    }, [unread])
 
     const openItem = (n) => {
         if (!n.read_at) markRead.mutate(n.id)

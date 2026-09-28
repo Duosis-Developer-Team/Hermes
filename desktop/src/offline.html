@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>Hermes</title>
+<style>
+  :root { color-scheme: light dark; --bg:#f5f6f8; --card:#fff; --ink:#17202d; --muted:#667085; --brand:#0c66e4; --line:#e4e7ec; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0e1116; --card:#161b22; --ink:#f2f4f7; --muted:#98a2b3; --brand:#579dff; --line:#2a313c; } }
+  html,body { height:100%; margin:0; }
+  body { display:grid; place-items:center; background:var(--bg); color:var(--ink);
+         font:14px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; -webkit-app-region: drag; }
+  .card { width:min(420px, 90vw); background:var(--card); border:1px solid var(--line); border-radius:20px;
+          padding:32px; text-align:center; -webkit-app-region: no-drag; }
+  h1 { font-size:18px; margin:0 0 6px; }
+  p { margin:0 0 20px; color:var(--muted); }
+  code { font:12px ui-monospace, Menlo, monospace; color:var(--muted); word-break:break-all; }
+  button { font:inherit; font-weight:600; border:0; border-radius:999px; padding:10px 22px; background:var(--brand); color:#fff; cursor:pointer; }
+  button:focus-visible { outline:3px solid color-mix(in srgb, var(--brand) 40%, transparent); outline-offset:2px; }
+</style>
+</head>
+<body>
+  <div class="card" role="alert">
+    <h1>Hermes'e ulaşılamıyor</h1>
+    <p>İnternet bağlantını ya da sunucu seçimini (Sunucu menüsü) kontrol et.</p>
+    <p><code id="detail"></code></p>
+    <button id="retry" type="button" autofocus>Tekrar dene</button>
+  </div>
+<script>
+  const q = new URLSearchParams(location.search)
+  const target = q.get('target') || ''
+  document.getElementById('detail').textContent = [target, q.get('error')].filter(Boolean).join(' — ')
+  document.getElementById('retry').addEventListener('click', () => { if (/^https:\/\//.test(target)) location.href = target })
+</script>
+</body>
+</html>
