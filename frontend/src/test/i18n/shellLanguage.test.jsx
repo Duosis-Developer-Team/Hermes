@@ -59,27 +59,35 @@ describe('kabuk dil dugmesi', () => {
         useLocaleStore.getState().setLocale('en')
     })
 
-    it('dil dugmesi tema dugmesinin yaninda ve mevcut dili gosterir', () => {
+    // Hermes Liquid: dil secimi profil kartinda, tema karolarinin altinda.
+    const openProfile = (user) =>
+        user.click(screen.getByRole('button', { name: /^Account:/ }))
+
+    it('dil secimi tema karolarinin yaninda ve mevcut dili gosterir', async () => {
+        const user = userEvent.setup()
         renderShell()
-        expect(screen.getByRole('button', { name: /Turkish/i })).toBeInTheDocument()
-        expect(screen.getByText('EN')).toBeInTheDocument()
+        await openProfile(user)
+        expect(screen.getByRole('button', { name: /Switch to light theme/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /Switch to English/i }))
+            .toHaveAttribute('aria-pressed', 'true')
+        expect(screen.getByRole('button', { name: /Switch to Turkish/i }))
+            .toHaveAttribute('aria-pressed', 'false')
     })
 
     it('basinca gezinme metni Turkce olur, tekrar basinca Ingilizce', async () => {
         const user = userEvent.setup()
         renderShell()
-        expect(screen.getByText('Time Entry')).toBeInTheDocument()
+        expect(screen.getAllByText('Time Entry').length).toBeGreaterThan(0)
 
+        await openProfile(user)
         await user.click(screen.getByRole('button', { name: /Turkish/i }))
-        expect(await screen.findByText('Zaman Girişi')).toBeInTheDocument()
+        expect((await screen.findAllByText('Zaman Girişi')).length).toBeGreaterThan(0)
         expect(screen.queryByText('Time Entry')).toBeNull()
-        expect(screen.getByText('TR')).toBeInTheDocument()
 
         // Dil degisince dugmenin ETIKETI de cevrilir: artik
         // "İngilizce'ye geç" yazar. Bu bilincli — etiket her zaman
         // KULLANICININ o an okudugu dilde olur.
         await user.click(screen.getByRole('button', { name: /İngilizce/i }))
-        expect(await screen.findByText('Time Entry')).toBeInTheDocument()
-        expect(screen.getByText('EN')).toBeInTheDocument()
+        expect((await screen.findAllByText('Time Entry')).length).toBeGreaterThan(0)
     })
 })

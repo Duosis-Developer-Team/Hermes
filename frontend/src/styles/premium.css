@@ -89,10 +89,17 @@
   box-shadow: none;
 }
 
-/* Secondary/default: ayni ailenin sessiz uyesi. */
+/* Hermes Liquid: butonlar HAP bicimli (prototip). */
+:root .ant-btn:not(.ant-btn-circle):not(.ant-btn-link) {
+  border-radius: var(--h-radius-pill);
+}
+
+/* Secondary/default: seffaf cam hap. */
 :root .ant-btn-default:not(:disabled) {
-  background: transparent;
-  border-color: var(--h-border-default);
+  background: var(--h-ghost-bg);
+  border-color: var(--h-ghost-border);
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
   transition:
     background var(--h-motion-fast) var(--h-ease-standard),
     border-color var(--h-motion-fast) var(--h-ease-standard),
@@ -100,7 +107,7 @@
     transform var(--h-motion-instant) var(--h-ease-standard);
 }
 :root .ant-btn-default:not(:disabled):hover {
-  background: color-mix(in srgb, var(--h-brand) 7%, transparent);
+  background: var(--h-ghost-bg-hover);
   border-color: color-mix(in srgb, var(--h-brand) 45%, transparent);
   color: var(--h-brand);
 }
@@ -119,7 +126,7 @@
 }
 :root .ant-btn-dangerous.ant-btn-primary:not(:disabled) {
   background: var(--h-danger);
-  color: var(--h-bg-surface);
+  color: var(--hp-neutral-0);
   border: none;
 }
 
@@ -167,13 +174,16 @@
   background: transparent;
 }
 
-/* Dropdown panelleri: gri levha degil — overlay yuzeyi + ince cerceve. */
+/* Dropdown panelleri: buzlu cam overlay + ince isik kenari. */
 :root .ant-select-dropdown,
 :root .ant-dropdown .ant-dropdown-menu,
-:root .ant-picker-dropdown .ant-picker-panel-container {
+:root .ant-picker-dropdown .ant-picker-panel-container,
+:root .ant-popover .ant-popover-inner {
   background: var(--h-surface-overlay);
-  border: 1px solid var(--h-border-subtle);
+  border: 1px solid var(--h-glass-edge);
   box-shadow: var(--h-shadow-dropdown);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
 }
 :root .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
   background: var(--h-bg-selected);
@@ -188,6 +198,8 @@
 :root .ant-table-wrapper .ant-table-thead > tr > th,
 :root .ant-table-wrapper .ant-table-thead > tr > td {
   background: var(--h-surface-subtle);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--h-border-subtle);
   font-size: var(--h-font-label);
   font-weight: 600;
@@ -230,9 +242,17 @@
 /* Gri kutu yigini degil: tek zarif panel, ince ayiricilarla bolumlenir. */
 :root .ant-modal .ant-modal-content {
   background: var(--h-surface-overlay);
-  border: 1px solid var(--h-border-subtle);
+  border: 1px solid var(--h-glass-edge);
   box-shadow: var(--h-shadow-modal);
   padding: 0;
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+}
+/* Modal arkasi: sivi gorunur kalir, hafif bulaniklasir. */
+:root .ant-modal-mask {
+  background: color-mix(in srgb, var(--h-liquid-base) 40%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 :root .ant-modal .ant-modal-header {
   background: transparent;
@@ -250,17 +270,27 @@
 }
 :root .ant-drawer .ant-drawer-content {
   background: var(--h-surface-overlay);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
 }
 
 /* --- 5. Tabs / Segmented ------------------------------------------------ */
 :root .ant-segmented {
-  background: var(--h-surface-subtle);
-  border: 1px solid var(--h-border-subtle);
+  padding: 3px;
+  border-radius: var(--h-radius-pill);
+  background: var(--h-bg-hover);
+  border: 0;
 }
-:root .ant-segmented .ant-segmented-item-selected {
-  background: var(--h-bg-selected);
-  color: var(--h-brand);
-  box-shadow: none;
+:root .ant-segmented .ant-segmented-item {
+  border-radius: var(--h-radius-pill);
+}
+/* Prototip: secili segment = yukselmis cam hap (renk degil, derinlik). */
+:root .ant-segmented .ant-segmented-item-selected,
+:root .ant-segmented .ant-segmented-thumb {
+  border-radius: var(--h-radius-pill);
+  background: var(--h-bg-elevated);
+  color: var(--h-text-primary);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--h-liquid-base) 40%, transparent);
 }
 
 /* --- 6. Bugun isareti (ORTAK primitive) --------------------------------- */

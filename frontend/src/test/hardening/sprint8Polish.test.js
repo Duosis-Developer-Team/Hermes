@@ -53,18 +53,15 @@ const cssBlock = (raw, selector) => {
     return css.slice(open + 1, close)
 }
 
-describe('collapsed logo kutusu (§A)', () => {
-    it('ikon logo YATAY kutuda ve object-fit: contain ile cizilir', () => {
+describe('ada logosu (§A → Hermes Liquid)', () => {
+    it('Hermes isareti maske ile cizilir (orani korunur, bozulma yok)', () => {
+        /* Sidebar ve collapsed ikon kutusu kalkti; isaret artik adadaki
+           daire icinde kare bir MASKE (logo-mark-mask.png) — oran
+           dosyadan degil kutudan gelir, `contain` ile bozulmaz. */
         const css = read(join(SRC, 'components/layout/MainLayout.css'))
-        const block = cssBlock(css, '.sidebar-logo--icon')
-        expect(block).toContain('object-fit: contain')
-
-        const w = parseInt(block.match(/width:\s*(\d+)px/)?.[1] ?? '0', 10)
-        const h = parseInt(block.match(/height:\s*(\d+)px/)?.[1] ?? '0', 10)
-        // Kok neden: dosya 714x349 (~2:1 yatay). Kare/kucuk kutu = bug geri
-        // geldi. 2026-08-04: kullanici "hala cok kucuk" dedi → taban 60px.
-        expect(w).toBeGreaterThanOrEqual(60)
-        expect(w).toBeGreaterThan(h)
+        const block = cssBlock(css, '.brand-mark i')
+        expect(block).toContain('logo-mark-mask.png')
+        expect(block).toMatch(/mask:[^;]*contain/)
     })
 })
 
@@ -103,15 +100,18 @@ describe('sayfa arka plani tokenlari (§C)', () => {
         expect(day).toContain('var(--h-bg-weekend)')
     })
 
-    it('sayfa gradyani token uzerinden gelir ve ANIMASYONSUZ', () => {
-        /* 2026-08-04 performans duzeltmesi: gradient artik `.main-content`
-           uzerinde `background-attachment: fixed` ile DEGIL, sabit tek bir
-           pseudo-katmanda (scroll'da repaint yok). Token sozlesmesi ayni. */
+    it('sayfa gradyani token uzerinden gelir; TABAN katmani animasyonsuz', () => {
+        /* Hermes Liquid: taban gradyani sabit `.liquid-backdrop` katmaninda
+           (scroll'da repaint yok). Uzerindeki blob'lar yalniz transform ile
+           akar; taban katmaninin kendisi animasyon TASIMAZ ve reduced-motion
+           blob'lari durdurur. */
         const css = read(join(SRC, 'components/layout/MainLayout.css'))
-        const layer = cssBlock(css, '.main-content::before')
+        const layer = cssBlock(css, '.liquid-backdrop {')
         expect(layer).toContain('var(--h-bg-page')
+        expect(layer).toContain('position: fixed')
         expect(layer).not.toContain('animation')
         expect(cssBlock(css, '.main-content {')).not.toContain('background-attachment: fixed')
+        expect(css).toMatch(/prefers-reduced-motion: reduce\)\s*\{\s*\.liquid-blob/)
     })
 })
 

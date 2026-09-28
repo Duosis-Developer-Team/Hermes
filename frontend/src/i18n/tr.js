@@ -1133,6 +1133,15 @@ export default {
         toggleNav: 'Menüyü aç/kapat',
         allRightsReserved: 'Tüm hakları saklıdır.',
         switchOrganization: 'Organizasyon değiştir',
+        search: 'Ara',
+        commandPlaceholder: 'Bir sayfaya git…',
+        noResults: 'Sonuç yok',
+        allModules: 'Tüm modüller',
+        account: 'Hesap',
+        appearance: 'Görünüm',
+        light: 'Açık',
+        dark: 'Koyu',
+        menu: 'Menü',
     },
 
     timesheet: {

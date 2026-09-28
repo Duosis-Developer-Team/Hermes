@@ -1139,6 +1139,15 @@ export default {
         toggleNav: 'Toggle navigation',
         allRightsReserved: 'All rights reserved.',
         switchOrganization: 'Switch organization',
+        search: 'Search',
+        commandPlaceholder: 'Jump to a page…',
+        noResults: 'No matches',
+        allModules: 'All modules',
+        account: 'Account',
+        appearance: 'Appearance',
+        light: 'Light',
+        dark: 'Dark',
+        menu: 'Menu',
     },
 
     timesheet: {

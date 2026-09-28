@@ -10,6 +10,24 @@
    ilk paint ONCESI themeStore tarafindan yazilir (flash yok).
    ========================================================================== */
 
+/* Hermes Liquid (R1, 28.09.2026): Geist ailesi YEREL barindirilir —
+   CSP `default-src 'self'` dis font sunucusuna izin vermez. OFL lisansi:
+   assets/fonts/OFL-Geist.txt */
+@font-face {
+  font-family: 'Geist';
+  src: url('../assets/fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('../assets/fonts/GeistMono-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* --- 3.1 Primitive palette (ton adlari; kullanim amaci TASIMAZ) --- */
   --hp-neutral-0: #FFFFFF;
@@ -63,15 +81,17 @@
   --h-space-12: 48px;
 
   /* --- 5. Radius --- */
-  --h-radius-control: 6px;
-  --h-radius-standard: 8px;
-  --h-radius-card: 10px;
-  --h-radius-modal: 14px;
+  /* Hermes Liquid: yumusak, cam yuzeylere uygun koseler. */
+  --h-radius-control: 10px;
+  --h-radius-standard: 12px;
+  --h-radius-card: 20px;
+  --h-radius-modal: 24px;
   --h-radius-pill: 999px; /* yalniz badge/chip */
 
   /* --- 6. Typography --- */
-  --h-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+  --h-font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI',
     Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --h-font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --h-font-body: 14px;
   --h-font-meta: 12px;
   --h-font-label: 12.5px;
@@ -88,11 +108,13 @@
   --h-ease-standard: cubic-bezier(0.2, 0.7, 0.3, 1);
   --h-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
   --h-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --h-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* --- 3.3 Component tokenlari — SHELL (Sprint 3) --- */
   --h-sidebar-width: 240px;
   --h-sidebar-width-collapsed: 72px;
-  --h-header-height: 64px;
+  --h-header-height: 72px; /* ada (dynamic island) satiri */
+  --h-dock-space: 104px;   /* alttaki dock icin icerik boslugu */
   --h-content-pad: var(--h-space-6);
 
   /* --- 8. Z-index sozlesmesi (rastgele 9999 YASAK) --- */
@@ -105,30 +127,48 @@
   --h-z-toast: 900;
 
   /* --- 3.2 Semantic tokens — DARK (varsayilan Hermes kimligi) --- */
-  --h-bg-canvas: var(--hp-neutral-950);
   /*
-   * Sprint 8 — sayfa kabugu arka plani. Duz canvas yerine cok hafif
-   * mavi/mor ton gecisli sabit bir gradient: dekoratif ama dikkat
-   * dagitmayan seviyede. ANIMASYONSUZ; kartlarin uzerine ayri gradient
-   * KONMAZ. Degerler paletten turetildi (rastgele hex yok): mavi ucu
-   * hp-blue-500'un, mor ucu hp-purple-500'un dusuk-alfa izdusumu.
+   * HERMES LIQUID (R1) — zemin artik duz tuval DEGIL: sabit, yavas akan
+   * bir sivi katman (LiquidBackdrop) + tam ekran yari saydam cam kabuk.
+   * Yuzeyler (surface/elevated/hover/border) RGBA camdir; kontrast testi
+   * bunlari canvas uzerine BIRLESTIRILMIS rengiyle olcer. canvas = sivi +
+   * kabuk tonunun etkin (duz) karsiligi; antd colorBgBase buna baglanir.
+   * KOYU = uzay grisi / uzay siyahi, canli mavi YOK.
    */
-  --h-bg-page: radial-gradient(
-      1200px 640px at 78% -8%,
-      rgba(56, 139, 255, 0.055),
-      transparent 62%
-    ),
-    radial-gradient(
-      900px 560px at -10% 108%,
-      rgba(143, 126, 231, 0.045),
-      transparent 60%
-    ),
-    var(--hp-neutral-950);
+  --h-bg-canvas: #101114;
+  --h-liquid-base: #07080A;
+  --h-liquid-bg: radial-gradient(120% 90% at 50% 0%, #2A2E36 0%, #15171C 55%, #0A0B0D 100%);
+  --h-blob-a: rgba(110, 118, 134, 0.85);
+  --h-blob-b: rgba(44, 52, 70, 0.95);
+  --h-blob-c: rgba(150, 156, 170, 0.45);
+  --h-blob-d: rgba(12, 14, 18, 0.95);
+  --h-blob-e: rgba(70, 90, 125, 0.6);
+  --h-blob-m: rgba(160, 168, 185, 0.3);
+  --h-shell-tint: rgba(6, 7, 9, 0.36);
+  --h-bezel: rgba(0, 0, 0, 0.08);
+  --h-bezel-line: rgba(255, 255, 255, 0.09);
+  --h-bezel-hi: rgba(255, 255, 255, 0.07);
+  --h-bezel-in: rgba(0, 0, 0, 0.35);
+  --h-glass-blur: 14px;
+  --h-glass-edge: rgba(255, 255, 255, 0.09);
+  --h-glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 20px 40px -26px rgba(0, 0, 0, 0.7);
+  --h-nav-bg: rgba(255, 255, 255, 0.07);
+  --h-nav-edge: rgba(255, 255, 255, 0.12);
+  --h-nav-ink: #EEF1F5;
+  --h-nav-ink-2: #B4BAC5;
+  --h-nav-hover: rgba(255, 255, 255, 0.08);
+  --h-nav-ind: #F4F7FB;
+  --h-nav-on: #0B0C0E;
+  --h-dock-bg: rgba(20, 22, 27, 0.5);
+  --h-dock-edge: rgba(255, 255, 255, 0.1);
+  /* Sivi katmanin taban gradyani (--h-liquid-bg ile ayni); sayfa
+     arka plani sozlesmesi (Sprint 8) bu token uzerinden devam eder. */
+  --h-bg-page: radial-gradient(120% 90% at 50% 0%, #2A2E36 0%, #15171C 55%, #0A0B0D 100%);
   /* Hafta sonu kolonu: asiri koyu blok yerine cok hafif cokme tonu. */
   --h-bg-weekend: rgba(0, 0, 0, 0.16);
-  --h-bg-surface: var(--hp-neutral-900);
-  --h-bg-elevated: var(--hp-neutral-850);
-  --h-bg-hover: var(--hp-neutral-800);
+  --h-bg-surface: rgba(34, 38, 46, 0.42);
+  --h-bg-elevated: rgba(26, 28, 33, 0.95);
+  --h-bg-hover: rgba(255, 255, 255, 0.06);
   --h-bg-selected: rgba(87, 157, 255, 0.16); /* brand dusuk alpha */
   /*
    * Premium UI (2026-08-04) — yuzey rolleri. Buyuk duz gri paneller
@@ -139,26 +179,30 @@
    *   danger      → tehlike tonal zemini
    * Ham gri blok tonlari bilesenlerde KULLANILMAZ.
    */
-  --h-surface-subtle: rgba(255, 255, 255, 0.025);
-  --h-surface-interactive: rgba(255, 255, 255, 0.045);
+  --h-surface-subtle: rgba(255, 255, 255, 0.035);
+  --h-surface-interactive: rgba(255, 255, 255, 0.06);
   --h-surface-overlay: var(--hp-neutral-850);
   --h-surface-danger: rgba(248, 113, 104, 0.12);
   /* Gradient primary buton (marka ailesinden; neon YOK). */
   --h-grad-primary: linear-gradient(135deg, var(--hp-blue-400), var(--hp-blue-600));
   --h-grad-primary-hover: linear-gradient(135deg, var(--hp-blue-300), var(--hp-blue-500));
   /*
-   * AKSIYON YUZEYI (2026-08-04, kullanici karari): create/add butonlari
-   * DARK temada MAVI degil — arka planla ayni ailenin bir ton acigi.
-   * Marka rengi yalniz ince bir ipucu (kenarlik/ikon) olarak kalir.
+   * AKSIYON YUZEYI — Hermes Liquid (28.09.2026, CTO prototip onayi;
+   * 04.08'deki "mavi degil" kararinin YERINE): birincil/create eylemi
+   * Hermes mavisi gradyan hap + yumusak mavi isima; ikincil eylemler
+   * seffaf cam hap (--h-ghost-*). Tek dil her sayfada ayni.
    */
-  --h-action-bg: linear-gradient(180deg, var(--hp-neutral-800), var(--hp-neutral-850));
-  --h-action-bg-hover: linear-gradient(180deg, var(--hp-neutral-750), var(--hp-neutral-800));
-  --h-action-border: var(--hp-neutral-700);
-  --h-action-border-hover: #46586E;
-  --h-action-text: var(--h-text-primary);
-  --h-action-icon: var(--hp-blue-300);
-  --h-action-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --h-action-shadow-hover: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --h-action-bg: linear-gradient(135deg, var(--hp-blue-400), var(--hp-blue-600));
+  --h-action-bg-hover: linear-gradient(135deg, var(--hp-blue-300), var(--hp-blue-500));
+  --h-action-border: transparent;
+  --h-action-border-hover: transparent;
+  --h-action-text: #FFFFFF;
+  --h-action-icon: #FFFFFF;
+  --h-action-shadow: 0 8px 22px -10px rgba(56, 139, 255, 0.75);
+  --h-action-shadow-hover: 0 12px 28px -10px rgba(56, 139, 255, 0.9);
+  --h-ghost-bg: rgba(255, 255, 255, 0.06);
+  --h-ghost-bg-hover: rgba(255, 255, 255, 0.11);
+  --h-ghost-border: rgba(255, 255, 255, 0.12);
   /*
    * GRAFIK SERILERI (2026-08-04, kullanici karari): dark tema light
    * kadar CANLI olmali. Onceki durumda seriler semantic tokenlardan
@@ -175,9 +219,9 @@
   --h-text-primary: #F4F7FB;
   --h-text-secondary: var(--hp-neutral-400);
   --h-text-muted: var(--hp-neutral-500);
-  --h-border-subtle: var(--hp-neutral-750);
-  --h-border-default: var(--hp-neutral-700);
-  --h-border-strong: #3B4A5E;
+  --h-border-subtle: rgba(255, 255, 255, 0.07);
+  --h-border-default: rgba(255, 255, 255, 0.11);
+  --h-border-strong: rgba(255, 255, 255, 0.18);
   --h-brand: var(--hp-blue-400);
   --h-brand-hover: var(--hp-blue-300);
   --h-brand-strong: var(--hp-blue-500);
@@ -197,39 +241,57 @@
 /* --- 3.2 Semantic tokens — LIGHT ------------------------------------- */
 :root[data-theme='light'] {
   /* Premium redesign: gri levha yerine beyaza cok yakin temiz tuval. */
-  --h-bg-canvas: var(--hp-neutral-25);
+  /* ACIK = beyaz seffaf cam; sivi Hermes mavisi/moru/yesili. */
+  --h-bg-canvas: #DCE5F2;
+  --h-liquid-base: #C9D6EA;
+  --h-liquid-bg: radial-gradient(120% 90% at 50% 0%, #DCE8FA 0%, #C3D4EE 55%, #B7C6E0 100%);
+  --h-blob-a: rgba(56, 139, 255, 0.7);
+  --h-blob-b: rgba(143, 126, 231, 0.62);
+  --h-blob-c: rgba(75, 206, 151, 0.38);
+  --h-blob-d: rgba(255, 255, 255, 0.95);
+  --h-blob-e: rgba(12, 102, 228, 0.45);
+  --h-blob-m: rgba(133, 184, 255, 0.6);
+  --h-shell-tint: rgba(255, 255, 255, 0.34);
+  --h-bezel: rgba(255, 255, 255, 0.07);
+  --h-bezel-line: rgba(255, 255, 255, 0.55);
+  --h-bezel-hi: rgba(255, 255, 255, 0.5);
+  --h-bezel-in: rgba(17, 23, 32, 0.05);
+  --h-glass-edge: rgba(255, 255, 255, 0.75);
+  --h-glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.95) inset, 0 20px 40px -24px rgba(40, 60, 100, 0.35), 0 2px 6px rgba(40, 60, 100, 0.06);
+  --h-nav-bg: rgba(255, 255, 255, 0.42);
+  --h-nav-edge: rgba(255, 255, 255, 0.75);
+  --h-nav-ink: #111720;
+  --h-nav-ink-2: #3E4A5C;
+  --h-nav-hover: rgba(17, 23, 32, 0.06);
+  --h-nav-ind: #FFFFFF;
+  --h-nav-on: #0E131B;
+  --h-dock-bg: rgba(255, 255, 255, 0.4);
+  --h-dock-edge: rgba(255, 255, 255, 0.8);
   /* Acik tema: temiz, cok dusuk kontrastli ayni desen. */
-  --h-bg-page: radial-gradient(
-      1200px 640px at 78% -8%,
-      rgba(12, 102, 228, 0.035),
-      transparent 62%
-    ),
-    radial-gradient(
-      900px 560px at -10% 108%,
-      rgba(143, 126, 231, 0.03),
-      transparent 60%
-    ),
-    var(--hp-neutral-25);
+  --h-bg-page: radial-gradient(120% 90% at 50% 0%, #DCE8FA 0%, #C3D4EE 55%, #B7C6E0 100%);
   --h-bg-weekend: rgba(9, 30, 66, 0.035);
-  --h-bg-surface: var(--hp-neutral-0);
-  --h-bg-elevated: var(--hp-neutral-0);
-  --h-bg-hover: var(--hp-neutral-100);
+  --h-bg-surface: rgba(255, 255, 255, 0.5);
+  --h-bg-elevated: rgba(250, 252, 255, 0.94);
+  --h-bg-hover: rgba(17, 23, 32, 0.05);
   --h-bg-selected: rgba(12, 102, 228, 0.10);
-  --h-surface-subtle: rgba(9, 30, 66, 0.025);
-  --h-surface-interactive: var(--hp-neutral-0);
+  --h-surface-subtle: rgba(255, 255, 255, 0.3);
+  --h-surface-interactive: rgba(255, 255, 255, 0.55);
   --h-surface-overlay: var(--hp-neutral-0);
   --h-surface-danger: rgba(201, 55, 44, 0.08);
   --h-grad-primary: linear-gradient(135deg, var(--hp-blue-500), var(--hp-blue-700));
   --h-grad-primary-hover: linear-gradient(135deg, var(--hp-blue-400), var(--hp-blue-600));
-  /* Light: ayni rol, KENDI rengi — beyaza yakin temiz yuzey, koyu metin. */
-  --h-action-bg: linear-gradient(180deg, var(--hp-neutral-0), var(--hp-neutral-100));
-  --h-action-bg-hover: linear-gradient(180deg, var(--hp-neutral-0), var(--hp-neutral-200));
-  --h-action-border: var(--hp-neutral-300);
-  --h-action-border-hover: #A9B6C6;
-  --h-action-text: var(--h-text-primary);
-  --h-action-icon: var(--hp-blue-600);
-  --h-action-shadow: 0 1px 2px rgba(23, 32, 45, 0.08);
-  --h-action-shadow-hover: 0 4px 14px rgba(23, 32, 45, 0.12);
+  /* Light: ayni mavi hap; ikincil = beyaz cam. */
+  --h-action-bg: linear-gradient(135deg, var(--hp-blue-500), var(--hp-blue-600));
+  --h-action-bg-hover: linear-gradient(135deg, var(--hp-blue-400), var(--hp-blue-500));
+  --h-action-border: transparent;
+  --h-action-border-hover: transparent;
+  --h-action-text: #FFFFFF;
+  --h-action-icon: #FFFFFF;
+  --h-action-shadow: 0 8px 22px -10px rgba(12, 102, 228, 0.7);
+  --h-action-shadow-hover: 0 12px 28px -10px rgba(12, 102, 228, 0.85);
+  --h-ghost-bg: rgba(255, 255, 255, 0.55);
+  --h-ghost-bg-hover: rgba(255, 255, 255, 0.8);
+  --h-ghost-border: rgba(255, 255, 255, 0.85);
   /* Light: AYNI canlilik, acik zeminde okunacak doygunlukta. */
   --h-chart-1: #2478F0;
   --h-chart-2: #1FA97A;
@@ -239,10 +301,10 @@
   --h-chart-axis: var(--hp-neutral-600);
   --h-text-primary: var(--hp-neutral-ink);
   --h-text-secondary: var(--hp-neutral-600);
-  --h-text-muted: #7C8999;
-  --h-border-subtle: var(--hp-neutral-200);
-  --h-border-default: var(--hp-neutral-300);
-  --h-border-strong: #B9C6D3;
+  --h-text-muted: #6B7888;
+  --h-border-subtle: rgba(17, 23, 32, 0.08);
+  --h-border-default: rgba(17, 23, 32, 0.12);
+  --h-border-strong: rgba(17, 23, 32, 0.2);
   --h-brand: var(--hp-blue-600);
   --h-brand-hover: var(--hp-blue-500);
   --h-brand-strong: var(--hp-blue-700);

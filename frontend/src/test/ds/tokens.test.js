@@ -33,6 +33,26 @@ const resolve = (vars, name, depth = 0) => {
     return m ? resolve(vars, m[1], depth + 1) : v
 }
 
+/*
+ * Hermes Liquid (R1): yuzeyler RGBA camdir. Metin, camin ALTINDAKI
+ * zeminle birlesmis renk uzerinde okunur — bu yuzden kontrast, RGBA
+ * yuzey canvas (sivi + kabuk tonunun etkin duz rengi) uzerine alfa ile
+ * birlestirilerek olculur. Esik (AA) DEGISMEDI.
+ */
+const toHex = (color, under) => {
+    const m = color.match(/^rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\s*\)$/)
+    if (!m) return color
+    const a = m[4] === undefined ? 1 : parseFloat(m[4])
+    const base = under.replace('#', '')
+    const ch = (i) => {
+        const b = parseInt(base.slice(i * 2, i * 2 + 2), 16)
+        return Math.round(parseInt(m[i + 1], 10) * a + b * (1 - a))
+            .toString(16).padStart(2, '0')
+    }
+    return '#' + ch(0) + ch(1) + ch(2)
+}
+const solid = (vars, name) => toHex(resolve(vars, name), resolve(vars, '--h-bg-canvas'))
+
 const SEMANTIC_NAMES = [
     '--h-bg-canvas','--h-bg-surface','--h-bg-elevated','--h-bg-hover',
     '--h-bg-selected','--h-text-primary','--h-text-secondary',
@@ -86,7 +106,7 @@ describe('WCAG kontrast (AA)', () => {
     const pairs = (vars, label) => {
         const surfaces = ['--h-bg-canvas','--h-bg-surface','--h-bg-elevated']
         for (const surface of surfaces) {
-            const bg = resolve(vars, surface)
+            const bg = solid(vars, surface)
             expect(ratio(resolve(vars,'--h-text-primary'), bg),
                 `${label} text-primary/${surface}`).toBeGreaterThanOrEqual(4.5)
             expect(ratio(resolve(vars,'--h-text-secondary'), bg),

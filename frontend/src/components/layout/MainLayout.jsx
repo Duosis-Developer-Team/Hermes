@@ -2,7 +2,7 @@
  * =============================================================================
  * HERMES PLATFORM - Main Layout Component
  * =============================================================================
- * TENANT tarafinin layout'u. Gorsel kabuk (sidebar/header/icerik/drawer)
+ * TENANT tarafinin layout'u. Gorsel kabuk (ada/dock/icerik/cekmece)
  * `AppShell` bilesenindedir ve Platform Admin konsoluyla PAYLASILIR;
  * burada yalnizca tenant'a ozel olan kurulur: izin filtreli menu, route
  * prefetch, secili anahtar ve hesap menusu.
@@ -35,15 +35,10 @@ import { loaderByPath } from '../../routes/loaders'
 import { hasAnySettings } from '../../features/settings/sections'
 
 /**
- * Main Layout Component
- * 
- * Özellikler:
- * - Collapsible sidebar
- * - Admin/User bazlı menü görünürlüğü
- * - User dropdown (profil, çıkış)
+ * Main Layout Component — izin filtreli menu, prefetch ve hesap menusu.
  */
 function MainLayout() {
-    // Kabuk durumu (collapsed / scroll / offline / mobil drawer) artik
+    // Kabuk durumu (scroll / offline / mobil cekmece / palet) artik
     // `AppShell` icinde yasar. MainLayout yalnizca TENANT tarafina ait
     // olani kurar: izin filtreli menu, prefetch, secili anahtar ve hesap
     // menusu.
@@ -181,10 +176,12 @@ function MainLayout() {
         // Developer Portal — Public API dokumantasyonu. D3: ust seviye
         // giris, TUM oturum acmis kullanicilara acik (D1). Token/client
         // YONETIMI API Management'ta admin-only kalir.
+        // Hermes Liquid: ada sekmesi degil, DOCK'ta (sistem modulu).
         {
             key: '/developer',
             icon: <CodeOutlined />,
             label: t('nav.developer'),
+            dock: true,
         },
 
         // Ticket Hub / Destek. Menu ogesi `tickets.access` ile gorunur;
@@ -199,9 +196,8 @@ function MainLayout() {
 
         // RBAC R3: yonetim grubu, icinde GORUNUR oge varsa render
         // edilir — tek is_admin bit'i yerine oge-bazli izinler. B1 ile
-        // "Ayarlar" da bu grubun son ogesidir (prototipteki yerlesim).
+        // "Ayarlar" da bu grubun son ogesidir. Kabukta DOCK olur.
         ...(managementItems.length || settingsItems.length ? [
-            { type: 'divider' },
             {
                 key: 'admin-group',
                 label: t('nav.groupManagement'),
@@ -211,12 +207,14 @@ function MainLayout() {
         ] : []),
     ]
 
-    // Prefetch: her nav ogesinin label'i hover/focus intent tasir.
+    // Prefetch: her nav ogesinin label'i hover/focus intent tasir. Duz
+    // metin `text` olarak korunur (⌘K paleti ve erisilebilir ad icin).
     const withPrefetch = (items) => items.map((it) => {
         if (it?.children) return { ...it, children: withPrefetch(it.children) }
         if (!it?.key?.startsWith('/')) return it
         return {
             ...it,
+            text: it.label,
             label: (
                 <span
                     onMouseEnter={() => prefetchRoute(it.key)}
@@ -229,29 +227,6 @@ function MainLayout() {
         }
     })
     const navItems = withPrefetch(menuItems)
-
-    /*
-     * Sprint 8 — collapsed sidebar'da MANAGEMENT/CONFIGURATION bug'inin
-     * KOK NEDENI: AntD Menu, `type: 'group'` basliklarini collapsed
-     * modda da render eder ve 72px'e sigmayan buyuk harfli metin
-     * kirpilmis gri bloklar olarak gorunur. `overflow: hidden` ile
-     * SAKLANMADI — collapsed durumda gruplar DOM seviyesinde duzlestirilir:
-     * baslik kalkar, bolum ayrimi dusuk kontrastli mevcut divider ile
-     * verilir, ogeler ve tooltip davranislari aynen kalir. Drawer her
-     * zaman genis oldugu icin duzlestirilmemis `navItems` kullanmaya
-     * devam eder.
-     */
-    const flattenGroups = (items) => items.flatMap((it, i) => {
-        if (it?.type !== 'group') return [it]
-        // Ust uste cift divider uretme: onceki oge zaten divider ise
-        // (menu, gruplardan once bir tane koyuyor) yenisi eklenmez;
-        // listenin en basindaki grup da onde divider tasimaz.
-        const prev = items[i - 1]
-        const sep = !prev || prev.type === 'divider' ? [] : [{ type: 'divider' }]
-        return [...sep, ...(it.children || [])]
-    })
-    const buildMenuItems = ({ collapsed }) =>
-        (collapsed ? flattenGroups(navItems) : navItems)
 
     // User dropdown menu
     const userMenuItems = [
@@ -300,8 +275,7 @@ function MainLayout() {
 
     return (
         <AppShell
-            menuItems={buildMenuItems}
-            mobileMenuItems={navItems}
+            menuItems={navItems}
             selectedKey={selectedKey}
             onMenuClick={handleMenuClick}
             onLogoClick={() => navigate('/')}

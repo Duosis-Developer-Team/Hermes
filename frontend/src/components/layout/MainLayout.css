@@ -1,447 +1,260 @@
-/* Sprint 2 pilot: shell degiskenleri DS V2 semantic tokenlarina
-   baglandi (legacy --bg-*/--N* aliaslari yerine --h-*). */
 /**
  * =============================================================================
- * HERMES PLATFORM - Main Layout Styles
+ * HERMES — Kabuk stilleri · Hermes Liquid (R2, 28.09.2026)
  * =============================================================================
- * Jira Kanban tarzı sidebar ve header stilleri.
- * Atlassian neutral renk paleti kullanır.
+ * Katmanlar (alttan uste):
+ *   .liquid-backdrop    sabit sivi zemin (taban gradyani + yumusak blob'lar)
+ *   .liquid-shell-tint  tam ekran yari saydam cam kabuk tonu
+ *   .liquid-bezel       kenardan gecen ince, hafif bombeli cizgi cerceve
+ *   .main-header        ada (dynamic island) satiri
+ *   .main-content       kayan icerik alani (tek scroll konteyneri)
+ *   .app-dock           alttaki modul dock'u (masaustu)
+ *   .mobile-tabbar      alt sekme cubugu (mobil)
+ * Renkler YALNIZCA token'dan (--h-*); tema = token seti.
  * =============================================================================
  */
 
 .main-layout {
-    min-height: 100vh;
-}
-
-/* ==========================================================================
-   SIDEBAR - Jira Style
-   ========================================================================== */
-
-.main-sider {
-    background: var(--h-bg-surface) !important;
-    border-right: 1px solid var(--h-border-default);
-    position: fixed !important;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    z-index: 100;
-}
-
-.main-sider .ant-layout-sider-children {
+    position: relative;
+    height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    font-family: var(--h-font-family);
 }
 
-/* Logo Container - Sidebar */
-.logo-container {
-    height: 84px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--h-border-default);
-    cursor: pointer;
-    transition: opacity var(--h-motion-fast) var(--h-ease-standard);
-}
-
-.logo-container:hover {
-    opacity: 0.8;
-}
-
-.sidebar-logo {
-    /* Fixed box + contain so the dark (.jpg) and light (.png) logos —
-       which have slightly different intrinsic aspect ratios — render at
-       the same size and centered position in both themes. */
-    height: 72px;
-    width: 150px;
-    object-fit: contain;
-    border-radius: var(--h-radius-control);
-}
-
-/* Navigation Menu */
-.main-menu {
-    flex: 1;
-    overflow-y: auto;
-    padding: 8px;
-    background: transparent !important;
-    border-right: none !important;
-}
-
-.main-menu .ant-menu-item {
-    height: 36px !important;
-    line-height: 36px !important;
-    margin: 2px 0 !important;
-    padding: 0 12px !important;
-    border-radius: var(--h-radius-standard) !important;
-    color: var(--h-text-secondary) !important;
-    /* Menu ogesinde yalnizca renk ve arka plan degisiyor. */
-    transition:
-        color var(--h-motion-fast) var(--h-ease-standard),
-        background-color var(--h-motion-fast) var(--h-ease-standard);
-}
-
-.main-menu .ant-menu-item:hover {
-    color: var(--h-text-primary) !important;
-    background: var(--h-bg-hover) !important;
-}
-
-.main-menu .ant-menu-item-selected {
-    background: var(--h-bg-hover) !important;
-    color: var(--h-text-primary) !important;
-    position: relative;
-}
-
-/* Sol kenarda mavi çizgi - Jira stili */
-.main-menu .ant-menu-item-selected::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 6px;
-    bottom: 6px;
-    width: 3px;
-    background: var(--h-brand);
-    border-radius: 0 2px 2px 0;
-}
-
-.main-menu .ant-menu-item .anticon {
-    font-size: 16px !important;
-}
-
-/* Menu Group Title */
-.main-menu .ant-menu-item-group-title {
-    color: var(--h-text-muted) !important;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    padding: 16px 12px 8px !important;
-}
-
-/* Menu Divider */
-.main-menu .ant-menu-item-divider {
-    background: var(--h-border-default) !important;
-    margin: 8px 0 !important;
-}
-
-/* Sidebar Footer */
-.sidebar-footer {
-    padding: 16px 20px;
-    border-top: 1px solid var(--h-border-default);
-    text-align: center;
-    background: var(--h-bg-surface);
-}
-
-.copyright-text {
-    color: var(--h-text-secondary);
-    font-size: 11px;
-    font-weight: 500;
-    margin-bottom: 2px;
-}
-
-.rights-text {
-    color: var(--h-text-muted);
-    font-size: 10px;
-}
-
-/* ==========================================================================
-   HEADER - Minimal
-   ========================================================================== */
-
-.main-header {
-    background: var(--h-bg-canvas) !important;
-    padding: 0 20px !important;
-    height: 64px !important;
-    line-height: 64px !important;
-    display: flex;
-    align-items: center;
-    border-bottom: 1px solid var(--h-border-default);
-    position: sticky;
-    top: 0;
-    z-index: 99;
-}
-
-/* Light/Dark toggle in the header */
-.theme-switch {
-    margin-right: 14px;
-}
-
-.collapse-btn {
-    width: 32px !important;
-    height: 32px !important;
-    padding: 0 !important;
-    color: var(--h-text-secondary) !important;
-    font-size: 16px;
-    border-radius: var(--h-radius-standard) !important;
-}
-
-.collapse-btn:hover {
-    color: var(--h-text-primary) !important;
-    background: var(--h-bg-hover) !important;
-}
-
-/* Header Center Logo */
-.header-logo-container {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
-.header-logo {
-    height: 48px;
-    width: auto;
-}
-
-/* User Dropdown */
-.user-dropdown {
-    cursor: pointer;
-    padding: 6px 10px;
-    border-radius: var(--h-radius-standard);
-    transition: background var(--h-motion-fast) var(--h-ease-standard);
-}
-
-.user-dropdown:hover {
-    background: var(--h-bg-hover);
-}
-
-.user-info {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.user-name {
-    color: var(--h-text-primary) !important;
-    font-weight: 500;
-    font-size: 13px;
-    line-height: 1.3;
-}
-
-.user-role {
-    color: var(--h-text-muted) !important;
-    font-size: 11px;
-    line-height: 1.3;
-}
-
-/* ==========================================================================
-   CONTENT AREA
-   ========================================================================== */
-
-.main-content {
-    margin-left: 240px;
-    padding: 24px;
-    min-height: calc(100vh - 56px);
-    /*
-     * PERFORMANS (2026-08-04, olcumlu):
-     *  a) `background-attachment: fixed` + cok katmanli radial-gradient
-     *     her scroll frame'inde gorunur alanin TAMAMINI yeniden boyatir
-     *     (fixed arka plan compositing'e alinamaz). Gradient artik sabit
-     *     bir pseudo-katmanda yasiyor; icerik scroll ederken repaint YOK.
-     *  b) `margin-left` bir LAYOUT ozelligidir: sidebar acilip kapanirken
-     *     her frame'de tum icerik agaci reflow oluyordu (kullanicinin
-     *     "sidebar takiliyor" dedigi durum). Gecis kaldirildi; sider
-     *     kendi genislik animasyonunu yapar, icerik aninda yerlesir.
-     */
-    background: var(--h-bg-canvas);
-    position: relative;
-    isolation: isolate;
-}
-
-/* Ambient gradient: TEK statik katman, scroll'dan bagimsiz, boyanmasi
-   ucuz (compositor'da kalir). Route degisiminde yeniden baslamaz. */
-.main-content::before {
-    content: '';
+/* ---------- Sivi zemin ---------- */
+.liquid-backdrop {
     position: fixed;
     inset: 0;
-    z-index: -1;
+    z-index: 0;
     pointer-events: none;
-    background: var(--h-bg-page, var(--h-bg-canvas));
+    overflow: hidden;
+    background: var(--h-bg-page);
+}
+.liquid-blob {
+    position: absolute;
+    border-radius: 50%;
+    will-change: transform;
+    animation: h-liquid-drift 30s var(--h-ease-standard) infinite alternate;
+}
+.liquid-blob--a { width: 62vw; height: 56vw; left: -14vw; top: -18vw; background: radial-gradient(closest-side, var(--h-blob-a), transparent); animation-duration: 28s; }
+.liquid-blob--b { width: 56vw; height: 50vw; right: -16vw; top: -4vh; background: radial-gradient(closest-side, var(--h-blob-b), transparent); animation-duration: 33s; animation-delay: -9s; }
+.liquid-blob--c { width: 52vw; height: 46vw; left: 16vw; bottom: -24vw; background: radial-gradient(closest-side, var(--h-blob-c), transparent); animation-duration: 30s; animation-delay: -4s; }
+.liquid-blob--d { width: 42vw; height: 40vw; right: 10vw; bottom: -14vw; background: radial-gradient(closest-side, var(--h-blob-d), transparent); animation-duration: 24s; animation-delay: -14s; }
+.liquid-blob--e { width: 30vw; height: 28vw; left: 38vw; top: 4vh; background: radial-gradient(closest-side, var(--h-blob-e), transparent); animation-duration: 21s; }
+.liquid-blob--follow {
+    width: 40vw; height: 40vw; left: 0; top: 0;
+    background: radial-gradient(closest-side, var(--h-blob-m), transparent);
+    transform: translate(calc(var(--mx, 50vw) - 20vw), calc(var(--my, 45vh) - 20vw));
+    transition: transform 2.4s var(--h-ease-standard);
+    animation: none;
+}
+@keyframes h-liquid-drift {
+    0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+    50% { transform: translate(6vw, 4vh) rotate(28deg) scale(1.12); }
+    100% { transform: translate(-4vw, 8vh) rotate(-22deg) scale(0.94); }
+}
+.liquid-shell-tint {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: var(--h-shell-tint);
+}
+.liquid-bezel {
+    position: fixed;
+    inset: 6px;
+    z-index: var(--h-z-dropdown);
+    pointer-events: none;
+    border-radius: 26px;
+    border: 1px solid var(--h-bezel-line);
+    box-shadow: 0 0 0 6px var(--h-bezel), inset 0 1px 0 var(--h-bezel-hi),
+        inset 0 -1px 0 var(--h-bezel-in), 0 0 0 1px var(--h-bezel-in);
 }
 
-/* Collapsed state */
-.main-sider.ant-layout-sider-collapsed+.ant-layout .main-content {
-    margin-left: 80px;
-}
-
-/* ==========================================================================
-   RESPONSIVE
-   ========================================================================== */
-
-@media (max-width: 768px) {
-    .main-content {
-        margin-left: 0;
-        padding: 12px;
-    }
-
-    .user-info {
-        display: none;
-    }
-
-    .main-sider {
-        display: none;
-    }
-
-    .main-header {
-        padding: 0 12px !important;
-        gap: 10px;
-    }
-}
-
-/* ==========================================================================
-   MOBILE NAVIGATION DRAWER (Sider replacement under 768px)
-   ========================================================================== */
-
-.mobile-nav-drawer .ant-drawer-body {
-    display: flex;
-    flex-direction: column;
-    background: var(--h-bg-surface);
-}
-
-.mobile-nav-drawer .logo-container {
-    flex-shrink: 0;
-}
-
-.mobile-nav-drawer .main-menu {
-    /* Same look as the sidebar menu; taller rows for touch. */
-    padding: 8px;
-}
-
-.mobile-nav-drawer .main-menu .ant-menu-item {
-    height: 44px !important;
-    line-height: 44px !important;
-}
-/* =============================================================================
-   SPRINT 3 — PREMIUM SHELL (token tabanli; ham deger YOK)
-   ========================================================================== */
-
-/* Sider/Header shell z-katmani + genislik/yukseklik tokenlari */
-.main-sider {
-    z-index: var(--h-z-shell);
-    transition: width var(--h-motion-layout) var(--h-ease-standard),
-        min-width var(--h-motion-layout) var(--h-ease-standard),
-        max-width var(--h-motion-layout) var(--h-ease-standard);
-}
+/* ---------- Ada ---------- */
 .main-header {
-    height: var(--h-header-height);
+    position: relative;
     z-index: var(--h-z-shell);
-    border-bottom: 1px solid var(--h-border-subtle);
-    transition: box-shadow var(--h-motion-fast) var(--h-ease-standard),
-        border-color var(--h-motion-fast) var(--h-ease-standard);
+    flex: none;
+    min-height: var(--h-header-height);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 14px var(--h-space-4) var(--h-space-2);
+    padding-top: calc(14px + env(safe-area-inset-top, 0px));
 }
-/* Icerik kayarken hafif elevation (§4) */
-.main-header[data-scrolled] {
-    border-bottom-color: var(--h-border-default);
-    box-shadow: var(--h-shadow-hover);
-}
-
-/* Logo crossfade: expanded=wordmark, collapsed=ikon; ayni x hizasi */
-.logo-container { position: relative; }
-.sidebar-logo {
-    transition: opacity var(--h-motion-fast) var(--h-ease-standard);
-}
-.sidebar-logo--icon {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    /*
-     * Ikon logo dosyalari 714x349 (≈2:1 YATAY) — `contain` ile gorunur
-     * yukseklik daima genisligin ~yarisidir.
-     *
-     * Sprint 8: 56x44 kutu → gorunur ~56x27.
-     * KULLANICI BULGUSU (2026-08-04): bu hala marka isareti olarak
-     * algilanmiyordu. Collapsed rail 72px; yatay padding 4px'e
-     * indirilerek kullanilabilir genislik 64px'e cikti ve kutu
-     * 64x34'e buyudu → gorunur cizme ~64x31 (onceki ~56x27'ye gore
-     * belirgin buyume). Oran korunur, kirpilma yok, sider genisligi
-     * DEGISMEDI. Mobil drawer logosu bu kuraldan etkilenmez (asagida
-     * ayri kural).
-     */
-    width: 64px;
-    height: 34px;
-    object-fit: contain;
-    /*
-     * Logo dosyasi kendi icinde belirgin bos kenar payi tasiyor; bu
-     * yuzden 64px'lik kutuda GORUNUR cizme ~40px'te kaliyordu. Kutu
-     * degil GORUNTU olceklenir: kutu yerinde durur (yerlesim/ortalama
-     * bozulmaz), isaret gorsel olarak ~52-56px genislige cikar. Rail
-     * `overflow: hidden` ile tasma kirpilir.
-     */
-    transform: translate(-50%, -50%) scale(1.35);
-    opacity: 0;
-}
-
-/* Collapsed rail: logo icin yatay nefes payi azaltilir (sider genisligi
-   sabit kalir), boylece isaret mumkun olan en buyuk dengeli olcuye
-   ulasir ve tam ortalanir. */
-.ant-layout-sider-collapsed .logo-container {
-    padding-left: 4px;
-    padding-right: 4px;
-    overflow: hidden;
-}
-.ant-layout-sider-collapsed .sidebar-logo--full { opacity: 0; }
-.ant-layout-sider-collapsed .sidebar-logo--icon { opacity: 1; }
-
-/* Nav item: hit target + label gecisi + transform tabanli aktif cizgi */
-.main-menu .ant-menu-item {
-    min-height: 38px;
-    border-radius: var(--h-radius-control);
-}
-.main-menu .ant-menu-item .ant-menu-title-content {
-    transition: opacity var(--h-motion-fast) var(--h-ease-standard);
-}
-.ant-layout-sider-collapsed .main-menu .ant-menu-title-content { opacity: 0; }
-.main-menu .ant-menu-item-selected {
-    background: var(--h-bg-selected);
-    color: var(--h-brand);
-}
-.main-menu .ant-menu-item-selected::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    height: 60%;
-    width: 3px;
+.island {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    padding: 6px;
     border-radius: var(--h-radius-pill);
-    background: var(--h-brand);
-    transform: translateY(-50%) scaleY(1);
-    transform-origin: center;
-    transition: transform var(--h-motion-fast) var(--h-ease-enter);
+    background: var(--h-nav-bg);
+    color: var(--h-nav-ink);
+    border: 1px solid var(--h-nav-edge);
+    backdrop-filter: blur(20px) saturate(170%);
+    -webkit-backdrop-filter: blur(20px) saturate(170%);
+    box-shadow: 0 10px 30px -16px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.2) inset;
+    transition: box-shadow var(--h-motion-base) var(--h-ease-standard);
 }
-.main-menu .ant-menu-item:not(.ant-menu-item-selected)::before {
-    transform: translateY(-50%) scaleY(0);
+.main-header[data-scrolled] .island {
+    box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.2) inset;
 }
-.main-menu .ant-menu-item:focus-visible {
-    outline: 2px solid var(--h-focus);
-    outline-offset: -2px;
+.island-brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex: none;
+    padding: 0 12px 0 0;
+    border: 0;
+    border-radius: var(--h-radius-pill);
+    background: transparent;
+    color: var(--h-nav-ink);
+    cursor: pointer;
+    transition: background var(--h-motion-fast) var(--h-ease-standard);
 }
+.island-brand:hover { background: var(--h-nav-hover); }
+.island-brand__word { font-weight: 650; font-size: 15px; letter-spacing: -0.02em; }
 
-/* Tema butonu: kisa rotate/crossfade (§11); RM'de global kural durdurur */
-.theme-toggle-icon {
-    display: inline-flex;
-    transition: transform var(--h-motion-fast) var(--h-ease-standard),
-        opacity var(--h-motion-fast) var(--h-ease-standard);
-}
-.theme-toggle-btn:hover .theme-toggle-icon { transform: rotate(20deg); }
-.theme-toggle-btn:active .theme-toggle-icon { transform: scale(0.9); }
-
-/* Kullanici alani: uzun ad tasmasi (§4 gorsel hedefler) */
-.user-name {
-    max-width: 180px;
+/* Hermes isareti: koyu cam daire icinde beyaz kanatli sandalet (maske) */
+.brand-mark {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
     overflow: hidden;
-    text-overflow: ellipsis;
+    border-radius: 50%;
+    background: radial-gradient(120% 120% at 30% 20%, #3A404C 0%, #161A21 55%, #07080A 100%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.brand-mark i {
+    display: block;
+    width: 22px;
+    height: 22px;
+    background: #FFFFFF;
+    -webkit-mask: url('../../assets/logos/logo-mark-mask.png') center / contain no-repeat;
+    mask: url('../../assets/logos/logo-mark-mask.png') center / contain no-repeat;
+}
+.brand-mark::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.28) 50%, transparent 65%);
+    transform: translateX(-120%);
+    animation: h-brand-sheen 6s var(--h-ease-standard) infinite;
+}
+@keyframes h-brand-sheen {
+    0%, 70% { transform: translateX(-120%); }
+    100% { transform: translateX(120%); }
+}
+
+.island-tabs { display: flex; gap: 2px; min-width: 0; }
+.island-tab {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 14px;
+    border: 0;
+    border-radius: var(--h-radius-pill);
+    background: transparent;
+    color: var(--h-nav-ink-2);
+    font: 500 14px/1 var(--h-font-family);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--h-motion-base) var(--h-ease-spring),
+        color var(--h-motion-fast) var(--h-ease-standard),
+        box-shadow var(--h-motion-base) var(--h-ease-standard);
+}
+.island-tab:hover { color: var(--h-nav-ink); background: var(--h-nav-hover); }
+.island-tab.is-active {
+    background: var(--h-nav-ind);
+    color: var(--h-nav-on);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.island-tab__icon { display: inline-flex; font-size: 15px; }
+.island-tab__icon:empty { display: none; }
+.island-tab:focus-visible,
+.island-icon:focus-visible,
+.island-avatar:focus-visible,
+.island-brand:focus-visible,
+.dock-item:focus-visible,
+.mobile-tabbar button:focus-visible {
+    outline: 2px solid var(--h-focus);
+    outline-offset: 2px;
+}
+
+.island-sep {
+    width: 1px;
+    height: 22px;
+    margin: 0 4px;
+    flex: none;
+    background: var(--h-border-default);
+}
+.island-icon,
+.notif-bell {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--h-nav-ink-2);
+    font-size: 17px;
+    cursor: pointer;
+    transition: background var(--h-motion-fast) var(--h-ease-standard),
+        color var(--h-motion-fast) var(--h-ease-standard);
+}
+.island-icon:hover,
+.notif-bell:hover,
+.notif-bell:focus-visible {
+    background: var(--h-nav-hover);
+    color: var(--h-nav-ink);
+}
+.island-extra {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 8px;
+    color: var(--h-nav-ink);
+    font-size: 13px;
     white-space: nowrap;
 }
+.island-avatar {
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border: 0;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--hp-blue-400), var(--hp-purple-500));
+    color: #FFFFFF;
+    font: 700 12.5px/1 var(--h-font-family);
+    cursor: pointer;
+    transition: transform var(--h-motion-base) var(--h-ease-spring);
+}
+.island-avatar:hover { transform: scale(1.06); }
 
-/* Icerik cercevesi: token padding + yatay tasma kilidi */
+/* ---------- Icerik ---------- */
 .main-content {
-    padding: var(--h-content-pad);
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    min-height: 0;
     overflow-x: hidden;
+    overflow-y: auto;
+    padding: var(--h-space-4) max(var(--h-content-pad), calc((100vw - 1480px) / 2)) var(--h-dock-space);
 }
 
 /* Route girisi (§6): opacity + 4px; height collapse yok */
 .route-transition {
-    /* 220ms → 150ms: gecis hissi korunur, algilanan gecikme azalir. */
-    animation: h-route-enter 150ms var(--h-ease-enter);
+    animation: h-route-enter 180ms var(--h-ease-enter);
 }
 @keyframes h-route-enter {
     from { opacity: 0; transform: translateY(4px); }
@@ -450,104 +263,419 @@
 
 /* Offline banner (§9): sakin, sabit yukseklik, toast degil */
 .offline-banner {
+    position: relative;
+    z-index: 1;
+    margin: 0 auto var(--h-space-2);
     padding: var(--h-space-2) var(--h-space-4);
-    background: color-mix(in srgb, var(--h-warning) 14%, var(--h-bg-surface));
+    border-radius: var(--h-radius-pill);
+    background: color-mix(in srgb, var(--h-warning) 18%, var(--h-bg-elevated));
     color: var(--h-text-primary);
-    border-bottom: 1px solid var(--h-border-default);
+    border: 1px solid var(--h-border-default);
     font-size: var(--h-font-meta);
     text-align: center;
 }
 
-/* Mobil drawer: safe-area (§10) */
-.mobile-nav-drawer .ant-drawer-body {
-    padding-bottom: env(safe-area-inset-bottom, 0);
+/* ---------- Dock ---------- */
+.app-dock {
+    position: fixed;
+    left: 50%;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    z-index: var(--h-z-shell);
+    transform: translateX(-50%);
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 9px 10px;
+    border-radius: 24px;
+    background: var(--h-dock-bg);
+    border: 1px solid var(--h-dock-edge);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    box-shadow: 0 20px 44px -18px rgba(0, 0, 0, 0.45);
+}
+.app-dock__group { display: flex; align-items: flex-end; gap: 8px; }
+.app-dock__sep {
+    align-self: stretch;
+    width: 1px;
+    margin: 4px 2px;
+    background: var(--h-border-default);
+}
+.dock-item {
+    --dock-scale: 1;
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 13px;
+    color: #FFFFFF;
+    font-size: 19px;
+    cursor: pointer;
+    background: linear-gradient(145deg, var(--dock-tone), color-mix(in srgb, var(--dock-tone) 55%, #03050B));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 18px -8px rgba(0, 0, 0, 0.5);
+    transform: scale(var(--dock-scale)) translateY(calc((var(--dock-scale) - 1) * -16px));
+    transform-origin: bottom center;
+    transition: transform 160ms var(--h-ease-standard);
+}
+.dock-item.is-active::after {
+    content: "";
+    position: absolute;
+    bottom: -7px;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    margin-left: -2px;
+    border-radius: 50%;
+    background: var(--h-text-primary);
 }
 
-/* -----------------------------------------------------------------------
-   SHELL GEOMETRISI — GERCEK TARAYICI QA BULGULARININ DUZELTMESI
-   -----------------------------------------------------------------------
-   1) Header, fixed sidebar'in ustune biniyordu: z-index'i shell
-      katmanina baglayinca sider ile ESITLENDI ve DOM sirasi geregi
-      header ustte kaldi → logo gorunmez oldu. Cozum: header artik
-      sidebar'i ORTMEZ, yaninda baslar (tek gorsel sistem, §4).
-   2) Collapsed sidebar 72px iken icerik bosluğu 80px'ti → 8px acik.
-      Iki taraf da ayni token'dan besleniyor.
-   3) min-height eski 56px header varsayimina dayaliydi → token.
-   -------------------------------------------------------------------- */
-.main-header {
-    margin-left: var(--h-sidebar-width);
-    transition: margin-left var(--h-motion-layout) var(--h-ease-standard),
-        box-shadow var(--h-motion-fast) var(--h-ease-standard),
-        border-color var(--h-motion-fast) var(--h-ease-standard);
-}
-.main-sider.ant-layout-sider-collapsed + .ant-layout .main-header {
-    margin-left: var(--h-sidebar-width-collapsed);
-}
-
-.main-content {
-    margin-left: var(--h-sidebar-width);
-    min-height: calc(100vh - var(--h-header-height));
-    transition: margin-left var(--h-motion-layout) var(--h-ease-standard);
-}
-.main-sider.ant-layout-sider-collapsed + .ant-layout .main-content {
-    margin-left: var(--h-sidebar-width-collapsed);
-}
-
-/* Collapsed'da grup basliklari "MA…"/"CO…" diye kirpiliyordu — ikon
-   ritmini bozan anlamsiz metin yerine ince ayirici cizgi. */
-.ant-layout-sider-collapsed .main-menu .ant-menu-item-group-title {
-    height: 1px;
-    padding: 0;
-    margin: var(--h-space-2) var(--h-space-4);
+/* ---------- Profil karti ---------- */
+.profile-card {
+    width: min(340px, calc(100vw - 32px));
     overflow: hidden;
-    background: var(--h-border-subtle);
-    color: transparent;
+    border-radius: 22px;
+    background: var(--h-bg-elevated);
+    color: var(--h-text-primary);
+    border: 1px solid var(--h-glass-edge);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    box-shadow: var(--h-shadow-modal);
+}
+.profile-card__cover {
+    position: relative;
+    height: 72px;
+    overflow: hidden;
+    background: linear-gradient(120deg, var(--hp-blue-500) 0%, var(--hp-blue-600) 45%, #6E5DD3 100%);
+}
+.profile-card__cover::before {
+    content: "";
+    position: absolute;
+    inset: -40% -10% auto auto;
+    width: 60%;
+    height: 180%;
+    background: radial-gradient(closest-side, rgba(255, 255, 255, 0.35), transparent);
+}
+.profile-card__id { position: relative; margin-top: -28px; padding: 0 16px 12px; }
+.profile-card__avatar {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, var(--hp-blue-400), var(--hp-purple-500));
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 19px;
+    box-shadow: 0 0 0 4px var(--h-bg-elevated), 0 10px 24px -10px rgba(0, 0, 0, 0.5);
+}
+.profile-card__presence {
+    position: absolute;
+    right: -3px;
+    bottom: -3px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: var(--hp-green-500);
+    box-shadow: 0 0 0 3px var(--h-bg-elevated);
+}
+.profile-card__name { display: flex; align-items: center; gap: 8px; margin-top: 10px; min-width: 0; }
+.profile-card__name .user-name {
+    overflow: hidden;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.profile-card__role {
+    flex: none;
+    padding: 2px 8px;
+    border-radius: var(--h-radius-pill);
+    background: color-mix(in srgb, var(--hp-purple-500) 16%, transparent);
+    color: var(--h-text-secondary);
+    font-size: 11.5px;
+    font-weight: 600;
+}
+.profile-card__section { padding: 10px 12px; border-top: 1px solid var(--h-border-subtle); }
+.profile-card__label {
+    margin: 0 4px 8px;
+    color: var(--h-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.theme-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.theme-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px;
+    border: 1.5px solid var(--h-border-default);
+    border-radius: 14px;
+    background: transparent;
+    color: var(--h-text-primary);
+    font-size: 12.5px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color var(--h-motion-fast) var(--h-ease-standard),
+        box-shadow var(--h-motion-fast) var(--h-ease-standard);
+}
+.theme-tile.is-on { border-color: var(--h-brand); box-shadow: 0 0 0 3px var(--h-bg-selected); }
+.theme-tile__label { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
+.theme-tile__label .anticon { color: var(--h-brand); }
+.theme-tile__preview { position: relative; height: 42px; overflow: hidden; border-radius: 9px; }
+.theme-tile__preview i { position: absolute; left: 6px; right: 6px; height: 8px; border-radius: 4px; }
+.theme-tile__preview i:first-child { top: 8px; width: 40%; }
+.theme-tile__preview i:last-child { top: 22px; }
+.theme-tile__preview--light { background: linear-gradient(135deg, #F4F7FB, #C9D8F0 60%, #DCD6F7); }
+.theme-tile__preview--light i { background: rgba(255, 255, 255, 0.75); }
+.theme-tile__preview--dark { background: linear-gradient(135deg, #2A2D34, #0C0D10 60%, #1A1C21); }
+.theme-tile__preview--dark i { background: rgba(255, 255, 255, 0.12); }
+.profile-card__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+    padding: 0 4px;
+    font-size: 13px;
+}
+.seg {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-bg-hover);
+}
+.seg button {
+    padding: 4px 12px;
+    border: 0;
+    border-radius: var(--h-radius-pill);
+    background: transparent;
+    color: var(--h-text-secondary);
+    font: 600 12px/1.4 var(--h-font-family);
+    cursor: pointer;
+}
+.seg button.is-on { background: var(--h-bg-elevated); color: var(--h-text-primary); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+.profile-card__actions { display: flex; flex-direction: column; padding: 6px; }
+.profile-card__action {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--h-text-primary);
+    font-size: 13.5px;
+    text-align: left;
+    cursor: pointer;
+}
+.profile-card__action:hover { background: var(--h-bg-hover); }
+.profile-card__action.is-danger { color: var(--h-danger); }
+.profile-card__action-icon {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: var(--h-bg-hover);
+}
+.profile-card__action.is-danger .profile-card__action-icon { background: var(--h-surface-danger); }
+
+/* ---------- ⌘K paleti ---------- */
+.command-palette .ant-modal-content {
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--h-glass-edge);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+}
+.command-palette__search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--h-border-subtle);
+    color: var(--h-text-muted);
+    font-size: 16px;
+}
+.command-palette__search input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--h-text-primary);
+    font: 16px var(--h-font-family);
+}
+.command-palette__search kbd,
+.command-palette__group {
+    padding: 1px 6px;
+    border: 1px solid var(--h-border-default);
+    border-radius: 6px;
+    color: var(--h-text-muted);
+    font: 500 11px var(--h-font-mono);
+}
+.command-palette__list { max-height: 52vh; margin: 0; padding: 6px; overflow: auto; list-style: none; }
+.command-palette__list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 10px;
+    border-radius: 12px;
+    color: var(--h-text-primary);
+    font-size: 14px;
+    cursor: pointer;
+}
+.command-palette__list li.is-active { background: var(--h-bg-selected); }
+.command-palette__icon {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    flex: none;
+    border-radius: 9px;
+    background: var(--h-bg-hover);
+    color: var(--h-text-secondary);
+}
+.command-palette__text { flex: 1; min-width: 0; }
+.command-palette__group { border: 0; background: var(--h-bg-hover); }
+.command-palette__enter { color: var(--h-text-muted); }
+.command-palette__empty { justify-content: center; color: var(--h-text-muted); cursor: default; }
+
+/* ---------- Bildirim paneli (PM rework P2.2) ---------- */
+.notif-panel {
+    width: min(380px, 92vw);
+    max-height: 70vh;
+    overflow: auto;
+    border-radius: 20px;
+    background: var(--h-bg-elevated);
+    color: var(--h-text-primary);
+    border: 1px solid var(--h-glass-edge);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    box-shadow: var(--h-shadow-modal);
+}
+.notif-panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--h-border-subtle);
+}
+.notif-panel__title { font-weight: 600; }
+.notif-panel__empty { padding: 20px; text-align: center; }
+.notif-list { margin: 0; padding: 6px; list-style: none; }
+.notif-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.notif-item.is-unread { background: var(--h-bg-selected); }
+.notif-item:hover { background: var(--h-bg-hover); }
+.notif-item__text { font-size: 13.5px; }
+.notif-item__meta { color: var(--h-text-muted); font-size: 11.5px; }
+
+/* ---------- Mobil ---------- */
+.mobile-tabbar { display: none; }
+.mobile-nav { display: flex; flex-direction: column; gap: 10px; padding: 14px 12px calc(14px + env(safe-area-inset-bottom, 0px)); }
+.mobile-nav__group h6 {
+    margin: 4px 8px 6px;
+    color: var(--h-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.mobile-nav__item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 11px 12px;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--h-text-primary);
+    font-size: 15px;
+    text-align: left;
+    cursor: pointer;
+}
+.mobile-nav__item.is-active { background: var(--h-bg-selected); color: var(--h-brand); }
+.mobile-nav-drawer .ant-drawer-content {
+    border-radius: 24px 24px 0 0;
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+}
+
+@media (max-width: 1180px) {
+    .island-tab__label { display: none; }
+    .island-tab { padding: 9px 11px; }
+    .island-tab.is-active .island-tab__label { display: inline; }
 }
 
 @media (max-width: 768px) {
-    .main-header,
-    .main-content {
-        margin-left: 0;
+    .main-header { padding-inline: var(--h-space-3); }
+    .island { width: 100%; justify-content: space-between; }
+    .island-tabs,
+    .island-sep,
+    .island-extra,
+    .app-dock { display: none; }
+    .main-content { padding: var(--h-space-3) var(--h-space-4) calc(96px + env(safe-area-inset-bottom, 0px)); }
+    .mobile-tabbar {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        z-index: var(--h-z-shell);
+        display: flex;
+        justify-content: space-around;
+        padding: 6px;
+        border-radius: 22px;
+        background: var(--h-nav-bg);
+        border: 1px solid var(--h-nav-edge);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+        box-shadow: 0 16px 36px -16px rgba(0, 0, 0, 0.45);
     }
+    .mobile-tabbar button {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        min-width: 0;
+        padding: 6px 8px;
+        border: 0;
+        border-radius: 14px;
+        background: transparent;
+        color: var(--h-nav-ink-2);
+        font-size: 18px;
+        cursor: pointer;
+    }
+    .mobile-tabbar button.is-active { background: var(--h-nav-hover); color: var(--h-nav-ink); }
+    .mobile-tabbar__label {
+        max-width: 72px;
+        overflow: hidden;
+        font-size: 10.5px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .liquid-bezel { inset: 4px; border-radius: 20px; }
 }
 
-
-/* -----------------------------------------------------------------------
- * Dil gecis dugmesi — tema dugmesiyle ayni olcu ve ritim
- * -----------------------------------------------------------------------
- * Ikon yerine iki harfli kod tasir: iki dilli bir sistemde bayrak
- * kullanmak yanlis olurdu (dil ulke degildir) ve "TR"/"EN" tek bakista
- * anlasilir.
- */
-.locale-toggle-code {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    line-height: 1;
+@media (prefers-reduced-motion: reduce) {
+    .liquid-blob,
+    .brand-mark::after { animation: none; }
+    .liquid-blob--follow { transition: none; }
+    .dock-item { transition: none; transform: none; }
 }
-
-/* ---- Uygulama ici bildirim zili (PM rework P2.2) ---- */
-.notif-bell {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 36px; height: 36px; border: 0; border-radius: 8px;
-    background: transparent; color: inherit; cursor: pointer; font-size: 18px;
-}
-.notif-bell:hover, .notif-bell:focus-visible { background: var(--c-surface-2, rgba(0,0,0,.06)); outline: none; }
-.notif-panel {
-    width: min(380px, 92vw); max-height: 70vh; overflow: auto;
-    background: var(--c-surface, #fff); border: 1px solid var(--c-border, #e5e7eb);
-    border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
-}
-.notif-panel__head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--c-border, #e5e7eb); }
-.notif-panel__title { font-weight: 600; }
-.notif-panel__empty { padding: 20px; text-align: center; }
-.notif-list { list-style: none; margin: 0; padding: 0; }
-.notif-item {
-    display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
-    padding: 10px 12px; border: 0; border-bottom: 1px solid var(--c-border-soft, #f0f0f0);
-    background: transparent; color: inherit; cursor: pointer;
-}
-.notif-item.is-unread { background: var(--c-brand-soft, rgba(12,102,228,.06)); }
-.notif-item:hover { background: var(--c-surface-2, rgba(0,0,0,.04)); }
-.notif-item__text { font-size: 13.5px; }
-.notif-item__meta { font-size: 11.5px; color: var(--c-text-muted, #6b7280); }

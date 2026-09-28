@@ -8,20 +8,26 @@
    ========================================================================== */
 
 /* --- Surface / Card --------------------------------------------------- */
+/* Hermes Liquid: yuzey = sivinin ustunde yuzen buzlu cam. */
 .h-surface {
   background: var(--h-bg-surface);
-  border: 1px solid var(--h-border-subtle);
+  border: 1px solid var(--h-glass-edge);
   border-radius: var(--h-radius-standard);
   color: var(--h-text-primary);
+  backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
 }
 .h-surface--elevated { background: var(--h-bg-elevated); }
 
 .h-card {
   background: var(--h-bg-surface);
-  border: 1px solid var(--h-border-subtle);
+  border: 1px solid var(--h-glass-edge);
   border-radius: var(--h-radius-card);
   padding: var(--h-space-4);
   color: var(--h-text-primary);
+  box-shadow: var(--h-glass-shadow);
+  backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
 }
 .h-card--interactive {
   cursor: pointer;

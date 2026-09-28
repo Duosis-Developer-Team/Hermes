@@ -1,51 +1,79 @@
 /**
  * =============================================================================
- * HERMES — Uygulama kabugu (sunum katmani)
+ * HERMES — Uygulama kabugu (sunum katmani) · Hermes Liquid (R2, 28.09.2026)
  * =============================================================================
- * Sidebar + header + icerik alani + mobil drawer. Hicbir is verisi BILMEZ:
- * menu ogeleri, hesap bilgisi ve header eklentileri PROP olarak gelir.
+ * Sol sidebar YERINE: ustte yuzen bir "ada" (dynamic island) — logo, ana
+ * sekmeler, ⌘K arama, bildirim, kabuk eklentisi ve profil karti; altta
+ * macOS tarzi bir DOCK — yonetim/sistem modulleri. Mobilde sekmeler alt
+ * sekme cubuguna iner, tum liste "Menu" cekmecesindedir.
  *
- * NEDEN AYRI BIR BILESEN: Platform Admin konsolu once kendi layout'unu
- * kullaniyordu ve Hermes'e benzemiyordu. "Benzer" yetmez — ayni bilesen
- * ve ayni CSS kullanilmadikca iki kabuk zamanla ayrisir. Tenant tarafi ve
- * platform tarafi artik BU bileseni paylasir; tasarim farki YAPISAL olarak
- * imkansizdir.
+ * Hicbir is verisi BILMEZ: menu ogeleri, hesap bilgisi ve header eklentileri
+ * PROP olarak gelir (sozlesme onceki kabukla AYNI):
+ *   menuItems        dizi | ({ collapsed }) => dizi — ust seviye oge = ada
+ *                    sekmesi; `type: 'group'` cocuklari ve `dock: true`
+ *                    ogeler = dock; `type: 'divider'` yok sayilir.
+ *   mobileMenuItems  cekmecede gosterilecek liste (yoksa menuItems)
+ *   selectedKey / onMenuClick / onLogoClick / accountName / accountRole /
+ *   accountMenuItems / headerExtra / contentKey / children
  *
- * Izolasyon bozulmaz: kabuk sunum katmanidir, veri kaynagini cagiran taraf
- * secer. Platform kabugu tenant store'larina HIC dokunmaz.
+ * NEDEN AYRI BIR BILESEN: tenant tarafi ve Platform Admin konsolu AYNI
+ * kabugu paylasir; tasarim farki yapisal olarak imkansizdir. Izolasyon
+ * bozulmaz: kabuk veri kaynagini cagiran taraf secer, tenant store'una
+ * dokunmaz.
  * =============================================================================
  */
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Avatar, Button, Drawer, Dropdown, Layout, Menu, Space, Typography } from 'antd'
+import { Drawer, Dropdown, Tooltip } from 'antd'
 import {
-    BulbFilled,
-    BulbOutlined,
-    MenuFoldOutlined,
-    MenuUnfoldOutlined,
-    UserOutlined,
+    AppstoreOutlined,
+    CheckOutlined,
+    SearchOutlined,
 } from '@ant-design/icons'
 
 import { useThemeStore } from '../../stores/themeStore'
 import { useLocaleStore } from '../../stores/localeStore'
 import { useT } from '../../i18n'
-import { IconButton } from '../ui'
-import logoFullDark from '../../assets/logos/logo-full-dark.jpg'
-import logoFullLight from '../../assets/logos/logo-full-light.png'
-import logoIconDark from '../../assets/logos/logo-icon-dark.jpg'
-import logoIconLight from '../../assets/logos/logo-icon-light.png'
 import PageSkeleton from '../common/PageSkeleton'
 import NotificationBell from './NotificationBell'
+import LiquidBackdrop from './LiquidBackdrop'
+import CommandPalette from './CommandPalette'
 import { RouteErrorBoundary } from '../common/ErrorBoundaries'
 import './MainLayout.css'
 
-const { Header, Sider, Content } = Layout
-const { Text } = Typography
-
-// Bu genislikin altinda sabit Sider gizlenir (MainLayout.css) ve
-// navigasyon slide-in Drawer'a tasinir.
+// Bu genislikin altinda ada sekmeleri gizlenir; alt sekme cubugu +
+// cekmece devreye girer (MainLayout.css ile ayni esik).
 const MOBILE_QUERY = '(max-width: 768px)'
-const SIDEBAR_KEY = 'hermes-sidebar-collapsed'
+// Dock ikonlari icin Hermes paleti — oge sirasina gore dongusel.
+const DOCK_TONES = ['#388BFF', '#22A06B', '#8F7EE7', '#E2B203', '#526174', '#0C66E4', '#E2483D', '#6E5DD3']
+const MOBILE_TABS = 4
+
+const textOf = (it) => it.text ?? (typeof it.label === 'string' ? it.label : it.key)
+
+const initialsOf = (name = '') => {
+    const parts = String(name).replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean)
+    return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || 'H'
+}
+
+/** Menu listesini ada sekmeleri + dock gruplari olarak ayristirir. */
+function splitNav(items) {
+    const tabs = []
+    const groups = []
+    const extra = []
+    for (const it of items) {
+        if (!it || it.type === 'divider') continue
+        if (it.type === 'group') {
+            const children = (it.children || []).filter((c) => c && c.type !== 'divider')
+            if (children.length) groups.push({ key: it.key, label: it.label, items: children })
+        } else if (it.dock) {
+            extra.push(it)
+        } else {
+            tabs.push(it)
+        }
+    }
+    if (extra.length) groups.push({ key: 'dock-extra', label: null, items: extra })
+    return { tabs, groups }
+}
 
 function AppShell({
     menuItems = [],
@@ -60,17 +88,13 @@ function AppShell({
     contentKey,
     children,
 }) {
-    // Collapse tercihi persist (paket §3 Collapsed).
-    const [collapsed, setCollapsedState] = useState(() => {
-        try { return localStorage.getItem(SIDEBAR_KEY) === '1' } catch { return false }
-    })
-    const setCollapsed = (v) => {
-        setCollapsedState(v)
-        try { localStorage.setItem(SIDEBAR_KEY, v ? '1' : '0') } catch { /* yok say */ }
-    }
-    // Header scroll durumu (§4): icerik kayarken hafif elevation.
+    const t = useT()
+    const { theme: themeMode, setTheme } = useThemeStore()
+    const locale = useLocaleStore((s) => s.locale)
+    const toggleLocale = useLocaleStore((s) => s.toggleLocale)
+
+    // Icerik kayarken adaya hafif derinlik (§4).
     const [scrolled, setScrolled] = useState(false)
-    const contentRef = useRef(null)
     // Offline banner (§9): sakin, toast-spam'siz.
     const [offline, setOffline] = useState(
         typeof navigator !== 'undefined' && navigator.onLine === false
@@ -85,7 +109,7 @@ function AppShell({
             window.removeEventListener('offline', off)
         }
     }, [])
-    // Mobil navigasyon drawer'i (768px altinda sidebar yerine).
+
     const [mobileNavOpen, setMobileNavOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(
         () => window.matchMedia(MOBILE_QUERY).matches
@@ -100,13 +124,7 @@ function AppShell({
         return () => mq.removeEventListener('change', onChange)
     }, [])
 
-    const { theme: themeMode, toggleTheme } = useThemeStore()
-    const isLight = themeMode === 'light'
-    const locale = useLocaleStore((s) => s.locale)
-    const toggleLocale = useLocaleStore((s) => s.toggleLocale)
-    const t = useT()
-
-    // Sprint 3 §10: drawer acikken arka plan scroll'u KILITLENIR ve
+    // Sprint 3 §10: cekmece acikken arka plan scroll'u KILITLENIR ve
     // kapaninca focus tetikleyiciye doner.
     const navTriggerRef = useRef(null)
     useEffect(() => {
@@ -120,218 +138,333 @@ function AppShell({
         }
     }, [mobileNavOpen])
 
+    // ⌘K / Ctrl+K komut paleti.
+    const [paletteOpen, setPaletteOpen] = useState(false)
+    useEffect(() => {
+        const onKey = (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault()
+                setPaletteOpen((v) => !v)
+            }
+        }
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    }, [])
+
+    const [profileOpen, setProfileOpen] = useState(false)
+
     const handleContentScroll = useCallback((e) => {
         const next = e.currentTarget.scrollTop > 4
         setScrolled((prev) => (prev === next ? prev : next))
     }, [])
 
-    const handleMenuClick = (info) => {
-        onMenuClick?.(info)
-        if (isMobile) setMobileNavOpen(false)
+    const go = (key) => {
+        onMenuClick?.({ key })
+        setMobileNavOpen(false)
     }
 
     const routeContent = useMemo(() => (
-        // Sprint 3 §6: route girisi opacity+4px; shell sabit kalir.
+        // Sprint 3 §6: route girisi opacity+4px; kabuk sabit kalir.
         <div className="route-transition" key={contentKey}>
             {children}
         </div>
     ), [contentKey, children])
 
-    /*
-     * `menuItems` bir DIZI ya da `({ collapsed }) => dizi` olabilir.
-     * Sebep: collapsed sidebar'da AntD `type: 'group'` basliklarini 72px'e
-     * sigmayan kirpilmis bloklar olarak render eder; tenant menusu bu
-     * durumda gruplari duzlestiriyor. Bu karar menuyu KURAN tarafa aittir,
-     * ama girdisi (collapsed) kabuga ait — bu yuzden fonksiyon olarak
-     * geciriliyor. Drawer her zaman genistir: collapsed=false ile cozulur.
-     */
-    const resolve = (items, isCollapsed) =>
-        (typeof items === 'function' ? items({ collapsed: isCollapsed }) : items) || []
+    const resolve = (items) =>
+        (typeof items === 'function' ? items({ collapsed: false }) : items) || []
+    const navItems = resolve(menuItems)
+    const drawerItems = mobileMenuItems ? resolve(mobileMenuItems) : navItems
+    const { tabs, groups } = splitNav(navItems)
+    const drawerNav = splitNav(drawerItems)
 
-    const siderItems = resolve(menuItems, collapsed)
-    const drawerItems = mobileMenuItems
-        ? resolve(mobileMenuItems, false)
-        : resolve(menuItems, false)
+    const paletteItems = [
+        ...tabs.map((it) => ({ key: it.key, text: textOf(it), icon: it.icon })),
+        ...groups.flatMap((g) => g.items.map((it) => ({
+            key: it.key, text: textOf(it), icon: it.icon,
+            group: typeof g.label === 'string' ? g.label : undefined,
+        }))),
+    ]
+
+    // Dock magnification (macOS): imlece yakin ikonlar buyur. Yalnizca
+    // transform — yerlesim kaymaz; azaltilmis harekette CSS kapatir.
+    const dockRef = useRef(null)
+    const onDockMove = (e) => {
+        const icons = dockRef.current?.querySelectorAll('.dock-item') || []
+        icons.forEach((el) => {
+            const r = el.getBoundingClientRect()
+            const d = Math.abs(e.clientX - (r.left + r.width / 2))
+            const s = 1 + Math.max(0, 1 - d / 150) * 0.45
+            el.style.setProperty('--dock-scale', s.toFixed(3))
+        })
+    }
+    const onDockLeave = () => {
+        dockRef.current?.querySelectorAll('.dock-item')
+            .forEach((el) => el.style.setProperty('--dock-scale', '1'))
+    }
+
+    let toneIndex = 0
+    const isActive = (key) => key === selectedKey
+
+    const profileCard = (
+        <div className="profile-card" role="dialog" aria-label={t('shellExtra.account')}>
+            <div className="profile-card__cover" />
+            <div className="profile-card__id">
+                <span className="profile-card__avatar" aria-hidden="true">
+                    {initialsOf(accountName)}
+                    <span className="profile-card__presence" />
+                </span>
+                <div className="profile-card__name">
+                    <strong className="user-name">{accountName}</strong>
+                    {accountRole && <span className="profile-card__role">{accountRole}</span>}
+                </div>
+            </div>
+
+            <div className="profile-card__section">
+                <div className="profile-card__label">{t('shellExtra.appearance')}</div>
+                <div className="theme-tiles" role="group" aria-label={t('shellExtra.appearance')}>
+                    {['light', 'dark'].map((mode) => (
+                        <button
+                            key={mode}
+                            type="button"
+                            className={`theme-tile${themeMode === mode ? ' is-on' : ''}`}
+                            aria-pressed={themeMode === mode}
+                            aria-label={mode === 'light' ? t('shell.switchToLight') : t('shell.switchToDark')}
+                            onClick={() => setTheme(mode)}
+                        >
+                            <span className={`theme-tile__preview theme-tile__preview--${mode}`}>
+                                <i /><i />
+                            </span>
+                            <span className="theme-tile__label">
+                                {mode === 'light' ? t('shellExtra.light') : t('shellExtra.dark')}
+                                {themeMode === mode && <CheckOutlined aria-hidden="true" />}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+                <div className="profile-card__row">
+                    <span>{t('shell.language')}</span>
+                    <div className="seg" role="group" aria-label={t('shell.language')}>
+                        {['tr', 'en'].map((code) => (
+                            <button
+                                key={code}
+                                type="button"
+                                className={locale === code ? 'is-on' : undefined}
+                                aria-pressed={locale === code}
+                                aria-label={code === 'tr' ? t('shell.switchToTurkish') : t('shell.switchToEnglish')}
+                                onClick={() => { if (locale !== code) toggleLocale() }}
+                            >
+                                {code.toUpperCase()}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {accountMenuItems.length > 0 && (
+                <div className="profile-card__section profile-card__actions">
+                    {accountMenuItems.map((it) => (
+                        <button
+                            key={it.key}
+                            type="button"
+                            className={`profile-card__action${it.danger ? ' is-danger' : ''}`}
+                            onClick={() => { setProfileOpen(false); it.onClick?.() }}
+                        >
+                            <span className="profile-card__action-icon">{it.icon}</span>
+                            {it.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
 
     return (
-        <Layout className="main-layout">
-            {/* Sidebar */}
-            <Sider
-                trigger={null}
-                collapsible
-                collapsed={collapsed}
-                width={240}
-                collapsedWidth={72}
-                className="main-sider"
-            >
-                {/* Logo: expanded'da wordmark, collapsed'da ikon —
-                    crossfade; distortion yok (§3 Collapsed). */}
-                <div
-                    className="logo-container"
-                    onClick={onLogoClick}
-                    role="link"
-                    aria-label={t('shellExtra.home')}
-                >
-                    <img
-                        src={isLight ? logoFullLight : logoFullDark}
-                        alt="Hermes"
-                        className="sidebar-logo sidebar-logo--full"
-                    />
-                    <img
-                        src={isLight ? logoIconLight : logoIconDark}
-                        alt=""
-                        aria-hidden="true"
-                        className="sidebar-logo sidebar-logo--icon"
-                    />
-                </div>
+        <div className="main-layout">
+            <LiquidBackdrop />
 
-                {/* Navigation Menu */}
-                <Menu
-                    theme={isLight ? 'light' : 'dark'}
-                    mode="inline"
-                    selectedKeys={[selectedKey]}
-                    items={siderItems}
-                    onClick={handleMenuClick}
-                    className="main-menu"
-                />
+            {/* Ada — ust gezinme */}
+            <header className="main-header" data-scrolled={scrolled || undefined}>
+                <nav className="island" aria-label="Hermes">
+                    <button
+                        type="button"
+                        className="island-brand"
+                        onClick={onLogoClick}
+                        aria-label={t('shellExtra.home')}
+                    >
+                        <span className="brand-mark" aria-hidden="true"><i /></span>
+                        <span className="island-brand__word">Hermes</span>
+                    </button>
 
-                {/* Sidebar Footer */}
-                {!collapsed && (
-                    <div className="sidebar-footer fade-in">
-                        <div className="copyright-text">Copyright © 2026 Duosis</div>
-                        <div className="rights-text">{t('shellExtra.allRightsReserved')}</div>
+                    <div className="island-tabs" role="list">
+                        {tabs.map((it) => (
+                            <button
+                                key={it.key}
+                                type="button"
+                                role="listitem"
+                                className={`island-tab${isActive(it.key) ? ' is-active' : ''}`}
+                                aria-current={isActive(it.key) ? 'page' : undefined}
+                                onClick={() => go(it.key)}
+                            >
+                                <span className="island-tab__icon" aria-hidden="true">{it.icon}</span>
+                                <span className="island-tab__label">{it.label}</span>
+                            </button>
+                        ))}
                     </div>
-                )}
-            </Sider>
 
-            {/* Main Content Area */}
-            <Layout>
-                {/* Header */}
-                <Header className="main-header" data-scrolled={scrolled || undefined}>
-                    {/* Collapse Button — mobilde Sider gizli oldugu icin
-                        ayni buton navigasyon drawer'ini acar. */}
-                    <Button
-                        ref={navTriggerRef}
-                        type="text"
-                        icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                        onClick={() =>
-                            isMobile
-                                ? setMobileNavOpen(true)
-                                : setCollapsed(!collapsed)
-                        }
-                        className="collapse-btn"
-                        aria-label={t('shellExtra.toggleNav')}
-                    />
+                    <span className="island-sep" aria-hidden="true" />
 
-                    {/* Spacer */}
-                    <div style={{ flex: 1 }} />
-
-                    {/* Tema: kisa ikon crossfade/rotate'li buton (§11);
-                        reduced-motion global kuralla durur. */}
-                    <IconButton
-                        label={isLight ? t('shell.switchToDark') : t('shell.switchToLight')}
-                        icon={
-                            <span className="theme-toggle-icon" data-mode={isLight ? 'light' : 'dark'}>
-                                {isLight ? <BulbFilled /> : <BulbOutlined />}
-                            </span>
-                        }
-                        onClick={toggleTheme}
-                        className="theme-toggle-btn"
-                    />
-
-                    {/* Dil: tema butonuyla AYNI yerde ve ayni bicimde.
-                        Iki dil oldugu icin acilir menu degil, dogrudan
-                        ANLIK durumu gosteren bir gecis dugmesi — etiket
-                        neye gecilecegini soyler, govde nerede olundugunu. */}
-                    <IconButton
-                        label={locale === 'tr'
-                            ? t('shell.switchToEnglish')
-                            : t('shell.switchToTurkish')}
-                        icon={
-                            <span className="locale-toggle-code">
-                                {locale === 'tr' ? 'TR' : 'EN'}
-                            </span>
-                        }
-                        onClick={toggleLocale}
-                        className="locale-toggle-btn"
-                    />
-
+                    <button
+                        type="button"
+                        className="island-icon"
+                        onClick={() => setPaletteOpen(true)}
+                        aria-label={`${t('shellExtra.search')} (⌘K)`}
+                    >
+                        <SearchOutlined />
+                    </button>
                     {/* PM rework P2.2: uygulama ici bildirim zili. */}
                     <NotificationBell />
-
                     {/* Kabuga ozel eklenti: tenant tarafinda organizasyon
                         secici, platform tarafinda duzlem rozeti. */}
-                    {headerExtra}
+                    {headerExtra && <span className="island-extra">{headerExtra}</span>}
 
-                    {/* User Dropdown */}
-                    <Dropdown menu={{ items: accountMenuItems }} placement="bottomRight">
-                        <Space className="user-dropdown">
-                            <Avatar
-                                icon={<UserOutlined />}
-                                style={{ backgroundColor: 'var(--color-primary)' }}
-                            />
-                            <div className="user-info">
-                                <Text className="user-name">{accountName}</Text>
-                                <Text className="user-role">{accountRole}</Text>
-                            </div>
-                        </Space>
+                    <Dropdown
+                        open={profileOpen}
+                        onOpenChange={setProfileOpen}
+                        trigger={['click']}
+                        placement="bottomRight"
+                        popupRender={() => profileCard}
+                    >
+                        <button
+                            type="button"
+                            className="island-avatar"
+                            aria-label={`${t('shellExtra.account')}: ${accountName || ''}`}
+                            aria-haspopup="dialog"
+                            aria-expanded={profileOpen}
+                        >
+                            {initialsOf(accountName)}
+                        </button>
                     </Dropdown>
-                </Header>
+                </nav>
+            </header>
 
-                {/* Page Content — route chunk'i yuklenirken SHELL AYAKTA
-                    KALIR; icerik alani sayfa iskeletiyle degisir. */}
-                {offline && (
-                    <div className="offline-banner" role="status">
-                        Connection lost — your work will resume when you are back online.
-                    </div>
-                )}
-                <Content
-                    className="main-content"
-                    ref={contentRef}
-                    onScroll={handleContentScroll}
+            {offline && (
+                <div className="offline-banner" role="status">
+                    Connection lost — your work will resume when you are back online.
+                </div>
+            )}
+
+            {/* Sayfa icerigi — route chunk'i yuklenirken KABUK AYAKTA
+                KALIR; icerik alani sayfa iskeletiyle degisir. */}
+            <main className="main-content" onScroll={handleContentScroll}>
+                <RouteErrorBoundary resetKey={contentKey}>
+                    <Suspense fallback={<PageSkeleton />}>
+                        {routeContent}
+                    </Suspense>
+                </RouteErrorBoundary>
+            </main>
+
+            {/* Dock — yonetim/sistem modulleri (masaustu) */}
+            {groups.length > 0 && (
+                <nav
+                    className="app-dock"
+                    aria-label={t('shellExtra.allModules')}
+                    ref={dockRef}
+                    onPointerMove={onDockMove}
+                    onPointerLeave={onDockLeave}
                 >
-                    <RouteErrorBoundary resetKey={contentKey}>
-                        <Suspense fallback={<PageSkeleton />}>
-                            {routeContent}
-                        </Suspense>
-                    </RouteErrorBoundary>
-                </Content>
-            </Layout>
+                    {groups.map((g, gi) => (
+                        <div
+                            key={g.key}
+                            className="app-dock__group"
+                            role="group"
+                            aria-label={typeof g.label === 'string' ? g.label : undefined}
+                        >
+                            {gi > 0 && <span className="app-dock__sep" aria-hidden="true" />}
+                            {g.items.map((it) => {
+                                const tone = it.tone || DOCK_TONES[toneIndex++ % DOCK_TONES.length]
+                                return (
+                                    <Tooltip key={it.key} title={it.label} placement="top" mouseEnterDelay={0.05}>
+                                        <button
+                                            type="button"
+                                            className={`dock-item${isActive(it.key) ? ' is-active' : ''}`}
+                                            style={{ '--dock-tone': tone }}
+                                            aria-label={textOf(it)}
+                                            aria-current={isActive(it.key) ? 'page' : undefined}
+                                            onClick={() => go(it.key)}
+                                        >
+                                            {it.icon}
+                                        </button>
+                                    </Tooltip>
+                                )
+                            })}
+                        </div>
+                    ))}
+                </nav>
+            )}
 
-            {/* Mobil navigasyon drawer'i — 768px altinda gizlenen Sider'in
-                yerine gecer. Ayni menu ogeleri; tiklayinca gider + kapanir. */}
+            {/* Mobil alt sekme cubugu + tum liste cekmecesi */}
+            <nav className="mobile-tabbar" aria-label="Hermes">
+                {tabs.slice(0, MOBILE_TABS).map((it) => (
+                    <button
+                        key={it.key}
+                        type="button"
+                        className={isActive(it.key) ? 'is-active' : undefined}
+                        aria-current={isActive(it.key) ? 'page' : undefined}
+                        onClick={() => go(it.key)}
+                    >
+                        <span aria-hidden="true">{it.icon}</span>
+                        <span className="mobile-tabbar__label">{it.label}</span>
+                    </button>
+                ))}
+                <button
+                    ref={navTriggerRef}
+                    type="button"
+                    onClick={() => setMobileNavOpen(true)}
+                    aria-label={t('shellExtra.toggleNav')}
+                    aria-expanded={mobileNavOpen}
+                >
+                    <AppstoreOutlined aria-hidden="true" />
+                    <span className="mobile-tabbar__label">{t('shellExtra.menu')}</span>
+                </button>
+            </nav>
+
             <Drawer
                 open={isMobile && mobileNavOpen}
                 onClose={() => setMobileNavOpen(false)}
-                placement="left"
-                width={264}
+                placement="bottom"
+                height="auto"
                 closable={false}
                 className="mobile-nav-drawer"
                 styles={{ body: { padding: 0 } }}
             >
-                <div
-                    className="logo-container"
-                    onClick={() => {
-                        onLogoClick?.()
-                        setMobileNavOpen(false)
-                    }}
-                >
-                    <img
-                        src={isLight ? logoFullLight : logoFullDark}
-                        alt="Hermes"
-                        className="sidebar-logo"
-                    />
+                <div className="mobile-nav">
+                    {[{ key: 'tabs', label: null, items: drawerNav.tabs }, ...drawerNav.groups].map((g) => (
+                        <section key={g.key} className="mobile-nav__group" aria-label={typeof g.label === 'string' ? g.label : undefined}>
+                            {g.label && <h6>{g.label}</h6>}
+                            {g.items.map((it) => (
+                                <button
+                                    key={it.key}
+                                    type="button"
+                                    className={`mobile-nav__item${isActive(it.key) ? ' is-active' : ''}`}
+                                    aria-current={isActive(it.key) ? 'page' : undefined}
+                                    onClick={() => go(it.key)}
+                                >
+                                    <span aria-hidden="true">{it.icon}</span>
+                                    {it.label}
+                                </button>
+                            ))}
+                        </section>
+                    ))}
                 </div>
-                <Menu
-                    theme={isLight ? 'light' : 'dark'}
-                    mode="inline"
-                    selectedKeys={[selectedKey]}
-                    items={drawerItems}
-                    onClick={handleMenuClick}
-                    className="main-menu"
-                />
             </Drawer>
-        </Layout>
+
+            <CommandPalette
+                open={paletteOpen}
+                items={paletteItems}
+                onClose={() => setPaletteOpen(false)}
+                onSelect={go}
+            />
+        </div>
     )
 }
 

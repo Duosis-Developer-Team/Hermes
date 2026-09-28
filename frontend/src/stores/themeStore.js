@@ -2,8 +2,9 @@
  * =============================================================================
  * HERMES PLATFORM - Theme Store (Zustand)
  * =============================================================================
- * Light / dark mode toggle. Dark is the default (the original Hermes
- * look). The choice is a non-sensitive UI preference, so unlike the
+ * Light / dark mode toggle. Light is the default since Hermes Liquid
+ * (28.09.2026, CTO): transparent white glass over the liquid backdrop;
+ * dark = space-grey glass. The choice is a non-sensitive UI preference, so unlike the
  * auth token it IS persisted in localStorage.
  *
  * The active theme is reflected as data-theme="light|dark" on <html>;
@@ -23,7 +24,7 @@ function readInitialTheme() {
     } catch {
         /* localStorage unavailable (private mode) — fall through */
     }
-    return 'dark' // default: current dark look
+    return 'light' // Hermes Liquid varsayilani: beyaz seffaf cam
 }
 
 function applyTheme(theme) {
@@ -55,7 +56,7 @@ export const useThemeStore = create((set, get) => ({
     theme: initialTheme,
 
     setTheme: (theme) => {
-        const next = theme === 'light' ? 'light' : 'dark'
+        const next = theme === 'dark' ? 'dark' : 'light'
         applyTheme(next)
         try {
             localStorage.setItem(STORAGE_KEY, next)

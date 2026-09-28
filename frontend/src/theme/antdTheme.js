@@ -15,19 +15,25 @@
 import { theme as antdTheme } from 'antd'
 
 // tokens.css semantic katmaninin JS aynasi (test: theme bridge sync).
+// Hermes Liquid (R1): yuzeyler RGBA camdir; canvas, sivi + kabuk tonunun
+// etkin duz rengi (antd algoritmasi turetmeyi bundan yapar).
 export const SEMANTIC = {
     dark: {
-        canvas: '#0B0F14', surface: '#111720', elevated: '#161D27',
-        hover: '#1B2532', textPrimary: '#F4F7FB', textSecondary: '#A8B3C2',
-        borderSubtle: '#202B38', borderDefault: '#2A3747',
+        canvas: '#101114', surface: 'rgba(34, 38, 46, 0.42)',
+        elevated: 'rgba(26, 28, 33, 0.95)', hover: 'rgba(255, 255, 255, 0.06)',
+        textPrimary: '#F4F7FB', textSecondary: '#A8B3C2',
+        borderSubtle: 'rgba(255, 255, 255, 0.07)',
+        borderDefault: 'rgba(255, 255, 255, 0.11)',
         brand: '#579DFF', brandHover: '#85B8FF',
         success: '#4BCE97', warning: '#F5CD47', danger: '#F87168',
         info: '#85B8FF',
     },
     light: {
-        canvas: '#FAFBFD', surface: '#FFFFFF', elevated: '#FFFFFF',
-        hover: '#F0F3F7', textPrimary: '#17202D', textSecondary: '#526174',
-        borderSubtle: '#E8EDF3', borderDefault: '#D9E1EA',
+        canvas: '#DCE5F2', surface: 'rgba(255, 255, 255, 0.5)',
+        elevated: 'rgba(250, 252, 255, 0.94)', hover: 'rgba(17, 23, 32, 0.05)',
+        textPrimary: '#17202D', textSecondary: '#526174',
+        borderSubtle: 'rgba(17, 23, 32, 0.08)',
+        borderDefault: 'rgba(17, 23, 32, 0.12)',
         brand: '#0C66E4', brandHover: '#388BFF',
         success: '#1F845A', warning: '#946F00', danger: '#C9372C',
         info: '#0C66E4',
@@ -35,7 +41,7 @@ export const SEMANTIC = {
 }
 
 const FONT_FAMILY =
-    "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, " +
+    "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, " +
     "'Helvetica Neue', Arial, sans-serif"
 
 export function buildAntdTheme(mode = 'dark') {
@@ -57,10 +63,12 @@ export function buildAntdTheme(mode = 'dark') {
             colorTextSecondary: s.textSecondary,
             colorBorder: s.borderDefault,
             colorBorderSecondary: s.borderSubtle,
-            borderRadius: 8,          /* --h-radius-standard */
-            borderRadiusSM: 6,        /* --h-radius-control */
-            borderRadiusLG: 10,       /* --h-radius-card */
-            controlHeight: 32,
+            borderRadius: 12,         /* --h-radius-standard */
+            borderRadiusSM: 10,       /* --h-radius-control */
+            borderRadiusLG: 20,       /* --h-radius-card */
+            borderRadiusXS: 6,
+            controlHeight: 34,
+            fontFamilyCode: "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
             fontFamily: FONT_FAMILY,
             fontSize: 14,             /* --h-font-body */
             motionDurationFast: '0.1s',   /* instant */
@@ -68,20 +76,28 @@ export function buildAntdTheme(mode = 'dark') {
             motionDurationSlow: '0.22s',  /* base */
         },
         components: {
+            /* Kabuk seffaftir: zemini LiquidBackdrop + cam kabuk cizer. */
             Layout: {
-                headerBg: s.surface,
-                siderBg: s.surface,
-                bodyBg: s.canvas,
+                headerBg: 'transparent',
+                siderBg: 'transparent',
+                bodyBg: 'transparent',
             },
             Menu: {
-                darkItemBg: s.surface,
+                darkItemBg: 'transparent',
+                itemBg: 'transparent',
                 darkItemSelectedBg:
                     mode === 'light'
                         ? 'rgba(12, 102, 228, 0.10)'
                         : 'rgba(87, 157, 255, 0.16)', /* --h-bg-selected */
-                itemBorderRadius: 6,
+                itemBorderRadius: 10,
             },
-            Modal: { borderRadiusLG: 14 /* --h-radius-modal */ },
+            Modal: {
+                borderRadiusLG: 24, /* --h-radius-modal */
+                contentBg: s.elevated,
+                headerBg: 'transparent',
+                footerBg: 'transparent',
+            },
+            Drawer: { colorBgElevated: s.elevated },
             /* Premium UI (2026-08-04): buyuk gri tablo blogu kalkti —
                baslik tonal/subtle, hover wash premium.css'te accent'li.
                (headerBg burada da dusuk alfa: sticky header'da zemin

@@ -19,6 +19,10 @@ import { join } from 'node:path'
 
 const SRC = 'src'
 const read = (f) => readFileSync(join(SRC, f), 'utf8')
+const cssBlock_ = (css, sel) => {
+    const i = css.indexOf(sel)
+    return i < 0 ? '' : css.slice(i, css.indexOf('}', i))
+}
 const noComments = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '')
 
 describe('ortak primitifler tek kaynakta', () => {
@@ -38,10 +42,13 @@ describe('ortak primitifler tek kaynakta', () => {
         expect(css).not.toMatch(/transition:\s*all\b/)
     })
 
-    it('light tuval near-white tokena baglandi (gri levha degil)', () => {
+    it('light yuzeyler beyaz seffaf cam (gri levha degil)', () => {
+        /* Hermes Liquid (28.09): near-white duz tuval yerine sivi zemin +
+           beyaz cam; yuzey RGBA beyazdir, gri opak levha DEGIL. */
         const tokens = read('styles/tokens.css')
-        expect(tokens).toContain('--hp-neutral-25')
-        expect(tokens).toMatch(/\[data-theme='light'\][\s\S]*--h-bg-canvas:\s*var\(--hp-neutral-25\)/)
+        const light = tokens.split(":root[data-theme='light']")[1]
+        expect(light).toMatch(/--h-bg-surface:\s*rgba\(255, 255, 255, 0\.\d+\)/)
+        expect(light).toMatch(/--h-shell-tint:\s*rgba\(255, 255, 255, 0\.\d+\)/)
     })
 })
 
@@ -200,14 +207,6 @@ describe('duzeltme turu (2026-08-04) kilitleri', () => {
         }
     })
 
-    it('collapsed logo kutusu belirgin sekilde buyuk (>=60px)', () => {
-        const css = read('components/layout/MainLayout.css')
-        const block = css.slice(css.indexOf('.sidebar-logo--icon {'),
-                                css.indexOf('.ant-layout-sider-collapsed .sidebar-logo--full'))
-        const w = parseInt(block.match(/width:\s*(\d+)px/)?.[1] ?? '0', 10)
-        expect(w).toBeGreaterThanOrEqual(60)
-    })
-
     it('modal yuksekligi YAPISAL cozulur — sihirli sayi ile degil', () => {
         /*
          * 2026-08-04 (ikinci tur, olcumle): govdeye verilen sabit
@@ -255,9 +254,13 @@ describe('duzeltme turu (2026-08-04) kilitleri', () => {
 
     it('performans: sabit-arkaplan repaint ve margin animasyonu kaldirildi', () => {
         const css = noComments(read('components/layout/MainLayout.css'))
-        const block = css.slice(css.indexOf('.main-content {'), css.indexOf('.main-content::before'))
+        const start = css.indexOf('.main-content {')
+        const block = css.slice(start, css.indexOf('}', start))
+        expect(start).toBeGreaterThan(-1)
         expect(block).not.toContain('background-attachment: fixed')
         expect(block).not.toContain('transition: margin-left')
+        // Sivi zemin blur FILTRESI ile animate edilmez (her karede yeniden cizim).
+        expect(cssBlock_(css, '.liquid-blob {')).not.toContain('filter')
         // Cift giris animasyonu: .fade-in artik animasyon calistirmaz.
         const idx = read('index.css')
         expect(idx).toMatch(/\.fade-in \{\s*animation: none;/)
