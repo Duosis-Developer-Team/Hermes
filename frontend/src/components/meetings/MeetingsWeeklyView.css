@@ -45,9 +45,13 @@
 
 .meeting-day-column {
     /* Premium UI: dis yuzey hafifledi — canvas'la butunlesen subtle. */
-    background: var(--h-surface-subtle);
-    border: 1px solid var(--h-border-subtle);
-    border-radius: 8px;
+    /* Hermes Liquid: gun = cam kart (Zaman girisi ile ayni dil). */
+    background: var(--h-bg-surface);
+    border: 1px solid var(--h-glass-edge);
+    border-radius: 20px;
+    box-shadow: var(--h-glass-shadow);
+    backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
+    -webkit-backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
     display: flex;
     flex-direction: column;
     min-height: 220px;
@@ -56,6 +60,7 @@
 }
 .meeting-day-column-weekend {
     background: var(--h-bg-weekend);
+    box-shadow: none;
 }
 /* Premium UI: bugun icin cerceve/glow yerine ORTAK baslik sancagi
    (.h-today-flag) — Time Entry ile ayni primitive. Hafif accent kaldi. */
@@ -89,7 +94,7 @@
     padding: 1px 8px;
 }
 .meeting-day-column-today .meeting-day-number {
-    color: #22d3ee;
+    color: var(--h-brand);
 }
 
 .meeting-day-column-body {

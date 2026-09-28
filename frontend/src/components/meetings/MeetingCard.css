@@ -1,7 +1,7 @@
 /* =============================================================================
    HERMES - Meeting Card styles
    =============================================================================
-   Native Hermes dark, with a blue/cyan left accent that visually
+   Hermes Liquid: Hermes-blue left accent that visually
    differentiates Meetings from Tasks (which use indigo). Compact
    vertical rhythm — the Meetings page can get dense, so we lean on
    short padding and a single info-dense badge row.
@@ -30,7 +30,7 @@
 }
 .meeting-card:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.45);
+    box-shadow: 0 0 0 2px var(--h-focus);
 }
 
 /* Cyan accent bar on the left — flush with the card edge. */
@@ -41,8 +41,8 @@
     left: 0;
     width: 3px;
     border-radius: 0 3px 3px 0;
-    background: linear-gradient(180deg, #22d3ee, #06b6d4);
-    box-shadow: 0 0 12px -4px rgba(34, 211, 238, 0.55);
+    background: var(--h-grad-primary);
+    box-shadow: 0 0 12px -4px color-mix(in srgb, var(--h-brand) 60%, transparent);
 }
 
 .meeting-card-body {
@@ -57,7 +57,7 @@
     font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
     font-size: 12px;
     font-weight: 600;
-    color: #22d3ee;
+    color: var(--h-brand);
     letter-spacing: 0.02em;
 }
 

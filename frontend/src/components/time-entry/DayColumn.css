@@ -10,15 +10,23 @@
      * gradientiyle butunlesir. Islevsel grid ayrimi KENARLIKLARDA
      * (takvim hucresi sinifi korunur), yuzey renginde degil.
      */
-    background: transparent;
-    border-right: 1px solid var(--border-default);
+    /* Hermes Liquid: her gun aralikli bir cam kart (prototip hafta
+       gorunumu); takvim ayrimi artik kart kenarinda. */
+    background: var(--h-bg-surface);
+    border: 1px solid var(--h-glass-edge);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: var(--h-glass-shadow);
+    backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
+    -webkit-backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
     display: flex;
     flex-direction: column;
     height: 100%;
 }
 
-.day-column:last-child {
-    border-right: none;
+.day-column-today {
+    border-color: color-mix(in srgb, var(--h-brand) 55%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--h-brand) 35%, transparent), var(--h-glass-shadow);
 }
 
 /* Weekend days — subtle darker tint, muted text */
@@ -26,6 +34,7 @@
     /* Hafta sonu: koyu ayri blok DEGIL, cok hafif cokme tonu.
        (Gun adi/numarasindaki soluk renk ayrimi da zaten var.) */
     background: var(--h-bg-weekend);
+    box-shadow: none;
 }
 
 .day-column-weekend .day-name,
@@ -47,8 +56,8 @@
 
 /* Header */
 .day-column-header {
-    padding: 12px;
-    border-bottom: 1px solid var(--border-default);
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--h-border-subtle);
     display: flex;
     justify-content: space-between;
     align-items: flex-start;

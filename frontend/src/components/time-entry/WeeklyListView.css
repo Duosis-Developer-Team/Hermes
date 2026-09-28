@@ -17,6 +17,8 @@
 .weekly-list-columns {
     display: flex;
     flex: 1;
+    gap: 10px;
+    padding: 4px 2px 6px;
     overflow-x: auto;
     background: var(--bg-primary);
 }

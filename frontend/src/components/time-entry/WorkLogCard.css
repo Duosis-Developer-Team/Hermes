@@ -4,9 +4,9 @@
 
 .worklog-card {
     /* Premium UI: gri dolgu yerine yuzey + ince cerceve. */
-    background: var(--h-bg-surface);
+    background: var(--h-surface-interactive);
     border: 1px solid var(--h-border-subtle);
-    border-radius: var(--h-radius-control);
+    border-radius: 14px;
     padding: 12px;
     position: relative;
     cursor: pointer;
@@ -50,24 +50,25 @@
 }
 
 /* Issue Key with checkmark icon */
+/* Hermes Liquid: dolu yesil blok yerine tonal rozet (tek renk ipucu). */
 .worklog-issue-key {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: var(--h-success);
-    padding: 4px 8px;
-    border-radius: var(--h-radius-control);
+    background: color-mix(in srgb, var(--h-success) 14%, transparent);
+    padding: 3px 9px;
+    border-radius: var(--h-radius-pill);
 }
 
 .issue-key-icon {
-    color: white;
+    color: var(--h-success);
     font-size: 12px;
 }
 
 .issue-key-text {
     font-size: 11px;
-    font-weight: 600;
-    color: white;
+    font-weight: 650;
+    color: var(--h-success);
 }
 
 /* Duration — Sprint 8: acik temada gorunmez kalan sabit `white` yerine
