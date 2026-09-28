@@ -54,7 +54,7 @@ class MyWorkResponse(BaseModel):
 
 
 # -----------------------------------------------------------------------------
-# D4 Takvimim: uc kaynak tek seritte (toplanti · planli zaman · termin)
+# D4 Takvimim: iki kaynak tek seritte (toplanti · termin)
 # -----------------------------------------------------------------------------
 
 class WeekMeeting(BaseModel):
@@ -66,23 +66,10 @@ class WeekMeeting(BaseModel):
     join_url: Optional[str] = None
 
 
-class WeekPlan(BaseModel):
-    id: UUID
-    assignment_id: UUID
-    customer_name: Optional[str] = None
-    project_name: Optional[str] = None
-    start_time: Optional[str] = None
-    end_time: Optional[str] = None
-    description: Optional[str] = None
-    recurrence: str = "one_time"
-    status: str = "pending"
-
-
 class WeekDay(BaseModel):
     date: date
     is_today: bool
     meetings: List[WeekMeeting]
-    plans: List[WeekPlan]
     items: List[HomeWorkItem]
 
 

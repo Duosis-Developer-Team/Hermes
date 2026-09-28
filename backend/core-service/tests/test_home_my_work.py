@@ -223,23 +223,23 @@ def _seed_meeting(s, *, subject, start_utc, attendee, cancelled=False):
     return m
 
 
-def _seed_plan(s, world, *, start, end, recurrence="one_time", user=WORKER, status="pending",
-               start_time="09:00", end_time="11:00"):
+def _seed_legacy_plan(s, world, *, day, user):
+    """Kaldirilan "Plan Time" ozelliginden kalmis bir satir: tablolar DB'de
+    durur (hermes-test verisi silinmez) ama hicbir uc onu gostermez."""
     from app.models.plan_time import PlanTime, PlanTimeAssignment
     p = PlanTime(
         id=uuid.uuid4(), created_by_id=REPORTER, customer_id=world["customer"].id,
-        project_id=world["project"].id, start_date=start, end_date=end,
-        start_time=start_time, end_time=end_time, recurrence=recurrence, description="plan",
+        project_id=world["project"].id, start_date=day, end_date=day,
+        start_time="09:00", end_time="11:00", recurrence="one_time", description="plan",
     )
     s.add(p)
     s.flush()
-    a = PlanTimeAssignment(id=uuid.uuid4(), plan_time_id=p.id, user_id=user, status=status)
-    s.add(a)
+    s.add(PlanTimeAssignment(id=uuid.uuid4(), plan_time_id=p.id, user_id=user, status="accepted"))
     s.commit()
     return p
 
 
-def test_week_merges_meetings_plans_and_due_items(http, world):
+def test_week_merges_meetings_and_due_items(http, world):
     from datetime import timezone as _tz
     s = world["s"]
     s.execute(sa_text("TRUNCATE meeting_attendees, meetings, plan_time_assignments, plan_times CASCADE"))
@@ -249,10 +249,7 @@ def test_week_merges_meetings_plans_and_due_items(http, world):
     _seed_meeting(s, subject="Iptal", start_utc=datetime(2026, 9, 16, 8, 0, tzinfo=_tz.utc), attendee=WORKER, cancelled=True)
     _seed_meeting(s, subject="Baskasinin", start_utc=datetime(2026, 9, 16, 9, 0, tzinfo=_tz.utc), attendee=MATE)
     _seed_meeting(s, subject="Pazar gecesi", start_utc=datetime(2026, 9, 20, 22, 30, tzinfo=_tz.utc), attendee=WORKER)
-    _seed_plan(s, world, start=date(2026, 9, 15), end=date(2026, 9, 16))                       # Sal + Car
-    _seed_plan(s, world, start=date(2026, 9, 2), end=date(2026, 9, 2), recurrence="weekly")    # her Carsamba
-    _seed_plan(s, world, start=date(2026, 9, 17), end=date(2026, 9, 17), status="rejected")    # reddedildi
-    _seed_plan(s, world, start=date(2026, 9, 17), end=date(2026, 9, 17), user=MATE)            # baskasinin
+    _seed_legacy_plan(s, world, day=date(2026, 9, 16), user=WORKER)                            # artik gorunmez
     _create(http, world, "Termin Persembe", due=date(2026, 9, 17))
     _create(http, world, "Gecen hafta", due=date(2026, 9, 11))                                 # hafta disi
     _create(http, world, "Terminsiz")
@@ -266,9 +263,8 @@ def test_week_merges_meetings_plans_and_due_items(http, world):
     wed = days["2026-09-16"]
     assert [m["subject"] for m in wed["meetings"]] == ["Standup"]
     assert wed["meetings"][0]["join_url"] == "https://teams.example/x"
-    assert len(wed["plans"]) == 2 and {p["recurrence"] for p in wed["plans"]} == {"one_time", "weekly"}
-    assert days["2026-09-15"]["plans"][0]["project_name"] == "ATM" and len(days["2026-09-15"]["plans"]) == 1
-    assert days["2026-09-17"]["plans"] == []          # reddedilen ve baskasinin plani yok
+    # Plan Time kaldirildi: gun sekli yalnizca toplanti + termin.
+    assert all(set(d) == {"date", "is_today", "meetings", "items"} for d in body["days"])
     assert [i["title"] for i in days["2026-09-17"]["items"]] == ["Termin Persembe"]
     assert days["2026-09-20"]["meetings"] == []       # yerel saatte Pazartesi'ye tasan toplanti bu haftada degil
     assert sum(len(d["items"]) for d in body["days"]) == 1
@@ -286,24 +282,25 @@ def test_week_without_work_access_still_shows_calendar(http, world):
     s.execute(sa_text("TRUNCATE meeting_attendees, meetings, plan_time_assignments, plan_times CASCADE"))
     s.commit()
     _seed_meeting(s, subject="Sohbet", start_utc=datetime(2026, 9, 14, 10, 0, tzinfo=_tz.utc), attendee=NOBODY)
-    _seed_plan(s, world, start=date(2026, 9, 14), end=date(2026, 9, 14), user=NOBODY)
     res = http(NOBODY).get("/api/v1/core/home/week")
     assert res.status_code == 200
     mon = res.json()["days"][0]
-    assert [m["subject"] for m in mon["meetings"]] == ["Sohbet"] and len(mon["plans"]) == 1
+    assert [m["subject"] for m in mon["meetings"]] == ["Sohbet"] and "plans" not in mon
     assert all(d["items"] == [] for d in res.json()["days"])
 
 
-def test_plan_recurrence_rule_matches_frontend():
-    from types import SimpleNamespace as NS
-    from app.services.home_service import plan_occurs_on
-    weekly = NS(start_date=date(2026, 9, 2), end_date=date(2026, 9, 2), recurrence="weekly")
-    monthly = NS(start_date=date(2026, 8, 19), end_date=date(2026, 8, 19), recurrence="monthly")
-    once = NS(start_date=date(2026, 9, 15), end_date=date(2026, 9, 16), recurrence="one_time")
-    assert plan_occurs_on(weekly, date(2026, 9, 16)) and not plan_occurs_on(weekly, date(2026, 9, 17))
-    assert not plan_occurs_on(weekly, date(2026, 8, 26))                # baslangictan once
-    assert plan_occurs_on(monthly, date(2026, 9, 16)) and not plan_occurs_on(monthly, date(2026, 9, 9))
-    assert plan_occurs_on(once, date(2026, 9, 16)) and not plan_occurs_on(once, date(2026, 9, 17))
+@pytest.mark.parametrize("method,path", [
+    ("get", "/api/v1/core/plan-times"),
+    ("get", "/api/v1/core/plan-times/my"),
+    ("post", "/api/v1/core/plan-times"),
+    ("patch", f"/api/v1/core/plan-times/{uuid.uuid4()}"),
+    ("patch", f"/api/v1/core/plan-times/{uuid.uuid4()}/respond"),
+    ("delete", f"/api/v1/core/plan-times/{uuid.uuid4()}"),
+])
+def test_plan_times_routes_removed(http, world, method, path):
+    """Plan Time ozelligi kaldirildi (CTO karari): uclar artik YOK."""
+    assert getattr(http(REPORTER), method)(path).status_code == 404
+    assert not any("/plan-times" in getattr(r, "path", "") for r in app.routes)
 
 
 # =============================================================================

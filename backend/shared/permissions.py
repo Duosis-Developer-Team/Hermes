@@ -39,6 +39,9 @@ class Perm:
     TASK_PERMISSIONS_MANAGE = "tasks.permissions.manage"
     API_MANAGE = "api.manage"
     REPORTS_VIEW = "reports.view"
+    # NOT: plans.manage'i kullanan tek uc (/plan-times) 2026-09-29'da
+    # kaldirildi; izin artik hicbir seyi korumuyor. Katalogdan silmek
+    # auth_db'deki rol atamalari icin veri migration'i ister — ayri karar.
     PLANS_MANAGE = "plans.manage"
     WORKLOGS_ADMIN = "worklogs.admin"
     MEETINGS_ADMIN = "meetings.admin"

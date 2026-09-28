@@ -4,6 +4,17 @@
 # plan_times: Admin tarafından oluşturulan planlı zaman olayları.
 # plan_time_assignments: Kullanıcı başına statü (pending/accepted/rejected).
 # Many-to-Many with attributes pattern.
+#
+# DURUM (2026-09-29, CTO karari): "Plan Time" ozelligi KALDIRILDI. Router
+# (`/plan-times`), ana sayfa hafta blogundaki `plans` alani ve dev tohumu
+# silindi; bu modeli hicbir uc OKUMAZ/YAZMAZ.
+# Model yine de BILEREK duruyor:
+#   - 0001_baseline `Base.metadata` uzerinden create_all yapar; modeli
+#     silmek eski revizyonun bos DB'deki davranisini degistirir.
+#   - Tablolar (plan_times, plan_time_assignments) hermes-test'te VERI
+#     tasir; DROP/TRUNCATE/silme YOK, drop eden migration YAZILMAZ.
+#   - dev_seed purge'u tenant-owned tablolari metadata'dan tarar; eski
+#     tohumlarin demo plan satirlarini boylece yine silebilir.
 # =============================================================================
 
 import uuid

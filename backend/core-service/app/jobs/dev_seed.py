@@ -337,7 +337,6 @@ def seed(
     from ..models.capacity import UserAbsence, UserCapacityOverride
     from ..models.customer import Customer
     from ..models.meeting import Meeting, MeetingAttendee
-    from ..models.plan_time import PlanTime, PlanTimeAssignment
     from ..models.project import Project
     from ..models.project_membership import ProjectMembership
     from ..models.task import TaskSubProject
@@ -708,25 +707,10 @@ def seed(
         day += timedelta(days=1)
     w.flush()
 
-    # --- Plan zamanlari ---------------------------------------------------
-    plans = (
-        ("vks-maintenance", "VKS", monday - timedelta(days=6), monday + timedelta(days=27),
-         "18:00", "20:00", "weekly", "Vakko haftalık bakım penceresi",
-         [(demo["linus"]["id"], "accepted")] + [(u, "accepted" if i else "pending") for i, u in enumerate(real_ids[:2])]),
-        ("mgt-golive", "MGT", monday + timedelta(days=10), monday + timedelta(days=10),
-         "09:00", "18:00", "one_time", "Migros canlıya geçiş provası",
-         [(margaret, "accepted"), (demo["alan"]["id"], "pending")] + [(u, "pending") for u in real_ids[:3]]),
-    )
-    for key, code, s, e, st, et, rec, desc, assigned in plans:
-        pt, _ = w.add(PlanTime, id=did("plan", key), created_by_id=margaret,
-                      customer_id=projects[code].customer_id, project_id=projects[code].id,
-                      start_date=s, end_date=e, start_time=st, end_time=et, recurrence=rec,
-                      description=desc)
-        w.flush()
-        for uid, status in assigned:
-            w.add(PlanTimeAssignment, id=did("plan_assignment", pt.id, uid), plan_time_id=pt.id,
-                  user_id=uid, status=status)
-    w.flush()
+    # Plan zamanlari artik TOHUMLANMAZ (ozellik CTO karariyla kaldirildi,
+    # 2026-09-29). Onceki tohumlarin plan_times/plan_time_assignments
+    # satirlari demo id tasir; purge onlari genel tenant-owned taramasiyla
+    # yine siler (model bu yuzden metadata'da kalir).
 
     # --- Toplantilar (bu hafta + gelecek hafta) --------------------------
     everyone = real_ids + demo_ids
