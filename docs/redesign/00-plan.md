@@ -165,12 +165,24 @@ Prototip: https://claude.ai/artifact/HXXunk5DuR4VXEAVonnQfp · kopya
 | R3b | `df0a8d9` | Eski değişken köprüsü (51 dosya → cam), İşler panosu/kenar çubuğu cam |
 | R4 | `cf5fb79` | Zaman girişi ve Toplantılar gün kartları cam; camgöbeği → Hermes mavisi |
 | R5 | `665adcf` | Metrik karoları, cam filtre çubuğu, hap çoklu seçim; **ui.css global yükleme regresyonu düzeltildi** |
-| R5b/R6 | (bu commit) | Giriş ekranı sıvı zemin + Hermes işareti; masaüstü `hiddenInset` + sürükleme bölgesi (yalnız Electron'a enjekte) |
+| R5b/R6 | `69e01d7` | Giriş ekranı sıvı zemin + Hermes işareti; masaüstü `hiddenInset` + sürükleme bölgesi (yalnız Electron'a enjekte) |
+
+| Hareket | `c80a86e` | `liquid.css` + `components/liquid` (PageHero, GlassCard, CountUp, Ring, BarList…); View Transitions ile sayfa geçişi, kayan ada sekmesi, ada damlası açılır menüler, dock sekmesi, adada gerçek "sıradaki toplantı" |
+| Sayfa sayfa | `58effa3` … `391c025` | Zaman girişi, Ana sayfa (bento + Dikkat kartı), İşler, Toplantılar (saat ızgarası), Talepler (bölünmüş liste + sohbet), Pano, Faturalanabilir, Raporlar, Sözleşme, Ayarlar, Developer ve Destek portalı prototip anatomisiyle yeniden kuruldu; global `dayjs.locale('en')` sızıntısı kaldırıldı |
+| Dock eylemleri | `1615095` | Dock'ta "Efor gir" (`/time-entry?date=`), "Yeni iş" (`?new=task`) |
+| Kalanlar | `956d332` | Çizelge, iş detay paneli (öncelik/durum i18n), tüm modallar (cam sayfa + yaylanan giriş), Platform konsolu |
+| Masaüstü | `8e42adc` | İlk boya sıvı zemin tonunda; .dmg yeniden üretildi (`desktop/dist`, 28.09 22:15) |
+
+Akıcılık: CDP ile ölçüldü — ana sayfa kart bulanıklığıyla 60 fps (p95 16.8 ms).
+Electron = Chromium, dolayısıyla View Transitions / backdrop-filter / dock web ile
+masaüstünde AYNI; masaüstü ek olarak başlıksız pencere + sürükleme bölgesi taşır.
+Arayüz sunucudan yüklenir: web'e giden her değişiklik uygulamaya da gelir
+(test sunucusu ff'e kadar eski arayüzü gösterir; uygulamada sunucu dev seçilebilir).
 
 Kararlar: 04.08 "mavi buton yok" kararı prototip onayıyla değişti (birincil = mavi
 gradyan hap). Collapsed-sidebar ve onun testleri silindi; RBAC/prefetch/aktif
 rota/offline/odak sözleşmeleri yeni kabukta korunuyor. Kullanılmayan eski logo
 dosyaları silindi (`logo-icon-light.png` masaüstü/favicon kaynağı olarak kalır).
 
-Bilinen, bu işin kapsamı dışında kalan: bazı ekranlarda İngilizce kalmış metinler
-(Zaman girişi gün adları, İşler kart etiketleri, Raporlar başlığı) — i18n borcu.
+Bilinen, kapsam dışı: bazı Talepler sabitleri ve portal uyarısı hâlâ İngilizce
+(i18n borcu); Developer dokümanları kural gereği İngilizce.
