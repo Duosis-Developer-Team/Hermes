@@ -142,3 +142,10 @@ Prototip: https://claude.ai/artifact/HXXunk5DuR4VXEAVonnQfp · kopya
 - Kabuğun kenar boşluğu, köşe yuvarlaması ve çerçeve halkası kaldırıldı:
   şeffaf cam artık TAM EKRAN (modal içinde gibi durmuyor). Sıvı zemin
   camın arkasından görünmeye devam eder; içerik 1440px'te ortalanır.
+
+### Revizyon 7 (28.09.2026) — ince kenar çerçevesi
+
+- Tam ekran camın kenarında sabit (kaydırmada yerinde kalan), 10px içeriden
+  geçen ince çerçeve: 30px yuvarlak köşe + 1px ışık çizgisi, dışında hafif
+  tonlu bant (açık = beyaz %26, koyu = siyah %28). Tıklamayı engellemez;
+  mobilde 6px / 22px köşe.
