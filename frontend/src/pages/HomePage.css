@@ -17,25 +17,106 @@
     padding: var(--h-space-2) 0 var(--h-space-8);
 }
 
-/* --- Baslik ----------------------------------------------------------- */
-.home-page__head {
+/* --- Karsilama (Hermes Liquid R3) ------------------------------------- */
+.home-hero {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--h-space-4);
+    align-items: center;
+    gap: var(--h-space-5);
     flex-wrap: wrap;
-    padding: 0 var(--h-space-1);
+    padding: var(--h-space-2) var(--h-space-1) var(--h-space-2);
+}
+/* Buyuk Hermes isareti: koyu cam karo icinde beyaz kanatli sandalet. */
+.home-hero__mark {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 76px;
+    height: 76px;
+    flex: none;
+    overflow: hidden;
+    border-radius: 24px;
+    background: radial-gradient(120% 120% at 30% 15%, #3A404C 0%, #161A21 55%, #07080A 100%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.25),
+        0 18px 36px -16px rgba(0, 0, 0, 0.55);
+}
+.home-hero__mark i {
+    width: 46px;
+    height: 46px;
+    background: #FFFFFF;
+    -webkit-mask: url('../assets/logos/logo-mark-mask.png') center / contain no-repeat;
+    mask: url('../assets/logos/logo-mark-mask.png') center / contain no-repeat;
+}
+.home-hero__mark::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.22) 50%, transparent 65%);
+    transform: translateX(-120%);
+    animation: h-brand-sheen 7s var(--h-ease-standard) infinite;
+}
+.home-hero__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.home-hero__eyebrow {
+    display: flex;
+    align-items: center;
+    gap: var(--h-space-2);
+    font-size: 11.5px;
+    font-weight: 650;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--h-text-secondary);
+}
+.home-hero__tenant {
+    padding: 2px 9px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-bg-hover);
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
 }
 .home-page__title {
-    font-size: 24px;
-    font-weight: 650;
-    letter-spacing: -0.01em;
+    font-size: clamp(28px, 3.2vw, 38px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
     color: var(--h-text-primary);
     margin: 0;
+    text-wrap: balance;
 }
 .home-page__date {
     font-size: var(--h-font-body);
     color: var(--h-text-secondary);
+}
+.home-hero__actions { display: flex; flex-wrap: wrap; gap: var(--h-space-2); }
+.home-hero__action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-ghost-bg);
+    border: 1px solid var(--h-ghost-border);
+    color: var(--h-text-primary);
+    font-weight: 600;
+    text-decoration: none;
+    backdrop-filter: blur(10px) saturate(160%);
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
+    transition: transform var(--h-motion-base) var(--h-ease-spring),
+        background var(--h-motion-fast) var(--h-ease-standard);
+}
+.home-hero__action:hover { transform: translateY(-2px); background: var(--h-ghost-bg-hover); color: var(--h-text-primary); }
+.home-hero__action--primary {
+    background: var(--h-action-bg);
+    border-color: transparent;
+    color: var(--h-action-text);
+    box-shadow: var(--h-action-shadow);
+}
+.home-hero__action--primary:hover { background: var(--h-action-bg-hover); color: var(--h-action-text); box-shadow: var(--h-action-shadow-hover); }
+.home-hero__action:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
+@media (max-width: 760px) {
+    .home-hero__mark { width: 58px; height: 58px; border-radius: 18px; }
+    .home-hero__mark i { width: 34px; height: 34px; }
+    .home-hero__actions { width: 100%; }
 }
 
 /* --- Iki sutun ---------------------------------------------------------- */
@@ -64,13 +145,17 @@
 }
 
 /* --- Blok kabugu (kart) --------------------------------------------------- */
+/* Hermes Liquid: her blok sivinin ustunde yuzen buzlu cam kart. */
 .home-block {
     background: var(--h-bg-surface);
-    border: 1px solid var(--h-border-subtle);
-    border-radius: var(--h-radius-card);
-    padding: var(--h-space-4) var(--h-space-5);
+    border: 1px solid var(--h-glass-edge);
+    border-radius: 24px;
+    padding: var(--h-space-5) 22px;
     min-width: 0;
     overflow: hidden;
+    box-shadow: var(--h-glass-shadow);
+    backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
+    -webkit-backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
 }
 .home-effort:empty { display: none; }
 .home-block__head {
@@ -82,7 +167,7 @@
     min-width: 0;
 }
 .home-block__title {
-    font-size: 15px;
+    font-size: 15.5px;
     font-weight: 650;
     letter-spacing: -0.005em;
     color: var(--h-text-primary);
@@ -97,9 +182,12 @@
 .home-block__link {
     font-size: var(--h-font-label);
     font-weight: 600;
-    color: var(--h-brand);
+    color: var(--h-text-secondary);
     white-space: nowrap;
+    text-decoration: none;
 }
+.home-block__link::after { content: " \2192"; }
+.home-block__link:hover { color: var(--h-brand); }
 
 /* --- Efor seridi (tam genislik) ------------------------------------------ */
 .home-effort__fill {
@@ -108,12 +196,38 @@
     color: var(--h-text-primary);
     font-variant-numeric: tabular-nums;
 }
+.home-effort {
+    display: grid;
+    grid-template-columns: minmax(170px, 220px) minmax(0, 1fr);
+    grid-template-areas: "head head" "sum days" "bar days" "miss miss";
+    column-gap: var(--h-space-6);
+    align-items: start;
+}
+.home-effort > .home-block__head { grid-area: head; }
+.home-effort__summary { grid-area: sum; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.home-effort__big {
+    font-size: 54px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: var(--h-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.home-effort__big small { font-size: 22px; font-weight: 600; margin-left: 2px; color: var(--h-text-secondary); }
+.home-effort__of { color: var(--h-text-secondary); font-size: 13px; }
 .home-effort__bar {
-    height: 6px;
+    grid-area: bar;
+    height: 8px;
     border-radius: var(--h-radius-pill);
     background: var(--h-bg-hover);
     overflow: hidden;
-    margin-bottom: var(--h-space-3);
+    margin: var(--h-space-4) 0 0;
+}
+.home-effort__days { grid-area: days; }
+.home-effort__missing { grid-area: miss; }
+@media (max-width: 760px) {
+    .home-effort { grid-template-columns: 1fr; grid-template-areas: "head" "sum" "bar" "days" "miss"; }
+    .home-effort__days { margin-top: var(--h-space-4); }
 }
 .home-effort__bar-fill {
     display: block;
@@ -127,44 +241,70 @@
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
-    gap: var(--h-space-2);
+    grid-template-columns: repeat(auto-fit, minmax(52px, 72px));
+    justify-content: space-between;
+    gap: var(--h-space-3);
 }
+/* Gun = dikey dolum kapsulu + gun adi + saat (prototip). */
 .home-effort__day-link {
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding: var(--h-space-2) var(--h-space-3);
-    border: 1px solid var(--h-border-subtle);
-    border-radius: var(--h-radius-control);
-    background: var(--h-bg-canvas);
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    background: transparent;
     color: var(--h-text-primary);
     text-decoration: none;
-    transition: border-color var(--h-motion-fast) var(--h-ease-standard);
 }
-.home-effort__day-link:hover,
-.home-effort__day-link:focus-visible {
-    border-color: var(--h-border-strong);
-    outline: none;
+.home-effort__meter {
+    position: relative;
+    display: block;
+    width: 100%;
+    max-width: 46px;
+    height: 96px;
+    overflow: hidden;
+    border-radius: 16px;
+    background: var(--h-bg-hover);
+    box-shadow: inset 0 0 0 1px var(--h-border-subtle);
+    transition: transform var(--h-motion-base) var(--h-ease-spring);
 }
+.home-effort__meter i {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--h-text-primary) 62%, transparent);
+    transition: height var(--h-motion-reveal) var(--h-ease-enter);
+}
+.home-effort__day-link:hover .home-effort__meter,
+.home-effort__day-link:focus-visible .home-effort__meter { transform: translateY(-3px); }
+.home-effort__day-link:focus-visible { outline: none; }
+.home-effort__day-link:focus-visible .home-effort__meter { box-shadow: 0 0 0 2px var(--h-focus); }
+.home-effort__day--today .home-effort__meter { box-shadow: inset 0 0 0 2px var(--h-warning); }
+.home-effort__day--today .home-effort__meter i { background: var(--h-grad-primary); }
+.home-effort__day--off .home-effort__meter {
+    background: repeating-linear-gradient(135deg, var(--h-bg-hover) 0 6px, transparent 6px 12px);
+}
+.home-effort__day--missing .home-effort__meter { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--h-warning) 55%, transparent); }
 .home-effort__day-name {
-    font-size: var(--h-font-label);
+    order: 2;
+    font-size: 11.5px;
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--h-text-secondary);
 }
 .home-effort__day-hours {
-    font-size: 16px;
-    font-weight: 650;
+    order: 1;
+    font: 600 12.5px var(--h-font-mono);
     font-variant-numeric: tabular-nums;
 }
-.home-effort__day--off .home-effort__day-link { color: var(--h-text-muted); background: transparent; }
+.home-effort__day--off .home-effort__day-link { color: var(--h-text-muted); }
 .home-effort__day--future .home-effort__day-link,
 .home-effort__day--partial .home-effort__day-link { color: var(--h-text-secondary); }
-.home-effort__day--today .home-effort__day-link { border-color: var(--h-brand); }
-.home-effort__day--missing .home-effort__day-link { border-color: color-mix(in srgb, var(--h-warning) 55%, transparent); }
 .home-effort__dot {
     width: 8px;
     height: 8px;
@@ -174,16 +314,21 @@
 }
 .home-effort__day-link .home-effort__dot {
     position: absolute;
-    top: var(--h-space-2);
-    right: var(--h-space-2);
+    top: 6px;
+    left: 50%;
+    margin-left: -4px;
 }
 .home-effort__missing {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: var(--h-space-2);
-    margin-top: var(--h-space-3);
-    font-size: var(--h-font-meta);
-    color: var(--h-warning);
+    margin-top: var(--h-space-4);
+    padding: 10px 14px;
+    border-radius: var(--h-radius-pill);
+    background: color-mix(in srgb, var(--h-warning) 12%, transparent);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--h-text-primary);
 }
 
 /* --- Islerim: kovalar --------------------------------------------------- */
@@ -261,7 +406,8 @@
 .home-item__priority--high { height: 14px; }
 .home-item__priority--urgent { height: 18px; }
 .home-item__key {
-    font-size: var(--h-font-meta);
+    font-family: var(--h-font-mono);
+    font-size: 12px;
     font-weight: 600;
     color: var(--h-text-secondary);
     font-variant-numeric: tabular-nums;
@@ -309,10 +455,11 @@
     padding-top: 2px;
     border-radius: var(--h-radius-control);
 }
+.home-week__day-head { align-self: start; padding: 6px 0; background: var(--h-bg-hover); border-radius: 14px; }
 .home-week__day--today .home-week__day-head {
-    background: var(--h-bg-selected);
-    padding: var(--h-space-1) 0;
+    background: var(--h-text-primary);
 }
+.home-week__day--today .home-week__day-name { color: color-mix(in srgb, var(--h-bg-canvas) 70%, transparent); }
 .home-week__day-name {
     font-size: var(--h-font-label);
     font-weight: 600;
@@ -327,7 +474,7 @@
     color: var(--h-text-primary);
     font-variant-numeric: tabular-nums;
 }
-.home-week__day--today .home-week__day-num { color: var(--h-brand); }
+.home-week__day--today .home-week__day-num { color: var(--h-bg-canvas); }
 .home-week__empty {
     margin: 0;
     align-self: center;
@@ -340,7 +487,7 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 6px;
     min-width: 0;
 }
 .home-week__entry-link {
@@ -348,9 +495,10 @@
     grid-template-columns: auto minmax(0, 1fr);
     align-items: baseline;
     gap: var(--h-space-2);
-    padding: 4px var(--h-space-2);
-    border-left: 2px solid var(--h-border-strong);
-    border-radius: 0 var(--h-radius-control) var(--h-radius-control) 0;
+    padding: 7px 10px;
+    border-left: 3px solid var(--h-border-strong);
+    border-radius: 4px 12px 12px 4px;
+    background: var(--h-surface-subtle);
     color: var(--h-text-primary);
     text-decoration: none;
     min-width: 0;
@@ -364,7 +512,7 @@
 .home-week__entry--plan .home-week__entry-link { border-left-color: var(--h-border-strong); }
 .home-week__entry--pending .home-week__entry-link { border-left-style: dashed; }
 .home-week__time {
-    font-size: var(--h-font-meta);
+    font: 500 12px var(--h-font-mono);
     color: var(--h-text-secondary);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
@@ -488,8 +636,22 @@
 }
 
 /* --- Organizasyon ozeti (D6) -------------------------------------------- */
-.home-org__metrics { margin: 0 0 var(--h-space-3); }
-.home-org__metrics .h-metric-strip__value { font-size: 22px; }
+.home-org__metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--h-space-2);
+    margin: 0 0 var(--h-space-4);
+}
+.home-org__metrics .h-metric-strip__item {
+    min-width: 0;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: var(--h-surface-subtle);
+}
+.home-org__metrics .h-metric-strip__item + .h-metric-strip__item { border-left: 0; }
+.home-org__metrics .h-metric-strip__accent { display: none; }
+.home-org__metrics .h-metric-strip__label { letter-spacing: 0; text-transform: none; font-weight: 500; }
+.home-org__metrics .h-metric-strip__value { font-size: 30px; letter-spacing: -0.03em; }
 .home-org__columns {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

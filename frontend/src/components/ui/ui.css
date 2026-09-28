@@ -161,6 +161,16 @@
     color var(--h-motion-fast) var(--h-ease-standard);
 }
 .h-chip:hover { background: var(--h-bg-hover); color: var(--h-text-primary); }
+/* Baglanti olarak kullanilan chip: tarayici link rengi/alt cizgisi yok. */
+a.h-chip,
+a.h-chip:visited {
+  color: var(--h-text-secondary);
+  text-decoration: none;
+  background: var(--h-ghost-bg);
+  border-color: var(--h-ghost-border);
+  padding: 6px var(--h-space-3);
+}
+a.h-chip:hover { color: var(--h-text-primary); background: var(--h-ghost-bg-hover); }
 .h-chip:active { transform: scale(0.985); }
 .h-chip--active {
   border-color: var(--h-brand);

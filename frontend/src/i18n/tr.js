@@ -60,9 +60,14 @@ export default {
     // ---------------------------------------------------------------
     home: {
         greeting: 'Merhaba, {name}',
+        workspace: 'Çalışma alanı',
+        quickLog: 'Efor gir',
+        quickWork: 'İşler',
+        quickMeetings: 'Toplantılar',
         loadFailed: 'Bu blok yüklenemedi.',
         effort: {
             title: 'Bu hafta',
+            ofExpected: '/ {expected} saat',
             logged: '{expected} saatin {logged} saati girildi',
             open: 'Zaman girişine git',
             off: 'Kapalı',

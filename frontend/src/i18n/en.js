@@ -46,9 +46,14 @@ export default {
     // ---------------------------------------------------------------
     home: {
         greeting: 'Hello, {name}',
+        workspace: 'Workspace',
+        quickLog: 'Log time',
+        quickWork: 'Work items',
+        quickMeetings: 'Meetings',
         loadFailed: 'This block could not be loaded.',
         effort: {
             title: 'This week',
+            ofExpected: 'of {expected}h',
             logged: '{logged}h of {expected}h logged',
             open: 'Open time entry',
             off: 'Off',

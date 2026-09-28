@@ -52,6 +52,11 @@ function EffortStrip() {
                 <Link to="/time-entry" className="home-block__link">{t('home.effort.open')}</Link>
             </div>
 
+            <div className="home-effort__summary">
+                <span className="home-effort__big">{formatHours(logged)}<small>h</small></span>
+                <span className="home-effort__of">{t('home.effort.ofExpected', { expected: formatHours(expected) })}</span>
+            </div>
+
             <div
                 className="home-effort__bar"
                 role="progressbar"
@@ -76,6 +81,9 @@ function EffortStrip() {
                             aria-label={`${dayjs(day.date).format('dddd DD MMM')}: ${dayHours(t, day)}`}
                             title={day.holidayName || undefined}
                         >
+                            <span className="home-effort__meter" aria-hidden="true">
+                                <i style={{ height: `${day.expected > 0 ? Math.min(100, Math.round((day.logged / day.expected) * 100)) : 0}%` }} />
+                            </span>
                             <span className="home-effort__day-name">{dayjs(day.date).format('ddd')}</span>
                             <span className="home-effort__day-hours">{dayHours(t, day)}</span>
                             {day.status === 'missing' && (

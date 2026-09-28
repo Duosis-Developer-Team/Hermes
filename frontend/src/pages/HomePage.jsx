@@ -16,9 +16,14 @@
  * Yerlesim (CTO 23.09): iki sutun, bloklar icerik yuksekliginde alt alta
  * yigilir — esit yukseklige gerilen bos kart YOK. Dar ekranda tek sutun,
  * sira: efor · islerim · takvim · ekibim · organizasyon.
+ *
+ * Hermes Liquid (R3, 28.09): baslik = Hermes isaretli karsilama alani +
+ * hizli gecisler (yalniz mevcut rotalara BAGLANTI — yeni akis yok).
  * =============================================================================
  */
 import dayjs from 'dayjs'
+import { Link } from 'react-router-dom'
+import { CalendarOutlined, CheckSquareOutlined, ClockCircleOutlined } from '@ant-design/icons'
 
 import EffortStrip from '../features/home/components/EffortStrip'
 import MyWorkBlock from '../features/home/components/MyWorkBlock'
@@ -46,12 +51,27 @@ function HomePage() {
     // Ekibim: liderlik istemcide bilinmez → uc hep cagrilir, sunucu
     // eligible=false derse blok cizilmez. Organizasyon: reports.view.
     const showOrg = can('reports.view')
+    const tenantName = useAuthStore((s) => s.tenant?.display_name)
 
     return (
         <div className="home-page">
-            <header className="home-page__head">
-                <h1 className="home-page__title">{t('home.greeting', { name: firstNameOf(user) })}</h1>
-                <span className="home-page__date">{dayjs().format('dddd, DD MMMM YYYY')}</span>
+            <header className="home-page__head home-hero">
+                <span className="home-hero__mark" aria-hidden="true"><i /></span>
+                <div className="home-hero__text">
+                    <div className="home-hero__eyebrow">
+                        <span>Hermes</span>
+                        {tenantName && <span className="home-hero__tenant">{tenantName} · {t('home.workspace')}</span>}
+                    </div>
+                    <h1 className="home-page__title">{t('home.greeting', { name: firstNameOf(user) })}</h1>
+                    <span className="home-page__date">{dayjs().format('dddd, DD MMMM YYYY')}</span>
+                </div>
+                <nav className="home-hero__actions" aria-label={t('nav.home')}>
+                    <Link to="/meetings" className="home-hero__action"><CalendarOutlined aria-hidden="true" />{t('home.quickMeetings')}</Link>
+                    {showMyWork && (
+                        <Link to="/project-management" className="home-hero__action"><CheckSquareOutlined aria-hidden="true" />{t('home.quickWork')}</Link>
+                    )}
+                    <Link to="/time-entry" className="home-hero__action home-hero__action--primary"><ClockCircleOutlined aria-hidden="true" />{t('home.quickLog')}</Link>
+                </nav>
             </header>
 
             <EffortStrip />
