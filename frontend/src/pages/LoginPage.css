@@ -13,7 +13,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--h-bg-page, var(--h-bg-canvas));
+    background: var(--h-liquid-base);
     padding: 20px;
     position: relative;
     isolation: isolate;
@@ -43,42 +43,58 @@
 
 /* Login Container */
 .login-container {
+    position: relative;
+    z-index: 1;
     width: 100%;
     max-width: 400px;
 }
 
 /* Logo Section */
 .login-logo {
-    text-align: center;
-    margin-bottom: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
 }
 
-.login-logo-image {
-    /* Fixed box + contain so the dark (.jpg) and light (.png) boot icons,
-       which have different intrinsic aspect ratios, render at the same
-       size and position in both themes. */
-    width: 240px;
-    height: 120px;
-    object-fit: contain;
-    border-radius: 12px;
+/* Hermes Liquid: koyu cam karo icinde beyaz kanatli sandalet (maske). */
+.login-mark {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 88px;
+    height: 88px;
+    overflow: hidden;
+    border-radius: 28px;
+    background: radial-gradient(120% 120% at 30% 15%, #3A404C 0%, #161A21 55%, #07080A 100%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.25),
+        0 24px 44px -18px rgba(0, 0, 0, 0.55);
+}
+.login-mark i {
+    width: 54px;
+    height: 54px;
+    background: #FFFFFF;
+    -webkit-mask: url('../assets/logos/logo-mark-mask.png') center / contain no-repeat;
+    mask: url('../assets/logos/logo-mark-mask.png') center / contain no-repeat;
+}
+.login-wordmark {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--h-text-primary);
 }
 
 /* Login Card */
 .login-card {
-    background:
-        linear-gradient(
-            180deg,
-            color-mix(in srgb, var(--h-brand) 6%, transparent),
-            transparent 160px
-        ),
-        var(--h-surface-overlay);
-    border: 1px solid color-mix(in srgb, var(--h-brand) 18%, var(--h-border-subtle));
-    border-radius: 16px;
+    /* Hermes Liquid: buzlu cam kart. */
+    background: var(--h-bg-surface);
+    border: 1px solid var(--h-glass-edge);
+    border-radius: 28px;
     padding: 32px;
-    /* Golge temaya gore: sabit siyah golge light tuvalde agir duruyordu. */
-    box-shadow:
-        var(--h-shadow-modal),
-        0 0 0 1px color-mix(in srgb, var(--h-brand) 8%, transparent);
+    box-shadow: var(--h-glass-shadow), var(--h-shadow-modal);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
 }
 
 /* Form Header */

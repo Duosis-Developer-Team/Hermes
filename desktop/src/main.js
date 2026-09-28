@@ -20,6 +20,7 @@ const { app, BrowserWindow, Menu, ipcMain, shell, session } = require('electron'
 
 const { SERVERS, serverById, readSettings, writeSettings } = require('./servers')
 const { classify, deepLinkToUrl } = require('./navigation')
+const { TRAFFIC_LIGHTS, DRAG_CSS } = require('./windowChrome')
 
 const PARTITION = 'persist:hermes'
 let mainWindow = null
@@ -107,7 +108,11 @@ function createWindow() {
         minHeight: 680,
         title: 'Hermes',
         show: false,
-        backgroundColor: '#0f1115',
+        backgroundColor: '#101114',
+        // Hermes Liquid (R6): basliksiz pencere, trafik isiklari sivi
+        // zeminin ustunde; surukleme bolgesi windowChrome.DRAG_CSS'te.
+        titleBarStyle: 'hiddenInset',
+        trafficLightPosition: TRAFFIC_LIGHTS,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             partition: PARTITION,
@@ -118,6 +123,9 @@ function createWindow() {
         },
     })
     attachNavigationPolicy(mainWindow)
+    mainWindow.webContents.on('did-finish-load', () => {
+        mainWindow?.webContents.insertCSS(DRAG_CSS).catch(() => {})
+    })
     mainWindow.once('ready-to-show', () => mainWindow.show())
     mainWindow.on('close', () => {
         if (!mainWindow.isMaximized() && !mainWindow.isFullScreen()) {

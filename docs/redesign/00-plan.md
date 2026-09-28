@@ -155,3 +155,22 @@ Prototip: https://claude.ai/artifact/HXXunk5DuR4VXEAVonnQfp · kopya
 - Kenar çerçevesi inceltildi: tonlu bant neredeyse yok (%7–8), 6px içeride
   26px köşe, 1px ışık çizgisi + üstte iç parlama / altta iç gölge ile çok
   hafif bombe. "Çerçeve" değil "çizgi" hissi.
+
+## 5. Uygulama durumu (28.09.2026) — prototip v8 onaylandı, kodda
+
+| Adım | Commit | Özet |
+|---|---|---|
+| R1+R2 | `7bb45b1` | Cam token'lar (RGBA yüzey, kontrast testi birleşik renkle), Geist yerel, varsayılan açık tema; ada + ⌘K + profil kartı + dock kabuğu, mobil alt sekme; LiquidBackdrop (yalnız transform) |
+| R3a | `4174bc7` | Ana sayfa: Hermes işaretli karşılama, efor kapsülleri, cam bloklar |
+| R3b | `df0a8d9` | Eski değişken köprüsü (51 dosya → cam), İşler panosu/kenar çubuğu cam |
+| R4 | `cf5fb79` | Zaman girişi ve Toplantılar gün kartları cam; camgöbeği → Hermes mavisi |
+| R5 | `665adcf` | Metrik karoları, cam filtre çubuğu, hap çoklu seçim; **ui.css global yükleme regresyonu düzeltildi** |
+| R5b/R6 | (bu commit) | Giriş ekranı sıvı zemin + Hermes işareti; masaüstü `hiddenInset` + sürükleme bölgesi (yalnız Electron'a enjekte) |
+
+Kararlar: 04.08 "mavi buton yok" kararı prototip onayıyla değişti (birincil = mavi
+gradyan hap). Collapsed-sidebar ve onun testleri silindi; RBAC/prefetch/aktif
+rota/offline/odak sözleşmeleri yeni kabukta korunuyor. Kullanılmayan eski logo
+dosyaları silindi (`logo-icon-light.png` masaüstü/favicon kaynağı olarak kalır).
+
+Bilinen, bu işin kapsamı dışında kalan: bazı ekranlarda İngilizce kalmış metinler
+(Zaman girişi gün adları, İşler kart etiketleri, Raporlar başlığı) — i18n borcu.

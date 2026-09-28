@@ -24,8 +24,7 @@ import { authService } from '../services/api'
 import { platformService } from '../api/platformApi'
 import { usePlatformAuthStore } from '../stores/platformAuthStore'
 import { buildMicrosoftAuthorizeUrl, readWorkspace } from '../api/workspace'
-import logoIconDark from '../assets/logos/logo-icon-dark.jpg'
-import logoIconLight from '../assets/logos/logo-icon-light.png'
+import LiquidBackdrop from '../components/layout/LiquidBackdrop'
 import './LoginPage.css'
 import { useT } from '../i18n'
 
@@ -45,11 +44,8 @@ function LoginPage() {
     const navigate = useNavigate()
     const { login } = useAuthStore()
     const platformLogin = usePlatformAuthStore((s) => s.login)
-    // Light mode needs the dark-colored boot icon (logo-icon-light.png);
-    // the white boot (logo-icon-dark.jpg) disappears on the light card.
     const isLight = useThemeStore((s) => s.theme === 'light')
     const toggleTheme = useThemeStore((s) => s.toggleTheme)
-    const logoIcon = isLight ? logoIconLight : logoIconDark
 
     const handleSubmit = async (values) => {
         setLoading(true)
@@ -123,6 +119,8 @@ function LoginPage() {
 
     return (
         <div className="login-page">
+            {/* Hermes Liquid: uygulamayla ayni sivi zemin + cam kabuk. */}
+            <LiquidBackdrop />
             {/* Light / Dark toggle — top-right, same control as the app header */}
             <Switch
                 className="theme-switch login-theme-switch"
@@ -134,9 +132,10 @@ function LoginPage() {
             />
 
             <div className="login-container">
-                {/* Logo Section - Sadece çizme ikonu */}
+                {/* Hermes isareti (maske) + kelime isareti */}
                 <div className="login-logo">
-                    <img src={logoIcon} alt="Hermes" className="login-logo-image" />
+                    <span className="login-mark" aria-hidden="true"><i /></span>
+                    <span className="login-wordmark">Hermes</span>
                 </div>
 
                 {/* Login Card */}
