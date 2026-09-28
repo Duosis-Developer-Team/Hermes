@@ -18,6 +18,7 @@ import { homeService } from '../../../services/api'
 import { queryKeys } from '../../../query/queryKeys'
 import { useT } from '../../../i18n'
 import { dueTone, weekDaysToShow } from '../model/home'
+import { pickNextMeeting } from '../hooks/useNextMeeting'
 
 const hm = (iso) => dayjs(iso).format('HH:mm')
 
@@ -84,6 +85,70 @@ function DayRow({ day, today }) {
     )
 }
 
+/** Prototip: hafta ici gun cipleri; nokta sayisi = o gunun kayit sayisi.
+ *  Tiklamak ajandada o gune kaydirir (ayri filtre DEGIL — liste tam kalir). */
+function DayChips({ week }) {
+    const days = (week?.days || []).filter((d) => {
+        const wd = dayjs(d.date).isoWeekday()
+        const n = (d.meetings?.length || 0) + (d.plans?.length || 0) + (d.items?.length || 0)
+        return wd <= 5 || n > 0
+    })
+    if (!days.length) return null
+    const jump = (date) => {
+        document.querySelector(`.home-week__day[data-date="${date}"]`)
+            ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+    return (
+        <div className="home-week__chips">
+            {days.map((d) => {
+                const n = (d.meetings?.length || 0) + (d.plans?.length || 0) + (d.items?.length || 0)
+                return (
+                    <button
+                        key={d.date}
+                        type="button"
+                        className={`home-week__chip${d.is_today ? ' is-today' : ''}`}
+                        onClick={() => jump(d.date)}
+                        aria-label={dayjs(d.date).format('dddd DD MMMM')}
+                    >
+                        <span className="home-week__chip-name">{dayjs(d.date).format('ddd')}</span>
+                        <span className="home-week__chip-num">{dayjs(d.date).format('D')}</span>
+                        <span className="home-week__chip-dots" aria-hidden="true">
+                            {Array.from({ length: Math.min(n, 3) }, (_, i) => <i key={i} />)}
+                        </span>
+                    </button>
+                )
+            })}
+        </div>
+    )
+}
+
+/** Prototip: bugunun siradaki toplantisi icin koyu mavi one cikan kart. */
+function NextMeetingHero({ week }) {
+    const t = useT()
+    const next = pickNextMeeting(week)
+    if (!next) return null
+    const when = next.status === 'now'
+        ? t('shellExtra.liveNow')
+        : next.minutes >= 60
+            ? t('shellExtra.liveInHours', { h: Math.floor(next.minutes / 60), m: next.minutes % 60 })
+            : t('shellExtra.liveIn', { n: next.minutes })
+    return (
+        <div className="home-next">
+            <span className="home-next__eyebrow">{t('home.week.next')}</span>
+            <b className="home-next__title">{next.subject}</b>
+            <div className="home-next__row">
+                <span className="home-next__when">{when}</span>
+                <span className="home-block__spacer" />
+                {next.joinUrl ? (
+                    <a className="home-next__join" href={next.joinUrl} target="_blank" rel="noreferrer">{t('home.week.join')}</a>
+                ) : (
+                    <Link className="home-next__join" to={`/meetings?date=${dayjs().format('YYYY-MM-DD')}`}>{t('home.week.openMeetings')}</Link>
+                )}
+            </div>
+        </div>
+    )
+}
+
 function WeekBlock() {
     const t = useT()
     const { data, isLoading, isError } = useQuery({
@@ -105,6 +170,8 @@ function WeekBlock() {
                 <Link to="/meetings" className="home-block__link">{t('home.week.openMeetings')}</Link>
             </div>
             {isError && <div className="h-inline-error">{t('home.loadFailed')}</div>}
+            {data && <DayChips week={data} />}
+            {data && <NextMeetingHero week={data} />}
             {data && days.length === 0 && (
                 <p className="home-week__none">{t('home.week.nothingWeek')}</p>
             )}

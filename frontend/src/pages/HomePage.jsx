@@ -13,9 +13,9 @@
  *   Ekibim        tasks.assign ∨ proje lideri ∨ tasks.admin (sunucu karar verir)
  *   Organizasyon  reports.view
  *
- * Yerlesim (CTO 23.09): iki sutun, bloklar icerik yuksekliginde alt alta
- * yigilir — esit yukseklige gerilen bos kart YOK. Dar ekranda tek sutun,
- * sira: efor · islerim · takvim · ekibim · organizasyon.
+ * Yerlesim (Hermes Liquid prototipi, 28.09): 12 kolonlu bento — efor (8) +
+ * dikkat (4), islerim (7) + takvim (5), ekibim (7) + organizasyon (5); bir
+ * satirdaki kartlar ayni yukseklikte. Dar ekranda tek sutun.
  *
  * Hermes Liquid (R3, 28.09): baslik = Hermes isaretli karsilama alani +
  * hizli gecisler (yalniz mevcut rotalara BAGLANTI — yeni akis yok).
@@ -26,6 +26,7 @@ import { Link } from 'react-router-dom'
 import { CalendarOutlined, CheckSquareOutlined, ClockCircleOutlined } from '@ant-design/icons'
 
 import EffortStrip from '../features/home/components/EffortStrip'
+import FocusBlock from '../features/home/components/FocusBlock'
 import MyWorkBlock from '../features/home/components/MyWorkBlock'
 import OrgBlock from '../features/home/components/OrgBlock'
 import TeamBlock from '../features/home/components/TeamBlock'
@@ -74,17 +75,15 @@ function HomePage() {
                 </nav>
             </header>
 
-            <EffortStrip />
-
-            <div className="home-layout">
-                <div className="home-col home-col--main">
-                    {showMyWork && <div className="home-slot home-slot--work"><MyWorkBlock /></div>}
-                    <div className="home-slot home-slot--team"><TeamBlock /></div>
-                </div>
-                <div className="home-col home-col--rail">
-                    <div className="home-slot home-slot--week"><WeekBlock /></div>
-                    {showOrg && <div className="home-slot home-slot--org"><OrgBlock /></div>}
-                </div>
+            {/* Hermes Liquid bento (prototip): efor + dikkat, islerim +
+                takvim, ekibim + organizasyon; kartlar kademeli yukselir. */}
+            <div className="lq-bento lq-enter home-bento">
+                <div className="lq-c8 home-slot home-slot--effort"><EffortStrip /></div>
+                <div className="lq-c4 home-slot home-slot--focus"><FocusBlock showMyWork={showMyWork} /></div>
+                {showMyWork && <div className="lq-c7 home-slot home-slot--work"><MyWorkBlock /></div>}
+                <div className={`${showMyWork ? 'lq-c5' : 'lq-c12'} home-slot home-slot--week`}><WeekBlock /></div>
+                <div className={`${showOrg ? 'lq-c7' : 'lq-c12'} home-slot home-slot--team`}><TeamBlock /></div>
+                {showOrg && <div className="lq-c5 home-slot home-slot--org"><OrgBlock /></div>}
             </div>
         </div>
     )

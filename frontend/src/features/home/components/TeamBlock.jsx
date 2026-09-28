@@ -18,6 +18,7 @@ import { queryKeys } from '../../../query/queryKeys'
 import { useT } from '../../../i18n'
 import { PM_BASE } from '../../tasks/model/constants'
 import { formatHours, groupLabel } from '../model/home'
+import { Avatar } from '../../../components/liquid'
 
 function useUserNames() {
     const { data } = useQuery({
@@ -35,7 +36,10 @@ function MemberRow({ member, nameOf, noEffort }) {
     const t = useT()
     return (
         <li className="home-team__member" data-user-id={member.user_id} data-no-effort={noEffort ? 'true' : undefined}>
-            <span className="home-team__name">{nameOf(member.user_id)}</span>
+            <span className="home-team__name">
+                <Avatar id={member.user_id} name={nameOf(member.user_id)} size={30} />
+                <span className="home-team__name-text">{nameOf(member.user_id)}</span>
+            </span>
             <span className="home-team__stat" title={t('home.team.open')}>
                 <span className="home-team__value">{member.open_count}</span>
                 <span className="home-team__label">{t('home.team.open')}</span>

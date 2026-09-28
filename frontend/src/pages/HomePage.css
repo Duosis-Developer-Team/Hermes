@@ -119,7 +119,66 @@
     .home-hero__actions { width: 100%; }
 }
 
-/* --- Iki sutun ---------------------------------------------------------- */
+/* --- Bento (Hermes Liquid) --------------------------------------------- */
+.home-bento { align-items: stretch; }
+.home-bento > .home-slot > .home-block { height: 100%; }
+
+/* --- Dikkat karti ------------------------------------------------------- */
+.home-focus__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.home-focus__list > li { animation: lq-rise 600ms var(--h-ease-enter) both; }
+.home-focus__row {
+    --focus-tone: var(--h-danger);
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 18px;
+    background: var(--h-surface-subtle);
+    border: 1px solid var(--h-border-subtle);
+    color: var(--h-text-primary);
+    text-decoration: none;
+    transition: transform 220ms var(--h-ease-spring), background 150ms;
+}
+.home-focus__row:hover { transform: translateY(-2px); background: var(--h-bg-hover); color: var(--h-text-primary); }
+.home-focus__row--warn { --focus-tone: var(--h-warning); }
+.home-focus__row--info { --focus-tone: var(--h-info); }
+.home-focus__count {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--focus-tone) 16%, transparent);
+    color: var(--focus-tone);
+    font-size: 18px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.home-focus__text { display: flex; flex-direction: column; min-width: 0; }
+.home-focus__text b { font-size: 13.5px; font-weight: 650; }
+.home-focus__text small { overflow: hidden; color: var(--h-text-secondary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.home-focus__bars { display: flex; align-items: flex-end; gap: 3px; height: 18px; }
+.home-focus__bars i { width: 5px; border-radius: 2px; background: var(--h-danger); transform-origin: bottom; animation: lq-grow-y 700ms var(--h-ease-enter) both; }
+.home-focus__bars i:nth-child(1) { opacity: 0.45; } .home-focus__bars i:nth-child(2) { opacity: 0.6; animation-delay: 60ms; }
+.home-focus__bars i:nth-child(3) { opacity: 0.75; animation-delay: 120ms; } .home-focus__bars i:nth-child(4) { animation-delay: 180ms; }
+.home-focus__bars i:nth-child(5) { animation-delay: 240ms; }
+.home-focus__ghosts { display: flex; }
+.home-focus__ghosts i {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    margin-left: -7px;
+    border: 1.5px dashed var(--h-border-strong);
+    border-radius: 50%;
+    color: var(--h-text-muted);
+    font: 600 11px var(--h-font-family);
+    font-style: normal;
+}
+.home-focus__calm { margin: 0; padding: 14px 4px; color: var(--h-text-secondary); font-size: 13px; }
+
+/* --- Iki sutun (eski; tek sutun sirasi icin tutulur) ------------------------ */
 .home-layout {
     display: grid;
     grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
@@ -146,6 +205,8 @@
 
 /* --- Blok kabugu (kart) --------------------------------------------------- */
 /* Hermes Liquid: her blok sivinin ustunde yuzen buzlu cam kart. */
+.home-effort { display: flex; flex-direction: column; }
+.home-effort .home-effort__body { flex: 1; }
 .home-block {
     background: var(--h-bg-surface);
     border: 1px solid var(--h-glass-edge);
@@ -196,55 +257,49 @@
     color: var(--h-text-primary);
     font-variant-numeric: tabular-nums;
 }
-.home-effort {
+/* Efor karti (prototip): halka | gun kapsulleri | istatistikler. */
+.home-effort__body {
     display: grid;
-    grid-template-columns: minmax(170px, 220px) minmax(0, 1fr);
-    grid-template-areas: "head head" "sum days" "bar days" "miss miss";
-    column-gap: var(--h-space-6);
-    align-items: start;
+    grid-template-columns: 150px minmax(0, 1fr) 150px;
+    align-items: center;
+    gap: var(--h-space-6);
 }
-.home-effort > .home-block__head { grid-area: head; }
-.home-effort__summary { grid-area: sum; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.home-effort__ring { display: grid; place-items: center; }
+.home-effort__ring-inner { display: flex; flex-direction: column; align-items: center; }
 .home-effort__big {
-    font-size: 54px;
+    font-size: 40px;
     font-weight: 700;
     letter-spacing: -0.04em;
     line-height: 1;
     color: var(--h-text-primary);
     font-variant-numeric: tabular-nums;
 }
-.home-effort__big small { font-size: 22px; font-weight: 600; margin-left: 2px; color: var(--h-text-secondary); }
-.home-effort__of { color: var(--h-text-secondary); font-size: 13px; }
-.home-effort__bar {
-    grid-area: bar;
-    height: 8px;
-    border-radius: var(--h-radius-pill);
-    background: var(--h-bg-hover);
-    overflow: hidden;
-    margin: var(--h-space-4) 0 0;
+.home-effort__of { margin-top: 4px; color: var(--h-text-secondary); font-size: 12.5px; }
+.home-effort__stats { display: flex; flex-direction: column; gap: 14px; margin: 0; }
+.home-effort__stats dd { margin: 2px 0 0; color: var(--h-text-secondary); font-size: 12.5px; }
+.home-effort__stat {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--h-text-primary);
+    font-variant-numeric: tabular-nums;
 }
-.home-effort__days { grid-area: days; }
-.home-effort__missing { grid-area: miss; }
-@media (max-width: 760px) {
-    .home-effort { grid-template-columns: 1fr; grid-template-areas: "head" "sum" "bar" "days" "miss"; }
-    .home-effort__days { margin-top: var(--h-space-4); }
+.home-effort__stats > div:first-child .home-effort__stat { color: var(--h-brand); }
+@media (max-width: 900px) {
+    .home-effort__body { grid-template-columns: 1fr; justify-items: center; }
+    .home-effort__stats { flex-direction: row; gap: var(--h-space-8); }
 }
-.home-effort__bar-fill {
-    display: block;
-    height: 100%;
-    background: var(--h-grad-primary);
-    border-radius: inherit;
-    transition: width var(--h-motion-base) var(--h-ease-standard);
-}
+
 .home-effort__days {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(52px, 72px));
-    justify-content: space-between;
+    grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
     gap: var(--h-space-3);
+    width: 100%;
 }
+.home-effort__day { animation: lq-rise 600ms var(--h-ease-enter) both; }
 /* Gun = dikey dolum kapsulu + gun adi + saat (prototip). */
 .home-effort__day-link {
     position: relative;
@@ -262,7 +317,7 @@
     position: relative;
     display: block;
     width: 100%;
-    max-width: 46px;
+    max-width: 44px;
     height: 96px;
     overflow: hidden;
     border-radius: 16px;
@@ -277,6 +332,8 @@
     bottom: 0;
     border-radius: inherit;
     background: color-mix(in srgb, var(--h-text-primary) 62%, transparent);
+    transform-origin: bottom;
+    animation: lq-grow-y 900ms var(--h-ease-enter) both;
     transition: height var(--h-motion-reveal) var(--h-ease-enter);
 }
 .home-effort__day-link:hover .home-effort__meter,
@@ -323,13 +380,36 @@
     align-items: center;
     gap: var(--h-space-2);
     margin-top: var(--h-space-4);
-    padding: 10px 14px;
+    padding: 8px 8px 8px 16px;
     border-radius: var(--h-radius-pill);
     background: color-mix(in srgb, var(--h-warning) 12%, transparent);
     font-size: 13px;
     font-weight: 500;
     color: var(--h-text-primary);
 }
+.home-effort__missing-cta {
+    padding: 6px 14px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-action-bg);
+    color: var(--h-action-text);
+    font-weight: 600;
+    font-size: 12.5px;
+    text-decoration: none;
+    box-shadow: var(--h-action-shadow);
+    transition: transform 200ms var(--h-ease-spring);
+}
+.home-effort__missing-cta:hover { transform: translateY(-1px); color: var(--h-action-text); }
+
+/* --- Islerim: durum karisim cubugu (prototip) --------------------------- */
+.home-mix { margin-bottom: var(--h-space-3); }
+.home-mix__bar { display: flex; gap: 3px; height: 8px; overflow: hidden; border-radius: var(--h-radius-pill); }
+.home-mix__seg { display: block; height: 100%; border-radius: 3px; transform-origin: left; animation: lq-grow-x 900ms var(--h-ease-enter) both; }
+.home-mix__seg--overdue { background: var(--hp-red-500); }
+.home-mix__seg--due_today { background: var(--hp-amber-500); }
+.home-mix__seg--this_week { background: var(--hp-blue-500); }
+.home-mix__legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 8px 0 0; padding: 0; list-style: none; color: var(--h-text-secondary); font-size: 12.5px; }
+.home-mix__legend li { display: inline-flex; align-items: center; gap: 6px; }
+.home-mix__dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; animation: none; }
 
 /* --- Islerim: kovalar --------------------------------------------------- */
 .home-bucket { padding: var(--h-space-2) 0; }
@@ -384,7 +464,7 @@
     grid-template-columns: 4px auto minmax(0, 1fr) auto;
     align-items: center;
     gap: var(--h-space-3);
-    padding: 5px var(--h-space-2);
+    padding: 8px var(--h-space-2);
     border-radius: var(--h-radius-control);
     color: var(--h-text-primary);
     text-decoration: none;
@@ -420,15 +500,65 @@
     white-space: nowrap;
     min-width: 0;
 }
-.home-item__due {
-    font-size: var(--h-font-meta);
-    color: var(--h-text-secondary);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
+.home-item__due { font-variant-numeric: tabular-nums; }
+
+/* --- Takvimim: gun cipleri + siradaki toplanti (prototip) ---------------- */
+.home-week__chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.home-week__chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 4px 7px;
+    border: 0;
+    border-radius: 16px;
+    background: var(--h-bg-hover);
+    color: var(--h-text-primary);
+    cursor: pointer;
+    transition: transform 220ms var(--h-ease-spring), background 150ms;
 }
-/* Tek renkli sinyal: termin. */
-.home-item--overdue .home-item__due { color: var(--h-danger); font-weight: 600; }
-.home-item--today .home-item__due { color: var(--h-warning); font-weight: 600; }
+.home-week__chip:hover { transform: translateY(-2px); }
+.home-week__chip.is-today { background: var(--h-text-primary); color: var(--h-bg-canvas); }
+.home-week__chip-name { font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.7; }
+.home-week__chip-num { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.home-week__chip-dots { display: flex; gap: 3px; height: 5px; }
+.home-week__chip-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--hp-blue-500); }
+.home-week__chip:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
+
+.home-next {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 12px;
+    padding: 16px 18px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--hp-blue-600), #0A2A6B 70%, #07122E);
+    color: #FFFFFF;
+    box-shadow: 0 18px 36px -18px color-mix(in srgb, var(--hp-blue-600) 70%, transparent);
+    animation: lq-rise 600ms var(--h-ease-enter) both;
+}
+.home-next::after {
+    content: "";
+    position: absolute;
+    inset: -40% -20% auto auto;
+    width: 60%;
+    height: 180%;
+    background: radial-gradient(closest-side, rgba(255, 255, 255, 0.18), transparent);
+}
+.home-next__eyebrow { display: block; font-size: 12px; opacity: 0.75; }
+.home-next__title { display: block; margin-top: 2px; font-size: 18px; font-weight: 650; letter-spacing: -0.01em; }
+.home-next__row { position: relative; z-index: 1; display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.home-next__when { padding: 4px 10px; border-radius: var(--h-radius-pill); background: rgba(255, 255, 255, 0.14); font: 600 12.5px var(--h-font-mono); }
+.home-next__join {
+    padding: 7px 16px;
+    border-radius: var(--h-radius-pill);
+    background: #FFFFFF;
+    color: #0A2A6B;
+    font-weight: 650;
+    font-size: 13px;
+    text-decoration: none;
+    transition: transform 200ms var(--h-ease-spring);
+}
+.home-next__join:hover { transform: translateY(-1px); color: #0A2A6B; }
 
 /* --- Takvimim: ajanda (D4) ----------------------------------------------- */
 .home-week__days {
@@ -553,14 +683,15 @@
 }
 .home-team__member:first-child { border-top: 0; }
 .home-team__name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     font-size: var(--h-font-body);
     font-weight: 600;
     color: var(--h-text-primary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     min-width: 0;
 }
+.home-team__name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home-team__stat {
     display: flex;
     flex-direction: column;
@@ -649,7 +780,7 @@
     background: var(--h-surface-subtle);
 }
 .home-org__metrics .h-metric-strip__item + .h-metric-strip__item { border-left: 0; }
-.home-org__metrics .h-metric-strip__accent { display: none; }
+.home-org__metrics .h-metric-strip__item .h-metric-strip__accent { display: none; }
 .home-org__metrics .h-metric-strip__label { letter-spacing: 0; text-transform: none; font-weight: 500; }
 .home-org__metrics .h-metric-strip__value { font-size: 30px; letter-spacing: -0.03em; }
 .home-org__columns {

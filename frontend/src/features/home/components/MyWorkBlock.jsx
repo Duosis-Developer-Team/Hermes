@@ -40,7 +40,9 @@ function WorkRow({ item, today }) {
                 />
                 <span className="home-item__key">{item.item_key}</span>
                 <span className="home-item__title">{item.title}</span>
-                <span className="home-item__due">{dayjs(item.due_date).format('DD MMM')}</span>
+                <span className={`home-item__due lq-tag${tone === 'overdue' ? ' lq-tag--bad' : tone === 'today' ? ' lq-tag--warn' : ''}`}>
+                    {tone === 'today' ? t('home.myWork.todayPill') : dayjs(item.due_date).format('DD MMM')}
+                </span>
             </Link>
         </li>
     )
@@ -78,6 +80,33 @@ function Bucket({ kind, bucket, today }) {
     )
 }
 
+/** Prototip: gecikmis / bugun / bu hafta oranini gosteren yigin cubuk. */
+function MixBar({ data }) {
+    const t = useT()
+    if (!data) return null
+    const parts = [
+        { key: 'overdue', n: data.overdue?.count || 0, label: t('home.myWork.overdue') },
+        { key: 'due_today', n: data.due_today?.count || 0, label: t('home.myWork.dueToday') },
+        { key: 'this_week', n: data.this_week?.count || 0, label: t('home.myWork.thisWeek') },
+    ]
+    const total = parts.reduce((a, p) => a + p.n, 0)
+    if (!total) return null
+    return (
+        <div className="home-mix">
+            <div className="home-mix__bar" aria-hidden="true">
+                {parts.filter((p) => p.n > 0).map((p) => (
+                    <i key={p.key} className={`home-mix__seg home-mix__seg--${p.key}`} style={{ flex: p.n }} />
+                ))}
+            </div>
+            <ul className="home-mix__legend">
+                {parts.map((p) => (
+                    <li key={p.key}><i className={`home-mix__dot home-mix__seg--${p.key}`} />{p.label} {p.n}</li>
+                ))}
+            </ul>
+        </div>
+    )
+}
+
 function MyWorkBlock() {
     const t = useT()
     const { data, isLoading, isError } = useQuery({
@@ -94,6 +123,7 @@ function MyWorkBlock() {
                 <Link to={PM_BASE} className="home-block__link">{t('home.myWork.openAll')}</Link>
             </div>
             {isError && <div className="h-inline-error">{t('home.loadFailed')}</div>}
+            <MixBar data={data} />
             {buckets.map(({ key, bucket }) => (
                 <Bucket key={key} kind={key} bucket={bucket} today={data?.today} />
             ))}

@@ -45,6 +45,19 @@ export default {
     // Ana sayfa (PM rework P3 / D3–D6, E6)
     // ---------------------------------------------------------------
     home: {
+        focus: {
+            title: 'Attention',
+            count: '{count} topics',
+            overdue: 'Overdue work',
+            overdueSub: 'oldest {days} days late',
+            dueToday: 'Due today',
+            dueTodaySub: 'finish or move the date',
+            unassigned: 'Unassigned work',
+            unassignedSub: 'waiting in triage',
+            noEffort: 'No effort logged',
+            noEffortSub: 'this week',
+            calm: 'Nothing needs your attention right now.',
+        },
         greeting: 'Hello, {name}',
         workspace: 'Workspace',
         quickLog: 'Log time',
@@ -52,6 +65,8 @@ export default {
         quickMeetings: 'Meetings',
         loadFailed: 'This block could not be loaded.',
         effort: {
+            fillLabel: 'of expected',
+            remaining: 'left · {count} working days',
             title: 'This week',
             ofExpected: 'of {expected}h',
             logged: '{logged}h of {expected}h logged',
@@ -61,6 +76,8 @@ export default {
             missingDays: '{count} days without entries this week',
         },
         week: {
+            next: 'Up next',
+            join: 'Join',
             title: 'My calendar',
             openMeetings: 'Meetings',
             nothing: 'Nothing planned',
@@ -99,6 +116,7 @@ export default {
             shortcuts: 'Shortcuts',
         },
         myWork: {
+            todayPill: 'Today',
             title: 'My work',
             openAll: 'All work items',
             overdue: 'Overdue',

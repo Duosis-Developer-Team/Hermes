@@ -59,6 +59,19 @@ export default {
     // Ana sayfa (PM rework P3 / D3–D6, E6)
     // ---------------------------------------------------------------
     home: {
+        focus: {
+            title: 'Dikkat',
+            count: '{count} konu',
+            overdue: 'Termini geçmiş iş',
+            overdueSub: 'en eskisi {days} gün gecikmiş',
+            dueToday: 'Bugün terminli',
+            dueTodaySub: 'bitir ya da tarihi taşı',
+            unassigned: 'Sahipsiz iş',
+            unassignedSub: 'triaj kuyruğunda bekliyor',
+            noEffort: 'Efor girmeyen',
+            noEffortSub: 'bu hafta',
+            calm: 'Şu an dikkat gerektiren bir şey yok.',
+        },
         greeting: 'Merhaba, {name}',
         workspace: 'Çalışma alanı',
         quickLog: 'Efor gir',
@@ -66,6 +79,8 @@ export default {
         quickMeetings: 'Toplantılar',
         loadFailed: 'Bu blok yüklenemedi.',
         effort: {
+            fillLabel: 'beklenenin dolumu',
+            remaining: 'kalan · {count} iş günü',
             title: 'Bu hafta',
             ofExpected: '/ {expected} saat',
             logged: '{expected} saatin {logged} saati girildi',
@@ -75,6 +90,8 @@ export default {
             missingDays: 'Bu hafta {count} gün boş',
         },
         week: {
+            next: 'Sıradaki',
+            join: 'Katıl',
             title: 'Takvimim',
             openMeetings: 'Toplantılar',
             nothing: 'Plan yok',
@@ -113,6 +130,7 @@ export default {
             shortcuts: 'Kısayollar',
         },
         myWork: {
+            todayPill: 'Bugün',
             title: 'İşlerim',
             openAll: 'Tüm işler',
             overdue: 'Gecikmiş',
