@@ -249,24 +249,24 @@
 :root[data-theme='light'] {
   /* Premium redesign: gri levha yerine beyaza cok yakin temiz tuval. */
   /* ACIK = beyaz seffaf cam; sivi Hermes mavisi/moru/yesili. */
-  /* 28.09 CTO: mavimsi ton kalkti; cam saydam kalsin diye arkada NOTR
-     gumus sivi hareket eder (kartlar %30 cam, arkasi gorunur). */
-  --h-bg-canvas: #DADDE3;
+  /* 29.09 CTO: gumus zemin + HAFIF Hermes mavisi — sivi acikta da net
+     secilsin ama 28.09'daki "garip mavimsi beyaz" olmasin. */
+  --h-bg-canvas: #D9DFE8;
   /* Hermes isareti kutusu: ayni kutunun acik hali, koyu isaret. */
   --h-mark-bg: radial-gradient(120% 120% at 30% 20%, #FFFFFF 0%, #EEF0F4 55%, #D3D8E0 100%);
   --h-mark-ink: #0E131B;
+  --h-mark-edge: inset 0 0 0 1px rgba(17, 23, 32, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95);
   --h-modal-bg: rgba(250, 251, 253, 0.76);
   --h-field-bg: rgba(255, 255, 255, 0.66);
-  --h-mark-edge: inset 0 0 0 1px rgba(17, 23, 32, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  --h-liquid-base: #D5D9E0;
-  --h-liquid-bg: radial-gradient(120% 90% at 50% 0%, #F1F3F6 0%, #DCE0E6 55%, #C9CED7 100%);
-  --h-blob-a: rgba(140, 150, 168, 0.75);
-  --h-blob-b: rgba(176, 184, 198, 0.8);
-  --h-blob-c: rgba(120, 128, 146, 0.4);
+  --h-liquid-base: #D3DAE5;
+  --h-liquid-bg: radial-gradient(120% 90% at 50% 0%, #EEF2F8 0%, #D6DEEA 55%, #C4CEDD 100%);
+  --h-blob-a: rgba(112, 156, 226, 0.55);
+  --h-blob-b: rgba(178, 188, 206, 0.85);
+  --h-blob-c: rgba(146, 172, 214, 0.45);
   --h-blob-d: rgba(255, 255, 255, 0.95);
-  --h-blob-e: rgba(98, 110, 132, 0.4);
-  --h-blob-m: rgba(255, 255, 255, 0.65);
-  --h-shell-tint: rgba(255, 255, 255, 0.16);
+  --h-blob-e: rgba(56, 139, 255, 0.28);
+  --h-blob-m: rgba(255, 255, 255, 0.6);
+  --h-shell-tint: rgba(255, 255, 255, 0.14);
   --h-bezel: rgba(255, 255, 255, 0.07);
   --h-bezel-line: rgba(255, 255, 255, 0.55);
   --h-bezel-hi: rgba(255, 255, 255, 0.5);
@@ -283,7 +283,7 @@
   --h-dock-bg: rgba(255, 255, 255, 0.4);
   --h-dock-edge: rgba(255, 255, 255, 0.8);
   /* Acik tema: temiz, cok dusuk kontrastli ayni desen. */
-  --h-bg-page: radial-gradient(120% 90% at 50% 0%, #F1F3F6 0%, #DCE0E6 55%, #C9CED7 100%);
+  --h-bg-page: radial-gradient(120% 90% at 50% 0%, #EEF2F8 0%, #D6DEEA 55%, #C4CEDD 100%);
   --h-bg-weekend: rgba(9, 30, 66, 0.035);
   --h-bg-surface: rgba(255, 255, 255, 0.3);
   --h-bg-elevated: rgba(250, 252, 255, 0.94);

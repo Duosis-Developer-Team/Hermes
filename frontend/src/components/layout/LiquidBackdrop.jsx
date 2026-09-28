@@ -7,10 +7,11 @@
  * gecikmeli izleyen bir blob + cok hafif gren. Uzerinde tam ekran yari
  * saydam cam kabuk tonu ve kenardan gecen ince cizgi cerceve durur.
  *
- * PERFORMANS: blob'lar kendiliginden yumusak radial-gradient'tir; hareket
- * YALNIZCA transform ile yapilir (compositor). `filter: blur` ve
- * border-radius morph'u bilerek YOK — ikisi de her karede yeniden cizim
- * ister. Azaltilmis harekette animasyon ve imlec takibi durur.
+ * PROTOTIPLE BIREBIR (29.09, CTO): duz renkli, bicim degistiren blob'lar
+ * + katman duzeyinde tek `filter: blur(56px) saturate(1.25)` + gren.
+ * Olcum (2x ekran): kayan kartlarda backdrop-filter kaldirildiktan sonra
+ * bu katmanla 60 fps korunur. Azaltilmis harekette animasyon ve imlec
+ * takibi durur.
  * =============================================================================
  */
 import { useEffect, useRef } from 'react'
@@ -48,6 +49,7 @@ export default function LiquidBackdrop() {
                 <i className="liquid-blob liquid-blob--e" />
                 <i className="liquid-blob liquid-blob--follow" ref={followRef} />
             </div>
+            <div className="liquid-grain" aria-hidden="true" />
             <div className="liquid-shell-tint" aria-hidden="true" />
             <div className="liquid-bezel" aria-hidden="true" />
         </>

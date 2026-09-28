@@ -599,3 +599,19 @@
   border-top: 1px solid var(--h-border-subtle);
   background: color-mix(in srgb, var(--h-modal-bg) 80%, transparent);
 }
+
+/* ==========================================================================
+   PERFORMANS (olculmus, 29.09): kayan icerikte CANLI bulaniklik YOK
+   ==========================================================================
+   Arkadaki sivi blob'lar surekli akar; ustundeki her backdrop-filter katmani
+   HER KAREDE yeniden bulaniklastirilir. Kayan alanda 6-13 buyuk katman
+   2x ekranda kare suresini 33 ms'ye (30 fps) cikariyor ve kaydirmada
+   karolar gec boyaniyordu ("icerik kayboluyor" hissi). Kaldirilinca
+   16.7 ms (60 fps). Sivi zaten yumusak gradyan oldugu icin kartlarin
+   yari saydamligi ayni cam hissini verir. Ada, dock, pencereler ve
+   paneller (portal) kayan alanin DISINDA — onlarda bulaniklik kalir.
+   Icerigin USTUNDE yuzen bir oge gerekirse `.lq-keep-blur` ile istisna. */
+:root .main-content *:not(.lq-keep-blur) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
