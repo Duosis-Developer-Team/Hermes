@@ -243,10 +243,12 @@ describe('duzeltme turu (2026-08-04) kilitleri', () => {
         const ui = read('components/ui/ui.css')
         expect(ui).toContain('.h-modal-row')
         expect(ui).toContain('.h-modal-row--3')
+        // Create Task: prototip pencere izgarasi (iki kolonlu .lq-frm).
         const task = noComments(read('components/modals/CreateTaskModal.jsx'))
-        expect(task).toContain('h-modal-row')
+        expect(task).toContain('className="lq-frm"')
+        // Efor gir: prototip pencere izgarasi (iki kolonlu .lq-frm).
         const log = noComments(read('components/modals/LogTimeModal.jsx'))
-        expect((log.match(/className="form-row"/g) || []).length).toBeGreaterThanOrEqual(3)
+        expect(log).toContain('className="lq-frm"')
     })
 
     it('Timesheet gorunumu gri levha kullanmaz', () => {

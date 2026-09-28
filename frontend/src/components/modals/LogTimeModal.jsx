@@ -1,9 +1,11 @@
 /**
  * =============================================================================
- * HERMES - Log Time Modal Component (Jira Tempo Style)
+ * HERMES - Efor gir penceresi (Hermes Liquid prototipi)
  * =============================================================================
- * Süre Kaydet modal'ı - Tüm alanlar: Activity Type, Platform, Work Line
- * Description required, Log another checkbox
+ * Uc adim: musteri → proje → ayrintilar. Musteri/proje arama kutulu secenek
+ * kartlariyla secilir (tiklayinca ilerler); ayrintilar bolumlu formdadir,
+ * sure hizli cipleri HoursMinutesPicker ile ayni alani yazar. Dogrulama,
+ * gonderim ve "bir kayit daha" davranisi degismedi.
  * =============================================================================
  */
 
@@ -13,8 +15,9 @@ import {
     Button, Checkbox, message
 } from 'antd'
 import {
-    ArrowLeftOutlined,
+    ArrowLeftOutlined, ClockCircleOutlined, SearchOutlined,
 } from '@ant-design/icons'
+import { ChipGroup, FormSection, ModalHead, ModalSteps, OptionGrid } from '../liquid'
 import HoursMinutesPicker from '../common/HoursMinutesPicker'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -102,6 +105,9 @@ function LogTimeModal({
     const [selectedCustomerId, setSelectedCustomerId] = useState(null)
     const [selectedProjectId, setSelectedProjectId] = useState(null)
     const [logAnother, setLogAnother] = useState(false)
+    const [query, setQuery] = useState('')
+    const watchedDate = Form.useWatch('date_worked', form)
+    const watchedDuration = Form.useWatch('duration_hours', form)
 
     // API Queries - sadece modal açıkken çalışsın
     const { data: customers = [] } = useQuery({
@@ -185,8 +191,8 @@ function LogTimeModal({
     }
 
     // Step navigation
-    const nextStep = () => setStep(prev => prev + 1)
-    const prevStep = () => setStep(prev => prev - 1)
+    const nextStep = () => { setQuery(''); setStep(prev => prev + 1) }
+    const prevStep = () => { setQuery(''); setStep(prev => prev - 1) }
 
     // Editing modunda form'u doldur
     useEffect(() => {
@@ -280,6 +286,7 @@ function LogTimeModal({
     // Modal kapandığında reset
     const handleClose = () => {
         setStep(0)
+        setQuery('')
         setSelectedCustomerId(null)
         setSelectedProjectId(null)
         setLogAnother(false)
@@ -290,9 +297,8 @@ function LogTimeModal({
     // Issue seçildiğinde
     // Geri dön
     const handleBack = () => {
-        // If in form (step 2)
+        setQuery('')
         if (step === 2) setStep(1)
-        // If in project select (step 1)
         else if (step === 1) setStep(0)
     }
 
@@ -372,6 +378,27 @@ function LogTimeModal({
     const selectedProject = allProjects.find(p => p.id === selectedProjectId)
     const selectedCustomer = customers.find(c => c.id === selectedCustomerId)
 
+    const q = query.trim().toLocaleLowerCase('tr')
+    const matches = (label) => !q || String(label || '').toLocaleLowerCase('tr').includes(q)
+    const customerOptions = customers
+        .filter((c) => matches(c.name))
+        .map((c) => {
+            const n = allProjects.filter((p) => p.customer_id === c.id).length
+            return { value: c.id, label: c.name, hint: t('logTime.projectCount', { count: n }) }
+        })
+    const projectOptions = filteredProjects
+        .filter((p) => matches(p.name))
+        .map((p) => ({ value: p.id, label: p.name, hint: p.code || selectedCustomer?.name, flat: true }))
+
+    const durationChips = [0.25, 0.5, 1, 2, 4, 8].map((h) => ({
+        value: h,
+        label: h < 1 ? t('logTime.minShort', { n: Math.round(h * 60) }) : t('logTime.hourShort', { n: h }),
+    }))
+    const headDate = watchedDate || (initialDate ? dayjs(initialDate) : dayjs())
+    const byLabel = (a, b) => a.name.localeCompare(b.name, 'tr')
+    const selectFilter = (input, option) =>
+        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+
     return (
         <Modal
             open={open}
@@ -379,13 +406,13 @@ function LogTimeModal({
             footer={null}
             width={720}
             className="log-time-modal"
-            /* Diyalog ADI (§8): rc-dialog aria-labelledby'yi YALNIZCA
-               title verildiginde yazar ve dialog element'ine aria-*
-               gecirmez. Baslik gorsel olarak gizlenir — modalin kendi
-               adim basliklari zaten gorunur durumda, ikinci bir baslik
-               cubugu tasarimi degistirirdi. */
-            title={<span className="h-sr-only">{t('logTime.logTime')}</span>}
-            classNames={{ header: 'h-sr-only' }}
+            title={(
+                <ModalHead
+                    icon={<ClockCircleOutlined />}
+                    title={t('logTime.logTime')}
+                    subtitle={dayjs(headDate).format('dddd, D MMMM YYYY')}
+                />
+            )}
             /* Pending'te yanlislikla kapanma KILITLI (§7 UX sozlesmesi):
                kayit sunucuya giderken Escape/mask/X ile cikip "kaydoldu
                mu?" belirsizligi yaratilamaz. */
@@ -393,277 +420,211 @@ function LogTimeModal({
             maskClosable={!loading}
             keyboard={!loading}
         >
+            <ModalSteps
+                current={step}
+                steps={[
+                    { key: 'c', label: t('logTime.stepCustomer'), value: selectedCustomer?.name },
+                    { key: 'p', label: t('logTime.stepProject'), value: selectedProject?.name },
+                    { key: 'd', label: t('logTime.stepDetails') },
+                ]}
+            />
             <Form form={form} layout="vertical" className="log-time-form">
-                {/* Step 0: Customer Selection */}
+                {/* Adim 0: musteri */}
                 {step === 0 && (
-                    <div className="log-time-step selection-step fade-in">
-                        <div className="selection-wrapper">
-                            <h3 style={{ marginBottom: 24, textAlign: 'center' }}>{t('logTime.selectCustomer')}</h3>
-                            <Form.Item required>
-                                <Select
-                                    placeholder={t('logTime.searchCustomer')}
-                                    value={selectedCustomerId}
-                                    onChange={(val) => {
-                                        setSelectedCustomerId(val)
-                                        setSelectedProjectId(null) // Reset project
-                                        nextStep() // Auto advance to next step
-                                    }}
-                                    options={customers.map(c => ({ value: c.id, label: c.name }))}
-                                    showSearch
-                                    size="large"
-                                    filterOption={(input, option) =>
-                                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                                    }
-                                    style={{ width: '100%' }}
-                                />
-                            </Form.Item>
-
-                            <div className="step-footer" style={{ textAlign: 'center', marginTop: 32 }}>
-                                <span style={{ color: 'var(--c-text-muted)' }}>{t('logTime.stepOf', { n: 1, total: 3 })}</span>
-                            </div>
-                        </div>
+                    <div className="log-time-step fade-in">
+                        <Input
+                            autoFocus
+                            allowClear
+                            size="large"
+                            prefix={<SearchOutlined aria-hidden="true" />}
+                            placeholder={t('logTime.searchCustomer')}
+                            aria-label={t('logTime.searchCustomer')}
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            className="log-time-search"
+                        />
+                        <FormSection>{t('logTime.customers')}</FormSection>
+                        <OptionGrid
+                            ariaLabel={t('logTime.selectCustomer')}
+                            options={customerOptions}
+                            emptyText={t('logTime.noMatch')}
+                            onPick={(id) => {
+                                setSelectedCustomerId(id)
+                                setSelectedProjectId(null)
+                                nextStep()
+                            }}
+                        />
                     </div>
                 )}
 
-                {/* Step 1: Project Selection */}
+                {/* Adim 1: proje */}
                 {step === 1 && (
-                    <div className="log-time-step selection-step fade-in">
-                        <div className="selection-wrapper">
-                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
-                                <Button
-                                    aria-label={t('logTime.backToPrevious')}
-                                    type="text"
-                                    icon={<ArrowLeftOutlined />}
-                                    onClick={prevStep}
-                                />
-                                <h3 style={{ flex: 1, textAlign: 'center', margin: 0, marginRight: 32 }}>{t('logTime.selectProject')}</h3>
-                            </div>
-
-                            <div style={{ marginBottom: 16, textAlign: 'center', color: '#1890ff' }}>
-                                Customer: <strong>{selectedCustomer?.name}</strong>
-                            </div>
-
-                            <Form.Item required>
-                                <Select
-                                    placeholder={t('logTime.searchProject')}
-                                    value={selectedProjectId}
-                                    onChange={(val) => {
-                                        handleProjectSelect(val)
-                                        nextStep() // Auto advance
-                                    }}
-                                    options={filteredProjects.map(p => ({ value: p.id, label: p.name }))}
-                                    showSearch
-                                    size="large"
-                                    filterOption={(input, option) =>
-                                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                                    }
-                                    style={{ width: '100%' }}
-                                />
-                            </Form.Item>
-
-                            <div className="step-footer" style={{ textAlign: 'center', marginTop: 32 }}>
-                                <span style={{ color: 'var(--c-text-muted)' }}>{t('logTime.stepOf', { n: 2, total: 3 })}</span>
-                            </div>
-                        </div>
+                    <div className="log-time-step fade-in">
+                        <button type="button" className="lq-back" onClick={prevStep} aria-label={t('logTime.backToPrevious')}>
+                            <ArrowLeftOutlined aria-hidden="true" />{selectedCustomer?.name}
+                        </button>
+                        {filteredProjects.length > 6 && (
+                            <Input
+                                allowClear
+                                prefix={<SearchOutlined aria-hidden="true" />}
+                                placeholder={t('logTime.searchProject')}
+                                aria-label={t('logTime.searchProject')}
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                className="log-time-search"
+                            />
+                        )}
+                        <OptionGrid
+                            ariaLabel={t('logTime.selectProject')}
+                            options={projectOptions}
+                            emptyText={t('logTime.noMatch')}
+                            onPick={(id) => {
+                                handleProjectSelect(id)
+                                nextStep()
+                            }}
+                        />
                     </div>
                 )}
 
-                {/* Step 2: Form */}
+                {/* Adim 2: ayrintilar */}
                 {step === 2 && (
                     <div className="log-time-step form-step fade-in">
-                        {/* Hidden Fields for Validation/Value persistence */}
                         <Form.Item name="project_id" hidden><Input /></Form.Item>
                         <Form.Item name="customer_id" hidden><Input /></Form.Item>
 
-                        {/* Selected Issue Header */}
-                        <div className="selected-issue-header">
-                            <Button
-                                aria-label={t('logTime.backToPrevious')}
-                                type="text"
-                                icon={<ArrowLeftOutlined />}
-                                onClick={handleBack}
-                                className="back-btn"
-                            />
-                            <span className="selected-issue-name">
-                                {selectedProject?.name}
-                            </span>
-                            <span className="selected-issue-key">
-                                {selectedCustomer?.code || selectedCustomer?.name}
-                            </span>
-                        </div>
+                        <button type="button" className="lq-back" onClick={handleBack} aria-label={t('logTime.backToPrevious')}>
+                            <ArrowLeftOutlined aria-hidden="true" />
+                            {selectedCustomer?.name}{selectedProject ? ` · ${selectedProject.name}` : ''}
+                        </button>
 
-                        {/* Date & Duration Row */}
-                        <div className="form-row" style={{ alignItems: 'flex-start' }}>
+                        <div className="lq-frm">
+                            <FormSection>{t('logTime.groupWhen')}</FormSection>
                             <Form.Item
                                 name="date_worked"
                                 label={t('reports.date')}
                                 rules={[{ required: true, message: t('logTime.required') }]}
-                                style={{ flex: 1 }}
                             >
-                                <DatePicker
-                                    format="DD/MMM/YY"
-                                    style={{ width: '100%' }}
-                                    allowClear={false}
+                                <DatePicker format="D MMM YYYY" style={{ width: '100%' }} allowClear={false} />
+                            </Form.Item>
+                            <Form.Item
+                                name="duration_hours"
+                                label={t('logTime.duration')}
+                                required
+                                rules={[
+                                    {
+                                        validator: (_, val) => {
+                                            if (val === null || val === undefined || val === '') {
+                                                return Promise.reject('Duration is required')
+                                            }
+                                            if (val === 0) {
+                                                return Promise.reject('Duration must be greater than 0')
+                                            }
+                                            const mins = Math.round((val - Math.floor(val)) * 60)
+                                            if (mins % 15 !== 0) {
+                                                return Promise.reject('Minutes must be in increments of 15 (0, 15, 30, 45).')
+                                            }
+                                            return Promise.resolve()
+                                        }
+                                    }
+                                ]}
+                            >
+                                <HoursMinutesPicker />
+                            </Form.Item>
+                            <div className="lq-full log-time-quick">
+                                <ChipGroup
+                                    mono
+                                    ariaLabel={t('logTime.quickDuration')}
+                                    options={durationChips}
+                                    value={watchedDuration}
+                                    onChange={(v) => form.setFieldsValue({ duration_hours: v })}
                                 />
+                            </div>
+
+                            <FormSection>{t('logTime.groupWhat')}</FormSection>
+                            <Form.Item
+                                className="lq-full"
+                                name="description"
+                                label={t('common.description')}
+                                rules={[{ required: true, message: t('logTime.descriptionRequired') }]}
+                            >
+                                <TextArea rows={2} placeholder={t('logTime.whatDidYouWorkOn')} />
                             </Form.Item>
 
-                            <div style={{ flex: 1 }}>
+                            {/* A10: istege bagli is kalemi bagi (yalniz serbest giris). */}
+                            {showWorkItemPicker && (
                                 <Form.Item
-                                    name="duration_hours"
-                                    label={t('logTime.duration')}
-                                    required
-                                    rules={[
-                                        {
-                                            validator: (_, val) => {
-                                                if (val === null || val === undefined || val === '') {
-                                                    return Promise.reject('Duration is required')
-                                                }
-                                                if (val === 0) {
-                                                    return Promise.reject('Duration must be greater than 0')
-                                                }
-                                                const mins = Math.round((val - Math.floor(val)) * 60)
-                                                if (mins % 15 !== 0) {
-                                                    return Promise.reject('Minutes must be in increments of 15 (0, 15, 30, 45).')
-                                                }
-                                                return Promise.resolve()
-                                            }
-                                        }
-                                    ]}
-                                    style={{ marginBottom: 8 }}
+                                    className="lq-full"
+                                    name="task_id"
+                                    label={t('logTime.workItem')}
+                                    extra={t('logTime.workItemHint')}
                                 >
-                                    <HoursMinutesPicker />
+                                    <Select
+                                        allowClear
+                                        showSearch
+                                        placeholder={t('logTime.workItemPlaceholder')}
+                                        options={workItemOptions}
+                                        filterOption={selectFilter}
+                                    />
                                 </Form.Item>
-                            </div>
-                        </div>
+                            )}
 
-                        {/* Description */}
-                        <Form.Item
-                            name="description"
-                            label={t('common.description')}
-                            rules={[{ required: true, message: t('logTime.descriptionRequired') }]}
-                        >
-                            <TextArea
-                                rows={2}
-                                placeholder={t('logTime.whatDidYouWorkOn')}
-                            />
-                        </Form.Item>
-
-                        {/* A10: istege bagli is kalemi bagi (yalniz serbest giris). */}
-                        {showWorkItemPicker && (
                             <Form.Item
-                                name="task_id"
-                                label={t('logTime.workItem')}
-                                extra={t('logTime.workItemHint')}
+                                name="work_type_id"
+                                label={t('logTime.workType')}
+                                rules={[{ required: true, message: t('logTime.pleaseSelect') }]}
                             >
                                 <Select
-                                    allowClear
+                                    placeholder={t('logTime.pleaseSelect')}
                                     showSearch
-                                    placeholder={t('logTime.workItemPlaceholder')}
-                                    options={workItemOptions}
-                                    filterOption={(input, option) =>
-                                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                                    }
+                                    filterOption={selectFilter}
+                                    options={[...workTypes].sort(byLabel).map(w => ({ value: w.id, label: w.name }))}
                                 />
                             </Form.Item>
-                        )}
-
-                        {/* Work Type + Activity Type: tek satir (iki kolon).
-                            Dikey yigin, modali kisa ekranlarda kaydiriyordu. */}
-                        <div className="form-row">
-                        <Form.Item
-                            name="work_type_id"
-                            label={t('logTime.workType')}
-                            rules={[{ required: true, message: t('logTime.pleaseSelect') }]}
-                        >
-                            <Select
-                                placeholder={t('logTime.pleaseSelect')}
-                                showSearch
-                                filterOption={(input, option) =>
-                                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                                }
-                                options={[...workTypes]
-                                    .sort((a, b) => a.name.localeCompare(b.name, 'en'))
-                                    .map(w => ({ value: w.id, label: w.name }))}
-                            />
-                        </Form.Item>
-
-                        <Form.Item
-                            name="activity_type_id"
-                            label={t('logTime.activityType')}
-                            required
-                            rules={[{ required: true, message: t('logTime.activityTypeRequired') }]}
-                        >
-                            <Select
-                                placeholder={t('logTime.pleaseSelect')}
-                                showSearch
-                                filterOption={(input, option) =>
-                                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                                }
-                                options={[...activityTypes]
-                                    .sort((a, b) => a.name.localeCompare(b.name, 'en'))
-                                    .map(a => ({ value: a.id, label: a.name }))}
-                            />
-                        </Form.Item>
-
+                            <Form.Item
+                                name="activity_type_id"
+                                label={t('logTime.activityType')}
+                                required
+                                rules={[{ required: true, message: t('logTime.activityTypeRequired') }]}
+                            >
+                                <Select
+                                    placeholder={t('logTime.pleaseSelect')}
+                                    showSearch
+                                    filterOption={selectFilter}
+                                    options={[...activityTypes].sort(byLabel).map(a => ({ value: a.id, label: a.name }))}
+                                />
+                            </Form.Item>
+                            <Form.Item
+                                name="platform_id"
+                                label={t('logTime.platform')}
+                                required
+                                rules={[{ required: true, message: t('logTime.platformRequired') }]}
+                            >
+                                <Select
+                                    placeholder={t('logTime.pleaseSelect')}
+                                    showSearch
+                                    filterOption={selectFilter}
+                                    options={[...platforms].sort(byLabel).map(p => ({ value: p.id, label: p.name }))}
+                                />
+                            </Form.Item>
+                            <Form.Item name="work_line_id" label={t('logTime.workLine')}>
+                                <Select
+                                    placeholder={t('logTime.pleaseSelect')}
+                                    allowClear
+                                    showSearch
+                                    filterOption={selectFilter}
+                                    options={[...workLines].sort(byLabel).map(w => ({ value: w.id, label: w.name }))}
+                                />
+                            </Form.Item>
                         </div>
 
-                        {/* Platform + Work Line: tek satir (iki kolon). */}
-                        <div className="form-row">
-                        <Form.Item
-                            name="platform_id"
-                            label={t('logTime.platform')}
-                            required
-                            rules={[{ required: true, message: t('logTime.platformRequired') }]}
-                        >
-                            <Select
-                                placeholder={t('logTime.pleaseSelect')}
-                                showSearch
-                                filterOption={(input, option) =>
-                                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                                }
-                                options={[...platforms]
-                                    .sort((a, b) => a.name.localeCompare(b.name, 'en'))
-                                    .map(p => ({ value: p.id, label: p.name }))}
-                            />
-                        </Form.Item>
-
-                        <Form.Item
-                            name="work_line_id"
-                            label={t('logTime.workLine')}
-                        >
-                            <Select
-                                placeholder={t('logTime.pleaseSelect')}
-                                allowClear
-                                showSearch
-                                filterOption={(input, option) =>
-                                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                                }
-                                options={[...workLines]
-                                    .sort((a, b) => a.name.localeCompare(b.name, 'en'))
-                                    .map(w => ({ value: w.id, label: w.name }))}
-                            />
-                        </Form.Item>
-
-                        </div>
-
-                        {/* Show hidden fields link */}
-                        <div className="show-hidden-fields">{t('logTime.showHiddenFields')}</div>
-
-                        {/* Actions */}
-                        <div className="form-actions">
-                            <Checkbox
-                                checked={logAnother}
-                                onChange={(e) => setLogAnother(e.target.checked)}
-                            >{t('logTime.logAnother')}</Checkbox>
-
-                            <div className="action-buttons">
-                                <Button
-                                    type="primary"
-                                    onClick={handleSubmit}
-                                    loading={loading}
-                                >{t('logTime.logTime')}</Button>
-                                <Button onClick={handleClose}>{t('common.cancel')}</Button>
-                            </div>
+                        <div className="lq-mf">
+                            <span className="lq-mf__left">
+                                <Checkbox checked={logAnother} onChange={(e) => setLogAnother(e.target.checked)}>
+                                    {t('logTime.logAnother')}
+                                </Checkbox>
+                            </span>
+                            <Button onClick={handleClose}>{t('common.cancel')}</Button>
+                            <Button type="primary" onClick={handleSubmit} loading={loading}>{t('logTime.logTime')}</Button>
                         </div>
                     </div>
                 )}

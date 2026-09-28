@@ -179,3 +179,111 @@ export function BarList({ items = [], tone = 'blue', format = (v) => v, emptyTex
         </ul>
     )
 }
+
+/* =============================================================================
+ * Pencere (modal) primitifleri — prototip "Pencereler v2"
+ * =============================================================================
+ * antd Modal'in davranisi (odak tuzagi, Escape, aria) aynen kalir; bunlar
+ * yalniz icerigi prototip anatomisiyle kurar. Stil: liquid.css §Pencere.
+ */
+
+/**
+ * Pencere basligi: renkli ikon kutusu + baslik + alt satir. antd Modal'a
+ * `title` olarak verilir (aria-labelledby bu basliga baglanir).
+ * `tone`: 'blue' | 'violet' | 'red' | 'green' | 'amber' | 'ink'.
+ */
+export function ModalHead({ icon, title, subtitle, tone = 'blue' }) {
+    return (
+        <div className="lq-mh">
+            {icon && <span className={`lq-mico lq-mico--${tone}`} aria-hidden="true">{icon}</span>}
+            <div className="lq-mh__text">
+                <span className="lq-mh__title">{title}</span>
+                {/* Alt satir ek bilgidir: diyalog ADI yalniz baslik kalsin
+                    (aria-labelledby tum basligi okur). */}
+                {subtitle && <span className="lq-mh__sub" aria-hidden="true">{subtitle}</span>}
+            </div>
+        </div>
+    )
+}
+
+/** Adim cubugu: tamamlanan adimlar dolu, gecerli adim vurgulu. */
+export function ModalSteps({ steps, current }) {
+    return (
+        <ol className="lq-steps">
+            {steps.map((s, i) => (
+                <li
+                    key={s.key ?? i}
+                    className={`${i <= current ? 'is-on' : ''} ${i === current ? 'is-cur' : ''}`}
+                    aria-current={i === current ? 'step' : undefined}
+                >
+                    <span>{i + 1}. {s.label}</span>
+                    {s.value && i < current && <b>{s.value}</b>}
+                </li>
+            ))}
+        </ol>
+    )
+}
+
+/**
+ * Secenek kartlari (musteri/proje/etki secimi). Her secenek gercek bir
+ * <button>; `tone` verilmezse bas harf kutusu addan renklenir.
+ */
+export function OptionGrid({ options, onPick, emptyText, ariaLabel }) {
+    if (!options.length) {
+        return emptyText ? <p className="lq-opt__empty" role="status">{emptyText}</p> : null
+    }
+    return (
+        <div className="lq-opt" role="group" aria-label={ariaLabel}>
+            {options.map((o, i) => (
+                <button
+                    key={o.value}
+                    type="button"
+                    className="lq-opt__item"
+                    style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}
+                    onClick={() => onPick(o.value, o)}
+                >
+                    <span className="lq-opt__icon" style={o.flat ? undefined : { background: avatarTone(o.value) }} aria-hidden="true">
+                        {o.icon ?? initialsOf(o.label).slice(0, 1)}
+                    </span>
+                    <span className="lq-opt__text">
+                        <b>{o.label}</b>
+                        {o.hint && <small>{o.hint}</small>}
+                    </span>
+                </button>
+            ))}
+        </div>
+    )
+}
+
+/**
+ * Cip secici (sure hizli secimi, oncelik, tur). antd Form.Item icinde
+ * kontrol olarak calisir (`value` / `onChange`). `multiple` ile coklu.
+ */
+export function ChipGroup({ options, value, onChange, multiple = false, ariaLabel, mono = false, id }) {
+    const isOn = (v) => (multiple ? (value || []).includes(v) : value === v)
+    const toggle = (v) => {
+        if (!multiple) return onChange?.(v)
+        const cur = value || []
+        onChange?.(cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v])
+    }
+    return (
+        <span className={`lq-dur${mono ? ' lq-dur--mono' : ''}`} role="group" aria-label={ariaLabel} id={id}>
+            {options.map((o) => (
+                <button
+                    key={String(o.value)}
+                    type="button"
+                    className={isOn(o.value) ? 'is-on' : undefined}
+                    aria-pressed={isOn(o.value)}
+                    onClick={() => toggle(o.value)}
+                >
+                    {o.label}
+                </button>
+            ))}
+        </span>
+    )
+}
+
+/** Form bolum etiketi: ince cizgiyle biten kucuk buyuk harfli baslik. */
+export function FormSection({ children }) {
+    return <div className="lq-grp">{children}</div>
+}

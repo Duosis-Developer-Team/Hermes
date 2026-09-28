@@ -154,9 +154,9 @@ describe('prefill sozlesmesi', () => {
         renderTasksPage()
         await openLogTimeFromCompletedCard(user)
         const dialog = screen.getByRole('dialog', { name: 'Log time' })
-        // Adim 2 basligi secili proje + musteri kodunu gosterir.
+        // Adim cubugu secili musteri ve projeyi gosterir (Liquid pencere).
         expect(within(dialog).getByText('ATM Yenileme')).toBeInTheDocument()
-        expect(within(dialog).getByText('VAK')).toBeInTheDocument()
+        expect(within(dialog).getByText('Vakko')).toBeInTheDocument()
     })
 
     it('SUB-PROJECT aktarilmaz (mevcut urun kurali)', async () => {

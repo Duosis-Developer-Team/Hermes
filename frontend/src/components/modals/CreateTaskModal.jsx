@@ -27,7 +27,10 @@ import {
     message,
     Switch,
 } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+import {
+    BugOutlined, BulbOutlined, CheckSquareOutlined, PlusOutlined,
+} from '@ant-design/icons'
+import { ChipGroup, FormSection, ModalHead } from '../liquid'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 
@@ -61,8 +64,12 @@ function CreateTaskModal({
     const priorityOptions = PRIORITY_VALUES.map((value) => ({
         value, label: t(`task.${value}`),
     }))
-    const TYPE_LABEL = { task: 'Task', issue: 'Issue', suggestion: 'Suggestion' }
-    const typeLabel = TYPE_LABEL[taskType] || 'Task'
+    const kind = ['task', 'issue', 'suggestion'].includes(taskType) ? taskType : 'task'
+    const TYPE_HEAD = {
+        task: { icon: <CheckSquareOutlined />, tone: 'blue' },
+        issue: { icon: <BugOutlined />, tone: 'red' },
+        suggestion: { icon: <BulbOutlined />, tone: 'amber' },
+    }
     // Form value for assignee is a prefixed string:
     //   "user:<uuid>"  → single-user task
     //   "group:<uuid>" → fan-out per active group member (only on create)
@@ -346,16 +353,30 @@ function CreateTaskModal({
         ) && !assigneeOptions.some((opt) => !Array.isArray(opt.options))
     }, [assigneeOptions])
 
+    const customerName = customers.find((c) => c.id === customerId)?.name
+    const projectName = filteredProjects.find((p) => p.id === projectId)?.name
+    const headSub = customerName && projectName
+        ? t('taskModal.addsTo', { where: `${customerName} · ${projectName}` })
+        : t('taskModal.pickWhere')
+
     return (
         <Modal
-            title={isEditing ? `Edit ${typeLabel}` : `Create ${typeLabel}`}
+            title={(
+                <ModalHead
+                    icon={TYPE_HEAD[kind].icon}
+                    tone={TYPE_HEAD[kind].tone}
+                    title={t(`taskModal.${isEditing ? 'edit' : 'create'}.${kind}`)}
+                    subtitle={headSub}
+                />
+            )}
             open={open}
             onCancel={onClose}
-            okText={isEditing ? 'Save Changes' : `Create ${typeLabel}`}
+            okText={isEditing ? t('taskModal.saveChanges') : t(`taskModal.create.${kind}`)}
             cancelText={t('common.cancel')}
             confirmLoading={loading}
             onOk={() => form.submit()}
-            width={880}
+            width={820}
+            className="create-task-modal"
             /* Pending'te kapanma kilidi (§7): kayit sunucuya giderken
                mask/Escape/X ile cikip yarim durum birakilamaz. */
             closable={!loading}
@@ -371,18 +392,38 @@ function CreateTaskModal({
                 requiredMark
                 onFinish={handleFinish}
                 initialValues={{ priority: 'medium' }}
+                className="lq-frm"
             >
                 {!isEditing && noAssignableUsers && (
                     <Alert
+                        className="lq-full"
                         type="warning"
-                        message={`No assignable targets for ${typeLabel.toLowerCase()}s. Add them to your assignment hierarchy in PM Configurations (or ask an administrator).`}
+                        message={t(`taskModal.noTargets.${kind}`)}
                         showIcon
                         style={{ marginBottom: 16 }}
                     />
                 )}
 
-                {/* Customer | Project: eslenmis satir (bkz. .h-modal-row) */}
-                <div className="h-modal-row">
+                <Form.Item
+                    className="lq-full"
+                    label={t(`taskModal.titleLabel.${kind}`)}
+                    name="title"
+                    rules={[
+                        {
+                            required: true,
+                            // Yalnizca bosluk = BOS. required tek basina
+                            // "   " degerini gecerli sayiyor, payload'a
+                            // trim'lenmis bos baslik gidiyordu.
+                            whitespace: true,
+                            message: t(`taskModal.titleRequired.${kind}`),
+                        },
+                        { max: 255, message: t('task.maxChars') },
+                    ]}
+                >
+                    <Input maxLength={255} placeholder={t('taskModal.titlePlaceholder')} />
+                </Form.Item>
+
+                <FormSection>{t('taskModal.groupWhere')}</FormSection>
                 <Form.Item
                     label={t('entity.customer')}
                     name="customer_id"
@@ -404,9 +445,7 @@ function CreateTaskModal({
                 >
                     <Select
                         showSearch
-                        placeholder={
-                            customerId ? 'Select project' : 'Select a customer first'
-                        }
+                        placeholder={customerId ? t('taskModal.selectProject') : t('taskModal.customerFirst')}
                         disabled={!customerId}
                         onChange={handleProjectChange}
                         optionFilterProp="label"
@@ -417,23 +456,15 @@ function CreateTaskModal({
                     />
                 </Form.Item>
 
-                </div>
-
-                {/* Sub Project | Assignees */}
-                <div className="h-modal-row">
                 <Form.Item
                     label={t('task.subProject')}
                     name="sub_project_id"
-                    extra={`Optional — leave empty to create the ${typeLabel.toLowerCase()} directly under the project.`}
+                    extra={t('taskModal.subProjectHint')}
                 >
                     <Select
                         allowClear
                         showSearch
-                        placeholder={
-                            projectId
-                                ? 'Select sub project (optional)'
-                                : 'Select a project first'
-                        }
+                        placeholder={projectId ? t('taskModal.selectSubProject') : t('taskModal.projectFirst')}
                         disabled={!projectId}
                         loading={subProjectsLoading}
                         optionFilterProp="label"
@@ -481,7 +512,7 @@ function CreateTaskModal({
                 </Form.Item>
 
                 <Form.Item
-                    label={isEditing ? 'Assignee' : 'Assignees'}
+                    label={isEditing ? t('taskModal.assignee') : t('taskModal.assignees')}
                     name="assignee"
                     rules={[
                         {
@@ -497,10 +528,10 @@ function CreateTaskModal({
                         maxTagCount="responsive"
                         placeholder={
                             noAssignableUsers
-                                ? 'No assignable users'
+                                ? t('taskModal.noAssignable')
                                 : isEditing
-                                ? 'Select user'
-                                : 'Select users or groups'
+                                ? t('taskModal.selectUser')
+                                : t('taskModal.selectUsersGroups')
                         }
                         disabled={noAssignableUsers}
                         optionFilterProp="label"
@@ -508,30 +539,8 @@ function CreateTaskModal({
                     />
                 </Form.Item>
 
-                </div>
-
                 <Form.Item
-                    label={`${typeLabel} Title`}
-                    name="title"
-                    rules={[
-                        {
-                            required: true,
-                            // Yalnizca bosluk = BOS. required tek basina
-                            // "   " degerini gecerli sayiyor, payload'a
-                            // trim'lenmis bos baslik gidiyordu.
-                            whitespace: true,
-                            message: `${typeLabel} title is required.`,
-                        },
-                        { max: 255, message: t('task.maxChars') },
-                    ]}
-                >
-                    <Input
-                        maxLength={255}
-                        placeholder={`Short, action-oriented ${typeLabel.toLowerCase()} title`}
-                    />
-                </Form.Item>
-
-                <Form.Item
+                    className="lq-full"
                     label={t('common.description')}
                     name="description"
                     rules={[
@@ -546,39 +555,31 @@ function CreateTaskModal({
                         },
                     ]}
                 >
-                    <Input.TextArea
-                        rows={3}
-                        placeholder={`${typeLabel} instructions and context for the assignee`}
-                    />
+                    <Input.TextArea rows={3} placeholder={t('taskModal.descriptionPlaceholder')} />
                 </Form.Item>
 
-                {/* wrap: on narrow phones the two date pickers stack
-                    instead of overflowing; no effect on desktop where
-                    both fit side by side. */}
-                <div className="h-modal-row h-modal-row--3">
-                    <Form.Item
-                        label={t('task.scheduledDate')}
-                        name="scheduled_date"
-                        rules={[
-                            { required: true, message: t('task.scheduledDateRequired') },
-                        ]}
-                        style={{ flex: 1 }}
-                    >
-                        <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-                    </Form.Item>
+                <FormSection>{t('taskModal.groupWhen')}</FormSection>
+                <Form.Item
+                    label={t('task.scheduledDate')}
+                    name="scheduled_date"
+                    rules={[
+                        { required: true, message: t('task.scheduledDateRequired') },
+                    ]}
+                >
+                    <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+                </Form.Item>
 
-                    <Form.Item label={t('task.dueDate')} name="due_date" style={{ flex: 1 }}>
-                        <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-                    </Form.Item>
+                <Form.Item label={t('task.dueDate')} name="due_date">
+                    <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+                </Form.Item>
 
-                    <Form.Item
-                        label={t('task.priority')}
-                        name="priority"
-                        rules={[{ required: true }]}
-                    >
-                        <Select options={priorityOptions} />
-                    </Form.Item>
-                </div>
+                <Form.Item
+                    label={t('task.priority')}
+                    name="priority"
+                    rules={[{ required: true }]}
+                >
+                    <ChipGroup ariaLabel={t('task.priority')} options={priorityOptions} />
+                </Form.Item>
 
                 {/* A8: faturalanabilirlik yalniz duzenlemede (olusturmada proje
                     varsayilani miras alinir; sunucu override'i izler). */}

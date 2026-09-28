@@ -24,12 +24,10 @@ const pick = async (user, labelText, optionTitle) => {
     await user.click(await screen.findByTitle(optionTitle))
 }
 
-/** Adim 0 → 1 → 2: musteri ve proje secimi (AntD Select). */
+/** Adim 0 → 1 → 2: musteri ve proje secimi (secenek kartlari). */
 const reachForm = async (user) => {
-    await user.click(screen.getByRole('combobox'))
-    await user.click(await screen.findByTitle('Vakko'))
-    await user.click(screen.getByRole('combobox'))
-    await user.click(await screen.findByTitle('ATM Yenileme'))
+    await user.click(await screen.findByRole('button', { name: /^Vakko/ }))
+    await user.click(await screen.findByRole('button', { name: /^ATM Yenileme/ }))
     await waitFor(() => expect(within(dialog()).getByLabelText('Hours')).toBeInTheDocument())
 }
 

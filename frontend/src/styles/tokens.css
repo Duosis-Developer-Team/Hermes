@@ -139,6 +139,9 @@
   /* Hermes isareti kutusu: koyu cam kutuda beyaz isaret. */
   --h-mark-bg: radial-gradient(120% 120% at 30% 20%, #3A404C 0%, #161A21 55%, #07080A 100%);
   --h-mark-ink: #FFFFFF;
+  /* Pencere cami (prototip glass-strong) ve pencere ici alan dolgusu. */
+  --h-modal-bg: rgba(30, 33, 40, 0.8);
+  --h-field-bg: rgba(255, 255, 255, 0.05);
   --h-mark-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.25);
   --h-liquid-base: #07080A;
   --h-liquid-bg: radial-gradient(120% 90% at 50% 0%, #2A2E36 0%, #15171C 55%, #0A0B0D 100%);
@@ -252,6 +255,8 @@
   /* Hermes isareti kutusu: ayni kutunun acik hali, koyu isaret. */
   --h-mark-bg: radial-gradient(120% 120% at 30% 20%, #FFFFFF 0%, #EEF0F4 55%, #D3D8E0 100%);
   --h-mark-ink: #0E131B;
+  --h-modal-bg: rgba(250, 251, 253, 0.76);
+  --h-field-bg: rgba(255, 255, 255, 0.66);
   --h-mark-edge: inset 0 0 0 1px rgba(17, 23, 32, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95);
   --h-liquid-base: #D5D9E0;
   --h-liquid-bg: radial-gradient(120% 90% at 50% 0%, #F1F3F6 0%, #DCE0E6 55%, #C9CED7 100%);
