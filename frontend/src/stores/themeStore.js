@@ -39,8 +39,6 @@ function applyTheme(theme) {
      */
     root.classList.add('theme-switching')
     root.setAttribute('data-theme', theme)
-    // Masaustu: pencerenin buzlu cami temayi izler. Tarayicida yok — etkisiz.
-    if (typeof window !== 'undefined') window.hermesDesktop?.setAppearance?.(theme)
     if (typeof requestAnimationFrame === 'function') {
         requestAnimationFrame(() => {
             requestAnimationFrame(() => root.classList.remove('theme-switching'))

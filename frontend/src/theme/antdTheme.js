@@ -19,7 +19,7 @@ import { theme as antdTheme } from 'antd'
 // etkin duz rengi (antd algoritmasi turetmeyi bundan yapar).
 export const SEMANTIC = {
     dark: {
-        canvas: '#101114', surface: 'rgba(34, 38, 46, 0.42)',
+        canvas: '#101114', surface: 'rgba(34, 38, 46, 0.34)',
         elevated: 'rgba(26, 28, 33, 0.95)', hover: 'rgba(255, 255, 255, 0.06)',
         textPrimary: '#F4F7FB', textSecondary: '#A8B3C2',
         borderSubtle: 'rgba(255, 255, 255, 0.07)',
@@ -29,7 +29,7 @@ export const SEMANTIC = {
         info: '#85B8FF',
     },
     light: {
-        canvas: '#F3F4F6', surface: 'rgba(255, 255, 255, 0.5)',
+        canvas: '#DADDE3', surface: 'rgba(255, 255, 255, 0.3)',
         elevated: 'rgba(250, 252, 255, 0.94)', hover: 'rgba(17, 23, 32, 0.05)',
         textPrimary: '#17202D', textSecondary: '#526174',
         borderSubtle: 'rgba(17, 23, 32, 0.08)',

@@ -120,23 +120,39 @@
 .island-brand:hover { background: var(--h-nav-hover); }
 .island-brand__word { font-weight: 650; font-size: 15px; letter-spacing: -0.02em; }
 
-/* Hermes isareti: ozgun logo, temaya gore — acik temada siyah cizgi,
-   koyu temada beyaz cizgi (arka plan kutusu yok, zemin ustunde durur). */
+/* Hermes isareti: kutu icinde maske — koyu temada koyu kutu/beyaz isaret,
+   acik temada acik kutu/koyu isaret (renkler --h-mark-* token'larindan). */
 .brand-mark {
+    position: relative;
     display: grid;
     place-items: center;
     width: 36px;
     height: 36px;
     flex: none;
+    overflow: hidden;
+    border-radius: 50%;
+    background: var(--h-mark-bg);
+    box-shadow: var(--h-mark-edge);
 }
 .brand-mark i {
     display: block;
-    width: 30px;
-    height: 30px;
-    background: url('../../assets/logos/logo-mark-light.png') center / contain no-repeat;
+    width: 22px;
+    height: 22px;
+    background: var(--h-mark-ink);
+    -webkit-mask: url('../../assets/logos/logo-mark-mask.png') center / contain no-repeat;
+    mask: url('../../assets/logos/logo-mark-mask.png') center / contain no-repeat;
 }
-:root[data-theme='dark'] .brand-mark i {
-    background-image: url('../../assets/logos/logo-mark-dark.png');
+.brand-mark::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.28) 50%, transparent 65%);
+    transform: translateX(-120%);
+    animation: h-brand-sheen 6s var(--h-ease-standard) infinite;
+}
+@keyframes h-brand-sheen {
+    0%, 70% { transform: translateX(-120%); }
+    100% { transform: translateX(120%); }
 }
 
 .island-tabs { position: relative; display: flex; gap: 2px; min-width: 0; }
@@ -765,6 +781,7 @@
 @media (prefers-reduced-motion: reduce) {
     .liquid-blob,
     .liquid-blob--follow { transition: none; }
+    .brand-mark::after { animation: none; }
     .island-live__dot,
     .dock-item.is-bouncing { animation: none; }
     .dock-item { transition: none; transform: none; }

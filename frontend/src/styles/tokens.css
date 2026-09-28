@@ -136,6 +136,10 @@
    * KOYU = uzay grisi / uzay siyahi, canli mavi YOK.
    */
   --h-bg-canvas: #101114;
+  /* Hermes isareti kutusu: koyu cam kutuda beyaz isaret. */
+  --h-mark-bg: radial-gradient(120% 120% at 30% 20%, #3A404C 0%, #161A21 55%, #07080A 100%);
+  --h-mark-ink: #FFFFFF;
+  --h-mark-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.25);
   --h-liquid-base: #07080A;
   --h-liquid-bg: radial-gradient(120% 90% at 50% 0%, #2A2E36 0%, #15171C 55%, #0A0B0D 100%);
   --h-blob-a: rgba(110, 118, 134, 0.85);
@@ -166,7 +170,7 @@
   --h-bg-page: radial-gradient(120% 90% at 50% 0%, #2A2E36 0%, #15171C 55%, #0A0B0D 100%);
   /* Hafta sonu kolonu: asiri koyu blok yerine cok hafif cokme tonu. */
   --h-bg-weekend: rgba(0, 0, 0, 0.16);
-  --h-bg-surface: rgba(34, 38, 46, 0.42);
+  --h-bg-surface: rgba(34, 38, 46, 0.34);
   --h-bg-elevated: rgba(26, 28, 33, 0.95);
   --h-bg-hover: rgba(255, 255, 255, 0.06);
   --h-bg-selected: rgba(87, 157, 255, 0.16); /* brand dusuk alpha */
@@ -242,17 +246,22 @@
 :root[data-theme='light'] {
   /* Premium redesign: gri levha yerine beyaza cok yakin temiz tuval. */
   /* ACIK = beyaz seffaf cam; sivi Hermes mavisi/moru/yesili. */
-  /* 28.09 CTO: mavimsi ton kalkti — notr, berrak (seffaf his) zemin. */
-  --h-bg-canvas: #F3F4F6;
-  --h-liquid-base: #EEF0F3;
-  --h-liquid-bg: radial-gradient(120% 90% at 50% 0%, #FCFCFD 0%, #F2F3F5 55%, #E9EBEE 100%);
-  --h-blob-a: rgba(56, 139, 255, 0.10);
-  --h-blob-b: rgba(143, 126, 231, 0.08);
-  --h-blob-c: rgba(75, 206, 151, 0.06);
-  --h-blob-d: rgba(255, 255, 255, 0.9);
-  --h-blob-e: rgba(12, 102, 228, 0.05);
-  --h-blob-m: rgba(133, 184, 255, 0.14);
-  --h-shell-tint: rgba(255, 255, 255, 0.2);
+  /* 28.09 CTO: mavimsi ton kalkti; cam saydam kalsin diye arkada NOTR
+     gumus sivi hareket eder (kartlar %30 cam, arkasi gorunur). */
+  --h-bg-canvas: #DADDE3;
+  /* Hermes isareti kutusu: ayni kutunun acik hali, koyu isaret. */
+  --h-mark-bg: radial-gradient(120% 120% at 30% 20%, #FFFFFF 0%, #EEF0F4 55%, #D3D8E0 100%);
+  --h-mark-ink: #0E131B;
+  --h-mark-edge: inset 0 0 0 1px rgba(17, 23, 32, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  --h-liquid-base: #D5D9E0;
+  --h-liquid-bg: radial-gradient(120% 90% at 50% 0%, #F1F3F6 0%, #DCE0E6 55%, #C9CED7 100%);
+  --h-blob-a: rgba(140, 150, 168, 0.75);
+  --h-blob-b: rgba(176, 184, 198, 0.8);
+  --h-blob-c: rgba(120, 128, 146, 0.4);
+  --h-blob-d: rgba(255, 255, 255, 0.95);
+  --h-blob-e: rgba(98, 110, 132, 0.4);
+  --h-blob-m: rgba(255, 255, 255, 0.65);
+  --h-shell-tint: rgba(255, 255, 255, 0.16);
   --h-bezel: rgba(255, 255, 255, 0.07);
   --h-bezel-line: rgba(255, 255, 255, 0.55);
   --h-bezel-hi: rgba(255, 255, 255, 0.5);
@@ -269,9 +278,9 @@
   --h-dock-bg: rgba(255, 255, 255, 0.4);
   --h-dock-edge: rgba(255, 255, 255, 0.8);
   /* Acik tema: temiz, cok dusuk kontrastli ayni desen. */
-  --h-bg-page: radial-gradient(120% 90% at 50% 0%, #FCFCFD 0%, #F2F3F5 55%, #E9EBEE 100%);
+  --h-bg-page: radial-gradient(120% 90% at 50% 0%, #F1F3F6 0%, #DCE0E6 55%, #C9CED7 100%);
   --h-bg-weekend: rgba(9, 30, 66, 0.035);
-  --h-bg-surface: rgba(255, 255, 255, 0.5);
+  --h-bg-surface: rgba(255, 255, 255, 0.3);
   --h-bg-elevated: rgba(250, 252, 255, 0.94);
   --h-bg-hover: rgba(17, 23, 32, 0.05);
   --h-bg-selected: rgba(12, 102, 228, 0.10);

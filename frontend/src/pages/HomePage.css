@@ -35,17 +35,15 @@
     flex: none;
     overflow: hidden;
     border-radius: 24px;
-    background: var(--h-bg-surface);
-    border: 1px solid var(--h-glass-edge);
-    box-shadow: var(--h-glass-shadow);
-    backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
-    -webkit-backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
+    background: var(--h-mark-bg);
+    box-shadow: var(--h-mark-edge), 0 20px 40px -18px rgba(0, 0, 0, 0.45);
 }
-:root[data-theme='dark'] .home-hero__mark i { background-image: url('../assets/logos/logo-mark-dark.png'); }
 .home-hero__mark i {
     width: 46px;
     height: 46px;
-    background: url('../assets/logos/logo-mark-light.png') center / contain no-repeat;
+    background: var(--h-mark-ink);
+    -webkit-mask: url('../assets/logos/logo-mark-mask.png') center / contain no-repeat;
+    mask: url('../assets/logos/logo-mark-mask.png') center / contain no-repeat;
 }
 .home-hero__mark::after {
     content: "";
