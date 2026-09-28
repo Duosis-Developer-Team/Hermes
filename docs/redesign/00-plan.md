@@ -125,3 +125,14 @@ Prototip: https://claude.ai/artifact/HXXunk5DuR4VXEAVonnQfp · kopya
   Açık/Koyu tema karoları, dil, kısayollar, çıkış.
 - **Ayarlar sol menüsü**: v1'deki sade ikon + etiket satırlarına dönüldü;
   ikon 16px, soluk renk, hover/aktifte metinle aynı renk (ikon kutusu yok).
+
+### Revizyon 5 (28.09.2026) — şeffaf kabuk
+
+- Uygulama, sıvı zeminin üstünde yüzen tek büyük yarı saydam **kabuk**
+  (40px köşe, 12px çerçeve halkası) içinde; zemin kenarlardan ve kabuğun
+  içinden görünür. Açık = beyaz şeffaf cam (`--shell` %34 beyaz), koyu =
+  uzay siyahı şeffaf cam (`--shell` %36 siyah).
+- Sıvı daha canlı ve daha az bulanık (blur 56px) ki şeffaflık okunsun;
+  koyuda gri/çelik tonlar, canlı mavi yok.
+- Kartlar kabuk içinde hafif renkli cam (blur 14px); üst menü koyu ada
+  yerine yarı saydam hap, aktif sekme beyaz dolgu (`--nav-*` tokenları).
