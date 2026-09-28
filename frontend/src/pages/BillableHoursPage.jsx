@@ -11,21 +11,17 @@ import {
     Table,
     Button,
     Select,
-    Avatar,
     message,
-    Typography,
-    Space,
-    Card,
     Tooltip,
-    Tag,
     Spin
 } from 'antd'
 import HoursMinutesPicker from '../components/common/HoursMinutesPicker'
 import {
+    CloseOutlined,
     LeftOutlined,
     RightOutlined,
     SaveOutlined,
-    CalendarOutlined
+    TeamOutlined,
 } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
@@ -39,10 +35,10 @@ import isoWeek from 'dayjs/plugin/isoWeek'
 import { workLogService, authService, customerService, projectService } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useT } from '../i18n'
+import { Avatar as LqAvatar, CountUp, GlassCard, PageHero } from '../components/liquid'
+import './BillableHoursPage.css'
 
 dayjs.extend(isoWeek)
-
-const { Text } = Typography
 
 // Decimal hours → "2h 30m" display string (handles legacy data)
 function formatDecimalToHM(decimal) {
@@ -86,7 +82,7 @@ function BillableHoursPage() {
     // ==========================================================================
     const weekEnd = weekStart.endOf('isoWeek')
     // Format: Jan 19 - Jan 25, 2026
-    const weekLabel = `${weekStart.format('MMM DD')} - ${weekEnd.format('MMM DD, YYYY')}`
+    const weekLabel = `${weekStart.format('D MMM')} – ${weekEnd.format('D MMM YYYY')}`
 
     const goToPreviousWeek = () => setWeekStart(prev => prev.subtract(1, 'week'))
     const goToNextWeek = () => setWeekStart(prev => prev.add(1, 'week'))
@@ -208,6 +204,10 @@ function BillableHoursPage() {
         return enriched.sort((a, b) => dayjs(b.date_worked).diff(dayjs(a.date_worked)))
     }, [workLogsResponse, customersMap, projectsMap])
 
+    const workedHours = useMemo(() => workLogs.reduce(
+        (sum, log) => sum + (parseFloat(log.duration_hours) || 0), 0,
+    ), [workLogs])
+
     const totalHours = useMemo(() => {
         return workLogs.reduce((sum, log) => {
             // Use billable hours if available, otherwise worked hours
@@ -267,121 +267,85 @@ function BillableHoursPage() {
     // ==========================================================================
     const columns = [
         {
-            title: 'DATE',
+            title: t('billableHours.colDate'),
             dataIndex: 'date_worked',
             key: 'date_worked',
-            // Gun adi ("Wednesday"/"Çarşamba") tek satirda kalmali; 140px'te
-            // harf harf kiriliyordu.
-            width: 196,
+            width: 110,
             render: (text) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{
-                        background: 'var(--c-chip)',
-                        padding: '6px 10px',
-                        borderRadius: 8,
-                        textAlign: 'center',
-                        minWidth: 50
-                    }}>
-                        <div style={{ fontSize: 16, fontWeight: 'bold', color: 'var(--c-text-strong)', lineHeight: 1 }}>
-                            {dayjs(text).format('DD')}
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--c-text-muted)', textTransform: 'uppercase' }}>
-                            {dayjs(text).format('MMM')}
-                        </div>
-                    </div>
-                    <div>
-                        <Text style={{ color: 'var(--c-text)', display: 'block', whiteSpace: 'nowrap' }}>{dayjs(text).format('dddd')}</Text>
-                        <Text style={{ color: 'var(--c-text-faint)', fontSize: 12 }}>{dayjs(text).format('YYYY')}</Text>
-                    </div>
-                </div>
-            )
+                <span className="bh-date">{dayjs(text).format('ddd D')}</span>
+            ),
         },
         {
-            title: 'CUSTOMER',
+            title: t('billableHours.colCustomer'),
             key: 'customer',
-            width: 200,
-            render: (_, record) => (
-                <Text strong style={{ color: 'var(--c-text-strong)', fontSize: '1rem' }}>
-                    {record.customerName}
-                </Text>
-            )
+            width: 170,
+            render: (_, record) => <span className="bh-customer">{record.customerName}</span>,
         },
         {
-            title: 'PROJECT',
+            title: t('billableHours.colProject'),
             key: 'project',
-            width: 200,
-            render: (_, record) => (
-                <Tag color="geekblue" style={{ border: 'none', margin: 0, fontSize: '0.9rem', padding: '4px 10px' }}>
-                    {record.projectName}
-                </Tag>
-            )
+            width: 170,
+            render: (_, record) => <span className="lq-tag lq-tag--info">{record.projectName}</span>,
         },
         {
-            title: 'DESCRIPTION',
+            title: t('billableHours.colDescription'),
             dataIndex: 'description',
             key: 'description',
             ellipsis: true,
             render: (text) => (
                 <Tooltip title={text}>
-                    <span style={{ color: 'var(--c-text-muted)', maxWidth: 400, display: 'inline-block' }}>
-                        {text || '-'}
-                    </span>
+                    <span className="bh-desc">{text || '-'}</span>
                 </Tooltip>
-            )
+            ),
+        },
+        {
+            title: t('billableHours.colWorked'),
+            key: 'duration_hours',
+            width: 100,
+            render: (_, record) => <span className="bh-worked">{formatDecimalToHM(record.duration_hours)}</span>,
         },
         {
             title: t('billableHours.title'),
             key: 'billable_duration_hours',
-            width: 210,
+            width: 250,
             className: 'billable-col',
             render: (_, record) => {
                 const isEditing = editingId === record.id
-
-                // Determine display value
                 const displayValue = record.billable_duration_hours !== null && record.billable_duration_hours !== undefined
                     ? record.billable_duration_hours
                     : record.duration_hours
 
                 return isEditing ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-                        <HoursMinutesPicker
-                            value={editValue}
-                            onChange={setEditValue}
+                    <div className="bh-edit">
+                        <HoursMinutesPicker value={editValue} onChange={setEditValue} size="small" />
+                        <Button
+                            aria-label={t('billableHours.save')}
+                            type="primary"
                             size="small"
+                            icon={<SaveOutlined />}
+                            onClick={() => handleSave(record.id)}
+                            loading={updateMutation.isPending}
                         />
-                        <div style={{ display: 'flex', gap: 4 }}>
-                            <Button
-                                aria-label={t('billableHours.save')}
-                                type="primary"
-                                size="small"
-                                icon={<SaveOutlined />}
-                                onClick={() => handleSave(record.id)}
-                                loading={updateMutation.isPending}
-                            />
-                            <Button
-                                size="small"
-                                type="text"
-                                onClick={() => {
-                                    setEditingId(null)
-                                    setEditValue(null)
-                                }}
-                            >
-                                x
-                            </Button>
-                        </div>
+                        <Button
+                            aria-label={t('common.cancel')}
+                            size="small"
+                            type="text"
+                            icon={<CloseOutlined />}
+                            onClick={() => { setEditingId(null); setEditValue(null) }}
+                        />
                     </div>
                 ) : (
-                    <div
+                    <button
+                        type="button"
                         onClick={() => handleEditStart(record)}
                         className="editable-duration-cell"
+                        aria-label={`${t('common.edit')}: ${formatDecimalToHM(displayValue)}`}
                     >
-                        <span style={{ fontSize: '1.2rem', fontWeight: 600, color: '#4ade80' }}>
-                            {formatDecimalToHM(displayValue)}
-                        </span>
-                    </div>
+                        {formatDecimalToHM(displayValue)}
+                    </button>
                 )
-            }
-        }
+            },
+        },
     ]
 
     // ==========================================================================
@@ -401,98 +365,70 @@ function BillableHoursPage() {
         return <div style={{ padding: 40, textAlign: 'center', color: 'var(--c-text-strong)' }}>{t('billableHours.accessDenied')}</div>
     }
 
+    const ratio = workedHours > 0 ? Math.round((totalHours / workedHours) * 100) : null
+
     return (
-        <div className="billable-page" style={{ padding: '24px', maxWidth: 1400, margin: '0 auto', color: 'var(--c-text-strong)' }}>
-
-            {/* Header Section */}
-            <div className="bh-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
-                <div>
-                    <h1 style={{ margin: 0, fontSize: 24, fontWeight: 680, color: 'var(--h-text-primary)' }}>{t('billableHours.title')}</h1>
-                    <Text style={{ color: 'var(--c-text-faint)', fontSize: '1rem' }}>{t('billableHours.subtitle')}</Text>
-                </div>
-
-                <div className="bh-header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{ textAlign: 'right', paddingRight: 16, borderRight: '1px solid var(--c-chip)' }}>
-                        <div style={{ fontSize: 12, color: 'var(--c-text-muted)', letterSpacing: 1 }}>TOTAL</div>
-                        <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--h-success)', fontVariantNumeric: 'tabular-nums' }}>
-                            {formatDecimalToHM(totalHours)}
+        <div className="billable-page">
+            <PageHero
+                title={t('billableHours.title')}
+                subtitle={t('billableHours.subtitle')}
+                actions={(
+                    <>
+                        <Select
+                            className="bh-user-select"
+                            value={selectedUserId}
+                            onChange={setSelectedUserId}
+                            loading={usersLoading}
+                            /* Baskasinin kayitlarini gormek worklogs.admin
+                               ister (backend kurali). Izin yoksa tek secenek
+                               kullanicinin KENDISIDIR. */
+                            disabled={!canViewOtherUsers}
+                            aria-label={t('billableHours.selectUser')}
+                            suffixIcon={<TeamOutlined />}
+                            options={usersList.map(u => ({
+                                label: u.full_name || u.email || 'Unknown user',
+                                value: u.id,
+                            }))}
+                            optionRender={(option) => (
+                                <span className="bh-user-option">
+                                    <LqAvatar id={option.value} name={String(option.label)} size={22} />
+                                    {option.label}
+                                </span>
+                            )}
+                            showSearch
+                            filterOption={(input, option) =>
+                                String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                            }
+                        />
+                        <div className="bh-toolbar h-inline-toolbar">
+                            <Button shape="circle" aria-label={t('billableHours.previousWeek')} icon={<LeftOutlined />} onClick={goToPreviousWeek} />
+                            <span className="bh-week">{weekLabel}</span>
+                            <Button shape="circle" aria-label={t('billableHours.nextWeek')} icon={<RightOutlined />} onClick={goToNextWeek} />
+                            <Button onClick={goToToday}>{t('billableHours.currentWeek')}</Button>
                         </div>
-                    </div>
+                    </>
+                )}
+            />
 
-                    {/* User Selector */}
-                    <Select
-                        className="bh-user-select"
-                        value={selectedUserId}
-                        onChange={setSelectedUserId}
-                        style={{ width: 280 }}
-                        size="large"
-                        loading={usersLoading}
-                        /* Baskasinin kayitlarini gormek worklogs.admin
-                           ister (backend'in uyguladigi kural). Izin yoksa
-                           tek secenek kullanicinin KENDISIDIR — garanti
-                           403 dogurmayan bir secim sunulmaz. */
-                        disabled={!canViewOtherUsers}
-                        aria-label={t('billableHours.selectUser')}
-                        /* label DUZ METIN: arama bunun uzerinden calisir.
-                           Onceki hali option.label.props.children[1]
-                           okuyordu; adi olmayan bir kayitta patlardi. */
-                        options={usersList.map(u => ({
-                            label: u.full_name || u.email || 'Unknown user',
-                            value: u.id,
-                        }))}
-                        optionRender={(option) => (
-                            <Space>
-                                <Avatar size="small" style={{ backgroundColor: 'var(--c-chip)' }}>
-                                    {String(option.label)[0]}
-                                </Avatar>
-                                {option.label}
-                            </Space>
-                        )}
-                        showSearch
-                        filterOption={(input, option) =>
-                            String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                        }
-                        styles={{ popup: { backgroundColor: 'var(--c-surface-2)' } }}
-                    />
-                </div>
+            {/* Ozet (prototip): toplam · faturalanabilir · oran cubugu */}
+            <div className="bh-kpis lq-enter">
+                <GlassCard className="lq-kpi">
+                    <span className="lq-kpi__value"><CountUp value={workedHours} decimals={2} format={formatDecimalToHM} /></span>
+                    <span className="lq-kpi__label">{t('billableHours.weekTotal')}</span>
+                </GlassCard>
+                <GlassCard className="lq-kpi bh-kpi--billable">
+                    <span className="lq-kpi__value"><CountUp value={totalHours} decimals={2} format={formatDecimalToHM} /></span>
+                    <span className="lq-kpi__label">{t('billableHours.title')}</span>
+                </GlassCard>
+                <GlassCard className="bh-ratio">
+                    <span className="bh-ratio__track" aria-hidden="true">
+                        <i style={{ width: `${Math.min(100, ratio ?? 0)}%` }} />
+                    </span>
+                    <b className="bh-ratio__value" aria-label={t('billableHours.ratio')}>{ratio === null ? '—' : `%${ratio}`}</b>
+                </GlassCard>
             </div>
 
-            {/* Premium: buyuk gri tarih seridi KALKTI — baslik altinda
-                sade inline hafta navigasyonu (Time Entry ailesi). */}
-            <div className="bh-toolbar h-inline-toolbar" style={{ justifyContent: 'space-between' }}>
-                <Space size={16}>
-                    <Button
-                        aria-label={t('billableHours.previousWeek')}
-                        type="text"
-                        icon={<LeftOutlined />}
-                        onClick={goToPreviousWeek}
-                        style={{ color: 'var(--c-text-strong)' }}
-                    />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <CalendarOutlined style={{ color: 'var(--h-brand)' }} />
-                        <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--c-text-strong)' }}>
-                            {weekLabel}
-                        </span>
-                    </div>
-                    <Button
-                        aria-label={t('billableHours.nextWeek')}
-                        type="text"
-                        icon={<RightOutlined />}
-                        onClick={goToNextWeek}
-                        style={{ color: 'var(--c-text-strong)' }}
-                    />
-                </Space>
-
-                <Button type="text" onClick={goToToday}>{t('billableHours.currentWeek')}</Button>
-            </div>
-
-            {/* Data Table */}
-            <Card
-                variant="borderless"
-                styles={{ body: { padding: 0 } }}
-                className="h-dataview"
-                style={{ background: 'transparent' }}
-            >
+            <GlassCard className="bh-table lq-card--flush">
                 <AdminErrorAlert
                     error={logsError ? logsErrObj : null}
                     onRetry={refetchLogs}
@@ -504,14 +440,13 @@ function BillableHoursPage() {
                     /* Ilk yukleme ile arkaplan yenilemesi AYRI. */
                     loading={logsLoading && workLogs.length === 0}
                     pagination={false}
-                    rowClassName="modern-row"
                     scroll={{ x: 800 }}
                     locale={{
                         emptyText: (
-                            <div style={{ padding: 40, color: 'var(--c-text-faint)' }}>
+                            <div className="bh-empty">
                                 {logsError
-                                    ? 'Could not load this week’s entries.'
-                                    : `No entries for ${weekLabel}.`}
+                                    ? t('billableHours.loadFailed')
+                                    : t('billableHours.emptyWeek', { week: weekLabel })}
                             </div>
                         ),
                     }}
@@ -520,84 +455,7 @@ function BillableHoursPage() {
                     isFetching={logsFetching}
                     hasData={workLogs.length > 0}
                 />
-            </Card>
-
-            <style>{`
-                .modern-row td {
-                    background: transparent !important;
-                    border-bottom: 1px solid var(--c-border) !important;
-                    padding: 16px 24px !important;
-                }
-                .modern-row:hover td {
-                    background-color: rgba(var(--overlay-rgb),0.03) !important;
-                }
-                .ant-table {
-                    background: transparent !important;
-                    color: var(--c-text-strong) !important;
-                }
-                .ant-table-thead > tr > th {
-                    background: var(--c-surface) !important;
-                    color: var(--c-text-muted) !important;
-                    border-bottom: 1px solid var(--c-border) !important;
-                    font-size: 11px;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    padding: 16px 24px !important;
-                }
-                .billable-col {
-                    padding: 12px 10px !important;
-                }
-                .ant-table-thead > tr > th.billable-col {
-                    padding: 16px 10px !important;
-                }
-                .editable-duration-cell {
-                    cursor: pointer;
-                    padding: 8px 16px;
-                    border-radius: 8px;
-                    /* Hover: arka plan + olcek. */
-                    transition: background-color 0.2s, transform 0.2s;
-                    display: inline-flex;
-                    align-items: baseline;
-                    background: rgba(74, 222, 128, 0.05); /* subtle green tint */
-                }
-                .editable-duration-cell:hover {
-                    background: rgba(74, 222, 128, 0.15);
-                    transform: scale(1.05);
-                }
-                .ant-select-selector {
-                    background-color: var(--c-surface-2) !important;
-                    border-color: var(--c-border) !important;
-                    color: var(--c-text-strong) !important;
-                    border-radius: 12px !important;
-                }
-                .ant-select-arrow {
-                    color: var(--c-text-muted) !important;
-                }
-
-                /* Mobile: header + toolbar wrap; the fixed 280px user
-                   selector flexes to the full row width instead. */
-                @media (max-width: 768px) {
-                    .bh-header {
-                        flex-wrap: wrap;
-                        gap: 12px;
-                    }
-                    .bh-toolbar {
-                        flex-wrap: wrap;
-                        gap: 8px;
-                    }
-                }
-                @media (max-width: 480px) {
-                    .bh-header-right {
-                        width: 100%;
-                        flex-wrap: wrap;
-                    }
-                    .bh-user-select {
-                        width: auto !important;
-                        flex: 1 1 auto;
-                        min-width: 0;
-                    }
-                }
-            `}</style>
+            </GlassCard>
         </div>
     )
 }

@@ -1,0 +1,65 @@
+/* HERMES - Faturalanabilir saatler (Hermes Liquid prototipi). Sayfaya
+   kapsamli; eski sayfa ici <style> blogu global !important kurallari
+   (.ant-table, .ant-select-selector) TUM uygulamaya sizdiriyordu — kalkti. */
+.billable-page .lq-hero { margin-bottom: var(--h-space-4); }
+.billable-page .bh-user-select { width: 240px; }
+.billable-page .bh-user-select .ant-select-selector { height: 40px; border-radius: var(--h-radius-pill); align-items: center; }
+.bh-user-option { display: inline-flex; align-items: center; gap: 8px; }
+.billable-page .bh-toolbar.h-inline-toolbar {
+    margin: 0;
+    padding: 0;
+    gap: 6px;
+    background: none;
+    border: 0;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+.bh-week {
+    padding: 8px 14px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-ghost-bg);
+    border: 1px solid var(--h-ghost-border);
+    font-weight: 600;
+    font-size: 13.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.bh-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 2fr); gap: 16px; margin-bottom: 16px; align-items: stretch; }
+.bh-kpis .lq-kpi__value { font-size: 36px; }
+.bh-kpi--billable .lq-kpi__value { color: var(--h-success); }
+.bh-ratio { display: flex; align-items: center; gap: 16px; }
+.bh-ratio__track { flex: 1; height: 10px; overflow: hidden; border-radius: var(--h-radius-pill); background: var(--h-bg-hover); }
+.bh-ratio__track i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--hp-green-500), var(--hp-green-300));
+    transform-origin: left;
+    animation: lq-grow-x 1000ms var(--h-ease-enter) both;
+}
+.bh-ratio__value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+@media (max-width: 900px) { .bh-kpis { grid-template-columns: 1fr 1fr; } .bh-ratio { grid-column: 1 / -1; } }
+
+.bh-table .ant-table-wrapper .ant-table-tbody > tr > td { padding: 14px 16px; }
+.bh-date { font-weight: 650; text-transform: capitalize; white-space: nowrap; }
+.bh-customer { font-weight: 500; }
+.bh-desc { color: var(--h-text-secondary); }
+.bh-worked { font: 500 13px var(--h-font-mono); color: var(--h-text-secondary); }
+.bh-empty { padding: 40px; color: var(--h-text-muted); }
+.bh-edit { display: flex; align-items: center; gap: 6px; }
+
+/* Duzenlenebilir sure: koyu hap (prototip); tiklaninca secici acilir. */
+.editable-duration-cell {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border: 0;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-text-primary);
+    color: var(--h-bg-canvas);
+    font: 600 13px var(--h-font-mono);
+    cursor: pointer;
+    transition: transform 200ms var(--h-ease-spring), box-shadow 150ms;
+}
+.editable-duration-cell:hover { transform: translateY(-1px) scale(1.04); box-shadow: var(--h-shadow-hover); }
+.editable-duration-cell:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }

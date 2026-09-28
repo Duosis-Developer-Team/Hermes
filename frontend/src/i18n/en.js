@@ -369,6 +369,15 @@ export default {
     },
 
     billableHours: {
+        colDate: 'Date',
+        colCustomer: 'Customer',
+        colProject: 'Project',
+        colDescription: 'Description',
+        colWorked: 'Worked',
+        weekTotal: 'This week total',
+        ratio: 'Billable ratio',
+        loadFailed: 'Could not load this week’s entries.',
+        emptyWeek: 'No entries for {week}.',
         title: 'Billable Hours',
         subtitle: 'Manage user billable time entries',
         selectUser: 'Select user',

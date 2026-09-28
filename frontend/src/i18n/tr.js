@@ -368,6 +368,15 @@ export default {
     },
 
     billableHours: {
+        colDate: 'Tarih',
+        colCustomer: 'Müşteri',
+        colProject: 'Proje',
+        colDescription: 'Açıklama',
+        colWorked: 'Süre',
+        weekTotal: 'Bu hafta toplam',
+        ratio: 'Faturalanabilir oran',
+        loadFailed: 'Bu haftanın kayıtları yüklenemedi.',
+        emptyWeek: '{week} için kayıt yok.',
         title: 'Faturalanabilir Saatler',
         subtitle: 'Kullanıcıların faturalanabilir sürelerini yönetin',
         selectUser: 'Kullanıcı seçin',
