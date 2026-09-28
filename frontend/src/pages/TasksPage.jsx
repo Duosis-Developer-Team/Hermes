@@ -252,7 +252,7 @@ function TasksPage() {
     )
 
     return (
-        <div className="tasks-page">
+        <div className="tasks-page" data-panel={dialogs.panelTask ? 'open' : undefined}>
             <TasksHeader
                 archiveState={archiveState}
                 onArchiveStateChange={archive.setArchiveState}

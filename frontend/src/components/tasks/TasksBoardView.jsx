@@ -25,8 +25,7 @@
  */
 
 import { useMemo, useState } from 'react'
-import { Avatar } from 'antd'
-import { UserOutlined } from '@ant-design/icons'
+import { Avatar as LqAvatar } from '../liquid'
 import {
     DndContext,
     DragOverlay,
@@ -356,74 +355,50 @@ function TasksBoardView({
                 onDragCancel={handleDragCancel}
             >
                 {groupByAssignee ? (
-                    <div className="tasks-board-swimlanes" role="table">
+                    <div className="tasks-board-swimlanes">
                         {swimlanes.length === 0 ? (
                             <div className="tasks-board-column-empty">
                                 No {typeMeta(taskType).lowerPlural}
                             </div>
-                        ) : (
-                            <>
-                                {/* Column titles header strip — only with rows */}
-                                <div
-                                    className="tasks-board-swimlane-cols-head"
-                                    role="row"
-                                >
-                                    <div className="tasks-board-swimlane-rowhead" />
-                                    {columns.map(({ status, labelKey }) => (
-                                        <div
-                                            key={status}
-                                            className="tasks-board-swimlane-colhead"
-                                            role="columnheader"
-                                        >
-                                            {t(labelKey)}
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {swimlanes.map((lane) => (
-                                <div
+                        ) : swimlanes.map((lane) => {
+                            const total = columns.reduce((n, { status }) => n + (lane.buckets[status]?.length || 0), 0)
+                            return (
+                                /* Kisi seridi (Liquid): tam genislik baslik — foto/bas
+                                   harf, ad, is sayisi — altinda "Bana ait" panosuyla
+                                   AYNI basliklı sutunlar. */
+                                <section
                                     key={lane.assigneeId}
-                                    className="tasks-board-swimlane"
-                                    role="row"
+                                    className="tasks-lane"
+                                    aria-label={lane.label}
                                 >
-                                    <div
-                                        className="tasks-board-swimlane-rowhead"
-                                        role="rowheader"
-                                    >
-                                        <Avatar
-                                            size={26}
-                                            icon={<UserOutlined />}
-                                        />
-                                        <span className="tasks-board-swimlane-name">
-                                            {lane.label}
-                                        </span>
-                                    </div>
-                                    {columns.map(({ status }) => {
-                                        const list = lane.buckets[status] || []
-                                        return (
-                                            <div
-                                                key={status}
-                                                className={`tasks-board-column tasks-board-column-${status} tasks-board-swimlane-cell`}
-                                            >
-                                                <DroppableColumn
-                                                    id={cellId(
-                                                        lane.assigneeId,
-                                                        status
-                                                    )}
+                                    <header className="tasks-lane__head">
+                                        <LqAvatar id={lane.assigneeId} name={lane.label} size={30} title="" />
+                                        <span className="tasks-lane__name">{lane.label}</span>
+                                        <span className="tasks-board-column-count">{total}</span>
+                                    </header>
+                                    <div className="tasks-board tasks-lane__cols">
+                                        {columns.map(({ status, labelKey }) => {
+                                            const list = lane.buckets[status] || []
+                                            return (
+                                                <div
+                                                    key={status}
+                                                    className={`tasks-board-column tasks-board-column-${status} tasks-board-swimlane-cell`}
                                                 >
-                                                    {list.length === 0 ? (
-                                                        <div className="tasks-board-cell-empty" />
-                                                    ) : (
-                                                        list.map(renderCard)
-                                                    )}
-                                                </DroppableColumn>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                                ))}
-                            </>
-                        )}
+                                                    {renderColumnHeader(t(labelKey), list.length)}
+                                                    <DroppableColumn id={cellId(lane.assigneeId, status)}>
+                                                        {list.length === 0 ? (
+                                                            <div className="tasks-board-cell-empty" />
+                                                        ) : (
+                                                            list.map(renderCard)
+                                                        )}
+                                                    </DroppableColumn>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </section>
+                            )
+                        })}
                     </div>
                 ) : (
                     <div className="tasks-board">

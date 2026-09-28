@@ -39,10 +39,15 @@
 }
 
 .tasks-board {
+    /* Sutunlar ASLA alt satira kaymaz (panel acilinca "Tamamlandi" asagi
+       dusuyordu): esit paylasilan tek satir; dar kalirsa pano kendi
+       icinde yatay kayar. */
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 20px;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(210px, 1fr);
+    gap: 16px;
     align-items: start;
+    overflow-x: auto;
 }
 .tasks-board-column {
     /* Hermes Liquid: kolon opak gri dikdortgen DEGIL — sivinin ustunde
@@ -149,56 +154,27 @@
     transform: rotate(1.5deg);
 }
 
-/* ── Swimlanes (Group by assignee) ────────────────────────────────── */
-.tasks-board-swimlanes {
+/* ── Kisi seritleri (Sahibe gore / Verdigim isler) — Liquid ─────────── */
+.tasks-board-swimlanes { display: flex; flex-direction: column; gap: 22px; }
+.tasks-lane { display: flex; flex-direction: column; gap: 10px; }
+.tasks-lane__head {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-    overflow-x: auto;
-}
-.tasks-board-swimlane-cols-head,
-.tasks-board-swimlane {
-    display: grid;
-    grid-template-columns: 180px repeat(4, minmax(220px, 1fr));
-    gap: 10px;
-}
-.tasks-board-swimlane-cols-head {
     align-items: center;
+    gap: 10px;
+    padding: 6px 6px 6px 4px;
 }
-/* Stretch so every status cell in a row shares the height of the tallest
-   one — empty In Progress/Completed/Rejected cells match the cell that
-   holds a card instead of collapsing to a short box. */
-.tasks-board-swimlane {
-    align-items: stretch;
+.tasks-lane__name {
+    overflow: hidden;
+    color: var(--h-text-primary);
+    font-size: 15px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
-.tasks-board-swimlane-colhead {
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--c-text);
-    padding: 8px 10px;
-    text-align: center;
-    background: var(--c-surface-raised);
-    border: 1px solid var(--c-border);
-    border-radius: 6px;
-}
-.tasks-board-swimlane-rowhead {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 10px 8px;
-    position: sticky;
-    left: 0;
-    background: var(--c-bg);
-    z-index: 1;
-}
-.tasks-board-swimlane-name {
-    font-weight: 600;
-    font-size: 13px;
-    color: var(--c-text);
-    word-break: break-word;
-}
+.tasks-lane__head::after { content: ""; flex: 1; height: 1px; margin-left: 6px; background: var(--h-border-subtle); }
+.tasks-lane__head .tasks-board-column-count { order: 3; }
+.tasks-lane__head::after { order: 4; }
 /* Swimlane cells reuse .tasks-board-column for the surface, but reset the
    tall flat-board sizing so each row stays compact and grows with content. */
 .tasks-board-swimlane-cell {

@@ -11,6 +11,12 @@
     align-items: start;
 }
 .tv-main { min-width: 0; }
+/* Detay paneli acikken sol kolon yumusakca cekilir; pano + panel tum
+   genisligi alir (uc sutun ve panel yan yana sigar). */
+.tv-workspace { transition: grid-template-columns 420ms var(--h-ease-standard), gap 420ms var(--h-ease-standard); }
+.tv-sidebar { transition: opacity 260ms var(--h-ease-standard), transform 420ms var(--h-ease-spring); }
+.tasks-page[data-panel] .tv-workspace { grid-template-columns: 0 minmax(0, 1fr); gap: 0; }
+.tasks-page[data-panel] .tv-sidebar { opacity: 0; transform: translateX(-24px); pointer-events: none; visibility: hidden; }
 @media (max-width: 900px) {
     .tv-workspace { grid-template-columns: minmax(0, 1fr); }
     .tv-sidebar { position: static; }
