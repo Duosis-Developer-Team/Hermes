@@ -28,6 +28,8 @@ import './components/ui/ui.css'
 // DS V2.1 (Premium UI): merkezi AntD gorunum koprusu — sayfa-ozel
 // override'lar yerine tek katman (buton/select/tablo/modal/today-flag).
 import './styles/premium.css'
+// Hermes Liquid: sayfa anatomisi + hareket katmani (prototip v8).
+import './styles/liquid.css'
 
 // React Query client — merkezi fabrika (Sprint 1): src/query/queryClient.js
 import { queryClient } from './query/queryClient'

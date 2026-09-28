@@ -62,6 +62,8 @@ export default function CommandPalette({ open, items, onClose, onSelect }) {
             closable={false}
             width={560}
             className="command-palette"
+            rootClassName="island-drop-root"
+            style={{ top: 78 }}
             title={null}
             destroyOnHidden
             styles={{ body: { padding: 0 } }}

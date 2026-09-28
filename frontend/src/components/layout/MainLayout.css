@@ -154,8 +154,21 @@
     100% { transform: translateX(120%); }
 }
 
-.island-tabs { display: flex; gap: 2px; min-width: 0; }
+.island-tabs { position: relative; display: flex; gap: 2px; min-width: 0; }
+/* Yayli kayan gosterge: aktif sekmenin arkasinda kayar (prototip). */
+.island-tabs__ind {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 0;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-nav-ind);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    transition: left 450ms var(--h-ease-spring), width 450ms var(--h-ease-spring), opacity 200ms;
+}
 .island-tab {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     gap: 7px;
@@ -172,10 +185,10 @@
         box-shadow var(--h-motion-base) var(--h-ease-standard);
 }
 .island-tab:hover { color: var(--h-nav-ink); background: var(--h-nav-hover); }
-.island-tab.is-active {
-    background: var(--h-nav-ind);
+.island-tab.is-active,
+.island-tab.is-active:hover {
+    background: transparent;
     color: var(--h-nav-on);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 }
 .island-tab__icon { display: inline-flex; font-size: 15px; }
 .island-tab__icon:empty { display: none; }
@@ -241,6 +254,85 @@
 }
 .island-avatar:hover { transform: scale(1.06); }
 
+/* Canli yuva: bugunun siradaki toplantisi (gercek veri). */
+.island-live {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+    padding: 7px 12px 7px 10px;
+    border: 0;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-nav-hover);
+    color: var(--h-nav-ink);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: transform var(--h-motion-base) var(--h-ease-spring);
+}
+.island-live:hover { transform: scale(1.03); }
+.island-live__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--hp-blue-400);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--hp-blue-400) 60%, transparent);
+    animation: h-live-ping 1.8s infinite;
+}
+.island-live--now .island-live__dot { background: var(--hp-green-300); }
+.island-live__meta { font: 600 12.5px var(--h-font-mono); font-variant-numeric: tabular-nums; }
+.island-live__label { max-width: 150px; overflow: hidden; color: var(--h-nav-ink-2); font-size: 12px; text-overflow: ellipsis; }
+@keyframes h-live-ping {
+    70% { box-shadow: 0 0 0 8px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* Adadan acilan paneller (profil, bildirim) ve ⌘K: yayli buyume. */
+:root .island-drop { transform-origin: top right; }
+:root .island-drop.ant-slide-up-enter-active,
+:root .island-drop.ant-slide-up-appear-active,
+:root .island-drop.ant-slide-down-enter-active,
+:root .island-drop.ant-slide-down-appear-active {
+    animation-name: h-drop-in;
+    animation-duration: 420ms;
+    animation-timing-function: var(--h-ease-spring);
+}
+:root .island-drop.ant-slide-up-leave-active,
+:root .island-drop.ant-slide-down-leave-active {
+    animation-name: h-drop-out;
+    animation-duration: 160ms;
+    animation-timing-function: var(--h-ease-exit);
+}
+:root .island-drop-root .ant-zoom-enter-active,
+:root .island-drop-root .ant-zoom-appear-active {
+    transform-origin: top center;
+    animation-name: h-drop-in;
+    animation-duration: 420ms;
+    animation-timing-function: var(--h-ease-spring);
+}
+@keyframes h-drop-in {
+    from { opacity: 0; transform: translateY(-8px) scale(0.94); }
+    to { opacity: 1; transform: none; }
+}
+@keyframes h-drop-out { to { opacity: 0; transform: translateY(-6px) scale(0.97); } }
+
+/* Bildirim mesajlari adanin hemen altindan akan cam hap (prototip toast). */
+:root .ant-message { top: 80px; }
+:root .ant-message .ant-message-notice-content {
+    padding: 10px 16px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-bg-elevated);
+    border: 1px solid var(--h-glass-edge);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    box-shadow: var(--h-shadow-dropdown);
+}
+:root .ant-message .ant-move-up-enter-active,
+:root .ant-message .ant-move-up-appear-active {
+    animation-name: h-drop-in;
+    animation-duration: 420ms;
+    animation-timing-function: var(--h-ease-spring);
+}
+
 /* ---------- Icerik ---------- */
 .main-content {
     position: relative;
@@ -250,15 +342,20 @@
     overflow-x: hidden;
     overflow-y: auto;
     padding: var(--h-space-4) max(var(--h-content-pad), calc((100vw - 1480px) / 2)) var(--h-dock-space);
+    view-transition-name: hermes-main;
 }
 
 /* Route girisi (§6): opacity + 4px; height collapse yok */
+/* Sayfa ici baglantilarla gelen rota da ayni dille girer (bulanik →
+   net, hafif yukselis). Kabuk gezinmesinde View Transitions calistigi
+   icin (html.vt-nav) bu animasyon susar. */
 .route-transition {
-    animation: h-route-enter 180ms var(--h-ease-enter);
+    animation: h-route-enter 420ms var(--h-ease-enter);
 }
+:root.vt-nav .route-transition { animation: none; }
 @keyframes h-route-enter {
-    from { opacity: 0; transform: translateY(4px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translateY(14px); filter: blur(6px); }
+    to { opacity: 1; transform: translateY(0); filter: none; }
 }
 
 /* Offline banner (§9): sakin, sabit yukseklik, toast degil */
@@ -317,6 +414,13 @@
     transform: scale(var(--dock-scale)) translateY(calc((var(--dock-scale) - 1) * -16px));
     transform-origin: bottom center;
     transition: transform 160ms var(--h-ease-standard);
+}
+.dock-item.is-bouncing { animation: h-dock-bounce 620ms var(--h-ease-standard); }
+@keyframes h-dock-bounce {
+    0%, 100% { transform: scale(var(--dock-scale)) translateY(0); }
+    30% { transform: scale(var(--dock-scale)) translateY(-18px); }
+    55% { transform: scale(var(--dock-scale)) translateY(0); }
+    75% { transform: scale(var(--dock-scale)) translateY(-6px); }
 }
 .dock-item.is-active::after {
     content: "";
@@ -677,5 +781,7 @@
     .liquid-blob,
     .brand-mark::after { animation: none; }
     .liquid-blob--follow { transition: none; }
+    .island-live__dot,
+    .dock-item.is-bouncing { animation: none; }
     .dock-item { transition: none; transform: none; }
 }

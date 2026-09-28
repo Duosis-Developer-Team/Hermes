@@ -1153,6 +1153,10 @@ export default {
         light: 'Light',
         dark: 'Dark',
         menu: 'Menu',
+        liveNow: 'Now',
+        liveIn: 'in {n} min',
+        liveInHours: 'in {h}h {m}m',
+        liveOpen: 'Open meetings',
     },
 
     timesheet: {

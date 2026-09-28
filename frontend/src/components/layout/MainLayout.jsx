@@ -33,6 +33,7 @@ import useTicketContext from '../../features/tickets/useTicketContext'
 import { useT } from '../../i18n'
 import { loaderByPath } from '../../routes/loaders'
 import { hasAnySettings } from '../../features/settings/sections'
+import { useNextMeeting } from '../../features/home/hooks/useNextMeeting'
 
 /**
  * Main Layout Component — izin filtreli menu, prefetch ve hesap menusu.
@@ -249,6 +250,20 @@ function MainLayout() {
         },
     ]
 
+    // Adanin canli yuvasi: bugunun siradaki toplantisi (gercek veri).
+    const nextMeeting = useNextMeeting()
+    const islandLive = nextMeeting ? {
+        tone: nextMeeting.status,
+        meta: nextMeeting.status === 'now'
+            ? t('shellExtra.liveNow')
+            : nextMeeting.minutes >= 60
+                ? t('shellExtra.liveInHours', { h: Math.floor(nextMeeting.minutes / 60), m: nextMeeting.minutes % 60 })
+                : t('shellExtra.liveIn', { n: nextMeeting.minutes }),
+        label: nextMeeting.subject,
+        ariaLabel: `${t('shellExtra.liveOpen')}: ${nextMeeting.subject}`,
+        onClick: () => navigate('/meetings'),
+    } : null
+
     const handleMenuClick = ({ key }) => {
         // Mobil drawer'i kapatmak kabugun isi (AppShell).
         if (key.startsWith('/')) navigate(key)
@@ -286,6 +301,7 @@ function MainLayout() {
                uyelik varsa render eder. */
             headerExtra={<OrganizationSwitcher />}
             contentKey={location.pathname}
+            islandLive={islandLive}
         >
             <Outlet />
         </AppShell>

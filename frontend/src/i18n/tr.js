@@ -1147,6 +1147,10 @@ export default {
         light: 'Açık',
         dark: 'Koyu',
         menu: 'Menü',
+        liveNow: 'Şimdi',
+        liveIn: '{n} dk sonra',
+        liveInHours: '{h} sa {m} dk sonra',
+        liveOpen: 'Toplantıları aç',
     },
 
     timesheet: {

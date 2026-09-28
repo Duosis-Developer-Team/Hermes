@@ -15,6 +15,12 @@
  *   mobileMenuItems  cekmecede gosterilecek liste (yoksa menuItems)
  *   selectedKey / onMenuClick / onLogoClick / accountName / accountRole /
  *   accountMenuItems / headerExtra / contentKey / children
+ *   islandLive       (ops.) adanin canli yuvasi: { tone, label, meta, onClick }
+ *
+ * HAREKET (prototip): sekmelerde yayli kayan gosterge; kabuktan yapilan
+ * gezinme View Transitions ile (destek yoksa aninda); paneller adadan
+ * yayla acilir; dock imlece gore buyur ve tiklaninca ziplar. Hepsi
+ * azaltilmis harekette kapanir.
  *
  * NEDEN AYRI BIR BILESEN: tenant tarafi ve Platform Admin konsolu AYNI
  * kabugu paylasir; tasarim farki yapisal olarak imkansizdir. Izolasyon
@@ -23,7 +29,8 @@
  * =============================================================================
  */
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Drawer, Dropdown, Tooltip } from 'antd'
 import {
     AppstoreOutlined,
@@ -86,6 +93,7 @@ function AppShell({
     accountMenuItems = [],
     headerExtra = null,
     contentKey,
+    islandLive = null,
     children,
 }) {
     const t = useT()
@@ -158,10 +166,36 @@ function AppShell({
         setScrolled((prev) => (prev === next ? prev : next))
     }, [])
 
+    // Kabuktan gezinme: View Transitions API varsa eski sayfa bulaniklasarak
+    // cikar, yenisi yukselerek girer (liquid.css). flushSync, gecisin
+    // "sonraki" durumu yakalayabilmesi icin rota guncellemesini esler.
     const go = (key) => {
-        onMenuClick?.({ key })
         setMobileNavOpen(false)
+        const run = () => onMenuClick?.({ key })
+        const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+        if (typeof document !== 'undefined' && document.startViewTransition && !reduce) {
+            // Gecis surerken sayfa ici giris animasyonu susar (cift hareket yok).
+            const root = document.documentElement
+            root.classList.add('vt-nav')
+            const vt = document.startViewTransition(() => flushSync(run))
+            vt.finished.finally(() => root.classList.remove('vt-nav'))
+        } else {
+            run()
+        }
     }
+
+    // Ada sekmelerinde yayli kayan gosterge (prototipteki .tabs .ind).
+    const tabsRef = useRef(null)
+    const [tabInd, setTabInd] = useState(null)
+    useLayoutEffect(() => {
+        const measure = () => {
+            const el = tabsRef.current?.querySelector('.island-tab.is-active')
+            setTabInd(el ? { left: el.offsetLeft, width: el.offsetWidth } : null)
+        }
+        measure()
+        window.addEventListener('resize', measure)
+        return () => window.removeEventListener('resize', measure)
+    }, [selectedKey, menuItems])
 
     const routeContent = useMemo(() => (
         // Sprint 3 §6: route girisi opacity+4px; kabuk sabit kalir.
@@ -295,7 +329,12 @@ function AppShell({
                         <span className="island-brand__word">Hermes</span>
                     </button>
 
-                    <div className="island-tabs" role="list">
+                    <div className="island-tabs" role="list" ref={tabsRef}>
+                        <span
+                            className="island-tabs__ind"
+                            aria-hidden="true"
+                            style={tabInd ? { left: tabInd.left, width: tabInd.width } : { opacity: 0 }}
+                        />
                         {tabs.map((it) => (
                             <button
                                 key={it.key}
@@ -312,6 +351,19 @@ function AppShell({
                     </div>
 
                     <span className="island-sep" aria-hidden="true" />
+
+                    {islandLive && (
+                        <button
+                            type="button"
+                            className={`island-live island-live--${islandLive.tone || 'soon'}`}
+                            onClick={islandLive.onClick}
+                            aria-label={islandLive.ariaLabel}
+                        >
+                            <span className="island-live__dot" aria-hidden="true" />
+                            <span className="island-live__meta">{islandLive.meta}</span>
+                            <span className="island-live__label">{islandLive.label}</span>
+                        </button>
+                    )}
 
                     <button
                         type="button"
@@ -332,6 +384,7 @@ function AppShell({
                         onOpenChange={setProfileOpen}
                         trigger={['click']}
                         placement="bottomRight"
+                        rootClassName="island-drop"
                         popupRender={() => profileCard}
                     >
                         <button
@@ -390,7 +443,15 @@ function AppShell({
                                             style={{ '--dock-tone': tone }}
                                             aria-label={textOf(it)}
                                             aria-current={isActive(it.key) ? 'page' : undefined}
-                                            onClick={() => go(it.key)}
+                                            onClick={(e) => {
+                                                // macOS dock ziplamasi (yalniz transform).
+                                                const el = e.currentTarget
+                                                el.classList.remove('is-bouncing')
+                                                void el.offsetWidth
+                                                el.classList.add('is-bouncing')
+                                                go(it.key)
+                                            }}
+                                            onAnimationEnd={(e) => e.currentTarget.classList.remove('is-bouncing')}
                                         >
                                             {it.icon}
                                         </button>

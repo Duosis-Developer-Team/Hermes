@@ -130,6 +130,7 @@ function NotificationBell() {
             onOpenChange={setOpen}
             trigger={['click']}
             placement="bottomRight"
+            rootClassName="island-drop"
             popupRender={() => panel}
         >
             <button

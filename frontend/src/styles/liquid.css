@@ -1,0 +1,229 @@
+/* =============================================================================
+   HERMES LIQUID — sayfa anatomisi + hareket katmani (prototip v8 → kod)
+   =============================================================================
+   Onaylanan prototipin (docs/redesign/prototype-liquid.html) sayfa dili:
+     .lq-hero     sayfa basligi (34px baslik + alt satir + eylemler)
+     .lq-card     buzlu cam kart; imleci izleyen yumusak isima (--gx/--gy)
+     .lq-bento    12 kolonlu kart izgarasi (.lq-c3 … .lq-c12)
+     .lq-enter    cocuklar kademeli yukselerek girer (stagger)
+     .lq-seg      kayan gostergeli hap segment
+     .lq-chip / .lq-tag / .lq-kpi  kucuk yapi taslari
+   Sayfa gecisi View Transitions API ile (AppShell); desteklemeyen tarayici
+   aninda gecer. Tum hareket reduced-motion'da durur (tokens.css global).
+   Renkler YALNIZCA token'dan.
+   ========================================================================== */
+
+/* --- Sayfa basligi ------------------------------------------------------ */
+.lq-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--h-space-4);
+  flex-wrap: wrap;
+  margin: var(--h-space-3) 4px var(--h-space-5);
+}
+.lq-hero__title {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  color: var(--h-text-primary);
+  text-wrap: balance;
+}
+.lq-hero__sub { margin-top: 6px; color: var(--h-text-secondary); font-size: 14px; }
+.lq-hero__actions { display: flex; flex-wrap: wrap; gap: var(--h-space-2); align-items: center; }
+@media (max-width: 760px) { .lq-hero__title { font-size: 28px; } }
+
+/* --- Cam kart ------------------------------------------------------------ */
+.lq-card {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  padding: 20px 22px;
+  border-radius: 26px;
+  background: var(--h-bg-surface);
+  border: 1px solid var(--h-glass-edge);
+  box-shadow: var(--h-glass-shadow);
+  backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
+  color: var(--h-text-primary);
+}
+.lq-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(420px circle at var(--gx, -200px) var(--gy, -200px),
+    color-mix(in srgb, var(--hp-blue-400) 14%, transparent), transparent 45%);
+  opacity: 0;
+  transition: opacity 300ms var(--h-ease-standard);
+}
+.lq-card:hover::after { opacity: 1; }
+.lq-card--flush { padding: 8px; }
+.lq-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.lq-card__title { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.lq-card__link { font-size: 13px; font-weight: 500; color: var(--h-text-secondary); text-decoration: none; }
+.lq-card__link:hover { color: var(--h-brand); }
+
+/* --- Bento izgarasi ------------------------------------------------------ */
+.lq-bento {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.lq-c3 { grid-column: span 3; } .lq-c4 { grid-column: span 4; } .lq-c5 { grid-column: span 5; }
+.lq-c6 { grid-column: span 6; } .lq-c7 { grid-column: span 7; } .lq-c8 { grid-column: span 8; }
+.lq-c9 { grid-column: span 9; } .lq-c12 { grid-column: span 12; }
+@media (max-width: 1180px) {
+  .lq-c3, .lq-c4 { grid-column: span 6; }
+  .lq-c5, .lq-c7, .lq-c8, .lq-c9 { grid-column: span 12; }
+}
+@media (max-width: 760px) {
+  .lq-bento > * { grid-column: span 12; }
+}
+
+/* --- Kademeli giris ------------------------------------------------------ */
+.lq-enter > * { animation: lq-rise 600ms var(--h-ease-enter) both; }
+.lq-enter > *:nth-child(2) { animation-delay: 50ms; }
+.lq-enter > *:nth-child(3) { animation-delay: 100ms; }
+.lq-enter > *:nth-child(4) { animation-delay: 150ms; }
+.lq-enter > *:nth-child(5) { animation-delay: 200ms; }
+.lq-enter > *:nth-child(6) { animation-delay: 250ms; }
+.lq-enter > *:nth-child(7) { animation-delay: 300ms; }
+.lq-enter > *:nth-child(n+8) { animation-delay: 350ms; }
+@keyframes lq-rise {
+  from { opacity: 0.001; transform: translateY(14px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes lq-grow-y { from { transform: scaleY(0); } }
+@keyframes lq-grow-x { from { transform: scaleX(0); } }
+
+/* --- Sayfa gecisi (View Transitions) ------------------------------------ */
+::view-transition-old(hermes-main) { animation: lq-vt-out 220ms var(--h-ease-standard) both; }
+::view-transition-new(hermes-main) { animation: lq-vt-in 420ms var(--h-ease-enter) both; }
+@keyframes lq-vt-out { to { opacity: 0; transform: translateY(-8px); filter: blur(4px); } }
+@keyframes lq-vt-in { from { opacity: 0; transform: translateY(14px); filter: blur(6px); } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(hermes-main),
+  ::view-transition-new(hermes-main) { animation: none; }
+}
+
+/* --- Segment (kayan gosterge) ------------------------------------------- */
+.lq-seg {
+  position: relative;
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--h-radius-pill);
+  background: var(--h-bg-hover);
+}
+.lq-seg__ind {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: var(--h-radius-pill);
+  background: var(--h-bg-elevated);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--h-liquid-base) 30%, transparent);
+  transition: left 400ms var(--h-ease-spring), width 400ms var(--h-ease-spring);
+}
+.lq-seg button {
+  position: relative;
+  z-index: 1;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--h-radius-pill);
+  background: transparent;
+  color: var(--h-text-secondary);
+  font: 500 13.5px var(--h-font-family);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 200ms var(--h-ease-standard);
+}
+.lq-seg button.is-on { color: var(--h-text-primary); }
+.lq-seg button:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 1px; }
+
+/* --- Kucuk yapi taslari -------------------------------------------------- */
+.lq-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--h-radius-pill);
+  border: 1px solid var(--h-ghost-border);
+  background: var(--h-ghost-bg);
+  color: var(--h-text-primary);
+  font: 500 13px var(--h-font-family);
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 200ms var(--h-ease-spring), background 200ms var(--h-ease-standard);
+}
+.lq-chip:hover { transform: translateY(-1px); color: var(--h-text-primary); }
+.lq-chip.is-on { background: var(--h-text-primary); color: var(--h-bg-canvas); border-color: transparent; }
+.lq-chip b { font-weight: 600; opacity: 0.7; font-variant-numeric: tabular-nums; }
+.lq-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: var(--h-radius-pill);
+  background: var(--h-bg-hover);
+  color: var(--h-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.lq-tag--ok { background: color-mix(in srgb, var(--h-success) 14%, transparent); color: var(--h-success); }
+.lq-tag--warn { background: color-mix(in srgb, var(--h-warning) 16%, transparent); color: var(--h-warning); }
+.lq-tag--bad { background: color-mix(in srgb, var(--h-danger) 13%, transparent); color: var(--h-danger); }
+.lq-tag--info { background: var(--h-bg-selected); color: var(--h-info); }
+.lq-tag--violet { background: color-mix(in srgb, var(--hp-purple-500) 16%, transparent); color: var(--hp-purple-500); }
+.lq-mono { font-family: var(--h-font-mono); font-variant-numeric: tabular-nums; }
+
+.lq-kpi { display: flex; flex-direction: column; gap: 2px; }
+.lq-kpi__value {
+  font-size: 44px;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--h-text-primary);
+}
+.lq-kpi__label { color: var(--h-text-secondary); font-size: 13px; }
+
+/* Ilerleme cubugu: dolum soldan buyur. */
+.lq-meter { height: 8px; overflow: hidden; border-radius: var(--h-radius-pill); background: var(--h-bg-hover); }
+.lq-meter > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--h-grad-primary);
+  transform-origin: left;
+  animation: lq-grow-x 900ms var(--h-ease-enter) both;
+}
+
+/* Halka (SVG): cizgi cizilerek dolar. */
+.lq-ring circle { transition: stroke-dashoffset 1200ms var(--h-ease-enter); }
+
+/* Avatar yigini */
+.lq-av {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  color: #FFFFFF;
+  font: 700 10.5px var(--h-font-family);
+}
+.lq-avs { display: flex; }
+.lq-avs .lq-av { margin-left: -7px; box-shadow: 0 0 0 2px var(--h-bg-elevated); }
+.lq-avs .lq-av:first-child { margin-left: 0; }
