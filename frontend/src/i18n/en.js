@@ -200,6 +200,12 @@ export default {
     // Zaman girisi
     // ---------------------------------------------------------------
     timeEntry: {
+        addShortLog: 'Log',
+        addShortPlan: 'Plan',
+        noLogs: 'No logs',
+        weekend: 'Weekend',
+        pasteHere: '+ Paste here (Ctrl+V)',
+        pasteClickHere: '↓ Click here or press Ctrl+V',
         timeLogged: 'Time logged',
         timeUpdated: 'Time updated',
         logEntryDeleted: 'Log entry deleted successfully',
@@ -1112,6 +1118,8 @@ export default {
     },
 
     timeEntryHeader: {
+        viewList: 'List',
+        viewTimesheet: 'Timesheet',
         exportCsv: 'Export CSV',
         exportAsCsv: 'Export as CSV',
         selectUser: 'Select user',

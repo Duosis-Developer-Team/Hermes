@@ -5,12 +5,9 @@
  * Takvimde plan time olaylarını renk kodlu gösterir.
  * Kullanıcı Accept / Reject yapabilir ve fikir değiştirebilir.
  *
- * Renk Kodlama:
- *   Pending  → Sarı  (#faad14)
- *   Accepted → Yeşil (#52c41a)
- *   Rejected → Kırmızı (#ff4d4f)
- *   Süresi Geçmiş → Mavi (#1677ff) — diğer tüm statüsleri override eder
- *   Organizer → Mor (#8b5cf6) — sadece oluşturan admin için
+ * Durum tonu (Hermes Liquid, token — PlanTimeCard.css):
+ *   pending → amber · accepted → yesil · rejected → kirmizi ·
+ *   expired → mavi (digerlerini ezer) · organizer → mor (olusturan admin)
  * =============================================================================
  */
 
@@ -20,22 +17,16 @@ import dayjs from 'dayjs'
 import './PlanTimeCard.css'
 import { useT } from '../../i18n'
 
-// Saf yardimci — hook CAGIRAMAZ. Ceviri yerine ANAHTAR doner; cagiran
-// bilesen kendi `t`'si ile cevirir.
-function getCardStyle(status, isExpired) {
-    if (isExpired) {
-        return { bg: 'rgba(22, 119, 255, 0.15)', border: '#1677ff', labelKey: 'planCard.expired', labelColor: '#1677ff' }
-    }
+// Saf yardimci — hook CAGIRAMAZ. Ceviri ANAHTARI + ton doner; renk
+// CSS'te (PlanTimeCard.css, token). Hermes Liquid: ham hex yok.
+function cardTone(status, isExpired) {
+    if (isExpired) return { tone: 'expired', labelKey: 'planCard.expired' }
     switch (status) {
-        case 'accepted':
-            return { bg: 'rgba(82, 196, 26, 0.15)', border: '#52c41a', labelKey: 'plan.accepted', labelColor: '#52c41a' }
-        case 'rejected':
-            return { bg: 'rgba(255, 77, 79, 0.15)', border: '#ff4d4f', labelKey: 'plan.rejected', labelColor: '#ff4d4f' }
+        case 'accepted': return { tone: 'accepted', labelKey: 'plan.accepted' }
+        case 'rejected': return { tone: 'rejected', labelKey: 'plan.rejected' }
         case null:
-        case undefined:
-            return { bg: 'rgba(139, 92, 246, 0.15)', border: '#8b5cf6', labelKey: 'planCard.scheduled', labelColor: '#8b5cf6' }
-        default: // pending
-            return { bg: 'rgba(250, 173, 20, 0.15)', border: '#faad14', labelKey: 'plan.pending', labelColor: '#faad14' }
+        case undefined: return { tone: 'organizer', labelKey: 'planCard.scheduled' }
+        default: return { tone: 'pending', labelKey: 'plan.pending' }
     }
 }
 
@@ -70,7 +61,7 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, 
         : dayjs(checkDate).endOf('day')
     const isExpired = endMoment.isBefore(dayjs())
 
-    const { bg, border, labelKey, labelColor } = getCardStyle(status, isExpired)
+    const { tone, labelKey } = cardTone(status, isExpired)
 
     const timeLabel = start_time && end_time
         ? `${start_time} – ${end_time}`
@@ -81,23 +72,14 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, 
         : ''
 
     return (
-        <div
-            className="plan-time-card"
-            style={{
-                background: bg,
-                border: `1px solid ${border}`,
-                borderLeft: `3px solid ${border}`,
-                borderRadius: 6,
-                padding: '8px 10px',
-                marginBottom: 6,
-            }}
-        >
-            {/* Admin: hover action butonları (WorkLogCard tarzı) */}
+        <div className={`plan-time-card plan-time-card--${tone}`}>
+            {/* Admin: hover action butonlari (WorkLogCard tarzi) */}
             {canManage && (
                 <div className="plan-time-card-actions">
                     <Tooltip title={t('common.edit')}>
                         <button
                             className="plan-time-action-btn"
+                            aria-label={t('common.edit')}
                             onClick={(e) => { e.stopPropagation(); onEdit?.(planTime) }}
                         >
                             <EditOutlined />
@@ -106,6 +88,7 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, 
                     <Tooltip title={t('common.delete')}>
                         <button
                             className="plan-time-action-btn delete"
+                            aria-label={t('common.delete')}
                             onClick={(e) => { e.stopPropagation(); onDelete?.(planTime) }}
                         >
                             <DeleteOutlined />
@@ -114,93 +97,40 @@ function PlanTimeCard({ planTime, onRespond, onDelete, onEdit, isAdmin = false, 
                 </div>
             )}
 
-            {/* Başlık satırı */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1, minWidth: 0, paddingRight: canManage ? 52 : 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 12, color: 'var(--c-text-strong)', lineHeight: 1.3, marginBottom: 2 }}>
-                        {project_name || 'Plan Time'}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--c-text-muted)' }}>
-                        {customer_name}
-                    </div>
-                </div>
-                {/* Statü badge */}
-                <span style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: labelColor,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    marginLeft: 6,
-                    flexShrink: 0,
-                }}>
-                    {t(labelKey)}
-                </span>
+            <div className="plan-time-card-title">
+                {[customer_name, project_name].filter(Boolean).join(' \u00b7 ') || 'Plan Time'}
+            </div>
+            <div className="plan-time-card-meta">
+                <ClockCircleOutlined aria-hidden="true" />
+                <span className="lq-mono">{timeLabel}</span>
+                <span>{recurrenceLabel ? recurrenceLabel.replace(' \u00b7 ', '') + ' \u00b7 ' : ''}{t(labelKey)}</span>
             </div>
 
-            {/* Zaman */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5, color: 'var(--c-text-muted)', fontSize: 11 }}>
-                <ClockCircleOutlined style={{ fontSize: 10 }} />
-                <span>{timeLabel}{recurrenceLabel}</span>
-            </div>
-
-            {/* Açıklama */}
             {description && (
                 <Tooltip title={description}>
-                    <div style={{
-                        marginTop: 4,
-                        fontSize: 11,
-                        color: '#777',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                    }}>
-                        {description}
-                    </div>
+                    <div className="plan-time-card-desc">{description}</div>
                 </Tooltip>
             )}
 
-            {/* Accept / Reject — altta, kartın içinde (süresi geçmemişse ve kişisel atama varsa) */}
+            {/* Kabul / Ret — suresi gecmemis kisisel atamada */}
             {!isExpired && hasAssignment && (
-                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <div className="plan-time-card-respond">
                     <button
+                        type="button"
+                        className={`plan-time-respond${status === 'accepted' ? ' is-on' : ''}`}
+                        aria-pressed={status === 'accepted'}
                         onClick={(e) => { e.stopPropagation(); onRespond?.(id, 'accepted') }}
-                        style={{
-                            flex: 1,
-                            height: 26,
-                            border: `1px solid ${status === 'accepted' ? '#52c41a' : 'rgba(82,196,26,0.4)'}`,
-                            borderRadius: 4,
-                            background: status === 'accepted' ? 'rgba(82,196,26,0.25)' : 'transparent',
-                            color: '#52c41a',
-                            cursor: 'pointer',
-                            fontSize: 11,
-                            fontWeight: 600,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 4,
-                        }}
                     >
-                        <CheckOutlined style={{ fontSize: 10 }} />{t('planCard.accept')}</button>
+                        <CheckOutlined aria-hidden="true" />{t('planCard.accept')}
+                    </button>
                     <button
+                        type="button"
+                        className={`plan-time-respond plan-time-respond--reject${status === 'rejected' ? ' is-on' : ''}`}
+                        aria-pressed={status === 'rejected'}
                         onClick={(e) => { e.stopPropagation(); onRespond?.(id, 'rejected') }}
-                        style={{
-                            flex: 1,
-                            height: 26,
-                            border: `1px solid ${status === 'rejected' ? '#ff4d4f' : 'rgba(255,77,79,0.4)'}`,
-                            borderRadius: 4,
-                            background: status === 'rejected' ? 'rgba(255,77,79,0.25)' : 'transparent',
-                            color: '#ff4d4f',
-                            cursor: 'pointer',
-                            fontSize: 11,
-                            fontWeight: 600,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 4,
-                        }}
                     >
-                        <CloseOutlined style={{ fontSize: 10 }} />{t('planCard.reject')}</button>
+                        <CloseOutlined aria-hidden="true" />{t('planCard.reject')}
+                    </button>
                 </div>
             )}
         </div>

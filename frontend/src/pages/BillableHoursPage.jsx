@@ -35,14 +35,12 @@ import {
 } from '../features/admin/shared/AdminListStates'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
-import 'dayjs/locale/en'
 
 import { workLogService, authService, customerService, projectService } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useT } from '../i18n'
 
 dayjs.extend(isoWeek)
-dayjs.locale('en')
 
 const { Text } = Typography
 

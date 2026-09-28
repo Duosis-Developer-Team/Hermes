@@ -9,7 +9,7 @@
  */
 
 import { Tooltip } from 'antd'
-import { CheckSquareOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { formatHours } from '../../features/time-entry/model/timeEntry'
 import './WorkLogCard.css'
 import { useT } from '../../i18n'
@@ -22,13 +22,15 @@ function WorkLogCard({
     const {
         project_name,
         customer_name,
-        customer_code,
         description,
         duration_hours,
+        work_type_name,
     } = workLog
 
-    // Issue key gösterimi (müşteri kodu veya kısaltma)
-    const issueKey = customer_code || customer_name?.substring(0, 5).toUpperCase() || 'KEY'
+    // Hermes Liquid (prototip): baslik "Musteri · Proje", alt satir
+    // aciklama ya da is turu. Musteri kisaltma rozeti kalkti.
+    const title = [customer_name, project_name].filter(Boolean).join(' \u00b7 ') || 'Project'
+    const sub = description || work_type_name || ''
 
     return (
         /*
@@ -67,29 +69,11 @@ function WorkLogCard({
                     onSelect?.(workLog.id)
                 }}
             >
-                {project_name || 'Project'}
+                <span className="worklog-card-name">{title}</span>
+                <span className="worklog-card-duration">{formatHours(duration_hours)}</span>
             </button>
 
-            {/* Açıklama (Açık gri, kısaltılmış) */}
-            {description && (
-                <div className="worklog-card-description">
-                    {description.length > 35
-                        ? `${description.substring(0, 35)}...`
-                        : description
-                    }
-                </div>
-            )}
-
-            {/* Alt kısım - Issue Key (checkmark icon ile) + Süre */}
-            <div className="worklog-card-footer">
-                <div className="worklog-issue-key">
-                    <CheckSquareOutlined className="issue-key-icon" />
-                    <span className="issue-key-text">{issueKey}</span>
-                </div>
-                <span className="worklog-card-duration">
-                    {formatHours(duration_hours)}
-                </span>
-            </div>
+            {sub && <div className="worklog-card-description">{sub}</div>}
 
             {/* Hover actions — stopPropagation so they don't trigger card select or day select */}
             <div className="worklog-card-actions">

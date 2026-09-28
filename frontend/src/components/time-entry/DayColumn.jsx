@@ -8,16 +8,14 @@
  * =============================================================================
  */
 
-import { Dropdown, Progress } from 'antd'
+import { Dropdown } from 'antd'
 import { PlusOutlined, ClockCircleOutlined, ScheduleOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import 'dayjs/locale/en'
 import WorkLogCard from './WorkLogCard'
 import PlanTimeCard from './PlanTimeCard'
 import './DayColumn.css'
 import { useT } from '../../i18n'
 
-dayjs.locale('en')
 
 const DAILY_TARGET_HOURS = 8
 
@@ -52,6 +50,9 @@ function DayColumn({
     const dateKey = dayjs(date).format('YYYY-MM-DD')
     const dayName = dayjs(date).format('ddd')
     const dayNumber = dayjs(date).format('DD')
+    const addLabel = isAdmin
+        ? `${t('timeEntry.addShortLog')} \u00b7 ${t('timeEntry.addShortPlan')}`
+        : t('timeEntry.addShortLog')
 
     // 0.75 → "45m", 2.75 → "2h 45m", 2.0 → "2h"
     const formatDuration = (decimal) => {
@@ -137,16 +138,18 @@ function DayColumn({
                 </div>
             </div>
 
-            {/* Progress Bar — yalniz beklenen saati olan gunlerde */}
+            {/* Dolum cubugu — yalniz beklenen saati olan gunlerde; acilista
+                soldan buyur (Hermes Liquid). Tamamlanan gun yesil. */}
             {hasTarget && (
-                <div className="day-column-progress">
-                    <Progress
-                        percent={progressPercent}
-                        showInfo={false}
-                        strokeColor={progressPercent >= 100 ? '#52c41a' : 'var(--color-primary)'}
-                        trailColor="var(--bg-tertiary)"
-                        size="small"
-                    />
+                <div
+                    className={`day-column-progress${progressPercent >= 100 ? ' is-complete' : ''}`}
+                    role="progressbar"
+                    aria-label={`${dayName} ${dayNumber}`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(progressPercent)}
+                >
+                    <i style={{ width: `${progressPercent}%` }} />
                 </div>
             )}
 
@@ -202,21 +205,6 @@ function DayColumn({
                 </div>
             )}
 
-            {/* + Butonu — stopPropagation to avoid triggering day selection */}
-            <Dropdown menu={{ items: menuItems }} trigger={['click']}>
-                <button
-                    className="day-column-add-btn"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <PlusOutlined />
-                </button>
-            </Dropdown>
-
-            {/* Worklogs Başlık */}
-            <div className="day-column-section-title">
-                LOGS
-            </div>
-
             {/* Worklog Kartları */}
             <div className="day-column-logs">
                 {workLogs.length === 0 ? (
@@ -224,7 +212,9 @@ function DayColumn({
                        jenerik bos metin tekrar edilmez (cift mesaj yok). */
                     (isMissing && !hasCopiedLog) ? null : (
                         <div className={`day-column-empty${hasCopiedLog ? ' day-column-empty-paste' : ''}`}>
-                            {hasCopiedLog ? '↓ Click here or press Ctrl+V' : 'No logs'}
+                            {hasCopiedLog
+                                ? t('timeEntry.pasteClickHere')
+                                : isWeekend ? t('timeEntry.weekend') : t('timeEntry.noLogs')}
                         </div>
                     )
                 ) : (
@@ -244,7 +234,7 @@ function DayColumn({
                 {/* Paste hint — shown at bottom when day has logs and clipboard is active */}
                 {workLogs.length > 0 && hasCopiedLog && (
                     <div className="day-column-paste-hint">
-                        + Paste here (Ctrl+V)
+                        {t('timeEntry.pasteHere')}
                     </div>
                 )}
             </div>
@@ -252,10 +242,7 @@ function DayColumn({
             {/* Plan Time Kartları */}
             {planTimes.length > 0 && (
                 <>
-                    <div className="day-column-section-title" style={{ marginTop: 8 }}>
-                        PLANNED
-                    </div>
-                    <div className="day-column-logs">
+                    <div className="day-column-logs day-column-plans">
                         {planTimes.map(pt => (
                             <PlanTimeCard
                                 key={pt.assignment_id || pt.id}
@@ -270,6 +257,19 @@ function DayColumn({
                     </div>
                 </>
             )}
+
+            {/* Alt eylem (prototip): kesikli "+ Efor · Plan" — Plan yalniz
+                admin. stopPropagation: gun secimini tetiklemez. */}
+            <Dropdown menu={{ items: menuItems }} trigger={['click']}>
+                <button
+                    type="button"
+                    className="day-column-add-btn"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <PlusOutlined aria-hidden="true" />
+                    <span>{addLabel}</span>
+                </button>
+            </Dropdown>
         </div>
     )
 }

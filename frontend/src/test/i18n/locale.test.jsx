@@ -39,6 +39,8 @@ describe('i18n sozlukleri', () => {
             'admin.entityCount', 'logTime.platform',
             // Urun adi / odunc sozcuk: cevrilmez.
             'meeting.teams', 'meetingCard.teams', 'platform.plan',
+            // "Efor · Plan" alt eylemi: Plan Turkcede de ayni sozcuk.
+            'timeEntry.addShortPlan',
             'platform.emailDomainsExample',
         ])
         const untranslated = flatten(en).filter((key) => {

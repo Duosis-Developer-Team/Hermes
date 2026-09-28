@@ -1,32 +1,37 @@
 /**
- * HERMES - Time Entry kullanici basligi + ust aksiyonlar (Sprint 5).
- * TimeEntryPage'den cikarildi; markup ve handler sozlesmesi AYNI.
+ * HERMES - Time Entry sayfa basligi + ust aksiyonlar.
  *
- * Sprint 5 duzeltmesi (ayrıştırma sirasinda bulundu): export butonunun
- * inline stilinde `background: '#16a34a !important'` vardi — React
- * inline style'da !important'i ZATEN yok sayar (olu kod) ve ham hex
- * tasarim sistemini deliyordu. Artik semantic success token'ini kullanan
- * bir sinif (.te-export-btn, TimeEntryPage.css) uygulaniyor; gorunum
- * ayni yesil, kaynak tek.
+ * Hermes Liquid (28.09.2026): prototipteki sayfa anatomisi — buyuk baslik
+ * + hafta araligi alt satiri; sagda kisi secici (worklogs.admin), CSV,
+ * Hafta/Cizelge segmenti ve birincil "Efor gir". Handler sozlesmesi AYNI
+ * (onSelectUser, onExport, onViewModeChange); `onLogToday` yeni ve
+ * opsiyoneldir — verilmezse birincil eylem cizilmez.
+ *
+ * Gorunum sekmeleri gercek `role="tab"` (viewSwitcher kilidi); secili
+ * sekmenin yukseltilmis cam hapi `.view-link.active::after`.
  */
-import { Avatar, Button, Select, Tooltip } from 'antd'
-import { FileExcelOutlined, UserOutlined } from '@ant-design/icons'
+import { Button, Select } from 'antd'
+import { FileExcelOutlined, PlusOutlined, TeamOutlined } from '@ant-design/icons'
 import { useT } from '../../../i18n'
+import { PageHero } from '../../../components/liquid'
 
 function TimeEntryHeader({
-    canSelectUser, targetUserId, usersList, onSelectUser, displayName,
+    canSelectUser, targetUserId, usersList, onSelectUser,
     exportLoading, onExport,
     viewMode, onViewModeChange,
+    weekLabel, onLogToday,
 }) {
     const t = useT()
     return (
-        <div className="user-header">
-            <div className="user-header-left">
-                <Avatar size={40} icon={<UserOutlined />} className="user-avatar-large" />
-                {canSelectUser ? (
-                    <div className="admin-user-selector">
+        <PageHero
+            className="user-header"
+            title={t('nav.timeEntry')}
+            subtitle={weekLabel}
+            actions={(
+                <>
+                    {canSelectUser && (
                         <Select
-                            className="user-select-dropdown"
+                            className="user-select-dropdown te-user-select"
                             value={targetUserId}
                             onChange={onSelectUser}
                             options={usersList.map((u) => ({
@@ -35,44 +40,41 @@ function TimeEntryHeader({
                             }))}
                             showSearch
                             optionFilterProp="label"
+                            suffixIcon={<TeamOutlined />}
                             aria-label={t('timeEntryHeader.selectUser')}
                         />
-                    </div>
-                ) : (
-                    <span className="user-header-name">{displayName}</span>
-                )}
-            </div>
-
-            <div className="user-header-right">
-                <Tooltip title={t('timeEntryHeader.exportCsv')}>
+                    )}
                     <Button
-                        type="primary"
-                        shape="circle"
                         className="te-export-btn"
                         icon={<FileExcelOutlined />}
                         loading={exportLoading}
                         onClick={onExport}
                         aria-label={t('timeEntryHeader.exportAsCsv')}
-                    />
-                </Tooltip>
-
-
-                <div className="view-switchers" role="tablist" aria-label={t('misc.view')}>
-                    {['list', 'timesheet'].map((v) => (
-                        <button
-                            key={v}
-                            type="button"
-                            role="tab"
-                            aria-selected={viewMode === v}
-                            className={`view-link ${viewMode === v ? 'active' : ''}`}
-                            onClick={() => onViewModeChange(v)}
-                        >
-                            {v === 'list' ? 'List' : 'Timesheet'}
-                        </button>
-                    ))}
-                </div>
-            </div>
-        </div>
+                    >
+                        CSV
+                    </Button>
+                    <div className="view-switchers" role="tablist" aria-label={t('misc.view')}>
+                        {['list', 'timesheet'].map((v) => (
+                            <button
+                                key={v}
+                                type="button"
+                                role="tab"
+                                aria-selected={viewMode === v}
+                                className={`view-link ${viewMode === v ? 'active' : ''}`}
+                                onClick={() => onViewModeChange(v)}
+                            >
+                                {v === 'list' ? t('timeEntryHeader.viewList') : t('timeEntryHeader.viewTimesheet')}
+                            </button>
+                        ))}
+                    </div>
+                    {onLogToday && (
+                        <Button type="primary" icon={<PlusOutlined />} onClick={onLogToday}>
+                            {t('home.quickLog')}
+                        </Button>
+                    )}
+                </>
+            )}
+        />
     )
 }
 

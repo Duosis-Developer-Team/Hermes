@@ -202,6 +202,12 @@ export default {
     },
 
     timeEntry: {
+        addShortLog: 'Efor',
+        addShortPlan: 'Plan',
+        noLogs: 'Kayıt yok',
+        weekend: 'Hafta sonu',
+        pasteHere: '+ Buraya yapıştır (Ctrl+V)',
+        pasteClickHere: '↓ Tıkla ya da Ctrl+V',
         timeLogged: 'Süre kaydedildi',
         timeUpdated: 'Süre güncellendi',
         logEntryDeleted: 'İş kaydı silindi',
@@ -1106,6 +1112,8 @@ export default {
     },
 
     timeEntryHeader: {
+        viewList: 'Hafta',
+        viewTimesheet: 'Çizelge',
         exportCsv: 'CSV Dışa Aktar',
         exportAsCsv: 'CSV olarak dışa aktar',
         selectUser: 'Kullanıcı seçin',

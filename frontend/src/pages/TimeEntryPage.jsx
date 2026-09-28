@@ -17,7 +17,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
-import 'dayjs/locale/en'
 
 import WeeklyListView from '../components/time-entry/WeeklyListView'
 import TimesheetView from '../components/time-entry/TimesheetView'
@@ -35,7 +34,6 @@ import './TimeEntryPage.css'
 import { useT } from '../i18n'
 
 dayjs.extend(isoWeek)
-dayjs.locale('en')
 
 // 0.75 → "0h 45m", 2.75 → "2h 45m", 2.0 → "2h"
 function formatDuration(decimal) {
@@ -561,6 +559,8 @@ function TimeEntryPage() {
                 onExport={handleExportExcel}
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
+                weekLabel={weekLabel}
+                onLogToday={() => handleLogTime(dayjs())}
             />
 
             {/* Week Navigation + haftalik ozet — Sprint 5: ayri bilesen

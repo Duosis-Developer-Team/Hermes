@@ -1,13 +1,11 @@
 /**
- * HERMES - Time Entry hafta navigasyonu + haftalik ozet (Sprint 5).
- * TimeEntryPage'den DAVRANIS DEGISMEDEN cikarildi: ayni markup, ayni
- * siniflar, ayni handler sozlesmesi. Sayfa artik yalnizca orchestrasyon
- * yapar (CTO'nun Sprint 4'ten devreden mimari borcu).
+ * HERMES - Time Entry hafta ozet seridi.
  *
- * PM rework P0 / D2: hedef artik KAPASITE'den gelir (kiraci varsayilani,
- * kullanici override, tatil/izin dusulmus) ve haftada bos kalan gunler
- * tek satirla, sari, suclayici olmadan soylenir. Kapasite verisi yoksa
- * eski "/ 40h" AYNEN kalir.
+ * Hermes Liquid (28.09.2026): prototipteki cam ozet seridi — solda
+ * onceki/Bugun/sonraki, ortada buyuk "girilen / beklenen" ve yuklenirken
+ * soldan buyuyen dolum cubugu, sagda bos gunler hapi. Hedef KAPASITE'den
+ * gelir (P0/D2); kapasite yoksa eski "/ 40h" aynen. Sinif sozlesmesi
+ * (.summary-target, .summary-fill, .week-missing[role=status]) korunur.
  */
 import { Button } from 'antd'
 import { LeftOutlined, RightOutlined } from '@ant-design/icons'
@@ -33,50 +31,51 @@ function WeekNavigator({
     const fillPercent = capacity?.fill_percent
     const missingDays = Array.isArray(capacity?.missing_days) ? capacity.missing_days : []
     const missingLabels = missingDays.map((d) => dayjs(d).format('ddd')).join(', ')
+    const width = Math.max(0, Math.min(100, Number(fillPercent) || 0))
 
     return (
-        <div className="time-entry-header">
-            <div className="header-left">
-                <div className="week-nav">
-                    <Button
-                        type="text"
-                        icon={<LeftOutlined />}
-                        onClick={onPrevious}
-                        className="nav-btn"
-                        aria-label={t('meetings.previousWeek')}
-                    />
-                    <span className="week-label">{weekLabel}</span>
-                    <Button
-                        type="text"
-                        icon={<RightOutlined />}
-                        onClick={onNext}
-                        className="nav-btn"
-                        aria-label={t('meetings.nextWeek')}
-                    />
-                </div>
+        <div className="time-entry-header te-summary lq-card">
+            <div className="week-nav">
+                <Button
+                    shape="circle"
+                    icon={<LeftOutlined />}
+                    onClick={onPrevious}
+                    className="nav-btn"
+                    aria-label={t('meetings.previousWeek')}
+                />
                 <Button onClick={onToday} className="today-btn">{t('meetings.today')}</Button>
+                <Button
+                    shape="circle"
+                    icon={<RightOutlined />}
+                    onClick={onNext}
+                    className="nav-btn"
+                    aria-label={t('meetings.nextWeek')}
+                />
+                <span className="week-label h-sr-only">{weekLabel}</span>
             </div>
 
-            <div className="header-right">
-                <div className="week-summary">
-                    <span className="summary-label">Week:</span>
-                    <span className="summary-hours">{totalLabel}</span>
-                    <span className="summary-target">{target}</span>
-                    {fillPercent !== null && fillPercent !== undefined && (
-                        <span className="summary-fill">
-                            {t('timeEntry.weekFill', { percent: fillPercent })}
-                        </span>
-                    )}
-                </div>
-                {missingDays.length > 0 && (
-                    <div className="week-missing" role="status">
-                        <span className="week-missing-dot" aria-hidden="true" />
-                        {t('timeEntry.missingDaysWeek', {
-                            count: missingDays.length, days: missingLabels,
-                        })}
-                    </div>
-                )}
+            <div className="week-summary">
+                <span className="summary-hours">{totalLabel}</span>
+                <span className="summary-target">{target}</span>
             </div>
+
+            <div className="te-summary__meter" aria-hidden="true">
+                <i style={{ width: `${width}%` }} />
+            </div>
+            {fillPercent !== null && fillPercent !== undefined && (
+                <span className="summary-fill">
+                    {t('timeEntry.weekFill', { percent: fillPercent })}
+                </span>
+            )}
+
+            {missingDays.length > 0 && (
+                <div className="week-missing" role="status">
+                    <span className="week-missing-dot" aria-hidden="true" />
+                    {t('timeEntry.missingDaysWeek', {
+                        count: missingDays.length, days: missingLabels,
+                    })}
+                </div>
+            )}
         </div>
     )
 }

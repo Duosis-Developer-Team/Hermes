@@ -7,65 +7,32 @@
 .time-entry-page {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 64px);
+    gap: var(--h-space-4);
     background: var(--bg-primary);
 }
 
 /* ==========================================================================
-   USER HEADER (Jira Tempo Style)
+   SAYFA BASLIGI — Hermes Liquid (lq-hero; PageHero)
    ========================================================================== */
 
-.user-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 24px;
-    background: transparent;
-    /* Or specific color if needed */
-    border-bottom: 1px solid var(--border-default);
-}
-
-.user-header-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.user-avatar-large {
-    background-color: var(--color-primary);
-    font-size: 18px;
-    font-weight: 600;
-}
-
-.user-header-name {
-    font-size: 20px;
-    font-weight: 500;
-    color: var(--text-primary);
-    margin: 0;
-}
-
-.user-header-right {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-}
-
-.view-switchers {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-}
+.user-header.lq-hero { margin-bottom: 0; }
+.te-user-select { min-width: 200px; }
+.te-user-select .ant-select-selector { border-radius: var(--h-radius-pill); }
 
 /*
- * Sprint 8 — List/Timesheet gorunum degistiricisi.
- *
- * KOK NEDEN: kontrol (dogru olarak) gercek <button role="tab">'a
- * cevrilmisti ama tarayicinin VARSAYILAN buton kromu hic sifirlanmamisti;
- * acik renkli, kenarlikli iki native kutu gorunuyordu ve temadan tamamen
- * kopuktu. Tasarim niyeti zaten metin-tab + ince accent alt cizgiydi —
- * krom sifirlanarak o niyet gorunur kilindi. Semantik (tablist/tab,
- * aria-selected) ve state/veri davranisi DEGISMEDI.
+ * Gorunum degistirici: gercek <button role="tab"> (Sprint 8 semantigi).
+ * Hermes Liquid: hap segment — secili sekme YUKSELTILMIS cam hap
+ * (::after), yani durum yalniz renkle degil sekille de anlatilir.
  */
+.view-switchers {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    padding: 3px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-bg-hover);
+}
+
 .view-link {
     /* Native buton kromu sifirlanir: yuzey TRANSPARAN. */
     background: none;
@@ -74,132 +41,93 @@
     appearance: none;
     -webkit-appearance: none;
 
+    position: relative;
+    z-index: 0;
+    padding: 6px 14px;
+    border-radius: var(--h-radius-pill);
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 500;
     color: var(--text-secondary);
-    padding: 8px 0;
-    position: relative;
-    transition: color 0.2s;
+    transition: color 200ms var(--h-ease-standard);
 }
 
-.view-link:hover {
-    color: var(--text-primary);
-}
+.view-link:hover { color: var(--text-primary); }
 
 .view-link:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 3px;
-    border-radius: 4px;
+    outline: 2px solid var(--h-focus);
+    outline-offset: 1px;
 }
 
-/* Aktif gorunum: guclu metin + accent alt cizgi (durum yalniz renkle
-   anlatilmaz — cizgi sekil olarak da ayirir). */
-.view-link.active {
-    color: var(--color-primary);
-    font-weight: 600;
-}
+.view-link.active { color: var(--text-primary); }
 
 .view-link.active::after {
     content: '';
     position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    border-radius: 2px;
-    background: var(--color-primary);
-    /* Cok hafif glow — dark temada zarif vurgu, dikkat dagitmaz.
-       Ham rgba yerine temanin primary renginden turetilir. */
-    box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 35%, transparent);
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--h-bg-elevated);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--h-liquid-base) 30%, transparent);
+    animation: te-seg-in 380ms var(--h-ease-spring);
 }
+@keyframes te-seg-in { from { transform: scale(0.85); opacity: 0; } }
 
 /* ==========================================================================
-   WEEK HEADER
+   HAFTA OZET SERIDI — cam kart (prototip)
    ========================================================================== */
 
-.time-entry-header {
+.te-summary.lq-card {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 12px 20px;
-    /* Premium UI: gri bant yerine canvas'la butunlesen seffaf serit. */
-    background: transparent;
-    border-bottom: 1px solid var(--h-border-subtle);
-    gap: 16px;
+    gap: var(--h-space-4);
     flex-wrap: wrap;
+    padding: 12px 18px;
+    border-radius: var(--h-radius-pill);
 }
 
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.header-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-/* Week Navigation */
 .week-nav {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
 }
 
-.week-label {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-primary);
-    padding: 0 8px;
-    min-width: 180px;
-    text-align: center;
-}
-
-.nav-btn {
-    color: var(--text-secondary) !important;
-}
-
-.nav-btn:hover {
-    color: var(--text-primary) !important;
-    background: var(--bg-tertiary) !important;
-}
-
-.today-btn {
-    border-color: var(--border-subtle) !important;
-}
-
-/* Week Summary — Premium UI: gri rozet DEGIL; tipografiyle kurulan
-   sade ozet + ince marka alt cizgisi. */
 .week-summary {
     display: flex;
     align-items: baseline;
     gap: 6px;
-    padding: 2px 0;
-    font-size: 13px;
-    border-bottom: 2px solid color-mix(in srgb, var(--h-brand) 45%, transparent);
-}
-
-.summary-label {
-    color: var(--text-secondary);
 }
 
 .summary-hours {
-    font-weight: 600;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
     color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
 }
 
 .summary-target {
     color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
 }
 
-/* Sprint 7: `.view-toggle` kaldirildi — JSX'te kullanilmiyordu. */
-
-.view-toggle .ant-segmented-item-selected {
-    background: var(--bg-secondary) !important;
-    color: var(--text-primary) !important;
+.te-summary__meter {
+    flex: 1;
+    min-width: 120px;
+    height: 8px;
+    overflow: hidden;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-bg-hover);
+}
+.te-summary__meter i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--h-grad-primary);
+    transform-origin: left;
+    animation: lq-grow-x 900ms var(--h-ease-enter) both;
+    transition: width 600ms var(--h-ease-enter);
 }
 
 /* ==========================================================================
@@ -208,7 +136,7 @@
 
 .time-entry-content {
     flex: 1;
-    overflow: hidden;
+    min-height: 0;
 }
 
 /* ==========================================================================
@@ -307,34 +235,27 @@
 /* Sprint 5: export butonu — inline ham hex + React tarafindan zaten
    yok sayilan olu oncelik bayragi yerine
    semantic success tokeni (tek kaynak, iki temada dogru kontrast). */
-.te-export-btn.ant-btn-primary {
-    background: var(--h-success);
-    border-color: var(--h-success);
-    color: var(--h-on-brand);
-    min-width: 32px;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    margin-right: var(--h-space-2);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
+.te-export-btn .anticon { color: var(--h-success); }
 
 /* PM rework P0 / D2 — haftalik dolum ve eksik gun satiri (sari, sessiz) */
 .summary-fill {
     color: var(--text-muted);
     font-size: 12px;
-    margin-left: 6px;
+    white-space: nowrap;
 }
 
+/* Bos gunler: sari, sessiz hap (prototip). */
 .week-missing {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
-    margin-top: 4px;
+    padding: 4px 11px;
+    border-radius: var(--h-radius-pill);
+    background: color-mix(in srgb, var(--h-warning) 14%, transparent);
     font-size: 12px;
+    font-weight: 600;
     color: var(--h-warning);
+    white-space: nowrap;
 }
 
 .week-missing-dot {

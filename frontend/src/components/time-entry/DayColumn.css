@@ -21,7 +21,7 @@
     -webkit-backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
     display: flex;
     flex-direction: column;
-    height: 100%;
+    min-height: 360px;
 }
 
 .day-column-today {
@@ -54,127 +54,127 @@
     color: var(--text-primary);
 }
 
-/* Header */
+/* Baslik — Hermes Liquid (prototip): "Pzt 28" tek satir + saat sagda. */
 .day-column-header {
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--h-border-subtle);
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 14px 10px;
 }
+
+/* Hermes Liquid: bugun = mavi "Bugun" hapi + kart halkasi; sancak
+   cizgileri gun kartinda cizilmez (etiket + aria-current yeter). */
+.day-column .h-today-flag::before,
+.day-column .h-today-flag::after { display: none; }
 
 .day-column-name {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
 }
 
 .day-name {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 650;
     color: var(--text-primary);
     text-transform: capitalize;
 }
 
 .day-number {
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 650;
     color: var(--text-primary);
-    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
 }
 
-.day-column-today .day-number {
-    color: var(--color-primary);
-}
+.day-column-today .day-number,
+.day-column-today .day-name { color: var(--h-text-primary); }
 
 .day-column-hours {
-    font-size: 11px;
-    color: var(--text-primary);
-}
-
-/* Progress */
-.day-column-progress {
-    padding: 0 12px 8px;
-}
-
-.day-column-progress .ant-progress-inner {
-    background: var(--bg-tertiary) !important;
-}
-
-/* Add Button — Premium UI: buyuk dashed kutu yerine sade ghost satir;
-   varsayilan halde nerdeyse gorunmez, hover'da belirginlesir. */
-.day-column-add-btn {
-    margin: 0 12px 8px;
-    height: 30px;
-    border: 1px solid transparent;
-    border-radius: var(--radius-md);
-    background: transparent;
+    flex: none;
+    font: 500 11.5px var(--h-font-mono);
     color: var(--text-muted);
-    opacity: 0.75;
-    cursor: pointer;
+}
+
+/* Dolum cubugu: kalin hap, acilista soldan buyur. */
+.day-column-progress {
+    height: 6px;
+    margin: 0 14px 10px;
+    overflow: hidden;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-bg-hover);
+}
+.day-column-progress > i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--h-text-primary) 55%, transparent);
+    transform-origin: left;
+    animation: lq-grow-x 900ms var(--h-ease-enter) both;
+    transition: width 600ms var(--h-ease-enter);
+}
+.day-column-today .day-column-progress > i { background: var(--h-grad-primary); }
+.day-column-progress.is-complete > i { background: var(--h-success); }
+
+/* Alt eylem: kesikli "+ Efor · Plan" (prototip) — gunun dibinde. */
+.day-column-add-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
-    /* Hover: kenarlik, metin rengi ve arka plan. */
+    gap: 6px;
+    height: 38px;
+    margin: auto 10px 10px;
+    border: 1px dashed var(--h-border-default);
+    border-radius: 14px;
+    background: transparent;
+    color: var(--text-muted);
+    font: 500 13px var(--h-font-family);
+    cursor: pointer;
     transition:
-        border-color var(--transition-fast),
-        color var(--transition-fast),
-        background-color var(--transition-fast);
+        border-color var(--h-motion-fast) var(--h-ease-standard),
+        color var(--h-motion-fast) var(--h-ease-standard),
+        background-color var(--h-motion-fast) var(--h-ease-standard),
+        transform 200ms var(--h-ease-spring);
 }
 
 .day-column-add-btn:hover {
-    border-color: color-mix(in srgb, var(--h-brand) 40%, transparent);
+    border-color: color-mix(in srgb, var(--h-brand) 50%, transparent);
     color: var(--h-brand);
-    background: color-mix(in srgb, var(--h-brand) 8%, transparent);
-    opacity: 1;
+    background: var(--h-bg-selected);
+    transform: translateY(-1px);
 }
 .day-column-add-btn:focus-visible {
     outline: 2px solid var(--h-focus);
     outline-offset: 2px;
-    opacity: 1;
 }
 
-/* Section Title */
-.day-column-section-title {
-    padding: 8px 12px;
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--text-muted);
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-}
-
-/* Logs Container */
+/* Kayit/plan listesi */
 .day-column-logs {
-    flex: 1;
     overflow-y: auto;
-    padding: 0 12px 12px;
+    padding: 0 10px 6px;
 }
+.day-column-plans { padding-top: 0; }
 
 .day-column-empty {
-    /* Premium UI: sade, dusuk profilli bos durum. */
     text-align: center;
     padding: 14px 8px;
     color: var(--text-muted);
-    font-size: 12px;
-    opacity: 0.8;
+    font-size: 12.5px;
 }
 
 /* ── Copy-Paste: targeted day state ────────────────────────────────────── */
 .day-column-targeted {
-    background: rgba(74, 124, 255, 0.06) !important;
-    outline: 2px solid rgba(74, 124, 255, 0.5);
+    background: var(--h-bg-selected);
+    outline: 2px solid color-mix(in srgb, var(--h-brand) 50%, transparent);
     outline-offset: -2px;
-}
-
-.day-column-targeted .day-column-header {
-    background: rgba(74, 124, 255, 0.08);
 }
 
 /* Pulse animation on targeted column */
 @keyframes targetPulse {
-    0%, 100% { outline-color: rgba(74, 124, 255, 0.5); }
-    50%       { outline-color: rgba(74, 124, 255, 0.9); }
+    0%, 100% { outline-color: color-mix(in srgb, var(--h-brand) 50%, transparent); }
+    50%       { outline-color: var(--h-brand); }
 }
 .day-column-targeted {
     animation: targetPulse 1.2s ease-in-out infinite;
@@ -182,10 +182,10 @@
 
 /* Empty day with clipboard active — invite user to paste */
 .day-column-empty-paste {
-    color: rgba(74, 124, 255, 0.8);
-    font-size: 11px;
-    border: 1px dashed rgba(74, 124, 255, 0.4);
-    border-radius: 6px;
+    color: var(--h-brand);
+    font-size: 11.5px;
+    border: 1px dashed color-mix(in srgb, var(--h-brand) 45%, transparent);
+    border-radius: 12px;
     padding: 14px 8px;
     margin-top: 4px;
 }
@@ -193,10 +193,10 @@
 /* Bottom paste hint inside non-empty days */
 .day-column-paste-hint {
     font-size: 11px;
-    color: rgba(74, 124, 255, 0.65);
+    color: var(--h-brand);
     text-align: center;
-    border: 1px dashed rgba(74, 124, 255, 0.3);
-    border-radius: 4px;
+    border: 1px dashed color-mix(in srgb, var(--h-brand) 35%, transparent);
+    border-radius: 12px;
     padding: 6px;
     margin-top: 4px;
     cursor: default;
@@ -206,10 +206,7 @@
    Kural (04-roller §7): sari, kutunun icinde, tiklanabilir; kirmizi yok,
    modal yok. Bugun asla eksik sayilmaz (sunucu 'today' doner).
    ============================================================================= */
-.day-column-missing .day-column-header {
-    border-left: 3px solid var(--h-warning);
-    padding-left: 6px;
-}
+/* Eksik gun: baslikta sari nokta yeterli; kutu gunun icinde. */
 
 .day-column-missing-dot {
     width: 7px;
@@ -223,24 +220,29 @@
 
 .day-column-missing-hint {
     /* Yumusak sicak zemin, sert sari cerceve yok; kutu gunun icinde. */
-    margin: 6px 10px 8px;
-    padding: 10px 10px 8px;
-    border: 1px solid color-mix(in srgb, var(--h-warning) 35%, transparent);
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--h-warning) 9%, var(--h-bg-surface));
+    margin: 0 10px 8px;
+    padding: 16px 12px 12px;
+    border: 1px dashed color-mix(in srgb, var(--h-warning) 55%, transparent);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--h-warning) 10%, transparent);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+    animation: lq-rise 500ms var(--h-ease-enter) both;
 }
 
 .day-column-missing-row {
     display: flex;
+    justify-content: center;
     align-items: center;
     gap: 8px;
     min-width: 0;
 }
 
 .day-column-missing-dot--inline {
+    display: none;
     margin-left: 0;
     width: 8px;
     height: 8px;
@@ -262,20 +264,19 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    width: 100%;
-    height: 30px;
-    padding: 0 10px;
-    border-radius: 8px;
-    border: 1px solid color-mix(in srgb, var(--h-brand) 45%, transparent);
-    background: var(--h-bg-surface);
-    color: var(--h-brand);
+    height: 32px;
+    padding: 0 16px;
+    border-radius: var(--h-radius-pill);
+    border: 0;
+    background: var(--h-action-bg);
+    color: var(--h-action-text);
+    box-shadow: var(--h-action-shadow);
     cursor: pointer;
-    transition: background var(--h-motion-fast) var(--h-ease-standard),
-        border-color var(--h-motion-fast) var(--h-ease-standard);
+    transition: transform 200ms var(--h-ease-spring), box-shadow var(--h-motion-fast);
 }
 .day-column-missing-primary:hover {
-    background: var(--h-bg-selected);
-    border-color: var(--h-brand);
+    transform: translateY(-1px);
+    box-shadow: var(--h-action-shadow-hover);
 }
 .day-column-missing-primary:focus-visible {
     outline: 2px solid var(--h-focus);

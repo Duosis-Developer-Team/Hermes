@@ -5,8 +5,6 @@
 .weekly-list-view {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 180px);
-    min-height: 500px;
 }
 
 /* Hafta Özeti */
