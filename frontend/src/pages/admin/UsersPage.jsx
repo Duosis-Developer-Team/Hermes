@@ -16,7 +16,7 @@
  */
 
 import { useMemo, useRef, useState } from 'react'
-import { Card, Table, Button, Space, Modal, Form, Input, message, Select, Switch, Tag, Tabs } from 'antd'
+import { Card, Table, Button, Space, Modal, Form, Input, message, Select, Switch, Tabs } from 'antd'
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, CrownOutlined,
     SearchOutlined,
@@ -35,6 +35,7 @@ import UserGroupsTab from './UserGroupsTab'
 import RolesTab from './RolesTab'
 import './UsersPage.css'
 import { useT } from '../../i18n'
+import { Avatar } from '../../components/liquid'
 /**
  * Formda GERCEKTEN olan alanlar. `password` bilerek `undefined`: bos
  * string yazilirsa duzenlemede sunucuya BOS PAROLA gonderilebilirdi.
@@ -221,8 +222,22 @@ export function UsersTab() {
     }
 
     const columns = [
-        { title: t('users.email'), dataIndex: 'email', key: 'email', sorter: (a, b) => a.email.localeCompare(b.email) },
-        { title: t('users.fullName'), dataIndex: 'full_name', key: 'full_name' },
+        {
+            // Hermes Liquid (prototip): kisi = avatar + ad + e-posta tek hucrede.
+            title: t('users.person'),
+            dataIndex: 'email',
+            key: 'email',
+            sorter: (a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email),
+            render: (email, record) => (
+                <span className="users-person">
+                    <Avatar id={record.id} name={record.full_name || email} size={32} />
+                    <span className="users-person__text">
+                        <b>{record.full_name || email}</b>
+                        {record.full_name && <small>{email}</small>}
+                    </span>
+                </span>
+            ),
+        },
         {
             title: t('users.role'),
             dataIndex: 'is_admin',
@@ -232,10 +247,14 @@ export function UsersTab() {
                 // is_admin artık system-admin ROLÜNDEN türetiliyor —
                 // rozet güvenilir; detaylı roller düzenleme modalında.
                 isAdmin
-                    ? <Tag icon={<CrownOutlined />} color="gold">{t('users.adminBadge')}</Tag>
-                    : <Tag icon={<UserOutlined />} color="blue">{t('entity.user')}</Tag>,
+                    ? <span className="lq-tag lq-tag--violet"><CrownOutlined aria-hidden="true" />{t('users.adminBadge')}</span>
+                    : <span className="lq-tag lq-tag--info"><UserOutlined aria-hidden="true" />{t('entity.user')}</span>,
         },
-        { title: t('common.status'), dataIndex: 'is_active', key: 'is_active', width: 100, render: (active) => <Tag color={active ? 'success' : 'default'}>{active ? 'Active' : 'Inactive'}</Tag> },
+        { title: t('common.status'), dataIndex: 'is_active', key: 'is_active', width: 100, render: (active) => (
+            <span className={`lq-tag${active ? ' lq-tag--ok' : ''}`}>
+                <span className="users-dot" aria-hidden="true" />{active ? t('users.statusActive') : t('users.statusInactive')}
+            </span>
+        ) },
         {
             title: t('common.actions'), key: 'actions', width: 120, render: (_, record) => (
                 <Space>

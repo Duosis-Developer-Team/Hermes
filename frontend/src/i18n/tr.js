@@ -153,6 +153,7 @@ export default {
     },
 
     settings: {
+        searchPlaceholder: 'Ayar ara…',
         title: 'Ayarlar',
         subtitle: 'Organizasyon, iş yönetimi, referans verileri, müşteriler ve entegrasyonlar',
         organization: 'Organizasyon',
@@ -476,6 +477,9 @@ export default {
     },
 
     users: {
+        person: 'Kişi',
+        statusActive: 'Aktif',
+        statusInactive: 'Pasif',
         fullName: 'Ad Soyad',
         email: 'E-posta',
         emailExample: 'ornek@sirket.com',

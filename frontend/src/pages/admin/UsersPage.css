@@ -22,3 +22,10 @@
 .users-page-tabs .ant-tabs-nav::before {
     border-bottom-color: var(--c-border);
 }
+
+/* Hermes Liquid: kisi hucresi (avatar + ad + e-posta) ve durum noktasi */
+.users-person { display: inline-flex; align-items: center; gap: 12px; min-width: 0; }
+.users-person__text { display: flex; flex-direction: column; min-width: 0; }
+.users-person__text b { font-weight: 600; }
+.users-person__text small { color: var(--h-text-muted); font-size: 12px; }
+.users-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }

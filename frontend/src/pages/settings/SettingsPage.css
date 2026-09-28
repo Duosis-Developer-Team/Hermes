@@ -1,95 +1,80 @@
-/* Ayarlar kabugu (B1) — mevcut token dili; sayfa icerikleri kendi stilini korur. */
-.settings-page {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.settings-head h1 {
-    font-size: 20px;
-    font-weight: 600;
-    margin: 0;
-    letter-spacing: -0.01em;
-}
-
-.settings-head p {
-    margin: 2px 0 0;
-    font-size: 12.5px;
-    color: var(--text-muted);
-}
+/* Ayarlar kabugu (B1) — Hermes Liquid prototipi. Icerik sayfalari kendi
+   yapisini korur; baslik ve sekme DILI burada kapsamli olarak verilir. */
+.settings-page { display: flex; flex-direction: column; }
+.settings-page > .lq-hero { margin-bottom: var(--h-space-4); }
 
 .settings-body {
     display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-columns: 250px minmax(0, 1fr);
     gap: 16px;
     align-items: start;
 }
-
 @media (max-width: 860px) {
-    .settings-body {
-        grid-template-columns: 1fr;
-    }
+    .settings-body { grid-template-columns: 1fr; }
 }
 
-.settings-nav {
+.settings-nav.lq-card {
     position: sticky;
-    top: 12px;
+    top: 0;
+    max-height: calc(100vh - var(--h-header-height) - 40px);
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 10px 8px;
-    border: 1px solid var(--border-default);
-    border-radius: 10px;
-    background: var(--h-surface-subtle, transparent);
+    gap: 6px;
+    padding: 12px;
 }
-
+.settings-search.ant-input-affix-wrapper { margin-bottom: 6px; border-radius: 14px; height: 38px; }
+.settings-section { display: flex; flex-direction: column; gap: 2px; }
 .settings-section-label {
+    padding: 10px 10px 4px;
     font-size: 11px;
+    font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--text-muted);
-    font-weight: 600;
-    padding: 4px 10px 2px;
+    color: var(--h-text-muted);
 }
-
 .settings-link {
-    display: block;
-    padding: 7px 10px;
-    border-radius: 6px;
-    font-size: 13px;
-    color: var(--text-secondary, var(--text-muted));
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    font-size: 13.5px;
+    color: var(--h-text-primary);
     text-decoration: none;
     transition: background 160ms ease, color 160ms ease;
 }
+.settings-link__icon { display: inline-flex; width: 16px; font-size: 15px; color: var(--h-text-muted); transition: color 160ms; }
+.settings-link:hover { background: var(--h-bg-hover); color: var(--h-text-primary); }
+.settings-link.active { background: var(--h-text-primary); color: var(--h-bg-canvas); font-weight: 600; }
+.settings-link.active .settings-link__icon,
+.settings-link:hover .settings-link__icon { color: inherit; }
+.settings-link:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
 
-.settings-link:hover {
-    background: var(--h-bg-hover, rgba(255, 255, 255, 0.04));
-    color: var(--text-primary);
-}
+.settings-content.lq-card { min-width: 0; padding: 22px 24px; }
+/* Icerik sayfalarinin kendi basligi = kart icinde bolum basligi. */
+.settings-content .page-header { margin-bottom: 16px; }
+.settings-content .page-header h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -0.02em; }
+.settings-content .page-header p { margin: 2px 0 0; font-size: 13px; color: var(--h-text-secondary); }
+/* Kart icinde ic ice kart gurultusu olmasin. */
+.settings-content .ant-card { background: transparent; border: 0; box-shadow: none; }
+.settings-content .ant-card-head { padding-inline: 0; border-bottom: 0; }
+.settings-content .ant-card-body { padding-inline: 0; }
 
-.settings-link.active {
-    background: var(--h-bg-selected);
-    color: var(--h-brand-hover, var(--h-brand));
-    font-weight: 600;
-}
+/* Sekmeler = hap segment (prototip: Kullanicilar / Roller / Gruplar).
+   :root oneki antd CSS-in-JS kurallarini ozgullukte gecer (!important yok). */
+:root .settings-content .ant-tabs-top > .ant-tabs-nav { margin-bottom: 16px; }
+:root .settings-content .ant-tabs-top > .ant-tabs-nav::before { display: none; }
+:root .settings-content .ant-tabs-nav-list { padding: 3px; gap: 2px; border-radius: var(--h-radius-pill); background: var(--h-bg-hover); }
+:root .settings-content .ant-tabs .ant-tabs-tab { margin: 0; padding: 7px 16px; border-radius: var(--h-radius-pill); transition: background 200ms, color 200ms; }
+:root .settings-content .ant-tabs .ant-tabs-tab + .ant-tabs-tab { margin: 0; }
+:root .settings-content .ant-tabs .ant-tabs-tab .ant-tabs-tab-btn { color: var(--h-text-secondary); font-weight: 500; }
+:root .settings-content .ant-tabs .ant-tabs-tab-active { background: var(--h-bg-elevated); box-shadow: 0 1px 4px color-mix(in srgb, var(--h-liquid-base) 30%, transparent); }
+:root .settings-content .ant-tabs .ant-tabs-tab-active .ant-tabs-tab-btn { color: var(--h-text-primary); }
+:root .settings-content .ant-tabs .ant-tabs-ink-bar { display: none; }
 
-.settings-link:focus-visible {
-    outline: 2px solid var(--h-focus);
-    outline-offset: 2px;
-}
-
-.settings-content {
-    min-width: 0;
-}
-
-.settings-loading {
-    display: flex;
-    justify-content: center;
-    padding: 48px 0;
-}
+.settings-loading { display: flex; justify-content: center; padding: 48px 0; }
 
 @media (prefers-reduced-motion: reduce) {
-    .settings-link {
-        transition: none;
-    }
+    .settings-link { transition: none; }
 }

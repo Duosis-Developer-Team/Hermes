@@ -142,6 +142,7 @@ export default {
     // Ayarlar catisi (PM rework P0 / B1)
     // ---------------------------------------------------------------
     settings: {
+        searchPlaceholder: 'Search settings…',
         title: 'Settings',
         subtitle: 'Organization, work management, reference data, customers and integrations',
         organization: 'Organization',
@@ -482,6 +483,9 @@ export default {
     },
 
     users: {
+        person: 'Person',
+        statusActive: 'Active',
+        statusInactive: 'Inactive',
         fullName: 'Full Name',
         email: 'Email',
         emailExample: 'example@company.com',
