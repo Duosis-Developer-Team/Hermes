@@ -80,7 +80,7 @@
 }
 *{box-sizing:border-box}
 html,body{min-height:100%}
-body{margin:0;background:var(--base);color:var(--ink);font:14px/1.45 var(--sans);-webkit-font-smoothing:antialiased;padding-inline:clamp(16px,3vw,48px);padding-block:clamp(16px,2.4vw,36px) 110px;overflow-x:hidden}
+body{margin:0;background:var(--base);color:var(--ink);font:14px/1.45 var(--sans);-webkit-font-smoothing:antialiased;padding:0;overflow-x:hidden}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 a{color:var(--primary);text-decoration:none}
@@ -108,11 +108,10 @@ a{color:var(--primary);text-decoration:none}
 
 /* ---------- Cam ---------- */
 .glass{background:var(--glass);backdrop-filter:blur(28px) saturate(190%);-webkit-backdrop-filter:blur(28px) saturate(190%);border:1px solid var(--glass-edge);box-shadow:var(--glass-shadow)}
-.app{position:relative;z-index:1;max-width:1480px;margin:0 auto;min-height:calc(100vh - 72px);padding:0 clamp(16px,2vw,32px) 40px;border-radius:40px;
-  background:var(--shell);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);
-  border:1px solid var(--shell-edge);box-shadow:0 0 0 12px var(--shell-rim), var(--shell-shadow), inset 0 1px 0 rgba(255,255,255,.18)}
+.app{position:relative;z-index:1;margin:0;min-height:100vh;padding:0 max(16px, calc((100vw - 1440px) / 2)) 120px;
+  background:var(--shell);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%)}
 .app .glass{backdrop-filter:blur(14px) saturate(150%);-webkit-backdrop-filter:blur(14px) saturate(150%)}
-@media (max-width:760px){.app{border-radius:28px;box-shadow:var(--shell-shadow);padding-inline:12px}}
+
 
 /* ---------- Ada (dynamic island) ---------- */
 .topbar{position:sticky;top:0;z-index:50;display:flex;justify-content:center;padding-top:calc(14px + env(safe-area-inset-top,0px));padding-bottom:10px;pointer-events:none}

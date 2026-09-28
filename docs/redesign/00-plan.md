@@ -136,3 +136,9 @@ Prototip: https://claude.ai/artifact/HXXunk5DuR4VXEAVonnQfp · kopya
   koyuda gri/çelik tonlar, canlı mavi yok.
 - Kartlar kabuk içinde hafif renkli cam (blur 14px); üst menü koyu ada
   yerine yarı saydam hap, aktif sekme beyaz dolgu (`--nav-*` tokenları).
+
+### Revizyon 6 (28.09.2026) — tam ekran cam
+
+- Kabuğun kenar boşluğu, köşe yuvarlaması ve çerçeve halkası kaldırıldı:
+  şeffaf cam artık TAM EKRAN (modal içinde gibi durmuyor). Sıvı zemin
+  camın arkasından görünmeye devam eder; içerik 1440px'te ortalanır.
