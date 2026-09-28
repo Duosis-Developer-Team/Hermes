@@ -54,14 +54,15 @@ const cssBlock = (raw, selector) => {
 }
 
 describe('ada logosu (§A → Hermes Liquid)', () => {
-    it('Hermes isareti maske ile cizilir (orani korunur, bozulma yok)', () => {
-        /* Sidebar ve collapsed ikon kutusu kalkti; isaret artik adadaki
-           daire icinde kare bir MASKE (logo-mark-mask.png) — oran
-           dosyadan degil kutudan gelir, `contain` ile bozulmaz. */
+    it('Hermes isareti temaya gore ozgun logo (orani korunur, bozulma yok)', () => {
+        /* Siyah daire kalkti: acik temada siyah cizgili, koyu temada
+           beyaz cizgili ozgun logo. Oran `contain` ile korunur. */
         const css = read(join(SRC, 'components/layout/MainLayout.css'))
-        const block = cssBlock(css, '.brand-mark i')
-        expect(block).toContain('logo-mark-mask.png')
-        expect(block).toMatch(/mask:[^;]*contain/)
+        const block = cssBlock(css, '.brand-mark i {')
+        expect(block).toContain('logo-mark-light.png')
+        expect(block).toMatch(/background:[^;]*contain/)
+        const dark = cssBlock(css, ":root[data-theme='dark'] .brand-mark i")
+        expect(dark).toContain('logo-mark-dark.png')
     })
 })
 

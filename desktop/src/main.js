@@ -20,7 +20,7 @@ const { app, BrowserWindow, Menu, ipcMain, shell, session, nativeTheme } = requi
 
 const { SERVERS, serverById, readSettings, writeSettings } = require('./servers')
 const { classify, deepLinkToUrl } = require('./navigation')
-const { TRAFFIC_LIGHTS, DRAG_CSS } = require('./windowChrome')
+const { TRAFFIC_LIGHTS, DRAG_CSS, VIBRANCY, TRANSPARENT_CSS } = require('./windowChrome')
 
 const PARTITION = 'persist:hermes'
 let mainWindow = null
@@ -108,9 +108,11 @@ function createWindow() {
         minHeight: 680,
         title: 'Hermes',
         show: false,
-        // Ilk boya sivi zeminin tonunda (--h-liquid-base): yuklenirken
-        // acik temada koyu flas olmaz.
-        backgroundColor: nativeTheme.shouldUseDarkColors ? '#07080A' : '#C9D6EA',
+        // Saydam pencere + macOS buzlu cam: masaustu arkadan gorunur.
+        // Ilk boyada da cam gorunur (koyu/acik flas yok).
+        backgroundColor: '#00000000',
+        vibrancy: VIBRANCY,
+        visualEffectState: 'active',
         // Hermes Liquid (R6): basliksiz pencere, trafik isiklari sivi
         // zeminin ustunde; surukleme bolgesi windowChrome.DRAG_CSS'te.
         titleBarStyle: 'hiddenInset',
@@ -126,7 +128,7 @@ function createWindow() {
     })
     attachNavigationPolicy(mainWindow)
     mainWindow.webContents.on('did-finish-load', () => {
-        mainWindow?.webContents.insertCSS(DRAG_CSS).catch(() => {})
+        mainWindow?.webContents.insertCSS(DRAG_CSS + TRANSPARENT_CSS).catch(() => {})
     })
     mainWindow.once('ready-to-show', () => mainWindow.show())
     mainWindow.on('close', () => {
@@ -200,6 +202,13 @@ ipcMain.on('hermes:set-badge', (event, count) => {
     if (origin !== new URL(currentServer().url).origin) return
     const n = Number.isInteger(count) && count > 0 ? count : 0
     app.setBadgeCount(n)
+})
+
+// Web temasi → macOS cam malzemesi (acik temada acik, koyuda koyu cam).
+ipcMain.on('hermes:set-appearance', (event, theme) => {
+    const origin = (() => { try { return new URL(event.senderFrame.url).origin } catch { return null } })()
+    if (origin !== new URL(currentServer().url).origin) return
+    if (theme === 'light' || theme === 'dark') nativeTheme.themeSource = theme
 })
 
 // --- Yasam dongusu ----------------------------------------------------------------

@@ -16,4 +16,8 @@ contextBridge.exposeInMainWorld('hermesDesktop', Object.freeze({
         const n = Number(count)
         ipcRenderer.send('hermes:set-badge', Number.isFinite(n) && n > 0 ? Math.min(Math.floor(n), 999) : 0)
     },
+    /** Pencere cami uygulama temasini izler ('light' | 'dark'). */
+    setAppearance: (theme) => {
+        if (theme === 'light' || theme === 'dark') ipcRenderer.send('hermes:set-appearance', theme)
+    },
 }))

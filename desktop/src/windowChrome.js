@@ -27,4 +27,18 @@ html::after {
 .login-page .login-theme-switch { -webkit-app-region: no-drag; }
 `
 
-module.exports = { TRAFFIC_LIGHTS, DRAG_CSS }
+/*
+ * Gercek saydamlik (28.09, CTO): pencere macOS vibrancy ile arkasindaki
+ * masaustunu buzlu cam olarak gosterir. Web'in cizdigi opak zeminler
+ * yalniz burada kaldirilir; tarayicida sivi zemin aynen kalir. Temaya
+ * gore acik/koyu cam, web'in `hermesDesktop.setAppearance` cagrisiyla
+ * nativeTheme'e aktarilir.
+ */
+const VIBRANCY = 'under-window'
+
+const TRANSPARENT_CSS = `
+html, body, .login-page { background: transparent !important; }
+.liquid-backdrop { display: none !important; }
+`
+
+module.exports = { TRAFFIC_LIGHTS, DRAG_CSS, VIBRANCY, TRANSPARENT_CSS }

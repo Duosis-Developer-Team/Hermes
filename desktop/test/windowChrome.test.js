@@ -16,3 +16,10 @@ test('ustte her sayfada ince surukleme seridi var (giris ekrani dahil)', () => {
 test('trafik isiklari adanin ustunde degil, sol kenarda', () => {
     assert.ok(TRAFFIC_LIGHTS.x <= 24 && TRAFFIC_LIGHTS.y <= 28)
 })
+
+test('masaustunde web zemini saydam, sivi katman gizli (vibrancy gorunur)', () => {
+    const { TRANSPARENT_CSS, VIBRANCY } = require('../src/windowChrome')
+    assert.match(TRANSPARENT_CSS, /html, body[^{]*\{ background: transparent !important; \}/)
+    assert.match(TRANSPARENT_CSS, /\.liquid-backdrop \{ display: none !important; \}/)
+    assert.equal(VIBRANCY, 'under-window')
+})

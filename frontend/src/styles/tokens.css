@@ -242,16 +242,17 @@
 :root[data-theme='light'] {
   /* Premium redesign: gri levha yerine beyaza cok yakin temiz tuval. */
   /* ACIK = beyaz seffaf cam; sivi Hermes mavisi/moru/yesili. */
-  --h-bg-canvas: #DCE5F2;
-  --h-liquid-base: #C9D6EA;
-  --h-liquid-bg: radial-gradient(120% 90% at 50% 0%, #DCE8FA 0%, #C3D4EE 55%, #B7C6E0 100%);
-  --h-blob-a: rgba(56, 139, 255, 0.7);
-  --h-blob-b: rgba(143, 126, 231, 0.62);
-  --h-blob-c: rgba(75, 206, 151, 0.38);
-  --h-blob-d: rgba(255, 255, 255, 0.95);
-  --h-blob-e: rgba(12, 102, 228, 0.45);
-  --h-blob-m: rgba(133, 184, 255, 0.6);
-  --h-shell-tint: rgba(255, 255, 255, 0.34);
+  /* 28.09 CTO: mavimsi ton kalkti — notr, berrak (seffaf his) zemin. */
+  --h-bg-canvas: #F3F4F6;
+  --h-liquid-base: #EEF0F3;
+  --h-liquid-bg: radial-gradient(120% 90% at 50% 0%, #FCFCFD 0%, #F2F3F5 55%, #E9EBEE 100%);
+  --h-blob-a: rgba(56, 139, 255, 0.10);
+  --h-blob-b: rgba(143, 126, 231, 0.08);
+  --h-blob-c: rgba(75, 206, 151, 0.06);
+  --h-blob-d: rgba(255, 255, 255, 0.9);
+  --h-blob-e: rgba(12, 102, 228, 0.05);
+  --h-blob-m: rgba(133, 184, 255, 0.14);
+  --h-shell-tint: rgba(255, 255, 255, 0.2);
   --h-bezel: rgba(255, 255, 255, 0.07);
   --h-bezel-line: rgba(255, 255, 255, 0.55);
   --h-bezel-hi: rgba(255, 255, 255, 0.5);
@@ -268,7 +269,7 @@
   --h-dock-bg: rgba(255, 255, 255, 0.4);
   --h-dock-edge: rgba(255, 255, 255, 0.8);
   /* Acik tema: temiz, cok dusuk kontrastli ayni desen. */
-  --h-bg-page: radial-gradient(120% 90% at 50% 0%, #DCE8FA 0%, #C3D4EE 55%, #B7C6E0 100%);
+  --h-bg-page: radial-gradient(120% 90% at 50% 0%, #FCFCFD 0%, #F2F3F5 55%, #E9EBEE 100%);
   --h-bg-weekend: rgba(9, 30, 66, 0.035);
   --h-bg-surface: rgba(255, 255, 255, 0.5);
   --h-bg-elevated: rgba(250, 252, 255, 0.94);
