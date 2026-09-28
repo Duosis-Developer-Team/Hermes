@@ -16,7 +16,7 @@
  * =============================================================================
  */
 const path = require('node:path')
-const { app, BrowserWindow, Menu, ipcMain, shell, session } = require('electron')
+const { app, BrowserWindow, Menu, ipcMain, shell, session, nativeTheme } = require('electron')
 
 const { SERVERS, serverById, readSettings, writeSettings } = require('./servers')
 const { classify, deepLinkToUrl } = require('./navigation')
@@ -108,7 +108,9 @@ function createWindow() {
         minHeight: 680,
         title: 'Hermes',
         show: false,
-        backgroundColor: '#101114',
+        // Ilk boya sivi zeminin tonunda (--h-liquid-base): yuklenirken
+        // acik temada koyu flas olmaz.
+        backgroundColor: nativeTheme.shouldUseDarkColors ? '#07080A' : '#C9D6EA',
         // Hermes Liquid (R6): basliksiz pencere, trafik isiklari sivi
         // zeminin ustunde; surukleme bolgesi windowChrome.DRAG_CSS'te.
         titleBarStyle: 'hiddenInset',
