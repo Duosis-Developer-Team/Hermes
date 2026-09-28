@@ -251,21 +251,22 @@
   /* ACIK = beyaz seffaf cam; sivi Hermes mavisi/moru/yesili. */
   /* 29.09 CTO: gumus zemin + HAFIF Hermes mavisi — sivi acikta da net
      secilsin ama 28.09'daki "garip mavimsi beyaz" olmasin. */
-  --h-bg-canvas: #D9DFE8;
+  --h-bg-canvas: #DCE0E7;
   /* Hermes isareti kutusu: ayni kutunun acik hali, koyu isaret. */
   --h-mark-bg: radial-gradient(120% 120% at 30% 20%, #FFFFFF 0%, #EEF0F4 55%, #D3D8E0 100%);
   --h-mark-ink: #0E131B;
   --h-mark-edge: inset 0 0 0 1px rgba(17, 23, 32, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95);
   --h-modal-bg: rgba(250, 251, 253, 0.76);
   --h-field-bg: rgba(255, 255, 255, 0.66);
-  --h-liquid-base: #D3DAE5;
-  --h-liquid-bg: radial-gradient(120% 90% at 50% 0%, #EEF2F8 0%, #D6DEEA 55%, #C4CEDD 100%);
-  --h-blob-a: rgba(112, 156, 226, 0.55);
-  --h-blob-b: rgba(178, 188, 206, 0.85);
-  --h-blob-c: rgba(146, 172, 214, 0.45);
+  --h-liquid-base: #D6DBE3;
+  --h-liquid-bg: radial-gradient(120% 90% at 50% 0%, #F2F4F7 0%, #DDE1E8 55%, #CCD2DB 100%);
+  --h-blob-a: rgba(150, 168, 200, 0.5);
+  --h-blob-b: rgba(186, 192, 204, 0.85);
+  --h-blob-c: rgba(168, 178, 198, 0.42);
   --h-blob-d: rgba(255, 255, 255, 0.95);
-  --h-blob-e: rgba(56, 139, 255, 0.28);
-  --h-blob-m: rgba(255, 255, 255, 0.6);
+  --h-blob-e: rgba(90, 120, 175, 0.22);
+  /* Imleci izleyen blob: beyaz degil, koyu temadaki celik mavi gibi. */
+  --h-blob-m: rgba(96, 132, 196, 0.42);
   --h-shell-tint: rgba(255, 255, 255, 0.14);
   --h-bezel: rgba(255, 255, 255, 0.07);
   --h-bezel-line: rgba(255, 255, 255, 0.55);
@@ -283,7 +284,7 @@
   --h-dock-bg: rgba(255, 255, 255, 0.4);
   --h-dock-edge: rgba(255, 255, 255, 0.8);
   /* Acik tema: temiz, cok dusuk kontrastli ayni desen. */
-  --h-bg-page: radial-gradient(120% 90% at 50% 0%, #EEF2F8 0%, #D6DEEA 55%, #C4CEDD 100%);
+  --h-bg-page: radial-gradient(120% 90% at 50% 0%, #F2F4F7 0%, #DDE1E8 55%, #CCD2DB 100%);
   --h-bg-weekend: rgba(9, 30, 66, 0.035);
   --h-bg-surface: rgba(255, 255, 255, 0.3);
   --h-bg-elevated: rgba(250, 252, 255, 0.94);

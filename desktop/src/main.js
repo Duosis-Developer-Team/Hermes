@@ -110,7 +110,7 @@ function createWindow() {
         show: false,
         // Ilk boya sivi zeminin tonunda (--h-liquid-base): yuklenirken
         // tema ile ters renkte flas olmaz.
-        backgroundColor: nativeTheme.shouldUseDarkColors ? '#07080A' : '#D3DAE5',
+        backgroundColor: nativeTheme.shouldUseDarkColors ? '#07080A' : '#D6DBE3',
         // Hermes Liquid (R6): basliksiz pencere, trafik isiklari sivi
         // zeminin ustunde; surukleme bolgesi windowChrome.DRAG_CSS'te.
         titleBarStyle: 'hiddenInset',

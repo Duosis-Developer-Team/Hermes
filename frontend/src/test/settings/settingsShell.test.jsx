@@ -11,7 +11,7 @@
  *      katalogda VARDIR (kopuk yonlendirme olamaz).
  */
 import { describe, expect, it, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 import {
@@ -74,9 +74,9 @@ describe('kabuk', () => {
         )
     }
 
-    it('yalnizca izinli bolumleri cizer ve secili sayfayi Outlet ile gosterir', () => {
+    it('sayfada: geri baglantisi + yalniz izinli ogelerin yatay seridi + Outlet', () => {
         renderAt('/settings/organization/users', ['users.manage'])
-        expect(screen.getByText('Organization')).toBeInTheDocument()
+        expect(screen.getByRole('link', { name: /Settings/ })).toHaveAttribute('href', '/settings')
         expect(screen.getByRole('link', { name: 'Users' })).toHaveClass('active')
         expect(screen.getByRole('link', { name: 'Capacity' })).toBeInTheDocument()
         expect(screen.queryByText('Reference data')).toBeNull()
@@ -84,9 +84,14 @@ describe('kabuk', () => {
         expect(screen.getByText('USERS-PAGE')).toBeInTheDocument()
     })
 
-    it('/settings ilk gorunur sayfaya gider', () => {
+    it('/settings ayarlar merkezini (izinli kutucuklar) gosterir; kutucuk sayfaya gider', async () => {
         renderAt('/settings', ['projects.manage'])
-        expect(screen.getByText('PROJECTS-PAGE')).toBeInTheDocument()
+        expect(screen.getByText('Customers & projects')).toBeInTheDocument()
+        expect(screen.queryByText('Organization')).toBeNull()
+        const tile = screen.getByRole('link', { name: /Projects/ })
+        expect(tile).toHaveAttribute('href', '/settings/customers/projects')
+        fireEvent.click(tile)
+        expect(await screen.findByText('PROJECTS-PAGE')).toBeInTheDocument()
     })
 
     it('hicbir ayar izni yoksa ana ekrana doner', () => {

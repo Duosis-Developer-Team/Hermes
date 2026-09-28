@@ -13,7 +13,12 @@
        kod · tur, kalin baslik, musteri·proje + termin hapi, oncelik +
        kisiler. Kok bir kapsayici (Sprint 7 semantigi korunur). */
     position: relative;
-    display: block;
+    /* Simetri (29.09, CTO): tum kartlar AYNI boy — baslik en fazla iki
+       satir, alt satir (oncelik + kisiler) hep en altta; Termin satiri
+       olmayan kart da ayni yuksekligi tasir (olcum: 158 / 178 px). */
+    display: flex;
+    flex-direction: column;
+    min-height: 178px;
     margin-bottom: 10px;
     padding: 14px 16px;
     border-radius: 18px;
@@ -54,6 +59,11 @@
 .task-card-body { min-width: 0; }
 
 .task-card-title {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: calc(2 * 1.35em);
     font-size: 14.5px;
     font-weight: 650;
     color: var(--c-text-strong);
@@ -356,3 +366,7 @@
     color: var(--h-text-secondary);
     text-transform: capitalize;
 }
+
+/* Alt satir (rozetler) kartin dibine yaslanir: esit boy kartlarda hizali. */
+.task-card .task-card-body { display: flex; flex: 1; flex-direction: column; }
+.task-card .task-card-badges { margin-top: auto; padding-top: 8px; }

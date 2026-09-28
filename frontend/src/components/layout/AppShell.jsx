@@ -87,6 +87,8 @@ function AppShell({
     mobileMenuItems,
     selectedKey,
     onMenuClick,
+    /** Gezinmeden once rota kodunu hazirlar (Promise); View Transition bekler. */
+    onPrepareNav,
     onLogoClick,
     accountName,
     accountEmail,
@@ -172,15 +174,29 @@ function AppShell({
     // Kabuktan gezinme: View Transitions API varsa eski sayfa bulaniklasarak
     // cikar, yenisi yukselerek girer (liquid.css). flushSync, gecisin
     // "sonraki" durumu yakalayabilmesi icin rota guncellemesini esler.
-    const go = (key) => {
+    // Gezinme View Transition ile olduysa yeni sayfanin kapsayicisi KALICI
+    // `is-vt` isareti alir: kendi giris animasyonu hic oynamaz. (Eskiden
+    // gecis bitince `vt-nav` sinifi kalkiyor ve animasyon YENIDEN basliyordu
+    // → sayfa iki kez aciliyormus gibi goz kirpiyordu.)
+    const viaTransition = useRef(false)
+    const go = async (key) => {
         setMobileNavOpen(false)
         const run = () => onMenuClick?.({ key })
         const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
         if (typeof document !== 'undefined' && document.startViewTransition && !reduce) {
-            // Gecis surerken sayfa ici giris animasyonu susar (cift hareket yok).
+            // Once rota kodu (en fazla 400 ms): gecis iskeleti degil gercek
+            // sayfayi yakalar — ikinci "acilis" (iskelet → sayfa) olmaz.
+            await Promise.race([
+                Promise.resolve(onPrepareNav?.(key)).catch(() => {}),
+                new Promise((r) => setTimeout(r, 400)),
+            ])
             const root = document.documentElement
             root.classList.add('vt-nav')
-            const vt = document.startViewTransition(() => flushSync(run))
+            const vt = document.startViewTransition(() => {
+                viaTransition.current = true
+                flushSync(run)
+                viaTransition.current = false
+            })
             vt.finished.finally(() => root.classList.remove('vt-nav'))
         } else {
             run()
@@ -202,9 +218,11 @@ function AppShell({
 
     const routeContent = useMemo(() => (
         // Sprint 3 §6: route girisi opacity+4px; kabuk sabit kalir.
-        <div className="route-transition" key={contentKey}>
+        // View Transition ile gelindiyse giris animasyonu yok (is-vt).
+        <div className={`route-transition${viaTransition.current ? ' is-vt' : ''}`} key={contentKey}>
             {children}
         </div>
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     ), [contentKey, children])
 
     const resolve = (items) =>

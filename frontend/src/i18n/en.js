@@ -149,6 +149,20 @@ export default {
         reference: 'Reference data',
         customers: 'Customers & projects',
         integrations: 'Integrations',
+        desc: {
+            'users': 'People, roles and groups',
+            'capacity': 'Working hours, holidays and leave',
+            'pm': 'Workflow, assignment and notification rules',
+            'work-types': 'Work types picked when logging time',
+            'activity-types': 'Activity types (coding, analysis…)',
+            'platforms': 'Backend, web, mobile… platforms',
+            'work-lines': 'Business lines and product lines',
+            'customers': 'Customers and contract details',
+            'projects': 'Projects, sub-projects and members',
+            'api': 'API clients and tokens',
+            'tickets': 'Ticket applications and routing',
+        },
+        noMatch: 'No matching settings',
     },
 
     taskCard: {

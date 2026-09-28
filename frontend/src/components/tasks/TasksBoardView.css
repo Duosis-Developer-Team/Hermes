@@ -175,6 +175,8 @@
 .tasks-lane__head::after { content: ""; flex: 1; height: 1px; margin-left: 6px; background: var(--h-border-subtle); }
 .tasks-lane__head .tasks-board-column-count { order: 3; }
 .tasks-lane__head::after { order: 4; }
+/* Serit icindeki sutun kutulari ayni boy (simetri). */
+.tasks-lane__cols { align-items: stretch; }
 /* Swimlane cells reuse .tasks-board-column for the surface, but reset the
    tall flat-board sizing so each row stays compact and grows with content. */
 .tasks-board-swimlane-cell {

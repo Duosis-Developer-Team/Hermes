@@ -160,6 +160,20 @@ export default {
         reference: 'Referans verileri',
         customers: 'Müşteri ve projeler',
         integrations: 'Entegrasyonlar',
+        desc: {
+            'users': 'Kişiler, roller ve gruplar',
+            'capacity': 'Çalışma saatleri, tatiller ve izinler',
+            'pm': 'İş akışı, atama ve bildirim kuralları',
+            'work-types': 'Eforda seçilen iş türleri',
+            'activity-types': 'Faaliyet türleri (kodlama, analiz…)',
+            'platforms': 'Backend, web, mobil… platformlar',
+            'work-lines': 'İş kolları ve ürün hatları',
+            'customers': 'Müşteriler ve sözleşme bilgileri',
+            'projects': 'Projeler, alt projeler ve üyeler',
+            'api': 'API istemcileri ve token’lar',
+            'tickets': 'Talep uygulamaları ve yönlendirme',
+        },
+        noMatch: 'Eşleşen ayar yok',
     },
 
     taskCard: {

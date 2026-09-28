@@ -1,110 +1,148 @@
 /**
  * =============================================================================
- * HERMES - Ayarlar kabugu (PM rework P0 / B1)
+ * HERMES - Ayarlar (Hermes Liquid, 29.09 — Apple Developer duzeni)
  * =============================================================================
- * Tek /settings rotasi: solda bolumler (izne gore), sagda secili sayfa.
- * Sayfalarin ICERIGI degismedi — yalnizca evleri degisti (B1 kapsam disi:
- * ayar iceriklerini degistirmek). Hermes Liquid: sol menu cam kart (arama +
- * 16px ikonlu satirlar, aktif = koyu hap), icerik cam kart; icerik
- * sayfalarinin baslik/sekme dili kapsamli CSS ile (SettingsPage.css). Proje duzeyindeki ayarlar (uyeler,
- * yonlendirme) BURAYA GELMEZ; projenin kendi sayfasinda yasar (B2).
+ * /settings            → AYARLAR MERKEZI: bolum basliklari altinda renkli
+ *                        uygulama-ikonu kutucuklari (ikon + ad + tek satir
+ *                        aciklama), arama kutucuklari suzer.
+ * /settings/<b>/<sayfa> → sayfa: ustte "‹ Ayarlar" + diger sayfalara gecis
+ *                        icin yatay ikon seridi, altta tam genislik icerik.
+ * Katalog TEK kaynak: features/settings/sections.js (izin filtresi orada).
+ * Izni olmayan kutucuk/serit ogesi CIZILMEZ; hic izin yoksa ana ekrana.
  * =============================================================================
  */
 import { useState } from 'react'
-import { Navigate, NavLink, Outlet } from 'react-router-dom'
+import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Input, Spin } from 'antd'
 import {
     ApiOutlined, AppstoreOutlined, BarChartOutlined, BranchesOutlined,
-    CustomerServiceOutlined, DatabaseOutlined, FolderOutlined, SearchOutlined,
-    SettingOutlined, ShopOutlined, TagsOutlined, TeamOutlined,
+    CustomerServiceOutlined, DatabaseOutlined, FolderOutlined, LeftOutlined,
+    SearchOutlined, SettingOutlined, ShopOutlined, TagsOutlined, TeamOutlined,
 } from '@ant-design/icons'
 
-import { GlassCard, PageHero } from '../../components/liquid'
-
-import { firstSettingsPath, visibleSections } from '../../features/settings/sections'
+import { PageHero } from '../../components/liquid'
+import { hasAnySettings, visibleSections } from '../../features/settings/sections'
 import { loaderByPath } from '../../routes/loaders'
 import { useAuthStore } from '../../stores/authStore'
 import { useT } from '../../i18n'
 import './SettingsPage.css'
 
-/** /settings — ilk gorunur sayfaya gider; hicbiri yoksa ana ekrana. */
+// Kutucuk ikonu + rengi (uygulama ikonu gibi gradyan kare).
+const ITEMS = {
+    users: [<TeamOutlined key="i" />, 'blue'],
+    capacity: [<BarChartOutlined key="i" />, 'green'],
+    pm: [<SettingOutlined key="i" />, 'ink'],
+    'work-types': [<TagsOutlined key="i" />, 'amber'],
+    'activity-types': [<AppstoreOutlined key="i" />, 'violet'],
+    platforms: [<DatabaseOutlined key="i" />, 'teal'],
+    'work-lines': [<BranchesOutlined key="i" />, 'pink'],
+    customers: [<ShopOutlined key="i" />, 'green'],
+    projects: [<FolderOutlined key="i" />, 'blue'],
+    api: [<ApiOutlined key="i" />, 'ink'],
+    tickets: [<CustomerServiceOutlined key="i" />, 'red'],
+}
+
+function Tile({ item, compact = false }) {
+    const t = useT()
+    const [icon, tone] = ITEMS[item.key] || [<SettingOutlined key="i" />, 'ink']
+    const warm = () => loaderByPath[item.path]?.()
+    if (compact) {
+        return (
+            <NavLink
+                to={item.path}
+                className={({ isActive }) => `settings-strip__item${isActive ? ' active' : ''}`}
+                onMouseEnter={warm}
+            >
+                <span className={`settings-icon settings-icon--${tone} settings-icon--sm`} aria-hidden="true">{icon}</span>
+                <span className="settings-strip__label">{t(item.labelKey)}</span>
+            </NavLink>
+        )
+    }
+    return (
+        <Link to={item.path} className="settings-tile" onMouseEnter={warm}>
+            <span className={`settings-icon settings-icon--${tone}`} aria-hidden="true">{icon}</span>
+            <span className="settings-tile__text">
+                <b>{t(item.labelKey)}</b>
+                <small>{t(`settings.desc.${item.key}`)}</small>
+            </span>
+        </Link>
+    )
+}
+
+/** /settings — ayarlar merkezi (izinli kutucuklar). */
 export function SettingsIndex() {
+    const t = useT()
     const permissions = useAuthStore((s) => s.permissions)
     const canAny = useAuthStore((s) => s.canAny)
-    // Izinler henuz yuklenmediyse yonlendirme YAPILMAZ (ProtectedRoute ile
-    // ayni fail-closed kural): yanlis yere gitmektense beklemek dogru.
+    const [query, setQuery] = useState('')
+    // Izinler henuz yuklenmediyse karar verilmez (fail-closed bekleme).
     if (permissions === null) {
         return <div className="settings-loading"><Spin /></div>
     }
-    return <Navigate to={firstSettingsPath(canAny) || '/time-entry'} replace />
-}
-
-// Menu ikonlari (gorsel ipucu; erisilebilir ad baglanti metnidir).
-const ITEM_ICONS = {
-    users: <TeamOutlined />,
-    capacity: <BarChartOutlined />,
-    pm: <SettingOutlined />,
-    'work-types': <TagsOutlined />,
-    'activity-types': <AppstoreOutlined />,
-    platforms: <DatabaseOutlined />,
-    'work-lines': <BranchesOutlined />,
-    customers: <ShopOutlined />,
-    projects: <FolderOutlined />,
-    api: <ApiOutlined />,
-    tickets: <CustomerServiceOutlined />,
-}
-
-function SettingsPage() {
-    const t = useT()
-    const canAny = useAuthStore((s) => s.canAny)
-    useAuthStore((s) => s.permissions) // izin gelince yeniden render
-    const [query, setQuery] = useState('')
+    if (!hasAnySettings(canAny)) return <Navigate to="/time-entry" replace />
     const q = query.trim().toLocaleLowerCase()
-    // Arama yalniz GORUNUR (izinli) ogeler icinde suzer.
     const sections = visibleSections(canAny)
         .map((section) => ({
             ...section,
-            items: section.items.filter((item) => !q || t(item.labelKey).toLocaleLowerCase().includes(q)),
+            items: section.items.filter((item) => !q
+                || t(item.labelKey).toLocaleLowerCase().includes(q)
+                || t(`settings.desc.${item.key}`).toLocaleLowerCase().includes(q)),
         }))
         .filter((section) => section.items.length > 0)
 
     return (
-        <div className="settings-page">
-            <PageHero title={t('settings.title')} subtitle={t('settings.subtitle')} />
-            <div className="settings-body">
-                <GlassCard as="nav" className="settings-nav" aria-label={t('settings.title')}>
+        <div className="settings-hub">
+            <PageHero
+                className="lq-enter"
+                title={t('settings.title')}
+                subtitle={t('settings.subtitle')}
+                actions={(
                     <Input
                         allowClear
                         className="settings-search"
-                        prefix={<SearchOutlined />}
+                        prefix={<SearchOutlined aria-hidden="true" />}
                         placeholder={t('settings.searchPlaceholder')}
                         aria-label={t('settings.searchPlaceholder')}
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                     />
-                    {sections.map((section) => (
-                        <div key={section.key} className="settings-section">
-                            <div className="settings-section-label">{t(section.labelKey)}</div>
-                            {section.items.map((item) => (
-                                <NavLink
-                                    key={item.key}
-                                    to={item.path}
-                                    className={({ isActive }) =>
-                                        `settings-link${isActive ? ' active' : ''}`}
-                                    /* Hover'da rota chunk'i isitilir — kenar
-                                       cubugundaki prefetch ile ayni harita. */
-                                    onMouseEnter={() => loaderByPath[item.path]?.()}
-                                >
-                                    <span className="settings-link__icon" aria-hidden="true">{ITEM_ICONS[item.key]}</span>
-                                    {t(item.labelKey)}
-                                </NavLink>
-                            ))}
-                        </div>
-                    ))}
-                </GlassCard>
-                <GlassCard className="settings-content">
-                    <Outlet />
-                </GlassCard>
+                )}
+            />
+            {sections.length === 0 && <p className="settings-empty">{t('settings.noMatch')}</p>}
+            {sections.map((section, si) => (
+                <section key={section.key} className="settings-group lq-enter" style={{ animationDelay: `${si * 50}ms` }}>
+                    <h2 className="settings-group__title">{t(section.labelKey)}</h2>
+                    <div className="settings-grid">
+                        {section.items.map((item) => <Tile key={item.key} item={item} />)}
+                    </div>
+                </section>
+            ))}
+        </div>
+    )
+}
+
+/** /settings/... — secili sayfa: geri + yatay ikon seridi + icerik. */
+function SettingsPage() {
+    const t = useT()
+    const canAny = useAuthStore((s) => s.canAny)
+    useAuthStore((s) => s.permissions) // izin gelince yeniden render
+    const { pathname } = useLocation()
+    const isHub = pathname.replace(/\/+$/, '') === '/settings'
+    if (isHub) return <Outlet />
+    const items = visibleSections(canAny).flatMap((s) => s.items)
+
+    return (
+        <div className="settings-page">
+            <div className="settings-topbar">
+                <Link to="/settings" className="settings-back">
+                    <LeftOutlined aria-hidden="true" />{t('settings.title')}
+                </Link>
+                <nav className="settings-strip" aria-label={t('settings.title')}>
+                    {items.map((item) => <Tile key={item.key} item={item} compact />)}
+                </nav>
+            </div>
+            <div className="settings-content">
+                <Outlet />
             </div>
         </div>
     )

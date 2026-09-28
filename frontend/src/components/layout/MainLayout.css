@@ -369,7 +369,12 @@
 .route-transition {
     animation: h-route-enter 420ms var(--h-ease-enter);
 }
-:root.vt-nav .route-transition { animation: none; }
+/* View Transition ile gelen sayfa: gecis zaten yumusak; kendi giris
+   animasyonu ve kartlarin yukselisi KALICI olarak kapali (is-vt ilk
+   render'da verilir, sonradan kalkmaz → ikinci "acilis" yok). */
+.route-transition.is-vt,
+.route-transition.is-vt .lq-enter,
+.route-transition.is-vt .lq-enter > * { animation: none; }
 @keyframes h-route-enter {
     from { opacity: 0; transform: translateY(14px); filter: blur(6px); }
     to { opacity: 1; transform: translateY(0); filter: none; }

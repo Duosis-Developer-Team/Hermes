@@ -63,16 +63,22 @@
     font: 600 12.5px var(--h-font-mono);
     color: var(--c-text-strong);
 }
-/* Hover eylemleri sureyi ortmesin: kart ustunde cam hap. */
-.worklog-card:hover .worklog-card-duration { opacity: 0; }
+/* Eylemler baslik satirini ORTMEZ (29.09): sag alt kosede, aciklama
+   satirinin ustunde cam hap; aciklama o sirada ona yer acar. */
+.worklog-card:hover .worklog-card-description,
+.worklog-card:focus-within .worklog-card-description { padding-right: 92px; }
 
 /* Hover Actions */
 .worklog-card-actions {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    right: 6px;
+    bottom: 6px;
     display: flex;
-    gap: 4px;
+    gap: 2px;
+    padding: 2px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-modal-bg);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
     opacity: 0;
     transition: opacity var(--h-motion-fast) var(--h-ease-standard);
 }
@@ -81,8 +87,8 @@
     width: 24px;
     height: 24px;
     border: none;
-    background: rgba(var(--overlay-rgb), 0.1);
-    border-radius: var(--h-radius-control);
+    background: transparent;
+    border-radius: var(--h-radius-pill);
     /* Sprint 8: overlay zaten temaya gore donuyor; ikon rengi de donmeli. */
     color: var(--c-text-strong);
     cursor: pointer;

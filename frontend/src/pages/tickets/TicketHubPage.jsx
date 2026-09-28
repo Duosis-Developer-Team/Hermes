@@ -15,7 +15,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ReloadOutlined } from '@ant-design/icons'
+import { ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Input, message, Select, Skeleton } from 'antd'
 import dayjs from 'dayjs'
@@ -200,12 +200,18 @@ export default function TicketHubPage() {
                 subtitle={`${t('hub.countLabel', { count: total })} \u00b7 ${tl('queue', queue)}`}
                 actions={(
                     <>
-                        <Input.Search
+                        {/* Diger sayfalardaki arama alaniyla ayni: onekli tek hap
+                            (ayri buyuk arama dugmesi yok). Enter arar,
+                            temizlemek filtreyi kaldirir. */}
+                        <Input
                             allowClear
                             className="tickets-search"
+                            prefix={<SearchOutlined aria-hidden="true" />}
                             placeholder={t('hub.searchPlaceholder')}
+                            aria-label={t('hub.searchPlaceholder')}
                             defaultValue={search}
-                            onSearch={(value) => patchParams({ q: value || null })}
+                            onPressEnter={(e) => patchParams({ q: e.currentTarget.value || null })}
+                            onChange={(e) => { if (!e.target.value) patchParams({ q: null }) }}
                         />
                         <Button
                             icon={<ReloadOutlined />}

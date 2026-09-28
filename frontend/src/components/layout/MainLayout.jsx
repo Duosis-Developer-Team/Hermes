@@ -253,8 +253,6 @@ function MainLayout() {
 
     // User dropdown menu
     const userMenuItems = [
-        { key: 'time', icon: <ClockCircleOutlined />, label: t('nav.timeEntry'), onClick: () => navigate('/time-entry') },
-        ...settingsItems.map((it) => ({ ...it, onClick: () => navigate(it.key) })),
         {
             key: 'logout',
             icon: <LogoutOutlined />,
@@ -328,6 +326,7 @@ function MainLayout() {
             menuItems={navItems}
             selectedKey={selectedKey}
             onMenuClick={handleMenuClick}
+            onPrepareNav={(key) => loaderByPath[key]?.()}
             onLogoClick={() => navigate('/')}
             accountName={user?.full_name || user?.email}
             accountEmail={user?.email}

@@ -29,7 +29,7 @@ export const SEMANTIC = {
         info: '#85B8FF',
     },
     light: {
-        canvas: '#D9DFE8', surface: 'rgba(255, 255, 255, 0.3)',
+        canvas: '#DCE0E7', surface: 'rgba(255, 255, 255, 0.3)',
         elevated: 'rgba(250, 252, 255, 0.94)', hover: 'rgba(17, 23, 32, 0.05)',
         textPrimary: '#17202D', textSecondary: '#526174',
         borderSubtle: 'rgba(17, 23, 32, 0.08)',
