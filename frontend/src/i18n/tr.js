@@ -1258,6 +1258,7 @@ export default {
             later: 'Sonra',
             none: 'Terminsiz',
         },
+        saveSubtitle: 'Filtre, yerleşim ve gruplama birlikte saklanır',
     },
 
     explorer: {
@@ -1295,6 +1296,11 @@ export default {
         acceptTask: 'Bu görev kabul edilsin mi?',
         completeTask: 'Görev tamamlandı olarak işaretlensin mi?',
         reopenTask: 'Bu görev yeniden açılsın mı?',
+        archiveTitle: '{Noun} arşivlensin',
+        archiveSubtitle: '{Noun} Aktif çalışma alanından çıkar; hiçbir şey silinmez.',
+        archiveBody: 'Bu iş kalemi arşivlensin mi? Geçmiş, yorumlar ve girilen efor olduğu gibi kalır; daha sonra geri yükleyebilirsin.',
+        archiveGroup: 'Bu iş kaleminin {count} ataması birlikte arşivlenir.',
+        restoreHint: 'Hangi atamanın işe döneceğini seç. Diğerleri mevcut durumunu korur; kimse adına kayıt girilmez.',
     },
 
     timeEntryHeader: {

@@ -155,8 +155,8 @@ describe('CREATE — payload, tek mutation, invalidation', () => {
         await openCreateModal(user)
         await fillCreateForm(user)
         await pickOption(user, 'Sub Project', 'Faz 1')
-        // Oncelik artik cip secici (Liquid pencere).
-        await user.click(screen.getByRole('button', { name: 'Urgent' }))
+        // Oncelik artik cip secici (Liquid pencere) — anlamsal radyo grubu.
+        await user.click(screen.getByRole('radio', { name: 'Urgent' }))
         await user.click(screen.getByRole('button', { name: /Create Task/ }))
 
         await waitFor(() => expect(taskService.createBulk).toHaveBeenCalled())

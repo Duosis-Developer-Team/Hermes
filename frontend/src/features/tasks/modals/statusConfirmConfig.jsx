@@ -15,6 +15,9 @@ import {
     CheckCircleOutlined, PlayCircleOutlined, UndoOutlined,
 } from '@ant-design/icons'
 
+// Onay metinleri inceleme penceresiyle AYNI anahtarlardan (tek kaynak).
+const noun = (t) => ({ noun: t('review.noun.task'), Noun: t('review.nounCap.task') })
+
 // `t` PARAMETRE olarak gelir: bu SAF bir fonksiyondur (dosyanin kendi
 // aciklamasi da boyle der) ve hook cagiramaz.
 export function statusConfirmConfig({ task, nextCompleted }, t) {
@@ -22,23 +25,23 @@ export function statusConfirmConfig({ task, nextCompleted }, t) {
     if (nextCompleted && task.status === 'pending') {
         return {
             title: t('lifecycle.acceptTask'),
-            body: 'The task will move to In Progress so you can start working on it.',
-            confirmLabel: 'Accept Task',
+            body: t('review.confirm.acceptBody', noun(t)),
+            confirmLabel: t('review.accept', noun(t)),
             icon: <PlayCircleOutlined />,
         }
     }
     if (nextCompleted) {
         return {
             title: t('lifecycle.completeTask'),
-            body: 'This marks the task as completed. You can reopen it afterwards if needed.',
-            confirmLabel: 'Mark as Completed',
+            body: t('review.confirm.completeBody', noun(t)),
+            confirmLabel: t('review.markCompleted'),
             icon: <CheckCircleOutlined />,
         }
     }
     return {
         title: t('lifecycle.reopenTask'),
-        body: 'The task will move back to In Progress so it can be worked on again.',
-        confirmLabel: 'Reopen',
+        body: t('review.confirm.reopenBodyCompleted', noun(t)),
+        confirmLabel: t('review.reopen'),
         icon: <UndoOutlined />,
     }
 }

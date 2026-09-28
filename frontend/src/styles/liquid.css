@@ -524,3 +524,18 @@
 }
 .lq-kv dt { color: var(--h-text-muted); }
 .lq-kv dd { margin: 0; min-width: 0; color: var(--h-text-primary); overflow-wrap: anywhere; }
+
+/* Onay penceresi: kayit onizlemesi + aciklama (DangerConfirmModal). */
+.lq-confirm__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--h-border-default);
+  border-radius: 14px;
+  background: var(--h-field-bg);
+}
+.lq-confirm__item b { font-size: 13.5px; font-weight: 600; color: var(--h-text-primary); }
+.lq-confirm__item small { font-size: 12px; color: var(--h-text-muted); }
+.lq-confirm__body { margin: 0; color: var(--h-text-secondary); font-size: 14px; line-height: 1.6; }

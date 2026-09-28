@@ -7,8 +7,10 @@
  * =============================================================================
  */
 import { useEffect } from 'react'
-import { Form, Input, Modal, Radio } from 'antd'
+import { Form, Input, Modal } from 'antd'
+import { FilterOutlined } from '@ant-design/icons'
 
+import { ChipGroup, ModalHead } from '../../../components/liquid'
 import { useT } from '../../../i18n'
 
 function SaveViewModal({ open, onClose, onSubmit, loading = false, initialName = '' }) {
@@ -22,7 +24,13 @@ function SaveViewModal({ open, onClose, onSubmit, loading = false, initialName =
     return (
         <Modal
             open={open}
-            title={t('views.saveTitle')}
+            title={(
+                <ModalHead
+                    icon={<FilterOutlined />}
+                    title={t('views.saveTitle')}
+                    subtitle={t('views.saveSubtitle')}
+                />
+            )}
             onCancel={onClose}
             onOk={() => form.submit()}
             confirmLoading={loading}
@@ -44,10 +52,13 @@ function SaveViewModal({ open, onClose, onSubmit, loading = false, initialName =
                     <Input maxLength={120} placeholder={t('views.namePlaceholder')} autoFocus />
                 </Form.Item>
                 <Form.Item name="scope" label={t('views.visibility')}>
-                    <Radio.Group>
-                        <Radio value="personal">{t('views.visibilityPersonal')}</Radio>
-                        <Radio value="shared">{t('views.visibilityShared')}</Radio>
-                    </Radio.Group>
+                    <ChipGroup
+                        ariaLabel={t('views.visibility')}
+                        options={[
+                            { value: 'personal', label: t('views.visibilityPersonal') },
+                            { value: 'shared', label: t('views.visibilityShared') },
+                        ]}
+                    />
                 </Form.Item>
             </Form>
         </Modal>

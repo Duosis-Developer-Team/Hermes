@@ -22,14 +22,17 @@ import { ExclamationCircleOutlined, InboxOutlined } from '@ant-design/icons'
 
 import DangerConfirmModal from '../../../components/common/DangerConfirmModal'
 import { typeMeta } from '../../../utils/workItemType'
+import { useT } from '../../../i18n'
 
 function TaskDeleteModal({ task, loading, onCancel, onConfirm }) {
-    const meta = typeMeta(task?.task_type)
+    const t = useT()
+    const kind = typeMeta(task?.task_type).lower
+    const n = { noun: t(`review.noun.${kind}`), Noun: t(`review.nounCap.${kind}`) }
     return (
         <DangerConfirmModal
             open={!!task}
-            title={`Archive ${meta.singular}`}
-            subtitle={`The ${meta.lower} moves out of the Active workspace. Nothing is deleted.`}
+            title={t('lifecycle.archiveTitle', n)}
+            subtitle={t('lifecycle.archiveSubtitle', n)}
             badgeIcon={<ExclamationCircleOutlined />}
             confirmIcon={<InboxOutlined />}
             itemName={task?.title}
@@ -38,8 +41,8 @@ function TaskDeleteModal({ task, loading, onCancel, onConfirm }) {
                     .filter(Boolean)
                     .join(' · ') || undefined
             }
-            body="Archive this work item? History, comments and logged time stay unchanged, and you can restore it later."
-            confirmLabel="Archive now"
+            body={t('lifecycle.archiveBody')}
+            confirmLabel={t('lifecycle.archiveNow')}
             loading={loading}
             onCancel={onCancel}
             onConfirm={onConfirm}

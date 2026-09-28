@@ -13,7 +13,9 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { Modal, Radio, Select, Space } from 'antd'
+import { UndoOutlined } from '@ant-design/icons'
 
+import { ModalHead } from '../../../components/liquid'
 import { assigneeLabelOf } from '../model/grouping'
 import { useT } from '../../../i18n'
 
@@ -45,7 +47,13 @@ function TaskRestoreModal({ item, loading, onCancel, onConfirm }) {
     return (
         <Modal
             open={!!item}
-            title={t('lifecycle.restoreAndReopen')}
+            title={(
+                <ModalHead
+                    icon={<UndoOutlined />}
+                    title={t('lifecycle.restoreAndReopen')}
+                    subtitle={item?.title}
+                />
+            )}
             okText={t('lifecycle.restoreAndReopen')}
             okButtonProps={{ disabled: !selected, loading }}
             cancelButtonProps={{ disabled: loading }}
@@ -57,12 +65,7 @@ function TaskRestoreModal({ item, loading, onCancel, onConfirm }) {
             onCancel={onCancel}
             destroyOnHidden
         >
-            <p style={{ marginTop: 0 }}><strong>{item?.title}</strong></p>
-            <p style={{ color: 'var(--h-text-secondary)' }}>
-                Choose which assignment goes back to work. The others keep
-                their current status, and nothing is logged on anyone
-                else&apos;s behalf.
-            </p>
+            <p className="lq-confirm__body" style={{ marginBottom: 12 }}>{t('lifecycle.restoreHint')}</p>
 
             <Radio.Group
                 value={selected}
@@ -81,11 +84,7 @@ function TaskRestoreModal({ item, loading, onCancel, onConfirm }) {
             </Radio.Group>
 
             <div style={{ marginTop: 16 }}>
-                <label
-                    htmlFor="restore-target-status"
-                    style={{ display: 'block', marginBottom: 6,
-                             color: 'var(--h-text-secondary)' }}
-                >{t('lifecycle.reopenAs')}</label>
+                <label htmlFor="restore-target-status" className="lq-grp">{t('lifecycle.reopenAs')}</label>
                 <Select
                     id="restore-target-status"
                     aria-label={t('lifecycle.reopenAs')}

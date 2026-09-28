@@ -10,17 +10,26 @@
 import { InboxOutlined } from '@ant-design/icons'
 import { Modal } from 'antd'
 
+import { ModalHead } from '../../../components/liquid'
 import { typeMeta } from '../../../utils/workItemType'
 import { useT } from '../../../i18n'
 
 function TaskArchiveModal({ item, loading, onCancel, onConfirm }) {
     const t = useT()
-    const meta = typeMeta(item?.kind || item?.representative?.task_type)
+    const kind = typeMeta(item?.kind || item?.representative?.task_type).lower
+    const n = { noun: t(`review.noun.${kind}`), Noun: t(`review.nounCap.${kind}`) }
     const count = item?.assignments?.length || 0
     return (
         <Modal
             open={!!item}
-            title={`Archive ${meta.singular}`}
+            title={(
+                <ModalHead
+                    icon={<InboxOutlined />}
+                    tone="amber"
+                    title={t('lifecycle.archiveTitle', n)}
+                    subtitle={t('lifecycle.archiveSubtitle', n)}
+                />
+            )}
             okText={t('lifecycle.archiveNow')}
             okButtonProps={{ icon: <InboxOutlined />, loading }}
             cancelButtonProps={{ disabled: loading }}
@@ -30,19 +39,10 @@ function TaskArchiveModal({ item, loading, onCancel, onConfirm }) {
             onCancel={onCancel}
             destroyOnHidden
         >
-            <p style={{ marginTop: 0 }}>
-                <strong>{item?.title}</strong>
-            </p>
-            <p style={{ color: 'var(--h-text-secondary)' }}>
-                This moves the {meta.lower} out of the Active workspace.
-                Nothing is deleted — history, comments and logged time stay
-                exactly as they are, and you can restore it later.
-            </p>
+            <div className="lq-confirm__item"><b>{item?.title}</b></div>
+            <p className="lq-confirm__body">{t('lifecycle.archiveBody')}</p>
             {count > 1 && (
-                <p style={{ color: 'var(--h-text-secondary)' }}>
-                    All {count} assignments of this work item are archived
-                    together.
-                </p>
+                <p className="lq-confirm__body">{t('lifecycle.archiveGroup', { count })}</p>
             )}
         </Modal>
     )

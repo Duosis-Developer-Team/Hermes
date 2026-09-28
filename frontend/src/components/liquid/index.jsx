@@ -257,7 +257,9 @@ export function OptionGrid({ options, onPick, emptyText, ariaLabel }) {
 
 /**
  * Cip secici (sure hizli secimi, oncelik, tur). antd Form.Item icinde
- * kontrol olarak calisir (`value` / `onChange`). `multiple` ile coklu.
+ * kontrol olarak calisir (`value` / `onChange`). Tek secimde anlamsal
+ * olarak RADYO grubudur (role=radiogroup, ok tuslari secimi tasir);
+ * `multiple` ile basili dugmeler (aria-pressed).
  */
 export function ChipGroup({ options, value, onChange, multiple = false, ariaLabel, mono = false, id }) {
     const isOn = (v) => (multiple ? (value || []).includes(v) : value === v)
@@ -266,15 +268,37 @@ export function ChipGroup({ options, value, onChange, multiple = false, ariaLabe
         const cur = value || []
         onChange?.(cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v])
     }
+    const onKeyDown = (e, i) => {
+        if (multiple) return
+        const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]
+        if (!step) return
+        e.preventDefault()
+        const next = (i + step + options.length) % options.length
+        onChange?.(options[next].value)
+        e.currentTarget.parentElement?.children[next]?.focus()
+    }
+    const current = options.findIndex((o) => isOn(o.value))
     return (
-        <span className={`lq-dur${mono ? ' lq-dur--mono' : ''}`} role="group" aria-label={ariaLabel} id={id}>
-            {options.map((o) => (
+        <span
+            className={`lq-dur${mono ? ' lq-dur--mono' : ''}`}
+            role={multiple ? 'group' : 'radiogroup'}
+            aria-label={ariaLabel}
+            id={id}
+        >
+            {options.map((o, i) => (
                 <button
                     key={String(o.value)}
                     type="button"
                     className={isOn(o.value) ? 'is-on' : undefined}
-                    aria-pressed={isOn(o.value)}
+                    {...(multiple
+                        ? { 'aria-pressed': isOn(o.value) }
+                        : {
+                            role: 'radio',
+                            'aria-checked': isOn(o.value),
+                            tabIndex: i === (current < 0 ? 0 : current) ? 0 : -1,
+                        })}
                     onClick={() => toggle(o.value)}
+                    onKeyDown={(e) => onKeyDown(e, i)}
                 >
                     {o.label}
                 </button>

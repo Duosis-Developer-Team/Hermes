@@ -1264,6 +1264,7 @@ export default {
             later: 'Later',
             none: 'No due date',
         },
+        saveSubtitle: 'Filters, layout and grouping are saved together',
     },
 
     explorer: {
@@ -1301,6 +1302,11 @@ export default {
         acceptTask: 'Accept this task?',
         completeTask: 'Mark task as completed?',
         reopenTask: 'Reopen this task?',
+        archiveTitle: 'Archive {Noun}',
+        archiveSubtitle: 'The {noun} moves out of the Active workspace. Nothing is deleted.',
+        archiveBody: 'Archive this work item? History, comments and logged time stay unchanged, and you can restore it later.',
+        archiveGroup: 'All {count} assignments of this work item are archived together.',
+        restoreHint: 'Choose which assignment goes back to work. The others keep their current status, and nothing is logged on anyone else\'s behalf.',
     },
 
     timeEntryHeader: {
