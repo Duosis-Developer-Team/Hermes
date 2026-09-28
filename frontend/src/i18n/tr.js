@@ -43,7 +43,7 @@ export default {
         capacity: 'Kapasite',
         settings: 'Ayarlar',
         timeEntry: 'Zaman Girişi',
-        projectManagement: 'Proje Yönetimi',
+        projectManagement: 'İşler',
         meetings: 'Toplantılar',
         developer: 'Geliştirici',
         tickets: 'Talepler',
@@ -160,6 +160,35 @@ export default {
         reference: 'Referans verileri',
         customers: 'Müşteri ve projeler',
         integrations: 'Entegrasyonlar',
+    },
+
+    taskCard: {
+        priority: {
+            low: 'Düşük',
+            medium: 'Orta',
+            high: 'Yüksek',
+            urgent: 'Acil',
+        },
+        dueToday: 'Bugün',
+        dueOn: 'Termin {date}',
+        assignee: 'Atanan',
+        assignedBy: 'Atayan',
+        status: {
+            pending: 'bekliyor',
+            in_progress: 'devam ediyor',
+            completed: 'tamamlandı',
+            rejected: 'reddedildi',
+        },
+    },
+
+    tasksPage: {
+        searchPlaceholder: 'Kod, başlık ara…',
+        title: 'İşler',
+        count: '{count} iş',
+        archive: {
+            active: 'Aktif',
+            archived: 'Arşiv',
+        },
     },
 
     shell: {

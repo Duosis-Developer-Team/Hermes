@@ -265,6 +265,10 @@ function TasksPage() {
                 taskType={permType}
                 userMap={directory.userMap}
                 onOpenReview={dialogs.openReview}
+                view={ws.view}
+                itemCount={isLoading ? null : visibleTasks.length}
+                canCreate={canCreate}
+                onCreate={dialogs.openCreate}
             />
 
             <div className="tasks-body tv-workspace">
@@ -327,7 +331,6 @@ function TasksPage() {
                         isAdmin={isTaskAdmin}
                         taskType={permType}
                         allowStatusChange={allowStatusChange}
-                        canCreate={canCreate}
                         completionLoading={mutations.completionMutation.isPending}
                         panelTask={dialogs.panelTask}
                         onEditTask={dialogs.openEdit}
@@ -335,7 +338,6 @@ function TasksPage() {
                         onOpenReview={dialogs.openReview}
                         onOpenLogTime={workLog.openLogTime}
                         onToggleCompletion={dialogs.requestToggle}
-                        onCreate={dialogs.openCreate}
                         onCardDrop={handleCardDrop}
                         onMultiAssignmentDrop={multi.start}
                         onOpenPanel={dialogs.openPanel}

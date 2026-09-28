@@ -68,7 +68,6 @@ function TasksSurface({
     isAdmin,
     taskType,
     allowStatusChange,
-    canCreate,
     completionLoading,
     panelTask,
     onEditTask,
@@ -76,7 +75,6 @@ function TasksSurface({
     onOpenReview,
     onOpenLogTime,
     onToggleCompletion,
-    onCreate,
     onCardDrop,
     onMultiAssignmentDrop,
     onOpenPanel,
@@ -145,8 +143,6 @@ function TasksSurface({
                 ) : (
                     <TasksBoardView
                         {...shared}
-                        onCreate={onCreate}
-                        canCreate={canCreate}
                         groupByAssignee={groupBy === 'owner'}
                         allowStatusDrag={allowStatusChange}
                         onCardDrop={onCardDrop}

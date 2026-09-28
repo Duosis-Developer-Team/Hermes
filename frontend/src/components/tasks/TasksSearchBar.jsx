@@ -19,7 +19,6 @@ import { useQuery } from '@tanstack/react-query'
 
 import { taskService } from '../../services/api'
 import { TaskDueBadge } from './TaskCard'
-import { typeMeta } from '../../utils/workItemType'
 import './TasksSearchBar.css'
 import { useT } from '../../i18n'
 
@@ -89,10 +88,10 @@ function TasksSearchBar({ userMap = {}, onSelect, style, taskType = 'task' }) {
     return (
         <div className="tasks-search-wrapper" ref={wrapperRef} style={style}>
             <Input
-                size="small"
                 allowClear
+                className="tasks-search-input"
                 prefix={<SearchOutlined style={{ color: 'var(--c-text-muted)' }} />}
-                placeholder={`Search ${typeMeta(taskType).lowerPlural}...`}
+                placeholder={t('tasksPage.searchPlaceholder')}
                 value={text}
                 onFocus={() => setOpen(true)}
                 onChange={(e) => {

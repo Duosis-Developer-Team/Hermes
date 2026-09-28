@@ -25,8 +25,8 @@
  */
 
 import { useMemo, useState } from 'react'
-import { Avatar, Button, Dropdown } from 'antd'
-import { PlusOutlined, UserOutlined, DownOutlined } from '@ant-design/icons'
+import { Avatar } from 'antd'
+import { UserOutlined } from '@ant-design/icons'
 import {
     DndContext,
     DragOverlay,
@@ -119,8 +119,6 @@ function TasksBoardView({
     onOpenLogTime,
     onToggleCompletion,
     completionLoading = false,
-    onCreate,
-    canCreate = false,
     // Swimlanes (group by assignee) are a read-only monitoring layout used
     // in "Assigned by Me". allowStatusDrag enables drag-to-change-status —
     // only the assignee's own "My Tasks" view sets it true; the assigner's
@@ -350,36 +348,6 @@ function TasksBoardView({
 
     return (
         <div className="tasks-board-wrap">
-            {canCreate && (
-                <div className="tasks-board-toolbar">
-                    <Dropdown
-                        trigger={['click']}
-                        menu={{
-                            items: [
-                                { key: 'task', label: t('board.newTask') },
-                                { key: 'issue', label: t('board.newIssue') },
-                                {
-                                    key: 'suggestion',
-                                    label: t('board.newSuggestion'),
-                                },
-                            ],
-                            onClick: ({ key }) => onCreate?.(key),
-                        }}
-                    >
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            className="tasks-board-new-btn"
-                            /* Ikon + "New" metni AntD'nin ikon
-                               aria-label'lariyla karisik bir ad
-                               uretiyordu; acik ad verilir (§8). */
-                            aria-label={t('board.newWorkItem')}
-                        >{t('board.new')}<DownOutlined />
-                        </Button>
-                    </Dropdown>
-                </div>
-            )}
-
             <DndContext
                 sensors={sensors}
                 collisionDetection={closestCorners}

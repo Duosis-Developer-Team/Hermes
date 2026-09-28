@@ -32,7 +32,7 @@ export default {
         capacity: 'Capacity',
         settings: 'Settings',
         timeEntry: 'Time Entry',
-        projectManagement: 'Project Management',
+        projectManagement: 'Work',
         meetings: 'Meetings',
         developer: 'Developer',
         tickets: 'Tickets',
@@ -149,6 +149,35 @@ export default {
         reference: 'Reference data',
         customers: 'Customers & projects',
         integrations: 'Integrations',
+    },
+
+    taskCard: {
+        priority: {
+            low: 'Low',
+            medium: 'Medium',
+            high: 'High',
+            urgent: 'Urgent',
+        },
+        dueToday: 'Today',
+        dueOn: 'Due {date}',
+        assignee: 'Assignee',
+        assignedBy: 'Assigned by',
+        status: {
+            pending: 'pending',
+            in_progress: 'in progress',
+            completed: 'completed',
+            rejected: 'rejected',
+        },
+    },
+
+    tasksPage: {
+        searchPlaceholder: 'Search code, title…',
+        title: 'Work',
+        count: '{count} items',
+        archive: {
+            active: 'Active',
+            archived: 'Archive',
+        },
     },
 
     shell: {

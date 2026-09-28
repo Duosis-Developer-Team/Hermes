@@ -265,7 +265,8 @@ describe('due-date rozeti gun sinirinda dogru okur', () => {
         expect(taskDueState({ due_date: local, status: 'pending' }))
             .toBe('due_today')
         renderBadge({ due_date: local, status: 'pending' })
-        expect(screen.getByText('DUE TODAY')).toBeInTheDocument()
+        // Hermes Liquid: termin hapi bugun icin insan dilinde "Today" der.
+        expect(screen.getByText('Today')).toBeInTheDocument()
     })
 
     it('DUN vadesi gecen gorev OVERDUE olur (artik gun sinirinda)', () => {

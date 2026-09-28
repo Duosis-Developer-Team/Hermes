@@ -28,7 +28,7 @@ function TaskLifecycleSwitcher({ value, onChange }) {
                     }`}
                     onClick={() => onChange(s.value)}
                 >
-                    {s.label}
+                    {t(`tasksPage.archive.${s.value}`)}
                 </button>
             ))}
         </div>

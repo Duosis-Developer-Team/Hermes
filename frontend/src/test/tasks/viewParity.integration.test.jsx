@@ -154,7 +154,7 @@ describe('gorunum degisiminde baglam KORUNUR', () => {
         expect(lastListParams().assignee_user_id).toBe('u2')
         // Secici hala Grace'i gosterir.
         expect(
-            document.querySelector('.tasks-user-header-left').textContent
+            document.querySelector('.tasks-user-select').textContent
         ).toContain('Grace Hopper')
     })
 })

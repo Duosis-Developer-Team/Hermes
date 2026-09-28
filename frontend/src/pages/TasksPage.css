@@ -16,49 +16,9 @@
 
 /* ── Top user header (avatar + identity / admin selector + tabs + Create) ── */
 
-.tasks-page .tasks-user-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    /* Tighter vertical breathing now that the big Create Task button
-       no longer pads the right side of the row. */
-    padding: 12px 24px;
-    background: transparent;
-    border-bottom: 1px solid var(--border-default);
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.tasks-page .tasks-user-header-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.tasks-page .tasks-user-avatar {
-    background-color: var(--color-primary);
-    font-size: 18px;
-    font-weight: 600;
-}
-
-.tasks-page .tasks-user-name {
-    font-size: 20px;
-    font-weight: 500;
-    color: var(--text-primary);
-    margin: 0;
-}
-
-.tasks-page .tasks-user-header-right {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    /* Single line, identical across Tasks / Issues / Suggestions — the
-       wider "My Suggestions" scope label used to wrap "Group by assignee"
-       onto its own row. Keep it inline on the right; the search box
-       shrinks first if space gets tight. */
-    flex-wrap: nowrap;
-    min-width: 0;
-}
+.tasks-page .tasks-user-header.lq-hero { margin-bottom: var(--h-space-4); }
+.tasks-page .tasks-user-select { min-width: 190px; }
+.tasks-page .tasks-user-select .ant-select-selector { height: 40px; border-radius: var(--h-radius-pill); align-items: center; }
 
 /* ── Underline tab links (Time Entry parity) ──────────────────────────── */
 

@@ -39,6 +39,7 @@ import ArchivedTaskMeta from '../../features/tasks/components/ArchivedTaskMeta'
 import { aggregateStatus } from '../../features/tasks/model/grouping'
 import './TaskCard.css'
 import { useT } from '../../i18n'
+import { Avatar } from '../liquid'
 
 function userLabel(id, userMap) {
     if (!id) return '—'
@@ -48,14 +49,14 @@ function userLabel(id, userMap) {
     return u?.full_name || u?.email || '—'
 }
 
-const DUE_STATE_LABEL = {
-    overdue: 'OVERDUE',
-    due_today: 'DUE TODAY',
-    due_soon: 'DUE SOON',
-}
-
-/** Badge component reused across card/list/board surfaces. */
+/**
+ * Termin hapi (kart/liste/pano ortak). Hermes Liquid: buyuk harfli durum
+ * kelimesi yerine TARIH ("27 Eyl"), bugun icin "Bugun"; ton (kirmizi/
+ * amber/notr) tek renkli sinyaldir (E4). Termin yoksa ya da is bittiyse
+ * cizilmez.
+ */
 export function TaskDueBadge({ task, compact = false }) {
+    const t = useT()
     const state = taskDueState(task)
     if (!state) return null
     return (
@@ -64,7 +65,7 @@ export function TaskDueBadge({ task, compact = false }) {
                 compact ? ' task-due-badge-compact' : ''
             }`}
         >
-            {DUE_STATE_LABEL[state]}
+            {state === 'due_today' ? t('taskCard.dueToday') : dayjs(task.due_date).format('DD MMM')}
         </span>
     )
 }
@@ -193,25 +194,30 @@ function TaskCard({
             className={className}
             onClick={handleBodyClick}
         >
-            <Tooltip
-                title={
-                    canToggleCompletion
-                        ? isCompleted
-                            ? `Reopen ${typeMeta(task.task_type).lower}`
-                            : task.status === 'pending'
-                                ? `Accept ${typeMeta(task.task_type).lower} (move to In Progress)`
-                                : 'Mark as completed'
-                        : `Only the assignee can change ${typeMeta(task.task_type).lower} status — from their My ${typeMeta(task.task_type).plural} view`
-                }
-            >
-                <Checkbox
-                    className="task-card-checkbox"
-                    checked={isCompleted}
-                    disabled={!canToggleCompletion || completionLoading}
-                    onClick={handleCheckboxClick}
-                    onChange={() => {}}
-                />
-            </Tooltip>
+            {/* Ust satir (prototip): tamamlama kutusu + mono kod · sagda tur */}
+            <div className="task-card-top">
+                <Tooltip
+                    title={
+                        canToggleCompletion
+                            ? isCompleted
+                                ? `Reopen ${typeMeta(task.task_type).lower}`
+                                : task.status === 'pending'
+                                    ? `Accept ${typeMeta(task.task_type).lower} (move to In Progress)`
+                                    : 'Mark as completed'
+                            : `Only the assignee can change ${typeMeta(task.task_type).lower} status — from their My ${typeMeta(task.task_type).plural} view`
+                    }
+                >
+                    <Checkbox
+                        className="task-card-checkbox"
+                        checked={isCompleted}
+                        disabled={!canToggleCompletion || completionLoading}
+                        onClick={handleCheckboxClick}
+                        onChange={() => {}}
+                    />
+                </Tooltip>
+                {task.task_code && <span className="task-card-code">{task.task_code}</span>}
+                <span className="task-card-type">{typeMeta(task.task_type).singular}</span>
+            </div>
 
             <div className="task-card-body">
                 <button
@@ -225,72 +231,40 @@ function TaskCard({
                         + (task.priority ? `, priority ${task.priority}` : '')
                     }
                     onClick={(e) => {
-                        /*
-                         * Kok kapsayici da ayni islemi tetikliyor; olay
-                         * yukari cikarsa AYNI aksiyon iki kez calisirdi.
-                         * Burada durdurma, gecersiz semantigi ortmek icin
-                         * DEGIL, tekrari onlemek icindir.
-                         */
+                        // Kok da ayni islemi tetikler; tekrari onle.
                         e.stopPropagation()
                         handleBodyClick(e)
                     }}
                     onKeyDown={(e) => {
                         /*
-                         * BOARD'da kart, dnd-kit sarmalayicisinin icinde
-                         * yasar ve KeyboardSensor Enter/Space keydown'unu
-                         * SURUKLEMEYI baslatmak icin yakalayip
-                         * preventDefault yapar — bu, native butonun
-                         * click'ini iptal edip ACMAYI yutuyordu (final
-                         * tarayici QA'sinin buldugu gercek regresyon).
-                         * Olay sarmalayiciya CIKARILMAZ: acma butonu
-                         * acar; klavyeyle surukleme, sarmalayicinin
-                         * KENDI odagindan (Tab ile) baslamaya devam eder.
+                         * BOARD'da kart dnd-kit sarmalayicisinda yasar;
+                         * KeyboardSensor Enter/Space'i yakalayip acmayi
+                         * yutuyordu (final QA regresyonu). Olay
+                         * sarmalayiciya cikarilmaz: buton acar.
                          */
                         if (e.key === 'Enter' || e.key === ' ') {
                             e.stopPropagation()
                         }
                     }}
                 >
-                    {task.task_code && (
-                        <span className="task-card-code">{task.task_code}</span>
-                    )}
                     <span className="task-card-title-text">{task.title}</span>
                 </button>
-                <div className="task-card-meta">
-                    {task.customer_name || '—'} · {task.project_name || '—'}
-                    {subProjectSegment}
-                </div>
 
-                {/* E4 gorsel dil (PM rework P3.4): bir kartta EN FAZLA BIR
-                    renkli sinyal — termin. Oncelik renksiz ince cubuk
-                    (yuksekligi onceligi soyler; ad erisilebilir etikette),
-                    durum notr metin (konum zaten soyler), tip kodun
-                    onekinde (TASK-56 / ISSUE-3) — ayri renk yok. */}
-                <div className="task-card-badges">
-                    <span
-                        className={`task-card-priority task-card-priority-${task.priority}`}
-                        title={task.priority}
-                        aria-hidden="true"
-                    />
-                    <span
-                        className={`task-card-status task-card-status-${cardStatus}`}
-                    >
-                        {cardStatus === 'in_progress'
-                            ? 'in progress'
-                            : cardStatus}
-                    </span>
+                {/* Orta satir: musteri · proje + termin hapi (tek renkli sinyal). */}
+                <div className="task-card-row">
+                    <div className="task-card-meta">
+                        {task.customer_name || '—'} · {task.project_name || '—'}
+                        {subProjectSegment}
+                    </div>
                     <TaskDueBadge task={task} />
                 </div>
 
-                {dueDifferent && (
+                {dueDifferent && !taskDueState(task) && (
                     <div className="task-card-due-hint">
-                        Due {dayjs(task.due_date).format('DD MMM')}
+                        {t('taskCard.dueOn', { date: dayjs(task.due_date).format('DD MMM') })}
                     </div>
                 )}
 
-                {/* Arsiv baglami: tarih + sebep ERISILEBILIR metinle
-                    gosterilir (yalniz renk degil). Aktif kartta hic
-                    cizilmez. */}
                 {task.archived_at && (
                     <div className="task-card-archived">
                         <ArchivedTaskMeta
@@ -299,20 +273,45 @@ function TaskCard({
                         />
                     </div>
                 )}
-                {isGrouped ? (
-                    <div className="task-card-roster">
-                        <AssignmentRoster assignments={assignments} compact />
-                    </div>
-                ) : showAssignee && task.assignee_user_id ? (
-                    <div className="task-card-assignee-hint">
-                        Assignee: {userLabel(task.assignee_user_id, userMap)}
-                    </div>
-                ) : null}
-                {!isGrouped && !showAssignee && task.assigner_user_id && (
-                    <div className="task-card-assignee-hint">
-                        Assigned by: {userLabel(task.assigner_user_id, userMap)}
-                    </div>
-                )}
+
+                {/* Alt satir: oncelik (renksiz cubuk + metin) · durum · kisiler */}
+                <div className="task-card-row task-card-badges">
+                    <span className="task-card-prio">
+                        <span
+                            className={`task-card-priority task-card-priority-${task.priority}`}
+                            aria-hidden="true"
+                        />
+                        {task.priority ? t(`taskCard.priority.${task.priority}`) : ''}
+                    </span>
+                    <span className={`task-card-status task-card-status-${cardStatus}`}>
+                        {t(`taskCard.status.${cardStatus}`)}
+                    </span>
+                    <span className="task-card-spacer" />
+                    {isGrouped ? (
+                        <span className="task-card-roster">
+                            <AssignmentRoster assignments={assignments} compact />
+                        </span>
+                    ) : (
+                        <span className="lq-avs task-card-people">
+                            {showAssignee && task.assignee_user_id && (
+                                <Avatar
+                                    id={task.assignee_user_id}
+                                    name={userLabel(task.assignee_user_id, userMap)}
+                                    title={`${t('taskCard.assignee')}: ${userLabel(task.assignee_user_id, userMap)}`}
+                                    size={26}
+                                />
+                            )}
+                            {!showAssignee && task.assigner_user_id && (
+                                <Avatar
+                                    id={task.assigner_user_id}
+                                    name={userLabel(task.assigner_user_id, userMap)}
+                                    title={`${t('taskCard.assignedBy')}: ${userLabel(task.assigner_user_id, userMap)}`}
+                                    size={26}
+                                />
+                            )}
+                        </span>
+                    )}
+                </div>
             </div>
 
             {/* Hover actions — top-right, mirrors WorkLogCard exactly */}

@@ -9,13 +9,21 @@
  * kararlar prop olarak gelir (features/tasks/model/permissions tek kaynak).
  * =============================================================================
  */
-import { Avatar, Select } from 'antd'
-import { UserOutlined } from '@ant-design/icons'
+import { Button, Dropdown, Select } from 'antd'
+import { DownOutlined, PlusOutlined, TeamOutlined } from '@ant-design/icons'
 
 import TasksSearchBar from '../../../components/tasks/TasksSearchBar'
 import TaskLifecycleSwitcher from './TaskLifecycleSwitcher'
+import { PageHero } from '../../../components/liquid'
 import { useT } from '../../../i18n'
 
+/*
+ * Hermes Liquid (28.09): prototipteki sayfa basligi — "Isler" + aktif
+ * gorunum · is sayisi; sagda (admin) kisi secici, arama, Aktif/Arsiv ve
+ * birincil "Yeni is". "Yeni is" eskiden yalniz PANO yerlesiminde vardi;
+ * baslikta oldugu icin Liste ve Takvim'de de erisilebilir (ayni izin:
+ * canCreate, ayni akis: onCreate(tip)).
+ */
 function TasksHeader({
     user,
     isTaskAdmin,
@@ -28,55 +36,75 @@ function TasksHeader({
     taskType,
     userMap,
     onOpenReview,
+    view,
+    itemCount,
+    canCreate,
+    onCreate,
 }) {
     const t = useT()
+    const viewName = view ? (view.saved ? view.name : t(view.labelKey)) : null
+    const subtitle = [viewName, itemCount != null ? t('tasksPage.count', { count: itemCount }) : null]
+        .filter(Boolean).join(' \u00b7 ')
 
     return (
-        <div className="tasks-user-header">
-            <div className="tasks-user-header-left">
-                <Avatar size={40} icon={<UserOutlined />} className="tasks-user-avatar" />
-                {isTaskAdmin ? (
-                    <Select
-                        value={selectedUserId || user?.id}
-                        onChange={onSelectUser}
-                        /* Etiketsiz kontrol: erisilebilir ad acikca
-                           verilir (§8). */
-                        aria-label={t('explorer.viewedUser')}
-                        style={{ width: 220, fontSize: '1.2rem', fontWeight: 600 }}
-                        /* AntD 5.x: bordered deprecated → variant. */
-                        variant="borderless"
-                        loading={!usersLoaded}
-                        options={userSelectorOptions}
-                        showSearch
-                        filterOption={(input, option) =>
-                            (option?.label ?? '')
-                                .toLowerCase()
-                                .includes(input.toLowerCase())
-                        }
+        <PageHero
+            className="tasks-user-header"
+            title={t('tasksPage.title')}
+            subtitle={subtitle}
+            actions={(
+                <>
+                    {isTaskAdmin && (
+                        <Select
+                            className="tasks-user-select"
+                            value={selectedUserId || user?.id}
+                            onChange={onSelectUser}
+                            aria-label={t('explorer.viewedUser')}
+                            loading={!usersLoaded}
+                            options={userSelectorOptions}
+                            suffixIcon={<TeamOutlined />}
+                            showSearch
+                            filterOption={(input, option) =>
+                                (option?.label ?? '')
+                                    .toLowerCase()
+                                    .includes(input.toLowerCase())
+                            }
+                        />
+                    )}
+                    {/* Serbest metin arama — gorunurluk sunucuda uygulanir */}
+                    <TasksSearchBar
+                        userMap={userMap}
+                        onSelect={onOpenReview}
+                        taskType={taskType}
                     />
-                ) : (
-                    <h1 className="tasks-user-name">{user?.full_name || 'User'}</h1>
-                )}
-            </div>
-
-            <div className="tasks-user-header-right">
-                {/* Free-text task search — visibility enforced server-side */}
-                <TasksSearchBar
-                    userMap={userMap}
-                    onSelect={onOpenReview}
-                    taskType={taskType}
-                />
-                <div className="tasks-tabs-divider" />
-                {/* Arsiv anahtari: baslik satirinin saginda tek dugme. */}
-                <TaskLifecycleSwitcher
-                    value={archiveState}
-                    onChange={onArchiveStateChange}
-                />
-                {/* P3.5 / E1: tip sekmeleri, kapsam pilleri, yerlesim sekmeleri
-                    ve kulvar anahtari KALKTI — hepsi GORUNUMUN kendisi (sol
-                    kolon) ya da kontrol cubugundaki iki eksendir. */}
-            </div>
-        </div>
+                    <TaskLifecycleSwitcher
+                        value={archiveState}
+                        onChange={onArchiveStateChange}
+                    />
+                    {canCreate && (
+                        <Dropdown
+                            trigger={['click']}
+                            menu={{
+                                items: [
+                                    { key: 'task', label: t('board.newTask') },
+                                    { key: 'issue', label: t('board.newIssue') },
+                                    { key: 'suggestion', label: t('board.newSuggestion') },
+                                ],
+                                onClick: ({ key }) => onCreate?.(key),
+                            }}
+                        >
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                className="tasks-new-btn"
+                                aria-label={t('board.newWorkItem')}
+                            >
+                                {t('board.new')}<DownOutlined />
+                            </Button>
+                        </Dropdown>
+                    )}
+                </>
+            )}
+        />
     )
 }
 
