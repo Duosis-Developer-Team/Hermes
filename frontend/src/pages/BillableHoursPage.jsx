@@ -272,7 +272,9 @@ function BillableHoursPage() {
             title: 'DATE',
             dataIndex: 'date_worked',
             key: 'date_worked',
-            width: 140,
+            // Gun adi ("Wednesday"/"Çarşamba") tek satirda kalmali; 140px'te
+            // harf harf kiriliyordu.
+            width: 196,
             render: (text) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{
@@ -290,7 +292,7 @@ function BillableHoursPage() {
                         </div>
                     </div>
                     <div>
-                        <Text style={{ color: 'var(--c-text)', display: 'block' }}>{dayjs(text).format('dddd')}</Text>
+                        <Text style={{ color: 'var(--c-text)', display: 'block', whiteSpace: 'nowrap' }}>{dayjs(text).format('dddd')}</Text>
                         <Text style={{ color: 'var(--c-text-faint)', fontSize: 12 }}>{dayjs(text).format('YYYY')}</Text>
                     </div>
                 </div>

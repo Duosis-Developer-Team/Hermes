@@ -20,6 +20,11 @@ import './stores/themeStore'
 import './stores/localeStore'
 import './styles/tokens.css'
 import './index.css'
+// Ortak primitifler (h-metric-strip, h-inline-toolbar, h-section…) GLOBAL
+// yuklenir: onlari import etmeden sinif adiyla kullanan sayfalar var.
+// Eskiden kabuk (AppShell → components/ui) dolayli yukluyordu; Hermes
+// Liquid kabugu o modulu kullanmayinca Raporlar vb. stilsiz kaldi.
+import './components/ui/ui.css'
 // DS V2.1 (Premium UI): merkezi AntD gorunum koprusu — sayfa-ozel
 // override'lar yerine tek katman (buton/select/tablo/modal/today-flag).
 import './styles/premium.css'

@@ -185,6 +185,23 @@
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
 }
+/* Coklu secim: secilenler tonal HAP cip (prototip v4 — kaba gri kutu yok). */
+:root .ant-select-multiple .ant-select-selection-item {
+  border: 0;
+  border-radius: var(--h-radius-pill);
+  background: var(--h-bg-selected);
+  color: var(--h-brand);
+  font-weight: 600;
+  padding-inline: 10px 6px;
+}
+:root .ant-select-multiple .ant-select-selection-item-remove {
+  color: var(--h-brand);
+  opacity: 0.7;
+}
+:root .ant-select-multiple .ant-select-selection-item-remove:hover { opacity: 1; }
+:root .ant-select-dropdown .ant-select-item-option {
+  border-radius: 10px;
+}
 :root .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
   background: var(--h-bg-selected);
 }

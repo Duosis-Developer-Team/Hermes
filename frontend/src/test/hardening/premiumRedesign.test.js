@@ -26,6 +26,14 @@ const cssBlock_ = (css, sel) => {
 const noComments = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '')
 
 describe('ortak primitifler tek kaynakta', () => {
+    it('ui.css uygulama girisinde GLOBAL yuklenir (kabuga bagli degil)', () => {
+        /* Regresyon kilidi (R5, 28.09): primitifler eskiden kabugun
+           components/ui importu ile dolayli yukleniyordu; kabuk degisince
+           sinif adiyla kullanan sayfalar (Raporlar) stilsiz kaldi. */
+        const main = read('main.jsx')
+        expect(main).toMatch(/import '\.\/components\/ui\/ui\.css'/)
+    })
+
     it('metric strip + section + inline toolbar ui.css te tanimli', () => {
         const css = read('components/ui/ui.css')
         for (const cls of [
