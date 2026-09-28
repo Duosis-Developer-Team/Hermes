@@ -24,7 +24,7 @@
   /* Kabuk (uygulama cercevesi): sivinin ustunde BEYAZ SEFFAF cam */
   --shell:rgba(255,255,255,.34); --shell-edge:rgba(255,255,255,.7); --shell-rim:rgba(255,255,255,.22);
   --shell-shadow:0 40px 90px -40px rgba(20,40,90,.45);
-  --bezel:rgba(255,255,255,.26); --bezel-line:rgba(255,255,255,.7); --bezel-in:rgba(17,23,32,.04);
+  --bezel:rgba(255,255,255,.07); --bezel-line:rgba(255,255,255,.55); --bezel-hi:rgba(255,255,255,.5); --bezel-in:rgba(17,23,32,.05);
   --nav-bg:rgba(255,255,255,.42); --nav-edge:rgba(255,255,255,.75); --nav-ink:#111720; --nav-ink-2:#3E4A5C; --nav-2:rgba(17,23,32,.06); --nav-ind:#FFFFFF; --nav-on:#0E131B;
   --on-bg:#0E131B; --on-bg-2:#526174;
   --seg-bg:rgba(17,23,32,.06);
@@ -62,7 +62,7 @@
   --blob-d:rgba(12,14,18,.95); --blob-e:rgba(70,90,125,.6); --blob-m:rgba(160,168,185,.3);
   --shell:rgba(6,7,9,.36); --shell-edge:rgba(255,255,255,.1); --shell-rim:rgba(0,0,0,.32);
   --shell-shadow:0 40px 90px -30px rgba(0,0,0,.8);
-  --bezel:rgba(0,0,0,.28); --bezel-line:rgba(255,255,255,.1); --bezel-in:rgba(255,255,255,.03);
+  --bezel:rgba(0,0,0,.08); --bezel-line:rgba(255,255,255,.09); --bezel-hi:rgba(255,255,255,.07); --bezel-in:rgba(0,0,0,.35);
   --nav-bg:rgba(255,255,255,.07); --nav-edge:rgba(255,255,255,.12); --nav-ink:#EEF1F5; --nav-ink-2:#B4BAC5; --nav-2:rgba(255,255,255,.08); --nav-ind:#F4F7FB; --nav-on:#0B0C0E;
   --on-bg:#EDEFF3; --on-bg-2:#8D94A1;
   --seg-bg:rgba(255,255,255,.07);
@@ -112,8 +112,9 @@ a{color:var(--primary);text-decoration:none}
 .glass{background:var(--glass);backdrop-filter:blur(28px) saturate(190%);-webkit-backdrop-filter:blur(28px) saturate(190%);border:1px solid var(--glass-edge);box-shadow:var(--glass-shadow)}
 .app{position:relative;z-index:1;margin:0;min-height:100vh;padding:0 max(16px, calc((100vw - 1440px) / 2)) 120px;
   background:var(--shell);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%)}
-.bezel{position:fixed;inset:10px;z-index:45;pointer-events:none;border-radius:30px;border:1px solid var(--bezel-line);box-shadow:0 0 0 12px var(--bezel), inset 0 0 0 1px var(--bezel-in)}
-@media (max-width:760px){.bezel{inset:6px;border-radius:22px;box-shadow:0 0 0 8px var(--bezel), inset 0 0 0 1px var(--bezel-in)}}
+.bezel{position:fixed;inset:6px;z-index:45;pointer-events:none;border-radius:26px;border:1px solid var(--bezel-line);
+  box-shadow:0 0 0 6px var(--bezel), inset 0 1px 0 var(--bezel-hi), inset 0 -1px 0 var(--bezel-in), 0 0 0 1px var(--bezel-in)}
+@media (max-width:760px){.bezel{inset:4px;border-radius:20px}}
 .app .glass{backdrop-filter:blur(14px) saturate(150%);-webkit-backdrop-filter:blur(14px) saturate(150%)}
 
 

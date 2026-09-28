@@ -149,3 +149,9 @@ Prototip: https://claude.ai/artifact/HXXunk5DuR4VXEAVonnQfp · kopya
   geçen ince çerçeve: 30px yuvarlak köşe + 1px ışık çizgisi, dışında hafif
   tonlu bant (açık = beyaz %26, koyu = siyah %28). Tıklamayı engellemez;
   mobilde 6px / 22px köşe.
+
+### Revizyon 8 (28.09.2026) — çizgi çerçeve
+
+- Kenar çerçevesi inceltildi: tonlu bant neredeyse yok (%7–8), 6px içeride
+  26px köşe, 1px ışık çizgisi + üstte iç parlama / altta iç gölge ile çok
+  hafif bombe. "Çerçeve" değil "çizgi" hissi.
