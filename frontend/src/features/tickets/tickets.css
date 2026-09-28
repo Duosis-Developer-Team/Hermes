@@ -227,8 +227,13 @@
 .tickets-row__main { display: flex; flex: 1; flex-direction: column; gap: 4px; min-width: 0; }
 .tickets-row__title { font-size: 14px; font-weight: 650; line-height: 1.35; }
 .tickets-row__code { margin-right: 6px; color: var(--h-text-muted); font: 500 12px var(--h-font-mono); }
-.tickets-row__meta { overflow: hidden; color: var(--h-text-secondary); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
-.tickets-row__badges { display: flex; flex: none; flex-direction: column; align-items: flex-end; gap: 6px; }
+.tickets-row__meta { display: flex; align-items: center; gap: 8px; overflow: hidden; color: var(--h-text-secondary); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.tickets-row__meta > * { flex: none; }
+/* Sagda TEK rozet (durum), sabit genislik ve ortali: satirlar hizali,
+   simetrik (oncelik meta satirinda). */
+.tickets-row { align-items: center; }
+.tickets-row__badges { display: flex; flex: none; justify-content: center; width: 168px; }
+.tickets-row__badges > * { max-width: 100%; }
 
 .ticket-pane.lq-card { padding: 20px 22px; min-height: 420px; animation: lq-rise 500ms var(--h-ease-enter) both; }
 .ticket-pane__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -252,3 +257,31 @@
 .support-card__title { font-size: 15.5px; font-weight: 650; letter-spacing: -0.01em; line-height: 1.35; }
 .support-card__tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .support-card__when { color: var(--h-text-muted); font-size: 12px; }
+
+/* ── Liquid: basliktaki tiklanabilir durum hapi + Talep durumu penceresi ── */
+.h-ticket-workbench { grid-template-columns: minmax(0, 1fr); }
+.ticket-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px 4px 5px;
+    border: 1px solid var(--h-border-default);
+    border-radius: var(--h-radius-pill);
+    background: var(--h-field-bg);
+    color: var(--h-text-secondary);
+    font: inherit;
+    cursor: pointer;
+    transition: transform 200ms var(--h-ease-spring), border-color 150ms, box-shadow 200ms;
+}
+.ticket-status-chip:hover { transform: translateY(-1px); border-color: var(--h-brand); box-shadow: 0 8px 18px -12px rgba(12, 102, 228, 0.6); }
+.ticket-status-chip:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
+.ticket-status-chip .anticon { font-size: 10px; }
+.ticket-status-now { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.ticket-status-targets { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.ticket-status-targets .lq-opt__text b { white-space: normal; }
+.ticket-status-targets .lq-opt__item:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.ticket-status-targets__resolve { border-color: color-mix(in srgb, var(--h-success) 45%, transparent); }
+.ticket-status-targets__resolve b { color: var(--h-success); }
+.ticket-status-modal .lq-grp { margin-top: 16px; }
+.ticket-status-tech { margin-top: 14px; }
+.ticket-status-tech summary { cursor: pointer; color: var(--h-text-secondary); font-size: 13px; }

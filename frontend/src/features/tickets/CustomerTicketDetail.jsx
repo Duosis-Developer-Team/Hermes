@@ -17,11 +17,11 @@ import {
 import { queryKeys } from '../../query/queryKeys'
 import TicketTimeline from './TicketTimeline'
 import {
-    CATEGORY_LABELS, ERROR_MESSAGES, IMPACT_LABELS, RESOLUTION_LABELS,
-    labelOf,
+    ERROR_MESSAGES,
 } from './constants'
 import { TicketStatusBadge } from './TicketStatusBadge'
 import './tickets.css'
+import { useTicketLabel } from './useTicketLabel'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
 import { CustomerServiceOutlined } from '@ant-design/icons'
@@ -32,6 +32,7 @@ export default function CustomerTicketDetail({
     ticketId, open, onClose, onChanged,
 }) {
     const t = useT()
+    const tl = useTicketLabel()
     const queryClient = useQueryClient()
     const [draft, setDraft] = useState('')
     const [reason, setReason] = useState('')
@@ -105,10 +106,10 @@ export default function CustomerTicketDetail({
                     <Inline gap={2}>
                         <TicketStatusBadge status={ticket.status} />
                         <StatusBadge tone="neutral">
-                            {labelOf(CATEGORY_LABELS, ticket.category)}
+                            {tl('category', ticket.category)}
                         </StatusBadge>
                         <StatusBadge tone="neutral">
-                            {labelOf(IMPACT_LABELS, ticket.impact)}
+                            {tl('impact', ticket.impact)}
                         </StatusBadge>
                         {ticket.assigned_group?.name && (
                             <Text type="secondary">
@@ -131,9 +132,7 @@ export default function CustomerTicketDetail({
                             <Inline gap={2}>
                                 <StatusBadge tone="success">✓ Resolved</StatusBadge>
                                 <Text strong>
-                                    {labelOf(
-                                        RESOLUTION_LABELS,
-                                        ticket.resolution.resolution_code,
+                                    {tl('resolution', ticket.resolution.resolution_code,
                                     )}
                                 </Text>
                                 <Text type="secondary">

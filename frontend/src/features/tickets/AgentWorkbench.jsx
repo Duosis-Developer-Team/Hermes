@@ -12,126 +12,180 @@
 import { Fragment, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Drawer, Select, Skeleton, Typography } from 'antd'
+import { Alert, Drawer, Modal, Select, Skeleton, Typography } from 'antd'
 
 import { ticketErrorCode, ticketHubService } from '../../api/ticketsApi'
 import {
-    Button, EmptyState, Inline, Stack, StatusBadge, Surface,
+    Button, EmptyState, Inline, Stack, StatusBadge,
 } from '../../components/ui'
 import { queryKeys } from '../../query/queryKeys'
 import AgentComposer from './AgentComposer'
 import ResolveModal from './ResolveModal'
 import ConvertToWorkItemModal from './ConvertToWorkItemModal'
 import TicketTimeline from './TicketTimeline'
-import {
-    AGENT_STATUS_LABELS, CATEGORY_LABELS, IMPACT_LABELS,
-    RESOLUTION_LABELS, labelOf,
-} from './constants'
+
 import { TicketPriorityBadge, TicketStatusBadge } from './TicketStatusBadge'
 import './tickets.css'
+import { useTicketLabel } from './useTicketLabel'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
-import { CustomerServiceOutlined } from '@ant-design/icons'
+import { CustomerServiceOutlined, DownOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 
-function ContextPanel({ ticket, groups, onAssignGroup, canAssign, pending }) {
+/**
+ * Talep durumu penceresi (Hermes Liquid): basliktaki durum hapindan acilir.
+ * Eskiden sagda duran baglam kolonunun (durum, ayrintilar, hedef ekip)
+ * yerini alir — gorunum simetrik kalir, bilgi tek dokunusla gelir.
+ * Durum gecisi ve Coz burada; davranis cagirandaki mutasyonlarla ayni.
+ */
+function TicketStatusModal({
+    open, onClose, ticket, groups, canAssign, canRespond, canResolve, pending,
+    onAssignGroup, onTransition, onResolve,
+}) {
     const t = useT()
+    const tl = useTicketLabel()
+    if (!ticket) return null
+    const targets = (ticket.allowed_transitions ?? []).filter((x) => x !== 'resolved')
+    const canResolveNow = (ticket.allowed_transitions ?? []).includes('resolved')
     return (
-        <Surface className="h-ticket-context">
-            <Stack gap={3}>
-                <Stack gap={1}>
-                    <Text type="secondary">{t('common.status')}</Text>
-                    <Inline gap={2}>
-                        <TicketStatusBadge status={ticket.status} surface="hub" />
-                        <TicketPriorityBadge priority={ticket.priority} />
-                    </Inline>
-                </Stack>
+        <Modal
+            open={open}
+            onCancel={onClose}
+            footer={null}
+            width={640}
+            destroyOnHidden
+            className="ticket-status-modal"
+            title={(
+                <ModalHead
+                    icon={<CustomerServiceOutlined />}
+                    tone="red"
+                    title={t('hub.statusTitle')}
+                    subtitle={`${ticket.ticket_number} · ${ticket.title}`}
+                />
+            )}
+        >
+            <div className="ticket-status-now">
+                <TicketStatusBadge status={ticket.status} surface="hub" />
+                <TicketPriorityBadge priority={ticket.priority} />
+            </div>
 
-                <dl>
-                    <dt>{t('integrations.application')}</dt>
-                    <dd>{ticket.application?.display_name ?? '—'}</dd>
-                    <dt>{t('entity.customer')}</dt>
-                    <dd>{ticket.source_tenant?.display_name ?? '—'}</dd>
-                    <dt>{t('hub.requester')}</dt>
-                    <dd>{ticket.requester_display_name ?? '—'}</dd>
-                    <dt>{t('hub.category')}</dt>
-                    <dd>{labelOf(CATEGORY_LABELS, ticket.category)}</dd>
-                    <dt>{t('hub.impact')}</dt>
-                    <dd>{labelOf(IMPACT_LABELS, ticket.impact)}</dd>
-                    <dt>{t('hub.errorCode')}</dt>
-                    <dd>{ticket.error_code || '—'}</dd>
-                    <dt>{t('hub.correlation')}</dt>
-                    <dd>{ticket.correlation_id || '—'}</dd>
-                    <dt>{t('hub.firstResponse')}</dt>
-                    <dd>
-                        {ticket.first_response_at
-                            ? new Date(ticket.first_response_at).toLocaleString()
-                            : 'Pending'}
-                    </dd>
-                    {/* A6: bu ticket'tan dogan is kalemleri */}
-                    <dt>{t('hub.workItems')}</dt>
-                    <dd>
-                        {(ticket.work_items ?? []).length === 0 ? '—' : (
-                            <ul className="h-ticket-work-items">
-                                {ticket.work_items.map((w) => (
-                                    <li key={w.id}>
-                                        <Link to={`/project-management/tasks?item=${w.id}`}>
-                                            {w.item_key}
-                                        </Link>
-                                        {' '}
-                                        <span className="h-ticket-work-items__title">{w.title}</span>
-                                        {' '}
-                                        <StatusBadge tone="neutral">{w.status}</StatusBadge>
-                                    </li>
-                                ))}
-                            </ul>
+            {(targets.length > 0 || canResolveNow) && (
+                <>
+                    <h3 className="lq-grp">{t('hub.changeStatus')}</h3>
+                    <div className="ticket-status-targets">
+                        {targets.map((target) => (
+                            <button
+                                key={target}
+                                type="button"
+                                className="lq-opt__item"
+                                disabled={!canRespond || pending}
+                                onClick={() => onTransition(target)}
+                            >
+                                <span className="lq-opt__text">
+                                    <b>{tl('agentStatus', target)}</b>
+                                </span>
+                            </button>
+                        ))}
+                        {canResolveNow && (
+                            <button
+                                type="button"
+                                className="lq-opt__item ticket-status-targets__resolve"
+                                disabled={!canResolve}
+                                onClick={onResolve}
+                            >
+                                <span className="lq-opt__text"><b>{t('hub.resolve')}</b></span>
+                            </button>
                         )}
-                    </dd>
-                </dl>
+                    </div>
+                    {targets.includes('waiting_customer') && (
+                        <p className="lq-note">{t('hub.waitingHint')}</p>
+                    )}
+                </>
+            )}
 
-                {ticket.impact === 'security_or_data_risk' && (
-                    <Alert
-                        type="warning"
-                        showIcon
-                        message={t('hub.securityRisk')}
-                        description={'Priority stays at least "High". This '
-                            + 'is NOT an automatic security incident process; '
-                            + 'start one separately if needed.'}
-                    />
-                )}
+            <h3 className="lq-grp">{t('review.details')}</h3>
+            <dl className="lq-kv">
+                <dt>{t('integrations.application')}</dt>
+                <dd>{ticket.application?.display_name ?? '—'}</dd>
+                <dt>{t('entity.customer')}</dt>
+                <dd>{ticket.source_tenant?.display_name ?? '—'}</dd>
+                <dt>{t('hub.requester')}</dt>
+                <dd>{ticket.requester_display_name ?? '—'}</dd>
+                <dt>{t('hub.category')}</dt>
+                <dd>{tl('category', ticket.category)}</dd>
+                <dt>{t('hub.impact')}</dt>
+                <dd>{tl('impact', ticket.impact)}</dd>
+                <dt>{t('hub.errorCode')}</dt>
+                <dd>{ticket.error_code || '—'}</dd>
+                <dt>{t('hub.correlation')}</dt>
+                <dd>{ticket.correlation_id || '—'}</dd>
+                <dt>{t('hub.firstResponse')}</dt>
+                <dd>
+                    {ticket.first_response_at
+                        ? new Date(ticket.first_response_at).toLocaleString()
+                        : t('hub.firstResponsePending')}
+                </dd>
+                {/* A6: bu ticket'tan dogan is kalemleri */}
+                <dt>{t('hub.workItems')}</dt>
+                <dd>
+                    {(ticket.work_items ?? []).length === 0 ? '—' : (
+                        <ul className="h-ticket-work-items">
+                            {ticket.work_items.map((w) => (
+                                <li key={w.id}>
+                                    <Link to={`/project-management/tasks?item=${w.id}`}>{w.item_key}</Link>
+                                    {' '}
+                                    <span className="h-ticket-work-items__title">{w.title}</span>
+                                    {' '}
+                                    <StatusBadge tone="neutral">{w.status}</StatusBadge>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </dd>
+            </dl>
 
-                <Stack gap={1}>
-                    <Text type="secondary">{t('hub.targetTeam')}</Text>
-                    <Select
-                        value={ticket.assigned_group?.id}
-                        disabled={!canAssign || pending}
-                        onChange={onAssignGroup}
-                        options={(groups ?? []).map((group) => ({
-                            value: group.id,
-                            label: `${group.name} (${group.member_count})`,
-                        }))}
-                        style={{ width: '100%' }}
-                    />
-                </Stack>
+            {ticket.impact === 'security_or_data_risk' && (
+                <Alert
+                    style={{ marginTop: 14 }}
+                    type="warning"
+                    showIcon
+                    message={t('hub.securityRisk')}
+                    description={t('hub.securityRiskHint')}
+                />
+            )}
 
-                {Object.keys(ticket.client_context || {}).length > 0 && (
-                    <details>
-                        <summary>{t('hub.technicalContext')}</summary>
-                        <dl>
-                            {Object.entries(ticket.client_context).map(
-                                ([key, value]) => (
-                                    <Fragment key={key}>
-                                        <dt>{key}</dt>
-                                        <dd>{String(value)}</dd>
-                                    </Fragment>
-                                ),
-                            )}
-                        </dl>
-                    </details>
-                )}
-            </Stack>
-        </Surface>
+            <h3 className="lq-grp">{t('hub.targetTeam')}</h3>
+            <Select
+                aria-label={t('hub.targetTeam')}
+                value={ticket.assigned_group?.id}
+                disabled={!canAssign || pending}
+                onChange={onAssignGroup}
+                options={(groups ?? []).map((group) => ({
+                    value: group.id,
+                    label: `${group.name} (${group.member_count})`,
+                }))}
+                style={{ width: '100%' }}
+            />
+
+            {Object.keys(ticket.client_context || {}).length > 0 && (
+                <details className="ticket-status-tech">
+                    <summary>{t('hub.technicalContext')}</summary>
+                    <dl className="lq-kv">
+                        {Object.entries(ticket.client_context).map(([key, value]) => (
+                            <Fragment key={key}>
+                                <dt>{key}</dt>
+                                <dd>{String(value)}</dd>
+                            </Fragment>
+                        ))}
+                    </dl>
+                </details>
+            )}
+
+            <div className="lq-mf">
+                <Button onClick={onClose}>{t('common.close')}</Button>
+            </div>
+        </Modal>
     )
 }
 
@@ -139,10 +193,12 @@ export default function AgentWorkbench({
     ticketId, open, onClose, context, onChanged, onError, inline = false,
 }) {
     const t = useT()
+    const tl = useTicketLabel()
     const queryClient = useQueryClient()
     const [draft, setDraft] = useState('')
     const [resolveOpen, setResolveOpen] = useState(false)
     const [convertOpen, setConvertOpen] = useState(false)
+    const [statusOpen, setStatusOpen] = useState(false)
     const [conflict, setConflict] = useState(false)
 
     useEffect(() => {
@@ -212,30 +268,28 @@ export default function AgentWorkbench({
 
     // Eylemler (gecis, coz, is kalemi ac) — cekmecede sabit altlikta,
     // satir ici bolmede basligin sagindadir (Hermes Liquid prototipi).
+    const doTransition = (target) => transition.mutate({
+        to_status: target,
+        expected_version: ticket.version,
+        public_message: target === 'waiting_customer' ? draft || undefined : undefined,
+        reason: target === 'cancelled' ? 'Cancelled by an agent' : undefined,
+    }, { onSuccess: () => setStatusOpen(false) })
+
+    // Baslik eylemleri (Liquid): tiklanabilir durum hapi → Talep durumu
+    // penceresi; Coz ve Is kalemi ac yaninda. Durum gecisleri pencerede.
     const actions = ticket ? (
                 <Inline gap={2} className="ticket-workbench-drawer__actions">
-                    {(ticket.allowed_transitions ?? [])
-                        .filter((target) => target !== 'resolved')
-                        .map((target) => (
-                            <Button
-                                key={target}
-                                disabled={!canRespond}
-                                loading={transition.isPending}
-                                onClick={() => transition.mutate({
-                                    to_status: target,
-                                    expected_version: ticket.version,
-                                    public_message:
-                                        target === 'waiting_customer'
-                                            ? draft || undefined
-                                            : undefined,
-                                    reason: target === 'cancelled'
-                                        ? 'Cancelled by an agent'
-                                        : undefined,
-                                })}
-                            >
-                                {labelOf(AGENT_STATUS_LABELS, target)}
-                            </Button>
-                        ))}
+                    <button
+                        type="button"
+                        className="ticket-status-chip"
+                        aria-haspopup="dialog"
+                        aria-label={`${t('hub.statusTitle')}: ${tl('agentStatus', ticket.status)}`}
+                        onClick={() => setStatusOpen(true)}
+                    >
+                        <TicketStatusBadge status={ticket.status} surface="hub" />
+                        <TicketPriorityBadge priority={ticket.priority} />
+                        <DownOutlined aria-hidden="true" />
+                    </button>
                     {(ticket.allowed_transitions ?? []).includes('resolved') && (
                         <Button
                             variant="primary"
@@ -284,9 +338,7 @@ export default function AgentWorkbench({
                                             ✓ Resolution #{ticket.resolution.revision}
                                         </StatusBadge>
                                         <Text strong>
-                                            {labelOf(
-                                                RESOLUTION_LABELS,
-                                                ticket.resolution.resolution_code,
+                                            {tl('resolution', ticket.resolution.resolution_code,
                                             )}
                                         </Text>
                                     </Inline>
@@ -319,28 +371,6 @@ export default function AgentWorkbench({
                             />
                         </Stack>
 
-                        <Stack gap={3}>
-                            <ContextPanel
-                                ticket={ticket}
-                                groups={groups.data}
-                                canAssign={canAssign}
-                                pending={assignGroup.isPending}
-                                onAssignGroup={(groupId) => assignGroup.mutate({
-                                    group_id: groupId,
-                                    expected_version: ticket.version,
-                                })}
-                            />
-
-                            {ticket.allowed_transitions?.includes(
-                                'waiting_customer',
-                            ) && (
-                                <Text type="secondary">
-                                    To move to “Waiting on customer”, write a
-                                    customer-visible message in the composer —
-                                    the request for information is mandatory.
-                                </Text>
-                            )}
-                        </Stack>
                     </div>
                 </Stack>
             )}
@@ -355,6 +385,23 @@ export default function AgentWorkbench({
 
                 onCreated={() => refresh()}
 
+            />
+
+            <TicketStatusModal
+                open={statusOpen}
+                onClose={() => setStatusOpen(false)}
+                ticket={ticket}
+                groups={groups.data}
+                canAssign={canAssign}
+                canRespond={canRespond}
+                canResolve={canResolve}
+                pending={assignGroup.isPending || transition.isPending}
+                onAssignGroup={(groupId) => assignGroup.mutate({
+                    group_id: groupId,
+                    expected_version: ticket.version,
+                })}
+                onTransition={doTransition}
+                onResolve={() => { setStatusOpen(false); setResolveOpen(true) }}
             />
 
             <ResolveModal

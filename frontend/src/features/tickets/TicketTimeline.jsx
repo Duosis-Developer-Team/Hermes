@@ -83,17 +83,17 @@ export function TicketTimeline({ messages = [], downloadUrl, selfType = 'agent' 
                             mine && 'h-ticket-message--requester',
                             own && 'is-own',
                         ].filter(Boolean).join(' ')}
-                        aria-label={internal ? 'Internal note' : 'Conversation message'}
+                        aria-label={internal ? t('hub.internalNoteLabel') : t('hub.conversationMessage')}
                     >
                         <header className="h-ticket-message__head">
                             <strong>
                                 {message.author_display_name
-                                    || (mine ? 'You' : 'Support')}
+                                    || (mine ? t('hub.you') : t('hub.supportTeam'))}
                             </strong>
                             {internal && (
                                 <StatusBadge tone="warning">
                                     <LockOutlined aria-hidden="true" />
-                                    <span>Internal note — hidden from customer</span>
+                                    <span>{t('hub.internalNoteBadge')}</span>
                                 </StatusBadge>
                             )}
                             <Text type="secondary" className="h-ticket-message__when">

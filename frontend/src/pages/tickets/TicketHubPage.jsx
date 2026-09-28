@@ -26,7 +26,7 @@ import { Button, EmptyState, Page } from '../../components/ui'
 import { GlassCard, LiquidSegmented, PageHero } from '../../components/liquid'
 import AgentWorkbench from '../../features/tickets/AgentWorkbench'
 import {
-    AGENT_STATUS_LABELS, ERROR_MESSAGES, QUEUE_LABELS, labelOf,
+    AGENT_STATUS_LABELS, ERROR_MESSAGES,
 } from '../../features/tickets/constants'
 import {
     TicketPriorityBadge, TicketStatusBadge,
@@ -34,6 +34,7 @@ import {
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { queryKeys } from '../../query/queryKeys'
 import '../../features/tickets/tickets.css'
+import { useTicketLabel } from '../../features/tickets/useTicketLabel'
 import { useT } from '../../i18n'
 
 dayjs.extend(relativeTime)
@@ -45,6 +46,7 @@ const SPLIT_QUERY = '(min-width: 1100px)'
 
 export default function TicketHubPage() {
     const t = useT()
+    const tl = useTicketLabel()
     const navigate = useNavigate()
     const queryClient = useQueryClient()
     const [params, setParams] = useSearchParams()
@@ -195,7 +197,7 @@ export default function TicketHubPage() {
         <Page className="tickets-page">
             <PageHero
                 title={t('hub.tickets')}
-                subtitle={`${t('hub.countLabel', { count: total })} \u00b7 ${labelOf(QUEUE_LABELS, queue)}`}
+                subtitle={`${t('hub.countLabel', { count: total })} \u00b7 ${tl('queue', queue)}`}
                 actions={(
                     <>
                         <Input.Search
@@ -230,7 +232,7 @@ export default function TicketHubPage() {
                             aria-pressed={item.key === queue}
                             onClick={() => patchParams({ queue: item.key })}
                         >
-                            {labelOf(QUEUE_LABELS, item.key)} <b>{item.count}</b>
+                            {tl('queue', item.key)} <b>{item.count}</b>
                         </button>
                     ))}
                     <Select
@@ -240,8 +242,8 @@ export default function TicketHubPage() {
                         placeholder={t('common.status')}
                         value={statuses}
                         onChange={(value) => patchParams({ status: value })}
-                        options={Object.entries(AGENT_STATUS_LABELS).map(
-                            ([value, label]) => ({ value, label }),
+                        options={Object.keys(AGENT_STATUS_LABELS).map(
+                            (value) => ({ value, label: tl('agentStatus', value) }),
                         )}
                     />
                     {hasFilters && (
@@ -279,13 +281,13 @@ export default function TicketHubPage() {
                                                 {row.title}
                                             </span>
                                             <span className="tickets-row__meta">
+                                                <TicketPriorityBadge priority={row.priority} />
                                                 {[row.application?.display_name, row.source_tenant?.display_name,
                                                     row.assigned_group?.name, row.updated_at ? dayjs(row.updated_at).fromNow() : null]
                                                     .filter(Boolean).join(' \u00b7 ')}
                                             </span>
                                         </span>
                                         <span className="tickets-row__badges">
-                                            <TicketPriorityBadge priority={row.priority} />
                                             <TicketStatusBadge status={row.status} surface="hub" />
                                         </span>
                                     </button>

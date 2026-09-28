@@ -25,12 +25,13 @@ import { LiquidSegmented, PageHero } from '../../components/liquid'
 import CreateTicketModal from '../../features/tickets/CreateTicketModal'
 import CustomerTicketDetail from '../../features/tickets/CustomerTicketDetail'
 import {
-    CATEGORY_LABELS, ERROR_MESSAGES, isResolvedLike, labelOf,
+    ERROR_MESSAGES, isResolvedLike,
 } from '../../features/tickets/constants'
 import { TicketStatusBadge } from '../../features/tickets/TicketStatusBadge'
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { queryKeys } from '../../query/queryKeys'
 import '../../features/tickets/tickets.css'
+import { useTicketLabel } from '../../features/tickets/useTicketLabel'
 import { useT } from '../../i18n'
 
 dayjs.extend(relativeTime)
@@ -52,6 +53,7 @@ const TABS = [
 
 export default function SupportPortalPage() {
     const t = useT()
+    const tl = useTicketLabel()
     const navigate = useNavigate()
     const queryClient = useQueryClient()
     const context = useTicketContext()
@@ -206,7 +208,7 @@ export default function SupportPortalPage() {
                         <span className="support-card__tags">
                             <TicketStatusBadge status={ticket.status} />
                             <StatusBadge tone="neutral">
-                                {labelOf(CATEGORY_LABELS, ticket.category)}
+                                {tl('category', ticket.category)}
                             </StatusBadge>
                         </span>
                         <span className="support-card__when">

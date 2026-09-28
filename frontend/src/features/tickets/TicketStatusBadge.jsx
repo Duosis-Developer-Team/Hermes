@@ -6,30 +6,24 @@
  * dusuk-kontrastli ekranlar icin okunamaz olurdu.
  */
 import { StatusBadge } from '../../components/ui'
-import {
-    AGENT_STATUS_LABELS,
-    PRIORITY_LABELS,
-    PRIORITY_TONES,
-    STATUS_ICONS,
-    STATUS_LABELS,
-    STATUS_TONES,
-    labelOf,
-} from './constants'
+import { PRIORITY_TONES, STATUS_ICONS, STATUS_TONES } from './constants'
+import { useTicketLabel } from './useTicketLabel'
 
 export function TicketStatusBadge({ status, surface = 'portal' }) {
-    const labels = surface === 'hub' ? AGENT_STATUS_LABELS : STATUS_LABELS
+    const tl = useTicketLabel()
     return (
         <StatusBadge tone={STATUS_TONES[status] ?? 'neutral'}>
             <span aria-hidden="true">{STATUS_ICONS[status] ?? '•'}</span>
-            <span>{labelOf(labels, status)}</span>
+            <span>{tl(surface === 'hub' ? 'agentStatus' : 'status', status)}</span>
         </StatusBadge>
     )
 }
 
 export function TicketPriorityBadge({ priority }) {
+    const tl = useTicketLabel()
     return (
         <StatusBadge tone={PRIORITY_TONES[priority] ?? 'neutral'}>
-            {labelOf(PRIORITY_LABELS, priority)}
+            {tl('priority', priority)}
         </StatusBadge>
     )
 }

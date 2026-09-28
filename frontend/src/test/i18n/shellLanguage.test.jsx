@@ -59,14 +59,10 @@ describe('kabuk dil dugmesi', () => {
         useLocaleStore.getState().setLocale('en')
     })
 
-    // Hermes Liquid: dil secimi profil kartinda, tema karolarinin altinda.
-    const openProfile = (user) =>
-        user.click(screen.getByRole('button', { name: /^Account:/ }))
-
-    it('dil secimi tema karolarinin yaninda ve mevcut dili gosterir', async () => {
-        const user = userEvent.setup()
+    // Hermes Liquid (29.09): tema ve dil secimi dogrudan ADADA (profil
+    // kartinda degil) — tek dokunus.
+    it('dil secimi adada tema dugmelerinin yaninda ve mevcut dili gosterir', () => {
         renderShell()
-        await openProfile(user)
         expect(screen.getByRole('button', { name: /Switch to light theme/i })).toBeInTheDocument()
         expect(screen.getByRole('button', { name: /Switch to English/i }))
             .toHaveAttribute('aria-pressed', 'true')
@@ -79,7 +75,6 @@ describe('kabuk dil dugmesi', () => {
         renderShell()
         expect(screen.getAllByText('Time Entry').length).toBeGreaterThan(0)
 
-        await openProfile(user)
         await user.click(screen.getByRole('button', { name: /Turkish/i }))
         expect((await screen.findAllByText('Zaman Girişi')).length).toBeGreaterThan(0)
         expect(screen.queryByText('Time Entry')).toBeNull()

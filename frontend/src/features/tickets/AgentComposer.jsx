@@ -79,8 +79,8 @@ export function AgentComposer({
                 />
                 <Text type={internal ? 'warning' : 'secondary'}>
                     {internal
-                        ? 'Hidden from the customer — support team only.'
-                        : 'The customer will see this and be notified.'}
+                        ? t('hub.composerInternalHint')
+                        : t('hub.composerPublicHint')}
                 </Text>
             </Inline>
             <Input.TextArea
@@ -89,9 +89,9 @@ export function AgentComposer({
                 rows={4}
                 maxLength={10000}
                 placeholder={internal
-                    ? 'Note for the team…'
-                    : 'Your reply to the customer…'}
-                aria-label={internal ? 'Internal note' : 'Reply to customer'}
+                    ? t('hub.composerInternalPlaceholder')
+                    : t('hub.composerPublicPlaceholder')}
+                aria-label={internal ? t('hub.internalNoteLabel') : t('hub.replyLabel')}
             />
             <AttachmentDropzone
                 enabled={attachmentsEnabled}
@@ -111,7 +111,7 @@ export function AgentComposer({
                     disabled={!draft.trim()}
                     onClick={submit}
                 >
-                    {internal ? 'Save internal note' : 'Send reply'}
+                    {internal ? t('hub.saveInternalNote') : t('hub.sendReply')}
                 </Button>
             </Inline>
         </Stack>
