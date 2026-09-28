@@ -24,7 +24,7 @@
   --on-bg:#0E131B; --on-bg-2:#526174;
   --seg-bg:rgba(17,23,32,.06);
   --glass: rgba(255,255,255,.34);
-  --glass-strong: rgba(255,255,255,.58);
+  --glass-strong: rgba(255,255,255,.58); --pop-bg: rgba(250,252,255,.94);
   --glass-edge: rgba(255,255,255,.75);
   --glass-shadow: 0 1px 0 rgba(255,255,255,.95) inset, 0 0 0 .5px rgba(255,255,255,.4) inset, 0 20px 40px -24px rgba(40,60,100,.35), 0 2px 6px rgba(40,60,100,.06);
   --dock-bg:rgba(255,255,255,.4); --dock-edge:rgba(255,255,255,.8);
@@ -57,7 +57,7 @@
   --blob-d:rgba(22,26,36,.9); --blob-e:rgba(140,146,160,.18); --blob-m:rgba(120,128,145,.2);
   --on-bg:#EDEFF3; --on-bg-2:#8D94A1;
   --seg-bg:rgba(255,255,255,.07);
-  --glass: rgba(24,26,31,.4); --glass-strong: rgba(30,33,39,.62); --glass-edge: rgba(255,255,255,.09);
+  --glass: rgba(24,26,31,.4); --glass-strong: rgba(30,33,39,.62); --pop-bg: rgba(26,28,33,.95); --glass-edge: rgba(255,255,255,.09);
   --glass-shadow: 0 1px 0 rgba(255,255,255,.07) inset, 0 24px 48px -24px rgba(0,0,0,.8);
   --dock-bg:rgba(20,22,27,.5); --dock-edge:rgba(255,255,255,.1);
   --hair: rgba(255,255,255,.08); --hair-2: rgba(255,255,255,.14);
@@ -226,6 +226,89 @@ a{color:var(--primary);text-decoration:none}
 .mdock-d .di:hover::after,.mdock-d .di:focus-visible::after{opacity:1;transform:translateX(-50%)}
 .mdock-d .di.on::before{content:"";position:absolute;bottom:-6px;left:50%;width:4px;height:4px;border-radius:50%;background:var(--on-bg);transform:translateX(-50%)}
 .mdock-d .dsep{width:1px;align-self:stretch;margin:6px 4px;background:var(--hair-2)}
+
+
+/* ---------- Coklu secim (Raporlar) ---------- */
+.fpanel{border-radius:24px;padding:16px;position:sticky;top:84px;display:flex;flex-direction:column;gap:14px}
+.fpanel .fh{display:flex;align-items:center;justify-content:space-between}
+.fpanel .fh b{font-size:15px}
+.flab{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.flab button{border:0;background:transparent;color:var(--primary);font-size:11.5px;font-weight:600;letter-spacing:0;text-transform:none;padding:0}
+.presets{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;padding:3px;border-radius:12px;background:var(--fill)}
+.presets button{border:0;background:transparent;border-radius:9px;padding:6px 2px;font-size:12px;font-weight:500;color:var(--ink-2);white-space:nowrap;transition:background .2s, color .2s}
+.presets button.on{background:var(--pop-bg);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.msel{position:relative}
+.msel.open{z-index:30}
+.msel-f{width:100%;display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:42px;padding:5px 34px 5px 8px;border:1px solid var(--hair-2);border-radius:14px;background:var(--glass-strong);text-align:left;position:relative;transition:border-color .2s, box-shadow .2s}
+.msel-f:hover{border-color:var(--ink-3)}
+.msel.open .msel-f{border-color:var(--primary);box-shadow:0 0 0 4px var(--info-bg)}
+.msel-f .ph{color:var(--ink-3);font-size:13px;padding-left:4px}
+.msel-f>svg{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--ink-3);transition:transform .3s var(--spring)}
+.msel.open .msel-f>svg{transform:translateY(-50%) rotate(180deg)}
+.mchip{display:inline-flex;align-items:center;gap:5px;background:var(--info-bg);color:var(--info);border-radius:999px;padding:2px 4px 2px 8px;font-size:12px;font-weight:600;max-width:100%}
+.mchip .av{width:18px;height:18px;font-size:8px}
+.mchip i{font-style:normal;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;cursor:pointer;opacity:.7}
+.mchip i:hover{opacity:1;background:rgba(12,102,228,.15)}
+.mchip.more{background:var(--fill-2);color:var(--ink-2);padding-right:8px}
+.mpop{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:20;border-radius:16px;padding:6px;background:var(--pop-bg);backdrop-filter:blur(28px) saturate(190%);-webkit-backdrop-filter:blur(28px) saturate(190%);border:1px solid var(--glass-edge);box-shadow:0 24px 50px -18px rgba(0,0,0,.45);opacity:0;transform:translateY(-4px) scale(.98);transform-origin:top;pointer-events:none;transition:opacity .15s, transform .25s var(--spring)}
+.msel.open .mpop{opacity:1;transform:none;pointer-events:auto}
+.mpop .ms{display:flex;align-items:center;gap:8px;padding:6px 8px 8px;border-bottom:1px solid var(--hair);margin-bottom:4px}
+.mpop .ms svg{width:14px;height:14px;color:var(--ink-3)}
+.mpop .ms input{flex:1;border:0;background:transparent;outline:none;font-size:13px;min-width:0}
+.mopt{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;border-radius:10px;padding:7px 8px;font-size:13px;text-align:left}
+.mopt:hover{background:var(--fill)}
+.mopt .cb{width:18px;height:18px;border-radius:6px;border:1.5px solid var(--hair-2);display:grid;place-items:center;flex:none;transition:background .15s, border-color .15s}
+.mopt .cb svg{width:12px;height:12px;color:#fff;opacity:0;transform:scale(.5);transition:all .2s var(--spring)}
+.mopt.on .cb{background:var(--primary);border-color:var(--primary)}
+.mopt.on .cb svg{opacity:1;transform:none}
+.mopt .n{margin-left:auto;color:var(--ink-3);font:500 11.5px var(--mono)}
+.mopt .sw2{width:10px;height:10px;border-radius:3px;flex:none}
+.mpop .mf2{display:flex;justify-content:space-between;border-top:1px solid var(--hair);margin-top:4px;padding:6px 6px 2px}
+.mpop .mf2 button{border:0;background:transparent;color:var(--primary);font-weight:600;font-size:12.5px;padding:4px 6px}
+.actbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;border-radius:18px;margin-bottom:14px}
+.actbar .l{font-size:12px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-right:4px}
+.actbar .fc{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:var(--fill-2);padding:4px 6px 4px 11px;font-size:12.5px}
+.actbar .fc b{font-weight:600}
+.actbar .fc i{font-style:normal;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--ink-3)}
+.actbar .fc i:hover{background:var(--fill-2);color:var(--ink)}
+
+/* ---------- Profil karti v2 ---------- */
+.drop.prof{width:min(360px,calc(100vw - 32px));padding:0;overflow:hidden}
+.pcover{height:78px;background:linear-gradient(120deg,#388BFF 0%,#0C66E4 45%,#6E5DD3 100%);position:relative;overflow:hidden}
+.pcover::before{content:"";position:absolute;inset:-40% -10% auto auto;width:60%;height:180%;background:radial-gradient(closest-side, rgba(255,255,255,.35), transparent);filter:blur(6px)}
+.pcover::after{content:"";position:absolute;inset:0;background:radial-gradient(60% 80% at 85% 20%, rgba(184,172,246,.5), transparent 70%)}
+.pid{padding:0 16px 12px;margin-top:-30px;position:relative;z-index:1}
+.pav{position:relative;width:60px;height:60px;border-radius:20px;background:linear-gradient(135deg,var(--blue-400),var(--purple-500));color:#fff;font-weight:700;font-size:20px;display:grid;place-items:center;box-shadow:0 0 0 4px var(--d-bg), 0 10px 24px -10px rgba(0,0,0,.5)}
+.pav .st{position:absolute;right:-3px;bottom:-3px;width:16px;height:16px;border-radius:50%;background:var(--green-500);box-shadow:0 0 0 3px var(--d-bg)}
+.pid .nm{display:flex;align-items:center;gap:8px;margin-top:10px}
+.pid .nm b{font-size:17px;letter-spacing:-.01em}
+.pid small{color:var(--d-ink-2);font-size:12.5px}
+.pstats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 12px 12px}
+.pstats button{border:0;border-radius:14px;background:var(--d-2);padding:9px 8px;text-align:left;color:var(--d-ink);transition:background .2s, transform .25s var(--spring)}
+.pstats button:hover{background:var(--d-3);transform:translateY(-2px)}
+.pstats b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
+.pstats span{font-size:11px;color:var(--d-ink-2)}
+.pbody{padding:4px 8px 8px;border-top:1px solid var(--d-line)}
+.pst{display:flex;gap:6px;padding:8px 8px 4px}
+.pst button{flex:1;border:1px solid var(--d-line);background:transparent;color:var(--d-ink);border-radius:12px;padding:7px 6px;font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px}
+.pst button i{width:8px;height:8px;border-radius:50%}
+.pst button.on{background:var(--d-3);border-color:transparent}
+.orgs{display:flex;gap:6px;padding:4px 8px 6px;overflow-x:auto}
+.orgc{flex:1;min-width:130px;display:flex;align-items:center;gap:8px;border:1px solid var(--d-line);background:transparent;color:var(--d-ink);border-radius:14px;padding:8px;text-align:left}
+.orgc.on{border-color:var(--primary);background:var(--info-bg)}
+.orgc .oav{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font:700 11px var(--sans);color:#fff;flex:none}
+.orgc small{display:block;color:var(--d-ink-2);font-size:11px}
+.themes2{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px 8px 6px}
+.th{border:1.5px solid var(--d-line);background:transparent;border-radius:14px;padding:6px;color:var(--d-ink);font-size:12px;font-weight:500;display:flex;flex-direction:column;gap:6px;text-align:left}
+.th.on{border-color:var(--primary);box-shadow:0 0 0 3px var(--info-bg)}
+.th .pv{height:44px;border-radius:9px;position:relative;overflow:hidden}
+.th .pv i{position:absolute;left:6px;right:6px;height:8px;border-radius:4px;font-style:normal}
+.th .pv.l{background:linear-gradient(135deg,#F4F7FB,#C9D8F0 60%,#DCD6F7)}
+.th .pv.l i{background:rgba(255,255,255,.7)}
+.th .pv.d{background:linear-gradient(135deg,#2A2D34,#0C0D10 60%,#1A1C21)}
+.th .pv.d i{background:rgba(255,255,255,.12)}
+.th .pv i:nth-child(1){top:8px;width:40%}.th .pv i:nth-child(2){top:22px}
+.plinks{display:flex;flex-direction:column}
 
 /* ---------- Sayfa ---------- */
 main{position:relative;z-index:1;padding-top:8px}
@@ -699,9 +782,8 @@ tbody tr:hover{background:var(--fill)}
 .opt .oi{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font:700 14px var(--sans);color:#fff;flex:none}
 /* ---------- Yan menuler: ikon boyutu ---------- */
 .snav button svg,.side button svg{width:16px;height:16px;flex:none}
-.snav .si{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:var(--fill);color:var(--ink-3);flex:none;transition:background .2s,color .2s}
-.snav button.on .si{background:rgba(255,255,255,.14);color:inherit}
-.snav button{padding:6px 8px;font-size:13.5px}
+.snav button svg{color:var(--ink-3);transition:color .2s}
+.snav button:hover svg,.snav button.on svg{color:inherit}
 
 /* ---------- Giris ---------- */
 .login{min-height:100vh;display:grid;place-items:center;position:relative;z-index:1;padding:40px 0}
@@ -891,7 +973,7 @@ function openDrop(kind) {
   if (dropKind === kind) { closeDrop(); return }
   dropKind = kind
   drop.innerHTML = DROPS[kind]()
-  drop.className = 'drop' + (kind === 'live' ? ' dark' : '') + (kind === 'me' || kind === 'bell' ? ' narrow' : '')
+  drop.className = 'drop' + (kind === 'live' ? ' dark' : '') + (kind === 'me' || kind === 'bell' ? ' narrow' : '') + (kind === 'me' ? ' prof' : '')
   drop.style.width = kind === 'bell' ? 'min(380px, calc(100vw - 32px))' : ''
   requestAnimationFrame(() => drop.classList.add('open'))
   if (kind === 'cmd') setTimeout(() => renderCmd(''), 0)
@@ -916,17 +998,17 @@ const DROPS = {
   bell: () => `<div class="nhead"><b>Bildirimler</b><button type="button" data-act="readall">Tümünü okundu say</button></div>` +
     [['TASK-61', 'GH', '<b>Grace</b> sana <b>Beymen rapor şablonu</b> işini atadı', '4 dk', 0], ['ISSUE-12', 'AT', '<b>Alan</b> <b>SSO dönüşü</b> işine yorum yazdı', '1 sa', 0], ['TASK-56', 'AL', '<b>Sertifika yenileme</b> Devam ediyor oldu', '3 sa', 0], ['TASK-52', 'KJ', '<b>Katherine</b> <b>Kapasite ayarları</b> işini tamamladı', 'Dün', 1]]
       .map(([k, u, t, w, r]) => `<div class="notif ${r ? 'read' : ''}" role="button" tabindex="0" data-task="${k}"><span class="nav" style="background:${U[u][1]}">${u}</span><div style="flex:1;min-width:0"><div style="font-size:13px">${t}</div><small>${k} · ${w} önce</small></div><span class="nd"></span></div>`).join(''),
-  me: () => `<div class="prof-h"><span class="me">AL</span><div><b>Ada Lovelace</b><small>ada@duosis.com</small></div><span class="tag violet prof-role">Admin</span></div>
-    <div class="psec"><h6>Organizasyon</h6>
-      <button type="button" class="prow org"><span class="oav" style="background:linear-gradient(135deg,#0C66E4,#0A2A6B)">D</span>Duosis<span class="end chk"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg></span></button>
-      <button type="button" class="prow org" data-toast="Techart'a geçildi"><span class="oav" style="background:linear-gradient(135deg,#8F7EE7,#3B2A7A)">T</span>Techart<span class="end">8 üye</span></button></div>
-    <div class="psec"><h6>Tercihler</h6>
-      <div class="prow"><span class="pi">${svg('sun')}</span>Görünüm<span class="end"><span class="iseg" id="themeSeg"><button type="button" data-theme-set="light">Açık</button><button type="button" data-theme-set="dark">Koyu</button></span></span></div>
-      <div class="prow"><span class="pi">${svg('report')}</span>Dil<span class="end"><span class="iseg"><button type="button" class="on">TR</button><button type="button">EN</button></span></span></div>
-      <button type="button" class="prow" data-go="settings"><span class="pi">${svg('gear')}</span>Ayarlar<span class="end"><span class="kbd">⌘,</span></span></button>
-      <button type="button" class="prow"><span class="pi">${svg('key')}</span>Klavye kısayolları<span class="end"><span class="kbd">?</span></span></button></div>
-    <div class="psec"><button type="button" class="prow"><span class="pi">${svg('code')}</span>Hermes for macOS<span class="end">0.1.0 · güncel</span></button>
-      <button type="button" class="prow danger" data-go="login"><span class="pi">${svg('x')}</span>Çıkış yap</button></div>`,
+  me: () => { const th = document.documentElement.getAttribute('data-theme') || 'light'; return `<div class="pcover"></div>
+    <div class="pid"><span class="pav">AL<span class="st" title="Müsait"></span></span><div class="nm"><b>Ada Lovelace</b><span class="tag violet">Admin</span></div><small>ada@duosis.com · Yazılım</small></div>
+    <div class="pstats"><button type="button" data-go="time"><b>13h</b><span>bu hafta</span></button><button type="button" data-go="work"><b>7</b><span>açık iş</span></button><button type="button" data-go="meetings"><b>2</b><span>toplantı</span></button></div>
+    <div class="pbody">
+      <div class="psec" style="border:0"><h6>Durum</h6><div class="pst"><button type="button" class="on" data-tg1><i style="background:var(--green-500)"></i>Müsait</button><button type="button" data-tg1><i style="background:var(--amber-500)"></i>Odakta</button><button type="button" data-tg1><i style="background:var(--red-500)"></i>Meşgul</button></div></div>
+      <div class="psec"><h6>Organizasyon</h6><div class="orgs"><button type="button" class="orgc on"><span class="oav" style="background:linear-gradient(135deg,#0C66E4,#0A2A6B)">D</span><span>Duosis<small>24 üye · aktif</small></span></button><button type="button" class="orgc" data-toast="Techart'a geçildi"><span class="oav" style="background:linear-gradient(135deg,#8F7EE7,#3B2A7A)">T</span><span>Techart<small>8 üye</small></span></button></div></div>
+      <div class="psec"><h6>Görünüm</h6><div class="themes2" id="themeSeg"><button type="button" class="th ${th === 'light' ? 'on' : ''}" data-theme-set="light"><span class="pv l"><i></i><i></i></span>Açık</button><button type="button" class="th ${th === 'dark' ? 'on' : ''}" data-theme-set="dark"><span class="pv d"><i></i><i></i></span>Koyu</button></div>
+        <div class="prow"><span class="pi">${svg('report')}</span>Dil<span class="end"><span class="iseg"><button type="button" class="on">Türkçe</button><button type="button">English</button></span></span></div></div>
+      <div class="psec plinks"><button type="button" class="prow" data-go="settings"><span class="pi">${svg('gear')}</span>Ayarlar<span class="end"><span class="kbd">⌘ ,</span></span></button><button type="button" class="prow"><span class="pi">${svg('key')}</span>Klavye kısayolları<span class="end"><span class="kbd">?</span></span></button><button type="button" class="prow"><span class="pi">${svg('code')}</span>Hermes for macOS<span class="end"><span class="tag ok">0.1.0</span></span></button>
+        <button type="button" class="prow danger" data-go="login"><span class="pi">${svg('x')}</span>Çıkış yap</button></div>
+    </div>` },
 }
 const cmdIcon = { Sayfa: 'home', Eylem: 'plus', 'Kişi': 'users', Ayar: 'gear' }
 function renderCmd(q = '') {
@@ -1226,11 +1308,51 @@ PAGES.billable = () => ph('Faturalanabilir saatler', 'Kullanıcının haftalık 
 <article class="card glass c12" style="padding:8px"><div class="tw"><table><thead><tr><th>Tarih</th><th>Müşteri</th><th>Proje</th><th>Açıklama</th><th>Süre</th><th>Faturalanabilir</th><th></th></tr></thead><tbody>${[['Pzt 28', 'Vakko', 'ATM', 'Sertifika otomasyonu geliştirme', '5h', '5h'], ['Pzt 28', 'Duosis', 'İç', 'Sprint planlama', '3h', '0h'], ['Sal 29', 'Beymen', 'Portal', 'Rapor şablonu tasarımı', '6h', '6h'], ['Çar 30', 'Vakko', 'ATM', 'Test ve dağıtım', '4h', '3h 30dk']].map(([d, c, p, de, du, b]) => `<tr><td><b style="font-weight:600">${d}</b></td><td>${c}</td><td>${tag('info', p)}</td><td style="max-width:280px">${de}</td><td class="mono">${du}</td><td><span class="dur"><button type="button" class="on">${b}</button></span></td><td><button type="button" class="btn sm" data-toast="Faturalanabilir süre kaydedildi">Kaydet</button></td></tr>`).join('')}</tbody></table></div></article></div>`
 
 // ---------------- Raporlar
-PAGES.reports = () => ph('Raporlar', 'Tüm efor kayıtları · filtrele ve dışa aktar', `<button type="button" class="btn ghost">Filtreleri temizle</button><button type="button" class="btn pri" data-toast="CSV hazırlandı">${svg('csv')}CSV indir</button>`) +
-`<div class="two enter"><aside class="snav glass"><h6>Tarih aralığı</h6><div style="padding:0 6px 8px"><input class="inp" style="width:100%" value="1 Eyl – 30 Eyl 2026" aria-label="Tarih aralığı"></div>${[['Kullanıcılar', ['Ada', 'Grace', 'Alan'], 2], ['Müşteriler', ['Vakko', 'Beymen', 'Duosis'], 1], ['Projeler', ['ATM', 'Portal', 'Hermes'], 0], ['İş türleri', ['Geliştirme', 'Toplantı', 'Tasarım'], 0], ['Platformlar', ['Backend', 'Web', 'Mobil'], 0]].map(([g, it, n]) => `<h6>${g} ${n ? `<span class="tag info" style="margin-left:4px">${n}</span>` : ''}</h6>${it.map((x, i) => `<label style="display:flex;gap:8px;align-items:center;padding:5px 10px;font-size:13px"><input type="checkbox" ${i < n ? 'checked' : ''}>${x}</label>`).join('')}`).join('')}</aside>
-<div style="min-width:0"><div class="bento" style="margin-bottom:16px"><article class="card glass c6 kpi"><b class="num" data-count="642">0</b><span>Toplam saat</span></article><article class="card glass c6 kpi"><b class="num" data-count="318">0</b><span>Kayıt</span></article></div>
-<article class="card glass" style="padding:8px"><div class="tw"><table><thead><tr><th>Tarih</th><th>Kişi</th><th>Müşteri</th><th>Proje</th><th>Tür</th><th>Platform</th><th>Açıklama</th><th>Saat</th></tr></thead><tbody>${[['30 Eyl', 'AL', 'Vakko', 'ATM', 'Geliştirme', 'Backend', 'Sertifika otomasyonu', '1,75'], ['30 Eyl', 'AL', 'Beymen', 'Portal', 'Tasarım', 'Web', 'Rapor şablonu', '3'], ['29 Eyl', 'GH', 'Vakko', 'ATM', 'Toplantı', '—', 'Sprint review', '1'], ['29 Eyl', 'AT', 'Duosis', 'Hermes', 'Geliştirme', 'Web', 'Görünümler ekranı', '6']].map(([d, u, c, p, t, pl, de, h]) => `<tr><td>${d}</td><td>${av(u)}</td><td>${c}</td><td>${p}</td><td>${tag('violet', t)}</td><td>${tag('', pl)}</td><td>${de}</td><td class="mono">${h}</td></tr>`).join('')}</tbody></table></div></article></div></div>`
-AFTER.reports = () => countUp()
+const FOPTS = {
+  users: { label: 'Kişiler', ph: 'Tüm kişiler', items: Object.keys(U).map((k) => ({ v: k, t: U[k][0], av: k, n: [152, 168, 131, 96, 144][Object.keys(U).indexOf(k)] })) },
+  customers: { label: 'Müşteriler', ph: 'Tüm müşteriler', items: [['Vakko', 412, '#0C66E4'], ['Beymen', 305, '#8F7EE7'], ['Duosis', 288, '#22A06B'], ['Arçelik', 164, '#E2B203'], ['Koton', 115, '#E2483D']].map(([t, n, c]) => ({ v: t, t, n, c })) },
+  projects: { label: 'Projeler', ph: 'Tüm projeler', items: [['Vakko · ATM', 290], ['Beymen · Portal', 244], ['Duosis · Hermes', 210], ['Vakko · Mağaza', 122], ['Arçelik · Sevkiyat', 98]].map(([t, n]) => ({ v: t, t, n })) },
+  types: { label: 'İş türleri', ph: 'Tüm türler', items: [['Geliştirme', 520], ['Toplantı', 210], ['Tasarım', 140], ['Destek', 96]].map(([t, n]) => ({ v: t, t, n })) },
+  platforms: { label: 'Platformlar', ph: 'Tüm platformlar', items: [['Backend', 380], ['Web', 330], ['Mobil', 120]].map(([t, n]) => ({ v: t, t, n })) },
+}
+const FSEL = { users: ['AL', 'GH'], customers: ['Vakko'], projects: [], types: [], platforms: [] }
+let rPreset = 'month'
+function mchips(key) {
+  const sel = FSEL[key], o = FOPTS[key]
+  if (!sel.length) return `<span class="ph">${o.ph}</span>`
+  const it = (v) => o.items.find((x) => x.v === v)
+  const shown = sel.slice(0, 2).map((v) => `<span class="mchip">${it(v).av ? av(it(v).av) : ''}${esc(it(v).t)}<i data-unsel="${key}|${v}" aria-label="Kaldır">×</i></span>`).join('')
+  return shown + (sel.length > 2 ? `<span class="mchip more">+${sel.length - 2}</span>` : '')
+}
+function msel(key) {
+  const o = FOPTS[key]
+  return `<div class="msel" data-msel="${key}"><div class="flab">${o.label}${FSEL[key].length ? `<button type="button" data-mclear="${key}">Temizle</button>` : ''}</div>
+    <button type="button" class="msel-f" aria-haspopup="listbox" aria-label="${o.label}">${mchips(key)}${svg('down')}</button>
+    <div class="mpop" role="listbox" aria-multiselectable="true"><label class="ms">${svg('search')}<input data-msearch="${key}" placeholder="${o.label} içinde ara"></label><div class="mlist">${mopts(key, '')}</div><div class="mf2"><button type="button" data-mall="${key}">Tümünü seç</button><button type="button" data-mclear="${key}">Temizle</button></div></div></div>`
+}
+function mopts(key, q) {
+  const qq = q.toLocaleLowerCase('tr')
+  return FOPTS[key].items.filter((x) => x.t.toLocaleLowerCase('tr').includes(qq)).map((x) => `<button type="button" role="option" aria-selected="${FSEL[key].includes(x.v)}" class="mopt ${FSEL[key].includes(x.v) ? 'on' : ''}" data-mopt="${key}|${x.v}"><span class="cb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M5 12l5 5L20 7"/></svg></span>${x.av ? av(x.av) : x.c ? `<span class="sw2" style="background:${x.c}"></span>` : ''}${esc(x.t)}<span class="n">${x.n}h</span></button>`).join('') || '<div class="muted" style="padding:10px;font-size:12.5px">Sonuç yok</div>'
+}
+function actbar() {
+  const chips = Object.entries(FSEL).flatMap(([k, vs]) => vs.map((v) => { const it = FOPTS[k].items.find((x) => x.v === v); return `<span class="fc">${FOPTS[k].label.replace(/ler$|lar$/, '')}: <b>${esc(it.t)}</b><i data-unsel="${k}|${v}" aria-label="Kaldır">×</i></span>` }))
+  return `<span class="l">Etkin</span><span class="fc">Tarih: <b>${{ week: 'Bu hafta', month: 'Eylül 2026', last: 'Ağustos 2026', q: 'Son 3 ay' }[rPreset]}</b></span>${chips.join('')}${chips.length ? `<button type="button" class="btn sm ghost" data-mclear="*">Tümünü temizle</button>` : ''}`
+}
+function refreshFilters() {
+  $$('.msel').forEach((m) => { const k = m.dataset.msel; $('.msel-f', m).innerHTML = mchips(k) + svg('down'); const fl = $('.flab', m); fl.innerHTML = FOPTS[k].label + (FSEL[k].length ? `<button type="button" data-mclear="${k}">Temizle</button>` : ''); $('.mlist', m).innerHTML = mopts(k, $('[data-msearch]', m).value) })
+  const ab = $('#actbar'); if (ab) ab.innerHTML = actbar()
+}
+PAGES.reports = () => ph('Raporlar', 'Tüm efor kayıtları · filtrele ve dışa aktar', `<button type="button" class="btn pri" data-toast="CSV hazırlandı · 318 kayıt">${svg('csv')}CSV indir</button>`) +
+`<div class="two enter"><aside class="fpanel glass" aria-label="Filtreler"><div class="fh"><b>Filtreler</b><button type="button" class="btn sm ghost" data-mclear="*">Sıfırla</button></div>
+  <div><div class="flab">Tarih aralığı</div><div class="presets">${[['week', 'Bu hafta'], ['month', 'Bu ay'], ['last', 'Geçen ay'], ['q', '3 ay']].map(([v, l]) => `<button type="button" data-preset="${v}" class="${rPreset === v ? 'on' : ''}">${l}</button>`).join('')}</div><div class="field" style="margin-top:8px;border-radius:14px">${svg('meet')}<input value="1 Eyl 2026 – 30 Eyl 2026" aria-label="Özel tarih aralığı"></div></div>
+  ${Object.keys(FOPTS).map(msel).join('')}
+</aside>
+<div style="min-width:0"><div class="actbar glass" id="actbar">${actbar()}</div><div class="bento" style="margin-bottom:16px"><article class="card glass c4 kpi"><b class="num" data-count="642">0</b><span>Toplam saat</span></article><article class="card glass c4 kpi"><b class="num" data-count="318">0</b><span>Kayıt</span></article><article class="card glass c4 kpi"><b class="num">%81</b><span>Faturalanabilir</span></article></div>
+<article class="card glass" style="padding:8px"><div class="tw"><table><thead><tr><th>Tarih</th><th>Kişi</th><th>Müşteri</th><th>Proje</th><th>Tür</th><th>Platform</th><th>Açıklama</th><th style="text-align:right">Saat</th></tr></thead><tbody>${[['30 Eyl', 'AL', 'Vakko', 'ATM', 'Geliştirme', 'Backend', 'Sertifika otomasyonu', '1,75'], ['30 Eyl', 'AL', 'Beymen', 'Portal', 'Tasarım', 'Web', 'Rapor şablonu', '3'], ['29 Eyl', 'GH', 'Vakko', 'ATM', 'Toplantı', '—', 'Sprint review', '1'], ['29 Eyl', 'GH', 'Vakko', 'Mağaza', 'Geliştirme', 'Web', 'Kasa entegrasyonu', '6']].map(([d, u, c, p, t, pl, de, h]) => `<tr><td>${d}</td><td><span style="display:inline-flex;align-items:center;gap:8px">${av(u)}${U[u][0].split(' ')[0]}</span></td><td>${c}</td><td>${p}</td><td>${tag('violet', t)}</td><td>${tag('', pl)}</td><td>${de}</td><td class="mono" style="text-align:right">${h}</td></tr>`).join('')}</tbody></table></div></article></div></div>`
+AFTER.reports = () => {
+  countUp()
+  $$('[data-msearch]').forEach((inp) => inp.addEventListener('input', () => { const m = inp.closest('.msel'); $('.mlist', m).innerHTML = mopts(m.dataset.msel, inp.value) }))
+}
 
 // ---------------- Sozlesmeler
 PAGES.contracts = () => ph('Sözleşme durumu', 'Proje sözleşme süreleri ve yenilemeler', `<label class="field" style="width:280px">${svg('search')}<input id="ct-q" placeholder="Müşteri ya da proje ara…"></label>`) +
@@ -1247,7 +1369,7 @@ const SETS = [
   ['Entegrasyonlar', [['api', 'API yönetimi', 'key'], ['tint', 'Talep entegrasyonları', 'plug']]],
 ]
 PAGES.settings = () => ph('Ayarlar', 'Organizasyon, iş yönetimi, referans veriler, müşteriler ve entegrasyonlar') +
-`<div class="two enter"><nav class="snav glass" aria-label="Ayarlar"><input id="set-q" placeholder="Ayar ara…" aria-label="Ayar ara">${SETS.map(([g, it]) => `<h6>${g}</h6>${it.map(([id, l, ic]) => `<button type="button" data-set="${id}" class="${setPage === id ? 'on' : ''}"><span class="si">${svg(ic)}</span>${l}</button>`).join('')}`).join('')}</nav><div id="sbody" style="min-width:0">${SET[setPage]()}</div></div>`
+`<div class="two enter"><nav class="snav glass" aria-label="Ayarlar"><input id="set-q" placeholder="Ayar ara…" aria-label="Ayar ara">${SETS.map(([g, it]) => `<h6>${g}</h6>${it.map(([id, l, ic]) => `<button type="button" data-set="${id}" class="${setPage === id ? 'on' : ''}">${svg(ic)}${l}</button>`).join('')}`).join('')}</nav><div id="sbody" style="min-width:0">${SET[setPage]()}</div></div>`
 const refTable = (title, code, rows) => `<article class="card glass"><div class="ch"><div><h3 style="font-size:18px">${title}</h3><div class="muted" style="font-size:13px">${title} listesini yönet</div></div><div style="display:flex;gap:8px"><label class="field" style="width:200px">${svg('search')}<input placeholder="Ara"></label><button type="button" class="btn pri sm" data-open="refform">${svg('plus')}Ekle</button></div></div><div class="tw"><table><thead><tr><th>Ad</th><th>Kod</th><th>Açıklama</th><th>Aktif</th><th></th></tr></thead><tbody>${rows.map(([n, c, d, a]) => `<tr><td style="font-weight:500">${n}</td><td>${tag(code, c)}</td><td class="muted">${d}</td><td><button type="button" class="sw ${a ? 'on' : ''}" aria-label="Aktif" data-sw></button></td><td style="text-align:right"><button type="button" class="btn sm ghost">Düzenle</button></td></tr>`).join('')}</tbody></table></div></article>`
 const SET = {
   users: () => `<article class="card glass"><div class="ch"><div><h3 style="font-size:18px">Kullanıcılar ve roller</h3><div class="muted" style="font-size:13px">Kullanıcıları, rolleri ve grupları yönet</div></div>${seg('utab', [['users', 'Kullanıcılar'], ['roles', 'Roller'], ['groups', 'Gruplar']], userTab)}</div>${userTab === 'users' ? `<div class="axis"><label class="field" style="width:240px">${svg('search')}<input placeholder="İsim ya da e-posta"></label><span class="sp"></span><button type="button" class="btn pri sm" data-open="user">${svg('plus')}Yeni kullanıcı</button></div><div class="tw"><table><thead><tr><th>Kişi</th><th>Roller</th><th>Durum</th><th></th></tr></thead><tbody>${[['AL', 'ada@duosis.com', ['Sistem yöneticisi'], 1], ['GH', 'grace@duosis.com', ['Proje lideri', 'Raporlar'], 1], ['AT', 'alan@duosis.com', ['Çalışan'], 1], ['KJ', 'katherine@duosis.com', ['Çalışan'], 0]].map(([k, e, r, a]) => `<tr><td><div style="display:flex;gap:10px;align-items:center">${av(k)}<div><b style="font-weight:600">${U[k][0]}</b><div class="muted" style="font-size:12px">${e}</div></div></div></td><td>${r.map((x) => tag(x === 'Sistem yöneticisi' ? 'violet' : 'info', x)).join(' ')}</td><td>${a ? tag('ok', 'Aktif', 1) : tag('', 'Pasif', 1)}</td><td style="text-align:right"><button type="button" class="btn sm ghost" data-open="user">Düzenle</button></td></tr>`).join('')}</tbody></table></div>` : userTab === 'roles' ? `<div class="axis"><span class="sp"></span><button type="button" class="btn pri sm">${svg('plus')}Yeni rol</button></div><div class="bento">${[['Sistem yöneticisi', 'system-admin', 25, 1, 1], ['Proje lideri', 'project-lead', 9, 4], ['Raporlar', 'reports', 3, 2], ['Çalışan', 'member', 3, 18], ['Destek ajanı', 'support-agent', 6, 5]].map(([n, c, p, m, sys]) => `<article class="card glass c4" style="padding:16px"><div style="display:flex;justify-content:space-between;align-items:start"><div><b>${sys ? '🔒 ' : ''}${n}</b><div class="lk">${c}</div></div>${tag('ok', 'Aktif')}</div><div style="display:flex;gap:18px;margin-top:14px" class="kpi"><div><b style="font-size:22px">${p}</b><span>izin</span></div><div><b style="font-size:22px">${m}</b><span>üye</span></div></div></article>`).join('')}</div>` : `<div class="axis"><span class="sp"></span><button type="button" class="btn pri sm">${svg('plus')}Grup oluştur</button></div>${[['Yöneticiler', 'Yerleşik', 2], ['Genel kullanıcılar', 'Yerleşik', 22], ['Destek-1', 'Vakko ve Beymen talepleri', 5], ['Mobil ekip', 'iOS ve Android', 4]].map(([n, d, m]) => `<details class="sec glass" style="margin-bottom:8px"><summary><span class="ic">${svg('users')}</span><span><b>${n}</b><small>${d}</small></span><span class="tag" style="margin-left:auto">${m} üye</span><span class="chev">${svg('down')}</span></summary><div class="in"><div class="avs">${['AL', 'GH', 'AT', 'KJ'].slice(0, Math.min(4, m)).map(av).join('')}</div><button type="button" class="btn sm" style="margin-top:10px">Üye ekle</button></div></details>`).join('')}`}</article>`,
@@ -1367,13 +1489,20 @@ function wire(root) {
   $$('.seg', root).forEach((s) => { requestAnimationFrame(() => segInd(s)) })
   $$('.card', root).forEach((c) => c.addEventListener('pointermove', (e) => { const r = c.getBoundingClientRect(); c.style.setProperty('--gx', e.clientX - r.left + 'px'); c.style.setProperty('--gy', e.clientY - r.top + 'px') }))
   if ($('#cmdIn', root)) $('#cmdIn', root).addEventListener('input', (e) => renderCmd(e.target.value))
-  const ts = $('#themeSeg', root); if (ts) { const cur = document.documentElement.getAttribute('data-theme') || 'light'; $$('button', ts).forEach((b) => b.classList.toggle('on', b.dataset.themeSet === cur)) }
+  const ts = $('#themeSeg', root); if (ts) { const cur = document.documentElement.getAttribute('data-theme') || 'light'; $$('[data-theme-set]', ts).forEach((b) => b.classList.toggle('on', b.dataset.themeSet === cur)) }
 }
 document.addEventListener('click', (e) => {
   const t = e.target.closest('button, a, [data-task], [data-open], [role="button"]')
+  if (!e.target.closest('.msel')) $$('.msel.open').forEach((x) => x.classList.remove('open'))
   if (!t) { if (!e.target.closest('.drop') && !e.target.closest('.island')) closeDrop(); return }
   if (t.tagName === 'A' && t.getAttribute('href') === '#') e.preventDefault()
   const d = t.dataset
+  if (d.unsel) { e.stopPropagation(); const [k, v] = d.unsel.split('|'); FSEL[k] = FSEL[k].filter((x) => x !== v); refreshFilters(); return }
+  if (d.mopt) { const [k, v] = d.mopt.split('|'); FSEL[k] = FSEL[k].includes(v) ? FSEL[k].filter((x) => x !== v) : [...FSEL[k], v]; refreshFilters(); return }
+  if (d.mall) { FSEL[d.mall] = FOPTS[d.mall].items.map((x) => x.v); refreshFilters(); return }
+  if (d.mclear) { (d.mclear === '*' ? Object.keys(FSEL) : [d.mclear]).forEach((k) => { FSEL[k] = [] }); refreshFilters(); return }
+  if (d.preset) { rPreset = d.preset; $$('[data-preset]').forEach((b) => b.classList.toggle('on', b === t)); refreshFilters(); return }
+  if (t.classList.contains('msel-f')) { const m = t.closest('.msel'); const open = !m.classList.contains('open'); $$('.msel.open').forEach((x) => x.classList.remove('open')); if (open) { m.classList.add('open'); setTimeout(() => $('[data-msearch]', m).focus(), 60) } return }
   if (d.go) { go(d.go); return }
   if (d.open) { openModal(d.open, t); return }
   if (d.task && !t.closest('.drop')) { openPanel(d.task); return }
@@ -1414,7 +1543,7 @@ document.addEventListener('click', (e) => {
   if (t.id === 'meBtn') { openDrop('me'); return }
 })
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { closeDrop(); closeModal(); closePanel() }
+  if (e.key === 'Escape') { closeDrop(); closeModal(); closePanel(); $$('.msel.open').forEach((x) => x.classList.remove('open')) }
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openDrop('cmd') }
   if (e.target.id === 'cmdIn' && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); const bs = $$('#cmdRes button'); const i = bs.findIndex((b) => b.classList.contains('sel')); const n = (i + (e.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length; bs.forEach((b, j) => b.classList.toggle('sel', j === n)); bs[n]?.scrollIntoView({ block: 'nearest' }) }
   if (e.key === 'Enter' && e.target.id === 'cmdIn') { $('#cmdRes button.sel')?.click() }

@@ -111,3 +111,17 @@ Prototip: https://claude.ai/artifact/HXXunk5DuR4VXEAVonnQfp · kopya
   + "HERMES · Duosis çalışma alanı" üst satırı; giriş ekranı aynı karo. Logo
   maskesi 192 px ve kalınlaştırılmış çizgiyle.
 - Dock ve sayfa üstü metinler tema token'larına bağlandı.
+
+### Revizyon 4 (28.09.2026)
+
+- **Raporlar filtreleri**: checkbox listeleri yerine aranabilir çoklu seçim
+  alanı (seçilenler kaldırılabilir çip, `+N` taşması; açılır listede arama,
+  kişide avatar / müşteride renk noktası, kayıt başına saat, "Tümünü seç /
+  Temizle"). Tarih = 4'lü hazır aralık segmenti + özel aralık. Tablonun
+  üstünde "Etkin" filtre çubuğu (tek tık kaldır, "Tümünü temizle").
+- **Profil menüsü**: kapak şeridi + durum noktalı büyük avatar, hızlı
+  istatistik (bu hafta saat / açık iş / toplantı, tıklanınca ilgili sayfa),
+  durum seçimi (Müsait/Odakta/Meşgul), organizasyon kartları, önizlemeli
+  Açık/Koyu tema karoları, dil, kısayollar, çıkış.
+- **Ayarlar sol menüsü**: v1'deki sade ikon + etiket satırlarına dönüldü;
+  ikon 16px, soluk renk, hover/aktifte metinle aynı renk (ikon kutusu yok).
