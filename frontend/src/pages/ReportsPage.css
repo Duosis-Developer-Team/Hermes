@@ -1,0 +1,83 @@
+/* HERMES - Raporlar (Hermes Liquid prototipi) */
+.reports-page .lq-hero { margin-bottom: var(--h-space-4); }
+.reports-layout { display: grid; gap: var(--h-space-4); align-items: start; }
+.reports-layout.has-panel { grid-template-columns: 290px minmax(0, 1fr); }
+.reports-main { display: flex; flex-direction: column; gap: var(--h-space-4); min-width: 0; }
+
+.reports-panel.lq-card { position: sticky; top: 0; padding: 18px; }
+.reports-panel__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.reports-panel__head b { font-size: 15px; }
+.reports-controls { display: flex; flex-direction: column; gap: 16px; }
+.reports-field { display: flex; flex-direction: column; gap: 8px; }
+.reports-field__label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--h-text-muted);
+}
+.reports-field__clear {
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--h-brand);
+    font: 600 11.5px var(--h-font-family);
+    letter-spacing: 0;
+    text-transform: none;
+    cursor: pointer;
+}
+.reports-field .lq-seg { display: flex; }
+.reports-field .lq-seg button { flex: 1; padding: 6px 4px; font-size: 12px; }
+.reports-range { width: 100%; border-radius: 14px; }
+.reports-select { width: 100%; }
+.reports-select .ant-select-selector { min-height: 42px; border-radius: 14px; padding: 4px 8px; }
+.reports-person { display: inline-flex; align-items: center; gap: 8px; }
+
+.reports-active.lq-card { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 14px; border-radius: 20px; }
+.reports-active__label { margin-right: 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--h-text-muted); }
+.reports-active__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px 4px 11px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-bg-hover);
+    font-size: 12.5px;
+    animation: lq-rise 400ms var(--h-ease-enter) both;
+}
+.reports-active__chip:first-of-type { padding-right: 11px; }
+.reports-active__chip b { font-weight: 600; }
+.reports-active__chip button {
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--h-text-muted);
+    font-size: 10px;
+    cursor: pointer;
+}
+.reports-active__chip button:hover { background: var(--h-bg-selected); color: var(--h-text-primary); }
+
+.reports-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; gap: 16px; align-items: stretch; margin: 0; }
+.reports-kpis .lq-kpi__value { font-size: 36px; }
+.reports-kpis__action { display: flex; align-items: center; }
+
+.reports-table .ant-table-wrapper .ant-table-tbody > tr > td { padding: 12px 14px; }
+.reports-date { font: 500 12.5px var(--h-font-mono); color: var(--h-text-secondary); white-space: nowrap; }
+.reports-hours { font: 600 13px var(--h-font-mono); color: var(--h-text-primary); }
+.reports-muted { color: var(--h-text-muted); }
+.reports-total { color: var(--h-text-muted); }
+.reports-empty { padding: 28px 0; text-align: center; }
+
+@media (max-width: 900px) {
+    .reports-kpis { grid-template-columns: 1fr 1fr; }
+    .reports-kpis__action { grid-column: 1 / -1; }
+}

@@ -1,24 +1,28 @@
 /**
  * =============================================================================
- * HERMES PLATFORM - Reports & Analytics (Tempo-Style Unified Dashboard)
+ * HERMES PLATFORM - Raporlar (Hermes Liquid prototipi)
  * =============================================================================
- * JIRA Tempo mantığında dinamik filtre çubuğu ve reaktif tablo.
- * Atlassian Design System renk paletine uygun tasarım.
+ * Solda cam filtre paneli (hazir tarih araliklari + coklu secimler, her
+ * birinde "Temizle"); sagda etkin filtre cipleri (tek tikla kaldir), KPI
+ * karolari + CSV ve cam tablo. Mobilde ayni kontroller alt cekmecede.
+ * Filtre kontrolleri TEK kaynakta (FilterControls) — eskiden masaustu ve
+ * mobil icin iki kopya yaziliydi.
  * =============================================================================
  */
 
 import { useState, useMemo } from 'react'
 import {
-    DatePicker, Button, Drawer, Select, Table, message, Tag, Empty, Spin
+    DatePicker, Button, Drawer, Select, Table, message, Empty, Spin
 } from 'antd'
 import {
-    DownloadOutlined,
-    CloseCircleOutlined,
     CalendarOutlined,
-    FilterOutlined
+    CloseOutlined,
+    DownloadOutlined,
+    FilterOutlined,
 } from '@ant-design/icons'
 import { keepPreviousData, useQuery, useMutation } from '@tanstack/react-query'
 import dayjs from 'dayjs'
+import isoWeek from 'dayjs/plugin/isoWeek'
 
 import { normalizeApiError } from '../features/admin/shared/normalizeApiError'
 import useIsMobile from '../hooks/useIsMobile'
@@ -36,6 +40,10 @@ import {
 import { useAuthStore } from '../stores/authStore'
 import { queryKeys } from '../query/queryKeys'
 import { useT } from '../i18n'
+import { Avatar, CountUp, GlassCard, LiquidSegmented, PageHero } from '../components/liquid'
+import './ReportsPage.css'
+
+dayjs.extend(isoWeek)
 
 const { RangePicker } = DatePicker
 
@@ -154,11 +162,10 @@ function ReportsPage() {
     const activeFilterCount =
         selectedUsers.length + selectedCustomers.length + selectedProjects.length +
         selectedTypes.length + selectedPlatforms.length
-    const hasActiveFilters = selectedUsers.length > 0 || selectedCustomers.length > 0 ||
-        selectedProjects.length > 0 || selectedTypes.length > 0 || selectedPlatforms.length > 0
 
+    const monthRange = () => [dayjs().startOf('month'), dayjs().endOf('month')]
     const handleClearAll = () => {
-        setDateRange([dayjs().startOf('month'), dayjs().endOf('month')])
+        setDateRange(monthRange())
         setSelectedUsers([])
         setSelectedCustomers([])
         setSelectedProjects([])
@@ -166,306 +173,176 @@ function ReportsPage() {
         setSelectedPlatforms([])
     }
 
+    // Hazir tarih araliklari (prototip). Elle secilen aralik 'custom'.
+    const PRESETS = {
+        week: () => [dayjs().startOf('isoWeek'), dayjs().endOf('isoWeek')],
+        month: monthRange,
+        lastMonth: () => [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')],
+        quarter: () => [dayjs().subtract(2, 'month').startOf('month'), dayjs().endOf('month')],
+    }
+    const activePreset = Object.keys(PRESETS).find((k) => {
+        const [a0, a1] = PRESETS[k]()
+        return dateRange?.[0]?.isSame(a0, 'day') && dateRange?.[1]?.isSame(a1, 'day')
+    }) || 'custom'
+
+    const groups = [
+        { key: 'users', label: t('entity.users'), aria: t('reports.filterByUser'), placeholder: t('reports.allUsers'),
+            value: selectedUsers, set: setSelectedUsers, options: users.map((u) => ({ value: u.id, label: u.full_name || u.email })), people: true },
+        { key: 'customers', label: t('entity.customers'), aria: t('reports.filterByCustomer'), placeholder: t('reports.allCustomers'),
+            value: selectedCustomers, set: setSelectedCustomers, options: customers.map((c) => ({ value: c.id, label: c.name })) },
+        { key: 'projects', label: t('entity.projects'), aria: t('reports.filterByProject'), placeholder: t('reports.allProjects'),
+            value: selectedProjects, set: setSelectedProjects, options: projects.map((p) => ({ value: p.id, label: p.name })) },
+        { key: 'types', label: t('reports.types'), aria: t('reports.filterByType'), placeholder: t('reports.allTypes'),
+            value: selectedTypes, set: setSelectedTypes, options: workTypes.map((w) => ({ value: w.id, label: w.name })) },
+        { key: 'platforms', label: t('entity.platforms'), aria: t('reports.filterByPlatform'), placeholder: t('reports.allPlatforms'),
+            value: selectedPlatforms, set: setSelectedPlatforms, options: platforms.map((pl) => ({ value: pl.id, label: pl.name })) },
+    ]
+
+    const controls = (
+        <FilterControls
+            t={t}
+            dateRange={dateRange}
+            onDateRange={setDateRange}
+            presets={PRESETS}
+            activePreset={activePreset}
+            groups={groups}
+        />
+    )
+
+    // Etkin filtre cipleri: tarih + her secili deger (adiyla).
+    const chips = groups.flatMap((g) => g.value.map((id) => ({
+        key: `${g.key}:${id}`,
+        group: g.label,
+        name: g.options.find((o) => o.value === id)?.label || '—',
+        remove: () => g.set(g.value.filter((v) => v !== id)),
+    })))
+
     return (
-        <div className="reports-page fade-in" style={{ padding: '24px 32px', maxWidth: 1600, margin: '0 auto' }}>
-
-            {/* ── Page Header ──────────────────────────────────────────────── */}
-            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                    <h1>Reports &amp; Analytics</h1>
-                    <p>Real-time dashboard · Filter by date, user, customer, project or type</p>
-                </div>
-                {hasActiveFilters && (
-                    <Button
-                        icon={<CloseCircleOutlined />}
-                        onClick={handleClearAll}
-                        style={{ marginTop: 4 }}
-                    >{t('reports.clearFilters')}</Button>
-                )}
-            </div>
-
-            {/* Premium: buyuk gri filtre paneli KALKTI — en sik kullanilan
-                filtreler tek satirlik hafif toolbar; digerleri "More
-                filters" ile acilir. Davranis/sorgu sozlesmesi ayni. */}
-            <div style={{ marginBottom: 24 }}>
-                {/*
-                  * REGRESYON DUZELTMESI: onceki turda Project/Type/Platform
-                  * "More filters" arkasina alinmisti — filtreler silinmedi
-                  * ama GORUNMEZ oldu. Artik TUM temel filtreler tek kaynakta
-                  * tanimli ve masaustunde DOGRUDAN gorunur; mobilde ayni
-                  * kontroller Filters sheet'inde render edilir (ayni
-                  * erisilebilir adin iki kez DOM'da bulunmamasi icin
-                  * render seviyesinde ayrilir).
-                  */}
-                {isMobile ? (
-                    <>
-                        <Button
-                            icon={<FilterOutlined />}
-                            onClick={() => setFilterSheetOpen(true)}
-                            aria-label={t('tasks.filters')}
-                        >
-                            Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-                        </Button>
-                        <Drawer
-                            title={t('tasks.filters')}
-                            placement="bottom"
-                            height="auto"
-                            open={filterSheetOpen}
-                            onClose={() => setFilterSheetOpen(false)}
-                            className="reports-filter-sheet"
-                        >
-                            <div style={{ display: 'grid', gap: 16 }}>
-
-                    {/* Date Range */}
-                    <FilterBlock label={t('reports.dateRange')} icon={<CalendarOutlined />}>
-                        <RangePicker
-                            value={dateRange}
-                            onChange={setDateRange}
-                            allowClear={false}
-                            style={{ width: 260 }}
-                            format="DD MMM YYYY"
-                        />
-                    </FilterBlock>
-
-                    {/* Users */}
-                    <FilterBlock label={t('entity.users')} count={selectedUsers.length}>
-                        <Select
-                            mode="multiple"
-                            placeholder={t('reports.allUsers')}
-                            aria-label={t('reports.filterByUser')}
-                            value={selectedUsers}
-                            onChange={setSelectedUsers}
-                            options={users.map(u => ({ value: u.id, label: u.full_name || u.email }))}
-                            allowClear
-                            showSearch
-                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount={2}
-                            style={{ minWidth: 260, width: 280 }}
-                        />
-                    </FilterBlock>
-
-                    {/* Customers */}
-                    <FilterBlock label={t('entity.customers')} count={selectedCustomers.length}>
-                        <Select
-                            mode="multiple"
-                            placeholder={t('reports.allCustomers')}
-                            aria-label={t('reports.filterByCustomer')}
-                            value={selectedCustomers}
-                            onChange={setSelectedCustomers}
-                            options={customers.map(c => ({ value: c.id, label: c.name }))}
-                            allowClear
-                            showSearch
-                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount={2}
-                            style={{ minWidth: 240, width: 260 }}
-                        />
-                    </FilterBlock>
-
-
-                    {/* Projects */}
-                    <FilterBlock label={t('entity.projects')} count={selectedProjects.length}>
-                        <Select
-                            mode="multiple"
-                            placeholder={t('reports.allProjects')}
-                            aria-label={t('reports.filterByProject')}
-                            value={selectedProjects}
-                            onChange={setSelectedProjects}
-                            options={projects.map(p => ({ value: p.id, label: p.name }))}
-                            allowClear
-                            showSearch
-                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount={2}
-                            style={{ minWidth: 260, width: 300 }}
-                        />
-                    </FilterBlock>
-
-                    {/* Types */}
-                    <FilterBlock label={t('reports.types')} count={selectedTypes.length}>
-                        <Select
-                            mode="multiple"
-                            placeholder={t('reports.allTypes')}
-                            aria-label={t('reports.filterByType')}
-                            value={selectedTypes}
-                            onChange={setSelectedTypes}
-                            options={workTypes.map(t => ({ value: t.id, label: t.name }))}
-                            allowClear
-                            showSearch
-                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount={3}
-                            style={{ minWidth: 200, width: 240 }}
-                        />
-                    </FilterBlock>
-
-                    {/* Platforms */}
-                    <FilterBlock label={t('entity.platforms')} count={selectedPlatforms.length}>
-                        <Select
-                            mode="multiple"
-                            placeholder={t('reports.allPlatforms')}
-                            aria-label={t('reports.filterByPlatform')}
-                            value={selectedPlatforms}
-                            onChange={setSelectedPlatforms}
-                            options={platforms.map(p => ({ value: p.id, label: p.name }))}
-                            allowClear
-                            showSearch
-                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount={3}
-                            style={{ minWidth: 200, width: 240 }}
-                        />
-                    </FilterBlock>
-                            </div>
-                        </Drawer>
-                    </>
-                ) : (
-                    <div className="reports-filter-toolbar h-inline-toolbar" style={{ alignItems: 'flex-end', gap: 20 }}>
-
-                    {/* Date Range */}
-                    <FilterBlock label={t('reports.dateRange')} icon={<CalendarOutlined />}>
-                        <RangePicker
-                            value={dateRange}
-                            onChange={setDateRange}
-                            allowClear={false}
-                            style={{ width: 260 }}
-                            format="DD MMM YYYY"
-                        />
-                    </FilterBlock>
-
-                    {/* Users */}
-                    <FilterBlock label={t('entity.users')} count={selectedUsers.length}>
-                        <Select
-                            mode="multiple"
-                            placeholder={t('reports.allUsers')}
-                            aria-label={t('reports.filterByUser')}
-                            value={selectedUsers}
-                            onChange={setSelectedUsers}
-                            options={users.map(u => ({ value: u.id, label: u.full_name || u.email }))}
-                            allowClear
-                            showSearch
-                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount={2}
-                            style={{ minWidth: 260, width: 280 }}
-                        />
-                    </FilterBlock>
-
-                    {/* Customers */}
-                    <FilterBlock label={t('entity.customers')} count={selectedCustomers.length}>
-                        <Select
-                            mode="multiple"
-                            placeholder={t('reports.allCustomers')}
-                            aria-label={t('reports.filterByCustomer')}
-                            value={selectedCustomers}
-                            onChange={setSelectedCustomers}
-                            options={customers.map(c => ({ value: c.id, label: c.name }))}
-                            allowClear
-                            showSearch
-                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount={2}
-                            style={{ minWidth: 240, width: 260 }}
-                        />
-                    </FilterBlock>
-
-
-                    {/* Projects */}
-                    <FilterBlock label={t('entity.projects')} count={selectedProjects.length}>
-                        <Select
-                            mode="multiple"
-                            placeholder={t('reports.allProjects')}
-                            aria-label={t('reports.filterByProject')}
-                            value={selectedProjects}
-                            onChange={setSelectedProjects}
-                            options={projects.map(p => ({ value: p.id, label: p.name }))}
-                            allowClear
-                            showSearch
-                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount={2}
-                            style={{ minWidth: 260, width: 300 }}
-                        />
-                    </FilterBlock>
-
-                    {/* Types */}
-                    <FilterBlock label={t('reports.types')} count={selectedTypes.length}>
-                        <Select
-                            mode="multiple"
-                            placeholder={t('reports.allTypes')}
-                            aria-label={t('reports.filterByType')}
-                            value={selectedTypes}
-                            onChange={setSelectedTypes}
-                            options={workTypes.map(t => ({ value: t.id, label: t.name }))}
-                            allowClear
-                            showSearch
-                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount={3}
-                            style={{ minWidth: 200, width: 240 }}
-                        />
-                    </FilterBlock>
-
-                    {/* Platforms */}
-                    <FilterBlock label={t('entity.platforms')} count={selectedPlatforms.length}>
-                        <Select
-                            mode="multiple"
-                            placeholder={t('reports.allPlatforms')}
-                            aria-label={t('reports.filterByPlatform')}
-                            value={selectedPlatforms}
-                            onChange={setSelectedPlatforms}
-                            options={platforms.map(p => ({ value: p.id, label: p.name }))}
-                            allowClear
-                            showSearch
-                            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-                            maxTagCount={3}
-                            style={{ minWidth: 200, width: 240 }}
-                        />
-                    </FilterBlock>
-                    </div>
-                )}
-            </div>
-
-            {/* ── Main Dashboard ────────────────────────────────────────────── */}
-            <MainDashboard
-                dateRange={dateRange}
-                selectedUsers={selectedUsers}
-                selectedCustomers={selectedCustomers}
-                selectedProjects={selectedProjects}
-                selectedTypes={selectedTypes}
-                selectedPlatforms={selectedPlatforms}
+        <div className="reports-page">
+            <PageHero
+                title={t('reports.title')}
+                subtitle={t('reports.subtitle')}
+                actions={isMobile ? (
+                    <Button icon={<FilterOutlined />} onClick={() => setFilterSheetOpen(true)} aria-label={t('tasks.filters')}>
+                        {t('tasks.filters')}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                    </Button>
+                ) : null}
             />
+
+            <div className={`reports-layout${isMobile ? '' : ' has-panel'}`}>
+                {isMobile ? (
+                    <Drawer
+                        title={t('tasks.filters')}
+                        placement="bottom"
+                        height="auto"
+                        open={filterSheetOpen}
+                        onClose={() => setFilterSheetOpen(false)}
+                        className="reports-filter-sheet"
+                    >
+                        {controls}
+                    </Drawer>
+                ) : (
+                    <GlassCard className="reports-filter-toolbar reports-panel" as="aside" aria-label={t('tasks.filters')}>
+                        <div className="reports-panel__head">
+                            <b>{t('tasks.filters')}</b>
+                            <Button size="small" onClick={handleClearAll}>{t('reports.clearFilters')}</Button>
+                        </div>
+                        {controls}
+                    </GlassCard>
+                )}
+
+                <div className="reports-main">
+                    <GlassCard className="reports-active" aria-label={t('reports.activeFilters')}>
+                        <span className="reports-active__label">{t('reports.active')}</span>
+                        <span className="reports-active__chip">
+                            <CalendarOutlined aria-hidden="true" />
+                            <b>{dateRange?.[0]?.format('D MMM')} – {dateRange?.[1]?.format('D MMM YYYY')}</b>
+                        </span>
+                        {chips.map((c) => (
+                            <span key={c.key} className="reports-active__chip">
+                                {c.group}: <b>{c.name}</b>
+                                <button type="button" aria-label={`${t('common.clear')}: ${c.name}`} onClick={c.remove}>
+                                    <CloseOutlined />
+                                </button>
+                            </span>
+                        ))}
+                        {chips.length > 0 && (
+                            <Button size="small" onClick={handleClearAll}>{t('reports.clearAll')}</Button>
+                        )}
+                    </GlassCard>
+
+                    <MainDashboard
+                        dateRange={dateRange}
+                        selectedUsers={selectedUsers}
+                        selectedCustomers={selectedCustomers}
+                        selectedProjects={selectedProjects}
+                        selectedTypes={selectedTypes}
+                        selectedPlatforms={selectedPlatforms}
+                    />
+                </div>
+            </div>
         </div>
     )
 }
 
 // =============================================================================
-// FilterBlock
+// FilterControls — TEK kaynak (panel + mobil cekmece)
 // =============================================================================
 
-function FilterBlock({ label, icon, count, children }) {
+function FilterControls({ t, dateRange, onDateRange, presets, activePreset, groups }) {
     return (
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={{
-                fontSize: 11,
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-                color: 'var(--text-muted)',
-                marginBottom: 6,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5
-            }}>
-                {icon && <span style={{ opacity: 0.7 }}>{icon}</span>}
-                {label}
-                {count > 0 && (
-                    <span style={{
-                        background: 'var(--Blue400)',
-                        color: 'var(--c-text-strong)',
-                        borderRadius: 10,
-                        padding: '1px 7px',
-                        fontSize: 10,
-                        fontWeight: 700,
-                        lineHeight: '16px'
-                    }}>
-                        {count}
-                    </span>
-                )}
+        <div className="reports-controls">
+            <div className="reports-field">
+                <div className="reports-field__label"><CalendarOutlined aria-hidden="true" /> {t('reports.dateRange')}</div>
+                <LiquidSegmented
+                    ariaLabel={t('reports.dateRange')}
+                    value={activePreset}
+                    onChange={(k) => onDateRange(presets[k]())}
+                    options={[
+                        { value: 'week', label: t('reports.presetWeek') },
+                        { value: 'month', label: t('reports.presetMonth') },
+                        { value: 'lastMonth', label: t('reports.presetLastMonth') },
+                        { value: 'quarter', label: t('reports.presetQuarter') },
+                    ]}
+                />
+                <RangePicker
+                    value={dateRange}
+                    onChange={onDateRange}
+                    allowClear={false}
+                    className="reports-range"
+                    format="D MMM YYYY"
+                />
             </div>
-            {children}
+            {groups.map((g) => (
+                <div key={g.key} className="reports-field">
+                    <div className="reports-field__label">
+                        {g.label}
+                        {g.value.length > 0 && (
+                            <button type="button" className="reports-field__clear" onClick={() => g.set([])}>
+                                {t('common.clear')}
+                            </button>
+                        )}
+                    </div>
+                    <Select
+                        mode="multiple"
+                        placeholder={g.placeholder}
+                        aria-label={g.aria}
+                        value={g.value}
+                        onChange={g.set}
+                        options={g.options}
+                        allowClear
+                        showSearch
+                        filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+                        maxTagCount={2}
+                        className="reports-select"
+                        optionRender={g.people ? (o) => (
+                            <span className="reports-person">
+                                <Avatar id={o.value} name={String(o.label)} size={22} />{o.label}
+                            </span>
+                        ) : undefined}
+                    />
+                </div>
+            ))}
         </div>
     )
 }
@@ -585,29 +462,30 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
         {
             title: t('reports.date'),
             dataIndex: 'date',
-            width: 130,
+            width: 90,
             sorter: (a, b) => (a.date || '').localeCompare(b.date || ''),
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
-            render: d => (
-                <span style={{ color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 13 }}>
-                    {dayjs(d).format('DD MMM YYYY')}
-                </span>
-            )
+            render: d => <span className="reports-date">{dayjs(d).format('D MMM')}</span>
         },
         {
             title: t('entity.user'),
             dataIndex: 'user_name',
-            width: 160,
+            width: 180,
             sorter: (a, b) => (a.user_name || '').localeCompare(b.user_name || '', 'en'),
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
-            render: u => <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{u}</span>
+            render: u => (
+                <span className="reports-person">
+                    <Avatar name={u} size={26} />
+                    {u}
+                </span>
+            )
         },
         {
             title: t('entity.customer'),
             dataIndex: 'customer_name',
-            width: 180,
+            width: 130,
             sorter: (a, b) => (a.customer_name || '').localeCompare(b.customer_name || '', 'en'),
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
@@ -616,7 +494,7 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
         {
             title: t('entity.project'),
             dataIndex: 'project_name',
-            width: 200,
+            width: 140,
             sorter: (a, b) => (a.project_name || '').localeCompare(b.project_name || '', 'en'),
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
@@ -625,46 +503,28 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
         {
             title: t('reports.type'),
             dataIndex: 'work_type',
-            width: 140,
+            width: 130,
             sorter: (a, b) => (a.work_type || '').localeCompare(b.work_type || '', 'en'),
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
-            render: t => (
-                <Tag style={{
-                    background: 'rgba(87,157,255,0.15)',
-                    border: '1px solid rgba(87,157,255,0.25)',
-                    color: 'var(--Blue400)',
-                    borderRadius: 4,
-                    fontSize: 11,
-                    fontWeight: 600
-                }}>
-                    {t}
-                </Tag>
-            )
+            render: w => <span className="lq-tag lq-tag--violet">{w}</span>
         },
         {
             title: t('entity.platform'),
             dataIndex: 'platform_name',
-            width: 130,
+            width: 110,
             sorter: (a, b) => (a.platform_name || '').localeCompare(b.platform_name || '', 'en'),
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
             render: p => p
-                ? <Tag style={{
-                    background: 'rgba(160,100,255,0.15)',
-                    border: '1px solid rgba(160,100,255,0.25)',
-                    color: '#c084fc',
-                    borderRadius: 4,
-                    fontSize: 11,
-                    fontWeight: 600
-                }}>{p}</Tag>
-                : <span style={{ color: 'var(--text-muted)' }}>—</span>
+                ? <span className="lq-tag">{p}</span>
+                : <span className="reports-muted">—</span>
         },
         {
             title: t('common.description'),
             dataIndex: 'description',
             ellipsis: true,
-            render: d => <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{d || '—'}</span>
+            render: d => <span className="reports-muted">{d || '—'}</span>
         },
         {
             title: t('reports.hours'),
@@ -674,31 +534,22 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
             sorter: (a, b) => (a.duration || 0) - (b.duration || 0),
             sortDirections: ['ascend', 'descend', null],
             showSorterTooltip: false,
-            render: h => (
-                <span style={{ color: 'var(--Green400)', fontWeight: 700, fontFamily: 'monospace' }}>
-                    {formatDuration(h || 0)}
-                </span>
-            )
+            render: h => <span className="reports-hours">{formatDuration(h || 0)}</span>
         }
     ]
 
     return (
-        <div className="fade-in">
-
-            {/* Premium: uc ayri stat-card yerine TEK metric strip + kompakt
-                download aksiyonu. CSV sozlesmesi ve export akisi AYNI
-                (ayni exportCsv, ayni erisilebilir ad). */}
-            <div className="h-metric-strip" style={{ alignItems: 'center' }}>
-                <div className="h-metric-strip__item h-metric-strip__item--accent">
-                    <span className="h-metric-strip__accent" aria-hidden="true" />
-                    <div className="h-metric-strip__value">{formatDuration(totalHours)}</div>
-                    <div className="h-metric-strip__label">{t('reports.totalHours')}</div>
-                </div>
-                <div className="h-metric-strip__item">
-                    <div className="h-metric-strip__value">{entryCount}</div>
-                    <div className="h-metric-strip__label">{t('reports.entries')}</div>
-                </div>
-                <div className="h-metric-strip__item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+        <>
+            <div className="reports-kpis lq-enter h-metric-strip">
+                <GlassCard className="lq-kpi">
+                    <span className="lq-kpi__value"><CountUp value={totalHours} decimals={2} format={formatDuration} /></span>
+                    <span className="lq-kpi__label">{t('reports.totalHours')}</span>
+                </GlassCard>
+                <GlassCard className="lq-kpi">
+                    <span className="lq-kpi__value"><CountUp value={entryCount} /></span>
+                    <span className="lq-kpi__label">{t('reports.entries')}</span>
+                </GlassCard>
+                <div className="reports-kpis__action">
                     <Button
                         type="primary"
                         icon={<DownloadOutlined />}
@@ -709,17 +560,12 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                 </div>
             </div>
 
-            {/* ── Data Table ────────────────────────────────────────────────── */}
             <AdminErrorAlert error={isError ? error : null} onRetry={refetch} />
 
-            <div className="content-card">
+            <GlassCard className="content-card reports-table lq-card--flush">
                 {logs.length === 0 && !isLoading && !isError ? (
-                    <div style={{ padding: '28px 0', textAlign: 'center' }}>
-                        <Empty
-                            description={
-                                <span style={{ color: 'var(--text-muted)' }}>{t('reports.noEntries')}</span>
-                            }
-                        />
+                    <div className="reports-empty">
+                        <Empty description={<span>{t('reports.noEntries')}</span>} />
                     </div>
                 ) : (
                     <Table
@@ -730,22 +576,17 @@ function MainDashboard({ dateRange, selectedUsers, selectedCustomers, selectedPr
                             defaultPageSize: 25,
                             showSizeChanger: true,
                             pageSizeOptions: [25, 50, 100],
-                            showTotal: (total) => (
-                                <span style={{ color: 'var(--text-muted)' }}>{total} entries</span>
-                            )
+                            showTotal: (total) => <span className="reports-total">{t('reports.entriesCount', { count: total })}</span>,
                         }}
-                        /*
-                         * Ilk yukleme ile arkaplan yenilemesi AYRI: elde
-                         * veri varken tablo spinner'in altinda kaybolmaz.
-                         */
+                        /* Ilk yukleme ile arkaplan yenilemesi AYRI. */
                         loading={isLoading && logs.length === 0}
                         showSorterTooltip={false}
-                        scroll={{ x: 1100, y: 520 }}
+                        scroll={{ x: 960, y: 520 }}
                     />
                 )}
                 <AdminRefreshHint isFetching={isFetching} hasData={logs.length > 0} />
-            </div>
-        </div>
+            </GlassCard>
+        </>
     )
 }
 
