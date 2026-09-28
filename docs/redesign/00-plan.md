@@ -100,3 +100,14 @@ Prototip: https://claude.ai/artifact/HXXunk5DuR4VXEAVonnQfp · kopya
   (Panel, Faturalanabilir, Raporlar, Sözleşmeler) · Sistem (Ayarlar,
   Developer, Destek portalı, Platform) · hızlı eylemler (Efor gir, Yeni iş).
 - Ayarlar/Developer yan menüsü: 16 px ikon, 28 px karo.
+
+### Revizyon 3 (28.09, CTO)
+- Açık tema: zemin açık tonlu (inci/gümüş + Hermes mavisi) şeffaf sıvı;
+  kartlar opak değil, %34–58 beyaz buzlu cam (blur 28 + saturate 190).
+- Koyu tema: uzay grisi + uzay siyahı sıvı (grafit tonları), canlı mavi yok;
+  kartlar koyu şeffaf cam.
+- Marka: adada logo karosu (grafit küre + ışık yansıması animasyonu) +
+  "Hermes" kelime işareti; ana sayfada 76 px logo karosu (dönen ışıma halkası)
+  + "HERMES · Duosis çalışma alanı" üst satırı; giriş ekranı aynı karo. Logo
+  maskesi 192 px ve kalınlaştırılmış çizgiyle.
+- Dock ve sayfa üstü metinler tema token'larına bağlandı.
