@@ -10,45 +10,82 @@
     background: var(--bg-primary);
 }
 
-.meetings-user-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 24px;
-    background: transparent;
-    border-bottom: 1px solid var(--border-default);
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.meetings-user-header-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-.meetings-user-header-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.meetings-user-avatar {
-    background-color: var(--color-primary);
-    font-size: 18px;
-    font-weight: 600;
-}
-
-.meetings-user-name {
-    font-size: 20px;
-    font-weight: 500;
-    color: var(--text-primary);
-    margin: 0;
-}
+/* Hermes Liquid (prototip): baslik + [sol ray | takvim karti]. */
+.meetings-user-header.lq-hero { margin-bottom: var(--h-space-4); }
+.meetings-user-select { min-width: 240px; max-width: 460px; }
+.meetings-user-select .ant-select-selector { min-height: 40px; border-radius: var(--h-radius-pill); }
 
 .meetings-body {
-    padding: 16px 24px 24px;
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: var(--h-space-4);
+    align-items: start;
 }
+@media (max-width: 1100px) {
+    .meetings-body { grid-template-columns: minmax(0, 1fr); }
+}
+
+.meetings-rail { display: flex; flex-direction: column; gap: var(--h-space-4); min-width: 0; }
+.meetings-rail__next { margin: 0; }
+.meetings-rail__month-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.meetings-rail__month-head b { font-size: 15px; text-transform: capitalize; }
+.meetings-rail__nav {
+    display: inline-grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    margin-left: 4px;
+    border: 1px solid var(--h-ghost-border);
+    border-radius: 50%;
+    background: var(--h-ghost-bg);
+    color: var(--h-text-secondary);
+    cursor: pointer;
+}
+.meetings-rail__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.meetings-rail__wd { padding: 4px 0; font-size: 11px; color: var(--h-text-muted); text-transform: capitalize; }
+.meetings-rail__d {
+    position: relative;
+    height: 32px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--h-text-primary);
+    font: 500 13px var(--h-font-family);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition: background 150ms;
+}
+.meetings-rail__d:hover { background: var(--h-bg-hover); }
+.meetings-rail__d.is-out { color: var(--h-text-muted); opacity: 0.6; }
+.meetings-rail__d.is-week { background: var(--h-bg-selected); }
+.meetings-rail__d.is-today { background: var(--h-grad-primary); color: #FFFFFF; font-weight: 700; }
+.meetings-rail__d i {
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    margin-left: -2px;
+    border-radius: 50%;
+    background: var(--hp-blue-500);
+}
+.meetings-rail__d.is-today i { background: #FFFFFF; }
+.meetings-rail__kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.meetings-rail__kpis > div { display: flex; flex-direction: column; padding: 10px 12px; border-radius: 14px; background: var(--h-surface-subtle); }
+.meetings-rail__kpis b { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.meetings-rail__kpis span { font-size: 11.5px; color: var(--h-text-secondary); }
+.meetings-rail__kpis .is-warn b { color: var(--h-warning); }
+.meetings-rail__filter { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13.5px; cursor: pointer; }
+.meetings-rail__filter i { width: 12px; height: 12px; border-radius: 4px; background: var(--hp-blue-500); }
+.meetings-rail__filter--offline i { background: var(--hp-purple-500); }
+.meetings-rail__filter--logged i { background: var(--h-success); }
+.meetings-rail__filter--cancelled i { background: var(--h-border-strong); }
+
+.meetings-calendar { padding: 16px 18px; }
+.meetings-calendar__bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.meetings-calendar__range { margin: 0 6px; font-size: 16px; letter-spacing: -0.01em; }
+.meetings-calendar__spacer { flex: 1; }
+.meetings-calendar__state { padding: 48px 0; text-align: center; }
 
 /* ── Mobile (≤768px) ─────────────────────────────────────────────────────
    Header stacks: identity row (avatar + name/user-select) on top, week

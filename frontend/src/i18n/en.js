@@ -319,6 +319,28 @@ export default {
         statusNotAllowed: 'You are not allowed to change this task status.',
     },
 
+    meetingsPage: {
+        subtitle: 'Synced from your Microsoft Teams and Outlook calendars',
+        untitled: '(Untitled meeting)',
+        count: '{count} meetings',
+        prevMonth: 'Previous month',
+        nextMonth: 'Next month',
+        thisWeek: 'This week',
+        meetings: 'meetings',
+        hours: 'hours',
+        unlogged: 'not logged',
+        calendars: 'Calendars',
+        modeDay: 'Day',
+        modeWeek: 'Week',
+        modeAgenda: 'Agenda',
+        filter: {
+            online: 'Microsoft Teams',
+            offline: 'In person',
+            logged: 'Effort logged',
+            cancelled: 'Cancelled',
+        },
+    },
+
     meetings: {
         previousWeek: 'Previous week',
         nextWeek: 'Next week',

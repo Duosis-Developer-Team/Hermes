@@ -11,18 +11,16 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import {
-    Avatar,
     Button,
     Empty,
     Select,
-    Space,
     Spin,
     message,
 } from 'antd'
 import {
     LeftOutlined,
     RightOutlined,
-    UserOutlined,
+    TeamOutlined,
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
@@ -36,6 +34,9 @@ import {
     workLogService,
 } from '../services/api'
 import MeetingsWeeklyView from '../components/meetings/MeetingsWeeklyView'
+import MeetingsRail from '../components/meetings/MeetingsRail'
+import { passesMeetingFilters } from '../components/meetings/meetingsModel'
+import { GlassCard, LiquidSegmented, PageHero } from '../components/liquid'
 import MeetingReviewModal from '../components/modals/MeetingReviewModal'
 import LogTimeModal from '../components/modals/LogTimeModal'
 import { useT } from '../i18n'
@@ -84,6 +85,11 @@ function MeetingsPage() {
         isAdmin && selectedUserIds.length === 1 ? selectedUserIds[0] : null
 
     const [reviewMeeting, setReviewMeeting] = useState(null)
+    // Hermes Liquid: takvim gorunumu ve sol raydaki takvim filtreleri.
+    const [calendarMode, setCalendarMode] = useState('week')
+    const [calendarFilters, setCalendarFilters] = useState({
+        online: true, offline: true, logged: true, cancelled: false,
+    })
     // Meeting to prefill the Log Time modal with. Independent of
     // reviewMeeting so the user can cancel the Log Time modal and
     // still see the review modal underneath.
@@ -280,96 +286,95 @@ function MeetingsPage() {
         await workLogMutation.mutateAsync(payload)
     }
 
+    const visibleMeetings = meetings.filter((m) =>
+        passesMeetingFilters(m, loggedMeetingIds.has(m.id), calendarFilters))
+    const focusDate = dayjs().isSame(weekStart, 'isoWeek') ? dayjs() : weekStart
+
     return (
         <div className="meetings-page">
-            {/* Header — avatar + identity + admin user-selector left,
-                week nav + sync (admin) right. Tight padding matches
-                Tasks. */}
-            <div className="meetings-user-header">
-                <div className="meetings-user-header-left">
-                    <Avatar
-                        size={40}
-                        icon={<UserOutlined />}
-                        className="meetings-user-avatar"
+            <PageHero
+                className="meetings-user-header"
+                title={t('nav.meetings')}
+                subtitle={t('meetingsPage.subtitle')}
+                actions={isAdmin ? (
+                    <Select
+                        className="meetings-user-select"
+                        mode="multiple"
+                        value={selectedUserIds}
+                        onChange={setSelectedUserIds}
+                        placeholder={t('meetings.allUsers')}
+                        allowClear
+                        maxTagCount="responsive"
+                        loading={!allActiveUsers.length}
+                        options={userSelectorOptions}
+                        suffixIcon={<TeamOutlined />}
+                        showSearch
+                        filterOption={(input, option) =>
+                            (option?.label ?? '')
+                                .toLowerCase()
+                                .includes(input.toLowerCase())
+                        }
                     />
-                    {isAdmin ? (
-                        <Select
-                            mode="multiple"
-                            value={selectedUserIds}
-                            onChange={setSelectedUserIds}
-                            placeholder={t('meetings.allUsers')}
-                            allowClear
-                            maxTagCount="responsive"
-                            style={{ minWidth: 260, maxWidth: 520 }}
-                            loading={!allActiveUsers.length}
-                            options={userSelectorOptions}
-                            showSearch
-                            filterOption={(input, option) =>
-                                (option?.label ?? '')
-                                    .toLowerCase()
-                                    .includes(input.toLowerCase())
-                            }
-                        />
-                    ) : (
-                        <h1 className="meetings-user-name">
-                            {user?.full_name || user?.email}
-                        </h1>
-                    )}
-                </div>
-
-                <div className="meetings-user-header-right">
-                    <Space wrap>
-                        <Button
-                                aria-label={t('meetings.previousWeek')}
-                            icon={<LeftOutlined />}
-                            onClick={() =>
-                                setWeekStart((p) => p.subtract(1, 'week'))
-                            }
-                        />
-                        <Button
-                            onClick={() =>
-                                setWeekStart(dayjs().startOf('isoWeek'))
-                            }
-                        >{t('meetings.today')}</Button>
-                        <Button
-                                aria-label={t('meetings.nextWeek')}
-                            icon={<RightOutlined />}
-                            onClick={() =>
-                                setWeekStart((p) => p.add(1, 'week'))
-                            }
-                        />
-                        <span
-                            style={{
-                                color: 'var(--c-text-strong)',
-                                fontWeight: 500,
-                                marginLeft: 4,
-                            }}
-                        >
-                            {weekStart.format('DD MMM')} –{' '}
-                            {weekEnd.format('DD MMM, YYYY')}
-                        </span>
-                    </Space>
-                </div>
-            </div>
+                ) : null}
+            />
 
             <div className="meetings-body">
-                {isLoading ? (
-                    <div style={{ textAlign: 'center', padding: 48 }}>
-                        <Spin />
+                <MeetingsRail
+                    weekStart={weekStart}
+                    meetings={meetings}
+                    loggedMeetingIds={loggedMeetingIds}
+                    filters={calendarFilters}
+                    onFiltersChange={setCalendarFilters}
+                    onPickWeek={setWeekStart}
+                />
+
+                <GlassCard className="meetings-calendar">
+                    <div className="meetings-calendar__bar">
+                        <Button
+                            shape="circle"
+                            aria-label={t('meetings.previousWeek')}
+                            icon={<LeftOutlined />}
+                            onClick={() => setWeekStart((p) => p.subtract(1, 'week'))}
+                        />
+                        <Button
+                            shape="circle"
+                            aria-label={t('meetings.nextWeek')}
+                            icon={<RightOutlined />}
+                            onClick={() => setWeekStart((p) => p.add(1, 'week'))}
+                        />
+                        <b className="meetings-calendar__range">
+                            {weekStart.format('D MMMM')} – {weekEnd.format('D MMMM YYYY')}
+                        </b>
+                        <Button size="small" onClick={() => setWeekStart(dayjs().startOf('isoWeek'))}>
+                            {t('meetings.today')}
+                        </Button>
+                        <span className="meetings-calendar__spacer" />
+                        <LiquidSegmented
+                            ariaLabel={t('misc.view')}
+                            value={calendarMode}
+                            onChange={setCalendarMode}
+                            options={[
+                                { value: 'day', label: t('meetingsPage.modeDay') },
+                                { value: 'week', label: t('meetingsPage.modeWeek') },
+                                { value: 'agenda', label: t('meetingsPage.modeAgenda') },
+                            ]}
+                        />
                     </div>
-                ) : meetings.length === 0 ? (
-                    <Empty
-                        description={t('meetings.noMeetings')}
-                        style={{ marginTop: 60 }}
-                    />
-                ) : (
-                    <MeetingsWeeklyView
-                        weekStart={weekStart}
-                        meetings={meetings}
-                        loggedMeetingIds={loggedMeetingIds}
-                        onSelectMeeting={handleSelectMeeting}
-                    />
-                )}
+                    {isLoading ? (
+                        <div className="meetings-calendar__state"><Spin /></div>
+                    ) : visibleMeetings.length === 0 ? (
+                        <Empty description={t('meetings.noMeetings')} className="meetings-calendar__state" />
+                    ) : (
+                        <MeetingsWeeklyView
+                            weekStart={weekStart}
+                            meetings={visibleMeetings}
+                            loggedMeetingIds={loggedMeetingIds}
+                            onSelectMeeting={handleSelectMeeting}
+                            mode={calendarMode}
+                            focusDate={focusDate}
+                        />
+                    )}
+                </GlassCard>
             </div>
 
             <MeetingReviewModal

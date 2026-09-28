@@ -318,6 +318,28 @@ export default {
         statusNotAllowed: 'Bu görevin durumunu değiştirme yetkiniz yok.',
     },
 
+    meetingsPage: {
+        subtitle: 'Microsoft Teams ve Outlook takviminden eşitlenir',
+        untitled: '(Başlıksız toplantı)',
+        count: '{count} toplantı',
+        prevMonth: 'Önceki ay',
+        nextMonth: 'Sonraki ay',
+        thisWeek: 'Bu hafta',
+        meetings: 'toplantı',
+        hours: 'saat',
+        unlogged: 'efor yok',
+        calendars: 'Takvimler',
+        modeDay: 'Gün',
+        modeWeek: 'Hafta',
+        modeAgenda: 'Ajanda',
+        filter: {
+            online: 'Microsoft Teams',
+            offline: 'Yüz yüze',
+            logged: 'Efor kaydedilmiş',
+            cancelled: 'İptal edilenler',
+        },
+    },
+
     meetings: {
         previousWeek: 'Önceki hafta',
         nextWeek: 'Sonraki hafta',

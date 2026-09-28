@@ -1,115 +1,150 @@
 /* =============================================================================
-   HERMES - Meetings Weekly View
-   =============================================================================
-   Visual rhythm matches TasksWeeklyView / TimeEntry's DayColumn — same
-   column width, same gaps, same header style — so navigation between
-   calendars stays muscle-memory.
-   ============================================================================= */
+   HERMES - Toplanti takvimi (Hermes Liquid) — saat izgarasi
+   Renkler token; bugun = ortak h-today-flag/label + marka dairesi.
+   ========================================================================== */
 
-.meetings-weekly-view {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+.meetings-grid { position: relative; min-width: 0; }
+
+.meetings-grid__head {
+    display: grid;
+    padding: 4px 0 10px;
+    border-bottom: 1px solid var(--h-border-subtle);
+}
+.meetings-grid__day { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.meetings-grid__dname {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--h-text-muted);
+}
+.meetings-grid__day .h-today-flag::before,
+.meetings-grid__day .h-today-flag::after { display: none; }
+.meetings-grid__dnum {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    font-size: 17px;
+    font-weight: 650;
+    color: var(--h-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.meetings-grid__day.is-today .meetings-grid__dnum {
+    background: var(--h-grad-primary);
+    color: #FFFFFF;
+    box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--hp-blue-500) 70%, transparent);
+}
+.meetings-grid__dcount { font-size: 11px; color: var(--h-text-muted); }
+
+.meetings-grid__allday {
+    display: grid;
+    gap: 6px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--h-border-subtle);
+}
+.meetings-grid__allday > div { display: flex; flex-direction: column; gap: 4px; padding: 0 4px; }
+.meetings-grid__allday .meeting-event { position: relative; }
+
+.meetings-grid__body { position: relative; display: grid; }
+.meetings-grid__hours { position: relative; }
+.meetings-grid__hour {
+    position: absolute;
+    left: 0;
+    transform: translateY(-50%);
+    font: 500 11px var(--h-font-mono);
+    color: var(--h-text-muted);
+}
+.meetings-grid__allday .meetings-grid__hour { position: static; transform: none; align-self: center; }
+.meetings-grid__col {
+    position: relative;
+    border-left: 1px solid var(--h-border-subtle);
+}
+.meetings-grid__col.is-today { background: color-mix(in srgb, var(--h-brand) 5%, transparent); }
+.meetings-grid__line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--h-border-subtle);
 }
 
-.meetings-weekly-summary {
+/* Toplanti blogu */
+.meeting-event {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+    padding: 6px 9px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--h-bg-elevated);
+    box-shadow: inset 3px 0 0 var(--hp-blue-500), var(--h-shadow-hover);
+    color: var(--h-text-primary);
+    font: 600 12.5px var(--h-font-family);
+    text-align: left;
+    cursor: pointer;
+    animation: lq-rise 500ms var(--h-ease-enter) both;
+    transition: transform 200ms var(--h-ease-spring), box-shadow 150ms;
+}
+.meeting-event:hover { z-index: 2; transform: translateY(-1px) scale(1.01); }
+.meeting-event:focus-visible { z-index: 2; outline: 2px solid var(--h-focus); outline-offset: 1px; }
+.meeting-event__title { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.meeting-event__title > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meeting-event__title .anticon { flex: none; color: var(--hp-blue-500); font-size: 12px; }
+.meeting-event__title .meeting-event__logged { margin-left: auto; color: var(--h-success); }
+.meeting-event__time { font: 500 11px var(--h-font-mono); color: var(--h-text-muted); }
+.meeting-event.is-offline { box-shadow: inset 3px 0 0 var(--hp-purple-500), var(--h-shadow-hover); }
+.meeting-event.is-offline .meeting-event__title .anticon { color: var(--hp-purple-500); }
+.meeting-event.is-logged { box-shadow: inset 3px 0 0 var(--h-success), var(--h-shadow-hover); }
+.meeting-event.is-private {
+    background: repeating-linear-gradient(135deg, var(--h-bg-elevated) 0 8px, var(--h-bg-hover) 8px 16px);
+    box-shadow: inset 3px 0 0 var(--h-text-muted);
+}
+.meeting-event.is-cancelled { opacity: 0.55; box-shadow: inset 3px 0 0 var(--h-border-strong); }
+.meeting-event.is-cancelled .meeting-event__title > span { text-decoration: line-through; }
+
+/* Simdi cizgisi */
+.meetings-now {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    height: 0;
+    border-top: 1.5px solid var(--h-danger);
+    pointer-events: none;
+}
+.meetings-now__label {
+    position: absolute;
+    left: 2px;
+    top: -9px;
+    padding: 1px 6px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-danger);
+    color: #FFFFFF;
+    font: 600 10.5px var(--h-font-mono);
+}
+
+/* Ajanda */
+.meetings-agenda { display: flex; flex-direction: column; gap: 14px; }
+.meetings-agenda__day h4 {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--c-text-muted);
+    margin: 0 0 8px;
     font-size: 13px;
-    padding: 0 4px;
+    font-weight: 650;
+    text-transform: capitalize;
+    color: var(--h-text-primary);
 }
-.meetings-weekly-summary strong {
-    color: var(--c-text-strong);
-}
+.meetings-agenda__day h4.h-today-flag::before,
+.meetings-agenda__day h4.h-today-flag::after { display: none; }
+.meetings-agenda .meeting-event { position: relative; width: 100%; margin-bottom: 6px; padding: 10px 12px; }
 
-.meetings-weekly-columns {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(160px, 1fr));
-    gap: 8px;
-    align-items: start;
-}
-
-/* ── Mobile (≤768px) ─────────────────────────────────────────────────────
-   The 7-day grid keeps a sensible per-day width and pans horizontally
-   INSIDE this wrapper — the page itself never scrolls sideways. */
-@media (max-width: 768px) {
-    .meetings-weekly-columns {
-        grid-template-columns: repeat(7, minmax(200px, 1fr));
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 4px;
-    }
-}
-
-.meeting-day-column {
-    /* Premium UI: dis yuzey hafifledi — canvas'la butunlesen subtle. */
-    /* Hermes Liquid: gun = cam kart (Zaman girisi ile ayni dil). */
-    background: var(--h-bg-surface);
-    border: 1px solid var(--h-glass-edge);
-    border-radius: 20px;
-    box-shadow: var(--h-glass-shadow);
-    backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
-    -webkit-backdrop-filter: blur(var(--h-glass-blur)) saturate(150%);
-    display: flex;
-    flex-direction: column;
-    min-height: 220px;
-    max-height: calc(100vh - 240px);
-    overflow: hidden;
-}
-.meeting-day-column-weekend {
-    background: var(--h-bg-weekend);
-    box-shadow: none;
-}
-/* Premium UI: bugun icin cerceve/glow yerine ORTAK baslik sancagi
-   (.h-today-flag) — Time Entry ile ayni primitive. Hafif accent kaldi. */
-
-.meeting-day-column-header {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--h-border-subtle);
-    background: transparent;
-}
-.meeting-day-name {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--c-text-muted);
-}
-.meeting-day-number {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--c-text-strong);
-}
-.meeting-day-count {
-    margin-left: auto;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--c-text-muted);
-    background: var(--c-chip);
-    border-radius: 10px;
-    padding: 1px 8px;
-}
-.meeting-day-column-today .meeting-day-number {
-    color: var(--h-brand);
-}
-
-.meeting-day-column-body {
-    padding: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    overflow-y: auto;
-    flex: 1 1 auto;
-}
-
-.meeting-day-column-empty {
-    color: var(--c-text-faint);
-    font-size: 12px;
-    text-align: center;
-    padding: 12px 6px;
-    font-style: italic;
+@media (max-width: 760px) {
+    .meetings-grid { overflow-x: auto; }
+    .meetings-grid__head,
+    .meetings-grid__body { min-width: 640px; }
 }

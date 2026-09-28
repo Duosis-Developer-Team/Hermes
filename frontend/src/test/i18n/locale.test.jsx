@@ -41,6 +41,7 @@ describe('i18n sozlukleri', () => {
             'meeting.teams', 'meetingCard.teams', 'platform.plan',
             // "Efor · Plan" alt eylemi: Plan Turkcede de ayni sozcuk.
             'timeEntry.addShortPlan',
+            'meetingsPage.filter.online',
             'platform.emailDomainsExample',
         ])
         const untranslated = flatten(en).filter((key) => {
