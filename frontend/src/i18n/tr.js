@@ -358,6 +358,7 @@ export default {
         previousMonth: 'Önceki ay',
         nextMonth: 'Sonraki ay',
         today: 'Bugün',
+        more: '+{count} daha',
     },
 
     billableHours: {

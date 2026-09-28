@@ -138,7 +138,38 @@ function DashboardPage() {
     }
 
     const emptyText = t('dashboard.noData')
-    const listItems = (series) => series.map((d) => ({ key: d.name, name: d.name, value: d.hours }))
+    // Iki liste AYNI ust sinirla kesilir; kartlar ayni satirda esit boy
+    // (simetri). Kalanlar tek satir notla belirtilir.
+    const LIST_MAX = 8
+    const listItems = (series) => series.slice(0, LIST_MAX).map((d) => ({ key: d.name, name: d.name, value: d.hours }))
+    const moreNote = (series) => (series.length > LIST_MAX
+        ? <p className="dashboard-more">{t('dashboard.more', { count: series.length - LIST_MAX })}</p>
+        : null)
+    // Kullanici adlari: HICBIRI atlanmaz. Kalabalikta egik, cok kalabalikta
+    // "Ad S." (tam ad ipucunda).
+    const crowded = userData.length > 7
+    const veryCrowded = userData.length > 12
+    const shortName = (name = '') => {
+        const parts = String(name).trim().split(/\s+/)
+        return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0]
+    }
+    const UserTick = ({ x, y, payload }) => {
+        const label = veryCrowded ? shortName(payload.value) : payload.value
+        return (
+            <g transform={`translate(${x},${y + 6})`}>
+                <title>{payload.value}</title>
+                <text
+                    textAnchor={crowded ? 'end' : 'middle'}
+                    transform={crowded ? 'rotate(-35)' : undefined}
+                    dy={crowded ? 4 : 10}
+                    fill="var(--h-chart-axis)"
+                    fontSize={12}
+                >
+                    {label}
+                </text>
+            </g>
+        )
+    }
     const kpis = [
         // Saat: HAM sayi sayilir, bicim (1284h 30m) her karede uygulanir.
         { key: 'hours', value: Number(data?.total_hours) || 0, format: formatDuration, decimals: 2, label: t('dashboard.totalHours') },
@@ -175,17 +206,19 @@ function DashboardPage() {
                 ))}
             </div>
 
-            <div className="lq-bento lq-enter">
+            <div className="lq-bento lq-enter dashboard-bento">
                 <GlassCard className="lq-c6" title={t('dashboard.byCustomer')} link={<span className="dashboard-unit">{t('dashboard.hoursUnit')}</span>}>
                     <BarList items={listItems(customerData)} tone="blue" emptyText={emptyText} />
+                    {moreNote(customerData)}
                 </GlassCard>
                 <GlassCard className="lq-c6" title={t('dashboard.byProject')} link={<span className="dashboard-unit">{t('dashboard.hoursUnit')}</span>}>
                     <BarList items={listItems(projectData)} tone="violet" emptyText={emptyText} />
+                    {moreNote(projectData)}
                 </GlassCard>
                 <GlassCard className="lq-c12" title={t('dashboard.byUser')} link={<span className="dashboard-unit">{t('dashboard.hoursUnit')}</span>}>
                     <ChartFrame series={userData}>
-                        <ResponsiveContainer width="100%" height={320}>
-                            <BarChart data={userData} margin={{ top: 28, right: 8, left: -12, bottom: 0 }}>
+                        <ResponsiveContainer width="100%" height={crowded ? 360 : 320}>
+                            <BarChart data={userData} margin={{ top: 28, right: 8, left: -12, bottom: crowded ? 36 : 4 }}>
                                 <defs>
                                     <linearGradient id="dash-user-bar" x1="0" x2="0" y1="0" y2="1">
                                         {/* SVG ozniteligi CSS degiskenini cozmez; stil cozer. */}
@@ -194,7 +227,15 @@ function DashboardPage() {
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid vertical={false} stroke="var(--h-chart-grid)" />
-                                <XAxis dataKey="name" stroke="var(--h-chart-axis)" tickLine={false} axisLine={false} />
+                                <XAxis
+                                    dataKey="name"
+                                    interval={0}
+                                    height={crowded ? 70 : 34}
+                                    tick={<UserTick />}
+                                    stroke="var(--h-chart-axis)"
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
                                 <YAxis stroke="var(--h-chart-axis)" tickLine={false} axisLine={false} />
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--h-bg-hover)', radius: 12 }} />
                                 <Bar dataKey="hours" name="Hours" fill="url(#dash-user-bar)" radius={[14, 14, 14, 14]} maxBarSize={72} animationDuration={900}

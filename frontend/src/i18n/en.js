@@ -359,6 +359,7 @@ export default {
         previousMonth: 'Previous month',
         nextMonth: 'Next month',
         today: 'Today',
+        more: '+{count} more',
     },
 
     billableHours: {

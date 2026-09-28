@@ -621,3 +621,7 @@
 /* Efor inceleme penceresi: aciklama metni (WorkLogReviewModal). */
 .worklog-review-desc { margin: 0; color: var(--h-text-primary); font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; }
 .lq-kv + .lq-grp { margin-top: 18px; }
+
+/* Panel: Musteriye / Projeye gore kartlari ayni satirda esit boy. */
+.dashboard-bento { align-items: stretch; }
+.dashboard-more { margin: 10px 0 0; color: var(--h-text-muted); font-size: 12px; }
