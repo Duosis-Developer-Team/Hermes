@@ -302,8 +302,8 @@
     animation-duration: 160ms;
     animation-timing-function: var(--h-ease-exit);
 }
-:root .island-drop-root .ant-zoom-enter-active,
-:root .island-drop-root .ant-zoom-appear-active {
+:root .island-drop-root .ant-modal.ant-zoom-enter-active,
+:root .island-drop-root .ant-modal.ant-zoom-appear-active {
     transform-origin: top center;
     animation-name: h-drop-in;
     animation-duration: 420ms;

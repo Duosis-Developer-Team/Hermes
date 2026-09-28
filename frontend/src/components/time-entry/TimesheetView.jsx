@@ -1,18 +1,20 @@
 /**
  * =============================================================================
- * HERMES - Timesheet View Component (Jira Tempo Style)
+ * HERMES - Cizelge gorunumu (Hermes Liquid prototipi)
  * =============================================================================
- * Tablo formatında zaman görünümü - Jira Tempo Timesheet tarzı.
- * Issue + Key ayrı sütunlar, grid çizgileri, 1h format
+ * Proje x gun tablosu, cam kart icinde. Hucre dolgusu saat yogunluguna gore
+ * (8 saat = tam ton); tiklama davranisi ayni (onCellClick). Islevsiz onay
+ * kutusu sutunu kaldirildi; sabit (opak) sutun yok — dar ekranda tablo
+ * kendi icinde kayar.
  * =============================================================================
  */
 
 import { useMemo } from 'react'
-import { Table, Checkbox } from 'antd'
-import { CheckSquareOutlined } from '@ant-design/icons'
+import { Table } from 'antd'
 import dayjs from 'dayjs'
 import './TimesheetView.css'
 import { useT } from '../../i18n'
+import { Avatar } from '../liquid'
 
 // 0.75 → "45m", 2.75 → "2h 45m", 2.0 → "2h"
 function formatDuration(decimal) {
@@ -86,25 +88,19 @@ function TimesheetView({
 
     // Sütunlar
     const columns = [
-        // Checkbox column
-        {
-            title: '',
-            key: 'checkbox',
-            fixed: 'left',
-            width: 40,
-            render: () => <Checkbox className="timesheet-checkbox" />,
-        },
         // Issue (Proje) column
         {
             title: t('timesheet.issue'),
             dataIndex: 'project_name',
             key: 'issue',
-            fixed: 'left',
             width: 250,
-            render: (text) => (
+            render: (text, record) => (
                 <div className="timesheet-issue-cell">
-                    <CheckSquareOutlined className="timesheet-issue-icon" />
-                    <span className="timesheet-issue-name">{text}</span>
+                    <Avatar id={record.project_id} name={text} size={28} />
+                    <span className="timesheet-issue-text">
+                        <span className="timesheet-issue-name">{text}</span>
+                        {record.customer_name && <small>{record.customer_name}</small>}
+                    </span>
                 </div>
             ),
         },
@@ -113,10 +109,9 @@ function TimesheetView({
             title: t('timesheet.key'),
             dataIndex: 'customer_code',
             key: 'key',
-            fixed: 'left',
-            width: 100,
+            width: 90,
             render: (text) => (
-                <span className="timesheet-key-link">{text || '-'}</span>
+                <span className="timesheet-key">{text || '-'}</span>
             ),
         },
         // Logged (Toplam) column
@@ -156,6 +151,7 @@ function TimesheetView({
                 render: (hours, record) => (
                     <div
                         className={`timesheet-hours-cell ${hours ? 'has-value' : ''}`}
+                        style={hours ? { '--ts-fill': `${Math.round(Math.min(hours / 8, 1) * 26) + 8}%` } : undefined}
                         onClick={() => onCellClick?.(record, dateKey)}
                     >
                         {hours ? formatDuration(hours) : ''}
@@ -174,47 +170,41 @@ function TimesheetView({
     // Footer (Total row)
     return (
         <div className="timesheet-view">
-            <Table
-                dataSource={dataSource}
-                columns={columns}
-                pagination={false}
-                scroll={{ x: 900 }}
-                size="small"
-                className="timesheet-table"
-                locale={{ emptyText: t('timesheet.noEntries') }}
-                rowClassName="timesheet-row"
-                summary={() => {
-                    return (
-                        <Table.Summary fixed>
-                            <Table.Summary.Row className="timesheet-total-row">
-                                <Table.Summary.Cell index={0} colSpan={3} className="timesheet-total-label">{t('timesheet.total')}</Table.Summary.Cell>
-                                <Table.Summary.Cell index={1} className="timesheet-total-value">
-                                    {formatDuration(grandTotal) || '0h'}
-                                </Table.Summary.Cell>
-                                {displayDays.map((day, i) => {
-                                    const dateKey = day.format('YYYY-MM-DD')
-                                    const isWeekend = day.day() === 0 || day.day() === 6
-                                    return (
-                                        <Table.Summary.Cell
-                                            key={dateKey}
-                                            index={i + 2}
-                                            className={`timesheet-total-day ${isWeekend ? 'weekend' : ''}`}
-                                        >
-                                            {formatDuration(dailyTotals[dateKey]) || 0}
-                                        </Table.Summary.Cell>
-                                    )
-                                })}
-                            </Table.Summary.Row>
-                        </Table.Summary>
-                    )
-                }}
-            />
-
-            {/* Bottom progress bar */}
-            <div className="timesheet-progress-bar">
-                <div
-                    className="timesheet-progress-fill"
-                    style={{ width: `${Math.min((grandTotal / 40) * 100, 100)}%` }}
+            <div className="timesheet-card lq-card lq-enter">
+                <Table
+                    dataSource={dataSource}
+                    columns={columns}
+                    pagination={false}
+                    scroll={{ x: 900 }}
+                    size="small"
+                    className="timesheet-table"
+                    locale={{ emptyText: t('timesheet.noEntries') }}
+                    rowClassName="timesheet-row"
+                    summary={() => {
+                        return (
+                            <Table.Summary fixed>
+                                <Table.Summary.Row className="timesheet-total-row">
+                                    <Table.Summary.Cell index={0} colSpan={2} className="timesheet-total-label">{t('timesheet.total')}</Table.Summary.Cell>
+                                    <Table.Summary.Cell index={1} className="timesheet-total-value">
+                                        {formatDuration(grandTotal) || '0h'}
+                                    </Table.Summary.Cell>
+                                    {displayDays.map((day, i) => {
+                                        const dateKey = day.format('YYYY-MM-DD')
+                                        const isWeekend = day.day() === 0 || day.day() === 6
+                                        return (
+                                            <Table.Summary.Cell
+                                                key={dateKey}
+                                                index={i + 2}
+                                                className={`timesheet-total-day ${isWeekend ? 'weekend' : ''}`}
+                                            >
+                                                {formatDuration(dailyTotals[dateKey]) || 0}
+                                            </Table.Summary.Cell>
+                                        )
+                                    })}
+                                </Table.Summary.Row>
+                            </Table.Summary>
+                        )
+                    }}
                 />
             </div>
         </div>

@@ -1,260 +1,207 @@
 /**
- * Timesheet View Styles - Jira Tempo tarzı (Redesigned)
+ * Cizelge — Hermes Liquid (prototip). Dis sarmalayici saydam (gri levha
+ * yok); cam yuzey icteki .timesheet-card'da. Ayrimlar ince cizgiler,
+ * saat hucreleri yogunluga gore tonlu hap. Renkler token.
  */
 
 .timesheet-view {
-    /* Premium: gri levha DEGIL — sayfa tuvaliyle butunlesir (List
-       gorunumuyle ayni dil). Ayrimlar ince divider'larla kurulur. */
     background: transparent;
-    border-radius: 0;
-    overflow: visible;
     position: relative;
+    max-width: 100%;
+}
+
+.timesheet-card {
+    padding: 6px 8px 4px;
+    overflow: hidden;
 }
 
 /* ==========================================================================
-   TABLE BASE
+   TABLO TABANI
    ========================================================================== */
 
-.timesheet-table .ant-table {
-    background: transparent !important;
-}
-
-.timesheet-table .ant-table-thead>tr>th {
+.timesheet-card .timesheet-table .ant-table,
+.timesheet-card .timesheet-table .ant-table-container,
+.timesheet-card .timesheet-table .ant-table-summary {
     background: transparent;
-    border-bottom: 1px solid var(--h-border-default);
-    border-right: 1px solid var(--h-border-subtle);
-    color: var(--h-text-muted);
-    font-weight: 600;
-    font-size: 11px;
-    padding: 8px 10px !important;
-    text-align: center;
 }
 
-.timesheet-table .ant-table-thead>tr>th:last-child {
-    border-right: none !important;
-}
-
-.timesheet-table .ant-table-tbody>tr>td {
+.timesheet-card .timesheet-table .ant-table-thead > tr > th {
+    padding: 12px 8px;
     border-bottom: 1px solid var(--h-border-subtle);
-    border-right: 1px solid var(--h-border-subtle);
-    padding: 6px 10px;
     background: transparent;
+    color: var(--h-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
+.timesheet-card .timesheet-table .ant-table-thead > tr > th::before { display: none; }
+.timesheet-card .timesheet-table .ant-table-thead > tr > th:nth-child(-n+2) { text-align: left; }
 
-.timesheet-table .ant-table-tbody>tr>td:last-child {
-    border-right: none !important;
+.timesheet-card .timesheet-table .ant-table-tbody > tr > td {
+    padding: 8px;
+    border-bottom: 1px solid var(--h-border-subtle);
+    background: transparent;
+    transition: background 150ms var(--h-ease-standard);
 }
-
-.timesheet-table .ant-table-tbody>tr:hover>td {
+.timesheet-card .timesheet-table .ant-table-tbody > tr:hover > td {
     background: color-mix(in srgb, var(--h-brand) 5%, transparent);
 }
-
-.timesheet-row {
-    border-bottom: 1px solid var(--border-default);
+.timesheet-card .timesheet-table .ant-table-tbody > tr {
+    animation: lq-rise 500ms var(--h-ease-enter) both;
 }
+.timesheet-card .timesheet-table .ant-table-tbody > tr:nth-child(2) { animation-delay: 40ms; }
+.timesheet-card .timesheet-table .ant-table-tbody > tr:nth-child(3) { animation-delay: 80ms; }
+.timesheet-card .timesheet-table .ant-table-tbody > tr:nth-child(n+4) { animation-delay: 120ms; }
 
 /* ==========================================================================
-   CHECKBOX COLUMN
-   ========================================================================== */
-
-.timesheet-checkbox .ant-checkbox-inner {
-    background: transparent;
-    border-color: var(--border-subtle);
-}
-
-/* ==========================================================================
-   ISSUE COLUMN
+   PROJE / ANAHTAR / TOPLAM SUTUNLARI
    ========================================================================== */
 
 .timesheet-issue-cell {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    min-width: 0;
 }
-
-.timesheet-issue-icon {
-    color: #3b82f6;
-    font-size: 14px;
+.timesheet-issue-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
 }
-
 .timesheet-issue-name {
+    overflow: hidden;
     font-size: 13px;
-    font-weight: 500;
-    color: var(--text-primary);
+    font-weight: 600;
+    color: var(--h-text-primary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.timesheet-issue-text small {
+    font-size: 11.5px;
+    color: var(--h-text-muted);
 }
 
-/* ==========================================================================
-   KEY COLUMN
-   ========================================================================== */
-
-.timesheet-key-link {
-    font-size: 12px;
-    color: #579dff;
-    font-weight: 500;
-    cursor: pointer;
+.timesheet-key {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-ghost-bg);
+    color: var(--h-text-secondary);
+    font: 600 11px var(--h-font-mono, var(--h-font-family));
+    letter-spacing: 0.03em;
 }
-
-.timesheet-key-link:hover {
-    text-decoration: underline;
-}
-
-/* ==========================================================================
-   LOGGED COLUMN
-   ========================================================================== */
 
 .timesheet-logged-hours {
-    font-weight: 600;
-    color: var(--text-primary);
+    color: var(--h-text-primary);
     font-size: 13px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
 }
 
 /* ==========================================================================
-   DAY HEADER
+   GUN BASLIGI
    ========================================================================== */
 
 .timesheet-day-header {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1px;
+    gap: 2px;
 }
-
 .timesheet-day-header .day-num {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-primary);
+    display: grid;
+    place-items: center;
+    min-width: 26px;
+    height: 26px;
+    border-radius: var(--h-radius-pill);
+    color: var(--h-text-primary);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0;
 }
-
 .timesheet-day-header .day-name {
+    color: var(--h-text-muted);
     font-size: 10px;
-    color: var(--text-muted);
-    text-transform: uppercase;
 }
-
+/* Bugun: sayi hapi tasir; genel sancak cizgileri burada gereksiz. */
+.timesheet-day-header.h-today-flag::before,
+.timesheet-day-header.h-today-flag::after { display: none; }
 .timesheet-day-header.today .day-num {
-    color: var(--color-primary);
+    background: var(--h-brand);
+    color: var(--h-text-on-brand, #fff);
 }
-
 .timesheet-day-header.weekend .day-num,
 .timesheet-day-header.weekend .day-name {
-    color: var(--text-muted);
+    color: var(--h-text-muted);
+    opacity: 0.7;
 }
 
 /* ==========================================================================
-   DAY CELLS
+   GUN HUCRELERI
    ========================================================================== */
 
-.timesheet-day-cell {
-    text-align: center;
-}
+.timesheet-day-cell { text-align: center; }
+.timesheet-day-cell.weekend { background: var(--h-bg-weekend); }
 
-.timesheet-day-cell.weekend {
-    background: var(--h-bg-weekend);
-}
+/* Bugun hucre/kolon BOYANMAZ — baslik hapi yeterli (.h-today-flag). */
 
-/* Premium UI: bugun hucre/kolon BOYANMAZ — baslik sancagi yeterli
-   (.h-today-flag). Gorsel isaret + aria-current birlikte tasinir. */
-
-/* Hours Cell (clickable) */
 .timesheet-hours-cell {
-    min-height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
+    min-height: 30px;
+    border-radius: 10px;
+    color: var(--h-text-muted);
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
     cursor: pointer;
-    border-radius: var(--radius-sm);
-    /* Hover: yalnizca arka plan. */
-    transition: background-color var(--transition-fast);
-    font-size: 13px;
-    color: var(--text-secondary);
+    transition: background 150ms var(--h-ease-standard), transform 200ms var(--h-ease-spring);
 }
-
 .timesheet-hours-cell:hover {
-    background: rgba(87, 157, 255, 0.15);
+    background: var(--h-bg-hover);
+    transform: scale(1.04);
 }
-
 .timesheet-hours-cell.has-value {
-    font-weight: 600;
-    color: var(--text-primary);
+    background: color-mix(in srgb, var(--h-brand) var(--ts-fill, 12%), transparent);
+    color: var(--h-text-primary);
+    font-weight: 650;
+}
+.timesheet-hours-cell.has-value:hover {
+    background: color-mix(in srgb, var(--h-brand) calc(var(--ts-fill, 12%) + 8%), transparent);
 }
 
 /* ==========================================================================
-   FOOTER (TOTAL ROW)
+   TOPLAM SATIRI
    ========================================================================== */
 
-/* ==========================================================================
-   TABLE SUMMARY (TOTAL ROW)
-   ========================================================================== */
-
-.timesheet-total-row {
+.timesheet-card .timesheet-total-row td {
+    padding: 12px 8px;
+    border-top: 1px solid var(--h-border-default);
+    border-bottom: none;
     background: transparent;
-    font-weight: 600;
-    border-top: 2px solid var(--border-default);
+    font-variant-numeric: tabular-nums;
 }
-
-.timesheet-total-row td {
-    background: transparent;
-    border-bottom: none !important;
-    padding: 10px 10px !important;
-}
-
 .timesheet-total-label {
-    text-align: right !important;
-    padding-right: 20px !important;
-    color: var(--text-primary);
+    color: var(--h-text-primary);
+    font-weight: 700;
+    text-align: right;
 }
-
 .timesheet-total-value {
-    text-align: center !important;
-    color: var(--text-primary);
+    color: var(--h-text-primary);
     font-size: 13px;
-    border-left: 1px solid var(--border-default);
+    font-weight: 700;
+    text-align: center;
 }
-
 .timesheet-total-day {
-    text-align: center !important;
-    color: var(--text-secondary);
-    font-size: 13px;
-    border-left: 1px solid var(--border-default);
+    color: var(--h-text-secondary);
+    font-size: 12.5px;
+    font-weight: 600;
+    text-align: center;
 }
+.timesheet-total-day.weekend { color: var(--h-text-muted); }
 
-.timesheet-total-day.weekend {
-    background: color-mix(in srgb, var(--h-brand) 4%, transparent);
-    color: var(--text-muted);
-}
-
-/* ==========================================================================
-   PROGRESS BAR
-   ========================================================================== */
-
-.timesheet-progress-bar {
-    height: 4px;
-    background: var(--bg-tertiary);
-    position: relative;
-}
-
-.timesheet-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #3b82f6, #10b981);
-    transition: width 0.3s ease;
-}
-
-/* ==========================================================================
-   RESPONSIVE
-   ========================================================================== */
-
-@media (max-width: 1200px) {
-    .timesheet-table {
-        overflow-x: auto;
-    }
-}
-
-/* Containment: the table pans internally (scroll={{ x: 900 }} +
-   .ant-table-content overflow-x). The view wrapper must never let that
-   width leak out and push the page sideways. */
+/* Tablo kendi icinde kayar (scroll.x); sayfa asla yana itilmez. */
 @media (max-width: 768px) {
-    .timesheet-view {
-        max-width: 100%;
-        overflow-x: hidden;
-    }
+    .timesheet-card { overflow-x: auto; }
 }

@@ -13,7 +13,7 @@
  */
 
 import { Link } from 'react-router-dom'
-import { Tabs, Tag, Tooltip } from 'antd'
+import { Tabs, Tooltip } from 'antd'
 import { BellFilled, BellOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons'
 
 import { ActivityTimeline } from '../modals/TaskReviewModal'
@@ -23,26 +23,9 @@ import { AssignmentRoster } from '../../features/tasks/components/AssigneeStatus
 import { aggregateStatus } from '../../features/tasks/model/grouping'
 import { useT } from '../../i18n'
 
-const PRIORITY_COLOR = {
-    low: 'default',
-    medium: 'blue',
-    high: 'orange',
-    urgent: 'red',
-}
-const STATUS_COLOR = {
-    pending: 'default',
-    in_progress: 'blue',
-    completed: 'green',
-    rejected: 'red',
-    cancelled: 'default',
-}
-const STATUS_LABEL = {
-    pending: 'Pending',
-    in_progress: 'In Progress',
-    completed: 'Completed',
-    rejected: 'Rejected',
-    cancelled: 'Cancelled',
-}
+// Ton → ortak lq-tag paleti; metin i18n'den (kartla ayni anahtarlar).
+const PRIORITY_TONE = { medium: 'info', high: 'warn', urgent: 'bad' }
+const STATUS_TONE = { in_progress: 'info', completed: 'ok', rejected: 'bad' }
 
 function userLabel(id, userMap) {
     if (!id) return '—'
@@ -86,7 +69,7 @@ function DetailsBody({ task, userMap, assignments }) {
                 {userLabel(task.assigner_user_id, userMap)}
             </Row>
             {isGrouped ? (
-                <Row label={`Assignees (${assignments.length})`}>
+                <Row label={`${t('taskUi.assignees')} (${assignments.length})`}>
                     <AssignmentRoster assignments={assignments} />
                 </Row>
             ) : (
@@ -102,9 +85,11 @@ function DetailsBody({ task, userMap, assignments }) {
             <Row label={t('review.scheduled')}>{task.scheduled_date || '—'}</Row>
             {task.due_date && <Row label={t('review.due')}>{task.due_date}</Row>}
             <Row label={t('task.priority')}>
-                <Tag color={PRIORITY_COLOR[task.priority] || 'default'}>
-                    {task.priority}
-                </Tag>
+                {task.priority ? (
+                    <span className={`lq-tag tdp-tag lq-tag--${PRIORITY_TONE[task.priority] || 'muted'}`}>
+                        {t(`taskCard.priority.${task.priority}`)}
+                    </span>
+                ) : '—'}
             </Row>
             {typeof task.is_billable === 'boolean' && (
                 <Row label={t('task.billable')}>
@@ -126,21 +111,15 @@ function DetailsBody({ task, userMap, assignments }) {
                     {`${task.subtask_done_count || 0} / ${task.subtask_count}`}
                 </Row>
             )}
-            <Row label={isGrouped ? 'Aggregate status' : 'Status'}>
-                <Tag
-                    color={
-                        STATUS_COLOR[
-                            isGrouped ? aggregateStatus(assignments) : task.status
-                        ] || 'default'
-                    }
-                >
-                    {(() => {
-                        const v = isGrouped
-                            ? aggregateStatus(assignments)
-                            : task.status
-                        return STATUS_LABEL[v] || v
-                    })()}
-                </Tag>
+            <Row label={isGrouped ? t('taskUi.aggregateStatus') : t('common.status')}>
+                {(() => {
+                    const v = isGrouped ? aggregateStatus(assignments) : task.status
+                    return (
+                        <span className={`lq-tag tdp-tag lq-tag--${STATUS_TONE[v] || 'muted'}`}>
+                            {t(`taskCard.status.${v}`)}
+                        </span>
+                    )
+                })()}
             </Row>
             {task.description && (
                 <div className="tdp-desc">

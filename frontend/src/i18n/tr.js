@@ -179,6 +179,7 @@ export default {
             in_progress: 'devam ediyor',
             completed: 'tamamlandı',
             rejected: 'reddedildi',
+            cancelled: 'iptal edildi',
         },
     },
 
@@ -1058,6 +1059,7 @@ export default {
         taskTitle: 'Görev Başlığı',
         code: 'Kod',
         assignees: 'Atananlar',
+        aggregateStatus: 'Genel durum',
         viewDetails: 'Ayrıntıları gör',
         logTime: 'Süre Kaydet',
         archive: 'Arşivle',

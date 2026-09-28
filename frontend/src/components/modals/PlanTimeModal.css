@@ -1,11 +1,10 @@
 /**
- * Plan Time Modal Styles - Jira Tempo tarzı (Redesigned)
+ * Plan Time Modal Styles - Hermes Liquid (cam sayfa; renkler token)
  */
 
 .plan-time-modal .ant-modal-content {
-    background: var(--c-surface-2);
     border: 1px solid var(--border-default);
-    border-radius: 8px;
+    border-radius: 26px;
     padding: 0;
 }
 
@@ -35,8 +34,8 @@
 .plan-time-form .ant-select-selector,
 .plan-time-form .ant-picker,
 .plan-time-form .ant-input-number {
-    background: var(--c-chip) !important;
-    border-color: var(--c-border-strong) !important;
+    background: var(--h-bg-hover) !important;
+    border-color: var(--h-border-default) !important;
     color: var(--text-primary) !important;
 }
 
@@ -61,8 +60,8 @@
 }
 
 .plan-time-modal .issue-search-input {
-    background: var(--c-chip) !important;
-    border-color: var(--c-border-strong) !important;
+    background: var(--h-bg-hover) !important;
+    border-color: var(--h-border-default) !important;
 }
 
 .plan-time-modal .issue-search-input .ant-input {
@@ -98,7 +97,7 @@
 
 .toggle-extra-fields {
     font-size: 13px;
-    color: #579dff;
+    color: var(--h-brand);
     cursor: pointer;
     margin: 16px 0;
     display: inline-block;
@@ -130,7 +129,7 @@
 }
 
 .plan-time-form .ant-btn-primary {
-    background: #4a7cff;
+    background: var(--h-brand);
 }
 
 /* ==========================================================================
@@ -173,20 +172,20 @@
    ========================================================================== */
 
 .plan-time-picker-popup .ant-picker-panel {
-    background: var(--c-surface-2) !important;
-    border: 1px solid var(--c-border-strong) !important;
+    background: transparent !important;
+    border: 1px solid var(--h-ghost-border) !important;
 }
 
 .plan-time-picker-popup .ant-picker-panel-layout {
-    background: var(--c-surface-2) !important;
+    background: transparent !important;
 }
 
 .plan-time-picker-popup .ant-picker-time-panel {
-    background: var(--c-surface-2) !important;
+    background: transparent !important;
 }
 
 .plan-time-picker-popup .ant-picker-time-panel-column {
-    border-inline-start-color: var(--c-border-strong) !important;
+    border-inline-start-color: var(--h-ghost-border) !important;
 }
 
 .plan-time-picker-popup .ant-picker-time-panel-column::-webkit-scrollbar {
@@ -194,11 +193,11 @@
 }
 
 .plan-time-picker-popup .ant-picker-time-panel-column::-webkit-scrollbar-track {
-    background: var(--c-chip);
+    background: var(--h-ghost-bg);
 }
 
 .plan-time-picker-popup .ant-picker-time-panel-column::-webkit-scrollbar-thumb {
-    background: var(--c-border-strong);
+    background: var(--h-ghost-border);
     border-radius: 2px;
 }
 
@@ -209,31 +208,31 @@
 }
 
 .plan-time-picker-popup .ant-picker-time-panel-cell:hover .ant-picker-time-panel-cell-inner {
-    background: var(--c-chip) !important;
+    background: var(--h-bg-hover) !important;
     color: var(--c-text-strong) !important;
 }
 
 .plan-time-picker-popup .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner {
-    background: #4a7cff !important;
+    background: var(--h-brand) !important;
     color: #fff !important;
     font-weight: 600 !important;
 }
 
 .plan-time-picker-popup .ant-picker-footer {
-    background: var(--c-surface-2) !important;
-    border-top: 1px solid var(--c-border-strong) !important;
+    background: transparent !important;
+    border-top: 1px solid var(--h-ghost-border) !important;
 }
 
 .plan-time-picker-popup .ant-picker-ranges {
-    background: var(--c-surface-2) !important;
+    background: transparent !important;
 }
 
 .plan-time-picker-popup .ant-picker-now-btn {
-    color: #4a7cff !important;
+    color: var(--h-brand) !important;
 }
 
 .plan-time-picker-popup .ant-picker-ok .ant-btn {
-    background: #4a7cff !important;
-    border-color: #4a7cff !important;
+    background: var(--h-brand) !important;
+    border-color: var(--h-brand) !important;
     color: #fff !important;
 }

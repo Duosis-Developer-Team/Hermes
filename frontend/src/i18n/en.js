@@ -168,6 +168,7 @@ export default {
             in_progress: 'in progress',
             completed: 'completed',
             rejected: 'rejected',
+            cancelled: 'cancelled',
         },
     },
 
@@ -1064,6 +1065,7 @@ export default {
         taskTitle: 'Task Title',
         code: 'Code',
         assignees: 'Assignees',
+        aggregateStatus: 'Aggregate status',
         viewDetails: 'View details',
         logTime: 'Log Time',
         archive: 'Archive',

@@ -75,10 +75,11 @@ describe('coklu atamada roster', () => {
         // 3 completed + 2 in progress → In Progress. Metin badge'lerde
         // de gectigi icin ROZETE bakilir: temsilcinin 'completed'
         // durumu DEGIL, aggregate deger gosterilmeli.
-        const tags = [...container.querySelectorAll('.ant-tag')]
+        // Rozet artik i18n etiketli ortak lq-tag (.tdp-tag).
+        const tags = [...container.querySelectorAll('.tdp-tag')]
             .map((t) => t.textContent)
-        expect(tags).toContain('In Progress')
-        expect(tags).not.toContain('Completed')
+        expect(tags).toContain('in progress')
+        expect(tags).not.toContain('completed')
     })
 })
 

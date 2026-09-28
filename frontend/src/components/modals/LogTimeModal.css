@@ -1,11 +1,10 @@
 /**
- * Log Time Modal Styles - Jira Tempo tarzı (Redesigned)
+ * Log Time Modal Styles - Hermes Liquid (cam sayfa; renkler token)
  */
 
 .log-time-modal .ant-modal-content {
-    background: var(--c-surface-2);
     border: 1px solid var(--border-default);
-    border-radius: 8px;
+    border-radius: 26px;
     padding: 0;
 }
 
@@ -35,8 +34,8 @@
 .log-time-form .ant-select-selector,
 .log-time-form .ant-picker,
 .log-time-form .ant-input-number {
-    background: var(--c-chip) !important;
-    border-color: var(--c-border-strong) !important;
+    background: var(--h-bg-hover) !important;
+    border-color: var(--h-border-default) !important;
     color: var(--text-primary) !important;
 }
 
@@ -65,7 +64,7 @@
 /* Sprint 7: `.issue-search-input` kaldirildi — JSX'te kullanilmiyordu. */
 
 .field-required {
-    color: #ff7875;
+    color: var(--h-danger);
     font-size: 12px;
     margin-top: 4px;
 }
@@ -76,7 +75,7 @@
     overflow-y: auto;
     border: 1px solid var(--border-default);
     border-radius: 6px;
-    background: var(--c-chip);
+    background: var(--h-ghost-bg);
 }
 
 .issue-item {
@@ -95,7 +94,7 @@
 }
 
 .issue-item:hover {
-    background: var(--c-border-strong);
+    background: var(--h-ghost-border);
 }
 
 .issue-name {
@@ -106,7 +105,7 @@
 
 .issue-key {
     font-size: 12px;
-    color: #579dff;
+    color: var(--h-brand);
 }
 
 .issue-empty {
@@ -141,7 +140,7 @@
 
 .selected-issue-key {
     font-size: 13px;
-    color: #579dff;
+    color: var(--h-brand);
     margin-left: auto;
 }
 
@@ -159,7 +158,7 @@
     right: 0;
     top: 0;
     font-size: 12px;
-    color: #579dff;
+    color: var(--h-brand);
     cursor: pointer;
 }
 
@@ -170,7 +169,7 @@
 /* Show Hidden Fields */
 .show-hidden-fields {
     font-size: 13px;
-    color: #579dff;
+    color: var(--h-brand);
     cursor: pointer;
     margin-top: 8px;
     margin-bottom: 16px;
@@ -203,7 +202,7 @@
 }
 
 .action-buttons .ant-btn-primary {
-    background: #4a7cff;
+    background: var(--h-brand);
 }
 
 /* ==========================================================================

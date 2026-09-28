@@ -17,8 +17,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-    Badge, Button, Card, Col, Descriptions, Empty, Form, Input,
-    InputNumber, Modal, Row, Select, Space, Statistic, Table,
+    Button, Card, Descriptions, Empty, Form, Input,
+    InputNumber, Modal, Select, Space, Table,
     Tag, Typography, message,
 } from 'antd'
 import {
@@ -32,6 +32,7 @@ import {
 } from '@ant-design/icons'
 
 import AppShell from '../../components/layout/AppShell'
+import { CountUp, GlassCard, PageHero } from '../../components/liquid'
 import { platformService } from '../../api/platformApi'
 import SupportRoutingTab from './SupportRoutingTab'
 import { usePlatformAuthStore } from '../../stores/platformAuthStore'
@@ -42,17 +43,20 @@ const { Text } = Typography
 
 /** Durum → renk + METIN. Renk TEK BASINA anlam tasimaz (erisilebilirlik). */
 const STATUS_TONE = {
-    active: 'success',
-    provisioning: 'processing',
-    grace: 'warning',
-    suspended: 'error',
-    deprovisioning: 'warning',
-    archived: 'default',
-    failed: 'error',
+    active: 'ok',
+    provisioning: 'info',
+    grace: 'warn',
+    suspended: 'bad',
+    deprovisioning: 'warn',
+    failed: 'bad',
 }
 
 function TenantStatus({ status }) {
-    return <Badge status={STATUS_TONE[status] || 'default'} text={status} />
+    return (
+        <span className={`lq-tag lq-tag--${STATUS_TONE[status] || 'muted'}`}>
+            {status}
+        </span>
+    )
 }
 
 // =============================================================================
@@ -73,26 +77,22 @@ function OverviewTab() {
     if (!data) return <Card loading />
 
     const byStatus = data.tenants?.by_status || {}
+    const kpis = [
+        { key: 'total', label: t('platform.tenants'), value: data.tenants?.total ?? 0 },
+        { key: 'active', label: t('common.active'), value: byStatus.active ?? 0 },
+        { key: 'suspended', label: t('platform.suspended'), value: byStatus.suspended ?? 0 },
+        { key: 'sessions', label: t('platform.activeSessions'), value: data.support_sessions_active ?? 0 },
+    ]
     return (
-        <Row gutter={[16, 16]}>
-            <Col xs={12} md={6}>
-                <Card><Statistic title={t('platform.tenants')} value={data.tenants?.total ?? 0} /></Card>
-            </Col>
-            <Col xs={12} md={6}>
-                <Card><Statistic title={t('common.active')} value={byStatus.active ?? 0} /></Card>
-            </Col>
-            <Col xs={12} md={6}>
-                <Card><Statistic title={t('platform.suspended')} value={byStatus.suspended ?? 0} /></Card>
-            </Col>
-            <Col xs={12} md={6}>
-                <Card>
-                    <Statistic
-                        title={t('platform.activeSessions')}
-                        value={data.support_sessions_active ?? 0}
-                    />
-                </Card>
-            </Col>
-        </Row>
+        <div className="lq-kpis lq-enter" role="group" aria-label={t('platform.overview')}>
+            {kpis.map((k) => (
+                <GlassCard key={k.key} className="lq-kpi">
+                    <span className="lq-kpi__dash" aria-hidden="true" />
+                    <span className="lq-kpi__value"><CountUp value={k.value} /></span>
+                    <span className="lq-kpi__label">{k.label}</span>
+                </GlassCard>
+            ))}
+        </div>
     )
 }
 
@@ -180,13 +180,15 @@ function TenantsTab({ onSupportStarted }) {
                             onClick={() => setCreating(true)}>{t('platform.newTenant')}</Button>
                 )}
             </Space>
-            <Table
-                rowKey="id" columns={columns} dataSource={rows}
-                loading={loading} size="middle"
-                // Genis tablo mobilde SAYFAYI degil KENDINI kaydirir.
-                scroll={{ x: 'max-content' }}
-                locale={{ emptyText: <Empty description={t('platform.noTenants')} /> }}
-            />
+            <GlassCard className="lq-card--flush lq-enter">
+                <Table
+                    rowKey="id" columns={columns} dataSource={rows}
+                    loading={loading} size="middle"
+                    // Genis tablo mobilde SAYFAYI degil KENDINI kaydirir.
+                    scroll={{ x: 'max-content' }}
+                    locale={{ emptyText: <Empty description={t('platform.noTenants')} /> }}
+                />
+            </GlassCard>
             <SuspendModal
                 tenant={target} onClose={() => setTarget(null)}
                 onDone={() => { setTarget(null); reload() }}
@@ -621,17 +623,19 @@ function AuditTab() {
     }, [t])
 
     return (
-        <Table
-            rowKey="id" loading={loading} dataSource={rows} size="small"
-            scroll={{ x: 'max-content' }}
-            columns={[
-                { title: t('platform.when'), dataIndex: 'occurred_at' },
-                { title: t('platform.action'), dataIndex: 'action' },
-                { title: t('platform.result'), dataIndex: 'result' },
-                { title: t('platform.reason'), dataIndex: 'reason', responsive: ['md'] },
-            ]}
-            locale={{ emptyText: <Empty description={t('platform.noAuditEvents')} /> }}
-        />
+        <GlassCard className="lq-card--flush lq-enter">
+            <Table
+                rowKey="id" loading={loading} dataSource={rows} size="small"
+                scroll={{ x: 'max-content' }}
+                columns={[
+                    { title: t('platform.when'), dataIndex: 'occurred_at' },
+                    { title: t('platform.action'), dataIndex: 'action' },
+                    { title: t('platform.result'), dataIndex: 'result' },
+                    { title: t('platform.reason'), dataIndex: 'reason', responsive: ['md'] },
+                ]}
+                locale={{ emptyText: <Empty description={t('platform.noAuditEvents')} /> }}
+            />
+        </GlassCard>
     )
 }
 
@@ -732,6 +736,11 @@ export default function PlatformConsole() {
                 )}
                 contentKey={section}
             >
+                <PageHero
+                    className="lq-enter"
+                    title={t(SECTIONS.find((x) => x.key === section)?.labelKey || 'platform.overview')}
+                    subtitle={admin?.full_name || admin?.email}
+                />
                 {body}
             </AppShell>
         </>

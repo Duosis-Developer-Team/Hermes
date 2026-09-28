@@ -267,3 +267,21 @@
     font-variant-numeric: tabular-nums;
 }
 .dashboard-unit { font-size: 12px; color: var(--h-text-muted); }
+
+/* --- Cam kart icindeki antd tablolari: zemin kartin kendisi ------------- */
+:root .lq-card .ant-table,
+:root .lq-card .ant-table-container,
+:root .lq-card .ant-table-thead > tr > th,
+:root .lq-card .ant-table-tbody > tr > td { background: transparent; }
+:root .lq-card .ant-table-thead > tr > th {
+  color: var(--h-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom-color: var(--h-border-subtle);
+}
+:root .lq-card .ant-table-thead > tr > th::before { display: none; }
+:root .lq-card .ant-table-tbody > tr > td { border-bottom-color: var(--h-border-subtle); }
+:root .lq-card .ant-table-tbody > tr:hover > td { background: color-mix(in srgb, var(--h-brand) 5%, transparent); }
+:root .lq-card .ant-table-tbody > tr:last-child > td { border-bottom: none; }

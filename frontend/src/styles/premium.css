@@ -472,28 +472,33 @@
 :root .users-page .ant-tabs-tab { padding: 8px 2px; }
 :root .users-page .ant-tabs-ink-bar { background: var(--h-grad-primary); height: 2px; }
 
-/* Modal kabugu: arka planla uyumlu koyu yuzey + koyu-mavi detaylar. */
+/* Modal kabugu (Hermes Liquid): buyuk yaricapli cam sayfa, ust kenarda
+   ince isik cizgisi; giris ada damlasi gibi yaylanir (Electron'da da ayni). */
 :root .ant-modal .ant-modal-content {
-  border-radius: 16px;
+  border-radius: 26px;
   overflow: hidden;
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--h-brand) 6%, transparent),
-      transparent 180px
-    ),
-    var(--h-surface-overlay);
-  border: 1px solid color-mix(in srgb, var(--h-brand) 18%, var(--h-border-subtle));
-  box-shadow:
-    0 24px 64px rgba(0, 0, 0, 0.45),
-    0 0 0 1px color-mix(in srgb, var(--h-brand) 8%, transparent);
+  background: var(--h-surface-overlay);
+  border: 1px solid var(--h-glass-edge);
+  box-shadow: var(--h-shadow-modal), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
-:root .ant-modal .ant-modal-content::before {
-  content: '';
-  display: block;
-  height: 2px;
-  background: var(--h-grad-primary);
-  opacity: 0.85;
+:root .ant-modal.ant-zoom-appear,
+:root .ant-modal.ant-zoom-enter {
+  animation-name: lq-sheet-in;
+  animation-duration: 460ms;
+  animation-timing-function: var(--h-ease-spring);
+}
+:root .ant-modal.ant-zoom-leave {
+  animation-name: lq-sheet-out;
+  animation-duration: 180ms;
+  animation-timing-function: var(--h-ease-standard);
+}
+@keyframes lq-sheet-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes lq-sheet-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(8px) scale(0.97); }
 }
 :root .ant-modal .ant-modal-header { border-bottom-color: transparent; padding-bottom: var(--h-space-2); }
 :root .ant-modal .ant-modal-footer {
