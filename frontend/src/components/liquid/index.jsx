@@ -59,7 +59,8 @@ export function CountUp({ value, decimals = 0, duration = 900, format }) {
         const start = performance.now()
         const from = 0
         const tick = (now) => {
-            const k = Math.min(1, (now - start) / duration)
+            // rAF zaman damgasi baslangictan once olabilir: negatif ilerleme (-0, -47) olmaz.
+            const k = Math.min(1, Math.max(0, (now - start) / duration))
             const eased = 1 - Math.pow(1 - k, 3)
             setShown(from + (target - from) * eased)
             if (k < 1) frame = requestAnimationFrame(tick)
