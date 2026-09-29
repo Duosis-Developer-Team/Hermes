@@ -26,7 +26,10 @@ import {
     contractToForm, contractToPayload,
 } from '../../features/admin/shared/contractFields'
 import { useT } from '../../i18n'
-import { ModalHead } from '../../components/liquid'
+import { BrandLogos, ModalHead } from '../../components/liquid'
+import { queryKeys } from '../../query/queryKeys'
+import { useCustomerLogoStore } from '../../stores/customerLogoStore'
+import CustomerLogoField, { EMPTY_LOGO_DRAFT } from './CustomerLogoField'
 import { customerSelectRender } from '../../components/common/customerSelect'
 
 // Formda GERCEKTEN olan alanlar: API kaydindaki id/created_at gibi
@@ -72,23 +75,54 @@ function ProjectsPage() {
     })
     const billableSummary = billableSummaryResponse?.data || {}
 
+    // Proje logosu (CTO 29.09): taslak formla birlikte kaydedilir; logo
+    // hatasi proje kaydini geri almaz (musteri formuyla ayni desen).
+    const [editingRecord, setEditingRecord] = useState(null)
+    const [logoDraft, setLogoDraft] = useState(EMPTY_LOGO_DRAFT)
+    const setProjectLogo = useCustomerLogoStore((s) => s.setProject)
+    const applyLogo = async (projectId) => {
+        try {
+            if (logoDraft.file) {
+                const res = await projectService.uploadLogo(projectId, logoDraft.file)
+                setProjectLogo(projectId, res?.logo_etag || null)
+            } else if (logoDraft.remove) {
+                await projectService.deleteLogo(projectId)
+                setProjectLogo(projectId, null)
+            }
+        } catch (err) {
+            message.warning(t('admin.logoFailedProject', { msg: normalizeApiError(err).message }))
+        }
+    }
+    const refreshProjects = () => {
+        queryClient.invalidateQueries({ queryKey: ['projects'] })
+        queryClient.invalidateQueries({ queryKey: queryKeys.projects.all })
+    }
+
     // Mutations
     const createMutation = useMutation({
-        mutationFn: projectService.create,
+        mutationFn: async (data) => {
+            const created = await projectService.create(data)
+            if (created?.id) await applyLogo(created.id)
+            return created
+        },
         onSuccess: () => {
             message.success(t('admin.entityCreated', { entity: t('entity.project') }))
             handleCloseModal()
-            queryClient.invalidateQueries({ queryKey: ['projects'] })
+            refreshProjects()
         },
         onError: (err) => message.error(normalizeApiError(err).message),
     })
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }) => projectService.update(id, data),
+        mutationFn: async ({ id, data }) => {
+            const updated = await projectService.update(id, data)
+            await applyLogo(id)
+            return updated
+        },
         onSuccess: () => {
             message.success(t('admin.entityUpdated', { entity: t('entity.project') }))
             handleCloseModal()
-            queryClient.invalidateQueries({ queryKey: ['projects'] })
+            refreshProjects()
         },
         onError: (err) => message.error(normalizeApiError(err).message),
     })
@@ -151,6 +185,8 @@ function ProjectsPage() {
     }
 
     const handleOpenModal = (record = null) => {
+        setLogoDraft(EMPTY_LOGO_DRAFT)
+        setEditingRecord(record)
         if (record) {
             setEditingId(record.id)
             // resetAndFill: Edit A → Edit B gecisinde A'nin degeri TASINMAZ
@@ -170,6 +206,8 @@ function ProjectsPage() {
     const handleCloseModal = () => {
         setModalOpen(false)
         setEditingId(null)
+        setEditingRecord(null)
+        setLogoDraft(EMPTY_LOGO_DRAFT)
         form.resetFields()
     }
 
@@ -206,6 +244,19 @@ function ProjectsPage() {
             dataIndex: 'name',
             key: 'name',
             sorter: (a, b) => a.name.localeCompare(b.name),
+            // Musteri + proje logolari (yoksa musteri bas harfi) + ad.
+            render: (name, record) => (
+                <span className="admin-name">
+                    <BrandLogos
+                        customerId={record.customer_id}
+                        customerName={record.customer_name}
+                        projectId={record.has_logo ? record.id : undefined}
+                        projectName={name}
+                        size={32}
+                    />
+                    <span className="admin-name__text"><b>{name}</b></span>
+                </span>
+            ),
         },
         {
             title: t('entity.customer'),
@@ -359,6 +410,17 @@ function ProjectsPage() {
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <Form.Item name="name" label={t('admin.projectNameLabel')} rules={[{ required: true, message: t('admin.nameRequired', { entity: t('entity.project') }) }]}>
                         <Input placeholder={t('admin.projectNameExample')} />
+                    </Form.Item>
+                    <Form.Item noStyle shouldUpdate={(a, b) => a.name !== b.name}>
+                        {({ getFieldValue }) => (
+                            <CustomerLogoField
+                                kind="project"
+                                record={editingRecord}
+                                name={getFieldValue('name')}
+                                draft={logoDraft}
+                                onChange={setLogoDraft}
+                            />
+                        )}
                     </Form.Item>
                     <Form.Item name="customer_id" label={t('admin.customerOptional')}>
                         <Select

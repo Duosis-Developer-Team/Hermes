@@ -511,6 +511,7 @@ export default {
         logoTooLarge: 'Logo en fazla 256 KB olabilir.',
         logoBadType: 'Yalnızca PNG, JPG veya WEBP yüklenebilir.',
         logoFailed: 'Müşteri kaydedildi ama logo güncellenemedi: {msg}',
+        logoFailedProject: 'Proje kaydedildi ama logo güncellenemedi: {msg}',
         update: 'Güncelle',
         userUpdated: 'Kullanıcı güncellendi',
         userCreated: 'Kullanıcı oluşturuldu',

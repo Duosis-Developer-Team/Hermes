@@ -18,6 +18,7 @@ import dayjs from 'dayjs'
 import { calendarDays, dueBucketOf, tasksByDay } from '../model/viewGroups'
 import { useT } from '../../../i18n'
 import './tasksViews.css'
+import { BrandLogos } from '../../../components/liquid'
 
 const hm = (iso) => dayjs(iso).format('HH:mm')
 
@@ -85,6 +86,16 @@ function TasksCalendarView({
                                                 data-due-tone={tone}
                                                 onClick={() => task && onOpenPanel?.(task)}
                                             >
+                                                {task && (
+                                                    <BrandLogos
+                                                        customerId={task.customer_id}
+                                                        customerName={task.customer_name}
+                                                        projectId={task.project_id}
+                                                        projectName={task.project_name}
+                                                        size={20}
+                                                        className="tv-cal__logo"
+                                                    />
+                                                )}
                                                 <span className="tv-cal__key">{task?.task_code}</span>
                                                 <span className="tv-cal__label">{item.title}</span>
                                             </button>

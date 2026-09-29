@@ -517,6 +517,7 @@ export default {
         logoTooLarge: 'The logo can be at most 256 KB.',
         logoBadType: 'Only PNG, JPG or WEBP can be uploaded.',
         logoFailed: 'Customer saved, but the logo could not be updated: {msg}',
+        logoFailedProject: 'Project saved, but the logo could not be updated: {msg}',
         update: 'Update',
         userUpdated: 'User updated',
         userCreated: 'User created',

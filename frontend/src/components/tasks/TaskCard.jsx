@@ -39,7 +39,7 @@ import ArchivedTaskMeta from '../../features/tasks/components/ArchivedTaskMeta'
 import { aggregateStatus } from '../../features/tasks/model/grouping'
 import './TaskCard.css'
 import { useT } from '../../i18n'
-import { Avatar, CustomerLogo } from '../liquid'
+import { Avatar, BrandLogos } from '../liquid'
 
 function userLabel(id, userMap) {
     if (!id) return '—'
@@ -222,7 +222,14 @@ function TaskCard({
             <div className="task-card-body">
                 {/* Sol: musteri marka logosu (CTO 29.09), sagda baslik. */}
                 <div className="task-card-head">
-                    <CustomerLogo id={task.customer_id} name={task.customer_name || task.project_name} size={34} className="task-card-logo" />
+                    <BrandLogos
+                        customerId={task.customer_id}
+                        customerName={task.customer_name}
+                        projectId={task.project_id}
+                        projectName={task.project_name}
+                        size={44}
+                        className="task-card-logo"
+                    />
                     <button
                         type="button"
                         className="task-card-title task-card-open"

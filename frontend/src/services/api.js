@@ -131,6 +131,18 @@ export const projectService = {
         await coreApi.delete(`/api/v1/core/projects/${id}`)
     },
 
+    /** Proje logosu (PNG/JPEG/WEBP, en fazla 256 KB) → { has_logo, logo_etag }. */
+    uploadLogo: async (id, file) => {
+        const body = new FormData()
+        body.append('file', file)
+        const response = await coreApi.put(`/api/v1/core/projects/${id}/logo`, body)
+        return response.data
+    },
+
+    deleteLogo: async (id) => {
+        await coreApi.delete(`/api/v1/core/projects/${id}/logo`)
+    },
+
     // PM rework P2.1 (B2): proje kapsamli uyelik — yanit
     // { project_id, can_manage, can_assign_lead, items[] }.
     listMembers: async (projectId) => {

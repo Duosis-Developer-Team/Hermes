@@ -197,7 +197,7 @@
     border-radius: 4px;
 }
 
-/* Musteri logosu (CTO 29.09): kartin solunda sabit karo, icerik sagda. */
-.worklog-card { display: grid; grid-template-columns: 26px minmax(0, 1fr); column-gap: 8px; align-items: start; }
-.worklog-card-logo { margin-top: 1px; box-shadow: inset 0 0 0 1px var(--h-border-subtle); }
+/* Marka logolari (CTO 29.09): ust satirda solda, sure sagda. */
+.worklog-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+.worklog-card-logo.lq-clogo { box-shadow: inset 0 0 0 1px var(--h-border-subtle); }
 .worklog-card-main { min-width: 0; }

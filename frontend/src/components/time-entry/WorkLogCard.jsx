@@ -13,7 +13,7 @@ import { EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons'
 import { formatHours } from '../../features/time-entry/model/timeEntry'
 import './WorkLogCard.css'
 import { useT } from '../../i18n'
-import { CustomerLogo } from '../liquid'
+import { BrandLogos } from '../liquid'
 
 
 function WorkLogCard({
@@ -21,6 +21,7 @@ function WorkLogCard({
 }) {
     const t = useT()
     const {
+        project_id,
         project_name,
         customer_id,
         customer_name,
@@ -54,8 +55,19 @@ function WorkLogCard({
                 onSelect?.(workLog.id)
             }}
         >
-            {/* Sol: musteri marka logosu (yoksa bas harf karosu). */}
-            <CustomerLogo id={customer_id} name={customer_name || project_name} size={26} className="worklog-card-logo" />
+            {/* Ust satir (CTO 29.09): musteri + proje logolari solda buyuk,
+                sure sagda; baslik altta tam genislik (dar gun kolonu). */}
+            <div className="worklog-card-top" aria-hidden="true">
+                <BrandLogos
+                    customerId={customer_id}
+                    customerName={customer_name}
+                    projectId={project_id}
+                    projectName={project_name}
+                    size={34}
+                    className="worklog-card-logo"
+                />
+                <span className="worklog-card-duration">{formatHours(duration_hours)}</span>
+            </div>
             <div className="worklog-card-main">
                 <button
                     type="button"
@@ -75,7 +87,6 @@ function WorkLogCard({
                     }}
                 >
                     <span className="worklog-card-name">{title}</span>
-                    <span className="worklog-card-duration">{formatHours(duration_hours)}</span>
                 </button>
 
                 {sub && <div className="worklog-card-description">{sub}</div>}

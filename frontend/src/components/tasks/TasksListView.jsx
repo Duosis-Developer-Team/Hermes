@@ -33,6 +33,7 @@ import { groupIntoLogicalItems, userLabel } from '../../features/tasks/model/gro
 import { AssignmentRoster } from '../../features/tasks/components/AssigneeStatusBadge'
 import { typeMeta } from '../../utils/workItemType'
 import { useT } from '../../i18n'
+import { BrandLogos } from '../liquid'
 
 const PRIORITY_RANK = { low: 0, medium: 1, high: 2, urgent: 3 }
 
@@ -175,11 +176,22 @@ function TasksListView({
                     style={{ cursor: onOpenPanel ? 'pointer' : 'default' }}
                     title={t('taskUi.viewDetails')}
                 >
-                    <div style={{ color: 'var(--c-text-strong)', fontWeight: 600 }}>{val}</div>
-                    <div style={{ color: 'var(--c-text-muted)', fontSize: 12, marginTop: 2 }}>
-                        {row.customer_name || '—'}
-                        {row.project_name ? ` · ${row.project_name}` : ''}
-                        {row.sub_project_name ? ` · ${row.sub_project_name}` : ''}
+                    <div className="tasks-list-title">
+                        <BrandLogos
+                            customerId={row.customer_id}
+                            customerName={row.customer_name}
+                            projectId={row.project_id}
+                            projectName={row.project_name}
+                            size={34}
+                        />
+                        <div className="tasks-list-title__text">
+                            <div style={{ color: 'var(--c-text-strong)', fontWeight: 600 }}>{val}</div>
+                            <div style={{ color: 'var(--c-text-muted)', fontSize: 12, marginTop: 2 }}>
+                                {row.customer_name || '—'}
+                                {row.project_name ? ` · ${row.project_name}` : ''}
+                                {row.sub_project_name ? ` · ${row.sub_project_name}` : ''}
+                            </div>
+                        </div>
                     </div>
                 </div>
             ),

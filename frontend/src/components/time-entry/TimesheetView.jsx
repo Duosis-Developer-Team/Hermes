@@ -14,7 +14,7 @@ import { Table } from 'antd'
 import dayjs from 'dayjs'
 import './TimesheetView.css'
 import { useT } from '../../i18n'
-import { Avatar } from '../liquid'
+import { BrandLogos } from '../liquid'
 
 // 0.75 → "45m", 2.75 → "2h 45m", 2.0 → "2h"
 function formatDuration(decimal) {
@@ -96,7 +96,13 @@ function TimesheetView({
             width: 250,
             render: (text, record) => (
                 <div className="timesheet-issue-cell">
-                    <Avatar id={record.project_id} name={text} size={28} />
+                    <BrandLogos
+                        customerId={record.customer_id}
+                        customerName={record.customer_name}
+                        projectId={record.project_id}
+                        projectName={text}
+                        size={34}
+                    />
                     <span className="timesheet-issue-text">
                         <span className="timesheet-issue-name">{text}</span>
                         {record.customer_name && <small>{record.customer_name}</small>}

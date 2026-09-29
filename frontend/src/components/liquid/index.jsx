@@ -10,7 +10,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { userPhotoUrl, useUserPhotoStore } from '../../stores/userPhotoStore'
-import { customerLogoUrl, useCustomerLogoStore } from '../../stores/customerLogoStore'
+import { customerLogoUrl, projectLogoUrl, useCustomerLogoStore } from '../../stores/customerLogoStore'
 
 const reducedMotion = () =>
     typeof window !== 'undefined'
@@ -176,24 +176,76 @@ export function Avatar({ id, name, size = 28, title, className = '' }) {
 export function CustomerLogo({ id, name, size = 28, etag: etagProp, className = '', title }) {
     const stored = useCustomerLogoStore((s) => (id ? s.etags[id] : undefined))
     const etag = etagProp === undefined ? stored : etagProp
-    const [failed, setFailed] = useState(false)
-    const showLogo = id && etag && !failed
+    const [failed, setFailed] = useState(null)
+    if (id && etag && failed !== etag) {
+        return (
+            <span className={`lq-brand ${className}`} title={title}>
+                <LogoTile src={customerLogoUrl(id, etag)} size={size} onFail={() => setFailed(etag)} />
+            </span>
+        )
+    }
     return (
         <span
-            className={`lq-clogo${showLogo ? ' lq-clogo--img' : ''} ${className}`}
+            className={`lq-clogo ${className}`}
             style={{
                 width: size,
                 height: size,
                 borderRadius: Math.round(size * 0.28),
                 fontSize: Math.round(size * 0.44),
-                background: showLogo ? undefined : avatarTone(id || name),
+                background: avatarTone(id || name),
             }}
             title={title}
             aria-hidden="true"
         >
-            {showLogo ? (
-                <img src={customerLogoUrl(id, etag)} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
-            ) : (name || '?').trim().charAt(0).toLocaleUpperCase()}
+            {(name || '?').trim().charAt(0).toLocaleUpperCase()}
+        </span>
+    )
+}
+
+// Yatay (yazi) logolar kare karoda okunmaz: karo gorselin oranina gore
+// en fazla bu kat genisler (yukseklik sabit).
+const LOGO_MAX_RATIO = 2.2
+
+/** Tek logo karosu (gorsel); yuklenemezse `onFail`. Oran yuklenince olculur. */
+function LogoTile({ src, size, onFail }) {
+    const [ratio, setRatio] = useState(1)
+    const onLoad = (e) => {
+        const { naturalWidth: w, naturalHeight: h } = e.currentTarget
+        if (w > 0 && h > 0) setRatio(Math.min(LOGO_MAX_RATIO, Math.max(1, w / h)))
+    }
+    return (
+        <span
+            className={`lq-clogo lq-clogo--img${ratio > 1.15 ? ' lq-clogo--wide' : ''}`}
+            style={{ width: Math.round(size * ratio), height: size, borderRadius: Math.round(size * 0.28) }}
+            aria-hidden="true"
+        >
+            <img src={src} alt="" loading="lazy" decoding="async" onLoad={onLoad} onError={onFail} />
+        </span>
+    )
+}
+
+/**
+ * Marka logolari (CTO 29.09): musteri + proje logosu ikisi de varsa YAN
+ * YANA; yalniz biri varsa o; hicbiri yoksa (ya da gorseller yuklenemezse)
+ * `fallback` (verilmezse musteri bas harf karosu). Etag'ler depodan
+ * (MainLayout doldurur). Kirik gorsel ikonu asla gosterilmez.
+ */
+export function BrandLogos({
+    customerId, customerName, projectId, projectName, size = 36, fallback, className = '',
+}) {
+    const cStored = useCustomerLogoStore((s) => (customerId ? s.etags[customerId] : undefined))
+    const pStored = useCustomerLogoStore((s) => (projectId ? s.projects[projectId] : undefined))
+    const [failed, setFailed] = useState({})
+    const cEtag = cStored && failed.c !== cStored ? cStored : undefined
+    const pEtag = pStored && failed.p !== pStored ? pStored : undefined
+    if (!cEtag && !pEtag) {
+        if (fallback !== undefined) return fallback
+        return <CustomerLogo id={customerId} name={customerName || projectName} size={size} etag={null} className={className} />
+    }
+    return (
+        <span className={`lq-brand ${className}`} data-logos={cEtag && pEtag ? 'both' : cEtag ? 'customer' : 'project'}>
+            {cEtag && <LogoTile src={customerLogoUrl(customerId, cEtag)} size={size} onFail={() => setFailed((f) => ({ ...f, c: cEtag }))} />}
+            {pEtag && <LogoTile src={projectLogoUrl(projectId, pEtag)} size={size} onFail={() => setFailed((f) => ({ ...f, p: pEtag }))} />}
         </span>
     )
 }
@@ -235,10 +287,10 @@ export function BarList({ items = [], tone = 'blue', format = (v) => v, emptyTex
  * `title` olarak verilir (aria-labelledby bu basliga baglanir).
  * `tone`: 'blue' | 'violet' | 'red' | 'green' | 'amber' | 'ink'.
  */
-export function ModalHead({ icon, title, subtitle, tone = 'blue' }) {
+export function ModalHead({ icon, title, subtitle, tone = 'blue', media }) {
     return (
         <div className="lq-mh">
-            {icon && <span className={`lq-mico lq-mico--${tone}`} aria-hidden="true">{icon}</span>}
+            {media ?? (icon && <span className={`lq-mico lq-mico--${tone}`} aria-hidden="true">{icon}</span>)}
             <div className="lq-mh__text">
                 <span className="lq-mh__title">{title}</span>
                 {/* Alt satir ek bilgidir: diyalog ADI yalniz baslik kalsin

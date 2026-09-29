@@ -12,7 +12,7 @@ import { Button, Modal } from 'antd'
 import { ClockCircleOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 
-import { ModalHead } from '../liquid'
+import { BrandLogos, ModalHead } from '../liquid'
 import { formatHours } from '../../features/time-entry/model/timeEntry'
 import { useT } from '../../i18n'
 
@@ -43,6 +43,17 @@ function WorkLogReviewModal({ log, onClose, onEdit, onDelete }) {
                 <ModalHead
                     icon={<ClockCircleOutlined />}
                     tone="green"
+                    /* Sol ust: musteri + proje logosu; hic yoksa saat ikonu. */
+                    media={(
+                        <BrandLogos
+                            customerId={log.customer_id}
+                            customerName={log.customer_name}
+                            projectId={log.project_id}
+                            projectName={log.project_name}
+                            size={48}
+                            fallback={<span className="lq-mico lq-mico--green" aria-hidden="true"><ClockCircleOutlined /></span>}
+                        />
+                    )}
                     title={title}
                     subtitle={`${dayjs(log.date_worked).format('dddd, D MMMM YYYY')} · ${formatHours(log.duration_hours)}`}
                 />

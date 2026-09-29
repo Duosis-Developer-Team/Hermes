@@ -6,6 +6,8 @@
  *      depo aninda guncellenir. Tur/boyut on kontrolu istek atmaz.
  *   2. Kaldir: mevcut logo formla birlikte DELETE edilir.
  *   3. CustomerLogo: etag varsa gorsel (etag'li URL), yoksa bas harf.
+ *   4. BrandLogos: musteri + proje logosu ikisi varsa yan yana, yalniz
+ *      biri varsa o, hicbiri yoksa fallback / bas harf.
  * =============================================================================
  */
 import { describe, expect, it, beforeEach, vi } from 'vitest'
@@ -20,7 +22,7 @@ const customerService = {
 vi.mock('../../services/api', () => ({ customerService }))
 
 const CustomersPage = (await import('../../pages/admin/CustomersPage')).default
-const { CustomerLogo } = await import('../../components/liquid')
+const { BrandLogos, CustomerLogo } = await import('../../components/liquid')
 const { useCustomerLogoStore } = await import('../../stores/customerLogoStore')
 const { makeTestQueryClient } = await import('../utils')
 
@@ -37,7 +39,7 @@ const png = (bytes = 10) => new File([new Uint8Array(bytes)], 'logo.png', { type
 beforeEach(() => {
     vi.clearAllMocks()
     customerService.getAll.mockResolvedValue(CUSTOMERS)
-    useCustomerLogoStore.setState({ etags: {} })
+    useCustomerLogoStore.setState({ etags: {}, projects: {} })
     globalThis.URL.createObjectURL = vi.fn(() => 'blob:preview')
     globalThis.URL.revokeObjectURL = vi.fn()
 })
@@ -109,5 +111,25 @@ describe('Musteri logosu', () => {
         rerender(<CustomerLogo id="y" name="Yapi" />)
         expect(container.querySelector('img')).toBeNull()
         expect(container.textContent).toBe('Y')
+    })
+
+    it('BrandLogos: ikisi yan yana, biri, hicbiri', () => {
+        useCustomerLogoStore.setState({ etags: { c1: 'ce' }, projects: { p1: 'pe' } })
+        const props = { customerName: 'Duosis', projectName: 'Hermes' }
+        const { container, rerender } = render(<BrandLogos {...props} customerId="c1" projectId="p1" />)
+        let imgs = [...container.querySelectorAll('img')].map((i) => i.getAttribute('src'))
+        expect(imgs).toEqual(['/api/v1/core/customers/c1/logo?v=ce', '/api/v1/core/projects/p1/logo?v=pe'])
+        expect(container.querySelector('[data-logos]').dataset.logos).toBe('both')
+        rerender(<BrandLogos {...props} customerId="c1" projectId="p2" />)
+        imgs = [...container.querySelectorAll('img')].map((i) => i.getAttribute('src'))
+        expect(imgs).toEqual(['/api/v1/core/customers/c1/logo?v=ce'])
+        rerender(<BrandLogos {...props} customerId="c9" projectId="p1" />)
+        imgs = [...container.querySelectorAll('img')].map((i) => i.getAttribute('src'))
+        expect(imgs).toEqual(['/api/v1/core/projects/p1/logo?v=pe'])
+        rerender(<BrandLogos {...props} customerId="c9" projectId="p9" />)
+        expect(container.querySelector('img')).toBeNull()
+        expect(container.textContent).toBe('D')
+        rerender(<BrandLogos {...props} customerId="c9" projectId="p9" fallback={<i data-testid="fb" />} />)
+        expect(screen.getByTestId('fb')).toBeInTheDocument()
     })
 })

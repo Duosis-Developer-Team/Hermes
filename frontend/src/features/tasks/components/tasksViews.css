@@ -268,3 +268,9 @@
     font-size: var(--h-font-meta);
     color: var(--h-text-muted);
 }
+
+/* Marka logolari (CTO 29.09): takvim ogesinde ust satirda logo + kod,
+   baslik altta tam genislik (dar gun kolonu). */
+.tv-cal__item:has(.tv-cal__logo) { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 6px; row-gap: 3px; align-items: center; }
+.tv-cal__item:has(.tv-cal__logo) .tv-cal__label { grid-column: 1 / -1; }
+.tv-cal__item .tv-cal__logo { max-width: 100%; overflow: hidden; }

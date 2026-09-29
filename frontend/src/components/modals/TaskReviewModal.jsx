@@ -38,7 +38,7 @@ import DangerConfirmModal from '../common/DangerConfirmModal'
 import { taskService } from '../../services/api'
 import { typeMeta } from '../../utils/workItemType'
 import TaskCommentsThread from '../tasks/TaskCommentsThread'
-import { ModalHead } from '../liquid'
+import { BrandLogos, ModalHead } from '../liquid'
 import './TaskReviewModal.css'
 import { useT } from '../../i18n'
 
@@ -271,6 +271,17 @@ function TaskReviewModal({
                     <ModalHead
                         icon={TYPE_ICON[kind][0]}
                         tone={TYPE_ICON[kind][1]}
+                        /* Sol ust: musteri + proje logosu; hic yoksa tur ikonu. */
+                        media={(
+                            <BrandLogos
+                                customerId={task.customer_id}
+                                customerName={task.customer_name}
+                                projectId={task.project_id}
+                                projectName={task.project_name}
+                                size={48}
+                                fallback={<span className={`lq-mico lq-mico--${TYPE_ICON[kind][1]}`} aria-hidden="true">{TYPE_ICON[kind][0]}</span>}
+                            />
+                        )}
                         title={task.title}
                         subtitle={[task.task_code, task.customer_name, task.project_name].filter(Boolean).join(' · ')}
                     />

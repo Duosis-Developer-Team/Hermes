@@ -1,6 +1,6 @@
 /**
  * =============================================================================
- * HERMES - Musteri formu: marka logosu alani (opsiyonel)
+ * HERMES - Musteri / proje formu: marka logosu alani (opsiyonel)
  * =============================================================================
  * Dosya SECILIR ama hemen yuklenmez: taslak (file / remove) formla birlikte
  * kaydedilir — musteri once olusur/guncellenir, sonra logo PUT/DELETE.
@@ -13,14 +13,16 @@ import { Button, message } from 'antd'
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons'
 
 import { CustomerLogo } from '../../components/liquid'
+import { projectLogoUrl } from '../../stores/customerLogoStore'
 import { useT } from '../../i18n'
 
 export const LOGO_MAX_BYTES = 256 * 1024
 export const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 export const EMPTY_LOGO_DRAFT = { file: null, previewUrl: null, remove: false }
 
-/** draft: { file, previewUrl, remove }; record: duzenlenen musteri (ya da null). */
-function CustomerLogoField({ record, name, draft, onChange }) {
+/** draft: { file, previewUrl, remove }; record: duzenlenen kayit (ya da null);
+ *  kind: 'customer' | 'project' (mevcut logonun adresi). */
+function CustomerLogoField({ record, name, draft, onChange, kind = 'customer' }) {
     const t = useT()
     const inputRef = useRef(null)
 
@@ -43,9 +45,9 @@ function CustomerLogoField({ record, name, draft, onChange }) {
 
     return (
         <div className="customer-logo-field">
-            {draft.previewUrl ? (
+            {draft.previewUrl || (kind === 'project' && hasCurrent) ? (
                 <span className="lq-clogo lq-clogo--img customer-logo-field__preview" aria-hidden="true">
-                    <img src={draft.previewUrl} alt="" />
+                    <img src={draft.previewUrl || projectLogoUrl(record.id, record.logo_etag)} alt="" />
                 </span>
             ) : (
                 <CustomerLogo

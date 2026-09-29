@@ -22,6 +22,7 @@ import TaskAttachmentsTab from './TaskAttachmentsTab'
 import { AssignmentRoster } from '../../features/tasks/components/AssigneeStatusBadge'
 import { aggregateStatus } from '../../features/tasks/model/grouping'
 import { useT } from '../../i18n'
+import { BrandLogos } from '../liquid'
 
 // Ton → ortak lq-tag paleti; metin i18n'den (kartla ayni anahtarlar).
 const PRIORITY_TONE = { medium: 'info', high: 'warn', urgent: 'bad' }
@@ -152,6 +153,14 @@ function TaskDetailPanel({
     return (
         <aside className="task-detail-panel" aria-label={t('taskUi.taskDetails')}>
             <div className="tdp-head">
+                <BrandLogos
+                    customerId={task.customer_id}
+                    customerName={task.customer_name}
+                    projectId={task.project_id}
+                    projectName={task.project_name}
+                    size={44}
+                    className="tdp-logo"
+                />
                 <div className="tdp-head-titles">
                     {task.task_code && (
                         <span className="tdp-code">{task.task_code}</span>
