@@ -8,6 +8,7 @@ from .customer import Customer
 from .customer_logo import CUSTOMER_LOGO_TABLES, CustomerLogo
 from .work_type import WorkType
 from .project import Project
+from .project_logo import PROJECT_LOGO_TABLES, ProjectLogo
 from .work_log import WorkLog
 from .activity_type import ActivityType
 from .platform import Platform
@@ -149,4 +150,7 @@ __all__ = [
     # Musteri logosu (0014)
     "CustomerLogo",
     "CUSTOMER_LOGO_TABLES",
+    # Proje logosu (0015)
+    "ProjectLogo",
+    "PROJECT_LOGO_TABLES",
 ]

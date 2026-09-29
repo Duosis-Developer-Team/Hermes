@@ -1,7 +1,8 @@
 # =============================================================================
 # HERMES - Musteri logosu servisi
 # =============================================================================
-# Kurallar (tek kapi burasi; DB CHECK'leri ikinci savunma hattidir):
+# Kurallar (tek kapi: services/logo_image — proje logolariyla ORTAK; DB
+# CHECK'leri ikinci savunma hattidir):
 #   - Boyut: 1 bayt .. CUSTOMER_LOGO_MAX_BYTES (256 KB).
 #   - Tip: yalnizca PNG / JPEG / WEBP; SVG ve digerleri REDDEDILIR.
 #   - Beyan edilen Content-Type ile sihirli baytlarin tespit ettigi tip
@@ -19,48 +20,14 @@ from sqlalchemy.orm import Session
 from shared.exceptions import NotFoundError
 
 from ..models.customer import Customer
-from ..models.customer_logo import (
-    CUSTOMER_LOGO_CONTENT_TYPES, CUSTOMER_LOGO_MAX_BYTES, CustomerLogo,
-)
+from ..models.customer_logo import CustomerLogo
 from ..tenant_db import SESSION_TENANT_KEY
-
-
-class LogoTooLarge(Exception):
-    """Logo boyut tavanini asiyor."""
-
-
-class LogoRejected(Exception):
-    """Logo tipi desteklenmiyor veya icerik beyanla eslesmiyor."""
-
-
-def normalize_content_type(value: Optional[str]) -> str:
-    """'image/PNG; charset=x' -> 'image/png'. Bos -> ''."""
-    return (value or "").split(";", 1)[0].strip().lower()
-
-
-def sniff(data: bytes) -> Optional[str]:
-    """Sihirli baytlardan tip tespiti; taninmayan icerik -> None."""
-    if data.startswith(b"\x89PNG\r\n\x1a\n"):
-        return "image/png"
-    if data.startswith(b"\xff\xd8\xff"):
-        return "image/jpeg"
-    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
-        return "image/webp"
-    return None
-
-
-def validate(data: bytes, declared_type: Optional[str]) -> str:
-    """Gecerliyse normalize tipi dondurur; aksi halde istisna."""
-    if len(data) > CUSTOMER_LOGO_MAX_BYTES:
-        raise LogoTooLarge()
-    if not data:
-        raise LogoRejected("The logo file is empty.")
-    declared = normalize_content_type(declared_type)
-    if declared not in CUSTOMER_LOGO_CONTENT_TYPES:
-        raise LogoRejected("Only PNG, JPEG or WEBP logos are allowed.")
-    if sniff(data) != declared:
-        raise LogoRejected("The file content does not match its declared image type.")
-    return declared
+# Ortak dogrulama; eski cagri noktalari (logos.sniff, logos.LogoTooLarge ...)
+# icin bu modulden de disa verilir.
+from .logo_image import (  # noqa: F401
+    LogoRejected, LogoTooLarge, if_none_match_hits, normalize_content_type,
+    sniff, validate,
+)
 
 
 def _tenant_of(db: Session) -> Optional[UUID]:
@@ -150,19 +117,3 @@ def etags_for(db: Session, customer_ids: Iterable[UUID]) -> Dict[UUID, str]:
     if tenant_id:
         query = query.filter(CustomerLogo.tenant_id == tenant_id)
     return {cid: etag for cid, etag in query.all()}
-
-
-def if_none_match_hits(header: Optional[str], etag: str) -> bool:
-    """RFC 9110 If-None-Match (zayif karsilastirma): liste, W/ ve '*'."""
-    if not header:
-        return False
-    for raw in header.split(","):
-        tag = raw.strip()
-        if tag == "*":
-            return True
-        if tag.startswith("W/"):
-            tag = tag[2:]
-        if tag.strip('"') == etag:
-            return True
-    return False
-

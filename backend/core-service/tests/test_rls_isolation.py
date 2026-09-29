@@ -494,6 +494,95 @@ def test_customer_logo_fk_is_composite_and_cascades(rls_db):
     assert left == 0
 
 
+# --- Proje logosu (0015): RLS + composite FK + CASCADE -----------------------
+
+def _seed_project(migrator_engine, tenant_id, name):
+    """Migrator (BYPASSRLS) ile proje ekler — kurulum yolu."""
+    project_id = uuid.uuid4()
+    with migrator_engine.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO projects (id, tenant_id, name, is_active, created_at) "
+            "VALUES (:id, CAST(:t AS uuid), :n, true, now())"
+        ), {"id": project_id, "t": tenant_id, "n": name})
+    return project_id
+
+
+def _seed_project_logo(migrator_engine, tenant_id, project_id):
+    with migrator_engine.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO project_logos (id, tenant_id, project_id, content, "
+            "content_type, etag, updated_at) VALUES (gen_random_uuid(), "
+            "CAST(:t AS uuid), :p, :b, 'image/png', :e, now())"
+        ), {"t": tenant_id, "p": project_id, "b": _PNG, "e": "c" * 64})
+
+
+def test_project_logo_of_other_tenant_is_invisible(rls_db, app_engine):
+    """B'nin proje logosu A baglaminda yoktur; baglamsiz sorgu hicbir sey gormez."""
+    b_project = _seed_project(rls_db["migrator"], TENANT_B, "Logo Proje B")
+    _seed_project_logo(rls_db["migrator"], TENANT_B, b_project)
+
+    with app_engine.begin() as conn:
+        conn.execute(
+            text("SELECT set_config('app.tenant_id', :t, true)"),
+            {"t": TENANT_A},
+        )
+        seen = conn.execute(text(
+            "SELECT count(*) FROM project_logos WHERE project_id = :p"
+        ), {"p": b_project}).scalar()
+    assert seen == 0
+    with app_engine.begin() as conn:
+        assert conn.execute(text("SELECT count(*) FROM project_logos")).scalar() == 0
+    with app_engine.begin() as conn:
+        conn.execute(
+            text("SELECT set_config('app.tenant_id', :t, true)"),
+            {"t": TENANT_B},
+        )
+        assert conn.execute(text(
+            "SELECT count(*) FROM project_logos WHERE project_id = :p"
+        ), {"p": b_project}).scalar() == 1
+
+
+def test_project_logo_cannot_reference_other_tenants_project(rls_db, app_engine):
+    """A baglaminda, B'nin projesine logo YAZILAMAZ (composite FK)."""
+    from sqlalchemy.exc import IntegrityError, ProgrammingError
+
+    b_project = _seed_project(rls_db["migrator"], TENANT_B, "Logo Proje Capraz")
+    with app_engine.begin() as conn:
+        conn.execute(
+            text("SELECT set_config('app.tenant_id', :t, true)"),
+            {"t": TENANT_A},
+        )
+        with pytest.raises((IntegrityError, ProgrammingError)):
+            conn.execute(text(
+                "INSERT INTO project_logos (id, tenant_id, project_id, content, "
+                "content_type, etag, updated_at) VALUES (gen_random_uuid(), "
+                "CAST(:t AS uuid), :p, :b, 'image/png', :e, now())"
+            ), {"t": TENANT_A, "p": b_project, "b": _PNG, "e": "d" * 64})
+
+
+def test_project_logo_fk_is_composite_and_cascades(rls_db):
+    """FK (tenant_id, project_id) -> projects ON DELETE CASCADE."""
+    with rls_db["migrator"].connect() as conn:
+        defs = conn.execute(text(
+            "SELECT pg_get_constraintdef(con.oid) FROM pg_constraint con "
+            "JOIN pg_class c ON c.oid = con.conrelid "
+            "WHERE c.relname = 'project_logos' AND con.contype = 'f'"
+        )).scalars().all()
+    assert len(defs) == 1
+    assert "(tenant_id, project_id)" in defs[0]
+    assert "projects(tenant_id, id)" in defs[0]
+    assert "ON DELETE CASCADE" in defs[0]
+
+    a_project = _seed_project(rls_db["migrator"], TENANT_A, "Logo Proje Silinen")
+    _seed_project_logo(rls_db["migrator"], TENANT_A, a_project)
+    with rls_db["migrator"].begin() as conn:
+        conn.execute(text("DELETE FROM projects WHERE id = :p"), {"p": a_project})
+        left = conn.execute(text(
+            "SELECT count(*) FROM project_logos WHERE project_id = :p"
+        ), {"p": a_project}).scalar()
+    assert left == 0
+
+
 def test_pool_reuse_does_not_leak_context(rls_db, app_engine):
     """TEK baglantili havuz: A'dan sonra B ayni baglantiyi alir.
 

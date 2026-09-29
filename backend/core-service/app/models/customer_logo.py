@@ -22,17 +22,17 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    CheckConstraint, Column, DateTime, ForeignKey, LargeBinary, String,
-    UniqueConstraint,
+    Column, DateTime, ForeignKey, LargeBinary, String, UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
 
 from ..database import Base
+from .logo_image import LOGO_CONTENT_TYPES, LOGO_MAX_BYTES, logo_check_constraints
 from .mixins import TenantOwnedMixin
 
-# Tek kaynak: servis ve DB CHECK'i ayni sabiti kullanir.
-CUSTOMER_LOGO_MAX_BYTES = 256 * 1024
-CUSTOMER_LOGO_CONTENT_TYPES = ("image/png", "image/jpeg", "image/webp")
+# Tek kaynak: servis ve DB CHECK'i ayni sabiti kullanir (logo_image).
+CUSTOMER_LOGO_MAX_BYTES = LOGO_MAX_BYTES
+CUSTOMER_LOGO_CONTENT_TYPES = LOGO_CONTENT_TYPES
 
 
 def _now():
@@ -62,17 +62,7 @@ class CustomerLogo(TenantOwnedMixin, Base):
 
     __table_args__ = (
         UniqueConstraint("customer_id", name="uq_customer_logos_customer"),
-        CheckConstraint(
-            f"octet_length(content) > 0 AND octet_length(content) <= {CUSTOMER_LOGO_MAX_BYTES}",
-            name="chk_customer_logos_size",
-        ),
-        CheckConstraint(
-            "content_type IN ("
-            + ", ".join(f"'{t}'" for t in CUSTOMER_LOGO_CONTENT_TYPES)
-            + ")",
-            name="chk_customer_logos_content_type",
-        ),
-        CheckConstraint("char_length(etag) = 64", name="chk_customer_logos_etag"),
+        *logo_check_constraints("customer_logos"),
     )
 
 

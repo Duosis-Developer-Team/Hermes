@@ -18,6 +18,7 @@ from ..schemas.customer import (
 )
 from ..services.customer_service import CustomerService
 from ..services import customer_logo_service as logos
+from ..services.logo_image import logo_response
 from ..models.customer_logo import CUSTOMER_LOGO_MAX_BYTES
 from shared.auth import CurrentUser, get_current_user
 # RBAC R2: guard'lar izin-tabanli — is_admin bit'i karar mercii degil.
@@ -123,8 +124,7 @@ def delete_customer(
 # Yazma = musteri duzenleme yetkisi (customers.manage). Okuma = musteri
 # listesini gorebilen her dogrulanmis kullanici (secicilerde gosterilir).
 # Musteri yok / baska tenant / logo yok -> ayni 404 zarfi.
-
-_LOGO_CACHE_CONTROL = "private, max-age=86400"
+# Sunum kurallari (ETag/304/onbellek/nosniff) services/logo_image'de ORTAK.
 
 
 @router.put("/{customer_id}/logo", response_model=CustomerLogoResponse)
@@ -181,11 +181,4 @@ def get_customer_logo(
         row = logos.get_logo(db, customer_id)
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
-    headers = {
-        "ETag": f'"{row.etag}"',
-        "Cache-Control": _LOGO_CACHE_CONTROL,
-        "X-Content-Type-Options": "nosniff",
-    }
-    if logos.if_none_match_hits(if_none_match, row.etag):
-        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=headers)
-    return Response(content=bytes(row.content), media_type=row.content_type, headers=headers)
+    return logo_response(row, if_none_match)

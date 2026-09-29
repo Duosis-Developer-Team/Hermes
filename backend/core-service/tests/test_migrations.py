@@ -257,6 +257,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
         with engine.begin() as conn:
             # 0009 + 0010'un getirdikleri gider; alembic isareti 0008'e.
             for table in (
+                "project_logos",
                 "customer_logos",
                 "work_item_notifications",
                 "work_item_events", "work_item_comments", "work_item_links",
@@ -304,7 +305,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
                     "'medium', 'pending', :b, now(), now())"
                 ), {"t": tenant_id, "cid": customer_id, "pid": project_id, "b": batch})
 
-        _run_migration(disposable_db)      # 0008 → 0009 → ... → 0013 → 0014
+        _run_migration(disposable_db)      # 0008 → 0009 → ... → 0014 → 0015
 
         with engine.connect() as conn:
             head = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
@@ -320,8 +321,22 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             forced = conn.execute(text(
                 "SELECT count(*) FROM pg_class WHERE relname IN "
                 "('work_items','routing_relations','tenant_holidays',"
-                "'work_item_notifications','customer_logos') "
+                "'work_item_notifications','customer_logos','project_logos') "
                 "AND relforcerowsecurity"
+            )).scalar()
+            project_logo_fk = conn.execute(text(
+                "SELECT pg_get_constraintdef(con.oid) FROM pg_constraint con "
+                "JOIN pg_class c ON c.oid = con.conrelid "
+                "WHERE c.relname = 'project_logos' AND con.contype = 'f'"
+            )).scalar()
+            project_logo_checks = conn.execute(text(
+                "SELECT count(*) FROM pg_constraint WHERE conname IN "
+                "('chk_project_logos_size','chk_project_logos_content_type',"
+                "'chk_project_logos_etag')"
+            )).scalar()
+            project_logo_tenant_nullable = conn.execute(text(
+                "SELECT is_nullable FROM information_schema.columns "
+                "WHERE table_name = 'project_logos' AND column_name = 'tenant_id'"
             )).scalar()
             logo_fk = conn.execute(text(
                 "SELECT pg_get_constraintdef(con.oid) FROM pg_constraint con "
@@ -334,13 +349,19 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             )).scalar()
     finally:
         engine.dispose()
-    assert head == "0014_customer_logos"
+    assert head == "0015_project_logos"
     assert items == 1 and parts == 2, "2 kopyalik batch tek is kalemi olmali"
     assert watchers == 1
-    assert forced == 5
+    assert forced == 6
     # 0014: composite FK + CASCADE + boyut CHECK'i geride kalmis DB'de de gelir.
     assert "(tenant_id, customer_id)" in logo_fk and "ON DELETE CASCADE" in logo_fk
     assert logo_size_check == 1
+    # 0015: proje logosu — ayni desen (composite FK + CASCADE + 3 CHECK + NOT NULL tenant).
+    assert "(tenant_id, project_id)" in project_logo_fk
+    assert "projects(tenant_id, id)" in project_logo_fk
+    assert "ON DELETE CASCADE" in project_logo_fk
+    assert project_logo_checks == 3
+    assert project_logo_tenant_nullable == "NO"
 
 
 def test_schema_guard_rejects_unmigrated_database(disposable_db):

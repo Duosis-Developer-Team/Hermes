@@ -56,5 +56,15 @@ class ProjectResponse(ProjectBase):
     contract_start_date: Optional[datetime] = None
     contract_duration_days: Optional[int] = None
     is_billable_default: bool = True
+    # Proje logosu (additive): etag = logonun sha256 hex'i; logo yoksa null.
+    # Frontend `/projects/{id}/logo?v=<etag>` ile onbellegi kirar.
+    has_logo: bool = False
+    logo_etag: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectLogoResponse(BaseModel):
+    """PUT /projects/{id}/logo yaniti."""
+    has_logo: bool
+    logo_etag: Optional[str] = None
