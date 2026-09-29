@@ -42,7 +42,7 @@ import {
     taskSubProjectService,
 } from '../../services/api'
 import { useT } from '../../i18n'
-import { customerSelectRender } from '../../components/common/customerSelect'
+import { customerSelectRender, projectSelectRender } from '../../components/common/customerSelect'
 
 // Oncelik listesi MODUL duzeyindeydi; ceviri bir hook'a bagli oldugu
 // icin artik bilesen icinde uretilir. Degerler (low/medium/...) API
@@ -455,6 +455,7 @@ function CreateTaskModal({
                             value: p.id,
                             label: p.name,
                         }))}
+                        {...projectSelectRender}
                     />
                 </Form.Item>
 

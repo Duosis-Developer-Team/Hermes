@@ -17,7 +17,7 @@ import { Button, Select } from 'antd'
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '../model/constants'
 import { ChipGroup, FormSection } from '../../../components/liquid'
 import { useT } from '../../../i18n'
-import { customerSelectRender } from '../../../components/common/customerSelect'
+import { customerSelectRender, projectSelectRender } from '../../../components/common/customerSelect'
 
 function Field({ id, label, children }) {
     return (
@@ -101,6 +101,7 @@ function TaskFilterBar({
                     onChange={onProjectChange}
                     optionFilterProp="label"
                     options={projects.map((p) => ({ value: p.id, label: p.name }))}
+                    {...projectSelectRender}
                 />
             </Field>
             <Field id="tf-sub" label={t('task.subProject')}>

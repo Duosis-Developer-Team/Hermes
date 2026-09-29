@@ -64,7 +64,7 @@ import { resetAndFill } from '../../features/admin/shared/formLifecycle'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
 import { SettingsEmpty, SettingsKpis, SettingsSection, SettingsTabs } from './settingsKit'
-import { customerSelectRender } from '../../components/common/customerSelect'
+import { customerSelectRender, projectSelectRender } from '../../components/common/customerSelect'
 
 // =============================================================================
 // Sub Projects
@@ -329,6 +329,7 @@ export function SubProjectsTab() {
                             value: p.id,
                             label: p.name,
                         }))}
+                        {...projectSelectRender}
                     />
                 </div>
                 {createAction}

@@ -225,6 +225,17 @@ function LogoTile({ src, size, onFail }) {
 }
 
 /**
+ * Proje logosu (varsa). Logo yoksa ya da yuklenemezse `fallback`
+ * (varsayilan: hicbir sey) — secicilerde projenin kendi ikonu korunur.
+ */
+export function ProjectLogo({ id, size = 28, fallback = null }) {
+    const etag = useCustomerLogoStore((s) => (id ? s.projects[id] : undefined))
+    const [failed, setFailed] = useState(null)
+    if (!id || !etag || failed === etag) return fallback
+    return <LogoTile src={projectLogoUrl(id, etag)} size={size} onFail={() => setFailed(etag)} />
+}
+
+/**
  * Marka logolari (CTO 29.09): musteri + proje logosu ikisi de varsa YAN
  * YANA; yalniz biri varsa o; hicbiri yoksa (ya da gorseller yuklenemezse)
  * `fallback` (verilmezse musteri bas harf karosu). Etag'ler depodan

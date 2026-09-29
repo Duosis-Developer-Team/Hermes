@@ -17,7 +17,7 @@ import { ticketHubService } from '../../api/ticketsApi'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
 import { SwapOutlined } from '@ant-design/icons'
-import { customerSelectRender } from '../../components/common/customerSelect'
+import { customerSelectRender, projectSelectRender } from '../../components/common/customerSelect'
 
 const { TextArea } = Input
 
@@ -122,6 +122,7 @@ function ConvertToWorkItemModal({ open, ticket, onClose, onCreated }) {
                     <Select
                         showSearch
                         options={projectOptions}
+                        {...projectSelectRender}
                         filterOption={(input, option) =>
                             (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                         }

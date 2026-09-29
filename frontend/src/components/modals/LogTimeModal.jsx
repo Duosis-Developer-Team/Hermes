@@ -17,7 +17,7 @@ import {
 import {
     ArrowLeftOutlined, ClockCircleOutlined, SearchOutlined,
 } from '@ant-design/icons'
-import { ChipGroup, CustomerLogo, FormSection, ModalHead, ModalSteps, OptionGrid } from '../liquid'
+import { ChipGroup, CustomerLogo, FormSection, ModalHead, ModalSteps, OptionGrid, ProjectLogo } from '../liquid'
 import HoursMinutesPicker from '../common/HoursMinutesPicker'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -34,6 +34,7 @@ import {
 import { queryKeys } from '../../query/queryKeys'
 import './LogTimeModal.css'
 import { useT } from '../../i18n'
+import { useCustomerLogoStore } from '../../stores/customerLogoStore'
 
 const { TextArea } = Input
 
@@ -391,9 +392,17 @@ function LogTimeModal({
                 media: <CustomerLogo id={c.id} name={c.name} size={38} />,
             }
         })
+    const projectLogos = useCustomerLogoStore((s) => s.projects)
     const projectOptions = filteredProjects
         .filter((p) => matches(p.name))
-        .map((p) => ({ value: p.id, label: p.name, hint: p.code || selectedCustomer?.name, flat: true }))
+        .map((p) => ({
+            value: p.id,
+            label: p.name,
+            hint: p.code || selectedCustomer?.name,
+            flat: true,
+            // Proje logosu varsa kart ikonu yerine o (yoksa duz ikon kalir).
+            media: projectLogos[p.id] ? <ProjectLogo id={p.id} size={38} /> : undefined,
+        }))
 
     const durationChips = [0.25, 0.5, 1, 2, 4, 8].map((h) => ({
         value: h,

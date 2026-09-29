@@ -22,7 +22,7 @@ const customerService = {
 vi.mock('../../services/api', () => ({ customerService }))
 
 const CustomersPage = (await import('../../pages/admin/CustomersPage')).default
-const { BrandLogos, CustomerLogo } = await import('../../components/liquid')
+const { BrandLogos, CustomerLogo, ProjectLogo } = await import('../../components/liquid')
 const { useCustomerLogoStore } = await import('../../stores/customerLogoStore')
 const { makeTestQueryClient } = await import('../utils')
 
@@ -131,5 +131,14 @@ describe('Musteri logosu', () => {
         expect(container.textContent).toBe('D')
         rerender(<BrandLogos {...props} customerId="c9" projectId="p9" fallback={<i data-testid="fb" />} />)
         expect(screen.getByTestId('fb')).toBeInTheDocument()
+    })
+
+    it('ProjectLogo: logo varsa gorsel, yoksa fallback', () => {
+        useCustomerLogoStore.setState({ etags: {}, projects: { p1: 'pe' } })
+        const { container, rerender } = render(<ProjectLogo id="p1" size={38} />)
+        expect(container.querySelector('img').getAttribute('src')).toBe('/api/v1/core/projects/p1/logo?v=pe')
+        rerender(<ProjectLogo id="p2" fallback={<i data-testid="pfb" />} />)
+        expect(container.querySelector('img')).toBeNull()
+        expect(screen.getByTestId('pfb')).toBeInTheDocument()
     })
 })
