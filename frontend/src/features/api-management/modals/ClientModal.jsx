@@ -28,9 +28,9 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
         () =>
             scopes.map((s) => ({
                 value: s,
-                label: `${s} — ${SCOPE_HELP[s] || ''}`,
+                label: SCOPE_HELP[s] ? `${s} — ${t(SCOPE_HELP[s])}` : s,
             })),
-        [scopes]
+        [scopes, t]
     )
 
     const bindingTypeOptions = useMemo(() => {
@@ -42,7 +42,7 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
         ]
         // Kural: global yalniz basina; user-bound client global alamaz.
         if (clientType !== 'user' && bindings.length <= 1) {
-            opts.unshift({ value: 'global', label: BINDING_LABEL.global })
+            opts.unshift({ value: 'global', label: t(BINDING_LABEL.global) })
         }
         return opts
     }, [clientType, bindings.length, t])
@@ -71,7 +71,7 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
         <Modal
             open={open}
             title={<ModalHead icon={<KeyOutlined />} tone="ink" title={editing ? t('modalTitles.editClient') : t('modalTitles.createClient')} />}
-            okText={editing ? 'Save Changes' : 'Create Client'}
+            okText={editing ? t('api.saveChanges') : t('api.createClientShort')}
             onOk={() => form.submit()}
             onCancel={onClose}
             confirmLoading={saving}
@@ -195,11 +195,7 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
                     />
                 </Form.Item>
 
-                <div className="am-bindings-label">{t('api.accessBindings')}<span className="am-bindings-hint">
-                        Which data the client can see. No bindings = no
-                        business data. Global cannot be combined with
-                        narrower bindings.
-                    </span>
+                <div className="am-bindings-label">{t('api.accessBindings')}<span className="am-bindings-hint">{t('api.bindingsHint')}</span>
                 </div>
                 <Form.List name="access">
                     {(fields, { add, remove }) => (
@@ -267,11 +263,7 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
                                 style={{ marginTop: 4 }}
                             >{t('api.addBinding')}</Button>
                             {hasGlobal && (
-                                <span className="am-bindings-hint">
-                                    {' '}
-                                    Global grants everything — remove it to
-                                    add narrower bindings.
-                                </span>
+                                <span className="am-bindings-hint">{t('api.globalHint')}</span>
                             )}
                         </>
                     )}

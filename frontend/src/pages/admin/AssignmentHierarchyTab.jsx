@@ -3,13 +3,16 @@
  * HERMES - Assignment Hierarchy Tab (Admin → Task Management)
  * =============================================================================
  * Replaces the old flat "assigner | assignee | created | actions" table
- * with assigner-grouped expandable cards. Each assigner can map to:
+ * with assigner-grouped expandable rows. Each assigner can map to:
  *   - individual users  (task_assignment_relations)
  *   - whole user groups (task_assignment_group_relations)
  *
  * Assigning to a group at task-creation time fans the task out to one
  * row per active group member; the assignment rule itself stays a single
  * record.
+ *
+ * Hermes Liquid (29.09): satirlar avatar + ad + sayac haplari; acilan
+ * govde iki kolon (gruplar | kisiler). Davranis ve veri akisi AYNI.
  * =============================================================================
  */
 
@@ -17,18 +20,17 @@ import { useEffect, useMemo, useState } from 'react'
 import {
     Alert,
     Button,
-    Card,
-    Empty,
     Form,
     Input,
     Modal,
     Select,
-    Space,
-    Tag,
+    Spin,
     Tooltip,
     message,
 } from 'antd'
-import { ApartmentOutlined, DeleteOutlined, PlusOutlined, SearchOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons'
+import {
+    ApartmentOutlined, DeleteOutlined, DownOutlined, PlusOutlined, SearchOutlined, TeamOutlined, UserOutlined,
+} from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
@@ -41,7 +43,8 @@ import DangerConfirmModal from '../../components/common/DangerConfirmModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import { resetAndFill } from '../../features/admin/shared/formLifecycle'
 import { useT } from '../../i18n'
-import { ModalHead } from '../../components/liquid'
+import { Avatar, FormSection, ModalHead } from '../../components/liquid'
+import { SettingsEmpty } from './settingsKit'
 
 function userLabel(u) {
     if (!u) return '—'
@@ -63,217 +66,133 @@ function AssignerCard({
     const [expanded, setExpanded] = useState(false)
     const userCount = userRelations.length
     const groupCount = groupRelations.length
+    const assignerName = userLabel(assigner)
 
     return (
-        /* Kullanici bulgusu: assigner satirlari arasinda ayrim yoktu.
-           Kart yerine, aralarinda ince koyu-mavi hairline bulunan
-           premium satirlar. */
-        <Card
-            size="small"
-            className="tm-assigner-card"
-            style={{ marginBottom: 0 }}
-            styles={{ body: { padding: 0 } }}
-        >
-            <div
-                role="button"
-                tabIndex={0}
-                onClick={() => setExpanded((v) => !v)}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        setExpanded((v) => !v)
-                    }
-                }}
-                style={{
-                    padding: '12px 16px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    flexWrap: 'wrap',
-                    gap: 8,
-                }}
-            >
-                <div>
-                    <div style={{ color: 'var(--c-text-strong)', fontWeight: 600 }}>
-                        {userLabel(assigner)}
-                    </div>
-                    <div style={{ color: 'var(--c-text-muted)', fontSize: 12 }}>
-                        {assigner.email || ''}
-                    </div>
-                </div>
-                <Space size={8}>
-                    <Tag color="blue">
-                        {userCount} user{userCount === 1 ? '' : 's'}
-                    </Tag>
-                    <Tag color="purple">
-                        {groupCount} group{groupCount === 1 ? '' : 's'}
-                    </Tag>
-                    {/*
-                      * Ust bardaki genel buton ile ayni GORUNUR metni
-                      * tasiyor ama farkli sey yapiyor (bu assigner'i
-                      * on-secer). Erisilebilir ad bu ayrimi soyler.
-                      */}
+        /* Assigner basina bir liste satiri. Satiri acan kontrol GERCEK bir
+           buton; "kural ekle" onun KARDESI (ic ice interaktif yok). */
+        <div className={`ah-row${expanded ? ' is-open' : ''}`}>
+            <div className="ah-row__head">
+                <button
+                    type="button"
+                    className="ah-row__toggle"
+                    aria-expanded={expanded}
+                    onClick={() => setExpanded((v) => !v)}
+                >
+                    <Avatar id={assigner.id} name={assignerName} size={34} />
+                    <span className="sk-person__text ah-row__who">
+                        <span className="sk-person__name">{assignerName}</span>
+                        {assigner.email && (
+                            <span className="sk-person__meta">{assigner.email}</span>
+                        )}
+                    </span>
+                    <span className="ah-row__tags">
+                        <span className="lq-tag lq-tag--info">
+                            <UserOutlined aria-hidden="true" />
+                            {t(userCount === 1 ? 'assignment.userOne' : 'assignment.userMany', { n: userCount })}
+                        </span>
+                        <span className="lq-tag lq-tag--violet">
+                            <TeamOutlined aria-hidden="true" />
+                            {t(groupCount === 1 ? 'assignment.groupOne' : 'assignment.groupMany', { n: groupCount })}
+                        </span>
+                    </span>
+                    <DownOutlined className="ah-row__chev" aria-hidden="true" />
+                </button>
+                {/*
+                  * Satir basina ikonlu kisayol: ust bardaki genel
+                  * butondan farkli sey yapar (bu assigner'i on-secer).
+                  * Erisilebilir ad bu ayrimi soyler (Tooltip ad VERMEZ).
+                  */}
+                <Tooltip title={t('assignment.addRuleFor', { name: assignerName })}>
                     <Button
                         size="small"
-                        className="h-create-action"
+                        className="h-inline-action ah-row__add"
                         icon={<PlusOutlined />}
-                        aria-label={`Add assignment rule for ${userLabel(assigner)}`}
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            onAddRule(assigner.id)
-                        }}
-                    >{t('assignment.addRule')}</Button>
-                </Space>
+                        aria-label={t('assignment.addRuleFor', { name: assignerName })}
+                        onClick={() => onAddRule(assigner.id)}
+                    />
+                </Tooltip>
             </div>
 
             {expanded && (
-                <div
-                    style={{
-                        padding: '0 16px 16px',
-                        borderTop: '1px solid var(--c-border)',
-                    }}
-                >
-                    {/* Groups section */}
-                    <div style={{ marginTop: 12 }}>
-                        <div
-                            style={{
-                                fontSize: 11,
-                                color: 'var(--c-text-muted)',
-                                letterSpacing: 0.4,
-                                textTransform: 'uppercase',
-                                marginBottom: 6,
-                            }}
-                        >{t('task.groups')}</div>
+                <div className="ah-row__body">
+                    <div className="ah-col">
+                        <FormSection>{t('task.groups')}</FormSection>
                         {groupRelations.length === 0 ? (
-                            <div
-                                style={{
-                                    color: 'var(--c-text-faint)',
-                                    fontSize: 12,
-                                    fontStyle: 'italic',
-                                }}
-                            >{t('assignment.noGroupAssignments')}</div>
+                            <p className="ah-none">{t('assignment.noGroupAssignments')}</p>
                         ) : (
-                            groupRelations.map((rel) => {
-                                const g = groupsById[rel.assignee_group_id]
-                                const count =
-                                    groupMemberCounts[rel.assignee_group_id] ?? 0
-                                return (
-                                    <div
-                                        key={rel.id}
-                                        style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            padding: '6px 0',
-                                            borderBottom: '1px solid var(--c-border)',
-                                        }}
-                                    >
-                                        <div>
-                                            <TeamOutlined
-                                                style={{ marginRight: 6, color: '#a78bfa' }}
-                                            />
-                                            <span style={{ color: 'var(--c-text-strong)' }}>
-                                                {g?.name || rel.assignee_group_id}
+                            <ul className="ah-list">
+                                {groupRelations.map((rel) => {
+                                    const g = groupsById[rel.assignee_group_id]
+                                    const groupName = g?.name || rel.assignee_group_id
+                                    const count = groupMemberCounts[rel.assignee_group_id] ?? 0
+                                    return (
+                                        <li key={rel.id} className="ah-item">
+                                            <span className="ah-item__group" aria-hidden="true"><TeamOutlined /></span>
+                                            <span className="sk-person__text">
+                                                <span className="sk-person__name">{groupName}</span>
+                                                <span className="sk-person__meta">
+                                                    {t(count === 1 ? 'assignment.memberOne' : 'assignment.memberMany', { n: count })}
+                                                </span>
                                             </span>
-                                            <span style={{ color: 'var(--c-text-muted)', marginLeft: 8 }}>
-                                                {count} member{count === 1 ? '' : 's'}
-                                            </span>
-                                        </div>
-                                        {/* Tooltip erisilebilir AD VERMEZ. */}
-                                        <Tooltip title={t('assignment.removeGroupFromAssigner')}>
-                                            <Button
-                                                size="small"
-                                                danger
-                                                icon={<DeleteOutlined />}
-                                                aria-label={
-                                                    `Remove group ${g?.name
-                                                        || rel.assignee_group_id} `
-                                                    + `from ${userLabel(assigner)}`
-                                                }
-                                                onClick={() => onRemoveGroupRelation(rel)}
-                                            />
-                                        </Tooltip>
-                                    </div>
-                                )
-                            })
+                                            {/* Tooltip erisilebilir AD VERMEZ. */}
+                                            <Tooltip title={t('assignment.removeGroupFromAssigner')}>
+                                                <Button
+                                                    size="small"
+                                                    className="h-inline-action h-inline-action--danger"
+                                                    icon={<DeleteOutlined />}
+                                                    aria-label={t('assignment.removeGroupAria', {
+                                                        group: groupName, assigner: assignerName,
+                                                    })}
+                                                    onClick={() => onRemoveGroupRelation(rel)}
+                                                />
+                                            </Tooltip>
+                                        </li>
+                                    )
+                                })}
+                            </ul>
                         )}
                     </div>
 
-                    {/* Users section */}
-                    <div style={{ marginTop: 16 }}>
-                        <div
-                            style={{
-                                fontSize: 11,
-                                color: 'var(--c-text-muted)',
-                                letterSpacing: 0.4,
-                                textTransform: 'uppercase',
-                                marginBottom: 6,
-                            }}
-                        >{t('task.users')}</div>
+                    <div className="ah-col">
+                        <FormSection>{t('task.users')}</FormSection>
                         {userRelations.length === 0 ? (
-                            <div
-                                style={{
-                                    color: 'var(--c-text-faint)',
-                                    fontSize: 12,
-                                    fontStyle: 'italic',
-                                }}
-                            >{t('assignment.noUserAssignments')}</div>
+                            <p className="ah-none">{t('assignment.noUserAssignments')}</p>
                         ) : (
-                            userRelations.map((rel) => {
-                                const u = usersById[rel.assignee_user_id]
-                                return (
-                                    <div
-                                        key={rel.id}
-                                        style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            padding: '6px 0',
-                                            borderBottom: '1px solid var(--c-border)',
-                                        }}
-                                    >
-                                        <div>
-                                            <UserOutlined
-                                                style={{ marginRight: 6, color: '#60a5fa' }}
-                                            />
-                                            <span style={{ color: 'var(--c-text-strong)' }}>
-                                                {userLabel(u)}
+                            <ul className="ah-list">
+                                {userRelations.map((rel) => {
+                                    const u = usersById[rel.assignee_user_id]
+                                    const name = u ? userLabel(u) : rel.assignee_user_id
+                                    return (
+                                        <li key={rel.id} className="ah-item">
+                                            <Avatar id={rel.assignee_user_id} name={name} size={28} />
+                                            <span className="sk-person__text">
+                                                <span className="sk-person__name">{name}</span>
+                                                {u?.email && (
+                                                    <span className="sk-person__meta">{u.email}</span>
+                                                )}
                                             </span>
-                                            {u?.email && (
-                                                <span
-                                                    style={{
-                                                        color: 'var(--c-text-muted)',
-                                                        marginLeft: 8,
-                                                        fontSize: 12,
-                                                    }}
-                                                >
-                                                    {u.email}
-                                                </span>
-                                            )}
-                                        </div>
-                                        {/* Tooltip erisilebilir AD VERMEZ. */}
-                                        <Tooltip title={t('assignment.removeUserFromAssigner')}>
-                                            <Button
-                                                size="small"
-                                                danger
-                                                icon={<DeleteOutlined />}
-                                                aria-label={
-                                                    `Remove ${u ? userLabel(u)
-                                                        : rel.assignee_user_id} `
-                                                    + `from ${userLabel(assigner)}`
-                                                }
-                                                onClick={() => onRemoveUserRelation(rel)}
-                                            />
-                                        </Tooltip>
-                                    </div>
-                                )
-                            })
+                                            {/* Tooltip erisilebilir AD VERMEZ. */}
+                                            <Tooltip title={t('assignment.removeUserFromAssigner')}>
+                                                <Button
+                                                    size="small"
+                                                    className="h-inline-action h-inline-action--danger"
+                                                    icon={<DeleteOutlined />}
+                                                    aria-label={t('assignment.removeUserAria', {
+                                                        user: name, assigner: assignerName,
+                                                    })}
+                                                    onClick={() => onRemoveUserRelation(rel)}
+                                                />
+                                            </Tooltip>
+                                        </li>
+                                    )
+                                })}
+                            </ul>
                         )}
                     </div>
                 </div>
             )}
-        </Card>
+        </div>
     )
 }
 
@@ -343,7 +262,7 @@ function AddRuleModal({
                         }))}
                         notFoundContent={
                             eligibleAssigners.length === 0
-                                ? 'No active users found.'
+                                ? t('assignment.noActiveUsers')
                                 : undefined
                         }
                     />
@@ -368,9 +287,7 @@ function AddRuleModal({
                                     groupIds.length === 0
                                 ) {
                                     return Promise.reject(
-                                        new Error(
-                                            'Select at least one user or group.'
-                                        )
+                                        new Error(t('assignment.selectAtLeastOne'))
                                     )
                                 }
                                 return Promise.resolve()
@@ -391,7 +308,7 @@ function AddRuleModal({
                         }))}
                         notFoundContent={
                             eligibleAssignees.length === 0
-                                ? 'No active users found.'
+                                ? t('assignment.noActiveUsers')
                                 : undefined
                         }
                     />
@@ -415,7 +332,7 @@ function AddRuleModal({
                         }))}
                         notFoundContent={
                             eligibleGroups.length === 0
-                                ? 'No active groups. Create one in Users → Groups first.'
+                                ? t('assignment.noActiveGroups')
                                 : undefined
                         }
                     />
@@ -428,7 +345,6 @@ function AddRuleModal({
 function AssignmentHierarchyTab({ scope = 'task' }) {
     const t = useT()
     const queryClient = useQueryClient()
-    const scopeNoun = scope === 'issue' ? 'issues/suggestions' : 'tasks'
 
     const [addModalOpen, setAddModalOpen] = useState(false)
     const [presetAssignerId, setPresetAssignerId] = useState(null)
@@ -503,12 +419,12 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
         : groupRelError
             ? {
                 message: `${normalizeApiError(groupRelErrObj).message} `
-                    + 'Group rules are missing from the list below.',
+                    + t('assignment.groupRulesMissing'),
                 retry: refetchGroupRel,
             }
             : null
 
-    // Group rules per assigner so we can render one card per assigner.
+    // Group rules per assigner so we can render one row per assigner.
     const cardsByAssigner = useMemo(() => {
         const map = new Map()
         const ensure = (assignerId) => {
@@ -647,83 +563,41 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
         })
     }
 
+    const openGeneralAdd = () => {
+        setPresetAssignerId(null)
+        setAddModalOpen(true)
+    }
+
     const isLoading = userRelLoading || groupRelLoading
+    const hasAnyRule = cardsByAssigner.size > 0
+    const searching = assignerSearch.trim().length > 0
     const removingUser =
         removingUserRelation && usersById[removingUserRelation.assignee_user_id]
     const removingGroupName =
         removingGroupRelation &&
         (groupsById[removingGroupRelation.assignee_group_id]?.name || '—')
 
-    return (
-        <>
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: 8,
-                    flexWrap: 'wrap',
-                    marginBottom: 12,
-                }}
-            >
-                {/*
-                  * `Input.Search` DEGIL: filtre zaten yazarken canli
-                  * uygulaniyor, dolayisiyla arama BUTONU hicbir sey
-                  * yapmiyordu — ustelik zayif adlandirilmis ("search")
-                  * fazladan bir dokunma hedefi ekliyordu. Sozluk
-                  * yuzeylerinde ayni karar verilmisti.
-                  */}
-                <Input
-                    prefix={<SearchOutlined aria-hidden="true" />}
-                    aria-label={t('assignment.searchAssigner')}
-                    allowClear
-                    placeholder={t('assignment.searchAssigner')}
-                    value={assignerSearch}
-                    onChange={(e) => setAssignerSearch(e.target.value)}
-                    style={{ maxWidth: 320 }}
-                />
-                <Button
-                    className="h-create-action"
-                    icon={<PlusOutlined />}
-                    /* Kart icindeki ayni metinli butondan AYRI ad: bu
-                       hicbir assigner'i on-secmez. */
-                    aria-label={t('assignment.addRuleShort')}
-                    onClick={() => {
-                        setPresetAssignerId(null)
-                        setAddModalOpen(true)
-                    }}
-                >{t('assignment.addRule')}</Button>
-            </div>
+    /* Genel "kural ekle" eylemi: kart icindeki ayni metinli butondan AYRI
+       ad tasir (hicbir assigner'i on-secmez). */
+    const addAction = (
+        <Button
+            className="h-create-action"
+            icon={<PlusOutlined />}
+            aria-label={t('assignment.addRuleShort')}
+            onClick={openGeneralAdd}
+        >{t('assignment.addRule')}</Button>
+    )
 
-            {relationsError && (
-                <Alert
-                    type="error"
-                    showIcon
-                    style={{ marginBottom: 16 }}
-                    message={relationsError.message}
-                    action={
-                        <Button size="small" onClick={() => relationsError.retry()}>{t('common.retry')}</Button>
-                    }
-                />
-            )}
-
-            {sortedAssignerCards.length === 0 ? (
-                <Empty
-                    description={
-                        isLoading
-                            ? 'Loading…'
-                            : assignerSearch.trim()
-                            ? 'No assigner matches your search.'
-                            : `No assignment rules yet — click Add Assignment Rule to let assigners assign ${scopeNoun}.`
-                    }
-                />
-            ) : (
-                sortedAssignerCards.map(({ assigner, userRelations, groupRelations }) => (
+    let content
+    if (sortedAssignerCards.length > 0) {
+        content = (
+            <div className="ah-rows">
+                {sortedAssignerCards.map(({ assigner, userRelations: ur, groupRelations: gr }) => (
                     <AssignerCard
                         key={assigner.id}
                         assigner={assigner}
-                        userRelations={userRelations}
-                        groupRelations={groupRelations}
+                        userRelations={ur}
+                        groupRelations={gr}
                         usersById={usersById}
                         groupsById={groupsById}
                         groupMemberCounts={groupMemberCounts}
@@ -738,8 +612,68 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
                             setRemovingGroupRelation(rel)
                         }
                     />
-                ))
+                ))}
+            </div>
+        )
+    } else if (isLoading) {
+        content = <div className="ah-loading"><Spin /></div>
+    } else if (searching) {
+        content = (
+            <SettingsEmpty
+                compact
+                icon={<SearchOutlined />}
+                text={t('assignment.noMatch')}
+            />
+        )
+    } else {
+        content = (
+            <SettingsEmpty
+                icon={<ApartmentOutlined />}
+                title={t('assignment.emptyTitle')}
+                text={t(scope === 'issue' ? 'assignment.emptyTextIssue' : 'assignment.emptyTextTask')}
+                action={addAction}
+            />
+        )
+    }
+
+    return (
+        <>
+            {/* Ilk kullanimda arac cubugu gizlenir: bos durum kendi eylemini
+                tasir (ayni buton iki kez gorunmez). */}
+            {(hasAnyRule || searching) && (
+                <div className="sk-toolbar">
+                    {/*
+                      * `Input.Search` DEGIL: filtre zaten yazarken canli
+                      * uygulaniyor, dolayisiyla arama BUTONU hicbir sey
+                      * yapmiyordu — ustelik zayif adlandirilmis ("search")
+                      * fazladan bir dokunma hedefi ekliyordu.
+                      */}
+                    <Input
+                        className="ah-search"
+                        prefix={<SearchOutlined aria-hidden="true" />}
+                        aria-label={t('assignment.searchAssigner')}
+                        allowClear
+                        placeholder={t('assignment.searchAssigner')}
+                        value={assignerSearch}
+                        onChange={(e) => setAssignerSearch(e.target.value)}
+                    />
+                    {addAction}
+                </div>
             )}
+
+            {relationsError && (
+                <Alert
+                    type="error"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    message={relationsError.message}
+                    action={
+                        <Button size="small" onClick={() => relationsError.retry()}>{t('common.retry')}</Button>
+                    }
+                />
+            )}
+
+            {content}
 
             <AddRuleModal
                 open={addModalOpen}
@@ -758,13 +692,13 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
             <DangerConfirmModal
                 open={!!removingUserRelation}
                 title={t('assignment.removeMapping')}
-                body="This prevents future assignment through this mapping. Existing tasks remain unchanged."
+                body={t('assignment.removeMappingBody')}
                 itemName={
                     removingUser
                         ? userLabel(removingUser)
                         : removingUserRelation?.assignee_user_id
                 }
-                confirmLabel="Remove"
+                confirmLabel={t('assignment.remove')}
                 onCancel={() => setRemovingUserRelation(null)}
                 onConfirm={() => {
                     // Cift tetikleme kilidi KAYNAKTA.
@@ -777,9 +711,9 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
             <DangerConfirmModal
                 open={!!removingGroupRelation}
                 title={t('assignment.removeMapping')}
-                body="This prevents future assignment through this mapping. Existing tasks remain unchanged."
+                body={t('assignment.removeMappingBody')}
                 itemName={removingGroupName}
-                confirmLabel="Remove"
+                confirmLabel={t('assignment.remove')}
                 onCancel={() => setRemovingGroupRelation(null)}
                 onConfirm={() => {
                     if (isRemovingRule || !removingGroupRelation) return

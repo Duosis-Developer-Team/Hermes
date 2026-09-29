@@ -1,260 +1,242 @@
 /**
  * =============================================================================
- * HERMES - API Management (Admin) — page-specific styles
+ * HERMES - API Management (Hermes Liquid, 29.09)
  * =============================================================================
- * Genel iskelet (header/stats/sections) TaskManagementPage.css'teki tm-*
- * kaliplarindan gelir; burada yalnizca API Management'a ozgu parcalar var.
+ * Ortak iskelet (KPI, bolum karti, bos durum, segment) settingsKit.css'ten
+ * gelir; burada yalnizca API Yonetimi'ne ozgu parcalar var: istemci
+ * kartlari, tablo hucreleri, saklama seridi, dokuman kartlari ve iki
+ * modalin (istemci + tek seferlik token) yardimci siniflari.
+ * Renkler yalnizca token'dan; kayan icerikte backdrop-filter YOK.
  * =============================================================================
  */
 
-/* ── Client kartlari ──────────────────────────────────────────────────── */
+.am-page { display: flex; flex-direction: column; min-width: 0; }
+.am-header-actions { display: flex; gap: 8px; }
+.am-loading { display: flex; justify-content: center; padding: 40px 0; }
 
-.am-clients-toolbar {
-    margin-bottom: 14px;
-}
-
-/* Premium redesign: nested panel yerine ince divider'li satir. */
-.am-client {
-    border: 0;
-    border-bottom: 1px solid var(--h-border-subtle);
-    border-radius: 0;
-    background: transparent;
-    padding: 14px 4px;
-    margin-bottom: 0;
-}
-
-.am-client.is-disabled {
-    opacity: 0.6;
-}
-
-.am-client-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.am-client-name {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--c-text-strong);
-}
-
-.am-client-spacer {
-    flex: 1;
-}
-
-.am-client-desc {
-    margin-top: 6px;
-    color: var(--c-text-muted);
-    font-size: 12.5px;
-}
-
-.am-client-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px 28px;
-    margin-top: 12px;
-}
-
-.am-meta-block {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 13px;
-    color: var(--c-text);
-    min-width: 0;
-}
-
-.am-meta-label {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--c-text-muted);
-}
-
-.am-empty {
-    color: var(--c-text-muted);
-    padding: 16px 0;
-}
-
-/* ── Token-once modal ─────────────────────────────────────────────────── */
-
-.am-token-box {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: var(--c-surface-raised);
-    border: 1px solid var(--c-border);
-    border-radius: 8px;
-    padding: 12px 14px;
-}
-
-.am-token-value {
-    flex: 1;
-    font-size: 13px;
-    word-break: break-all;
-    color: var(--c-text-strong);
-    user-select: all;
-}
-
-.am-token-hint {
-    margin-top: 8px;
-    font-size: 12px;
-    color: var(--c-text-muted);
-}
-
-.am-prefix {
-    font-size: 12px;
-    color: var(--c-text-strong);
-}
-
-/* ── Client modal: yanyana alanlar + binding satirlari ───────────────── */
-
-.am-form-row {
-    display: flex;
+/* ── Istemci kartlari ─────────────────────────────────────────────────── */
+.am-clients {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
     gap: 14px;
 }
-.am-form-row .ant-form-item {
-    flex: 1;
-    min-width: 0;
-}
-
-.am-bindings-label {
-    font-weight: 600;
-    color: var(--c-text-strong);
-    margin-bottom: 6px;
-}
-.am-bindings-hint {
-    display: block;
-    font-weight: 400;
-    font-size: 12px;
-    color: var(--c-text-muted);
-}
-
-.am-binding-row {
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-    margin-bottom: 8px;
-    flex-wrap: wrap;
-}
-
-/* ── Request logs ─────────────────────────────────────────────────────── */
-
-/* Stage 3F: retention/cleanup durum seridi */
-.am-cleanup-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    padding: 10px 12px;
-    margin-bottom: 12px;
-    border: 1px solid var(--tm-border, rgba(124, 92, 255, 0.25));
-    border-radius: 10px;
-    background: var(--tm-card-bg, rgba(124, 92, 255, 0.06));
-    font-size: 12.5px;
-}
-
-.am-cleanup-info {
+.am-client {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 12px;
     min-width: 0;
+    padding: 16px 18px;
+    border: 1px solid var(--h-border-subtle);
+    border-radius: 18px;
+    background: var(--h-field-bg);
+    transition:
+        border-color var(--h-motion-fast) var(--h-ease-standard),
+        box-shadow var(--h-motion-fast) var(--h-ease-standard);
 }
-
-.am-cleanup-last {
-    opacity: 0.75;
+.am-client:hover {
+    border-color: color-mix(in srgb, var(--h-brand) 35%, var(--h-border-subtle));
+    box-shadow: 0 10px 24px -18px color-mix(in srgb, var(--h-brand) 60%, transparent);
 }
-
-.am-log-filters {
-    margin-bottom: 12px;
+.am-client.is-disabled { opacity: 0.72; }
+.am-client.is-disabled:hover { opacity: 1; }
+.am-client__head { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.am-client__icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--h-brand) 12%, transparent);
+    color: var(--h-brand);
+    font-size: 17px;
 }
+.am-client__titles { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.am-client__name {
+    margin: 0;
+    overflow: hidden;
+    font-size: 15px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    color: var(--h-text-primary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.am-client__tags,
+.am-client__chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.am-client__desc { margin: 0; color: var(--h-text-secondary); font-size: 13px; line-height: 1.5; }
+.am-client__bound {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    align-self: flex-start;
+    padding: 3px 12px 3px 3px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-bg-hover);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--h-text-primary);
+}
+.am-client__kv.lq-kv { gap: 7px 16px; font-size: 13px; }
+.am-client__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--h-border-subtle);
+}
+.am-client__toggle.ant-btn { margin-left: auto; }
 
+/* ── Tablo hucreleri ─────────────────────────────────────────────────── */
+.am-cell-client { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.am-cell-client__name { font-weight: 600; color: var(--h-text-primary); }
+.am-prefix {
+    font-family: var(--h-font-mono);
+    font-size: 12px;
+    color: var(--h-text-primary);
+}
+.am-method {
+    display: inline-block;
+    min-width: 46px;
+    padding: 2px 8px;
+    border-radius: 7px;
+    background: var(--h-bg-hover);
+    color: var(--h-text-secondary);
+    font: 700 11px var(--h-font-mono);
+    letter-spacing: 0.04em;
+    text-align: center;
+}
+.am-method--get { background: color-mix(in srgb, var(--h-success) 14%, transparent); color: var(--h-success); }
+.am-method--post { background: var(--h-bg-selected); color: var(--h-info); }
+.am-method--patch,
+.am-method--put { background: color-mix(in srgb, var(--h-warning) 16%, transparent); color: var(--h-warning); }
+.am-method--delete { background: color-mix(in srgb, var(--h-danger) 13%, transparent); color: var(--h-danger); }
+
+/* ── Istek kayitlari ─────────────────────────────────────────────────── */
+.am-retention.lq-kv {
+    margin: 0 0 16px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--hp-purple-500) 7%, transparent);
+    font-size: 13px;
+}
+.am-retention__off { margin-left: 8px; }
+.am-filter--client.ant-select { width: 200px; }
+.am-filter--status.ant-select { width: 130px; }
+.am-filter--rid.ant-input-search { width: 260px; }
 .am-log-pager {
     display: flex;
     justify-content: flex-end;
-    gap: 8px;
-    margin-top: 10px;
+    gap: 6px;
+    margin-top: 12px;
 }
 
-/* ── Documentation kartlari ───────────────────────────────────────────── */
-
-.am-docs-grid {
+/* ── Dokumantasyon ───────────────────────────────────────────────────── */
+.am-docs {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 12px;
 }
-
-/* Dokuman baglantilari: Card grid yerine editorial satir. */
-.am-doc-card {
+.am-doc {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    border: 0;
-    border-bottom: 1px solid var(--h-border-subtle);
-    border-radius: 0;
-    background: transparent;
-    padding: 12px 4px;
-    color: inherit;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+    padding: 14px 16px;
+    border: 1px solid var(--h-border-subtle);
+    border-radius: 18px;
+    background: var(--h-field-bg);
+    color: var(--h-text-primary);
     text-decoration: none;
-    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.am-doc--wide { grid-column: 1 / -1; }
+.am-doc--link {
+    align-items: center;
+    transition:
+        transform 220ms var(--h-ease-spring),
+        border-color var(--h-motion-fast) var(--h-ease-standard);
+}
+.am-doc--link:hover {
+    transform: translateY(-2px);
+    border-color: var(--h-brand);
+    color: var(--h-text-primary);
+}
+.am-doc--link:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
+.am-doc__icon {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: none;
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--hp-amber-500) 16%, transparent);
+    color: var(--hp-amber-700);
+    font-size: 16px;
+}
+.am-doc__text { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; }
+.am-doc__title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 650; }
+.am-doc__sub { color: var(--h-text-secondary); font-size: 13px; line-height: 1.55; }
+.am-doc__arrow { color: var(--h-text-muted); transition: transform 220ms var(--h-ease-spring); }
+.am-doc--link:hover .am-doc__arrow { transform: translateX(3px); color: var(--h-brand); }
+.am-doc__code {
+    align-self: flex-start;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: var(--h-bg-hover);
+    font: 12.5px var(--h-font-mono);
+    color: var(--h-text-primary);
 }
 
-a.am-doc-card:hover {
-    border-color: var(--color-primary);
-    background: var(--c-surface-raised);
+/* ── Token-once modal ────────────────────────────────────────────────── */
+.am-token-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--h-border-default);
+    border-radius: 14px;
+    background: var(--h-field-bg);
+}
+.am-token-value {
+    flex: 1;
+    font-family: var(--h-font-mono);
+    font-size: 13px;
+    word-break: break-all;
+    color: var(--h-text-primary);
+    user-select: all;
+}
+.am-token-hint { margin-top: 8px; font-size: 12px; color: var(--h-text-muted); }
+.am-expiry-hint { margin: 0 0 12px; color: var(--h-text-secondary); }
+
+/* ── Istemci modali: yanyana alanlar + binding satirlari ─────────────── */
+.am-form-row { display: flex; gap: 14px; }
+.am-form-row .ant-form-item { flex: 1; min-width: 0; }
+.am-bindings-label { margin-bottom: 6px; font-weight: 600; color: var(--h-text-primary); }
+.am-bindings-hint {
+    display: block;
+    font-weight: 400;
+    font-size: 12px;
+    color: var(--h-text-muted);
+}
+.am-binding-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
 }
 
-.am-doc-card.is-coming {
-    opacity: 0.75;
-}
-
-.am-doc-title {
-    font-weight: 700;
-    color: var(--c-text-strong);
-    font-size: 13.5px;
-}
-
-.am-doc-sub {
-    font-size: 12.5px;
-    color: var(--c-text-muted);
-    line-height: 1.5;
-}
-
-/* ── Mobile ───────────────────────────────────────────────────────────── */
-
-@media (max-width: 768px) {
-    .am-client-meta {
-        gap: 10px 18px;
-    }
-}
-
-@media (max-width: 480px) {
-    .am-form-row {
-        flex-direction: column;
-        gap: 0;
-    }
-    .am-binding-row .ant-select {
-        width: 100% !important;
-    }
-    .am-binding-row {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .am-log-filters .ant-select,
-    .am-log-filters .ant-picker,
-    .am-log-filters .ant-input-search {
-        width: 100% !important;
-        min-width: 0 !important;
-    }
-    .am-log-filters .ant-space-item {
-        width: 100%;
-    }
-    .am-token-box {
-        flex-direction: column;
-        align-items: stretch;
-    }
+/* ── Dar ekran ───────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .am-clients { grid-template-columns: 1fr; }
+    .am-form-row { flex-direction: column; gap: 0; }
+    .am-binding-row { flex-direction: column; align-items: stretch; }
+    .am-binding-row .ant-select { width: 100%; }
+    .am-filter--client.ant-select,
+    .am-filter--status.ant-select,
+    .am-filter--range.ant-picker,
+    .am-filter--rid.ant-input-search { width: 100%; }
+    .am-token-box { flex-direction: column; align-items: stretch; }
 }

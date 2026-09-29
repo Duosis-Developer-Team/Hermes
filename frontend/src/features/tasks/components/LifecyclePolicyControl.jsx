@@ -11,7 +11,9 @@
  * =============================================================================
  */
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Select, Spin, message } from 'antd'
+import { Spin, message } from 'antd'
+
+import { ChipGroup } from '../../../components/liquid'
 
 import useTaskInvalidation from '../hooks/useTaskInvalidation'
 import { normalizeApiError } from '../../admin/shared/normalizeApiError'
@@ -54,27 +56,27 @@ function LifecyclePolicyControl() {
 
     const current = data?.retention_days == null ? NEVER : data.retention_days
 
+    /* Hermes Liquid (29.09): secim bir cip grubudur (prototip); deger ve
+       kaydetme davranisi AYNI — secim aninda tek istek, pending iken kilit. */
     return (
         <div className="tm-policy-row">
             <div className="tm-policy-text">
                 <div className="tm-policy-label">{t('lifecycle.autoArchiveAfter')}</div>
-                <div className="tm-policy-hint">
-                    Pending and In Progress work stays in Active regardless of
-                    age. Archiving never deletes anything — logged time and
-                    history stay untouched and items can be restored.
-                </div>
+                <div className="tm-policy-hint">{t('lifecycle.policyHint')}</div>
             </div>
-            <Select
-                aria-label={t('lifecycle.retention')}
-                value={current}
-                onChange={(v) => {
-                    if (mutation.isPending) return
-                    mutation.mutate(v)
-                }}
-                loading={mutation.isPending}
-                options={OPTIONS.map((o) => ({ ...o, label: t(o.labelKey) }))}
-                style={{ minWidth: 160 }}
-            />
+            <div className="tm-policy-control">
+                <ChipGroup
+                    ariaLabel={t('lifecycle.retention')}
+                    value={current}
+                    onChange={(v) => {
+                        if (v === undefined || v === current) return
+                        if (mutation.isPending) return
+                        mutation.mutate(v)
+                    }}
+                    options={OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+                />
+                {mutation.isPending && <Spin size="small" />}
+            </div>
         </div>
     )
 }

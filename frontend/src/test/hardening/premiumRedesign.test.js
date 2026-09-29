@@ -83,11 +83,17 @@ describe('KPI kartlari metric stripe donustu', () => {
         expect(jsx).not.toContain('modern-stat-card')
     })
 
-    it('PM Configurations metrikleri zeminsiz striptir', () => {
-        const css = noComments(read('pages/admin/TaskManagementPage.css'))
-        const block = css.slice(css.indexOf('.tm-stat {'), css.indexOf('.tm-stat-icon'))
-        expect(block).toContain('background: transparent')
-        expect(block).not.toMatch(/border-radius:\s*14px/)
+    it('PM Configurations metrikleri Panel ile AYNI KPI karolaridir', () => {
+        /* Hermes Liquid (29.09, CTO istegi): ayar sayfalari ince strip
+           yerine Panel'in lq-kpis karolarini kullanir. Kilit: tek kaynak
+           (settingsKit) ve eski ozel strip sinifi GERI GELMEZ. */
+        const kit = noComments(read('pages/admin/settingsKit.jsx'))
+        expect(kit).toContain('lq-kpis')
+        expect(kit).toContain('lq-kpi__value')
+        for (const f of ['pages/admin/TaskManagementPage.jsx', 'pages/admin/ApiManagementPage.jsx']) {
+            expect(noComments(read(f)), f).toContain('<SettingsKpis')
+        }
+        expect(noComments(read('pages/admin/TaskManagementPage.css'))).not.toContain('.tm-stat')
     })
 })
 
@@ -110,11 +116,21 @@ describe('buyuk gri seritler ve panel yiginlari kalkti', () => {
         expect(jsx).toContain('reports-filter-toolbar')
     })
 
-    it('PM Config bolumleri Card degil section-row', () => {
+    it('PM Config bolumleri tek cam kart; ic ice kart ve canli bulaniklik YOK', () => {
+        /* Hermes Liquid (29.09): renkli ikonlu akordeon satirlari yerine
+           hap segment + TEK cam bolum karti (settingsKit). Kart yuzeyi
+           token'dan gelir ve kayan icerikte backdrop-filter tasimaz
+           (performans kurali). Eski akordeon siniflari GERI GELMEZ. */
+        const kit = noComments(read('pages/admin/settingsKit.css'))
+        const block = cssBlock_(kit, '.sk-card {')
+        expect(block).toContain('background: var(--h-bg-surface)')
+        expect(block).toContain('border: 1px solid var(--h-glass-edge)')
+        expect(kit).not.toContain('backdrop-filter')
         const css = noComments(read('pages/admin/TaskManagementPage.css'))
-        const block = css.slice(css.indexOf('.tm-section {'), css.indexOf('.tm-section-head'))
-        expect(block).toContain('background: transparent')
-        expect(block).toContain('border-top')
+        expect(css).not.toContain('.tm-section')
+        const jsx = noComments(read('pages/admin/TaskManagementPage.jsx'))
+        expect(jsx).toContain('<SettingsSection')
+        expect(jsx).toContain('<SettingsTabs')
     })
 })
 
@@ -258,11 +274,19 @@ describe('duzeltme turu (2026-08-04) kilitleri', () => {
         expect(css).not.toContain('background: var(--bg-secondary)')
     })
 
-    it('Mail Notifications satir tabanli (kart yigini degil)', () => {
+    it('Mail Notifications tur basina karo izgarasi (prototip); ic ice cam yok', () => {
+        /* Onaylanan prototip (docs/redesign/prototype-liquid.html, SET.pm):
+           Gorevler / Sorunlar / Oneriler yan yana karolar. Karo ikinci bir
+           CAM kart DEGIL: alan zemini token'i + ince kenar; tur rengi yalniz
+           ust cizgide. Ham hex yok. */
         const css = noComments(read('pages/admin/TaskManagementPage.css'))
-        const block = css.slice(css.indexOf('.tm-notif-row {'), css.indexOf('.tm-notif-head'))
-        expect(block).toContain('background: transparent')
-        expect(block).toContain('border-top')
+        expect(css).toContain('.tm-notif-grid')
+        const block = cssBlock_(css, '.tm-notif-row {')
+        expect(block).toContain('background: var(--h-field-bg)')
+        expect(block).toContain('border: 1px solid var(--h-border-subtle)')
+        expect(block).not.toContain('box-shadow')
+        expect(css).toContain('.tm-notif-row::before')
+        expect(block).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
     })
 
     it('performans: sabit-arkaplan repaint ve margin animasyonu kaldirildi', () => {

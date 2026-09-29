@@ -1,6 +1,6 @@
 /**
  * =============================================================================
- * HERMES - Admin Task Management Page
+ * HERMES - Admin Task Management Page (PM Configurations)
  * =============================================================================
  * RBAC cutover (2026-08-04): Task Access yonetimi ROLLERE tasindi
  * (Users → Roles). Bu sayfada KALANLAR:
@@ -8,10 +8,16 @@
  *   2. Issue & Suggestion Hierarchy       — kim kime issue atayabilir
  *   3. Sub Projects                       — musteri/proje alti alt projeler
  *   4. Mail Notifications                 — bildirim kurallari
+ *   (+ is kalemi yasam dongusu / otomatik arsiv politikasi)
+ *
+ * Hermes Liquid (29.09): tam genislik; KPI karolari + hap segment ile
+ * bolum secimi + her bolum tek cam kart. Veri akisi, sorgu anahtarlari ve
+ * mutation'lar AYNI.
  * =============================================================================
  */
 
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
     Alert,
     Table,
@@ -20,7 +26,6 @@ import {
     Form,
     Select,
     Input,
-    Space,
     Spin,
     Switch,
     message,
@@ -30,12 +35,13 @@ import {
     PlusOutlined,
     EditOutlined,
     DeleteOutlined,
-    DownOutlined,
     MailOutlined,
     ApartmentOutlined,
     FolderOpenOutlined,
-    TeamOutlined,
     InboxOutlined,
+    FlagOutlined,
+    FilterOutlined,
+    InfoCircleOutlined,
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -48,6 +54,7 @@ import {
     taskAssignmentGroupService,
     taskNotificationSettingsService,
 } from '../../services/api'
+import './settingsKit.css'
 import './TaskManagementPage.css'
 import AssignmentHierarchyTab from './AssignmentHierarchyTab'
 import LifecyclePolicyControl from '../../features/tasks/components/LifecyclePolicyControl'
@@ -56,6 +63,7 @@ import { normalizeApiError } from '../../features/admin/shared/normalizeApiError
 import { resetAndFill } from '../../features/admin/shared/formLifecycle'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
+import { SettingsEmpty, SettingsKpis, SettingsSection, SettingsTabs } from './settingsKit'
 
 // =============================================================================
 // Sub Projects
@@ -207,48 +215,74 @@ export function SubProjectsTab() {
         }
     }
 
+    const createAction = (
+        /* Ortak create-action dili: sayfa/bolum aksiyonu solid mavi DEGIL. */
+        <Button
+            className="h-create-action"
+            icon={<PlusOutlined />}
+            onClick={handleOpenCreate}
+        >{t('pm.createSubProject')}</Button>
+    )
+
     const columns = [
-        { title: t('common.name'), dataIndex: 'name' },
-        { title: t('entity.customer'), dataIndex: 'customer_name' },
-        { title: t('entity.project'), dataIndex: 'project_name' },
         {
-            title: t('common.description'),
-            dataIndex: 'description',
-            render: (val) => val || '—',
+            title: t('common.name'),
+            dataIndex: 'name',
+            render: (val, record) => (
+                <span className="tm-sub-name">
+                    <span className="tm-sub-name__title">{val}</span>
+                    {record.description && (
+                        <span className="tm-sub-name__desc">{record.description}</span>
+                    )}
+                </span>
+            ),
         },
+        { title: t('entity.customer'), dataIndex: 'customer_name', render: (val) => val || '—' },
+        { title: t('entity.project'), dataIndex: 'project_name', render: (val) => val || '—' },
         {
             title: t('admin.createdAt'),
             dataIndex: 'created_at',
-            render: (val) => (val ? new Date(val).toLocaleDateString() : '—'),
+            width: 130,
+            render: (val) => (
+                <span className="sk-nowrap sk-muted">{val ? new Date(val).toLocaleDateString() : '—'}</span>
+            ),
         },
         {
-            title: t('common.actions'),
+            title: <span className="h-sr-only">{t('common.actions')}</span>,
+            key: 'actions',
+            width: 96,
+            align: 'right',
             render: (_, record) => (
-                <Space>
+                <span className="sk-row-actions">
                     {/* AntD Tooltip erisilebilir AD VERMEZ. */}
                     <Tooltip title={t('common.edit')}>
                         <Button
                             size="small"
-                            aria-label={`Edit ${record.name}`}
+                            className="h-inline-action"
+                            aria-label={t('pm.editNamed', { name: record.name })}
                             disabled={isDeleting}
                             icon={<EditOutlined />}
                             onClick={() => handleOpenEdit(record)}
                         />
                     </Tooltip>
-                    <Button
-                        size="small"
-                        danger
-                        icon={<DeleteOutlined />}
-                        /* Bu uc GERCEKTEN kalici siler (soft degil):
-                           erisilebilir ad bunu soyler. */
-                        aria-label={`Delete ${record.name} permanently`}
-                        disabled={isDeleting}
-                        onClick={() => setDeletingSub(record)}
-                    >{t('common.delete')}</Button>
-                </Space>
+                    <Tooltip title={t('common.delete')}>
+                        <Button
+                            size="small"
+                            className="h-inline-action h-inline-action--danger"
+                            icon={<DeleteOutlined />}
+                            /* Bu uc GERCEKTEN kalici siler (soft degil):
+                               erisilebilir ad bunu soyler. */
+                            aria-label={t('pm.deleteNamedPermanently', { name: record.name })}
+                            disabled={isDeleting}
+                            onClick={() => setDeletingSub(record)}
+                        />
+                    </Tooltip>
+                </span>
             ),
         },
     ]
+
+    const filtering = Boolean(filterCustomer || filterProject)
 
     return (
         <>
@@ -263,21 +297,14 @@ export function SubProjectsTab() {
                     }
                 />
             )}
-            <div
-                style={{
-                    marginBottom: 12,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: 8,
-                }}
-            >
-                <Space wrap className="tm-sub-filters">
+            <div className="sk-toolbar">
+                <div className="sk-toolbar__filters tm-sub-filters">
                     <Select
                         allowClear
                         showSearch
+                        aria-label={t('pm.filterByCustomer')}
                         placeholder={t('entity.customer')}
-                        style={{ width: 200 }}
+                        className="tm-sub-filter"
                         value={filterCustomer}
                         onChange={(v) => {
                             setFilterCustomer(v)
@@ -289,8 +316,9 @@ export function SubProjectsTab() {
                     <Select
                         allowClear
                         showSearch
+                        aria-label={t('pm.filterByProject')}
                         placeholder={t('entity.project')}
-                        style={{ width: 200 }}
+                        className="tm-sub-filter"
                         value={filterProject}
                         disabled={!filterCustomer}
                         onChange={setFilterProject}
@@ -300,14 +328,8 @@ export function SubProjectsTab() {
                             label: p.name,
                         }))}
                     />
-                </Space>
-                {/* Ortak create-action dili (TE "+" referansi): notr yuzey,
-                    hover'da ince mavi ring. Aksiyon section toolbar'inda. */}
-                <Button
-                    className="h-create-action"
-                    icon={<PlusOutlined />}
-                    onClick={handleOpenCreate}
-                >{t('pm.createSubProject')}</Button>
+                </div>
+                {createAction}
             </div>
 
             <Table
@@ -317,16 +339,26 @@ export function SubProjectsTab() {
                 loading={isLoading && subProjects.length === 0}
                 locale={{
                     // ILK KULLANIM boslugu ile FILTRE sonucu yoklugu AYRI.
-                    emptyText: (filterCustomer || filterProject)
-                        ? 'No sub-projects match the selected filters.'
-                        : 'No sub-projects yet. Use “Create Sub Project”.',
+                    emptyText: filtering ? (
+                        <SettingsEmpty
+                            compact
+                            icon={<FilterOutlined />}
+                            text={t('pm.noSubProjectsMatch')}
+                        />
+                    ) : (
+                        <SettingsEmpty
+                            icon={<FolderOpenOutlined />}
+                            title={t('pm.noSubProjectsTitle')}
+                            text={t('pm.noSubProjectsText')}
+                        />
+                    ),
                 }}
-                pagination={{ pageSize: 20 }}
+                pagination={{ pageSize: 20, hideOnSinglePage: true }}
                 scroll={{ x: 'max-content' }}
             />
 
             <Modal
-                title={<ModalHead icon={<FolderOpenOutlined />} tone="blue" title={editing ? t('modalTitles.editSubProject') : t('modalTitles.createSubProject')} />}
+                title={<ModalHead icon={<FolderOpenOutlined />} tone="green" title={editing ? t('modalTitles.editSubProject') : t('modalTitles.createSubProject')} />}
                 open={modalOpen}
                 onCancel={() => {
                     setModalOpen(false)
@@ -336,7 +368,7 @@ export function SubProjectsTab() {
                     if (isSaving) return
                     form.submit()
                 }}
-                okText={editing ? 'Save Changes' : 'Create Sub Project'}
+                okText={editing ? t('pm.saveChanges') : t('pm.createSubProject')}
                 confirmLoading={isSaving}
                 destroyOnHidden
                 closable={!isSaving}
@@ -344,45 +376,47 @@ export function SubProjectsTab() {
                 keyboard={!isSaving}
             >
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
-                    <Form.Item
-                        label={t('entity.customer')}
-                        name="customer_id"
-                        rules={[{ required: true, message: t('task.customerRequired') }]}
-                    >
-                        <Select
-                            disabled={!!editing}
-                            showSearch
-                            placeholder={t('task.selectCustomer')}
-                            optionFilterProp="label"
-                            onChange={() => {
-                                form.setFieldsValue({ project_id: undefined })
-                            }}
-                            options={customers.map((c) => ({
-                                value: c.id,
-                                label: c.name,
-                            }))}
-                        />
-                    </Form.Item>
-                    <Form.Item
-                        label={t('entity.project')}
-                        name="project_id"
-                        rules={[{ required: true, message: t('task.projectRequired') }]}
-                    >
-                        <Select
-                            disabled={!!editing || !formCustomerId}
-                            showSearch
-                            placeholder={
-                                formCustomerId
-                                    ? 'Select project'
-                                    : 'Select a customer first'
-                            }
-                            optionFilterProp="label"
-                            options={formProjectsList.map((p) => ({
-                                value: p.id,
-                                label: p.name,
-                            }))}
-                        />
-                    </Form.Item>
+                    <div className="lq-frm">
+                        <Form.Item
+                            label={t('entity.customer')}
+                            name="customer_id"
+                            rules={[{ required: true, message: t('task.customerRequired') }]}
+                        >
+                            <Select
+                                disabled={!!editing}
+                                showSearch
+                                placeholder={t('task.selectCustomer')}
+                                optionFilterProp="label"
+                                onChange={() => {
+                                    form.setFieldsValue({ project_id: undefined })
+                                }}
+                                options={customers.map((c) => ({
+                                    value: c.id,
+                                    label: c.name,
+                                }))}
+                            />
+                        </Form.Item>
+                        <Form.Item
+                            label={t('entity.project')}
+                            name="project_id"
+                            rules={[{ required: true, message: t('task.projectRequired') }]}
+                        >
+                            <Select
+                                disabled={!!editing || !formCustomerId}
+                                showSearch
+                                placeholder={
+                                    formCustomerId
+                                        ? t('pm.selectProject')
+                                        : t('pm.selectCustomerFirst')
+                                }
+                                optionFilterProp="label"
+                                options={formProjectsList.map((p) => ({
+                                    value: p.id,
+                                    label: p.name,
+                                }))}
+                            />
+                        </Form.Item>
+                    </div>
                     <Form.Item
                         label={t('common.name')}
                         name="name"
@@ -405,7 +439,7 @@ export function SubProjectsTab() {
             <DangerConfirmModal
                 open={!!deletingSub}
                 title={t('pm.deleteSubProject')}
-                body="This will permanently remove the sub project. This action cannot be undone."
+                body={t('pm.deleteSubProjectBody')}
                 itemName={deletingSub?.name}
                 itemSubtitle={
                     deletingSub
@@ -430,34 +464,16 @@ export function SubProjectsTab() {
 }
 
 // =============================================================================
-// Dashboard primitives
-// =============================================================================
-
-function StatCard({ icon, label, value, accent }) {
-    return (
-        <div className="tm-stat" style={{ '--tm-accent': accent }}>
-            <div className="tm-stat-icon">{icon}</div>
-            <div className="tm-stat-body">
-                <div className="tm-stat-value">
-                    {value === null || value === undefined ? '—' : value}
-                </div>
-                <div className="tm-stat-label">{label}</div>
-            </div>
-        </div>
-    )
-}
-
-// =============================================================================
 // Mail Notifications — admin-configurable e-mail rules per work-item type
 // =============================================================================
 
 // Sabitler ANAHTAR tasir, cevrilmis metin DEGIL: ceviri bir hook'a
 // baglidir ve modul duzeyinde cagrilamaz. Degerler (task/issue/low...)
-// API sozlesmesidir ve cevrilmez.
+// API sozlesmesidir ve cevrilmez. `tone` = tur rengi (token).
 const NOTIF_TYPES = [
-    { value: 'task', labelKey: 'pm.tasks', color: '#388bff' },
-    { value: 'issue', labelKey: 'pm.issues', color: '#f97316' },
-    { value: 'suggestion', labelKey: 'pm.suggestions', color: '#a855f7' },
+    { value: 'task', labelKey: 'pm.tasks', tone: 'blue' },
+    { value: 'issue', labelKey: 'pm.issues', tone: 'amber' },
+    { value: 'suggestion', labelKey: 'pm.suggestions', tone: 'violet' },
 ]
 
 const NOTIF_PRIORITY_KEYS = [
@@ -470,11 +486,40 @@ const NOTIF_DUE_KEYS = [
     ['without_due', 'pm.onlyWithoutDueDate'],
 ]
 
+const NOTIF_CHANNELS = [
+    { key: 'email_enabled', labelKey: 'pm.channelEmail' },
+    { key: 'in_app_enabled', labelKey: 'pm.channelInApp' },
+]
+
 const NOTIF_EVENTS = [
     { key: 'notify_assignment', labelKey: 'pm.assigned' },
     { key: 'notify_accept', labelKey: 'pm.accepted' },
     { key: 'notify_complete', labelKey: 'pm.completed' },
 ]
+
+function NotifChips({ items, isOn, disabled, onToggle, ariaLabel }) {
+    const t = useT()
+    return (
+        <div className="tm-notif-chips" role="group" aria-label={ariaLabel}>
+            {items.map((it) => {
+                const on = isOn(it.key)
+                return (
+                    <button
+                        key={it.key}
+                        type="button"
+                        className={`tm-notif-chip${on ? ' is-on' : ''}`}
+                        aria-pressed={on}
+                        disabled={disabled}
+                        onClick={() => onToggle(it.key, on)}
+                    >
+                        <span className="tm-notif-chip-dot" aria-hidden="true" />
+                        {t(it.labelKey)}
+                    </button>
+                )
+            })}
+        </div>
+    )
+}
 
 function MailNotificationsTab() {
     const t = useT()
@@ -531,167 +576,111 @@ function MailNotificationsTab() {
     }
 
     if (isLoading) {
-        return (
-            <div style={{ textAlign: 'center', padding: 24 }}>
-                <Spin />
-            </div>
-        )
+        return <div className="tm-loading"><Spin /></div>
     }
+
+    const rows = NOTIF_TYPES.filter((type) => byType[type.value])
 
     return (
         <div className="tm-notif">
-            <p className="tm-notif-hint">
-                E-mails are sent only when ALL rules of the item's type
-                match: the type is enabled, the event is on, the item's
-                priority is selected, and the due-date rule fits. Types
-                never configured default to everything on.
+            <p className="sk-hint">
+                <InfoCircleOutlined aria-hidden="true" />
+                <span>{t('pm.notifHint')}</span>
             </p>
-            {/* Parametre `type`: eskiden `t` idi ve cevirici `t`'yi
-                    GOLGELIYORDU. */}
-            {NOTIF_TYPES.map((type) => {
-                const row = byType[type.value]
-                if (!row) return null
-                const disabled = !row.enabled || saveMutation.isPending
-                return (
-                    <div
-                        key={type.value}
-                        className={`tm-notif-row${
-                            row.enabled ? '' : ' is-off'
-                        }`}
-                        style={{ '--notif-accent': type.color }}
-                    >
-                        <div className="tm-notif-head">
-                            <span className="tm-notif-dot" />
-                            <span className="tm-notif-name">{t(type.labelKey)}</span>
-                            <Switch
-                                checked={row.enabled}
-                                loading={saveMutation.isPending}
-                                onChange={(checked) =>
-                                    save(row, { enabled: checked })
-                                }
-                            />
-                        </div>
-                        <div className="tm-notif-controls">
-                            {/* C3 (PM rework P2.2): kanal ayrimi — bir olayi
-                                e-postada kapatip uygulama icinde acik birakmak. */}
-                            <div className="tm-notif-field">
-                                <span className="tm-notif-label">{t('pm.channels')}</span>
-                                <div className="tm-notif-chips">
-                                    {[
-                                        { key: 'email_enabled', labelKey: 'pm.channelEmail' },
-                                        { key: 'in_app_enabled', labelKey: 'pm.channelInApp' },
-                                    ].map((ch) => {
-                                        const on = row[ch.key] !== false
-                                        return (
-                                            <button
-                                                key={ch.key}
-                                                type="button"
-                                                className={`tm-notif-chip${on ? ' is-on' : ''}`}
-                                                aria-pressed={on}
-                                                disabled={disabled}
-                                                onClick={() =>
-                                                    save(row, { [ch.key]: !on })
-                                                }
-                                            >
-                                                <span className="tm-notif-chip-dot" aria-hidden="true" />
-                                                {t(ch.labelKey)}
-                                            </button>
-                                        )
-                                    })}
+            {rows.length === 0 ? (
+                <SettingsEmpty compact icon={<MailOutlined />} text={t('pm.noNotifSettings')} />
+            ) : (
+                <div className="tm-notif-grid">
+                    {/* Parametre `type`: eskiden `t` idi ve cevirici `t`'yi
+                        GOLGELIYORDU. */}
+                    {rows.map((type) => {
+                        const row = byType[type.value]
+                        const disabled = !row.enabled || saveMutation.isPending
+                        const typeLabel = t(type.labelKey)
+                        return (
+                            <div
+                                key={type.value}
+                                className={`tm-notif-row tm-notif-row--${type.tone}${
+                                    row.enabled ? '' : ' is-off'
+                                }`}
+                            >
+                                <div className="tm-notif-head">
+                                    <span className="tm-notif-dot" aria-hidden="true" />
+                                    <span className="tm-notif-name">{typeLabel}</span>
+                                    <Switch
+                                        aria-label={t('pm.notifToggle', { type: typeLabel })}
+                                        checked={row.enabled}
+                                        loading={saveMutation.isPending}
+                                        onChange={(checked) =>
+                                            save(row, { enabled: checked })
+                                        }
+                                    />
+                                </div>
+                                <div className="tm-notif-controls">
+                                    {/* C3 (PM rework P2.2): kanal ayrimi — bir olayi
+                                        e-postada kapatip uygulama icinde acik birakmak. */}
+                                    <div className="tm-notif-field">
+                                        <span className="tm-notif-label">{t('pm.channels')}</span>
+                                        <NotifChips
+                                            ariaLabel={`${typeLabel} · ${t('pm.channels')}`}
+                                            items={NOTIF_CHANNELS}
+                                            isOn={(key) => row[key] !== false}
+                                            disabled={disabled}
+                                            onToggle={(key, on) => save(row, { [key]: !on })}
+                                        />
+                                    </div>
+                                    {/*
+                                      * Kullanici karari (2026-08-04): daginik
+                                      * checkbox'lar yerine RBAC izin satirlarindaki
+                                      * gibi TIKLANABILIR TOGGLE CIP'ler. Davranis/
+                                      * kaydetme AYNI.
+                                      */}
+                                    <div className="tm-notif-field">
+                                        <span className="tm-notif-label">{t('pm.events')}</span>
+                                        <NotifChips
+                                            ariaLabel={`${typeLabel} · ${t('pm.events')}`}
+                                            items={NOTIF_EVENTS}
+                                            isOn={(key) => !!row[key]}
+                                            disabled={disabled}
+                                            onToggle={(key, on) => save(row, { [key]: !on })}
+                                        />
+                                    </div>
+                                    <div className="tm-notif-field">
+                                        <span className="tm-notif-label">{t('pm.priorities')}</span>
+                                        <Select
+                                            mode="multiple"
+                                            className="tm-notif-priorities"
+                                            aria-label={`${typeLabel} · ${t('pm.priorities')}`}
+                                            value={row.priorities}
+                                            options={priorityOptions}
+                                            disabled={disabled}
+                                            maxTagCount="responsive"
+                                            placeholder={t('pm.noPrioritiesNoMail')}
+                                            onChange={(vals) =>
+                                                save(row, { priorities: vals })
+                                            }
+                                        />
+                                    </div>
+                                    <div className="tm-notif-field">
+                                        <span className="tm-notif-label">{t('pm.dueDate')}</span>
+                                        <Select
+                                            className="tm-notif-due"
+                                            aria-label={`${typeLabel} · ${t('pm.dueDate')}`}
+                                            value={row.due_date_rule}
+                                            options={dueRuleOptions}
+                                            disabled={disabled}
+                                            onChange={(val) =>
+                                                save(row, { due_date_rule: val })
+                                            }
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                            <div className="tm-notif-field">
-                                <span className="tm-notif-label">{t('pm.events')}</span>
-                                {/*
-                                  * Kullanici karari (2026-08-04): dagini k
-                                  * checkbox'lar yerine RBAC izin satirlarindaki
-                                  * gibi TIKLANABILIR TOGGLE CIP'ler — secili
-                                  * olan tonal accent tasir, secili olmayan
-                                  * sessiz kalir. Davranis/kaydetme AYNI.
-                                  */}
-                                <div className="tm-notif-chips">
-                                    {NOTIF_EVENTS.map((ev) => {
-                                        const on = !!row[ev.key]
-                                        return (
-                                            <button
-                                                key={ev.key}
-                                                type="button"
-                                                className={`tm-notif-chip${on ? ' is-on' : ''}`}
-                                                aria-pressed={on}
-                                                disabled={disabled}
-                                                onClick={() =>
-                                                    save(row, { [ev.key]: !on })
-                                                }
-                                            >
-                                                <span className="tm-notif-chip-dot" aria-hidden="true" />
-                                                {t(ev.labelKey)}
-                                            </button>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                            <div className="tm-notif-field">
-                                <span className="tm-notif-label">{t('pm.priorities')}</span>
-                                <Select
-                                    mode="multiple"
-                                    className="tm-notif-priorities"
-                                    value={row.priorities}
-                                    options={priorityOptions}
-                                    disabled={disabled}
-                                    maxTagCount="responsive"
-                                    placeholder={t('pm.noPrioritiesNoMail')}
-                                    onChange={(vals) =>
-                                        save(row, { priorities: vals })
-                                    }
-                                />
-                            </div>
-                            <div className="tm-notif-field">
-                                <span className="tm-notif-label">{t('pm.dueDate')}</span>
-                                <Select
-                                    className="tm-notif-due"
-                                    value={row.due_date_rule}
-                                    options={dueRuleOptions}
-                                    disabled={disabled}
-                                    onChange={(val) =>
-                                        save(row, { due_date_rule: val })
-                                    }
-                                />
-                            </div>
-                        </div>
-                    </div>
-                )
-            })}
-        </div>
-    )
-}
-
-function Section({ icon, title, subtitle, count, accent, open, onToggle, children }) {
-    return (
-        <section className={`tm-section${open ? ' is-open' : ''}`} style={{ '--tm-accent': accent }}>
-            <button
-                type="button"
-                className="tm-section-head"
-                onClick={onToggle}
-                aria-expanded={open}
-            >
-                <span className="tm-section-icon">{icon}</span>
-                <span className="tm-section-titles">
-                    <span className="tm-section-title">{title}</span>
-                    {subtitle && (
-                        <span className="tm-section-sub">{subtitle}</span>
-                    )}
-                </span>
-                {typeof count === 'number' && (
-                    <span className="tm-section-count">{count}</span>
-                )}
-                <DownOutlined className="tm-section-chevron" />
-            </button>
-            <div className="tm-section-body-wrap">
-                <div className="tm-section-body">
-                    <div className="tm-section-inner">{children}</div>
+                        )
+                    })}
                 </div>
-            </div>
-        </section>
+            )}
+        </div>
     )
 }
 
@@ -699,17 +688,22 @@ function Section({ icon, title, subtitle, count, accent, open, onToggle, childre
 // Page
 // =============================================================================
 
+const SECTION_KEYS = ['hierarchy', 'issueHierarchy', 'sub', 'mail', 'lifecycle']
+
 function TaskManagementPage() {
     const t = useT()
-    // Multiple sections can be open at once (accordion felt restrictive).
-    const [open, setOpen] = useState({
-        lifecycle: false,
-        hierarchy: true,
-        issueHierarchy: false,
-        sub: false,
-        mail: false,
-    })
-    const toggle = (key) => setOpen((o) => ({ ...o, [key]: !o[key] }))
+    /* Bolum secimi URL'de (`?section=`): geri tusu ve paylasilan baglanti
+       ayni bolumu acar. Bilinmeyen deger varsayilana duser. */
+    const [params, setParams] = useSearchParams()
+    const requested = params.get('section')
+    const section = SECTION_KEYS.includes(requested) ? requested : 'hierarchy'
+    const selectSection = (key) => {
+        setParams((prev) => {
+            const next = new URLSearchParams(prev)
+            next.set('section', key)
+            return next
+        }, { replace: true })
+    }
 
     // Summary stats — reuse the exact query keys the sections use, so React
     // Query serves them from one shared cache (no duplicate network calls).
@@ -741,95 +735,80 @@ function TaskManagementPage() {
     const issueRulesCount =
         issueUserRelations.length + issueGroupRelations.length
 
+    const sections = {
+        hierarchy: {
+            icon: <ApartmentOutlined />, tone: 'violet',
+            title: t('pm.taskHierarchy'), subtitle: t('pm.taskHierarchySub'),
+            tab: t('pm.tabTaskHierarchy'), count: rulesCount,
+            body: <AssignmentHierarchyTab scope="task" />,
+        },
+        issueHierarchy: {
+            icon: <FlagOutlined />, tone: 'amber',
+            title: t('pm.issueHierarchy'), subtitle: t('pm.issueHierarchySub'),
+            tab: t('pm.tabIssueHierarchy'), count: issueRulesCount,
+            body: <AssignmentHierarchyTab scope="issue" />,
+        },
+        sub: {
+            icon: <FolderOpenOutlined />, tone: 'green',
+            title: t('pm.subProjects'), subtitle: t('pm.subProjectsSub'),
+            tab: t('pm.subProjectsShort'), count: subProjects.length,
+            body: <SubProjectsTab />,
+        },
+        mail: {
+            icon: <MailOutlined />, tone: 'blue',
+            title: t('pm.mailNotifications'), subtitle: t('pm.mailNotificationsSub'),
+            tab: t('pm.tabNotifications'),
+            body: <MailNotificationsTab />,
+        },
+        lifecycle: {
+            icon: <InboxOutlined />, tone: 'ink',
+            title: t('pm.workItemLifecycle'), subtitle: t('pm.lifecycleSub'),
+            tab: t('pm.tabLifecycle'),
+            body: <LifecyclePolicyControl />,
+        },
+    }
+    const active = sections[section]
+
     return (
         <div className="tm-page">
-            <header className="tm-header">
-                <h1 className="tm-title">{t('pm.title')}</h1>
-                <p className="tm-subtitle">
-                    Manage assignment hierarchies, sub-projects and mail
-                    notifications. Who can USE the task module is managed in
-                    Roles (Users → Roles).
-                </p>
-            </header>
-
-            <div className="tm-stats">
-                <StatCard
-                    icon={<TeamOutlined />}
-                    label={t('task.groups')}
-                    value={groups.length}
-                    accent="#388bff"
-                />
-                <StatCard
-                    icon={<ApartmentOutlined />}
-                    label={t('pm.assignmentRules')}
-                    value={rulesCount}
-                    accent="#7c5cff"
-                />
-                <StatCard
-                    icon={<FolderOpenOutlined />}
-                    label={t('pm.subProjectsShort')}
-                    value={subProjects.length}
-                    accent="#22a06b"
-                />
+            <div className="page-header">
+                <h1>{t('pm.title')}</h1>
+                <p>{t('pm.subtitle')}</p>
             </div>
 
-            <Section
-                icon={<InboxOutlined />}
-                title={t('pm.workItemLifecycle')}
-                subtitle="When completed and rejected work is archived"
-                accent="#38bdf8"
-                open={open.lifecycle}
-                onToggle={() => toggle('lifecycle')}
-            >
-                <LifecyclePolicyControl />
-            </Section>
+            <SettingsKpis
+                ariaLabel={t('pm.summary')}
+                items={[
+                    { key: 'groups', label: t('task.groups'), value: groups.length },
+                    { key: 'task', label: t('pm.kpiTaskRules'), value: rulesCount },
+                    { key: 'issue', label: t('pm.kpiIssueRules'), value: issueRulesCount },
+                    { key: 'sub', label: t('pm.subProjectsShort'), value: subProjects.length },
+                ]}
+            />
 
-            <Section
-                icon={<ApartmentOutlined />}
-                title={t('pm.taskHierarchy')}
-                subtitle="Who can assign tasks to which users or groups"
-                count={rulesCount}
-                accent="#7c5cff"
-                open={open.hierarchy}
-                onToggle={() => toggle('hierarchy')}
-            >
-                <AssignmentHierarchyTab scope="task" />
-            </Section>
+            <SettingsTabs
+                ariaLabel={t('pm.sections')}
+                value={section}
+                onChange={selectSection}
+                options={SECTION_KEYS.map((key) => ({
+                    value: key,
+                    label: sections[key].tab,
+                    count: sections[key].count,
+                }))}
+            />
 
-            <Section
-                icon={<ApartmentOutlined />}
-                title={t('pm.issueHierarchy')}
-                subtitle="Who can assign issues & suggestions to which users or groups"
-                count={issueRulesCount}
-                accent="#7c5cff"
-                open={open.issueHierarchy}
-                onToggle={() => toggle('issueHierarchy')}
-            >
-                <AssignmentHierarchyTab scope="issue" />
-            </Section>
-
-            <Section
-                icon={<FolderOpenOutlined />}
-                title={t('pm.subProjects')}
-                subtitle="Task-only sub-projects under a customer/project"
-                count={subProjects.length}
-                accent="#22a06b"
-                open={open.sub}
-                onToggle={() => toggle('sub')}
-            >
-                <SubProjectsTab />
-            </Section>
-
-            <Section
-                icon={<MailOutlined />}
-                title={t('pm.mailNotifications')}
-                subtitle="Which e-mails go out, per type / event / priority / due date"
-                accent="#f97316"
-                open={open.mail}
-                onToggle={() => toggle('mail')}
-            >
-                <MailNotificationsTab />
-            </Section>
+            {/* key: bolum degisince kart yeniden girer (lq-enter). */}
+            <div className="lq-enter" key={section}>
+                <SettingsSection
+                    icon={active.icon}
+                    tone={active.tone}
+                    title={active.title}
+                    subtitle={active.subtitle}
+                    count={active.count}
+                >
+                    {active.body}
+                </SettingsSection>
+            </div>
         </div>
     )
 }

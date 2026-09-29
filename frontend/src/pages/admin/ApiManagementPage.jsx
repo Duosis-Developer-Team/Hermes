@@ -3,8 +3,12 @@
  * HERMES - Admin API Management Page (Stage 2E)
  * =============================================================================
  * Dis entegrasyon API client'lari + token yasam dongusu + request loglari +
- * dokumantasyon girisleri. PM Configurations'in gorsel dilini (tm-*
- * section/stat kaliplari) yeniden kullanir.
+ * dokumantasyon girisleri.
+ *
+ * Hermes Liquid (29.09): tam genislik; KPI karolari + hap segment ile bolum
+ * secimi + her bolum tek cam kart (settingsKit). Istemciler kart izgarasi,
+ * token/istek kayitlari tablo. Veri akisi, sorgular ve mutation'lar AYNI;
+ * istek kayitlari hala YALNIZCA o bolum acikken yuklenir.
  *
  * Guvenlik davranislari:
  *  - Token plaintext'i YALNIZCA olusturma/rotate aninda TokenOnceModal'da
@@ -18,10 +22,15 @@
  */
 
 import { useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
-    Button, DatePicker, Input, Modal, Select, Space, Table, Tag, Tooltip, message
+    Button, DatePicker, Input, Modal, Select, Spin, Table, Tooltip, message
 } from 'antd'
-import { ApiOutlined, ClockCircleOutlined, FileTextOutlined, KeyOutlined, PlusOutlined, ReloadOutlined, SafetyCertificateOutlined, StopOutlined, UnorderedListOutlined } from '@ant-design/icons'
+import {
+    ApiOutlined, ArrowRightOutlined, ClockCircleOutlined, CodeOutlined, FileTextOutlined, KeyOutlined,
+    LockOutlined, PlusOutlined, ReloadOutlined, RobotOutlined, SafetyCertificateOutlined, StopOutlined,
+    UnorderedListOutlined,
+} from '@ant-design/icons'
 import {
     keepPreviousData, useMutation, useQuery, useQueryClient,
 } from '@tanstack/react-query'
@@ -35,25 +44,28 @@ import {
     userGroupService,
 } from '../../services/api'
 import DangerConfirmModal from '../../components/common/DangerConfirmModal'
-import './TaskManagementPage.css'
+import './settingsKit.css'
 import './ApiManagementPage.css'
 
 /*
- * Sorumluluk sinirlari (Sprint 6A/6C): bu dosya artik YALNIZCA
- * orkestrasyon yapar — sorgular, mutation'lar, onay akislari ve bolum
- * duzeni. Saf sozlukler, sunum kabuklari ve iki modal kendi
- * modullerinde yasar. Davranis DEGISMEDI.
+ * Sorumluluk sinirlari (Sprint 6A/6C): bu dosya YALNIZCA orkestrasyon
+ * yapar — sorgular, mutation'lar, onay akislari ve bolum duzeni. Saf
+ * sozlukler, sunum kiti ve iki modal kendi modullerinde yasar.
  */
 import {
     BINDING_LABEL, ENV_META, SCOPE_HELP, TYPE_LABEL, fmtDate, fmtDateTime,
 } from '../../features/api-management/model/format'
-import { Section, StatCard } from '../../features/api-management/components/Shell'
 import TokenOnceModal from '../../features/api-management/components/TokenOnceModal'
 import ClientModal from '../../features/api-management/modals/ClientModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import { useT } from '../../i18n'
-import { ModalHead } from '../../components/liquid'
+import { Avatar, ModalHead } from '../../components/liquid'
+import { SettingsEmpty, SettingsKpis, SettingsSection, SettingsTabs } from './settingsKit'
 
+const SECTION_KEYS = ['clients', 'tokens', 'logs', 'docs']
+
+/** HTTP durum kodu → durum hapi tonu. */
+const statusTone = (code) => (code < 400 ? 'ok' : code === 429 ? 'warn' : 'bad')
 
 // =============================================================================
 // Page
@@ -62,13 +74,20 @@ import { ModalHead } from '../../components/liquid'
 function ApiManagementPage() {
     const t = useT()
     const queryClient = useQueryClient()
-    const [open, setOpen] = useState({
-        clients: true,
-        tokens: false,
-        logs: false,
-        docs: false,
-    })
-    const toggle = (k) => setOpen((o) => ({ ...o, [k]: !o[k] }))
+
+    /* Bolum secimi URL'de (`?section=`). Istek kayitlari ve temizlik
+       durumu YALNIZCA kendi bolumu acikken sorgulanir (eskiden de
+       acilir bolum kapaliyken sorgu kapaliydi). */
+    const [params, setParams] = useSearchParams()
+    const requested = params.get('section')
+    const section = SECTION_KEYS.includes(requested) ? requested : 'clients'
+    const selectSection = (key) => {
+        setParams((prev) => {
+            const next = new URLSearchParams(prev)
+            next.set('section', key)
+            return next
+        }, { replace: true })
+    }
 
     // ── Data ────────────────────────────────────────────────────────────
     const { data: clients = [], isLoading: clientsLoading } = useQuery({
@@ -158,7 +177,7 @@ function ApiManagementPage() {
             } catch (err) {
                 const detail =
                     normalizeApiError(err).message ||
-                    'Access bindings could not be updated.'
+                    t('api.bindingsNotUpdated')
                 const partial = new Error(detail)
                 partial.isPartial = true
                 throw partial
@@ -171,11 +190,7 @@ function ApiManagementPage() {
         },
         onError: (err) => {
             if (err?.isPartial) {
-                message.warning(
-                    `Client settings were saved, but access bindings were NOT updated: ${err.message} ` +
-                        'The previous bindings are still in effect.',
-                    8
-                )
+                message.warning(t('api.partialSave', { detail: err.message }), 8)
                 setClientModal(null)
                 invalidate() // sunucu gercegini yeniden cek
                 return
@@ -194,8 +209,8 @@ function ApiManagementPage() {
         onSuccess: (_, { client }) => {
             message.success(
                 client.status === 'active'
-                    ? 'Client disabled — all its tokens stopped working.'
-                    : 'Client re-enabled.'
+                    ? t('api.clientDisabledMsg')
+                    : t('api.clientEnabledMsg')
             )
             invalidate()
         },
@@ -274,110 +289,115 @@ function ApiManagementPage() {
     const allTokens = useMemo(
         () =>
             clients.flatMap((c) =>
-                (c.tokens || []).map((t) => ({ ...t, client: c }))
+                (c.tokens || []).map((tok) => ({ ...tok, client: c }))
             ),
         [clients]
     )
-    const activeTokens = allTokens.filter((t) => t.status === 'active')
+    const activeTokens = allTokens.filter((tok) => tok.status === 'active')
+
+    const envTag = (env) => {
+        const meta = ENV_META[env]
+        if (!meta) return <span className="lq-tag">{env}</span>
+        return <span className={`lq-tag lq-tag--${meta.tone}`}>{t(meta.labelKey)}</span>
+    }
 
     // ── Token tablosu kolonlari ─────────────────────────────────────────
+    // Satir parametresi `tok`: `t` cevirici ile GOLGELENMEZ.
     const tokenColumns = [
         {
             title: t('api.client'),
             dataIndex: ['client', 'name'],
-            render: (_, t) => (
-                <Space size={6}>
-                    {t.client.name}
-                    <Tag
-                        color={ENV_META[t.client.environment]?.color}
-                        style={{ marginInlineEnd: 0 }}
-                    >
-                        {ENV_META[t.client.environment]?.label}
-                    </Tag>
-                    {t.client.status !== 'active' && (
-                        <Tag color="red">client disabled</Tag>
+            render: (_, tok) => (
+                <span className="am-cell-client">
+                    <span className="am-cell-client__name">{tok.client.name}</span>
+                    {envTag(tok.client.environment)}
+                    {tok.client.status !== 'active' && (
+                        <span className="lq-tag lq-tag--bad">{t('api.clientDisabledTag')}</span>
                     )}
-                </Space>
+                </span>
             ),
         },
         {
             title: t('api.tokens'),
             dataIndex: 'token_prefix',
-            render: (v, t) => (
-                <Space size={6}>
+            render: (v, tok) => (
+                <span className="am-cell-client">
                     <code className="am-prefix">{v}…</code>
-                    {t.rotated_from_token_id && (
+                    {tok.rotated_from_token_id && (
                         <Tooltip title={t('api.rotatedFrom')}>
-                            <Tag>rotated</Tag>
+                            <span className="lq-tag lq-tag--violet">{t('api.rotatedTag')}</span>
                         </Tooltip>
                     )}
-                </Space>
+                </span>
             ),
         },
         {
             title: t('common.status'),
             dataIndex: 'status',
-            width: 100,
-            render: (v, t) =>
-                v === 'active' && t.client.status === 'active' ? (
-                    <Tag color="green">active</Tag>
+            render: (v, tok) =>
+                v === 'active' && tok.client.status === 'active' ? (
+                    <span className="lq-tag lq-tag--ok">{t('api.statusActive')}</span>
                 ) : v === 'active' ? (
-                    <Tag color="orange">unusable</Tag>
+                    <span className="lq-tag lq-tag--warn">{t('api.statusUnusable')}</span>
                 ) : (
-                    <Tag color="red">revoked</Tag>
+                    <span className="lq-tag lq-tag--bad">{t('api.statusRevoked')}</span>
                 ),
         },
         {
             title: t('api.created'),
             dataIndex: 'created_at',
-            render: fmtDate,
+            render: (v) => <span className="sk-nowrap">{fmtDate(v)}</span>,
         },
         {
             title: t('api.expires'),
             dataIndex: 'expires_at',
-            render: (v) => (v ? fmtDate(v) : 'Never'),
+            render: (v) => <span className="sk-nowrap">{v ? fmtDate(v) : t('api.never')}</span>,
         },
         {
             title: t('api.lastUsed'),
             dataIndex: 'last_used_at',
-            render: (v, t) =>
+            render: (v, tok) =>
                 v ? (
-                    <Tooltip title={t.last_used_ip || ''}>
-                        {fmtDateTime(v)}
+                    <Tooltip title={tok.last_used_ip || ''}>
+                        <span className="sk-nowrap">{fmtDateTime(v)}</span>
                     </Tooltip>
                 ) : (
-                    '—'
+                    <span className="sk-muted">—</span>
                 ),
         },
         {
-            title: t('common.actions'),
-            width: 230,
-            render: (_, t) => (
-                <Space wrap>
+            title: <span className="h-sr-only">{t('common.actions')}</span>,
+            key: 'actions',
+            align: 'right',
+            render: (_, tok) => (
+                <span className="sk-row-actions">
                     <Button
                         size="small"
-                        disabled={t.status !== 'active'}
+                        className="h-inline-action"
+                        icon={<ClockCircleOutlined />}
+                        disabled={tok.status !== 'active'}
                         onClick={() => {
                             setExpiryValue(
-                                t.expires_at ? dayjs(t.expires_at) : null
+                                tok.expires_at ? dayjs(tok.expires_at) : null
                             )
-                            setExpiryModal({ token: t })
+                            setExpiryModal({ token: tok })
                         }}
                     >{t('api.expiry')}</Button>
                     <Button
                         size="small"
+                        className="h-inline-action"
                         icon={<ReloadOutlined />}
-                        disabled={t.status !== 'active'}
-                        onClick={() => setConfirm({ kind: 'rotate', token: t })}
+                        disabled={tok.status !== 'active'}
+                        onClick={() => setConfirm({ kind: 'rotate', token: tok })}
                     >{t('api.rotate')}</Button>
                     <Button
                         size="small"
-                        danger
+                        className="h-inline-action h-inline-action--danger"
                         icon={<StopOutlined />}
-                        disabled={t.status !== 'active'}
-                        onClick={() => setConfirm({ kind: 'revoke', token: t })}
+                        disabled={tok.status !== 'active'}
+                        onClick={() => setConfirm({ kind: 'revoke', token: tok })}
                     >{t('api.revoke')}</Button>
-                </Space>
+                </span>
             ),
         },
     ]
@@ -386,6 +406,7 @@ function ApiManagementPage() {
     const [logFilters, setLogFilters] = useState({})
     const [logOffset, setLogOffset] = useState(0)
     const LOG_PAGE = 25
+    const logsOpen = section === 'logs'
     const { data: logs = [], isFetching: logsLoading } = useQuery({
         queryKey: ['admin-api-request-logs', logFilters, logOffset],
         queryFn: () =>
@@ -394,7 +415,7 @@ function ApiManagementPage() {
                 offset: logOffset,
                 ...logFilters,
             }),
-        enabled: open.logs,
+        enabled: logsOpen,
         /*
          * TanStack Query v5'te `keepPreviousData` KALDIRILDI ve sessizce
          * yok sayiliyordu: her sayfa/filtre degisiminde audit tablosu
@@ -402,6 +423,7 @@ function ApiManagementPage() {
          */
         placeholderData: keepPreviousData,
     })
+    const logFiltering = Object.values(logFilters).some((v) => v !== undefined)
 
     // ── Retention / cleanup (Stage 3F) ──────────────────────────────────
     // Yalnizca api_request_logs + api_idempotency_keys yasam dongusu;
@@ -410,7 +432,7 @@ function ApiManagementPage() {
     const { data: cleanup } = useQuery({
         queryKey: ['admin-api-cleanup'],
         queryFn: () => apiManagementService.getCleanupStatus(),
-        enabled: open.logs,
+        enabled: logsOpen,
     })
     const runCleanup = useMutation({
         mutationFn: (dryRun) => apiManagementService.runCleanup(dryRun),
@@ -419,22 +441,18 @@ function ApiManagementPage() {
             queryClient.invalidateQueries({
                 queryKey: ['admin-api-request-logs'],
             })
+            const counts = {
+                logs: res.request_logs_deleted,
+                keys: res.idempotency_keys_deleted,
+            }
             if (res.status === 'disabled') {
                 message.warning(t('api.cleanupDisabled'))
             } else if (res.status === 'skipped_already_running') {
                 message.warning(t('api.cleanupRunning'))
             } else if (res.dry_run) {
-                message.info(
-                    `Dry run: ${res.request_logs_deleted} request logs and ` +
-                        `${res.idempotency_keys_deleted} idempotency keys ` +
-                        'would be removed.'
-                )
+                message.info(t('api.dryRunResult', counts))
             } else {
-                message.success(
-                    `Cleanup done: ${res.request_logs_deleted} request logs ` +
-                        `and ${res.idempotency_keys_deleted} idempotency ` +
-                        'keys removed.'
-                )
+                message.success(t('api.cleanupDone', counts))
             }
         },
         onError: (err) => {
@@ -442,7 +460,7 @@ function ApiManagementPage() {
             // (yalnizca failure_class — SQL/stack yok).
             const fc = err?.response?.data?.failure_class
             message.error(
-                fc ? `Cleanup failed (${fc}).` : 'Cleanup request failed.'
+                fc ? t('api.cleanupFailedClass', { reason: fc }) : t('api.cleanupFailed')
             )
             queryClient.invalidateQueries({ queryKey: ['admin-api-cleanup'] })
         },
@@ -452,8 +470,7 @@ function ApiManagementPage() {
         {
             title: t('api.time'),
             dataIndex: 'created_at',
-            render: fmtDateTime,
-            width: 150,
+            render: (v) => <span className="sk-mono sk-nowrap">{fmtDateTime(v)}</span>,
         },
         {
             title: t('api.client'),
@@ -461,340 +478,239 @@ function ApiManagementPage() {
             render: (v) => (v ? clientById[v]?.name || v.slice(0, 8) : '—'),
         },
         {
-            title: t('api.requestId'),
-            dataIndex: 'request_id',
-            render: (v) => <code className="am-prefix">{v}</code>,
+            title: t('api.method'),
+            dataIndex: 'method',
+            render: (v) => (
+                <span className={`am-method am-method--${String(v || '').toLowerCase()}`}>{v}</span>
+            ),
         },
-        { title: t('api.method'), dataIndex: 'method', width: 80 },
-        { title: t('api.path'), dataIndex: 'path' },
+        {
+            title: t('api.path'),
+            dataIndex: 'path',
+            render: (v) => <span className="sk-mono">{v}</span>,
+        },
         {
             title: t('common.status'),
             dataIndex: 'status_code',
-            width: 90,
             render: (v, r) => (
-                <Space size={4}>
-                    <Tag
-                        color={
-                            v < 400 ? 'green' : v === 429 ? 'orange' : 'red'
-                        }
-                    >
-                        {v}
-                    </Tag>
+                <span className="am-cell-client">
+                    <span className={`lq-tag lq-tag--${statusTone(v)} lq-mono`}>{v}</span>
                     {r.rate_limited && (
                         <Tooltip title={t('api.rateLimited')}>
-                            <Tag color="orange">RL</Tag>
+                            <span className="lq-tag lq-tag--warn">RL</span>
                         </Tooltip>
                     )}
-                </Space>
+                </span>
             ),
         },
         {
             title: t('api.duration'),
             dataIndex: 'duration_ms',
-            width: 100,
-            render: (v) => `${v} ms`,
+            align: 'right',
+            render: (v) => <span className="sk-mono sk-nowrap">{`${v} ms`}</span>,
         },
-        { title: t('api.sourceIp'), dataIndex: 'source_ip', render: (v) => v || '—' },
+        {
+            title: t('api.requestId'),
+            dataIndex: 'request_id',
+            render: (v) => <code className="am-prefix">{v}</code>,
+        },
+        {
+            title: t('api.sourceIp'),
+            dataIndex: 'source_ip',
+            render: (v) => <span className="sk-mono">{v || '—'}</span>,
+        },
     ]
 
-    // ── Render ──────────────────────────────────────────────────────────
-    return (
-        <div className="tm-page">
-            <header className="tm-header">
-                <h1 className="tm-title">{t('api.title')}</h1>
-                <p className="tm-subtitle">
-                    External API clients, access tokens, request logs and
-                    developer documentation for the Hermes Public API.
-                </p>
-            </header>
+    const createClientAction = (
+        <Button
+            className="h-create-action"
+            icon={<PlusOutlined />}
+            onClick={() => setClientModal({ editing: null })}
+        >{t('api.createClient')}</Button>
+    )
 
-            <div className="tm-stats">
-                <StatCard
-                    icon={<ApiOutlined />}
-                    label={t('api.clients')}
-                    value={clients.length}
-                    accent="#388bff"
-                />
-                <StatCard
-                    icon={<KeyOutlined />}
-                    label={t('api.activeTokens')}
-                    value={activeTokens.length}
-                    accent="#22a06b"
-                />
-                <StatCard
-                    icon={<SafetyCertificateOutlined />}
-                    label={t('api.liveClients')}
-                    value={clients.filter((c) => c.environment === 'live').length}
-                    accent="#7c5cff"
-                />
-                <StatCard
-                    icon={<StopOutlined />}
-                    label={t('api.disabledClients')}
-                    value={clients.filter((c) => c.status !== 'active').length}
-                    accent="#f97316"
-                />
-            </div>
+    // ── Bolumler ────────────────────────────────────────────────────────
+    const clientsBody = clientsLoading ? (
+        <div className="am-loading"><Spin /></div>
+    ) : clients.length === 0 ? (
+        <SettingsEmpty
+            icon={<ApiOutlined />}
+            title={t('api.noClientsTitle')}
+            text={t('api.noClientsText')}
+            action={createClientAction}
+        />
+    ) : (
+        <div className="am-clients">
+            {clients.map((c) => {
+                const active = c.status === 'active'
+                const tokenList = c.tokens || []
+                const activeCount = tokenList.filter((tok) => tok.status === 'active').length
+                const boundName = nameOf[`user:${c.bound_user_id}`]
+                return (
+                    <article key={c.id} className={`am-client${active ? '' : ' is-disabled'}`}>
+                        <header className="am-client__head">
+                            <span className="am-client__icon" aria-hidden="true">
+                                {c.client_type === 'user' ? <SafetyCertificateOutlined /> : <ApiOutlined />}
+                            </span>
+                            <div className="am-client__titles">
+                                <h3 className="am-client__name">{c.name}</h3>
+                                <div className="am-client__tags">
+                                    {envTag(c.environment)}
+                                    <span className="lq-tag">{TYPE_LABEL[c.client_type] ? t(TYPE_LABEL[c.client_type]) : c.client_type}</span>
+                                    <span className={`lq-tag ${active ? 'lq-tag--ok' : 'lq-tag--bad'}`}>
+                                        {active ? t('api.statusActive') : t('api.statusDisabled')}
+                                    </span>
+                                </div>
+                            </div>
+                        </header>
 
-            {/* ── API Clients ── */}
-            <Section
-                icon={<ApiOutlined />}
-                title={t('api.clients')}
-                subtitle="Who can call the Public API, with which scopes and data access"
-                count={clients.length}
-                accent="#388bff"
-                open={open.clients}
-                onToggle={() => toggle('clients')}
-            >
-                <div className="am-clients-toolbar">
-                    {/* Section toolbar'ina bagli kompakt create aksiyonu. */}
-                    <Button
-                        className="h-create-action"
-                        icon={<PlusOutlined />}
-                        onClick={() => setClientModal({ editing: null })}
-                    >{t('api.createClient')}</Button>
-                </div>
-                {clientsLoading && <div>Loading…</div>}
-                {!clientsLoading && clients.length === 0 && (
-                    <div className="am-empty">
-                        No API clients yet. Create one to issue tokens for
-                        external integrations.
-                    </div>
-                )}
-                {clients.map((c) => (
-                    <div
-                        key={c.id}
-                        className={`am-client${
-                            c.status !== 'active' ? ' is-disabled' : ''
-                        }`}
-                    >
-                        <div className="am-client-head">
-                            <span className="am-client-name">{c.name}</span>
-                            <Tag color={ENV_META[c.environment]?.color}>
-                                {ENV_META[c.environment]?.label}
-                            </Tag>
-                            <Tag>{TYPE_LABEL[c.client_type]}</Tag>
-                            {c.client_type === 'user' && (
-                                <Tag color="blue">
-                                    {nameOf[`user:${c.bound_user_id}`] ||
-                                        'bound user'}
-                                </Tag>
-                            )}
-                            <Tag
-                                color={
-                                    c.status === 'active' ? 'green' : 'red'
-                                }
-                            >
-                                {c.status}
-                            </Tag>
-                            <span className="am-client-spacer" />
-                            <Space wrap>
-                                {/* Uc esit agirlikta dolu buton yerine:
-                                    Edit ghost, New Token create-action,
-                                    Disable kontrollu danger (hover'da). */}
-                                <Button
-                                    size="small"
-                                    className="h-inline-action"
-                                    onClick={() =>
-                                        setClientModal({ editing: c })
-                                    }
-                                >{t('common.edit')}</Button>
-                                <Button
-                                    size="small"
-                                    className="h-create-action"
-                                    icon={<KeyOutlined />}
-                                    disabled={c.status !== 'active'}
-                                    onClick={() =>
-                                        createToken.mutate({ clientId: c.id })
-                                    }
-                                >{t('api.newToken')}</Button>
-                                <Button
-                                    size="small"
-                                    className="h-inline-action h-inline-action--danger"
-                                    danger={false}
-                                    onClick={() =>
-                                        setConfirm({
-                                            kind:
-                                                c.status === 'active'
-                                                    ? 'disable'
-                                                    : 'enable',
-                                            client: c,
-                                        })
-                                    }
-                                >
-                                    {c.status === 'active'
-                                        ? 'Disable'
-                                        : 'Enable'}
-                                </Button>
-                            </Space>
-                        </div>
-                        {c.description && (
-                            <div className="am-client-desc">
-                                {c.description}
+                        {c.description && <p className="am-client__desc">{c.description}</p>}
+
+                        {c.client_type === 'user' && (
+                            <div className="am-client__bound">
+                                <Avatar id={c.bound_user_id} name={boundName || t('api.boundUserFallback')} size={24} />
+                                <span>{boundName || t('api.boundUserFallback')}</span>
                             </div>
                         )}
-                        <div className="am-client-meta">
-                            <div className="am-meta-block">
-                                <span className="am-meta-label">{t('api.scopes')}</span>
-                                <span>
-                                    {(c.scopes || []).length ? (
-                                        c.scopes.map((s) => (
-                                            <Tag key={s}>{s}</Tag>
-                                        ))
-                                    ) : (
-                                        <Tag color="red">none</Tag>
-                                    )}
-                                </span>
-                            </div>
-                            <div className="am-meta-block">
-                                <span className="am-meta-label">{t('api.dataAccess')}</span>
-                                <span>
-                                    {(c.access || []).length ? (
-                                        c.access.map((b) => (
-                                            <Tag
-                                                key={b.id}
-                                                color={
-                                                    b.access_type === 'global'
-                                                        ? 'purple'
-                                                        : undefined
-                                                }
-                                            >
-                                                {b.access_type === 'global'
-                                                    ? 'Global'
-                                                    : `${BINDING_LABEL[b.access_type]}: ${
-                                                          nameOf[
-                                                              `${b.access_type}:${b.target_id}`
-                                                          ] ||
-                                                          String(
-                                                              b.target_id
-                                                          ).slice(0, 8)
-                                                      }`}
-                                            </Tag>
-                                        ))
-                                    ) : (
-                                        <Tag color="red">
-                                            none — no business data
-                                        </Tag>
-                                    )}
-                                </span>
-                            </div>
-                            <div className="am-meta-block">
-                                <span className="am-meta-label">{t('api.rateLimit')}</span>
-                                {c.rate_limit_per_min || 60}/min
-                            </div>
-                            <div className="am-meta-block">
-                                <span className="am-meta-label">{t('api.tokens')}</span>
-                                {(c.tokens || []).filter(
-                                    (t) => t.status === 'active'
-                                ).length}{' '}
-                                active / {(c.tokens || []).length}
-                            </div>
-                            <div className="am-meta-block">
-                                <span className="am-meta-label">{t('api.created')}</span>
-                                {fmtDate(c.created_at)}
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </Section>
 
-            {/* ── Access Tokens ── */}
-            <Section
-                icon={<KeyOutlined />}
-                title={t('api.accessTokens')}
-                subtitle="Every credential across all clients — prefix only, never the token itself"
-                count={allTokens.length}
-                accent="#22a06b"
-                open={open.tokens}
-                onToggle={() => toggle('tokens')}
-            >
-                <Table
-                    rowKey="id"
-                    size="small"
-                    columns={tokenColumns}
-                    dataSource={allTokens}
-                    scroll={{ x: 'max-content' }}
-                    pagination={{ pageSize: 10, hideOnSinglePage: true }}
-                />
-            </Section>
-
-            {/* ── Request Logs ── */}
-            <Section
-                icon={<UnorderedListOutlined />}
-                title={t('api.requestLogs')}
-                subtitle="Audit trail of Public API calls (no bodies, no secrets)"
-                accent="#7c5cff"
-                open={open.logs}
-                onToggle={() => toggle('logs')}
-            >
-                {cleanup && (
-                    <div className="am-cleanup-bar">
-                        <div className="am-cleanup-info">
-                            <span>
-                                Retention: request logs{' '}
-                                <b>
-                                    {
-                                        cleanup.policy
-                                            .request_log_retention_days
-                                    }{' '}
-                                    days
-                                </b>{' '}
-                                · idempotency keys{' '}
-                                <b>
-                                    {
-                                        cleanup.policy
-                                            .idempotency_retention_hours
-                                    }
-                                    h
-                                </b>{' '}
-                                (24h TTL + safety margin)
-                                {!cleanup.policy.enabled && (
-                                    <Tag
-                                        color="red"
-                                        style={{ marginLeft: 8 }}
-                                    >
-                                        cleanup disabled
-                                    </Tag>
+                        <dl className="lq-kv am-client__kv">
+                            <dt>{t('api.scopes')}</dt>
+                            <dd className="am-client__chips">
+                                {(c.scopes || []).length ? (
+                                    c.scopes.map((s) => (
+                                        <span key={s} className="lq-tag lq-tag--info lq-mono">{s}</span>
+                                    ))
+                                ) : (
+                                    <span className="lq-tag lq-tag--bad">{t('api.noScopes')}</span>
                                 )}
-                            </span>
-                            <span className="am-cleanup-last">
-                                {cleanup.last_run
-                                    ? `Last cleanup ${fmtDateTime(
-                                          cleanup.last_run.started_at
-                                      )} — ${cleanup.last_run.status}` +
-                                      (cleanup.last_run.dry_run
-                                          ? ' (dry run)'
-                                          : '') +
-                                      ` · ${cleanup.last_run.request_logs_deleted} logs / ` +
-                                      `${cleanup.last_run.idempotency_keys_deleted} keys removed`
-                                    : 'No cleanup has run yet'}
-                                {' · '}
-                                {cleanup.next_scheduled_run
-                                    ? `Next run ${fmtDateTime(
-                                          cleanup.next_scheduled_run
-                                      )}`
-                                    : 'Daily 03:00 UTC via K8s CronJob (manual apply)'}
-                            </span>
-                        </div>
-                        <Space>
+                            </dd>
+                            <dt>{t('api.dataAccess')}</dt>
+                            <dd className="am-client__chips">
+                                {(c.access || []).length ? (
+                                    c.access.map((b) => (
+                                        <span
+                                            key={b.id}
+                                            className={`lq-tag ${b.access_type === 'global' ? 'lq-tag--violet' : ''}`}
+                                        >
+                                            {b.access_type === 'global'
+                                                ? t('api.global')
+                                                : `${BINDING_LABEL[b.access_type] ? t(BINDING_LABEL[b.access_type]) : b.access_type}: ${
+                                                      nameOf[`${b.access_type}:${b.target_id}`]
+                                                      || String(b.target_id).slice(0, 8)
+                                                  }`}
+                                        </span>
+                                    ))
+                                ) : (
+                                    <span className="lq-tag lq-tag--bad">{t('api.noData')}</span>
+                                )}
+                            </dd>
+                            <dt>{t('api.rateLimit')}</dt>
+                            <dd className="lq-mono">{t('api.perMin', { n: c.rate_limit_per_min || 60 })}</dd>
+                            <dt>{t('api.tokens')}</dt>
+                            <dd>{t('api.tokensActiveOf', { active: activeCount, total: tokenList.length })}</dd>
+                            <dt>{t('api.created')}</dt>
+                            <dd>{fmtDate(c.created_at)}</dd>
+                        </dl>
+
+                        {/* Birincil: yeni token; ikincil: duzenle; yikici:
+                            devre disi (hover'da kirmizi). */}
+                        <footer className="am-client__actions">
                             <Button
                                 size="small"
-                                loading={runCleanup.isPending}
-                                onClick={() => runCleanup.mutate(true)}
-                            >{t('api.dryRun')}</Button>
+                                className="h-create-action"
+                                icon={<KeyOutlined />}
+                                disabled={!active}
+                                aria-label={t('api.newTokenFor', { name: c.name })}
+                                onClick={() => createToken.mutate({ clientId: c.id })}
+                            >{t('api.newToken')}</Button>
                             <Button
                                 size="small"
-                                danger
-                                loading={runCleanup.isPending}
-                                onClick={() => setCleanupConfirm(true)}
-                            >{t('api.runCleanup')}</Button>
-                        </Space>
-                    </div>
+                                className="h-inline-action"
+                                aria-label={t('api.editNamed', { name: c.name })}
+                                onClick={() => setClientModal({ editing: c })}
+                            >{t('common.edit')}</Button>
+                            <Button
+                                size="small"
+                                className="h-inline-action h-inline-action--danger am-client__toggle"
+                                aria-label={active
+                                    ? t('api.disableNamed', { name: c.name })
+                                    : t('api.enableNamed', { name: c.name })}
+                                onClick={() => setConfirm({
+                                    kind: active ? 'disable' : 'enable',
+                                    client: c,
+                                })}
+                            >{active ? t('api.disable') : t('api.enable')}</Button>
+                        </footer>
+                    </article>
+                )
+            })}
+        </div>
+    )
+
+    const tokensBody = (
+        <Table
+            rowKey="id"
+            size="middle"
+            columns={tokenColumns}
+            dataSource={allTokens}
+            loading={clientsLoading}
+            scroll={{ x: 'max-content' }}
+            pagination={{ pageSize: 10, hideOnSinglePage: true }}
+            locale={{
+                emptyText: (
+                    <SettingsEmpty
+                        icon={<KeyOutlined />}
+                        title={t('api.noTokensTitle')}
+                        text={t('api.noTokensText')}
+                    />
+                ),
+            }}
+        />
+    )
+
+    const cleanupStrip = cleanup && (
+        <dl className="lq-kv am-retention">
+            <dt>{t('api.retentionLogs')}</dt>
+            <dd>
+                {t('api.days', { n: cleanup.policy.request_log_retention_days })}
+                {!cleanup.policy.enabled && (
+                    <span className="lq-tag lq-tag--bad am-retention__off">{t('api.cleanupOff')}</span>
                 )}
-                <Space wrap className="am-log-filters">
+            </dd>
+            <dt>{t('api.retentionKeys')}</dt>
+            <dd>{t('api.hoursTtl', { n: cleanup.policy.idempotency_retention_hours })}</dd>
+            <dt>{t('api.lastCleanup')}</dt>
+            <dd>
+                {cleanup.last_run
+                    ? t('api.lastCleanupValue', {
+                        when: fmtDateTime(cleanup.last_run.started_at),
+                        status: cleanup.last_run.dry_run
+                            ? `${cleanup.last_run.status} (${t('api.dryRunSuffix')})`
+                            : cleanup.last_run.status,
+                        logs: cleanup.last_run.request_logs_deleted,
+                        keys: cleanup.last_run.idempotency_keys_deleted,
+                    })
+                    : t('api.noCleanupYet')}
+            </dd>
+            <dt>{t('api.nextRun')}</dt>
+            <dd>
+                {cleanup.next_scheduled_run
+                    ? fmtDateTime(cleanup.next_scheduled_run)
+                    : t('api.cronFallback')}
+            </dd>
+        </dl>
+    )
+
+    const logsBody = (
+        <>
+            {cleanupStrip}
+            <div className="sk-toolbar am-log-filters">
+                <div className="sk-toolbar__filters">
                     <Select
                         allowClear
+                        aria-label={t('api.client')}
                         placeholder={t('api.client')}
-                        style={{ minWidth: 180 }}
+                        className="am-filter am-filter--client"
                         options={clients.map((c) => ({
                             value: c.id,
                             label: c.name,
@@ -809,8 +725,9 @@ function ApiManagementPage() {
                     />
                     <Select
                         allowClear
+                        aria-label={t('common.status')}
                         placeholder={t('common.status')}
-                        style={{ minWidth: 120 }}
+                        className="am-filter am-filter--status"
                         options={[200, 201, 401, 403, 404, 422, 429, 500].map(
                             (s) => ({ value: s, label: s })
                         )}
@@ -823,6 +740,7 @@ function ApiManagementPage() {
                         }}
                     />
                     <DatePicker.RangePicker
+                        className="am-filter am-filter--range"
                         onChange={(range) => {
                             setLogOffset(0)
                             setLogFilters((f) => ({
@@ -838,8 +756,9 @@ function ApiManagementPage() {
                     />
                     <Input.Search
                         placeholder={t('api.requestId')}
+                        aria-label={t('api.requestId')}
                         allowClear
-                        style={{ width: 260 }}
+                        className="am-filter am-filter--rid"
                         onSearch={(v) => {
                             setLogOffset(0)
                             setLogFilters((f) => ({
@@ -848,93 +767,189 @@ function ApiManagementPage() {
                             }))
                         }}
                     />
-                </Space>
-                <Table
-                    rowKey="id"
+                </div>
+            </div>
+            <Table
+                rowKey="id"
+                size="middle"
+                columns={logColumns}
+                dataSource={logs}
+                loading={logsLoading}
+                scroll={{ x: 'max-content' }}
+                pagination={false}
+                locale={{
+                    emptyText: (
+                        <SettingsEmpty
+                            compact
+                            icon={<UnorderedListOutlined />}
+                            text={logFiltering || logOffset > 0 ? t('api.noLogs') : t('api.noLogsYet')}
+                        />
+                    ),
+                }}
+            />
+            <div className="am-log-pager">
+                <Button
                     size="small"
-                    columns={logColumns}
-                    dataSource={logs}
-                    loading={logsLoading}
-                    scroll={{ x: 'max-content' }}
-                    pagination={false}
-                />
-                <div className="am-log-pager">
-                    <Button
-                        size="small"
-                        disabled={logOffset === 0}
-                        onClick={() =>
-                            setLogOffset((o) => Math.max(0, o - LOG_PAGE))
-                        }
-                    >{t('api.newer')}</Button>
-                    <Button
-                        size="small"
-                        disabled={logs.length < LOG_PAGE}
-                        onClick={() => setLogOffset((o) => o + LOG_PAGE)}
-                    >{t('api.older')}</Button>
-                </div>
-            </Section>
+                    className="h-inline-action"
+                    disabled={logOffset === 0}
+                    onClick={() =>
+                        setLogOffset((o) => Math.max(0, o - LOG_PAGE))
+                    }
+                >{t('api.newer')}</Button>
+                <Button
+                    size="small"
+                    className="h-inline-action"
+                    disabled={logs.length < LOG_PAGE}
+                    onClick={() => setLogOffset((o) => o + LOG_PAGE)}
+                >{t('api.older')}</Button>
+            </div>
+        </>
+    )
 
-            {/* ── Documentation ── */}
-            <Section
-                icon={<FileTextOutlined />}
-                title={t('api.documentation')}
-                subtitle="Developer resources for the Public API"
-                accent="#f97316"
-                open={open.docs}
-                onToggle={() => toggle('docs')}
-            >
-                <div className="am-docs-grid">
-                    <a
-                        className="am-doc-card"
-                        href="/api/public/v1/docs"
-                        target="_blank"
-                        rel="noreferrer"
-                    >
-                        <span className="am-doc-title">{t('api.interactiveReference')}</span>
-                        <span className="am-doc-sub">{t('api.swaggerHint')}</span>
-                    </a>
-                    <a
-                        className="am-doc-card"
-                        href="/api/public/v1/openapi.json"
-                        target="_blank"
-                        rel="noreferrer"
-                    >
-                        <span className="am-doc-title">{t('api.openapiSchema')}</span>
-                        <span className="am-doc-sub">{t('api.openapiHint')}</span>
-                    </a>
-                    <div className="am-doc-card is-static">
-                        <span className="am-doc-title">{t('api.authentication')}</span>
-                        <span className="am-doc-sub">
-                            Send{' '}
-                            <code>Authorization: Bearer hms_…</code> on every
-                            request. Tokens are created here and shown once.
-                            Full guide arrives with the Developer Portal.
-                        </span>
-                    </div>
-                    <div className="am-doc-card is-static">
-                        <span className="am-doc-title">{t('api.scopes')}</span>
-                        <span className="am-doc-sub">
-                            {scopeCatalog.map((s) => (
-                                <Tag key={s} style={{ marginBottom: 4 }}>
-                                    {s}
-                                </Tag>
-                            ))}
-                        </span>
-                    </div>
-                    <div className="am-doc-card is-static">
-                        <span className="am-doc-title">{t('api.mcpServer')}<Tag color="green">{t('common.active')}</Tag>
-                        </span>
-                        <span className="am-doc-sub">
-                            AI tools connect with these same tokens, scopes
-                            and data-access bindings — nothing separate to
-                            issue. Every tool call lands in the Request Logs
-                            below, and revoking a token cuts the tool off at
-                            its next call. Issue a user-bound client for
-                            write access; service clients stay read-only.
-                        </span>
-                    </div>
-                </div>
-            </Section>
+    const docsBody = (
+        <div className="am-docs">
+            <a className="am-doc am-doc--link" href="/api/public/v1/docs" target="_blank" rel="noreferrer">
+                <span className="am-doc__icon" aria-hidden="true"><CodeOutlined /></span>
+                <span className="am-doc__text">
+                    <span className="am-doc__title">{t('api.interactiveReference')}</span>
+                    <span className="am-doc__sub">{t('api.swaggerHint')}</span>
+                </span>
+                <ArrowRightOutlined className="am-doc__arrow" aria-hidden="true" />
+            </a>
+            <a className="am-doc am-doc--link" href="/api/public/v1/openapi.json" target="_blank" rel="noreferrer">
+                <span className="am-doc__icon" aria-hidden="true"><FileTextOutlined /></span>
+                <span className="am-doc__text">
+                    <span className="am-doc__title">{t('api.openapiSchema')}</span>
+                    <span className="am-doc__sub">{t('api.openapiHint')}</span>
+                </span>
+                <ArrowRightOutlined className="am-doc__arrow" aria-hidden="true" />
+            </a>
+            <Link className="am-doc am-doc--link" to="/developer">
+                <span className="am-doc__icon" aria-hidden="true"><ApiOutlined /></span>
+                <span className="am-doc__text">
+                    <span className="am-doc__title">{t('api.developerPortal')}</span>
+                    <span className="am-doc__sub">{t('api.developerPortalHint')}</span>
+                </span>
+                <ArrowRightOutlined className="am-doc__arrow" aria-hidden="true" />
+            </Link>
+            <div className="am-doc am-doc--wide">
+                <span className="am-doc__icon" aria-hidden="true"><LockOutlined /></span>
+                <span className="am-doc__text">
+                    <span className="am-doc__title">{t('api.authentication')}</span>
+                    <span className="am-doc__sub">{t('api.authHint')}</span>
+                    <code className="am-doc__code">Authorization: Bearer hms_…</code>
+                </span>
+            </div>
+            <div className="am-doc am-doc--wide">
+                <span className="am-doc__icon" aria-hidden="true"><KeyOutlined /></span>
+                <span className="am-doc__text">
+                    <span className="am-doc__title">{t('api.scopes')}</span>
+                    <span className="am-client__chips">
+                        {scopeCatalog.map((s) => (
+                            <Tooltip key={s} title={SCOPE_HELP[s] ? t(SCOPE_HELP[s]) : undefined}>
+                                <span className="lq-tag lq-tag--info lq-mono">{s}</span>
+                            </Tooltip>
+                        ))}
+                    </span>
+                </span>
+            </div>
+            <div className="am-doc am-doc--wide">
+                <span className="am-doc__icon" aria-hidden="true"><RobotOutlined /></span>
+                <span className="am-doc__text">
+                    <span className="am-doc__title">
+                        {t('api.mcpServer')}
+                        <span className="lq-tag lq-tag--ok">{t('common.active')}</span>
+                    </span>
+                    <span className="am-doc__sub">{t('api.mcpHint')}</span>
+                </span>
+            </div>
+        </div>
+    )
+
+    const sections = {
+        clients: {
+            icon: <ApiOutlined />, tone: 'blue',
+            title: t('api.clients'), subtitle: t('api.clientsSub'),
+            count: clients.length, body: clientsBody,
+        },
+        tokens: {
+            icon: <KeyOutlined />, tone: 'green',
+            title: t('api.accessTokens'), subtitle: t('api.tokensSub'),
+            count: allTokens.length, body: tokensBody, flush: true,
+        },
+        logs: {
+            icon: <UnorderedListOutlined />, tone: 'violet',
+            title: t('api.requestLogs'), subtitle: t('api.logsSub'),
+            body: logsBody,
+            actions: cleanup ? (
+                <>
+                    <Button
+                        size="small"
+                        className="h-inline-action"
+                        loading={runCleanup.isPending}
+                        onClick={() => runCleanup.mutate(true)}
+                    >{t('api.dryRun')}</Button>
+                    <Button
+                        size="small"
+                        danger
+                        loading={runCleanup.isPending}
+                        onClick={() => setCleanupConfirm(true)}
+                    >{t('api.runCleanup')}</Button>
+                </>
+            ) : null,
+        },
+        docs: {
+            icon: <FileTextOutlined />, tone: 'amber',
+            title: t('api.documentation'), subtitle: t('api.docsSub'),
+            body: docsBody,
+        },
+    }
+    const active = sections[section]
+
+    // ── Render ──────────────────────────────────────────────────────────
+    return (
+        <div className="am-page">
+            <div className="page-header">
+                <h1>{t('api.title')}</h1>
+                <p>{t('api.subtitle')}</p>
+                <div className="am-header-actions">{createClientAction}</div>
+            </div>
+
+            <SettingsKpis
+                ariaLabel={t('api.summary')}
+                items={[
+                    { key: 'clients', label: t('api.clients'), value: clients.length },
+                    { key: 'tokens', label: t('api.activeTokens'), value: activeTokens.length },
+                    { key: 'live', label: t('api.liveClients'), value: clients.filter((c) => c.environment === 'live').length },
+                    { key: 'disabled', label: t('api.disabledClients'), value: clients.filter((c) => c.status !== 'active').length },
+                ]}
+            />
+
+            <SettingsTabs
+                ariaLabel={t('api.sections')}
+                value={section}
+                onChange={selectSection}
+                options={[
+                    { value: 'clients', label: t('api.clients'), count: clients.length },
+                    { value: 'tokens', label: t('api.accessTokens'), count: allTokens.length },
+                    { value: 'logs', label: t('api.requestLogs') },
+                    { value: 'docs', label: t('api.documentation') },
+                ]}
+            />
+
+            <div className="lq-enter" key={section}>
+                <SettingsSection
+                    icon={active.icon}
+                    tone={active.tone}
+                    title={active.title}
+                    subtitle={active.subtitle}
+                    count={active.count}
+                    actions={active.actions}
+                    bodyClassName={active.flush ? 'sk-card__body--flush' : ''}
+                >
+                    {active.body}
+                </SettingsSection>
+            </div>
 
             {/* ── Modals ── */}
             {clientModal && (
@@ -960,12 +975,7 @@ function ApiManagementPage() {
                 open={cleanupConfirm}
                 tone="danger"
                 title={t('api.runCleanupConfirm')}
-                subtitle={
-                    'Permanently removes API request logs older than the ' +
-                    'retention period and expired idempotency keys. ' +
-                    'Business data (tasks, work logs, meetings, customers, ' +
-                    'projects) is never touched.'
-                }
+                subtitle={t('api.cleanupConfirmBody')}
                 confirmLabel={t('api.runCleanup')}
                 loading={runCleanup.isPending}
                 onConfirm={() => {
@@ -980,21 +990,21 @@ function ApiManagementPage() {
                 tone={confirm?.kind === 'enable' ? 'primary' : 'danger'}
                 title={
                     confirm?.kind === 'revoke'
-                        ? 'Revoke this token?'
+                        ? t('api.confirmRevokeTitle')
                         : confirm?.kind === 'rotate'
-                        ? 'Rotate this token?'
+                        ? t('api.confirmRotateTitle')
                         : confirm?.kind === 'disable'
-                        ? 'Disable this API client?'
-                        : 'Re-enable this API client?'
+                        ? t('api.confirmDisableTitle')
+                        : t('api.confirmEnableTitle')
                 }
                 subtitle={
                     confirm?.kind === 'revoke'
-                        ? 'The token stops working immediately. This cannot be undone.'
+                        ? t('api.confirmRevokeBody')
                         : confirm?.kind === 'rotate'
-                        ? 'A new token will be issued and shown once; the old token stops working immediately.'
+                        ? t('api.confirmRotateBody')
                         : confirm?.kind === 'disable'
-                        ? 'All tokens of this client stop working immediately. The client can be re-enabled later.'
-                        : 'Existing active tokens will start working again.'
+                        ? t('api.confirmDisableBody')
+                        : t('api.confirmEnableBody')
                 }
                 itemSubtitle={
                     confirm?.token
@@ -1003,12 +1013,12 @@ function ApiManagementPage() {
                 }
                 confirmLabel={
                     confirm?.kind === 'revoke'
-                        ? 'Revoke Token'
+                        ? t('api.revokeToken')
                         : confirm?.kind === 'rotate'
-                        ? 'Rotate Token'
+                        ? t('api.rotateToken')
                         : confirm?.kind === 'disable'
-                        ? 'Disable Client'
-                        : 'Enable Client'
+                        ? t('api.disableClient')
+                        : t('api.enableClient')
                 }
                 onCancel={() => setConfirm(null)}
                 onConfirm={() => {
@@ -1045,7 +1055,7 @@ function ApiManagementPage() {
                 onCancel={() => setExpiryModal(null)}
                 destroyOnHidden
             >
-                <p style={{ color: 'var(--c-text-muted)', marginBottom: 12 }}>{t('api.neverExpires')}</p>
+                <p className="am-expiry-hint">{t('api.neverExpires')}</p>
                 <DatePicker
                     style={{ width: '100%' }}
                     value={expiryValue}

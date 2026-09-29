@@ -1,302 +1,165 @@
 /* =============================================================================
-   HERMES - Task Management (modern dashboard)
+   HERMES - PM Configurations (Hermes Liquid, 29.09)
    =============================================================================
-   Single-page dashboard: a summary stat strip + three collapsible sections
-   (Task Access · Assignment Hierarchy · Sub Projects). Brand-blue→indigo
-   accents are constant across the theme, so the look holds in dark + light.
-   Each block reads its own --tm-accent for its icon/active colour.
+   Tam genislik: baslik + KPI karolari + hap segment + tek cam bolum karti
+   (ortak dil: settingsKit.css). Burada yalnizca sayfaya ozgu parcalar var:
+   atama hiyerarsisi satirlari, alt proje tablosu, bildirim karolari ve
+   yasam dongusu politikasi. Renkler yalnizca token'dan.
    ============================================================================= */
 
-.tm-page {
-    padding: 24px;
-    max-width: 1280px;
-    margin: 0 auto;
+.tm-page { display: flex; flex-direction: column; min-width: 0; }
+.tm-loading,
+.ah-loading { display: flex; justify-content: center; padding: 36px 0; }
+
+/* ==========================================================================
+   ATAMA HIYERARSISI — assigner basina satir
+   ========================================================================== */
+.ah-search.ant-input-affix-wrapper { width: 320px; max-width: 100%; border-radius: var(--h-radius-pill); }
+.ah-rows {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    border: 1px solid var(--h-border-subtle);
+    border-radius: 18px;
+    overflow: hidden;
 }
-
-/* ── Header ───────────────────────────────────────────────────────────── */
-.tm-header {
+.ah-row + .ah-row { border-top: 1px solid var(--h-border-subtle); }
+.ah-row.is-open { background: color-mix(in srgb, var(--h-brand) 4%, transparent); }
+.ah-row__head {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px 6px 6px;
 }
-.tm-title {
-    margin: 0;
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--c-text-strong);
-    letter-spacing: -0.01em;
-}
-.tm-subtitle {
-    margin: 0;
-    font-size: 13px;
-    color: var(--c-text-muted);
-}
-
-/* ── Stat strip ───────────────────────────────────────────────────────── */
-/* Premium redesign: ayri KPI kartlari yerine tek kesintisiz strip —
-   zeminsiz, ince dikey ayiricili. */
-.tm-stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0;
-}
-.tm-stat {
+.ah-row__toggle {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 18px;
-    background: transparent;
-    border: 0;
-    border-radius: 0;
-    position: relative;
-    transition: none;
-}
-.tm-stat + .tm-stat { border-left: 1px solid var(--h-border-subtle); }
-/* Accent artik yalniz ilk metrikte ince bir cizgi (bagirmaz). */
-.tm-stat:first-child::before {
-    content: '';
-    position: absolute;
-    inset: 8px auto 8px 0;
-    width: 3px;
-    border-radius: 2px;
-    background: var(--h-grad-primary);
-}
-/* Renkli kare ikon kutulari kucultuldu ve tonallastirildi. */
-.tm-stat-icon {
-    flex-shrink: 0;
-    width: 26px;
-    height: 26px;
-    border-radius: var(--h-radius-control);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    color: var(--tm-accent, var(--h-brand));
-    background: color-mix(in srgb, var(--tm-accent, #388bff) 14%, transparent);
-    box-shadow: none;
-}
-.tm-stat-value {
-    font-size: 22px;
-    font-weight: 700;
-    line-height: 1.1;
-    color: var(--c-text-strong);
-}
-.tm-stat-label {
-    font-size: 12px;
-    color: var(--c-text-muted);
-    margin-top: 2px;
-}
-
-/* ── Collapsible section ──────────────────────────────────────────────── */
-/* Premium redesign: her bolum bir Card DEGIL — tuval uzerinde
-   divider'la ayrilan section row. */
-.tm-section {
-    background: transparent;
-    border: 0;
-    border-top: 1px solid var(--h-border-subtle);
-    border-radius: 0;
-    overflow: visible;
-}
-.tm-section:first-of-type { border-top: 0; }
-.tm-section.is-open { box-shadow: none; }
-
-.tm-section-head {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 16px 20px;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    text-align: left;
-    color: inherit;
-    transition: background 0.16s ease;
-}
-.tm-section-head:hover {
-    background: var(--h-bg-hover);
-}
-.tm-section-head:focus-visible {
-    outline: 2px solid var(--tm-accent, #388bff);
-    outline-offset: -2px;
-}
-.tm-section-icon {
-    flex-shrink: 0;
-    width: 38px;
-    height: 38px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 17px;
-    color: var(--tm-accent, var(--c-text));
-    /* Neutral fallback first (readable accent text on a chip), then the
-       accent tint where color-mix() is supported. */
-    background: var(--c-chip);
-    background: color-mix(in srgb, var(--tm-accent, #388bff) 16%, transparent);
-}
-.tm-section-titles {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    min-width: 0;
     flex: 1 1 auto;
-}
-.tm-section-title {
-    font-size: 16px;
-    font-weight: 650;
-    color: var(--c-text-strong);
-}
-.tm-section-sub {
-    font-size: 12px;
-    color: var(--c-text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.tm-section-count {
-    flex-shrink: 0;
-    min-width: 26px;
-    height: 24px;
-    padding: 0 9px;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--tm-accent, var(--c-text));
-    background: var(--c-chip);
-    background: color-mix(in srgb, var(--tm-accent, #388bff) 16%, transparent);
-}
-.tm-section-chevron {
-    flex-shrink: 0;
-    color: var(--c-text-muted);
-    font-size: 13px;
-    transition: transform 0.22s ease;
-}
-.tm-section.is-open .tm-section-chevron {
-    transform: rotate(180deg);
-}
-
-/* Smooth height collapse without measuring — the 0fr→1fr grid trick. */
-.tm-section-body-wrap {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows 0.25s ease;
-}
-.tm-section.is-open .tm-section-body-wrap {
-    grid-template-rows: 1fr;
-}
-/* Grid item must be a BARE overflow:hidden box for the 0fr collapse to
-   clip cleanly — any padding/border here would peek through when closed.
-   The actual padding/border lives on the inner wrapper below. */
-.tm-section-body {
-    overflow: hidden;
-    min-height: 0;
-}
-.tm-section-inner {
-    padding: 4px 20px 20px;
-    border-top: 1px solid var(--c-border);
-}
-
-@media (max-width: 880px) {
-    .tm-stats {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-@media (max-width: 480px) {
-    .tm-stats {
-        grid-template-columns: 1fr;
-    }
-
-    /* Sub Projects filter selects (inline width:200) stack full-width. */
-    .tm-sub-filters {
-        width: 100%;
-    }
-    .tm-sub-filters .ant-space-item {
-        width: 100%;
-    }
-    .tm-sub-filters .ant-select {
-        width: 100% !important;
-    }
-
-    /* Additional Users search (inline width:300) fills the toolbar row. */
-    .tm-additional-search {
-        width: 100% !important;
-        max-width: 100%;
-    }
-}
-
-/* ==========================================================================
-   MAIL NOTIFICATIONS (admin e-mail rules per work-item type)
-   ========================================================================== */
-
-.tm-notif-hint {
-    margin: 0 0 14px;
-    color: var(--c-text-muted);
-    font-size: 12.5px;
-    line-height: 1.6;
-}
-
-/* Premium redesign (2026-08-04): Mail Notifications artik "kart yigini"
-   degil — her tur, tuvale oturan bir SATIR. Ayrim: ince divider + kucuk
-   tonal accent; kutu/dolgu yok. Kapali turde satir sonmus gorunur. */
-.tm-notif-row {
+    min-width: 0;
+    padding: 8px 10px;
     border: 0;
-    border-top: 1px solid var(--h-border-subtle);
-    border-radius: 0;
+    border-radius: 14px;
     background: transparent;
-    padding: 16px 4px;
-    margin-bottom: 0;
-    transition: opacity var(--h-motion-fast) var(--h-ease-standard);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--h-motion-fast) var(--h-ease-standard);
 }
-.tm-notif-row:first-of-type { border-top: 0; }
-
-.tm-notif-row.is-off .tm-notif-controls {
-    opacity: 0.45;
+.ah-row__toggle:hover { background: var(--h-bg-hover); }
+.ah-row__toggle:focus-visible { outline: 2px solid var(--h-focus); outline-offset: -2px; }
+.ah-row__who { flex: 1 1 auto; }
+.ah-row__tags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.ah-row__chev {
+    flex: none;
+    color: var(--h-text-muted);
+    font-size: 12px;
+    transition: transform var(--h-motion-base) var(--h-ease-standard);
 }
+.ah-row.is-open .ah-row__chev { transform: rotate(180deg); }
+.ah-row__add.ant-btn { flex: none; }
 
-.tm-notif-head {
+.ah-row__body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 24px;
+    padding: 4px 20px 18px 64px;
+}
+.ah-col { min-width: 0; }
+.ah-none { margin: 0; color: var(--h-text-muted); font-size: 12.5px; }
+.ah-list { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.ah-item {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 12px;
+    min-width: 0;
+    padding: 6px 6px 6px 8px;
+    border-radius: 12px;
+    transition: background var(--h-motion-fast) var(--h-ease-standard);
+}
+.ah-item:hover { background: var(--h-bg-hover); }
+.ah-item > .sk-person__text { flex: 1 1 auto; }
+.ah-item__group {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    flex: none;
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--hp-purple-500) 16%, transparent);
+    color: var(--hp-purple-500);
+    font-size: 14px;
 }
 
-/* Tur isareti: buyuk renkli nokta yerine ince accent cubugu. */
-.tm-notif-dot {
-    width: 3px;
-    height: 16px;
-    border-radius: 2px;
-    background: var(--notif-accent, var(--h-brand));
-    flex-shrink: 0;
+/* ==========================================================================
+   ALT PROJELER
+   ========================================================================== */
+.tm-sub-filter.ant-select { width: 220px; }
+.tm-sub-name { display: flex; flex-direction: column; gap: 1px; min-width: 180px; max-width: 420px; }
+.tm-sub-name__title { font-weight: 600; color: var(--h-text-primary); }
+.tm-sub-name__desc {
+    overflow: hidden;
+    font-size: 12.5px;
+    color: var(--h-text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.tm-notif-name {
-    font-size: var(--h-font-body);
-    font-weight: 650;
-    color: var(--h-text-primary);
-    margin-right: auto;
+/* ==========================================================================
+   BILDIRIMLER — tur basina bir karo (prototip)
+   ========================================================================== */
+.tm-notif-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
 }
-
-.tm-notif-controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px 28px;
-    align-items: flex-start;
-}
-
-.tm-notif-field {
+.tm-notif-row {
+    --notif-accent: var(--hp-blue-500);
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 14px;
     min-width: 0;
+    overflow: hidden;
+    padding: 18px 16px 18px;
+    border: 1px solid var(--h-border-subtle);
+    border-radius: 18px;
+    background: var(--h-field-bg);
+    transition: opacity var(--h-motion-fast) var(--h-ease-standard);
 }
+/* Tur rengi yalniz ustte ince bir serit (kenar egrisi bozulmaz). */
+.tm-notif-row::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: var(--notif-accent);
+}
+.tm-notif-row--amber { --notif-accent: var(--hp-amber-500); }
+.tm-notif-row--violet { --notif-accent: var(--hp-purple-500); }
+.tm-notif-row.is-off::before { background: var(--h-border-default); }
+.tm-notif-row.is-off .tm-notif-controls { opacity: 0.45; }
 
+.tm-notif-head { display: flex; align-items: center; gap: 10px; }
+.tm-notif-dot {
+    width: 10px;
+    height: 10px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--notif-accent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--notif-accent) 18%, transparent);
+}
+.tm-notif-name {
+    margin-right: auto;
+    font-size: 15px;
+    font-weight: 650;
+    color: var(--h-text-primary);
+}
+.tm-notif-row.is-off .tm-notif-name { color: var(--h-text-secondary); }
+.tm-notif-row.is-off .tm-notif-dot { opacity: 0.35; }
+
+.tm-notif-controls { display: flex; flex-direction: column; gap: 12px; }
+.tm-notif-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .tm-notif-label {
     font-size: 11px;
     font-weight: 600;
@@ -304,57 +167,18 @@
     text-transform: uppercase;
     color: var(--h-text-muted);
 }
+.tm-notif-priorities.ant-select,
+.tm-notif-due.ant-select { width: 100%; }
 
-/* Checkbox labels follow the theme — AntD's default is near-black, which
-   is unreadable on the dark surface. The variable flips in light mode. */
-.tm-notif-row .ant-checkbox-wrapper {
-    color: var(--h-text-primary);
-}
-.tm-notif-row .ant-checkbox-wrapper-disabled {
-    color: var(--h-text-muted);
-}
-/* Kapali tur: satirin tamami sakinleşir (kutu rengi degistirmeden). */
-.tm-notif-row.is-off .tm-notif-name { color: var(--h-text-secondary); }
-.tm-notif-row.is-off .tm-notif-dot { opacity: 0.35; }
-
-.tm-notif-priorities {
-    min-width: 240px;
-}
-
-.tm-notif-due {
-    min-width: 200px;
-}
-
-/* Phones: each field takes its own full-width row. */
-@media (max-width: 480px) {
-    .tm-notif-controls {
-        flex-direction: column;
-        gap: 12px;
-    }
-    .tm-notif-field {
-        width: 100%;
-    }
-    .tm-notif-priorities,
-    .tm-notif-due {
-        width: 100%;
-        min-width: 0;
-    }
-}
-
-
-/* --- Mail Notifications: RBAC-benzeri toggle cip satirlari ------------ */
-.tm-notif-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
+/* Toggle cipleri (RBAC izin satirlari ile ayni dil) */
+.tm-notif-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .tm-notif-chip {
     display: inline-flex;
     align-items: center;
     gap: 7px;
     padding: 5px 12px 5px 10px;
+    border: 1px solid var(--h-border-default);
     border-radius: var(--h-radius-pill);
-    border: 1px solid var(--h-border-subtle);
     background: transparent;
     color: var(--h-text-secondary);
     font: inherit;
@@ -377,10 +201,7 @@
     border-color: color-mix(in srgb, var(--h-brand) 40%, transparent);
     color: var(--h-text-primary);
 }
-.tm-notif-chip:focus-visible {
-    outline: 2px solid var(--h-focus);
-    outline-offset: 2px;
-}
+.tm-notif-chip:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
 .tm-notif-chip.is-on {
     border-color: color-mix(in srgb, var(--h-brand) 50%, transparent);
     background: color-mix(in srgb, var(--h-brand) 12%, transparent);
@@ -393,37 +214,37 @@
 }
 .tm-notif-chip:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* --- Hierarchy: kisiler arasi PREMIUM ayirici ------------------------- */
-/* Kullanici bulgusu: assigner satirlari arasinda ayrim yoktu. Ince,
-   arka planla uyumlu koyu-mavi hairline satirlari ayirir. */
-.tm-assigner-card + .tm-assigner-card {
-    border-top: 1px solid color-mix(in srgb, var(--h-brand) 22%, var(--h-border-subtle));
-}
-.tm-assigner-card > .ant-card-body > div:first-child {
-    transition: background var(--h-motion-fast) var(--h-ease-standard);
-}
-.tm-assigner-card > .ant-card-body > div:first-child:hover {
-    background: color-mix(in srgb, var(--h-brand) 5%, transparent);
-}
-
-/* Lifecycle politika satiri: bolum icinde tek satirlik ayar. */
+/* ==========================================================================
+   YASAM DONGUSU — tek satirlik politika
+   ========================================================================== */
 .tm-policy-row {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    gap: 20px;
-    padding: 12px 0;
+    gap: 16px 28px;
     flex-wrap: wrap;
+    padding: 4px 0;
 }
-.tm-policy-label {
-    color: var(--h-text-primary);
-    font-size: 14px;
-    font-weight: 550;
-}
+.tm-policy-text { min-width: 0; flex: 1 1 320px; }
+.tm-policy-label { color: var(--h-text-primary); font-size: 14.5px; font-weight: 600; }
 .tm-policy-hint {
+    max-width: 64ch;
     margin-top: 4px;
-    max-width: 60ch;
     color: var(--h-text-secondary);
-    font-size: 12px;
-    line-height: 1.5;
+    font-size: 13px;
+    line-height: 1.55;
+}
+.tm-policy-control { display: flex; align-items: center; gap: 10px; }
+
+/* ==========================================================================
+   Dar ekran
+   ========================================================================== */
+@media (max-width: 760px) {
+    .ah-row__head { flex-wrap: wrap; padding: 6px 8px; }
+    .ah-row__toggle { flex-wrap: wrap; }
+    .ah-row__tags { justify-content: flex-start; width: 100%; padding-left: 46px; }
+    .ah-row__chev { display: none; }
+    .ah-row__body { grid-template-columns: 1fr; padding: 4px 12px 14px; }
+    .ah-search.ant-input-affix-wrapper { width: 100%; }
+    .tm-sub-filter.ant-select { width: 100%; }
 }

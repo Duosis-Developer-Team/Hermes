@@ -1,0 +1,81 @@
+/* =============================================================================
+   HERMES - Talep entegrasyonlari (Hermes Liquid, 29.09)
+   =============================================================================
+   Ortak iskelet settingsKit.css'ten; burada yalnizca bu sayfaya ozgu
+   parcalar var. Renkler yalnizca token'dan; backdrop-filter YOK.
+   ============================================================================= */
+
+.ti-page { display: flex; flex-direction: column; min-width: 0; }
+.ti-loading { display: flex; justify-content: center; padding: 36px 0; }
+
+/* Tablo basliklari tek satirda kalir (eski "YONLENDIRME S" kirilmasi). */
+.ti-page .ant-table-thead > tr > th { white-space: nowrap; }
+
+/* ---------- Yonlendirme ---------- */
+.ti-ws { display: flex; flex-direction: column; gap: 1px; min-width: 180px; }
+.ti-ws__name { font-weight: 600; color: var(--h-text-primary); }
+.ti-ws__id {
+    max-width: 260px;
+    overflow: hidden;
+    font: 11.5px var(--h-font-mono);
+    color: var(--h-text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ti-route-select.ant-select { width: 240px; }
+
+/* ---------- Kimlik bilgileri ---------- */
+.ti-clients {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: 14px;
+}
+.ti-client {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    padding: 16px 18px 10px;
+    border: 1px solid var(--h-border-subtle);
+    border-radius: 18px;
+    background: var(--h-field-bg);
+}
+.ti-client__head { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.ti-client__icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--h-success) 14%, transparent);
+    color: var(--h-success);
+    font-size: 17px;
+}
+.ti-client__titles { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; }
+.ti-client__name {
+    margin: 0;
+    overflow: hidden;
+    font-size: 15px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    color: var(--h-text-primary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ti-client__tags,
+.ti-client__scopes { display: flex; flex-wrap: wrap; gap: 5px; }
+.ti-client__issue.ant-btn { flex: none; }
+.ti-client__tokens { border-top: 1px solid var(--h-border-subtle); padding-top: 4px; }
+
+.ti-token.ant-typography { margin: 14px 0 0; word-break: break-all; }
+
+/* ---------- Teslimat ---------- */
+.ti-health { display: flex; flex-wrap: wrap; gap: 8px; }
+.ti-error { color: var(--h-danger); }
+
+@media (max-width: 640px) {
+    .ti-clients { grid-template-columns: 1fr; }
+    .ti-client__head { flex-wrap: wrap; }
+    .ti-route-select.ant-select { width: 100%; min-width: 180px; }
+}

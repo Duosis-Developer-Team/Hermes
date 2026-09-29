@@ -1,0 +1,170 @@
+/* =============================================================================
+   HERMES - Ayar sayfalari sunum kiti (Hermes Liquid, 29.09)
+   =============================================================================
+   PM Ayarlari, API Yonetimi ve Talep Entegrasyonlari ortak dili. Ayarlar
+   kabugunun kart diliyle ayni olculer (22px kose, cam kenar + golge).
+   Kayan icerikte backdrop-filter YOK (performans kurali); renkler
+   yalnizca token'dan.
+   ============================================================================= */
+
+/* ---------- KPI karolari ---------- */
+.sk-kpis { margin-bottom: 18px; }
+.sk-kpi__hint { margin-top: 6px; color: var(--h-text-muted); font-size: 12px; }
+
+/* ---------- Bolum karti ---------- */
+.sk-card {
+    position: relative;
+    min-width: 0;
+    border: 1px solid var(--h-glass-edge);
+    border-radius: 22px;
+    background: var(--h-bg-surface);
+    box-shadow: var(--h-glass-shadow);
+    color: var(--h-text-primary);
+}
+.sk-card + .sk-card { margin-top: 16px; }
+.sk-card__head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 22px 0;
+}
+.sk-card__icon.lq-mico {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    font-size: 17px;
+}
+.sk-card__titles { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.sk-card__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    color: var(--h-text-primary);
+}
+.sk-card__sub { margin: 2px 0 0; font-size: 13px; line-height: 1.45; color: var(--h-text-secondary); }
+.sk-card__actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-left: auto; }
+.sk-card__body { padding: 16px 22px 20px; min-width: 0; }
+.sk-card__body--flush { padding: 12px 10px 10px; }
+
+.sk-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 20px;
+    padding: 0 7px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-bg-hover);
+    color: var(--h-text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Kart ici arac cubugu: solda arama/filtre, sagda eylem. */
+.sk-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.sk-toolbar__filters { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+
+/* Aciklama notu (kartin ustunde tek satir bilgi). */
+.sk-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0 0 14px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--h-brand) 7%, transparent);
+    color: var(--h-text-secondary);
+    font-size: 13px;
+    line-height: 1.55;
+}
+.sk-hint > .anticon { margin-top: 3px; color: var(--h-brand); }
+
+/* ---------- Bos durum ---------- */
+.sk-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 40px 16px 36px;
+    text-align: center;
+}
+.sk-empty--compact { padding: 22px 12px; }
+.sk-empty__icon {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    margin-bottom: 6px;
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--h-brand) 11%, transparent);
+    color: var(--h-brand);
+    font-size: 24px;
+}
+.sk-empty--compact .sk-empty__icon { width: 42px; height: 42px; border-radius: 14px; font-size: 19px; }
+.sk-empty__title { font-size: 15px; font-weight: 650; color: var(--h-text-primary); }
+.sk-empty__text { max-width: 52ch; margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--h-text-secondary); }
+.sk-empty__action { margin-top: 8px; }
+
+/* ---------- Bolum secici (hap segment) ---------- */
+.sk-tabs {
+    max-width: 100%;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.sk-tabs::-webkit-scrollbar { display: none; }
+.sk-tab { display: inline-flex; align-items: center; gap: 7px; }
+.sk-tab__icon { display: inline-flex; font-size: 14px; opacity: 0.8; }
+.sk-tab__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-bg-hover);
+    color: var(--h-text-secondary);
+    font-size: 11.5px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.lq-seg button.is-on .sk-tab__count {
+    background: color-mix(in srgb, var(--h-brand) 14%, transparent);
+    color: var(--h-brand);
+}
+
+/* ---------- Kisi hucresi (avatar + ad + e-posta) ---------- */
+.sk-person { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sk-person__text { display: flex; flex-direction: column; min-width: 0; }
+.sk-person__name { overflow: hidden; font-weight: 600; color: var(--h-text-primary); text-overflow: ellipsis; white-space: nowrap; }
+.sk-person__meta { overflow: hidden; font-size: 12px; color: var(--h-text-muted); text-overflow: ellipsis; white-space: nowrap; }
+
+/* Kart ici tablolar: basliklar tek satirda (dar kolonda kirilmaz). */
+.sk-card .ant-table-thead > tr > th { white-space: nowrap; }
+
+/* Tablo ici: yalniz ikonlu satir eylemleri saga yaslanir. */
+.sk-row-actions { display: flex; justify-content: flex-end; gap: 4px; white-space: nowrap; }
+.sk-muted { color: var(--h-text-muted); }
+.sk-mono { font-family: var(--h-font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.sk-nowrap { white-space: nowrap; }
+
+@media (max-width: 640px) {
+    .sk-card__head { flex-wrap: wrap; padding: 16px 16px 0; }
+    .sk-card__actions { width: 100%; justify-content: flex-start; margin-left: 0; }
+    .sk-card__body { padding: 14px 16px 16px; }
+    .sk-toolbar > *, .sk-toolbar__filters > * { flex: 1 1 100%; }
+}

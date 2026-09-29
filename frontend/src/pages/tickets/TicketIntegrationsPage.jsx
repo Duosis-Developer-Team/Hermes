@@ -10,22 +10,30 @@
  *
  * Uretilen token PLAINTEXT olarak YALNIZCA bir kez gorunur; kapatildiktan
  * sonra hicbir uctan okunamaz.
+ *
+ * Hermes Liquid (29.09): tam genislik; hap segment ile bolum secimi, her
+ * bolum cam kart (settingsKit), teslimat metrikleri KPI karolari. Sorgular,
+ * mutation'lar ve izin ayrimi AYNI.
  */
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Form, Input, message, Select, Table, Tabs, Typography } from 'antd'
+import { Alert, Button, Form, Input, message, Select, Spin, Table, Typography } from 'antd'
+import {
+    ApiOutlined, BranchesOutlined, DashboardOutlined, InfoCircleOutlined, KeyOutlined, LockOutlined,
+    PlusOutlined, SendOutlined, StopOutlined,
+} from '@ant-design/icons'
 
 import { ticketAdminService, ticketHubService } from '../../api/ticketsApi'
-import {
-    AppModal, Button, EmptyState, Inline, Metric, Page, PageHeader, Stack,
-    StatusBadge, Surface,
-} from '../../components/ui'
+import { AppModal } from '../../components/ui'
+import { ModalHead } from '../../components/liquid'
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { queryKeys } from '../../query/queryKeys'
-import '../../features/tickets/tickets.css'
+import '../admin/settingsKit.css'
+import './TicketIntegrationsPage.css'
 import { useT } from '../../i18n'
+import { SettingsEmpty, SettingsKpis, SettingsSection, SettingsTabs } from '../admin/settingsKit'
 
-const { Text, Paragraph } = Typography
+const { Paragraph } = Typography
 
 const SCOPES = [
     'support:groups:read',
@@ -33,6 +41,32 @@ const SCOPES = [
     'support:tickets:write',
     'support:attachments:write',
 ]
+
+/* Durum → (etiket anahtari, hap tonu). Bilinmeyen deger ham gosterilir. */
+const RECORD_STATUS = {
+    active: ['integrations.statusActive', 'ok'],
+    disabled: ['integrations.statusDisabled', ''],
+    revoked: ['integrations.statusRevoked', 'bad'],
+    suspended: ['integrations.statusSuspended', 'warn'],
+    archived: ['integrations.statusArchived', ''],
+}
+const DELIVERY_STATUS = {
+    delivered: ['integrations.delivered', 'ok'],
+    pending: ['integrations.pending', 'info'],
+    in_flight: ['integrations.inFlight', 'violet'],
+    dead: ['integrations.deadLetter', 'bad'],
+}
+const ENV_LABEL = { dev: ['api.development', 'warn'], live: ['api.live', 'ok'] }
+
+function StatusPill({ map, value }) {
+    const t = useT()
+    const [key, tone] = map[value] ?? [null, '']
+    return (
+        <span className={`lq-tag${tone ? ` lq-tag--${tone}` : ''}`}>
+            {key ? t(key) : value}
+        </span>
+    )
+}
 
 function RoutingTab() {
     const t = useT()
@@ -61,7 +95,7 @@ function RoutingTab() {
             })
         },
         onError: (error) => message.error(
-            error?.normalized?.message || 'Routing could not be updated.',
+            error?.normalized?.message || t('integrations.routeFailed'),
         ),
     })
 
@@ -69,75 +103,81 @@ function RoutingTab() {
         .find((a) => a.id === id)?.display_name ?? '—'
 
     return (
-        <Stack gap={3}>
-            <Alert
-                type="info"
-                showIcon
-                message={t('integrations.oneTargetPerWorkspace')}
-                description={t('integrations.routeChangeHint')}
-            />
-            <Surface>
-                <Table
-                    rowKey="id"
-                    size="small"
-                    loading={sources.isLoading}
-                    dataSource={sources.data ?? []}
-                    pagination={false}
-                    locale={{
-                        emptyText: (
-                            <EmptyState
-                                title={t('integrations.noWorkspaces')}
-                                description={t('integrations.mappingHint')}
+        <SettingsSection
+            icon={<BranchesOutlined />}
+            tone="blue"
+            title={t('integrations.routing')}
+            subtitle={t('integrations.oneTargetPerWorkspace')}
+            count={sources.data?.length}
+        >
+            <p className="sk-hint">
+                <InfoCircleOutlined aria-hidden="true" />
+                <span>{t('integrations.routeChangeHint')}</span>
+            </p>
+            <Table
+                rowKey="id"
+                loading={sources.isLoading}
+                dataSource={sources.data ?? []}
+                pagination={false}
+                scroll={{ x: 'max-content' }}
+                locale={{
+                    emptyText: (
+                        <SettingsEmpty
+                            icon={<BranchesOutlined />}
+                            title={t('integrations.noWorkspaces')}
+                            text={t('integrations.mappingHint')}
+                        />
+                    ),
+                }}
+                columns={[
+                    {
+                        title: t('integrations.workspace'), dataIndex: 'display_name',
+                        render: (name, row) => (
+                            <span className="ti-ws">
+                                <span className="ti-ws__name">{name}</span>
+                                <span className="ti-ws__id">{row.source_tenant_id}</span>
+                            </span>
+                        ),
+                    },
+                    {
+                        title: t('integrations.application'), dataIndex: 'application_id',
+                        render: (id) => <span className="lq-tag">{appName(id)}</span>,
+                    },
+                    {
+                        title: t('common.status'), dataIndex: 'status',
+                        render: (status) => <StatusPill map={RECORD_STATUS} value={status} />,
+                    },
+                    {
+                        title: t('integrations.targetTeam'),
+                        render: (_, row) => (
+                            <Select
+                                className="ti-route-select"
+                                aria-label={t('integrations.targetTeamFor', { name: row.display_name })}
+                                placeholder={t('integrations.notConfigured')}
+                                value={row.route?.group_id}
+                                loading={setRoute.isPending}
+                                onChange={(groupId) => setRoute.mutate({
+                                    id: row.id, groupId,
+                                })}
+                                options={(groups.data ?? []).map((g) => ({
+                                    value: g.id,
+                                    label: `${g.name} (${g.member_count})`,
+                                }))}
                             />
                         ),
-                    }}
-                    columns={[
-                        {
-                            title: t('integrations.application'), dataIndex: 'application_id',
-                            render: appName, width: 140,
-                        },
-                        { title: t('integrations.workspace'), dataIndex: 'display_name' },
-                        {
-                            title: t('integrations.sourceId'), dataIndex: 'source_tenant_id',
-                            ellipsis: true,
-                        },
-                        {
-                            title: t('common.status'), dataIndex: 'status', width: 110,
-                            render: (status) => (
-                                <StatusBadge
-                                    tone={status === 'active'
-                                        ? 'success' : 'neutral'}
-                                >
-                                    {status}
-                                </StatusBadge>
-                            ),
-                        },
-                        {
-                            title: t('integrations.targetTeam'), width: 260,
-                            render: (_, row) => (
-                                <Select
-                                    style={{ width: '100%' }}
-                                    placeholder={t('integrations.notConfigured')}
-                                    value={row.route?.group_id}
-                                    loading={setRoute.isPending}
-                                    onChange={(groupId) => setRoute.mutate({
-                                        id: row.id, groupId,
-                                    })}
-                                    options={(groups.data ?? []).map((g) => ({
-                                        value: g.id,
-                                        label: `${g.name} (${g.member_count})`,
-                                    }))}
-                                />
-                            ),
-                        },
-                        {
-                            title: t('integrations.routeVersion'), dataIndex: ['route', 'route_version'],
-                            width: 90,
-                        },
-                    ]}
-                />
-            </Surface>
-        </Stack>
+                    },
+                    {
+                        /* Eski baslik ("Route v" / "Yonlendirme s") dar
+                           kolonda iki satira kiriliyordu. */
+                        title: t('integrations.version'), dataIndex: ['route', 'route_version'],
+                        align: 'right',
+                        render: (v) => (v == null
+                            ? <span className="sk-muted">—</span>
+                            : <span className="sk-mono">v{v}</span>),
+                    },
+                ]}
+            />
+        </SettingsSection>
     )
 }
 
@@ -165,14 +205,14 @@ function CredentialsTab() {
         mutationFn: ticketAdminService.createIntegrationClient,
         onSuccess: () => { setCreateOpen(false); invalidate() },
         onError: (error) => message.error(
-            error?.normalized?.message || 'The client could not be created.',
+            error?.normalized?.message || t('integrations.createFailed'),
         ),
     })
     const issueToken = useMutation({
         mutationFn: (clientId) => ticketAdminService.issueToken(clientId),
         onSuccess: (data) => { setIssuedToken(data); invalidate() },
         onError: (error) => message.error(
-            error?.normalized?.message || 'The token could not be issued.',
+            error?.normalized?.message || t('integrations.issueFailed'),
         ),
     })
     const revokeToken = useMutation({
@@ -181,64 +221,100 @@ function CredentialsTab() {
         onSuccess: invalidate,
     })
 
-    return (
-        <Stack gap={3}>
-            <Inline gap={2}>
-                <Button variant="primary" onClick={() => setCreateOpen(true)}>{t('integrations.newClient')}</Button>
-            </Inline>
+    const newClientAction = (
+        <Button
+            className="h-create-action"
+            icon={<PlusOutlined />}
+            onClick={() => setCreateOpen(true)}
+        >{t('integrations.newClient')}</Button>
+    )
+    const list = clients.data ?? []
 
-            {(clients.data ?? []).map((client) => (
-                <Surface key={client.id}>
-                    <Stack gap={2}>
-                        <Inline gap={2}>
-                            <Text strong>{client.name}</Text>
-                            <StatusBadge tone="neutral">
-                                {client.application_code}
-                            </StatusBadge>
-                            <StatusBadge
-                                tone={client.status === 'active'
-                                    ? 'success' : 'neutral'}
-                            >
-                                {client.status}
-                            </StatusBadge>
-                            <StatusBadge tone="info">
-                                {client.environment}
-                            </StatusBadge>
+    return (
+        <SettingsSection
+            icon={<KeyOutlined />}
+            tone="green"
+            title={t('integrations.credentials')}
+            subtitle={t('integrations.credentialsSub')}
+            count={clients.data ? list.length : undefined}
+            actions={list.length > 0 ? newClientAction : null}
+        >
+            {clients.isLoading && <div className="ti-loading"><Spin /></div>}
+            {!clients.isLoading && list.length === 0 && (
+                <SettingsEmpty
+                    icon={<KeyOutlined />}
+                    title={t('integrations.noClientsTitle')}
+                    text={t('integrations.noClientsText')}
+                    action={newClientAction}
+                />
+            )}
+
+            <div className="ti-clients">
+                {list.map((client) => (
+                    <article key={client.id} className="ti-client">
+                        <header className="ti-client__head">
+                            <span className="ti-client__icon" aria-hidden="true"><ApiOutlined /></span>
+                            <div className="ti-client__titles">
+                                <h3 className="ti-client__name">{client.name}</h3>
+                                <div className="ti-client__tags">
+                                    <span className="lq-tag lq-mono">{client.application_code}</span>
+                                    <StatusPill map={RECORD_STATUS} value={client.status} />
+                                    <StatusPill map={ENV_LABEL} value={client.environment} />
+                                </div>
+                            </div>
                             <Button
-                                style={{ marginLeft: 'auto' }}
+                                size="small"
+                                className="h-create-action ti-client__issue"
+                                icon={<KeyOutlined />}
                                 loading={issueToken.isPending}
+                                aria-label={t('integrations.issueTokenFor', { name: client.name })}
                                 onClick={() => issueToken.mutate(client.id)}
                             >{t('integrations.issueToken')}</Button>
-                        </Inline>
-                        <Inline gap={1}>
+                        </header>
+
+                        <div className="ti-client__scopes">
                             {client.scopes.map((scope) => (
-                                <StatusBadge key={scope} tone="brand">
-                                    {scope}
-                                </StatusBadge>
+                                <span key={scope} className="lq-tag lq-tag--info lq-mono">{scope}</span>
                             ))}
-                        </Inline>
+                        </div>
+
                         <Table
                             rowKey="id"
                             size="small"
+                            className="ti-client__tokens"
                             pagination={false}
                             dataSource={client.tokens}
-                            locale={{ emptyText: t('integrations.noTokens') }}
+                            locale={{
+                                emptyText: (
+                                    <SettingsEmpty compact text={t('integrations.noTokens')} />
+                                ),
+                            }}
                             columns={[
-                                { title: t('integrations.prefix'), dataIndex: 'token_prefix' },
-                                { title: t('common.status'), dataIndex: 'status' },
+                                {
+                                    title: t('integrations.prefix'), dataIndex: 'token_prefix',
+                                    render: (v) => <code className="sk-mono">{v}…</code>,
+                                },
+                                {
+                                    title: t('common.status'), dataIndex: 'status',
+                                    render: (v) => <StatusPill map={RECORD_STATUS} value={v} />,
+                                },
                                 {
                                     title: t('integrations.lastUsed'), dataIndex: 'last_used_at',
                                     render: (v) => (v
-                                        ? new Date(v).toLocaleString()
-                                        : 'never'),
+                                        ? <span className="sk-nowrap">{new Date(v).toLocaleString()}</span>
+                                        : <span className="sk-muted">{t('integrations.never')}</span>),
                                 },
                                 {
-                                    title: '', width: 110,
+                                    title: <span className="h-sr-only">{t('common.actions')}</span>,
+                                    key: 'actions',
+                                    align: 'right',
                                     render: (_, token) => (token.status === 'active'
                                         ? (
                                             <Button
                                                 size="small"
-                                                danger
+                                                className="h-inline-action h-inline-action--danger"
+                                                icon={<StopOutlined />}
+                                                aria-label={t('integrations.revokeTokenAria', { prefix: token.token_prefix })}
                                                 onClick={() => revokeToken.mutate({
                                                     clientId: client.id,
                                                     tokenId: token.id,
@@ -249,13 +325,13 @@ function CredentialsTab() {
                                 },
                             ]}
                         />
-                    </Stack>
-                </Surface>
-            ))}
+                    </article>
+                ))}
+            </div>
 
             <AppModal
                 open={createOpen}
-                title={t('integrations.newClient')}
+                title={<ModalHead icon={<KeyOutlined />} tone="green" title={t('integrations.newClient')} />}
                 okText={t('common.create')}
                 onCancel={() => setCreateOpen(false)}
                 onOk={async () => {
@@ -306,7 +382,7 @@ function CredentialsTab() {
 
             <AppModal
                 open={Boolean(issuedToken)}
-                title={t('integrations.copyTokenNow')}
+                title={<ModalHead icon={<KeyOutlined />} tone="green" title={t('integrations.copyTokenNow')} />}
                 okText={t('integrations.savedIt')}
                 cancelButtonProps={{ style: { display: 'none' } }}
                 onOk={() => setIssuedToken(null)}
@@ -319,11 +395,11 @@ function CredentialsTab() {
                     message={t('integrations.shownOnce')}
                     description={t('integrations.tokenHashOnly')}
                 />
-                <Paragraph copyable={{ text: issuedToken?.token }} code>
+                <Paragraph className="ti-token" copyable={{ text: issuedToken?.token }} code>
                     {issuedToken?.token}
                 </Paragraph>
             </AppModal>
-        </Stack>
+        </SettingsSection>
     )
 }
 
@@ -354,101 +430,120 @@ function DeliveryTab() {
             })
         },
         onError: (error) => message.error(
-            error?.normalized?.message || 'Retry failed.',
+            error?.normalized?.message || t('integrations.retryFailed'),
         ),
     })
 
     const h = health.data
+    const dead = stats.data?.dead
 
     return (
-        <Stack gap={3}>
-            <Surface>
-                <Inline gap={4}>
-                    <Metric label={t('integrations.pending')} value={stats.data?.pending ?? '—'} />
-                    <Metric label={t('integrations.inFlight')} value={stats.data?.in_flight ?? '—'} />
-                    <Metric label={t('integrations.delivered')} value={stats.data?.delivered ?? '—'} />
-                    <Metric
-                        label={t('integrations.deadLetter')}
-                        value={stats.data?.dead ?? '—'}
-                        hint={stats.data?.dead
-                            ? 'Needs an audited manual replay'
-                            : 'Healthy'}
-                    />
-                </Inline>
-            </Surface>
+        <>
+            <SettingsKpis
+                ariaLabel={t('integrations.deliverySummary')}
+                items={[
+                    { key: 'pending', label: t('integrations.pending'), value: stats.data?.pending },
+                    { key: 'inflight', label: t('integrations.inFlight'), value: stats.data?.in_flight },
+                    { key: 'delivered', label: t('integrations.delivered'), value: stats.data?.delivered },
+                    {
+                        key: 'dead',
+                        label: t('integrations.deadLetter'),
+                        value: dead,
+                        hint: stats.data
+                            ? (dead ? t('integrations.deadHint') : t('integrations.healthy'))
+                            : undefined,
+                    },
+                ]}
+            />
 
             {h && (
-                <Surface>
-                    <Stack gap={2}>
-                        <Inline gap={2}>
-                            <StatusBadge
-                                tone={h.module_state === 'ok'
-                                    ? 'success' : 'danger'}
-                            >
-                                module: {h.module_state}
-                            </StatusBadge>
-                            <StatusBadge
-                                tone={h.attachments_production_ready
-                                    ? 'success' : 'warning'}
-                            >
-                                attachments:{' '}
-                                {h.attachments_production_ready
-                                    ? 'production ready'
-                                    : (h.attachments_reason ?? 'not ready')}
-                            </StatusBadge>
-                            {h.unrouted_source_tenants > 0 && (
-                                <StatusBadge tone="warning">
-                                    {h.unrouted_source_tenants} workspace(s)
-                                    without a route
-                                </StatusBadge>
-                            )}
-                        </Inline>
-                        <Text type="secondary">{t('integrations.contentNeverShown')}</Text>
-                    </Stack>
-                </Surface>
+                <SettingsSection
+                    icon={<DashboardOutlined />}
+                    tone={h.module_state === 'ok' ? 'green' : 'red'}
+                    title={t('integrations.health')}
+                    subtitle={t('integrations.contentNeverShown')}
+                >
+                    <div className="ti-health">
+                        <span className={`lq-tag ${h.module_state === 'ok' ? 'lq-tag--ok' : 'lq-tag--bad'}`}>
+                            {h.module_state === 'ok'
+                                ? t('integrations.moduleOk')
+                                : t('integrations.moduleState', { state: h.module_state })}
+                        </span>
+                        <span className={`lq-tag ${h.attachments_production_ready ? 'lq-tag--ok' : 'lq-tag--warn'}`}>
+                            {h.attachments_production_ready
+                                ? t('integrations.attachmentsReady')
+                                : t('integrations.attachmentsNotReady', {
+                                    reason: h.attachments_reason ?? t('integrations.attachmentsNotReadyDefault'),
+                                })}
+                        </span>
+                        {h.unrouted_source_tenants > 0 && (
+                            <span className="lq-tag lq-tag--warn">
+                                {t(h.unrouted_source_tenants === 1
+                                    ? 'integrations.unroutedOne'
+                                    : 'integrations.unroutedMany', { n: h.unrouted_source_tenants })}
+                            </span>
+                        )}
+                    </div>
+                </SettingsSection>
             )}
 
-            <Surface>
+            <SettingsSection
+                icon={<SendOutlined />}
+                tone="violet"
+                title={t('integrations.outboundEvents')}
+                subtitle={t('integrations.outboundEventsSub')}
+                bodyClassName="sk-card__body--flush"
+            >
                 <Table
                     rowKey="id"
-                    size="small"
                     loading={events.isLoading}
                     dataSource={events.data ?? []}
                     pagination={false}
+                    scroll={{ x: 'max-content' }}
                     locale={{
                         emptyText: (
-                            <EmptyState
+                            <SettingsEmpty
+                                icon={<SendOutlined />}
                                 title={t('integrations.noEvents')}
-                                description={t('integrations.eventsHint')}
+                                text={t('integrations.eventsHint')}
                             />
                         ),
                     }}
                     columns={[
-                        { title: t('integrations.ticket'), dataIndex: 'ticket_number', width: 130 },
-                        { title: t('integrations.event'), dataIndex: 'event_type' },
-                        { title: t('integrations.app'), dataIndex: 'application_code', width: 110 },
                         {
-                            title: t('common.status'), dataIndex: 'status', width: 110,
-                            render: (status) => (
-                                <StatusBadge
-                                    tone={{
-                                        delivered: 'success',
-                                        pending: 'info',
-                                        in_flight: 'brand',
-                                        dead: 'danger',
-                                    }[status] ?? 'neutral'}
-                                >
-                                    {status}
-                                </StatusBadge>
-                            ),
+                            title: t('integrations.ticket'), dataIndex: 'ticket_number',
+                            render: (v) => <span className="sk-mono sk-nowrap">{v}</span>,
                         },
-                        { title: t('integrations.tries'), dataIndex: 'attempts', width: 80 },
-                        { title: t('integrations.lastError'), dataIndex: 'last_error_code' },
                         {
-                            title: '', width: 110,
+                            title: t('integrations.event'), dataIndex: 'event_type',
+                            render: (v) => <span className="sk-mono">{v}</span>,
+                        },
+                        {
+                            title: t('integrations.app'), dataIndex: 'application_code',
+                            render: (v) => <span className="lq-tag lq-mono">{v}</span>,
+                        },
+                        {
+                            title: t('common.status'), dataIndex: 'status',
+                            render: (status) => <StatusPill map={DELIVERY_STATUS} value={status} />,
+                        },
+                        {
+                            title: t('integrations.tries'), dataIndex: 'attempts', align: 'right',
+                            render: (v) => <span className="sk-mono">{v}</span>,
+                        },
+                        {
+                            title: t('integrations.lastError'), dataIndex: 'last_error_code',
+                            render: (v) => (v
+                                ? <span className="sk-mono ti-error">{v}</span>
+                                : <span className="sk-muted">—</span>),
+                        },
+                        {
+                            title: <span className="h-sr-only">{t('common.actions')}</span>,
+                            key: 'actions',
+                            align: 'right',
                             render: (_, row) => (row.status === 'dead' ? (
                                 <Button
                                     size="small"
+                                    className="h-inline-action"
                                     loading={retry.isPending}
                                     onClick={() => retry.mutate(row.id)}
                                 >{t('integrations.retryNow')}</Button>
@@ -456,8 +551,8 @@ function DeliveryTab() {
                         },
                     ]}
                 />
-            </Surface>
-        </Stack>
+            </SettingsSection>
+        </>
     )
 }
 
@@ -466,45 +561,67 @@ export default function TicketIntegrationsPage() {
     const context = useTicketContext()
     const canConfigure = context.can('tickets.config.manage')
     const canOperate = context.can('tickets.admin')
+    const [active, setActive] = useState(null)
+
+    const header = (
+        <div className="page-header">
+            <h1>{t('integrations.title')}</h1>
+            <p>{t('integrations.subtitle')}</p>
+        </div>
+    )
 
     if (!context.isHub) {
         return (
-            <Page>
-                <EmptyState
-                    title={t('integrations.unavailable')}
-                    description={t('integrations.livesInDuosis')}
-                />
-            </Page>
+            <div className="ti-page">
+                {header}
+                <section className="sk-card">
+                    <SettingsEmpty
+                        icon={<LockOutlined />}
+                        title={t('integrations.unavailable')}
+                        text={t('integrations.livesInDuosis')}
+                    />
+                </section>
+            </div>
         )
     }
 
     const items = [
         ...(canConfigure ? [
-            { key: 'routing', label: t('integrations.routing'), children: <RoutingTab /> },
-            {
-                key: 'credentials', label: t('integrations.credentials'),
-                children: <CredentialsTab />,
-            },
+            { key: 'routing', label: t('integrations.routing'), render: () => <RoutingTab /> },
+            { key: 'credentials', label: t('integrations.credentials'), render: () => <CredentialsTab /> },
         ] : []),
         ...(canOperate ? [
-            { key: 'delivery', label: t('integrations.delivery'), children: <DeliveryTab /> },
+            { key: 'delivery', label: t('integrations.delivery'), render: () => <DeliveryTab /> },
         ] : []),
     ]
+    const current = items.find((i) => i.key === active) ?? items[0]
 
     return (
-        <Page>
-            <PageHeader
-                title={t('integrations.title')}
-                subtitle="Applications, routing, service credentials and event delivery."
-            />
-            {items.length
-                ? <Tabs items={items} />
-                : (
-                    <EmptyState
+        <div className="ti-page">
+            {header}
+            {items.length ? (
+                <>
+                    {items.length > 1 && (
+                        <SettingsTabs
+                            ariaLabel={t('integrations.sections')}
+                            value={current.key}
+                            onChange={setActive}
+                            options={items.map((i) => ({ value: i.key, label: i.label }))}
+                        />
+                    )}
+                    <div className="lq-enter ti-body" key={current.key}>
+                        {current.render()}
+                    </div>
+                </>
+            ) : (
+                <section className="sk-card">
+                    <SettingsEmpty
+                        icon={<LockOutlined />}
                         title={t('integrations.noSections')}
-                        description={t('integrations.needPermission')}
+                        text={t('integrations.needPermission')}
                     />
-                )}
-        </Page>
+                </section>
+            )}
+        </div>
     )
 }

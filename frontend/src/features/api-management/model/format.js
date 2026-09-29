@@ -4,21 +4,25 @@
  * =============================================================================
  * Saf veri ve saf fonksiyonlar; hicbir component'e bagli degil. Hem sayfa
  * hem modallar ayni etiket sozlugunu ve ayni tarih bicimini kullanir.
+ *
+ * i18n (29.09): etiketler METIN degil sozluk ANAHTARI tasir; ceviri
+ * render'da `t()` ile yapilir (modul duzeyinde hook cagrilamaz).
  * =============================================================================
  */
 import dayjs from 'dayjs'
 
+/** Ortam: etiket anahtari + durum hapi tonu (lq-tag--*). */
 export const ENV_META = {
-    dev: { label: 'Development', color: '#f59e0b' },
-    live: { label: 'Live', color: '#22a06b' },
+    dev: { labelKey: 'api.development', tone: 'warn' },
+    live: { labelKey: 'api.live', tone: 'ok' },
 }
-export const TYPE_LABEL = { service: 'Service', user: 'User-bound' }
+export const TYPE_LABEL = { service: 'api.service', user: 'api.userBound' }
 export const BINDING_LABEL = {
-    global: 'Global (everything)',
-    user: 'User',
-    group: 'Group',
-    customer: 'Customer',
-    project: 'Project',
+    global: 'api.bindingGlobal',
+    user: 'entity.user',
+    group: 'api.group',
+    customer: 'entity.customer',
+    project: 'entity.project',
 }
 
 export function fmtDate(v) {
@@ -29,20 +33,20 @@ export function fmtDateTime(v) {
 }
 
 /**
- * Scope → kisa aciklama. Katalogun KENDISI backend'den gelir
+ * Scope → kisa aciklama ANAHTARI. Katalogun KENDISI backend'den gelir
  * (`capabilities.scopes`); bu sozluk yalnizca UI aciklamasidir ve
  * katalogda olup burada bulunmayan bir scope ham koduyla gosterilir.
  */
 export const SCOPE_HELP = {
-    'tasks:read': 'Read work items',
-    'tasks:write': 'Create & update work items',
-    'tasks:comment': 'Comment on work items',
-    'tasks:complete': 'Change work item status',
-    'customers:read': 'Read customers',
-    'projects:read': 'Read projects',
-    'work-logs:read': 'Read work logs',
-    'work-logs:write': 'Create work logs',
-    'meetings:read': 'Read meetings',
-    'users:read': 'Read user directory',
-    'groups:read': 'Read groups',
+    'tasks:read': 'api.scopeHelp.tasksRead',
+    'tasks:write': 'api.scopeHelp.tasksWrite',
+    'tasks:comment': 'api.scopeHelp.tasksComment',
+    'tasks:complete': 'api.scopeHelp.tasksComplete',
+    'customers:read': 'api.scopeHelp.customersRead',
+    'projects:read': 'api.scopeHelp.projectsRead',
+    'work-logs:read': 'api.scopeHelp.workLogsRead',
+    'work-logs:write': 'api.scopeHelp.workLogsWrite',
+    'meetings:read': 'api.scopeHelp.meetingsRead',
+    'users:read': 'api.scopeHelp.usersRead',
+    'groups:read': 'api.scopeHelp.groupsRead',
 }

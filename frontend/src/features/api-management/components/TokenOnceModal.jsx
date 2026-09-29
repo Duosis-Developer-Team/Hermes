@@ -48,7 +48,7 @@ export default function TokenOnceModal({ issued, onDone }) {
                     disabled={!confirmed}
                     onClick={onDone}
                 >
-                    Done — token stored securely
+                    {t('token.doneStored')}
                 </Button>
             }
             width={640}
@@ -67,10 +67,10 @@ export default function TokenOnceModal({ issued, onDone }) {
                         : token}
                 </code>
                 <Space>
-                    <Tooltip title={masked ? 'Show' : 'Hide'}>
+                    <Tooltip title={masked ? t('token.show') : t('token.hide')}>
                         <Button
                             /* Tooltip erisilebilir ad VERMEZ. */
-                            aria-label={masked ? 'Show token' : 'Hide token'}
+                            aria-label={masked ? t('token.showAria') : t('token.hideAria')}
                             size="small"
                             icon={
                                 masked ? (
@@ -97,7 +97,7 @@ export default function TokenOnceModal({ issued, onDone }) {
             >{t('token.confirmStored')}</Checkbox>
             {!copied && confirmed && (
                 <div className="am-token-hint">
-                    Tip: use the Copy button to avoid typos.
+                    {t('token.copyTip')}
                 </div>
             )}
         </Modal>
