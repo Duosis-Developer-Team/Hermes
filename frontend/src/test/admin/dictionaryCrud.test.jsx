@@ -375,7 +375,10 @@ describe('archive / delete terminolojisi ve kilitler', () => {
     it('yikici islem PENDING iken tekrar tetiklenemez', async () => {
         const gate = deferred()
         service.update.mockImplementationOnce(() => gate.promise)
-        const user = setupUser()
+        // CI'da tablo yeniden yuklenirken antd icerigi gecici olarak
+        // pointer-events:none yapar; user-event bunu reddedip yaris uretir.
+        // Bu test tiklanabilirligi degil TEK istek kilidini dogrular.
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         renderPage()
         await screen.findByText('Coding')
         await user.click(screen.getByRole('button', { name: 'Archive Coding' }))
