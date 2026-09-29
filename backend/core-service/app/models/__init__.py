@@ -5,6 +5,7 @@
 # =============================================================================
 
 from .customer import Customer
+from .customer_logo import CUSTOMER_LOGO_TABLES, CustomerLogo
 from .work_type import WorkType
 from .project import Project
 from .work_log import WorkLog
@@ -145,4 +146,7 @@ __all__ = [
     "WORK_ITEM_TABLES",
     "WorkItemNotification",
     "NOTIFICATION_TABLES",
+    # Musteri logosu (0014)
+    "CustomerLogo",
+    "CUSTOMER_LOGO_TABLES",
 ]

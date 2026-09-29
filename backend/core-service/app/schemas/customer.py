@@ -40,5 +40,15 @@ class CustomerResponse(CustomerBase):
     created_at: datetime
     contract_start_date: Optional[datetime] = None
     contract_duration_days: Optional[int] = None
-    
+    # Musteri logosu (additive): etag = logonun sha256 hex'i; logo yoksa null.
+    # Frontend `/customers/{id}/logo?v=<etag>` ile onbellegi kirar.
+    has_logo: bool = False
+    logo_etag: Optional[str] = None
+
     model_config = ConfigDict(from_attributes=True)
+
+
+class CustomerLogoResponse(BaseModel):
+    """PUT /customers/{id}/logo yaniti."""
+    has_logo: bool
+    logo_etag: Optional[str] = None

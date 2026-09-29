@@ -413,6 +413,87 @@ def test_cross_tenant_foreign_key_is_rejected(rls_db, app_engine):
             ), {"t": TENANT_A, "c": b_customer})
 
 
+# --- Musteri logosu (0014): RLS + composite FK + CASCADE ---------------------
+
+_PNG = b"\x89PNG\r\n\x1a\n" + b"\x01" * 32
+
+
+def _seed_logo(migrator_engine, tenant_id, customer_id):
+    with migrator_engine.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO customer_logos (id, tenant_id, customer_id, content, "
+            "content_type, etag, updated_at) VALUES (gen_random_uuid(), "
+            "CAST(:t AS uuid), :c, :b, 'image/png', :e, now())"
+        ), {"t": tenant_id, "c": customer_id, "b": _PNG, "e": "c" * 64})
+
+
+def test_customer_logo_of_other_tenant_is_invisible(rls_db, app_engine):
+    """B'nin logosu A baglaminda yoktur; baglamsiz sorgu hicbir sey gormez."""
+    b_customer = _seed_customer(rls_db["migrator"], TENANT_B, "Logo B")
+    _seed_logo(rls_db["migrator"], TENANT_B, b_customer)
+
+    with app_engine.begin() as conn:
+        conn.execute(
+            text("SELECT set_config('app.tenant_id', :t, true)"),
+            {"t": TENANT_A},
+        )
+        seen = conn.execute(text(
+            "SELECT count(*) FROM customer_logos WHERE customer_id = :c"
+        ), {"c": b_customer}).scalar()
+    assert seen == 0
+    with app_engine.begin() as conn:
+        assert conn.execute(text("SELECT count(*) FROM customer_logos")).scalar() == 0
+    with app_engine.begin() as conn:
+        conn.execute(
+            text("SELECT set_config('app.tenant_id', :t, true)"),
+            {"t": TENANT_B},
+        )
+        assert conn.execute(text(
+            "SELECT count(*) FROM customer_logos WHERE customer_id = :c"
+        ), {"c": b_customer}).scalar() == 1
+
+
+def test_customer_logo_cannot_reference_other_tenants_customer(rls_db, app_engine):
+    """A baglaminda, B'nin musterisine logo YAZILAMAZ (composite FK)."""
+    from sqlalchemy.exc import IntegrityError, ProgrammingError
+
+    b_customer = _seed_customer(rls_db["migrator"], TENANT_B, "Logo Capraz")
+    with app_engine.begin() as conn:
+        conn.execute(
+            text("SELECT set_config('app.tenant_id', :t, true)"),
+            {"t": TENANT_A},
+        )
+        with pytest.raises((IntegrityError, ProgrammingError)):
+            conn.execute(text(
+                "INSERT INTO customer_logos (id, tenant_id, customer_id, content, "
+                "content_type, etag, updated_at) VALUES (gen_random_uuid(), "
+                "CAST(:t AS uuid), :c, :b, 'image/png', :e, now())"
+            ), {"t": TENANT_A, "c": b_customer, "b": _PNG, "e": "d" * 64})
+
+
+def test_customer_logo_fk_is_composite_and_cascades(rls_db):
+    """FK (tenant_id, customer_id) -> customers ON DELETE CASCADE."""
+    with rls_db["migrator"].connect() as conn:
+        defs = conn.execute(text(
+            "SELECT pg_get_constraintdef(con.oid) FROM pg_constraint con "
+            "JOIN pg_class c ON c.oid = con.conrelid "
+            "WHERE c.relname = 'customer_logos' AND con.contype = 'f'"
+        )).scalars().all()
+    assert len(defs) == 1
+    assert "(tenant_id, customer_id)" in defs[0]
+    assert "customers(tenant_id, id)" in defs[0]
+    assert "ON DELETE CASCADE" in defs[0]
+
+    a_customer = _seed_customer(rls_db["migrator"], TENANT_A, "Logo Silinen")
+    _seed_logo(rls_db["migrator"], TENANT_A, a_customer)
+    with rls_db["migrator"].begin() as conn:
+        conn.execute(text("DELETE FROM customers WHERE id = :c"), {"c": a_customer})
+        left = conn.execute(text(
+            "SELECT count(*) FROM customer_logos WHERE customer_id = :c"
+        ), {"c": a_customer}).scalar()
+    assert left == 0
+
+
 def test_pool_reuse_does_not_leak_context(rls_db, app_engine):
     """TEK baglantili havuz: A'dan sonra B ayni baglantiyi alir.
 

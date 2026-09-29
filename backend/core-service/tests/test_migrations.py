@@ -257,6 +257,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
         with engine.begin() as conn:
             # 0009 + 0010'un getirdikleri gider; alembic isareti 0008'e.
             for table in (
+                "customer_logos",
                 "work_item_notifications",
                 "work_item_events", "work_item_comments", "work_item_links",
                 "work_item_code_aliases", "work_item_participants", "work_items",
@@ -303,7 +304,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
                     "'medium', 'pending', :b, now(), now())"
                 ), {"t": tenant_id, "cid": customer_id, "pid": project_id, "b": batch})
 
-        _run_migration(disposable_db)      # 0008 → 0009 → 0010 → 0011 → 0012 → 0013
+        _run_migration(disposable_db)      # 0008 → 0009 → ... → 0013 → 0014
 
         with engine.connect() as conn:
             head = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
@@ -319,15 +320,27 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             forced = conn.execute(text(
                 "SELECT count(*) FROM pg_class WHERE relname IN "
                 "('work_items','routing_relations','tenant_holidays',"
-                "'work_item_notifications') "
+                "'work_item_notifications','customer_logos') "
                 "AND relforcerowsecurity"
+            )).scalar()
+            logo_fk = conn.execute(text(
+                "SELECT pg_get_constraintdef(con.oid) FROM pg_constraint con "
+                "JOIN pg_class c ON c.oid = con.conrelid "
+                "WHERE c.relname = 'customer_logos' AND con.contype = 'f'"
+            )).scalar()
+            logo_size_check = conn.execute(text(
+                "SELECT count(*) FROM pg_constraint "
+                "WHERE conname = 'chk_customer_logos_size'"
             )).scalar()
     finally:
         engine.dispose()
-    assert head == "0013_p2_work_item_attachments"
+    assert head == "0014_customer_logos"
     assert items == 1 and parts == 2, "2 kopyalik batch tek is kalemi olmali"
     assert watchers == 1
-    assert forced == 4
+    assert forced == 5
+    # 0014: composite FK + CASCADE + boyut CHECK'i geride kalmis DB'de de gelir.
+    assert "(tenant_id, customer_id)" in logo_fk and "ON DELETE CASCADE" in logo_fk
+    assert logo_size_check == 1
 
 
 def test_schema_guard_rejects_unmigrated_database(disposable_db):
