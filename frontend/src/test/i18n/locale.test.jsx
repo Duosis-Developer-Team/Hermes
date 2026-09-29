@@ -38,6 +38,10 @@ describe('i18n sozlukleri', () => {
             'nav.apiManagement', 'nav.platforms', 'nav.projects',
             // Urun + sirket adi (marka), cevrilmez.
             'login.footer',
+            // Platform adlari (macOS/Windows/Web), birim (MB) ve cerez adi
+            // (access_token) dile gore degismez.
+            'landing.dlMacArm', 'landing.dlMacIntel', 'landing.dlWin', 'landing.dlWeb',
+            'landing.dlSize', 'legal.cookiesS1R1C1',
             'entity.platform', 'entity.platforms',
             // Saf BICIM dizgesi (prose degil): "{entity} ({n})".
             'admin.entityCount', 'logTime.platform',

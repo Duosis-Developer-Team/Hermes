@@ -28,7 +28,11 @@ const ITEMS = [
 ]
 
 let service
-const setupUser = () => userEvent.setup({ delay: null })
+// pointerEventsCheck: 0 — antd'nin yukleme dugmesi / bulaniklasan Spin kisa
+// sure `pointer-events: none` birakir; CI zamanlamasinda tiklama hata
+// firlatiyordu (29.09 iki kez). Devre disi durum ayrica toBeDisabled ile
+// dogrulanir.
+const setupUser = () => userEvent.setup({ delay: null, pointerEventsCheck: 0 })
 
 let lastInvalidateSpy = null
 const renderPage = () => {

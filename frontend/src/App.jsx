@@ -47,6 +47,8 @@ import MainLayout from './components/layout/MainLayout'
 import { routeLoaders } from './routes/loaders'
 
 const LoginPage = lazy(routeLoaders.login)
+const LandingPage = lazy(routeLoaders.landing)
+const LegalPage = lazy(routeLoaders.legal)
 const AuthCallbackPage = lazy(routeLoaders.authCallback)
 const PlatformConsole = lazy(routeLoaders.platformConsole)
 const DashboardPage = lazy(routeLoaders.dashboard)
@@ -80,6 +82,23 @@ import { useTaskPermissions } from './hooks/useTaskPermissions'
  * Protected Route Component
  * Kimlik doğrulaması gerektiğinde kullanılır.
  */
+/**
+ * Oturumsuz ziyaretci (landing, 30.09): YALNIZ tam `/`da tanitim sayfasi;
+ * `?workspace=` tasiyan tenant baglantilari ve diger tum korumali yollar
+ * eskisi gibi giris ekranina gider. Masaustu uygulamasinda (preload
+ * koprusu) tanitim anlamsiz → dogrudan giris.
+ */
+export const PublicHome = () => {
+    const location = useLocation()
+    const isRoot = location.pathname === '/' || location.pathname === ''
+    const hasWorkspace = new URLSearchParams(location.search).has('workspace')
+    const isDesktop = typeof window !== 'undefined' && !!window.hermesDesktop
+    if (!isRoot || hasWorkspace || isDesktop) {
+        return <Navigate to={loginPathFor(location.search)} replace />
+    }
+    return <LandingPage />
+}
+
 export const ProtectedRoute = ({ children, permission = null }) => {
     // RBAC R3: rota koruması izin-tabanlı. `permission` string veya
     // dizi (dizi = herhangi biri yeterli). Backend her koşulda gerçek
@@ -240,13 +259,19 @@ function App() {
 
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
+            {/* Herkese acik yasal sayfalar (oturumdan bagimsiz). */}
+            <Route path="/kvkk" element={<LegalPage kind="kvkk" />} />
+            <Route path="/cerez-politikasi" element={<LegalPage kind="cookies" />} />
+
             {/* Protected Routes - Main Layout */}
             <Route
                 path="/"
                 element={
-                    <ProtectedRoute>
-                        <MainLayout />
-                    </ProtectedRoute>
+                    isAuthenticated ? (
+                        <ProtectedRoute>
+                            <MainLayout />
+                        </ProtectedRoute>
+                    ) : <PublicHome />
                 }
             >
                 {/* PM rework P3: ana sayfa — izin basina blok kompozisyonu

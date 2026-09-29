@@ -10,6 +10,8 @@
 
 export const routeLoaders = {
     login: () => import('../pages/LoginPage'),
+    landing: () => import('../pages/landing/LandingPage'),
+    legal: () => import('../pages/landing/LegalPage'),
     // WS9: Platform konsolu AYRI bir chunk. Normal tenant
     // kullanicisi bu kodu HIC indirmez.
     platformConsole: () => import('../pages/platform/PlatformConsole'),

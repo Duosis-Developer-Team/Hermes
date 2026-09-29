@@ -126,6 +126,7 @@ describe('header devralma kirilmasi kapatildi', () => {
         ['location ^~ /assets/', 'public, immutable'],
         ['location = /env-config.js', 'no-store'],
         ['location = /index.html', 'no-store'],
+        ['location ^~ /downloads/', 'no-cache'],
     ])('%s — Cache-Control tanimlar VE parcayi include eder', (header, cc) => {
         const body = locationBody(conf(), header)
         expect(body).toContain('Cache-Control')
