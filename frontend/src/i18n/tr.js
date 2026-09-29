@@ -164,6 +164,8 @@ export default {
     },
 
     settings: {
+        scrollLeft: 'Kaydır — sola',
+        scrollRight: 'Kaydır — sağa',
         searchPlaceholder: 'Ayar ara…',
         title: 'Ayarlar',
         subtitle: 'Organizasyon, iş yönetimi, referans verileri, müşteriler ve entegrasyonlar',

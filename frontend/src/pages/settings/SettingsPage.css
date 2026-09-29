@@ -39,19 +39,38 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
 }
-.settings-icon--lg { width: 76px; height: 76px; border-radius: 22px; font-size: 34px; }
-.settings-icon--dock { width: 40px; height: 40px; border-radius: 12px; font-size: 19px; }
-/* Uygulama izgarasi: buyuk ikonlar yan yana, adlari altlarinda. */
-/* Bolumler yan yana akar (az ogeli bolum koca satir kaplamaz). */
-.settings-groups { display: flex; flex-wrap: wrap; gap: 28px 48px; }
-.settings-grid { display: flex; flex-wrap: wrap; gap: 14px 6px; }
+.settings-icon--lg {
+    width: clamp(64px, 7vw, 116px);
+    height: clamp(64px, 7vw, 116px);
+    border-radius: clamp(18px, 2vw, 32px);
+    font-size: clamp(28px, 3.1vw, 52px);
+}
+.settings-icon--rail { width: 46px; height: 46px; border-radius: 14px; font-size: 21px; }
+/* Tek satir: her bolum oge sayisi kadar kolon kaplar; tum ikonlar ekran
+   genisligine yayilir. Bolum = hafif cam panel + baslik. */
+.settings-groups {
+    display: grid;
+    grid-template-columns: repeat(var(--total, 1), minmax(0, 1fr));
+    gap: 14px;
+}
+.settings-group {
+    grid-column: span var(--weight, 2);
+    display: flex;
+    flex-direction: column;
+    padding: 14px 10px 16px;
+    border: 1px solid var(--h-border-subtle);
+    border-radius: 26px;
+    background: var(--h-surface-subtle);
+}
+.settings-group__title { text-align: center; }
+.settings-grid { display: grid; grid-template-columns: repeat(var(--span, 1), minmax(0, 1fr)); gap: 6px; flex: 1; }
 .settings-app {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
-    width: 116px;
-    padding: 12px 6px;
+    gap: 12px;
+    min-width: 0;
+    padding: 14px 4px 12px;
     border-radius: 22px;
     color: var(--h-text-primary);
     text-align: center;
@@ -60,10 +79,17 @@
 }
 .settings-app .settings-icon { transition: transform 320ms var(--h-ease-spring), box-shadow 200ms; }
 .settings-app:hover { background: var(--h-bg-hover); }
-.settings-app:hover .settings-icon { transform: translateY(-4px) scale(1.06); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 18px 30px -14px rgba(0, 0, 0, 0.5); }
+.settings-app:hover .settings-icon { transform: translateY(-5px) scale(1.05); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 22px 36px -16px rgba(0, 0, 0, 0.55); }
 .settings-app:active .settings-icon { transform: scale(0.94); }
 .settings-app:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
-.settings-app__label { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.settings-app__label { font-size: 13.5px; font-weight: 600; line-height: 1.3; text-wrap: balance; }
+/* Dar ekran: bolumler sarar, ikonlar sabit boy. */
+@media (max-width: 1100px) {
+    .settings-groups { display: flex; flex-wrap: wrap; }
+    .settings-group { flex: 1 1 auto; }
+    .settings-grid { grid-template-columns: repeat(var(--span, 1), 112px); justify-content: center; }
+    .settings-icon--lg { width: 72px; height: 72px; border-radius: 20px; font-size: 32px; }
+}
 .settings-empty { margin: 24px 4px; color: var(--h-text-muted); }
 
 /* ---------- Sayfa: geri + yatay ikon seridi ---------- */
@@ -86,42 +112,93 @@
     transition: transform 200ms var(--h-ease-spring), background 150ms;
 }
 .settings-back:hover { transform: translateX(-2px); background: var(--h-ghost-bg-hover); }
-/* Dock: yalniz ikonlar, ustune gelince ad; imlece yakin ikon buyur. */
-.settings-dock {
-    display: flex;
-    align-items: flex-end;
-    gap: 6px;
+/* Ray: soldan saga tam genislik, kaydirmali; oklar tasma varken gorunur,
+   kenarlar solar. Secili oge cam hap + alt cizgi. */
+.settings-topbar { align-items: stretch; }
+.settings-back { align-self: center; }
+.settings-rail {
+    position: relative;
+    flex: 1;
     min-width: 0;
-    padding: 12px 8px 7px;
-    overflow-x: auto;
-    overflow-y: visible;
-    scrollbar-width: none;
     border: 1px solid var(--h-dock-edge);
-    border-radius: 20px;
+    border-radius: 24px;
     background: var(--h-dock-bg);
 }
-.settings-dock::-webkit-scrollbar { display: none; }
-.settings-dock__item {
-    position: relative;
-    flex: none;
-    border-radius: 12px;
-    transform: scale(var(--dock-scale, 1));
-    transform-origin: bottom center;
-    transition: transform 140ms var(--h-ease-standard);
+.settings-rail__track {
+    display: flex;
+    gap: 4px;
+    padding: 8px 10px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
 }
-.settings-dock__item.active::after {
+.settings-rail__track::-webkit-scrollbar { display: none; }
+.settings-rail.has-left .settings-rail__track { -webkit-mask-image: linear-gradient(90deg, transparent, #000 56px); mask-image: linear-gradient(90deg, transparent, #000 56px); }
+.settings-rail.has-right .settings-rail__track { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent); }
+.settings-rail.has-left.has-right .settings-rail__track { -webkit-mask-image: linear-gradient(90deg, transparent, #000 56px, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(90deg, transparent, #000 56px, #000 calc(100% - 56px), transparent); }
+.settings-rail__item {
+    position: relative;
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 92px;
+    padding: 8px 12px 7px;
+    border-radius: 18px;
+    color: var(--h-text-secondary);
+    text-decoration: none;
+    scroll-snap-align: center;
+    transition: background 160ms, color 160ms;
+}
+.settings-rail__item .settings-icon { transition: transform 280ms var(--h-ease-spring); }
+.settings-rail__item:hover { background: var(--h-bg-hover); color: var(--h-text-primary); }
+.settings-rail__item:hover .settings-icon { transform: translateY(-2px); }
+.settings-rail__item.active { background: var(--h-bg-hover); color: var(--h-text-primary); }
+.settings-rail__item.active::after {
     content: "";
     position: absolute;
     left: 50%;
-    bottom: -5px;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
+    bottom: 2px;
+    width: 22px;
+    height: 3px;
+    border-radius: 3px;
     background: var(--h-text-primary);
     transform: translateX(-50%);
 }
-.settings-dock__item:not(.active) .settings-icon { opacity: 0.85; }
-.settings-dock__item:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
+.settings-rail__item:focus-visible { outline: 2px solid var(--h-focus); outline-offset: -2px; }
+.settings-rail__label { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.settings-rail__arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--h-ghost-border);
+    border-radius: 50%;
+    background: var(--h-bg-elevated);
+    color: var(--h-text-primary);
+    box-shadow: 0 8px 20px -10px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50%) scale(0.85);
+    transition: opacity 160ms, transform 200ms var(--h-ease-spring);
+}
+.settings-rail__arrow--left { left: 8px; }
+.settings-rail__arrow--right { right: 8px; }
+.settings-rail.has-left .settings-rail__arrow--left,
+.settings-rail.has-right .settings-rail__arrow--right { opacity: 1; pointer-events: auto; transform: translateY(-50%) scale(1); }
+.settings-rail__arrow:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
+@media (max-width: 760px) {
+    .settings-topbar { flex-direction: column; align-items: stretch; }
+    .settings-back { align-self: flex-start; }
+}
+
 /* ---------- Icerik dili (tum ayar sayfalari) ---------- */
 .settings-content { min-width: 0; }
 .settings-content .page-header {
@@ -179,11 +256,10 @@
 
 @media (max-width: 640px) {
     .settings-search.ant-input-affix-wrapper { width: 100%; }
-    .settings-app { width: 100px; }
     .settings-topbar { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .settings-app .settings-icon, .settings-back, .settings-dock__item { transition: none; }
+    .settings-app .settings-icon, .settings-back, .settings-rail__item .settings-icon, .settings-rail__arrow { transition: none; }
 }
 
 /* Admin tablo boslugu ve yenileme ipucu (AdminListStates). */

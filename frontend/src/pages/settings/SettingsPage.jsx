@@ -2,22 +2,24 @@
  * =============================================================================
  * HERMES - Ayarlar (Hermes Liquid, 29.09 — Apple Developer duzeni)
  * =============================================================================
- * /settings            → AYARLAR MERKEZI: bolum basliklari altinda buyuk
- *                        uygulama ikonlari yan yana, adlari altlarinda;
- *                        arama ikonlari suzer.
- * /settings/<b>/<sayfa> → sayfa: ustte "‹ Ayarlar" + dock (yalniz ikon,
- *                        kayar, ad ustune gelince), altta tam genislik icerik.
+ * /settings            → AYARLAR MERKEZI: tum ikonlar bolumleriyle TEK
+ *                        satirda ekran genisligine yayilir (bolum, oge
+ *                        sayisi kadar kolon kaplar); buyuk ikon, ad altta.
+ *                        Arama ikonlari suzer. Dar ekranda satirlar sarar.
+ * /settings/<b>/<sayfa> → sayfa: ustte "‹ Ayarlar" + soldan saga tam
+ *                        genislik kaydirmali ray (ikon + ad, ok dugmeleri,
+ *                        kenar solmasi, secili oge gorunur alana kayar).
  * Katalog TEK kaynak: features/settings/sections.js (izin filtresi orada).
  * Izni olmayan kutucuk/serit ogesi CIZILMEZ; hic izin yoksa ana ekrana.
  * =============================================================================
  */
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Input, Spin, Tooltip } from 'antd'
+import { Input, Spin } from 'antd'
 import {
     ApiOutlined, AppstoreOutlined, BarChartOutlined, BranchesOutlined,
     CustomerServiceOutlined, DatabaseOutlined, FolderOutlined, LeftOutlined,
-    SearchOutlined, SettingOutlined, ShopOutlined, TagsOutlined, TeamOutlined,
+    RightOutlined, SearchOutlined, SettingOutlined, ShopOutlined, TagsOutlined, TeamOutlined,
 } from '@ant-design/icons'
 
 import { PageHero } from '../../components/liquid'
@@ -48,19 +50,17 @@ function Tile({ item, compact = false }) {
     const warm = () => loaderByPath[item.path]?.()
     const label = t(item.labelKey)
     if (compact) {
-        // Dock ogesi: yalniz ikon; ad ustune gelince (portal ipucu — dock'un
-        // kaydirma kirpmasina takilmaz). Erisilebilir ad aria-label ile.
+        // Ray ogesi: ikon + kisa ad (altta); secili oge vurgulu.
         return (
-            <Tooltip title={label} placement="bottom" mouseEnterDelay={0.05}>
             <NavLink
                 to={item.path}
-                className={({ isActive }) => `settings-dock__item${isActive ? ' active' : ''}`}
+                className={({ isActive }) => `settings-rail__item${isActive ? ' active' : ''}`}
                 onMouseEnter={warm}
-                aria-label={label}
+                title={label}
             >
-                <span className={`settings-icon settings-icon--${tone} settings-icon--dock`} aria-hidden="true">{icon}</span>
+                <span className={`settings-icon settings-icon--${tone} settings-icon--rail`} aria-hidden="true">{icon}</span>
+                <span className="settings-rail__label">{label}</span>
             </NavLink>
-            </Tooltip>
         )
     }
     // Uygulama izgarasi: buyuk ikon, altinda ad (aciklama ipucunda).
@@ -71,6 +71,10 @@ function Tile({ item, compact = false }) {
         </Link>
     )
 }
+
+// Bolum genisligi: oge basina 2 kolon; tek ogeli bolum baslik ve uzun ad
+// sigsin diye 3 kolon.
+const weightOf = (section) => section.items.length * 2 + (section.items.length === 1 ? 1 : 0)
 
 /** /settings — ayarlar merkezi (izinli kutucuklar). */
 export function SettingsIndex() {
@@ -112,9 +116,13 @@ export function SettingsIndex() {
                 )}
             />
             {sections.length === 0 && <p className="settings-empty">{t('settings.noMatch')}</p>}
-            <div className="settings-groups">
+            <div className="settings-groups" style={{ '--total': sections.reduce((n, sec) => n + weightOf(sec), 0) || 1 }}>
             {sections.map((section, si) => (
-                <section key={section.key} className="settings-group lq-enter" style={{ animationDelay: `${si * 50}ms` }}>
+                <section
+                    key={section.key}
+                    className="settings-group lq-enter"
+                    style={{ animationDelay: `${si * 50}ms`, '--span': section.items.length, '--weight': weightOf(section) }}
+                >
                     <h2 className="settings-group__title">{t(section.labelKey)}</h2>
                     <div className="settings-grid">
                         {section.items.map((item) => <Tile key={item.key} item={item} />)}
@@ -126,23 +134,61 @@ export function SettingsIndex() {
     )
 }
 
+/**
+ * Kaydirmali ray: tasma varsa kenarlarda ok dugmeleri + solma maskesi;
+ * secili sayfa acilista gorunur alanin ortasina kayar. Tekerlek dikey
+ * hareketi yataya cevrilir (fare ile rahat kaydirma).
+ */
+function SettingsRail({ items, label, pathname }) {
+    const t = useT()
+    const ref = useRef(null)
+    const [edges, setEdges] = useState({ left: false, right: false })
+    const measure = useCallback(() => {
+        const el = ref.current
+        if (!el) return
+        setEdges({
+            left: el.scrollLeft > 4,
+            right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+        })
+    }, [])
+    useEffect(() => {
+        const el = ref.current
+        if (!el) return undefined
+        el.querySelector('.settings-rail__item.active')
+            ?.scrollIntoView?.({ block: 'nearest', inline: 'center' })
+        measure()
+        const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null
+        ro?.observe(el)
+        return () => ro?.disconnect()
+    }, [pathname, items.length, measure])
+    const onWheel = (e) => {
+        const el = ref.current
+        if (!el || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+        if (el.scrollWidth <= el.clientWidth) return
+        el.scrollLeft += e.deltaY
+    }
+    const page = (dir) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.7, behavior: 'smooth' })
+    return (
+        <div className={`settings-rail${edges.left ? ' has-left' : ''}${edges.right ? ' has-right' : ''}`}>
+            <button type="button" className="settings-rail__arrow settings-rail__arrow--left" onClick={() => page(-1)} aria-label={t('settings.scrollLeft')} tabIndex={edges.left ? 0 : -1}>
+                <LeftOutlined aria-hidden="true" />
+            </button>
+            <nav className="settings-rail__track" aria-label={label} ref={ref} onScroll={measure} onWheel={onWheel}>
+                {items.map((item) => <Tile key={item.key} item={item} compact />)}
+            </nav>
+            <button type="button" className="settings-rail__arrow settings-rail__arrow--right" onClick={() => page(1)} aria-label={t('settings.scrollRight')} tabIndex={edges.right ? 0 : -1}>
+                <RightOutlined aria-hidden="true" />
+            </button>
+        </div>
+    )
+}
+
 /** /settings/... — secili sayfa: geri + yatay ikon seridi + icerik. */
 function SettingsPage() {
     const t = useT()
     const canAny = useAuthStore((s) => s.canAny)
     useAuthStore((s) => s.permissions) // izin gelince yeniden render
     const { pathname } = useLocation()
-    // Dock buyutmesi (macOS): imlece yakin ikonlar buyur — yalniz transform.
-    const dockRef = useRef(null)
-    const onDockMove = (e) => {
-        dockRef.current?.querySelectorAll('.settings-dock__item').forEach((el) => {
-            const r = el.getBoundingClientRect()
-            const d = Math.abs(e.clientX - (r.left + r.width / 2))
-            el.style.setProperty('--dock-scale', (1 + Math.max(0, 1 - d / 120) * 0.2).toFixed(3))
-        })
-    }
-    const onDockLeave = () => dockRef.current?.querySelectorAll('.settings-dock__item')
-        .forEach((el) => el.style.setProperty('--dock-scale', '1'))
     const isHub = pathname.replace(/\/+$/, '') === '/settings'
     if (isHub) return <Outlet />
     const items = visibleSections(canAny).flatMap((s) => s.items)
@@ -153,15 +199,7 @@ function SettingsPage() {
                 <Link to="/settings" className="settings-back">
                     <LeftOutlined aria-hidden="true" />{t('settings.title')}
                 </Link>
-                <nav
-                    className="settings-dock"
-                    aria-label={t('settings.title')}
-                    onMouseMove={onDockMove}
-                    onMouseLeave={onDockLeave}
-                    ref={dockRef}
-                >
-                    {items.map((item) => <Tile key={item.key} item={item} compact />)}
-                </nav>
+                <SettingsRail items={items} label={t('settings.title')} pathname={pathname} />
             </div>
             <div className="settings-content">
                 <Outlet />

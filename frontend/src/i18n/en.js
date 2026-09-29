@@ -153,6 +153,8 @@ export default {
     // Ayarlar catisi (PM rework P0 / B1)
     // ---------------------------------------------------------------
     settings: {
+        scrollLeft: 'Scroll left',
+        scrollRight: 'Scroll right',
         searchPlaceholder: 'Search settings…',
         title: 'Settings',
         subtitle: 'Organization, work management, reference data, customers and integrations',
