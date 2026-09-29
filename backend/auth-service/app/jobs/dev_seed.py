@@ -9,8 +9,10 @@
 #   python -m app.jobs.dev_seed --yes-dev --purge    # yalnizca tohumu sil
 #
 # Ne yapar: shared/dev_seed.DEMO_USERS katalogundaki sahte kisileri acar
-# (parolasiz, `.invalid` e-posta — giris YAPAMAZLAR), `duosis` tenant'ina
-# aktif uye yapar ve `member` rolunu verir. core-service tohumu ayni
+# (parolasiz, RFC 2606 `example.com` e-postasi — giris YAPAMAZLAR),
+# `duosis` tenant'ina aktif uye yapar ve `member` rolunu verir. Zaten var
+# olan sahte kullanicinin e-postasi guncel alan adina TASINIR (eski
+# `.invalid` satirlari tekrar kosuyla duzelir). core-service tohumu ayni
 # id'leri is verisine baglar; bu yuzden SIRA: once auth, sonra core.
 #
 # Purge: yalnizca isaretli id'li kullanicilar ve onlarin uyelik/rol
@@ -67,9 +69,22 @@ def seed(db: Session, *, tenant_slug: str = DEFAULT_TENANT_SLUG) -> dict:
     ).first()
 
     created = {"users": 0, "memberships": 0, "roles": 0}
+    updated = {"emails": 0}
     skipped = []
     for spec in demo_users():
         user = db.query(User).filter(User.id == spec["id"]).first()
+        if user is not None and user.email != spec["email"]:
+            # Eski kosulardan kalan e-posta (ornek: `@demo.duosis.invalid`)
+            # guncel alan adina tasinir — tekrar kosmak eski satirlari
+            # DUZELTIR. Yalnizca isaretli (demo) id'ye dokunulur; hedef
+            # e-posta baska bir kayitta ise dokunma, atla.
+            clash = db.query(User.id).filter(
+                User.email == spec["email"], User.id != spec["id"]).first()
+            if clash is not None:
+                skipped.append(spec["email"])
+            else:
+                user.email = spec["email"]
+                updated["emails"] += 1
         if user is None:
             clash = db.query(User.id).filter(
                 User.email == spec["email"]).first()
@@ -81,8 +96,8 @@ def seed(db: Session, *, tenant_slug: str = DEFAULT_TENANT_SLUG) -> dict:
                 id=spec["id"],
                 email=spec["email"],
                 full_name=spec["full_name"],
-                # Parolasiz + .invalid alan adi: yerel giris de SSO da
-                # imkansiz. Yalnizca listelerde/atamalarda gorunurler.
+                # Parolasiz + ayrilmis (RFC 2606) alan adi: yerel giris de
+                # SSO da imkansiz. Yalnizca listelerde/atamalarda gorunurler.
                 hashed_password=None,
                 is_active=True,
                 is_admin=False,
@@ -122,6 +137,7 @@ def seed(db: Session, *, tenant_slug: str = DEFAULT_TENANT_SLUG) -> dict:
         "ok": True,
         "tenant_id": str(tenant.id),
         "created": created,
+        "updated": updated,
         "skipped_email_clash": skipped,
         "member_role_found": member_role is not None,
     }

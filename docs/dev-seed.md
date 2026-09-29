@@ -24,8 +24,14 @@ unless **all** of the following hold:
 
 * **auth_db**: 6 fake people (Ada Lovelace, Grace Hopper, Alan Turing,
   Katherine Johnson, Linus Torvalds, Margaret Hamilton) with
-  `@demo.duosis.invalid` e-mails, no password, not admin — they cannot log
-  in. Active `duosis` membership + `member` role.
+  `@hermes-demo.example.com` e-mails, no password, not admin — they cannot
+  log in. Active `duosis` membership + `member` role. `example.com` is
+  reserved by RFC 2606 and publishes a null MX, so no mail can be delivered;
+  unlike `.invalid` (used before 2026-09-29) it passes e-mail syntax
+  validation — a `.invalid` address made `GET /api/v1/auth/users` return 500
+  on hermes-dev. Re-running the auth seeder moves already-existing demo
+  users (matched by their marked id) to the current domain; the JSON summary
+  reports this as `"updated": {"emails": N}`.
 * **core_db** (tenant `duosis`): 5 customers, 10 projects (`DEMO-*` keys, two
   internal non-billable), 7 sub-projects, project members/leads, 2 user
   groups, routing relations (real users → demo users), ~60 work items across
@@ -65,6 +71,12 @@ kubectl -n hermes-dev exec deploy/auth-service -- python -m app.jobs.dev_seed --
 kubectl -n hermes-dev exec deploy/core-service -- python -m app.jobs.dev_seed --yes-dev
 
 # refresh dates relative to today (purge + seed in one transaction)
+kubectl -n hermes-dev exec deploy/core-service -- python -m app.jobs.dev_seed --yes-dev --reseed
+
+# after a DEMO_EMAIL_DOMAIN change: auth re-run rewrites the demo users'
+# e-mails in place; core copies of demo e-mails (meeting organizer/attendee,
+# ticket requester) are only rewritten by --reseed (existing ids are skipped)
+kubectl -n hermes-dev exec deploy/auth-service -- python -m app.jobs.dev_seed --yes-dev
 kubectl -n hermes-dev exec deploy/core-service -- python -m app.jobs.dev_seed --yes-dev --reseed
 
 # 2) remove: core first, then auth

@@ -65,7 +65,13 @@ def _role_out(r: RbacRole, member_count: Optional[int] = None) -> dict:
         "code": r.code,
         "name": r.name,
         "description": r.description,
-        "permissions": sorted(r.permissions or []),
+        # Katalog DISI kodlar (ornek: 2026-09-29'da cikarilan
+        # "plans.manage") gosterilmez: efektif hesapta zaten etkisizdir ve
+        # UI onlari geri gonderirse PATCH 422 ("Unknown permission") verirdi.
+        # Satir SILINMEZ; rol bir sonraki kaydedilisinde kendiliginden temizlenir.
+        "permissions": sorted(
+            p for p in (r.permissions or []) if p in ALL_PERMISSIONS
+        ),
         "is_system": bool(r.is_system),
         "is_active": bool(r.is_active),
     }

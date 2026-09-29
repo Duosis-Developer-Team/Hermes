@@ -649,3 +649,98 @@ def test_s2s_resolve_batch(rbac_http, pg_session):
     )
     assert by_id[str(u2.id)] == []  # pasif kullanici → fail-closed bos
     assert by_id[str(ghost)] == []  # bilinmeyen → bos
+
+
+# ── Katalogdan cikarilmis izin: plans.manage (2026-09-29) ─────────────
+
+
+def _orphan_role(db, *, code="legacy-planner"):
+    """Katalogdan cikarilmadan ONCE yazilmis bir rol satirini taklit eder
+    (auth_db'de veri migration'i YOK — satir oldugu gibi kalir)."""
+    from app.models.rbac import RbacRole
+
+    role = RbacRole(
+        tenant_id=uuid.UUID(TEST_TENANT_ID),
+        code=code, name="Legacy Planner",
+        permissions=sorted([Perm.REPORTS_VIEW, "plans.manage"]),
+    )
+    db.add(role)
+    db.commit()
+    return role
+
+
+def test_plans_manage_removed_from_catalog():
+    assert "plans.manage" not in ALL_PERMISSIONS
+    assert not hasattr(Perm, "PLANS_MANAGE")
+    assert "plans.manage" not in PERMISSION_DESCRIPTIONS
+
+
+def test_orphan_permission_grant_confers_nothing(rbac_http, pg_session):
+    """Rolde kalan 'plans.manage' kaydi HICBIR yuzeyde izin vermez:
+    efektif hesap (roller kesisim katalog), /rbac/me ve core'un kullandigi
+    S2S resolve."""
+    from app.models.rbac import RbacUserRole
+    from app.services.rbac_service import effective_permissions
+    from .conftest import S2S_CURRENT
+
+    u = mk_user(pg_session)
+    role = _orphan_role(pg_session)
+    pg_session.add(RbacUserRole(
+        user_id=u.id, role_id=role.id, tenant_id=uuid.UUID(TEST_TENANT_ID),
+    ))
+    pg_session.commit()
+    # Satir gercekten orada (silinmedi) ...
+    pg_session.refresh(role)
+    assert "plans.manage" in role.permissions
+    # ... ama hicbir sey vermiyor.
+    assert effective_permissions(
+        pg_session, u.id, tenant_id=uuid.UUID(TEST_TENANT_ID)
+    ) == frozenset({Perm.REPORTS_VIEW})
+
+    rbac_http.as_user(u)
+    assert rbac_http.get(f"{BASE}/me").json()["permissions"] == [
+        Perm.REPORTS_VIEW
+    ]
+
+    r = rbac_http.post(
+        "/internal/authz/resolve",
+        headers={"Authorization": f"Bearer {S2S_CURRENT}"},
+        json={"tenant_id": TEST_TENANT_ID, "user_ids": [str(u.id)]},
+    )
+    assert r.status_code == 200
+    assert r.json()["users"][0]["permissions"] == [Perm.REPORTS_VIEW]
+
+
+def test_orphan_code_hidden_and_role_still_editable_and_assignable(
+    rbac_http, pg_session, role_admin
+):
+    """Olu kod rol API'sinde gorunmez; UI'nin geri gonderdigi liste ile
+    PATCH 422 almaz, rol atanabilir (subset kurali olu kodu saymaz)."""
+    role = _orphan_role(pg_session, code="legacy-planner-2")
+
+    listed = {
+        r["code"]: r for r in rbac_http.get(f"{BASE}/roles").json()["roles"]
+    }
+    assert listed["legacy-planner-2"]["permissions"] == [Perm.REPORTS_VIEW]
+
+    target = mk_user(pg_session)
+    put = rbac_http.put(
+        f"{BASE}/users/{target.id}/roles", json={"role_ids": [str(role.id)]},
+    )
+    assert put.status_code == 200, put.text
+    assert put.json()["effective_permissions"] == [Perm.REPORTS_VIEW]
+
+    patch = rbac_http.patch(
+        f"{BASE}/roles/{role.id}",
+        json={"permissions": listed["legacy-planner-2"]["permissions"],
+              "name": "Planner (renamed)"},
+    )
+    assert patch.status_code == 200, patch.text
+    assert patch.json()["permissions"] == [Perm.REPORTS_VIEW]
+
+    # Olu kodu yeniden YAZMAK hala reddedilir (katalog disi).
+    bad = rbac_http.patch(
+        f"{BASE}/roles/{role.id}",
+        json={"permissions": [Perm.REPORTS_VIEW, "plans.manage"]},
+    )
+    assert bad.status_code == 422

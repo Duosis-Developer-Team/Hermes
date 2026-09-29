@@ -144,9 +144,16 @@ class UserResponse(UserBase):
         is_admin: Admin mi?
         created_at: Oluşturulma tarihi
     """
+    # CIKTI semasi e-postayi YENIDEN DOGRULAMAZ: EmailStr yalnizca girdi
+    # (create/update) semalarinda. Saklanmis tek bir tuhaf deger (ornek:
+    # `.invalid` gibi special-use TLD) tum listeyi 500'e dusurmemeli —
+    # 2026-09-29 hermes-dev olayi (Settings -> Users).
+    email: str = Field(
+        ...,
+        description="Kullanici e-posta adresi (saklandigi gibi)",
+        examples=["kullanici@sirket.com"]
+    )
     id: UUID = Field(..., description="Kullanıcı benzersiz kimliği")
-    is_active: bool = Field(..., description="Kullanıcı aktif mi?")
-    is_admin: bool = Field(..., description="Kullanıcı admin mi?")
     is_active: bool = Field(..., description="Kullanıcı aktif mi?")
     is_admin: bool = Field(..., description="Kullanıcı admin mi?")
     role: UserRole = Field(..., description="Kullanıcı rolü")

@@ -39,9 +39,12 @@ DEMO_ID_PREFIX = "de5eed00"
 #: uuid5 isim alani. DEGISTIRILMEZ: id'lerin tekrar uretilebilirligi buna bagli.
 DEMO_NAMESPACE = uuid.UUID("6f1d2c3e-8a4b-5c6d-9e0f-a1b2c3d4e5f6")
 
-#: Sahte kullanicilarin e-posta alan adi. `.invalid` RFC 2606 ile ayrilmis
-#: bir TLD'dir: bu adreslere posta gidemez, Entra'da boyle bir kimlik olamaz.
-DEMO_EMAIL_DOMAIN = "demo.duosis.invalid"
+#: Sahte kullanicilarin e-posta alan adi. `example.com` RFC 2606 ile
+#: ayrilmistir (IANA null-MX yayinlar: bu adreslere posta GIDEMEZ) ve
+#: Entra'da boyle bir kimlik olamaz. `.invalid` KULLANILMAZ: sozdizimi
+#: dogrulayicilari (email-validator) "special-use" TLD'yi reddeder ve
+#: 2026-09-29'da hermes-dev'de /users listesini 500'e dusurmustu.
+DEMO_EMAIL_DOMAIN = "hermes-demo.example.com"
 
 #: (anahtar, ad soyad, unvan). Id ve e-posta anahtardan turetilir.
 DEMO_USERS = (

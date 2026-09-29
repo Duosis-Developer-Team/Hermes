@@ -39,7 +39,7 @@ const VIEWPORTS = [
 const PERMISSIONS = [
     'reports.view', 'customers.manage', 'projects.manage', 'api.manage',
     'users.manage', 'reference.manage', 'tasks.permissions.manage',
-    'worklogs.admin', 'meetings.admin', 'plans.manage',
+    'worklogs.admin', 'meetings.admin',
 ]
 
 const ME = { id: 'u1', email: 'ada@duosis.com', full_name: 'Ada Lovelace', is_admin: true, is_active: true }

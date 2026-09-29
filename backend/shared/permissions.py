@@ -39,10 +39,11 @@ class Perm:
     TASK_PERMISSIONS_MANAGE = "tasks.permissions.manage"
     API_MANAGE = "api.manage"
     REPORTS_VIEW = "reports.view"
-    # NOT: plans.manage'i kullanan tek uc (/plan-times) 2026-09-29'da
-    # kaldirildi; izin artik hicbir seyi korumuyor. Katalogdan silmek
-    # auth_db'deki rol atamalari icin veri migration'i ister — ayri karar.
-    PLANS_MANAGE = "plans.manage"
+    # NOT: "plans.manage" 2026-09-29'da katalogdan CIKARILDI (koruyacagi
+    # tek uc /plan-times kaldirilmisti). auth_db'deki rollerde kalan
+    # "plans.manage" kayitlari SILINMEZ (veri migration'i yok): efektif
+    # izin = roller ∩ katalog oldugu icin hicbir sey vermez (test kilitli).
+    # Bu kodu yeniden kullanmak eski atamalari DIRILTIR — YAPILMAZ.
     WORKLOGS_ADMIN = "worklogs.admin"
     MEETINGS_ADMIN = "meetings.admin"
     CUSTOMERS_MANAGE = "customers.manage"
@@ -107,7 +108,6 @@ PERMISSION_DESCRIPTIONS = {
         "View company-wide reports, dashboards and exports (not limited "
         "to own records)."
     ),
-    Perm.PLANS_MANAGE: "Manage plan/time configuration (plan times).",
     Perm.WORKLOGS_ADMIN: (
         "Create, edit and list work logs on behalf of other users."
     ),

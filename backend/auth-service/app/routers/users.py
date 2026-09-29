@@ -205,7 +205,11 @@ async def list_user_options(
     summary="Lookup users (minimal fields, any authenticated user)",
     description=(
         "Returns minimal info (id, full_name, email, role, is_admin, is_active) "
-        "for active users. Used by feature modules (e.g. Tasks) to display "
+        "for active members of the caller's CURRENT tenant only (users of "
+        "other tenants are never returned, even when requested by id). "
+        "With include_inactive (users.manage only) every user with a "
+        "membership row in this tenant is returned; is_active then means "
+        "active user AND active membership. Used by feature modules (e.g. Tasks) to display "
         "assigner/assignee names without requiring admin privileges. "
         "Optionally filter to a specific list of user IDs via repeated 'ids' query."
     )
@@ -216,10 +220,32 @@ async def lookup_users(
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Lightweight, read-only user lookup for any authenticated user."""
-    from ..models.user import User
+    """Lightweight, read-only user lookup for any authenticated user.
 
-    query = db.query(User)
+    TENANT KAPSAMI (2026-09-29): `users` global bir tablodur; bu uc
+    yalnizca cagiranin MEVCUT tenant'inda uyelik satiri olan kimlikleri
+    doner. Baska tenant'in kullanicisi `ids` ile acikca istense BILE
+    yanitta yoktur (varligi sizmaz). Kural:
+      - varsayilan: kullanici aktif VE bu tenant'taki uyelik `active`;
+      - include_inactive + users.manage: bu tenant'ta HERHANGI durumda
+        uyeligi olan her kullanici (pasif kullanici, removed/suspended
+        uyelik) — gecmis kayitlardaki adlar cozulmeye devam eder.
+    Bozuk tenant baglami hicbir kayit goremez (fail-closed).
+    """
+    from ..models.tenancy import TenantMembership
+    from ..models.user import User
+    from ..services.membership_service import ACTIVE_MEMBERSHIP_STATUS
+
+    try:
+        tenant_uuid = UUID(str(current_user.tenant_id))
+    except (TypeError, ValueError):
+        return []
+
+    query = db.query(User, TenantMembership.status).join(
+        TenantMembership,
+        (TenantMembership.user_id == User.id)
+        & (TenantMembership.tenant_id == tenant_uuid),
+    )
 
     # RBAC R1: pasifleri gorme ayricaligi artik is_admin claim'ine degil
     # users.manage iznine bakar (DB'den cozulur — bayat claim yetmez).
@@ -228,14 +254,25 @@ async def lookup_users(
     if include_inactive and Perm.USERS_MANAGE in effective_permissions(
         db, current_user.id, tenant_id=current_user.tenant_id
     ):
-        pass  # No filter
+        pass  # Bu tenant'in tum (gecmis dahil) uyeleri
     else:
-        query = query.filter(User.is_active == True)  # noqa: E712
+        query = query.filter(
+            User.is_active == True,  # noqa: E712
+            TenantMembership.status == ACTIVE_MEMBERSHIP_STATUS,
+        )
 
     if ids:
         query = query.filter(User.id.in_(ids))
 
-    users = query.order_by(User.full_name.asc().nulls_last(), User.email.asc()).all()
+    rows = query.order_by(User.full_name.asc().nulls_last(), User.email.asc()).all()
+    users = [u for u, _ in rows]
+    # `is_active` BU TENANT'a gore: kullanici aktif VE uyelik aktif.
+    # Tenant'tan cikarilmis (removed/suspended) bir kimlik, global olarak
+    # aktif olsa da secicilerde pasif gorunur.
+    tenant_active = {
+        u.id: bool(u.is_active) and m_status == ACTIVE_MEMBERSHIP_STATUS
+        for u, m_status in rows
+    }
 
     # Profil fotografi bilgisi (ADDITIVE alanlar): N ayri istek atmadan
     # frontend kimin fotografi oldugunu bilsin. Yalnizca foto ucunun
@@ -256,7 +293,7 @@ async def lookup_users(
             "email": u.email,
             "role": u.role.value if hasattr(u.role, "value") else (str(u.role) if u.role else None),
             "is_admin": bool(u.is_admin),
-            "is_active": bool(u.is_active),
+            "is_active": tenant_active[u.id],
             "has_photo": str(u.id) in photo_etags,
             "photo_etag": photo_etags.get(str(u.id)),
         }

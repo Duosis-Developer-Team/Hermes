@@ -368,9 +368,13 @@ def set_user_roles(
         )
 
     # Subset kurali: atanacak kumenin TUM izinleri aktorde olmali.
+    # Katalog disi (olu) kodlar hicbir sey vermedigi icin kurala girmez;
+    # girseydi kimse sahip olamayacagindan eski "plans.manage" iceren bir
+    # rol HIC atanamazdi.
     requested_perms: set = set()
     for r in roles:
         requested_perms.update(r.permissions or [])
+    requested_perms &= set(ALL_PERMISSIONS)
     enforce_subset_rule(
         actor_perms, sorted(requested_perms), action="grant"
     )

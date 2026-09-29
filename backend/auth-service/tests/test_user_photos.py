@@ -432,9 +432,9 @@ def test_lookup_and_me_include_photo_fields(
 
     assert rows[str(without.id)]["has_photo"] is False
     assert rows[str(without.id)]["photo_etag"] is None
-    # Baska tenant'in fotografi lookup'ta da GORUNMEZ (uc 404 verirdi).
-    if str(outsider.id) in rows:
-        assert rows[str(outsider.id)]["has_photo"] is False
+    # Baska tenant'in kullanicisi lookup'ta HIC yoktur (tenant kapsami,
+    # 2026-09-29) — fotografi da dolayisiyla gorunmez.
+    assert str(outsider.id) not in rows
 
     me = client.get("/api/v1/auth/users/me")
     assert me.status_code == 200

@@ -40,6 +40,14 @@ tasks.permissions.manage · api.manage · reports.view · plans.manage ·
 worklogs.admin · meetings.admin · customers.manage · projects.manage ·
 reference.manage`
 
+> 2026-09-29: `plans.manage` was **removed** from the catalog (the only
+> surface it guarded, `/plan-times`, was removed in `5f39223`). Role rows in
+> auth_db that still list it are **not** rewritten or deleted: effective
+> permissions are `roles ∩ catalog`, so the leftover code is inert (locked by
+> `test_orphan_permission_grant_confers_nothing`). The role API hides
+> out-of-catalog codes and the subset rule ignores them. Never reuse the code
+> — that would silently revive old grants.
+
 Mapping of the old surface: 82 `require_admin` guards (74 core + 6 auth +
 2 reporting), 20 inline `is_admin` branches and the 16-site
 `is_task_admin` shortcut (single definition → `tasks.admin`).
