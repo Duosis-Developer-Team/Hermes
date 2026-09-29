@@ -1,7 +1,7 @@
 # =============================================================================
 # /users ciktilari: saklanmis e-posta toleransi + /users/lookup tenant kapsami
 # =============================================================================
-# Kilitlenen sozlesmeler (2026-09-29):
+# Kilitlenen sozlesmeler (2026-09-29; 4. madde ayni gun eklendi):
 #   1. CIKTI semalari e-postayi yeniden dogrulamaz: `.invalid` gibi
 #      special-use bir alan adi saklanmis tek bir kayit GET /users
 #      listesini (ve tekil/me uclarini) 500'e dusuremez. Girdi semalari
@@ -12,6 +12,9 @@
 #   3. include_inactive (yalnizca users.manage): bu tenant'in pasif
 #      kullanicilari ve removed/suspended uyelikleri de doner (gecmis
 #      adlar cozulur); `is_active` = kullanici aktif VE uyelik aktif.
+#   4. Tenant yonetim yuzeyi (GET /users, /users/options, GET/PUT/DELETE
+#      /users/{id}, /rbac/roles*, /rbac/users/{id}/roles) yalnizca cagiranin
+#      tenant'inin uyelerini/rollerini gorur; digerleri 404.
 # =============================================================================
 
 import uuid
@@ -232,3 +235,121 @@ def test_input_schemas_stay_strict():
     with pytest.raises(ValidationError):
         UserUpdate(email=BAD_EMAIL)
     assert UserCreate(email="new@example.com", password="secret123")
+
+
+# -----------------------------------------------------------------------------
+# 3) Tenant yonetim yuzeyi: /users, /users/options, /users/{id}, /rbac/*
+# -----------------------------------------------------------------------------
+# Kural: tenant admini yalnizca mevcut tenant'inda uyeligi olan
+# kullanicilari gorur/etkiler; roller tenant'a aittir (rbac_roles.tenant_id).
+# Baska tenant'in kaydi = var olmayan kayit (404, ayni yanit).
+
+USERS = "/api/v1/auth/users"
+ROLES = "/api/v1/auth/rbac/roles"
+
+
+def test_users_list_is_tenant_scoped(as_user, world):
+    w = world
+    client = as_user(w["admin"], w["acme"])
+
+    r = client.get(USERS)
+    assert r.status_code == 200, r.text
+    got = {row["id"] for row in r.json()["data"]}
+    assert got == {str(w["caller"].id), str(w["admin"].id),
+                   str(w["peer"].id)}
+    assert r.json()["total"] == 3
+
+    r_all = client.get(USERS, params={"include_inactive": "true"})
+    got_all = {row["id"] for row in r_all.json()["data"]}
+    assert got_all == got | {str(w["inactive"].id), str(w["removed"].id)}
+    assert r_all.json()["total"] == 5
+    assert str(w["outsider"].id) not in got_all
+    assert str(w["orphan"].id) not in got_all
+
+
+def test_user_options_is_tenant_scoped(as_user, world):
+    w = world
+    r = as_user(w["admin"], w["acme"]).get(f"{USERS}/options")
+    assert r.status_code == 200, r.text
+    assert {row["id"] for row in r.json()} == {
+        str(w["caller"].id), str(w["admin"].id), str(w["peer"].id)
+    }
+
+
+def test_other_tenant_user_detail_update_delete_are_404(
+    as_user, world, pg_session
+):
+    from app.models.user import User
+
+    w = world
+    client = as_user(w["admin"], w["acme"])
+    ghost = uuid.uuid4()
+    missing = client.get(f"{USERS}/{ghost}")
+    assert missing.status_code == 404
+
+    for target in (w["outsider"], w["orphan"]):
+        g = client.get(f"{USERS}/{target.id}")
+        assert g.status_code == 404
+        # Mesaj istenen id'yi yansitir; onun disinda var olmayanla AYNI.
+        assert g.json()["detail"].replace(str(target.id), "X") == \
+            missing.json()["detail"].replace(str(ghost), "X")
+        assert client.put(f"{USERS}/{target.id}",
+                          json={"full_name": "Hacked"}).status_code == 404
+        assert client.delete(f"{USERS}/{target.id}").status_code == 404
+
+    pg_session.expire_all()
+    out = pg_session.get(User, w["outsider"].id)
+    assert out is not None and out.full_name == "out@globex.com"
+    assert pg_session.get(User, w["orphan"].id) is not None
+
+
+def test_own_tenant_user_detail_and_update_still_work(as_user, world):
+    w = world
+    client = as_user(w["admin"], w["acme"])
+    # Pasif ve cikarilmis uyeler de bu tenant'in kaydidir: yonetilebilir.
+    for target in (w["peer"], w["inactive"], w["removed"]):
+        assert client.get(f"{USERS}/{target.id}").status_code == 200
+    r = client.put(f"{USERS}/{w['peer'].id}", json={"full_name": "Peer X"})
+    assert r.status_code == 200 and r.json()["full_name"] == "Peer X"
+
+
+def test_roles_are_tenant_scoped(as_user, world, pg_session):
+    from app.models.rbac import RbacRole
+
+    w = world
+    _grant(pg_session, w["acme"], w["admin"], Perm.ROLES_MANAGE,
+           Perm.USERS_MANAGE)
+    foreign = RbacRole(tenant_id=w["globex"], code="globex-only",
+                       name="Globex Only", permissions=[])
+    pg_session.add(foreign)
+    pg_session.commit()
+
+    client = as_user(w["admin"], w["acme"])
+    listed = client.get(ROLES, params={"include_inactive": "true"})
+    assert listed.status_code == 200, listed.text
+    codes = {r["code"] for r in listed.json()["roles"]}
+    assert "globex-only" not in codes
+    assert codes  # acme'nin kendi test rolleri
+    ids = {r["id"] for r in listed.json()["roles"]}
+    assert all(
+        pg_session.get(RbacRole, uuid.UUID(i)).tenant_id == w["acme"]
+        for i in ids
+    )
+
+    assert client.get(f"{ROLES}/{foreign.id}").status_code == 404
+    assert client.patch(f"{ROLES}/{foreign.id}",
+                        json={"name": "Pwned"}).status_code == 404
+    assert client.delete(f"{ROLES}/{foreign.id}").status_code == 404
+    pg_session.expire_all()
+    still = pg_session.get(RbacRole, foreign.id)
+    assert still.name == "Globex Only" and still.is_active
+
+
+def test_user_roles_endpoint_scoped_and_no_longer_500(as_user, world):
+    w = world
+    client = as_user(w["admin"], w["acme"])
+    own = client.get(f"/api/v1/auth/rbac/users/{w['peer'].id}/roles")
+    assert own.status_code == 200, own.text
+    assert own.json()["user_id"] == str(w["peer"].id)
+    other = client.get(f"/api/v1/auth/rbac/users/{w['outsider'].id}/roles")
+    assert other.status_code == 404

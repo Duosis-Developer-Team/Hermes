@@ -80,8 +80,18 @@ def _role_out(r: RbacRole, member_count: Optional[int] = None) -> dict:
     return out
 
 
-def _get_role_or_404(db: Session, role_id: UUID) -> RbacRole:
-    role = db.query(RbacRole).filter(RbacRole.id == role_id).first()
+def _get_role_or_404(db: Session, role_id: UUID, *, tenant_id) -> RbacRole:
+    """Roller TENANT'a aittir (rbac_roles.tenant_id): baska tenant'in
+    rolu = var olmayan rol (404, ayni yanit)."""
+    try:
+        tid = UUID(str(tenant_id))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=404, detail="Role not found.")
+    role = (
+        db.query(RbacRole)
+        .filter(RbacRole.id == role_id, RbacRole.tenant_id == tid)
+        .first()
+    )
     if role is None:
         raise HTTPException(status_code=404, detail="Role not found.")
     return role
@@ -134,12 +144,13 @@ def my_permissions(
 @router.get("/roles")
 def list_roles(
     include_inactive: bool = False,
-    _: CurrentUser = Depends(
+    actor: CurrentUser = Depends(
         svc.require_any_permission(Perm.ROLES_MANAGE, Perm.USERS_MANAGE)
     ),
     db: Session = Depends(get_db),
 ):
-    q = db.query(RbacRole)
+    # Yalnizca cagiranin tenant'inin rolleri (2026-09-29).
+    q = db.query(RbacRole).filter(RbacRole.tenant_id == actor.tenant_id)
     if not include_inactive:
         q = q.filter(RbacRole.is_active.is_(True))
     roles = q.order_by(RbacRole.name.asc()).all()
@@ -191,12 +202,12 @@ def create_role(
 @router.get("/roles/{role_id}")
 def get_role(
     role_id: UUID,
-    _: CurrentUser = Depends(
+    actor: CurrentUser = Depends(
         svc.require_any_permission(Perm.ROLES_MANAGE, Perm.USERS_MANAGE)
     ),
     db: Session = Depends(get_db),
 ):
-    role = _get_role_or_404(db, role_id)
+    role = _get_role_or_404(db, role_id, tenant_id=actor.tenant_id)
     count = (
         db.query(RbacUserRole)
         .filter(RbacUserRole.role_id == role.id)
@@ -214,7 +225,7 @@ def update_role(
     ),
     db: Session = Depends(get_db),
 ):
-    role = _get_role_or_404(db, role_id)
+    role = _get_role_or_404(db, role_id, tenant_id=actor.tenant_id)
 
     if role.is_system:
         # Sistem rolu kilidi: yalnizca aciklama duzenlenebilir.
@@ -266,13 +277,13 @@ def update_role(
 @router.delete("/roles/{role_id}")
 def deactivate_role(
     role_id: UUID,
-    _: CurrentUser = Depends(svc.require_permissions(Perm.ROLES_MANAGE)),
+    actor: CurrentUser = Depends(svc.require_permissions(Perm.ROLES_MANAGE)),
     db: Session = Depends(get_db),
 ):
     """Soft-delete: is_active=False. Pasif rol atanamaz VE efektif
     izin hesabina girmez (mevcut atamalar gorunur kalir — LogiSlot'un
     aksine izinleri CALISMAYA DEVAM ETMEZ, testle kilitli)."""
-    role = _get_role_or_404(db, role_id)
+    role = _get_role_or_404(db, role_id, tenant_id=actor.tenant_id)
     if role.is_system:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -289,10 +300,22 @@ def deactivate_role(
 @router.get("/users/{user_id}/roles")
 def get_user_roles(
     user_id: UUID,
-    _: CurrentUser = Depends(svc.require_permissions(Perm.USERS_MANAGE)),
+    actor: CurrentUser = Depends(svc.require_permissions(Perm.USERS_MANAGE)),
     db: Session = Depends(get_db),
 ):
-    if db.query(User).filter(User.id == user_id).first() is None:
+    # Onceden `actor` tanimsizdi (NameError -> 500) ve varlik kontrolu
+    # global `users` tablosuna bakiyordu. Artik: bu tenant'ta uyeligi
+    # olmayan kullanici = 404.
+    from ..models.tenancy import TenantMembership
+
+    try:
+        tid = UUID(str(actor.tenant_id))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=404, detail="User not found.")
+    if db.query(TenantMembership.id).filter(
+        TenantMembership.user_id == user_id,
+        TenantMembership.tenant_id == tid,
+    ).first() is None:
         raise HTTPException(status_code=404, detail="User not found.")
     roles = svc.user_role_rows(db, user_id, tenant_id=actor.tenant_id)
     return {

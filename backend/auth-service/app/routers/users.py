@@ -138,12 +138,16 @@ async def list_users(
     """
     user_service = UserService(db)
     
+    # Yalnizca cagiranin mevcut tenant'inin uyeleri (2026-09-29).
     users = user_service.get_all(
         skip=skip,
         limit=limit,
-        include_inactive=include_inactive
+        include_inactive=include_inactive,
+        tenant_id=admin.tenant_id,
     )
-    total = user_service.count(include_inactive=include_inactive)
+    total = user_service.count(
+        include_inactive=include_inactive, tenant_id=admin.tenant_id
+    )
     
     return UserListResponse(
         success=True,
@@ -179,7 +183,11 @@ async def list_user_options(
     # Geçici olarak direkt DB query yapalım (Main service logic user_service'de olmalı ama)
     from ..models.user import User, UserRole
     
-    query = db.query(User).filter(User.is_active == True)
+    # Yalnizca bu tenant'in AKTIF uyeleri (2026-09-29) — core
+    # reports.get_all_users_map bu ucu kullanir.
+    query = user_service.tenant_members_query(
+        current_user.tenant_id, include_inactive=False
+    )
     
     if role:
         # Case insensitive role check or strict? Strict for Enum.
@@ -404,7 +412,9 @@ async def get_user(
     user_service = UserService(db)
     
     try:
-        user = user_service.get_by_id_or_404(user_id)
+        user = user_service.get_in_tenant_or_404(
+            user_id, tenant_id=admin.tenant_id
+        )
         return user
     except NotFoundError as e:
         raise HTTPException(

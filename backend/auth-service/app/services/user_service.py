@@ -7,6 +7,7 @@
 
 from typing import List, Optional
 from uuid import UUID
+from sqlalchemy import false
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -160,6 +161,54 @@ class UserService:
         """
         return self.db.query(User).filter(User.id == user_id).first()
     
+    # =========================================================================
+    # TENANT KAPSAMI (2026-09-29)
+    # =========================================================================
+    # `users` global bir tablodur. Tenant yonetim yuzeyi (liste, detay,
+    # guncelle, sil) YALNIZCA cagiranin mevcut tenant'inda uyelik satiri
+    # olan kimlikleri gorur/etkiler; baska tenant'in kullanicisi = var
+    # olmayan kullanici (404, ayni yanit). Platform yuzeyi ayridir.
+
+    @staticmethod
+    def _tenant_uuid(tenant_id) -> Optional[UUID]:
+        try:
+            return UUID(str(tenant_id))
+        except (TypeError, ValueError):
+            return None
+
+    def tenant_members_query(self, tenant_id, *, include_inactive: bool):
+        """Bu tenant'in uyeleri. include_inactive=False: kullanici aktif
+        VE uyelik aktif; True: bu tenant'ta HERHANGI durumda uyeligi olan
+        her kullanici. Bozuk tenant -> bos sonuc (fail-closed)."""
+        from ..models.tenancy import TenantMembership
+        from .membership_service import ACTIVE_MEMBERSHIP_STATUS
+
+        tid = self._tenant_uuid(tenant_id)
+        query = self.db.query(User).join(
+            TenantMembership,
+            (TenantMembership.user_id == User.id)
+            & (TenantMembership.tenant_id == tid),
+        )
+        if tid is None:
+            return query.filter(false())
+        if not include_inactive:
+            query = query.filter(
+                User.is_active == True,  # noqa: E712
+                TenantMembership.status == ACTIVE_MEMBERSHIP_STATUS,
+            )
+        return query
+
+    def get_in_tenant_or_404(self, user_id: UUID, *, tenant_id) -> User:
+        """Bu tenant'ta uyeligi (her durumda) olan kullanici; aksi 404."""
+        user = (
+            self.tenant_members_query(tenant_id, include_inactive=True)
+            .filter(User.id == user_id)
+            .first()
+        )
+        if not user:
+            raise NotFoundError("User", user_id)
+        return user
+
     def get_by_id_or_404(self, user_id: UUID) -> User:
         """
         ID ile kullanıcı getirir, bulunamazsa hata fırlatır.
@@ -202,7 +251,9 @@ class UserService:
         self,
         skip: int = 0,
         limit: int = 100,
-        include_inactive: bool = False
+        include_inactive: bool = False,
+        *,
+        tenant_id,
     ) -> List[User]:
         """
         Tüm kullanıcıları listeler.
@@ -215,14 +266,12 @@ class UserService:
         Returns:
             User listesi
         """
-        query = self.db.query(User)
-        
-        if not include_inactive:
-            query = query.filter(User.is_active == True)  # noqa: E712
-        
+        query = self.tenant_members_query(
+            tenant_id, include_inactive=include_inactive
+        )
         return query.order_by(User.created_at.desc()).offset(skip).limit(limit).all()
-    
-    def count(self, include_inactive: bool = False) -> int:
+
+    def count(self, include_inactive: bool = False, *, tenant_id) -> int:
         """
         Toplam kullanıcı sayısını döner.
         
@@ -232,12 +281,9 @@ class UserService:
         Returns:
             Toplam kullanıcı sayısı
         """
-        query = self.db.query(User)
-        
-        if not include_inactive:
-            query = query.filter(User.is_active == True)  # noqa: E712
-        
-        return query.count()
+        return self.tenant_members_query(
+            tenant_id, include_inactive=include_inactive
+        ).count()
     
     # =========================================================================
     # UPDATE Operations
@@ -260,8 +306,8 @@ class UserService:
             NotFoundError: Kullanıcı bulunamazsa
             ConflictError: E-posta başka kullanıcıda varsa
         """
-        # Kullanıcıyı bul
-        db_user = self.get_by_id_or_404(user_id)
+        # Kullaniciyi BU TENANT icinde bul (baska tenant = 404)
+        db_user = self.get_in_tenant_or_404(user_id, tenant_id=tenant_id)
         
         # Güncelleme verilerini al (sadece set edilmiş alanları)
         update_data = user_data.model_dump(exclude_unset=True)
@@ -341,7 +387,7 @@ class UserService:
         Raises:
             NotFoundError: Kullanıcı bulunamazsa
         """
-        db_user = self.get_by_id_or_404(user_id)
+        db_user = self.get_in_tenant_or_404(user_id, tenant_id=tenant_id)
 
         # RBAC son-admin kilidi: son aktif system-admin silinirse/pasif
         # yapilirsa kimse RBAC yonetemez — 409 ile engellenir.
