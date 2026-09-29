@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react'
 import {
     Card, Table, Button, Space, Modal, Form, Input, InputNumber, DatePicker,
-    message, Switch, Tag
+    message, Switch
 } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, ShopOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -18,8 +18,8 @@ import DeleteModal from '../../components/common/DeleteModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import {
     AdminErrorAlert, AdminRefreshHint,
+    AdminEmptyState,
 } from '../../features/admin/shared/AdminListStates'
-import { adminEmptyText } from '../../features/admin/shared/adminEmptyText'
 import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecycle'
 import {
     contractToForm, contractToPayload,
@@ -40,7 +40,8 @@ const FORM_SHAPE = {
 }
 import { Page, PageHeader } from '../../components/ui'
 import { useT } from '../../i18n'
-import { ModalHead } from '../../components/liquid'
+import { ModalHead, avatarTone } from '../../components/liquid'
+import dayjs from 'dayjs'
 
 function CustomersPage() {
     const [form] = Form.useForm()
@@ -189,20 +190,38 @@ function CustomersPage() {
     const columns = [
         {
             title: t('entity.customers'),
-            subTitle: 'Manage customer accounts',
             dataIndex: 'name',
             key: 'name',
-            sorter: (a, b) => a.name.localeCompare(b.name),
+            sorter: (a, b) => (a.name || '').localeCompare(b.name || ''),
+            // Liquid: renkli bas harf kutusu + sozlesme ozeti.
+            render: (name, record) => (
+                <span className="admin-name">
+                    <span className="admin-name__badge" style={{ background: avatarTone(record.id || name) }} aria-hidden="true">
+                        {(name || '?').trim().charAt(0).toLocaleUpperCase()}
+                    </span>
+                    <span className="admin-name__text">
+                        <b>{name || '—'}</b>
+                        <small>
+                            {record.contract_start_date
+                                ? t('admin.contractSummary', {
+                                    start: dayjs(record.contract_start_date).format('D MMM YYYY'),
+                                    days: record.contract_duration_days ?? '—',
+                                })
+                                : t('admin.noContract')}
+                        </small>
+                    </span>
+                </span>
+            ),
         },
         {
             title: t('common.status'),
             dataIndex: 'is_active',
             key: 'is_active',
-            width: 100,
+            width: 110,
             render: (active) => (
-                <Tag color={active ? 'success' : 'default'}>
-                    {active ? 'Active' : 'Inactive'}
-                </Tag>
+                <span className={`lq-tag ${active ? 'lq-tag--ok' : ''}`}>
+                    {active ? t('common.active') : t('common.inactive')}
+                </span>
             ),
         },
 
@@ -211,7 +230,8 @@ function CustomersPage() {
             dataIndex: 'created_at',
             key: 'created_at',
             width: 150,
-            render: (date) => new Date(date).toLocaleDateString('en-GB'),
+            // Gecersiz/bos tarih "Invalid Date" basmaz.
+            render: (date) => (date && dayjs(date).isValid() ? dayjs(date).format('D MMM YYYY') : '—'),
         },
         {
             title: t('common.actions'),
@@ -283,12 +303,15 @@ function CustomersPage() {
                     showSorterTooltip={false}
                     scroll={{ x: 'max-content' }}
                     locale={{
-                        emptyText: adminEmptyText({
-                            filtered: !!query,
-                            entityPlural: 'customers',
-                            createLabel: t('admin.newEntity', { entity: t('entity.customer') }),
-                            term: search.trim(),
-                        }),
+                        emptyText: (
+                            <AdminEmptyState
+                                filtered={!!query}
+                                term={search.trim()}
+                                entityKey="entity.customers"
+                                createLabel={t('admin.newEntity', { entity: t('entity.customer') })}
+                                onCreate={() => handleOpenModal()}
+                            />
+                        ),
                     }}
                 />
                 <AdminRefreshHint
@@ -346,22 +369,16 @@ function CustomersPage() {
 
                     {editingId && (
                         <Form.Item name="is_active" label={t('common.status')} valuePropName="checked">
-                            <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+                            <Switch checkedChildren={t('common.active')} unCheckedChildren={t('common.inactive')} />
                         </Form.Item>
                     )}
 
-                    <Form.Item>
-                        <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                            <Button onClick={handleCloseModal}>{t('common.cancel')}</Button>
-                            <Button
-                                type="primary"
-                                htmlType="submit"
-                                loading={isSaving}
-                            >
-                                {editingId ? 'Update' : 'Create'}
-                            </Button>
-                        </Space>
-                    </Form.Item>
+                    <div className="lq-mf">
+                        <Button onClick={handleCloseModal}>{t('common.cancel')}</Button>
+                        <Button type="primary" htmlType="submit" loading={isSaving}>
+                            {editingId ? t('admin.update') : t('common.create')}
+                        </Button>
+                    </div>
                 </Form>
             </Modal>
 

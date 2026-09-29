@@ -480,7 +480,12 @@ export default {
         manageProjects: 'Projeleri yönetin',
         manageWorkTypes: 'İş türlerini yönetin',
         manageUsers: 'Kullanıcıları, rolleri ve grupları yönetin',
-        manageCustomers: 'Kullanıcı hesaplarını ve kurum bilgilerini yönetin',
+        manageCustomers: 'Müşterileri ve sözleşme bilgilerini yönetin',
+        refreshing: 'Yenileniyor…',
+        empty: { none: 'Henüz {entity} yok.', filtered: 'Seçili filtrelerle eşleşen {entity} yok.', filteredTerm: '“{term}” ile eşleşen {entity} yok.' },
+        contractSummary: 'Sözleşme: {start} · {days} gün',
+        noContract: 'Sözleşme bilgisi yok',
+        update: 'Güncelle',
     },
 
     users: {

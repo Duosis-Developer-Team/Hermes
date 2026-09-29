@@ -486,7 +486,12 @@ export default {
         manageProjects: 'Manage projects',
         manageWorkTypes: 'Manage work types',
         manageUsers: 'Manage users, roles and groups',
-        manageCustomers: 'Manage user accounts and organization details',
+        manageCustomers: 'Manage customers and their contract details',
+        refreshing: 'Refreshing…',
+        empty: { none: 'No {entity} yet.', filtered: 'No {entity} match the selected filters.', filteredTerm: 'No {entity} match “{term}”.' },
+        contractSummary: 'Contract: {start} · {days} days',
+        noContract: 'No contract details',
+        update: 'Update',
     },
 
     users: {

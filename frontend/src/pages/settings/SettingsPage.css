@@ -182,3 +182,42 @@
 @media (prefers-reduced-motion: reduce) {
     .settings-tile, .settings-tile .settings-icon, .settings-back { transition: none; }
 }
+
+/* Admin tablo boslugu ve yenileme ipucu (AdminListStates). */
+.admin-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 34px 12px; }
+.admin-empty__icon {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: var(--h-bg-hover);
+    color: var(--h-text-muted);
+    font-size: 22px;
+}
+.admin-empty__text { margin: 0; color: var(--h-text-secondary); font-size: 14px; text-align: center; }
+.admin-refresh-hint { margin-top: 8px; color: var(--h-text-muted); font-size: 12px; }
+
+/* Ortak Page/PageHeader (components/ui) ayarlar icinde: dis dolgu yok,
+   baslik diger ayar sayfalariyla ayni boy. */
+.settings-content .h-page { padding: 0; }
+.settings-content .h-page-header { align-items: flex-end; margin-bottom: 18px; }
+.settings-content .h-page-header__title { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; }
+.settings-content .h-page-header__subtitle { margin-top: 4px; font-size: 13.5px; }
+
+/* Ayar tablolari: ad hucresi (renkli bas harf kutusu + ikincil satir). */
+.admin-name { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.admin-name__badge {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: 11px;
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 14px;
+}
+.admin-name__text { display: flex; flex-direction: column; min-width: 0; }
+.admin-name__text b { overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.admin-name__text small { color: var(--h-text-muted); font-size: 12px; }
