@@ -19,9 +19,8 @@ import DeleteModal from '../../components/common/DeleteModal'
 import ProjectMembersDrawer from '../../components/projects/ProjectMembersDrawer'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import {
-    AdminErrorAlert, AdminRefreshHint,
+    AdminErrorAlert, AdminRefreshHint, AdminEmptyState,
 } from '../../features/admin/shared/AdminListStates'
-import { adminEmptyText } from '../../features/admin/shared/adminEmptyText'
 import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecycle'
 import {
     contractToForm, contractToPayload,
@@ -338,12 +337,15 @@ function ProjectsPage() {
                     showSorterTooltip={false}
                     scroll={{ x: 'max-content' }}
                     locale={{
-                        emptyText: adminEmptyText({
-                            filtered: !!query,
-                            entityPlural: 'projects',
-                            createLabel: t('admin.newEntity', { entity: t('entity.project') }),
-                            term: search.trim(),
-                        }),
+                        emptyText: (
+                            <AdminEmptyState
+                                filtered={!!query}
+                                term={search.trim()}
+                                entityKey="entity.projects"
+                                createLabel={t('admin.newEntity', { entity: t('entity.project') })}
+                                onCreate={() => handleOpenModal()}
+                            />
+                        ),
                     }}
                 />
                 <AdminRefreshHint

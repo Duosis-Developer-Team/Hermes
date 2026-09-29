@@ -180,7 +180,7 @@ function CapacitySettingsPage() {
                             name="daily_expected_hours" label={t('capacity.dailyHours')}
                             rules={[{ required: true, message: t('logTime.required') }]}
                         >
-                            <InputNumber min={0.25} max={24} step={0.25} addonAfter={t('capacity.hourShort')} style={{ width: 150 }} />
+                            <InputNumber min={0.25} max={24} step={0.25} suffix={t('capacity.hourShort')} style={{ width: 150 }} />
                         </Form.Item>
                         <Form.Item
                             name="working_days" label={t('capacity.workingDays')}
