@@ -493,6 +493,9 @@ export default {
         userUpdated: 'Kullanıcı güncellendi',
         userCreated: 'Kullanıcı oluşturuldu',
         daysTotal: 'Toplam {n} gün',
+        userRemoved: 'Kullanıcı çalışma alanından kaldırıldı',
+        archiveUserAria: '{email} kullanıcısını bu çalışma alanında pasifleştir',
+        removeUserAria: '{email} kullanıcısını çalışma alanından kaldır',
     },
 
     users: {

@@ -499,6 +499,9 @@ export default {
         userUpdated: 'User updated',
         userCreated: 'User created',
         daysTotal: '{n} days total',
+        userRemoved: 'User removed from this workspace',
+        archiveUserAria: 'Archive {email}',
+        removeUserAria: 'Remove {email} from this workspace',
     },
 
     users: {

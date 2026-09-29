@@ -144,19 +144,13 @@ export function UsersTab() {
     const deleteMutation = useMutation({
         mutationFn: authService.deleteUser,
         onSuccess: () => {
-            message.success({ content: t('admin.entityDeleted', { entity: t('entity.user') }), style: { marginTop: '10vh' } })
+            message.success(t('admin.userRemoved'))
             handleDeleteCancel()
             invalidateUsers()
         },
-        onError: (err) => {
-            // Kullanimda olan kayit silinemez; ARSIVLEME yolu gosterilir.
-            const n = normalizeApiError(err)
-            message.error(
-                n.kind === 'conflict' || n.status === 400
-                    ? `${n.message} Try archiving it instead.`
-                    : n.message
-            )
-        },
+        // Sunucu mesaji aciklayicidir (orn. son yonetici korumasi); "arsivle"
+        // onerisi eklenmez — calisma alanindan kaldirma kurali (auth 51ab60d).
+        onError: (err) => message.error(normalizeApiError(err).message),
     })
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false)
@@ -272,8 +266,8 @@ export function UsersTab() {
                         icon={<DeleteOutlined />}
                         aria-label={
                             record.is_active
-                                ? `Archive ${record.email}`
-                                : `Delete ${record.email} permanently`
+                                ? t('admin.archiveUserAria', { email: record.email })
+                                : t('admin.removeUserAria', { email: record.email })
                         }
                         onClick={() => handleDeleteClick(record)}
                     />
