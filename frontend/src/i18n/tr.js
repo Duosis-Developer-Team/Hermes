@@ -778,6 +778,9 @@ export default {
         builtIn: 'Yerleşik',
         builtInAllUsers: 'Yerleşik. Tüm aktif yönetici olmayan kullanıcılar.',
         builtInAdmins: 'Yerleşik. Üyelik Yönetici rolünden türetilir.',
+        builtinAdminsName: 'Yöneticiler',
+        builtinGeneralName: 'Tüm Kullanıcılar',
+        plural: 'Gruplar',
     },
 
     assignment: {
@@ -1032,6 +1035,7 @@ export default {
         systemRole: 'Sistem rolü',
         systemRoleLocked: 'Sistem rolü kilitlidir',
         systemRoleHint: 'Ad, izinler ve aktiflik değiştirilemez; izin kümesi katalogla otomatik eşitlenir. Yalnızca açıklama düzenlenebilir.',
+        plural: 'Roller',
     },
 
     hub: {

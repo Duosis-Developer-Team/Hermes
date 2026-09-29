@@ -306,7 +306,7 @@ function RolesTab() {
                 />
             )}
             <Card variant="borderless"
-                title={`Roles (${roles.length})`}
+                title={t('admin.entityCount', { entity: t('roles.plural'), n: roles.length })}
                 extra={
                     <Button type="primary" icon={<PlusOutlined />}
                             onClick={() => open()}>{t('roles.newRole')}</Button>

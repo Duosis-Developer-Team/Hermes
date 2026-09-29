@@ -232,3 +232,20 @@
 .project-contract__meter.is-bad i { background: var(--h-danger); }
 .project-contract__meta { color: var(--h-text-muted); font-size: 12px; }
 .project-contract__none { color: var(--h-text-muted); }
+
+/* Gruplar: satir acma oku (antd +/- yerine). */
+.groups-expand {
+    display: inline-grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--h-bg-hover);
+    color: var(--h-text-secondary);
+    cursor: pointer;
+    transition: transform 220ms var(--h-ease-spring), background 150ms;
+}
+.groups-expand .anticon { font-size: 11px; transition: transform 220ms var(--h-ease-spring); }
+.groups-expand.is-open .anticon { transform: rotate(90deg); }
+.groups-expand:hover { background: var(--h-bg-selected); color: var(--h-brand); }

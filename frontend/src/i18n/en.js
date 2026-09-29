@@ -784,6 +784,9 @@ export default {
         builtIn: 'Built-in',
         builtInAllUsers: 'Built-in. All active non-admin users.',
         builtInAdmins: 'Built-in. Membership derives from the Admin role.',
+        builtinAdminsName: 'Admins',
+        builtinGeneralName: 'General Users',
+        plural: 'Groups',
     },
 
     assignment: {
@@ -1038,6 +1041,7 @@ export default {
         systemRole: 'System role',
         systemRoleLocked: 'System role is locked',
         systemRoleHint: 'Name, permissions and active state cannot be changed; the permission set stays in sync with the catalog automatically. Only the description is editable.',
+        plural: 'Roles',
     },
 
     hub: {

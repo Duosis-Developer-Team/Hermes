@@ -20,6 +20,7 @@ import { useMemo, useState } from 'react'
 import {
     Alert,
     Button,
+    Card,
     Space,
     Table,
     Tag,
@@ -30,6 +31,7 @@ import {
     DeleteOutlined,
     EditOutlined,
     PlusOutlined,
+    RightOutlined,
     UserAddOutlined,
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -56,7 +58,7 @@ function buildVirtualGroups(users, t) {
     return [
         {
             id: VIRTUAL_ADMINS_ID,
-            name: 'Admins',
+            name: t('groups.builtinAdminsName'),
             description: t('groups.builtInAdmins'),
             is_active: true,
             member_count: admins.length,
@@ -65,7 +67,7 @@ function buildVirtualGroups(users, t) {
         },
         {
             id: VIRTUAL_GENERAL_ID,
-            name: 'General Users',
+            name: t('groups.builtinGeneralName'),
             description: t('groups.builtInAllUsers'),
             is_active: true,
             member_count: general.length,
@@ -558,23 +560,22 @@ function UserGroupsTab() {
                     }
                 />
             )}
-            <div
-                style={{
-                    marginBottom: 12,
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                }}
+            {/* Liquid: tablo diger ayar tablolari gibi basliklı cam kartta. */}
+            <Card
+                variant="borderless"
+                title={t('admin.entityCount', { entity: t('groups.plural'), n: allRows.length })}
+                extra={(
+                    <Button
+                        type="primary"
+                        className="h-create-action"
+                        icon={<PlusOutlined />}
+                        onClick={() => {
+                            setEditingGroup(null)
+                            setGroupModalOpen(true)
+                        }}
+                    >{t('groups.createGroup')}</Button>
+                )}
             >
-                <Button
-                    className="h-create-action"
-                    icon={<PlusOutlined />}
-                    onClick={() => {
-                        setEditingGroup(null)
-                        setGroupModalOpen(true)
-                    }}
-                >{t('groups.createGroup')}</Button>
-            </div>
-
             <Table
                 rowKey="id"
                 columns={columns}
@@ -597,8 +598,22 @@ function UserGroupsTab() {
                             />
                         ),
                     rowExpandable: () => true,
+                    // Varsayilan +/- ikonu tema altinda "†" gibi gorunuyordu:
+                    // donen ok (acik/kapali durumu aria-expanded ile).
+                    expandIcon: ({ expanded, onExpand, record }) => (
+                        <button
+                            type="button"
+                            className={`groups-expand${expanded ? ' is-open' : ''}`}
+                            aria-expanded={expanded}
+                            aria-label={record.name}
+                            onClick={(e) => { e.stopPropagation(); onExpand(record, e) }}
+                        >
+                            <RightOutlined aria-hidden="true" />
+                        </button>
+                    ),
                 }}
             />
+            </Card>
 
             <UserGroupModal
                 open={groupModalOpen}
