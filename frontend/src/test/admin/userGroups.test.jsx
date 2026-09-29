@@ -22,7 +22,7 @@
  * =============================================================================
  */
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClientProvider } from '@tanstack/react-query'
 
@@ -392,8 +392,10 @@ describe('uye ekleme / cikarma davranisi', () => {
         const confirm = confirmButton(dialog, /Remove/)
         await user.click(confirm)
         await waitFor(() => expect(userGroupService.removeMember).toHaveBeenCalledTimes(1))
-        await user.click(confirm)
-        await user.click(confirm)
+        // Tekrar tiklamalar olay duzeyinde (yukleniyor dugmesi pointer-events:none;
+        // user-event reddeder → CI yarisi). Amac: TEK istek.
+        fireEvent.click(confirm)
+        fireEvent.click(confirm)
         expect(userGroupService.removeMember).toHaveBeenCalledTimes(1)
         gate.resolve({})
     })

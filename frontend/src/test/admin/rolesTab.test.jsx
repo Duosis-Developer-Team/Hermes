@@ -23,7 +23,7 @@
  * =============================================================================
  */
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClientProvider } from '@tanstack/react-query'
 
@@ -240,8 +240,10 @@ describe('cift gonderim kilitleri', () => {
         const confirm = await screen.findByRole('button', { name: 'Archive' })
         await user.click(confirm)
         await waitFor(() => expect(rbacService.deactivateRole).toHaveBeenCalledTimes(1))
-        await user.click(confirm)
-        await user.click(confirm)
+        // Tekrar tiklamalar olay duzeyinde (yukleniyor dugmesi pointer-events:none;
+        // user-event reddeder → CI yarisi). Amac: TEK istek.
+        fireEvent.click(confirm)
+        fireEvent.click(confirm)
         expect(rbacService.deactivateRole).toHaveBeenCalledTimes(1)
         gate.resolve({})
     })

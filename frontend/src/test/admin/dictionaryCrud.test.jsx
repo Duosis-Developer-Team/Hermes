@@ -13,7 +13,7 @@
  * =============================================================================
  */
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ConfigProvider } from 'antd'
@@ -382,8 +382,12 @@ describe('archive / delete terminolojisi ve kilitler', () => {
         const confirm = await screen.findByRole('button', { name: 'Archive' })
         await user.click(confirm)
         await waitFor(() => expect(service.update).toHaveBeenCalledTimes(1))
-        await user.click(confirm)
-        await user.click(confirm)
+        // Tekrar tiklamalar olay duzeyinde: dugme yukleniyor durumuna gecmisse
+        // antd onu pointer-events:none yapar ve user-event tiklamayi REDDEDIP
+        // hata firlatir (CI'da zamanlamaya bagli yaris). Amac ayni: kac tiklama
+        // olursa olsun TEK istek.
+        fireEvent.click(confirm)
+        fireEvent.click(confirm)
         expect(service.update).toHaveBeenCalledTimes(1)
         gate.resolve({})
     })
