@@ -13,6 +13,7 @@ const SERVERS = Object.freeze([
     Object.freeze({
         id: 'test',
         label: 'Hermes (hermes.duosis.com)',
+        short: 'Test',
         url: 'https://hermes.duosis.com',
         // Gecerli, kamuya acik sertifika — istisna YOK.
         allowSelfSigned: false,
@@ -20,6 +21,7 @@ const SERVERS = Object.freeze([
     Object.freeze({
         id: 'dev',
         label: 'Hermes Dev (84.247.180.172:30772)',
+        short: 'Dev',
         url: 'https://84.247.180.172:30772',
         // hermes-dev ingress'i Kubernetes'in sahte sertifikasini sunar;
         // istisna YALNIZ bu host:port icin gecerlidir (main.js).

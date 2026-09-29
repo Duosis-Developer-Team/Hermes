@@ -36,6 +36,8 @@ describe('i18n sozlukleri', () => {
             // "Issue" urun terimi; Turkce arayuzde de aynen kullanilir.
             'review.noun.issue', 'review.nounCap.issue',
             'nav.apiManagement', 'nav.platforms', 'nav.projects',
+            // Urun + sirket adi (marka), cevrilmez.
+            'login.footer',
             'entity.platform', 'entity.platforms',
             // Saf BICIM dizgesi (prose degil): "{entity} ({n})".
             'admin.entityCount', 'logTime.platform',

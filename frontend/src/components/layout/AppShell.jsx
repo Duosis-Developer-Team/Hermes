@@ -52,6 +52,7 @@ import CommandPalette from './CommandPalette'
 import { RouteErrorBoundary } from '../common/ErrorBoundaries'
 import { Avatar } from '../liquid'
 import './MainLayout.css'
+import ServerSwitch from './ServerSwitch'
 
 // Bu genislikin altinda ada sekmeleri gizlenir; alt sekme cubugu +
 // cekmece devreye girer (MainLayout.css ile ayni esik).
@@ -264,6 +265,7 @@ function AppShell({
     // her parca ayri erisilebilir ada ve aria-pressed durumuna sahip.
     const islandPrefs = (
         <span className="island-prefs">
+            <ServerSwitch />
             <span className="island-seg" role="group" aria-label={t('shellExtra.appearance')}>
                 {[['light', <SunOutlined key="s" />], ['dark', <MoonOutlined key="m" />]].map(([mode, icon]) => (
                     <button

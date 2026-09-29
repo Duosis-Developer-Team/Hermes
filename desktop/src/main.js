@@ -6,7 +6,9 @@
  * hermes.duosis.com) kendi penceresinde acar. Siteden yapilabilen her
  * sey buradan da yapilir; siteye cikan her yenilik uygulamaya da gelir.
  * Yerel katman:
- *   - macOS menusu (Duzen kisayollari, Git ⌘1–⌘4, Sunucu secimi)
+ *   - macOS menusu (Duzen kisayollari, Git ⌘1–⌘4, Sunucu secimi ⌘⇧D)
+ *   - Tek tikla Test/Dev gecisi: web adasindaki anahtar (preload koprusu)
+ *     ve Dock ikonunun sag tik menusu
  *   - Dock rozeti (okunmamis bildirim — web uygulamasi bildirir)
  *   - hermes:// derin linkleri (hermes://work/TASK-56)
  *   - pencere boyutu/konumu hatirlanir; baglanti yoksa yerel hata sayfasi
@@ -155,9 +157,22 @@ function go(pathname) {
     mainWindow.loadURL(new URL(pathname, base).toString())
 }
 
+// Web koprusu yalniz katalogdaki sunucularin sayfalarina cevap verir.
+function fromKnownServer(event) {
+    const origin = (() => { try { return new URL(event.senderFrame.url).origin } catch { return null } })()
+    return SERVERS.some((s) => new URL(s.url).origin === origin)
+}
+
 // --- Menu --------------------------------------------------------------------------
 function buildMenu() {
     const active = currentServer().id
+    // Dock ikonu sag tik: sunucu secimi tek tikla.
+    app.dock?.setMenu(Menu.buildFromTemplate(SERVERS.map((s) => ({
+        label: s.label,
+        type: 'radio',
+        checked: s.id === active,
+        click: () => switchServer(s.id),
+    }))))
     const template = [
         { role: 'appMenu' },
         { role: 'editMenu' },
@@ -176,12 +191,20 @@ function buildMenu() {
         { role: 'viewMenu' },
         {
             label: 'Sunucu',
-            submenu: SERVERS.map((s) => ({
-                label: s.label,
-                type: 'radio',
-                checked: s.id === active,
-                click: () => switchServer(s.id),
-            })),
+            submenu: [
+                ...SERVERS.map((s) => ({
+                    label: s.label,
+                    type: 'radio',
+                    checked: s.id === active,
+                    click: () => switchServer(s.id),
+                })),
+                { type: 'separator' },
+                {
+                    label: 'Test ⇄ Dev geçiş',
+                    accelerator: 'CmdOrCtrl+Shift+D',
+                    click: () => switchServer(active === 'dev' ? 'test' : 'dev'),
+                },
+            ],
         },
         { role: 'windowMenu' },
         {
@@ -200,6 +223,23 @@ ipcMain.on('hermes:set-badge', (event, count) => {
     if (origin !== new URL(currentServer().url).origin) return
     const n = Number.isInteger(count) && count > 0 ? count : 0
     app.setBadgeCount(n)
+})
+
+// Sunucu katalogu + secili sunucu (web adasindaki Test/Dev anahtari).
+ipcMain.on('hermes:get-servers', (event) => {
+    if (!fromKnownServer(event)) {
+        event.returnValue = null
+        return
+    }
+    event.returnValue = {
+        current: currentServer().id,
+        servers: SERVERS.map((s) => ({ id: s.id, label: s.short || s.label })),
+    }
+})
+ipcMain.on('hermes:switch-server', (event, id) => {
+    if (!fromKnownServer(event)) return
+    if (!SERVERS.some((s) => s.id === id) || id === currentServer().id) return
+    switchServer(id)
 })
 
 // --- Yasam dongusu ----------------------------------------------------------------

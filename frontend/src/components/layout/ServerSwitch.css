@@ -1,0 +1,6 @@
+/* Sunucu anahtari: canli (Test) yesil, Dev amber nokta — hangi ortamda
+   oldugun bir bakista belli olur. */
+.srv-switch button { display: inline-flex; gap: 5px; padding: 0 9px; }
+.srv-switch__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--h-text-muted); }
+.srv-switch--test .srv-switch__dot { background: var(--hp-green-500); }
+.srv-switch--dev .srv-switch__dot { background: var(--hp-amber-500); }

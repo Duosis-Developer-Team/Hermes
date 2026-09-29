@@ -1,36 +1,128 @@
 /**
  * =============================================================================
- * HERMES PLATFORM - Login Page
+ * HERMES PLATFORM - Giris ekrani (Hermes Liquid, 30.09)
  * =============================================================================
- * Kullanıcı giriş sayfası. Jira tarzı minimalist tasarım.
+ * Uygulamanin kendi dili: sivi zemin, ustte dinamik ada (marka + sunucu /
+ * tema / dil haplari), solda Hermes'i anlatan vitrin (baslik, yuzen urun
+ * kartlari, dock), sagda cam giris karti. Dar ekranda vitrin gizlenir,
+ * yalniz kart kalir.
+ *
+ * Akis DEGISMEDI:
+ *   - Birincil yol Microsoft SSO (redirect_uri sabit; `?workspace=` OAuth
+ *     `state` ile korunur — api/workspace.js).
+ *   - E-posta/parola katlanir; tenant reddederse platform ucu denenir
+ *     (ayri audience/cerez), basarisizlikta TEK ve ayni hata gosterilir.
+ * Vitrindeki kartlar SUSLEMEDIR (aria-hidden): gercek veri gostermez.
  * =============================================================================
  */
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Form, Input, Button, message, Switch } from 'antd'
+import { Form, Input, Button, message } from 'antd'
 import {
-    UserOutlined,
-    LockOutlined,
-    WindowsOutlined,
+    CalendarOutlined,
+    CheckSquareOutlined,
+    ClockCircleOutlined,
+    CustomerServiceOutlined,
     DownOutlined,
+    LockOutlined,
+    MoonOutlined,
+    SafetyCertificateOutlined,
+    SunOutlined,
     UpOutlined,
-    BulbFilled,
-    BulbOutlined,
+    UserOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../stores/authStore'
 import { useThemeStore } from '../stores/themeStore'
+import { useLocaleStore } from '../stores/localeStore'
 import { authService } from '../services/api'
 import { platformService } from '../api/platformApi'
 import { usePlatformAuthStore } from '../stores/platformAuthStore'
 import { buildMicrosoftAuthorizeUrl, readWorkspace } from '../api/workspace'
 import LiquidBackdrop from '../components/layout/LiquidBackdrop'
+import ServerSwitch from '../components/layout/ServerSwitch'
 import './LoginPage.css'
 import { useT } from '../i18n'
 
+/** Microsoft dort kare isareti (resmi renkler). */
+function MicrosoftMark() {
+    return (
+        <svg viewBox="0 0 21 21" width="18" height="18" aria-hidden="true">
+            <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+            <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+            <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+            <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+        </svg>
+    )
+}
+
+const FEATURES = [
+    ['time', <ClockCircleOutlined key="i" />, 'featTime', 'featTimeSub'],
+    ['work', <CheckSquareOutlined key="i" />, 'featWork', 'featWorkSub'],
+    ['meet', <CalendarOutlined key="i" />, 'featMeet', 'featMeetSub'],
+    ['tickets', <CustomerServiceOutlined key="i" />, 'featTickets', 'featTicketsSub'],
+]
+
+/** Solda urun vitrini — suslemedir, gercek veri gostermez. */
+function Showcase() {
+    const t = useT()
+    return (
+        <section className="lg-show" aria-labelledby="lg-headline">
+            <span className="lg-eyebrow">{t('login.eyebrow')}</span>
+            <h1 id="lg-headline" className="lg-headline">{t('login.headline')}</h1>
+            <p className="lg-sub">{t('login.sub')}</p>
+
+            <div className="lg-stage" aria-hidden="true">
+                <div className="lg-float lg-float--week">
+                    <span className="lg-float__label">{t('login.prevWeek')}</span>
+                    <div className="lg-week">
+                        <svg viewBox="0 0 64 64" className="lg-ring">
+                            <circle cx="32" cy="32" r="26" className="lg-ring__track" />
+                            <circle cx="32" cy="32" r="26" className="lg-ring__arc" />
+                        </svg>
+                        <div>
+                            <b>32<small> / 40</small></b>
+                            <span>{t('login.prevHours')}</span>
+                        </div>
+                    </div>
+                    <div className="lg-bars">
+                        {[8, 7, 8, 6, 3].map((h, i) => <i key={i} style={{ '--h': `${(h / 8) * 100}%`, animationDelay: `${i * 90}ms` }} />)}
+                    </div>
+                </div>
+                <div className="lg-float lg-float--meet">
+                    <span className="lg-float__label">{t('login.prevNext')}</span>
+                    <b>{t('login.prevMeeting')}</b>
+                    <span className="lg-pill">{t('login.prevIn')}</span>
+                </div>
+                <div className="lg-float lg-float--work">
+                    <span className="lg-float__label">{t('login.prevWork')}</span>
+                    <div className="lg-mix"><i className="is-bad" /><i className="is-warn" /><i className="is-info" /></div>
+                    <div className="lg-mix__legend">
+                        <span><i className="is-bad" />2 {t('login.prevOverdue')}</span>
+                        <span><i className="is-warn" />3 {t('login.prevToday')}</span>
+                        <span><i className="is-info" />5 {t('login.prevWeekItems')}</span>
+                    </div>
+                </div>
+            </div>
+
+            <ul className="lg-features">
+                {FEATURES.map(([key, icon, title, sub]) => (
+                    <li key={key} className={`lg-feature lg-feature--${key}`}>
+                        <span className="lg-feature__icon" aria-hidden="true">{icon}</span>
+                        <span className="lg-feature__text">
+                            <b>{t(`login.${title}`)}</b>
+                            <small>{t(`login.${sub}`)}</small>
+                        </span>
+                    </li>
+                ))}
+            </ul>
+        </section>
+    )
+}
+
 /**
  * Login Page Component
- * 
+ *
  * E-posta ve şifre ile giriş yapılır.
  * Başarılı girişte token saklanır ve ana sayfaya yönlendirilir.
  */
@@ -44,8 +136,11 @@ function LoginPage() {
     const navigate = useNavigate()
     const { login } = useAuthStore()
     const platformLogin = usePlatformAuthStore((s) => s.login)
-    const isLight = useThemeStore((s) => s.theme === 'light')
-    const toggleTheme = useThemeStore((s) => s.toggleTheme)
+    const theme = useThemeStore((s) => s.theme)
+    const setTheme = useThemeStore((s) => s.setTheme)
+    const locale = useLocaleStore((s) => s.locale)
+    const toggleLocale = useLocaleStore((s) => s.toggleLocale)
+    const workspace = readWorkspace(window.location.search)
 
     const handleSubmit = async (values) => {
         setLoading(true)
@@ -113,47 +208,72 @@ function LoginPage() {
             tenantId,
             clientId,
             origin: window.location.origin,
-            workspace: readWorkspace(window.location.search),
+            workspace,
         })
     }
 
     return (
         <div className="login-page">
-            {/* Hermes Liquid: uygulamayla ayni sivi zemin + cam kabuk. */}
+            {/* Hermes Liquid: uygulamayla ayni sivi zemin. */}
             <LiquidBackdrop />
-            {/* Light / Dark toggle — top-right, same control as the app header */}
-            <Switch
-                className="theme-switch login-theme-switch"
-                checked={isLight}
-                onChange={toggleTheme}
-                checkedChildren={<BulbFilled />}
-                unCheckedChildren={<BulbOutlined />}
-                aria-label={t('login.toggleTheme')}
-            />
 
-            <div className="login-container">
-                {/* Hermes isareti (maske) + kelime isareti */}
-                <div className="login-logo">
-                    <span className="login-mark" aria-hidden="true"><i /></span>
-                    <span className="login-wordmark">Hermes</span>
-                </div>
+            {/* Dinamik ada: marka solda; sunucu (yalniz masaustu), tema ve dil. */}
+            <header className="lg-island">
+                <span className="lg-island__brand">
+                    <span className="lg-mark lg-mark--sm" aria-hidden="true"><i /></span>
+                    <b>Hermes</b>
+                </span>
+                <span className="lg-island__prefs">
+                    <ServerSwitch />
+                    <span className="island-seg login-theme-switch" role="group" aria-label={t('login.toggleTheme')}>
+                        {[['light', <SunOutlined key="s" />], ['dark', <MoonOutlined key="m" />]].map(([mode, icon]) => (
+                            <button
+                                key={mode}
+                                type="button"
+                                className={theme === mode ? 'is-on' : undefined}
+                                aria-pressed={theme === mode}
+                                aria-label={mode === 'light' ? t('shell.switchToLight') : t('shell.switchToDark')}
+                                onClick={() => setTheme(mode)}
+                            >
+                                {icon}
+                            </button>
+                        ))}
+                    </span>
+                    <span className="island-seg island-seg--text" role="group" aria-label={t('shell.language')}>
+                        {['tr', 'en'].map((code) => (
+                            <button
+                                key={code}
+                                type="button"
+                                className={locale === code ? 'is-on' : undefined}
+                                aria-pressed={locale === code}
+                                aria-label={code === 'tr' ? t('shell.switchToTurkish') : t('shell.switchToEnglish')}
+                                onClick={() => { if (locale !== code) toggleLocale() }}
+                            >
+                                {code.toUpperCase()}
+                            </button>
+                        ))}
+                    </span>
+                </span>
+            </header>
 
-                {/* Login Card */}
-                <div className="login-card">
+            <main className="lg-main">
+                <Showcase />
+
+                {/* Giris karti */}
+                <section className="login-card" aria-labelledby="lg-card-title">
+                    <span className="lg-mark" aria-hidden="true"><i /></span>
                     <div className="login-header">
-                        <h2>{t('login.signInToHermes')}</h2>
+                        <h2 id="lg-card-title">{t('login.signInToHermes')}</h2>
                         <p>{t('login.microsoftHint')}</p>
                     </div>
 
                     {/* Primary: Microsoft SSO */}
-                    <Button
-                        block
-                        icon={<WindowsOutlined />}
-                        onClick={handleMicrosoftLogin}
-                        className="ms-login-btn"
-                    >
+                    <Button block onClick={handleMicrosoftLogin} className="ms-login-btn">
+                        <MicrosoftMark />
                         {t('login.signInWithMicrosoft')}
                     </Button>
+
+                    <div className="lg-or"><span>{t('login.or')}</span></div>
 
                     {/* Secondary: collapsible email/password (admins, service accounts) */}
                     <button
@@ -162,7 +282,7 @@ function LoginPage() {
                         aria-expanded={showEmail}
                         onClick={() => setShowEmail((v) => !v)}
                     >
-                        <span>Sign in with email &amp; password</span>
+                        <span>{t('login.emailToggle')}</span>
                         {showEmail ? <UpOutlined /> : <DownOutlined />}
                     </button>
 
@@ -179,49 +299,46 @@ function LoginPage() {
                                 label={t('login.email')}
                                 rules={[
                                     { required: true, message: t('login.emailRequired') },
-                                    { type: 'email', message: t('login.emailInvalid') }
+                                    { type: 'email', message: t('login.emailInvalid') },
                                 ]}
                             >
                                 <Input
                                     prefix={<UserOutlined />}
                                     placeholder={t('login.emailPlaceholder')}
                                     size="large"
+                                    autoComplete="username"
                                 />
                             </Form.Item>
 
                             <Form.Item
                                 name="password"
                                 label={t('login.password')}
-                                rules={[
-                                    { required: true, message: t('login.passwordRequired') }
-                                ]}
+                                rules={[{ required: true, message: t('login.passwordRequired') }]}
                             >
                                 <Input.Password
                                     prefix={<LockOutlined />}
                                     placeholder={t('login.passwordPlaceholder')}
                                     size="large"
+                                    autoComplete="current-password"
                                 />
                             </Form.Item>
 
                             <Form.Item style={{ marginBottom: 0 }}>
-                                <Button
-                                    type="primary"
-                                    htmlType="submit"
-                                    loading={loading}
-                                    className="login-submit-btn"
-                                >
+                                <Button type="primary" htmlType="submit" loading={loading} className="login-submit-btn">
                                     {t('login.signIn')}
                                 </Button>
                             </Form.Item>
                         </Form>
                     )}
-                </div>
 
-                {/* Footer */}
-                <div className="login-footer">
-                    Hermes Platform v1.0
-                </div>
-            </div>
+                    <div className="lg-card__foot">
+                        <span><SafetyCertificateOutlined aria-hidden="true" /> {t('login.secure')}</span>
+                        {workspace && <span>{t('login.workspace')}: <b>{workspace}</b></span>}
+                    </div>
+                </section>
+            </main>
+
+            <footer className="login-footer">{t('login.footer')}</footer>
         </div>
     )
 }

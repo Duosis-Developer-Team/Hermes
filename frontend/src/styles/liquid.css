@@ -649,3 +649,36 @@
 /* Musteri secici satiri: logo + ad (customerSelect.jsx). */
 .lq-copt { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; vertical-align: middle; }
 .lq-copt__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Ada hap anahtarlari (tema, dil, sunucu) — kabuk VE giris ekrani ortak. */
+.island-seg {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border-radius: var(--h-radius-pill);
+    background: var(--h-nav-hover);
+}
+.island-seg button {
+    display: grid;
+    place-items: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 7px;
+    border: 0;
+    border-radius: var(--h-radius-pill);
+    background: transparent;
+    color: var(--h-nav-ink-2);
+    font: 600 11.5px/1 var(--h-font-family);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: background 200ms var(--h-ease-standard), color 200ms, transform 250ms var(--h-ease-spring);
+}
+.island-seg button:hover { color: var(--h-nav-ink); }
+.island-seg button.is-on {
+    background: var(--h-nav-ind);
+    color: var(--h-nav-on);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+.island-seg button:active { transform: scale(0.92); }
+.island-seg button:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 1px; }

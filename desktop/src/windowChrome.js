@@ -24,7 +24,9 @@ html::after {
 .main-header { -webkit-app-region: drag; }
 .main-header .island,
 .main-header .island * { -webkit-app-region: no-drag; }
-.login-page .login-theme-switch { -webkit-app-region: no-drag; }
+.login-page .lg-island { -webkit-app-region: drag; }
+.login-page .lg-island button,
+.login-page .lg-island [role="group"] { -webkit-app-region: no-drag; }
 `
 
 module.exports = { TRAFFIC_LIGHTS, DRAG_CSS }
