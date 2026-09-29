@@ -1879,6 +1879,10 @@ export default {
     },
 
     errors: {
+        unexpectedHint: 'Sayfayı yenilemek genellikle sorunu çözer. Devam ederse yöneticinize başvurun.',
+        pageLoadFailedHint: 'Diğer sayfalar çalışmaya devam ediyor. Yeniden deneyebilirsiniz.',
+        updating: 'Hermes güncellendi',
+        updatingHint: 'Yeni sürüm yükleniyor…',
         unexpected: 'Hermes beklenmeyen bir hatayla karşılaştı',
         pageLoadFailed: 'Bu sayfa yüklenirken bir sorun oluştu',
         somethingWrong: 'Bir sorun oluştu.',

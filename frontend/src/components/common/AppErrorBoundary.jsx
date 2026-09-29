@@ -16,6 +16,7 @@ import React from 'react'
 // nadiren gorunur ve dil degisiminde yeniden render edilmesi gerekmez.
 import { translate } from '../../i18n'
 import { useLocaleStore } from '../../stores/localeStore'
+import { isChunkLoadError, reloadForNewVersion } from '../../utils/staleChunk'
 
 const t = (key) => translate(useLocaleStore.getState().locale, key)
 
@@ -26,6 +27,8 @@ export default class AppErrorBoundary extends React.Component {
     }
 
     static getDerivedStateFromError(error) {
+        // Eski surum parcasi: bir kez yenile (utils/staleChunk).
+        if (isChunkLoadError(error) && reloadForNewVersion()) return { error, updating: true }
         return { error }
     }
 
@@ -40,6 +43,7 @@ export default class AppErrorBoundary extends React.Component {
 
     render() {
         if (!this.state.error) return this.props.children
+        if (this.state.updating) return null
 
         return (
             <div

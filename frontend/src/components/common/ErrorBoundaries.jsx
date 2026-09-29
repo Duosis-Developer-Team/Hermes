@@ -16,6 +16,7 @@ import { Button, Result } from 'antd'
 // nadiren gorunur ve dil degisiminde yeniden render edilmesi gerekmez.
 import { translate, useT } from '../../i18n'
 import { useLocaleStore } from '../../stores/localeStore'
+import { isChunkLoadError, reloadForNewVersion } from '../../utils/staleChunk'
 
 const t = (key) => translate(useLocaleStore.getState().locale, key)
 
@@ -26,6 +27,9 @@ class BaseBoundary extends React.Component {
     }
 
     static getDerivedStateFromError(error) {
+        // Yeni surum deploy edildi, eski parca yok → bir kez yenile; bu
+        // arada hata ekrani yerine "guncelleniyor" gosterilir.
+        if (isChunkLoadError(error) && reloadForNewVersion()) return { error, updating: true }
         return { error }
     }
 
@@ -43,6 +47,9 @@ class BaseBoundary extends React.Component {
 
     render() {
         if (!this.state.error) return this.props.children
+        if (this.state.updating) {
+            return <Result status="info" title={t('errors.updating')} subTitle={t('errors.updatingHint')} />
+        }
         return (
             <Result
                 status="error"
@@ -67,7 +74,7 @@ export function AppErrorBoundary({ children }) {
         <BaseBoundary
             level="app"
             title={t('errors.unexpected')}
-            subtitle="Refreshing the page usually fixes this. If it persists, contact your administrator."
+            subtitle={t('errors.unexpectedHint')}
         >
             {children}
         </BaseBoundary>
@@ -81,7 +88,7 @@ export function RouteErrorBoundary({ resetKey, children }) {
             level="route"
             resetKey={resetKey}
             title={t('errors.pageLoadFailed')}
-            subtitle="Other pages keep working. You can try again."
+            subtitle={t('errors.pageLoadFailedHint')}
         >
             {children}
         </BaseBoundary>

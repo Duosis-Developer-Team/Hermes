@@ -11,6 +11,7 @@ import ReactDOM from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
 import Root from './Root'
 import AppErrorBoundary from './components/common/AppErrorBoundary'
+import { installStaleChunkGuard } from './utils/staleChunk'
 // Side-effect import: applies the saved data-theme to <html> before the
 // first paint so there's no dark→light flash on light-mode reloads.
 // Side-effect: ilk paint oncesi data-theme attribute'u yazilir.
@@ -36,6 +37,9 @@ import { queryClient } from './query/queryClient'
 // DS V2 (Sprint 2): AntD temasi artik token koprusunden ve TEPKILI —
 // tema degisince ConfigProvider algorithm+token seti birlikte doner.
 
+
+// Deploy sonrasi acik kalan sekme/pencere: eski parca istenirse bir kez yenile.
+installStaleChunkGuard()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>

@@ -1885,6 +1885,10 @@ export default {
     },
 
     errors: {
+        unexpectedHint: 'Refreshing the page usually fixes this. If it persists, contact your administrator.',
+        pageLoadFailedHint: 'Other pages keep working. You can try again.',
+        updating: 'Hermes was updated',
+        updatingHint: 'Loading the new version…',
         unexpected: 'Hermes ran into an unexpected error',
         pageLoadFailed: 'Something went wrong while loading this page',
         somethingWrong: 'Something went wrong.',
