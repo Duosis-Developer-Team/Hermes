@@ -32,6 +32,26 @@ from shared.permissions import Perm
 from shared.responses import success_response
 
 
+def _tenant_view(db: Session, users, tenant_id):
+    """UserResponse listesi; `is_active` CAGIRANIN TENANT'ina gore:
+    kullanici aktif VE bu tenant'taki uyelik aktif. Cok tenant'li bir
+    kullanici bu tenant'ta arsivlendiginde (uyelik 'suspended') global
+    satir aktif kalir ama admin ekrani onu pasif gorur. Sekil degismez."""
+    from ..services.membership_service import ACTIVE_MEMBERSHIP_STATUS
+
+    statuses = UserService(db).membership_statuses(
+        [u.id for u in users], tenant_id=tenant_id
+    )
+    out = []
+    for u in users:
+        item = UserResponse.model_validate(u)
+        item.is_active = bool(u.is_active) and (
+            statuses.get(u.id) == ACTIVE_MEMBERSHIP_STATUS
+        )
+        out.append(item)
+    return out
+
+
 # Router oluştur
 router = APIRouter(
     prefix="/users",
@@ -151,7 +171,7 @@ async def list_users(
     
     return UserListResponse(
         success=True,
-        data=users,
+        data=_tenant_view(db, users, admin.tenant_id),
         total=total
     )
 
@@ -415,7 +435,7 @@ async def get_user(
         user = user_service.get_in_tenant_or_404(
             user_id, tenant_id=admin.tenant_id
         )
-        return user
+        return _tenant_view(db, [user], admin.tenant_id)[0]
     except NotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -470,7 +490,7 @@ async def update_user(
         user = user_service.update(
             user_id, user_data, tenant_id=admin.tenant_id
         )
-        return user
+        return _tenant_view(db, [user], admin.tenant_id)[0]
     except NotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

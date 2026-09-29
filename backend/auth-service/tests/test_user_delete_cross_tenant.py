@@ -1,5 +1,5 @@
 # =============================================================================
-# DELETE /users/{id} — baska tenant'in verisini ASLA yok etmez (2026-09-29)
+# DELETE + PUT /users/{id} — baska tenant verisini ASLA bozmaz (2026-09-29)
 # =============================================================================
 # Kilitlenen sozlesmeler:
 #   1. Hedefin BASKA tenant'larda uyeligi varsa: yalnizca cagiranin
@@ -219,3 +219,132 @@ def test_last_admin_guard_on_hard_delete_still_enforced(
     assert r.status_code == 409, r.text
     db.expire_all()
     assert db.get(User, solo_admin.id) is not None
+
+
+# =============================================================================
+# PUT /users/{id} — cok tenant'li kullanicinin global satiri korunur
+# =============================================================================
+#   5. is_active -> yalnizca bu tenant'taki uyelik ('suspended'/'active');
+#      global bayrak degismez; yanittaki is_active tenant gorunumudur.
+#   6. e-posta/parola/ad DEGISIKLIGI -> 409; ayni degerin geri gonderilmesi
+#      (form gidis-donusu) sorun degil. Tek tenant'li kullanici: eskisi gibi.
+#   7. Son-admin kilidi pasiflestirmede de gecerli (409).
+
+MULTI_409 = (
+    "This user belongs to other workspaces; profile and credentials can "
+    "only be changed by the user or a platform administrator."
+)
+
+
+def test_archive_in_b_keeps_user_active_in_a_and_unarchive_restores(
+    as_user, two, pg_session, signing
+):
+    from app.models.user import User
+    from shared.exceptions import UnauthorizedError
+
+    w, db = two, pg_session
+    m = w["multi"]
+    client = as_user(w["manager"], w["b"])
+
+    r = client.put(f"{USERS}/{m.id}", json={"is_active": False})
+    assert r.status_code == 200, r.text
+    assert r.json()["is_active"] is False
+
+    db.expire_all()
+    assert db.get(User, m.id).is_active is True          # global dokunulmadi
+    assert _membership(db, w["a"], m.id).status == "active"
+    assert _membership(db, w["b"], m.id).status == "suspended"
+    assert _role_rows(db, w["b"], m.id) == 1              # roller korunur
+
+    assert _login(db, w["a"], "m@multi.com").access_token
+    with pytest.raises(UnauthorizedError):
+        _login(db, w["b"], "m@multi.com")
+
+    # B'nin admin ekrani onu PASIF gorur (liste + detay).
+    assert str(m.id) not in {u["id"] for u in client.get(USERS).json()["data"]}
+    rows = {u["id"]: u for u in client.get(
+        USERS, params={"include_inactive": "true"}).json()["data"]}
+    assert rows[str(m.id)]["is_active"] is False
+    assert client.get(f"{USERS}/{m.id}").json()["is_active"] is False
+
+    back = client.put(f"{USERS}/{m.id}", json={"is_active": True})
+    assert back.status_code == 200, back.text
+    assert back.json()["is_active"] is True
+    assert _membership(db, w["b"], m.id).status == "active"
+    assert _login(db, w["b"], "m@multi.com").access_token
+
+
+@pytest.mark.parametrize("payload", [
+    {"email": "new@multi.com"},
+    {"password": "baskasifre1"},
+    {"full_name": "Yeni Ad"},
+])
+def test_profile_change_on_multi_tenant_user_is_409(
+    as_user, two, pg_session, payload
+):
+    from app.models.user import User
+
+    w, db = two, pg_session
+    m = w["multi"]
+    r = as_user(w["manager"], w["b"]).put(f"{USERS}/{m.id}", json=payload)
+    assert r.status_code == 409, r.text
+    assert r.json()["detail"] == MULTI_409
+    db.expire_all()
+    u = db.get(User, m.id)
+    assert u.email == "m@multi.com" and u.full_name == "m@multi.com"
+
+
+def test_form_round_trip_on_multi_tenant_user_is_ok(as_user, two):
+    """Duzenleme formu ayni e-posta/adi geri gonderir — 409 OLMAMALI."""
+    w = two
+    m = w["multi"]
+    r = as_user(w["manager"], w["b"]).put(f"{USERS}/{m.id}", json={
+        "email": "M@multi.com", "full_name": "m@multi.com",
+        "is_active": True,
+    })
+    assert r.status_code == 200, r.text
+
+
+def test_single_tenant_user_profile_and_archive_unchanged(
+    as_user, two, pg_session
+):
+    from app.models.user import User
+    from shared.auth import verify_password
+
+    w, db = two, pg_session
+    solo = _user(db, w["b"], "solo@b.com")
+    client = as_user(w["manager"], w["b"])
+    r = client.put(f"{USERS}/{solo.id}", json={
+        "email": "solo2@b.com", "full_name": "Solo", "password": "yenisifre1",
+    })
+    assert r.status_code == 200, r.text
+    db.expire_all()
+    u = db.get(User, solo.id)
+    assert u.email == "solo2@b.com" and u.full_name == "Solo"
+    assert verify_password("yenisifre1", u.hashed_password)
+
+    off = client.put(f"{USERS}/{solo.id}", json={"is_active": False})
+    assert off.status_code == 200 and off.json()["is_active"] is False
+    db.expire_all()
+    assert db.get(User, solo.id).is_active is False       # eski davranis
+    assert _membership(db, w["b"], solo.id).status == "active"
+
+
+def test_last_admin_guard_on_deactivation(as_user, two, pg_session):
+    w, db = two, pg_session
+    m = w["multi"]
+    _assign(db, w["b"], m, w["admin_role_b"])
+    client = as_user(w["manager"], w["b"])
+    r = client.put(f"{USERS}/{m.id}", json={"is_active": False})
+    assert r.status_code == 409, r.text
+    assert _membership(db, w["b"], m.id).status == "active"
+
+    solo_admin = _user(db, w["b"], "boss@b.com")
+    _assign(db, w["b"], solo_admin, w["admin_role_b"])
+    # Iki admin var: biri pasiflestirilebilir ...
+    assert client.put(f"{USERS}/{m.id}",
+                      json={"is_active": False}).status_code == 200
+    # ... ama uyeligi askida olan admin SAYILMAZ: kalan tek aktif admin
+    # pasiflestirilemez.
+    r2 = client.put(f"{USERS}/{solo_admin.id}", json={"is_active": False})
+    assert r2.status_code == 409, r2.text

@@ -209,6 +209,63 @@ class UserService:
             raise NotFoundError("User", user_id)
         return user
 
+    def has_other_memberships(self, user_id, *, tenant_id) -> bool:
+        """Kullanicinin cagiran DISINDA bir tenant'ta (her durumda) uyelik
+        satiri var mi? Varsa global `users` satiri ORTAK veridir: bir
+        tenant admini onu degistiremez/yok edemez."""
+        from ..models.tenancy import TenantMembership
+
+        tid = self.tenant_uuid(tenant_id)
+        return (
+            self.db.query(TenantMembership.id)
+            .filter(
+                TenantMembership.user_id == user_id,
+                TenantMembership.tenant_id != tid,
+            )
+            .first()
+            is not None
+        )
+
+    def membership_statuses(self, user_ids, *, tenant_id) -> dict:
+        """{user_id: bu tenant'taki uyelik durumu}."""
+        from ..models.tenancy import TenantMembership
+
+        tid = self.tenant_uuid(tenant_id)
+        ids = list(user_ids)
+        if tid is None or not ids:
+            return {}
+        rows = (
+            self.db.query(TenantMembership.user_id, TenantMembership.status)
+            .filter(
+                TenantMembership.tenant_id == tid,
+                TenantMembership.user_id.in_(ids),
+            )
+            .all()
+        )
+        return {uid: st for uid, st in rows}
+
+    def holds_tenant_admin(self, user_id, *, tenant_id) -> bool:
+        """Bu tenant'ta system-admin atamasi var mi (tenant-dogru)."""
+        from ..models.rbac import RbacUserRole
+        from .rbac_service import SYSTEM_ADMIN_CODE, get_role_by_code
+
+        tid = self.tenant_uuid(tenant_id)
+        admin_role = get_role_by_code(
+            self.db, SYSTEM_ADMIN_CODE, tenant_id=tid
+        )
+        if admin_role is None:
+            return False
+        return (
+            self.db.query(RbacUserRole.id)
+            .filter(
+                RbacUserRole.user_id == user_id,
+                RbacUserRole.role_id == admin_role.id,
+                RbacUserRole.tenant_id == tid,
+            )
+            .first()
+            is not None
+        )
+
     def get_by_id_or_404(self, user_id: UUID) -> User:
         """
         ID ile kullanıcı getirir, bulunamazsa hata fırlatır.
@@ -311,6 +368,63 @@ class UserService:
         
         # Güncelleme verilerini al (sadece set edilmiş alanları)
         update_data = user_data.model_dump(exclude_unset=True)
+
+        # RBAC son-admin kilidi: bu tenant'in son aktif system-admin'i
+        # pasiflestirilemez (tek ve cok tenant'li kullanici icin ayni).
+        if update_data.get("is_active") is False and self.holds_tenant_admin(
+            db_user.id, tenant_id=tenant_id
+        ):
+            from .rbac_service import enforce_last_admin_guard
+
+            enforce_last_admin_guard(
+                self.db, losing_user_id=db_user.id,
+                tenant_id=self.tenant_uuid(tenant_id),
+            )
+
+        # CAPRAZ-TENANT KORUMASI (2026-09-29): kullanici BASKA tenant'larda
+        # da uyeyse global `users` satiri ORTAK veridir.
+        #   - is_active -> YALNIZCA bu tenant'taki uyelik durumu
+        #     (false: 'suspended', true: 'active'); global bayrak degismez.
+        #   - e-posta / parola / ad degisikligi -> 409 (gercekten DEGISEN
+        #     deger; form ayni degeri geri gonderirse sorun degil).
+        #   - Rol/admin bayraklari tenant kapsamlidir (rol atamasi) ve
+        #     calismaya devam eder.
+        if self.has_other_memberships(db_user.id, tenant_id=tenant_id):
+            changed = []
+            if ("email" in update_data
+                    and (update_data["email"] or "").strip().lower()
+                    != (db_user.email or "").lower()):
+                changed.append("email")
+            if update_data.get("password"):
+                changed.append("password")
+            if ("full_name" in update_data
+                    and (update_data["full_name"] or None)
+                    != (db_user.full_name or None)):
+                changed.append("full_name")
+            if changed:
+                raise ConflictError(
+                    message=(
+                        "This user belongs to other workspaces; profile "
+                        "and credentials can only be changed by the user "
+                        "or a platform administrator."
+                    ),
+                    field=changed[0],
+                )
+            for key in ("email", "password", "full_name"):
+                update_data.pop(key, None)
+            if "is_active" in update_data:
+                from ..models.tenancy import TenantMembership
+                from .membership_service import ACTIVE_MEMBERSHIP_STATUS
+
+                want_active = bool(update_data.pop("is_active"))
+                self.db.query(TenantMembership).filter(
+                    TenantMembership.user_id == db_user.id,
+                    TenantMembership.tenant_id == self.tenant_uuid(tenant_id),
+                ).update(
+                    {"status": ACTIVE_MEMBERSHIP_STATUS if want_active
+                     else "suspended"},
+                    synchronize_session=False,
+                )
         
         # E-posta değişiyorsa, çakışma kontrolü yap
         if "email" in update_data:
@@ -389,29 +503,15 @@ class UserService:
         """
         from ..models.rbac import RbacUserRole
         from ..models.tenancy import TenantMembership
-        from .rbac_service import (
-            SYSTEM_ADMIN_CODE,
-            enforce_last_admin_guard,
-            get_role_by_code,
-        )
+        from .rbac_service import enforce_last_admin_guard
 
         db_user = self.get_in_tenant_or_404(user_id, tenant_id=tenant_id)
         tid = self.tenant_uuid(tenant_id)
 
         # Bu tenant'ta system-admin atamasi var mi? (tenant-dogru kontrol;
         # users.is_admin coklu tenant'ta anlamsiz bir turev sutundur)
-        admin_role = get_role_by_code(
-            self.db, SYSTEM_ADMIN_CODE, tenant_id=tid
-        )
-        holds_tenant_admin = admin_role is not None and (
-            self.db.query(RbacUserRole.id)
-            .filter(
-                RbacUserRole.user_id == db_user.id,
-                RbacUserRole.role_id == admin_role.id,
-                RbacUserRole.tenant_id == tid,
-            )
-            .first()
-            is not None
+        holds_tenant_admin = self.holds_tenant_admin(
+            db_user.id, tenant_id=tid
         )
 
         # CAPRAZ-TENANT KORUMASI (2026-09-29): `users` satiri GLOBALDIR.

@@ -247,14 +247,26 @@ def enforce_last_admin_guard(
     admin_role = get_role_by_code(db, SYSTEM_ADMIN_CODE, tenant_id=tenant_id)
     if admin_role is None:
         return
+    # Diger admin ancak bu tenant'ta AKTIF uyeligi varsa sayilir: uyeligi
+    # 'suspended'/'removed' olan bir admin (rol satiri dursa bile) izin
+    # cozemez, tenant'i yonetemez (2026-09-29).
+    from ..models.tenancy import TenantMembership
+    from .membership_service import ACTIVE_MEMBERSHIP_STATUS
+
     others = (
         db.query(RbacUserRole)
         .join(User, User.id == RbacUserRole.user_id)
+        .join(
+            TenantMembership,
+            (TenantMembership.user_id == RbacUserRole.user_id)
+            & (TenantMembership.tenant_id == RbacUserRole.tenant_id),
+        )
         .filter(
             RbacUserRole.role_id == admin_role.id,
             RbacUserRole.tenant_id == tenant_id,
             RbacUserRole.user_id != losing_user_id,
             User.is_active.is_(True),
+            TenantMembership.status == ACTIVE_MEMBERSHIP_STATUS,
         )
         .count()
     )
