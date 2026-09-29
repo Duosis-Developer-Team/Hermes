@@ -39,7 +39,7 @@ import ArchivedTaskMeta from '../../features/tasks/components/ArchivedTaskMeta'
 import { aggregateStatus } from '../../features/tasks/model/grouping'
 import './TaskCard.css'
 import { useT } from '../../i18n'
-import { Avatar } from '../liquid'
+import { Avatar, CustomerLogo } from '../liquid'
 
 function userLabel(id, userMap) {
     if (!id) return '—'
@@ -220,35 +220,39 @@ function TaskCard({
             </div>
 
             <div className="task-card-body">
-                <button
-                    type="button"
-                    className="task-card-title task-card-open"
-                    /* Durum yalniz RENKLE anlatilmaz: erisilebilir ad
-                       basligi, durumu ve onceligi tasir. */
-                    aria-label={
-                        `${task.task_code ? task.task_code + ' ' : ''}${task.title}`
-                        + ` — ${STATUS_LABELS[task.status] || task.status || 'unknown'}`
-                        + (task.priority ? `, priority ${task.priority}` : '')
-                    }
-                    onClick={(e) => {
-                        // Kok da ayni islemi tetikler; tekrari onle.
-                        e.stopPropagation()
-                        handleBodyClick(e)
-                    }}
-                    onKeyDown={(e) => {
-                        /*
-                         * BOARD'da kart dnd-kit sarmalayicisinda yasar;
-                         * KeyboardSensor Enter/Space'i yakalayip acmayi
-                         * yutuyordu (final QA regresyonu). Olay
-                         * sarmalayiciya cikarilmaz: buton acar.
-                         */
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.stopPropagation()
+                {/* Sol: musteri marka logosu (CTO 29.09), sagda baslik. */}
+                <div className="task-card-head">
+                    <CustomerLogo id={task.customer_id} name={task.customer_name || task.project_name} size={34} className="task-card-logo" />
+                    <button
+                        type="button"
+                        className="task-card-title task-card-open"
+                        /* Durum yalniz RENKLE anlatilmaz: erisilebilir ad
+                           basligi, durumu ve onceligi tasir. */
+                        aria-label={
+                            `${task.task_code ? task.task_code + ' ' : ''}${task.title}`
+                            + ` — ${STATUS_LABELS[task.status] || task.status || 'unknown'}`
+                            + (task.priority ? `, priority ${task.priority}` : '')
                         }
-                    }}
-                >
-                    <span className="task-card-title-text">{task.title}</span>
-                </button>
+                        onClick={(e) => {
+                            // Kok da ayni islemi tetikler; tekrari onle.
+                            e.stopPropagation()
+                            handleBodyClick(e)
+                        }}
+                        onKeyDown={(e) => {
+                            /*
+                             * BOARD'da kart dnd-kit sarmalayicisinda yasar;
+                             * KeyboardSensor Enter/Space'i yakalayip acmayi
+                             * yutuyordu (final QA regresyonu). Olay
+                             * sarmalayiciya cikarilmaz: buton acar.
+                             */
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.stopPropagation()
+                            }
+                        }}
+                    >
+                        <span className="task-card-title-text">{task.title}</span>
+                    </button>
+                </div>
 
                 {/* Orta satir: musteri · proje + termin hapi (tek renkli sinyal). */}
                 <div className="task-card-row">

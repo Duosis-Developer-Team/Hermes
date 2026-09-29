@@ -63,6 +63,18 @@ export const customerService = {
     delete: async (id) => {
         await coreApi.delete(`/api/v1/core/customers/${id}`)
     },
+
+    /** Marka logosu (PNG/JPEG/WEBP, en fazla 256 KB) → { has_logo, logo_etag }. */
+    uploadLogo: async (id, file) => {
+        const body = new FormData()
+        body.append('file', file)
+        const response = await coreApi.put(`/api/v1/core/customers/${id}/logo`, body)
+        return response.data
+    },
+
+    deleteLogo: async (id) => {
+        await coreApi.delete(`/api/v1/core/customers/${id}/logo`)
+    },
 }
 
 // =============================================================================

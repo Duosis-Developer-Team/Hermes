@@ -17,6 +17,7 @@ import { ticketHubService } from '../../api/ticketsApi'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
 import { SwapOutlined } from '@ant-design/icons'
+import { customerSelectRender } from '../../components/common/customerSelect'
 
 const { TextArea } = Input
 
@@ -107,6 +108,7 @@ function ConvertToWorkItemModal({ open, ticket, onClose, onCreated }) {
                     <Select
                         showSearch
                         options={customers.map((c) => ({ value: c.id, label: c.name }))}
+                        {...customerSelectRender}
                         onChange={(val) => {
                             setCustomerId(val)
                             form.setFieldValue('project_id', undefined)

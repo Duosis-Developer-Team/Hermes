@@ -13,6 +13,7 @@ import { EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons'
 import { formatHours } from '../../features/time-entry/model/timeEntry'
 import './WorkLogCard.css'
 import { useT } from '../../i18n'
+import { CustomerLogo } from '../liquid'
 
 
 function WorkLogCard({
@@ -21,6 +22,7 @@ function WorkLogCard({
     const t = useT()
     const {
         project_name,
+        customer_id,
         customer_name,
         description,
         duration_hours,
@@ -52,28 +54,32 @@ function WorkLogCard({
                 onSelect?.(workLog.id)
             }}
         >
-            <button
-                type="button"
-                className="worklog-card-title worklog-card-open"
-                aria-pressed={isSelected}
-                /* Durum yalnizca RENKLE anlatilmaz: erisilebilir ad ile
-                   de bildirilir (renk korlugu / ekran okuyucu — CTO §5). */
-                aria-label={
-                    `${project_name || 'Project'}, ${formatHours(duration_hours)}`
-                    + (isCopied ? ' — copied to clipboard' : '')
-                    + (isSelected ? ' — selected' : '')
-                }
-                onClick={(e) => {
-                    // Kok da ayni islemi tetikler; tekrari onle.
-                    e.stopPropagation()
-                    onSelect?.(workLog.id)
-                }}
-            >
-                <span className="worklog-card-name">{title}</span>
-                <span className="worklog-card-duration">{formatHours(duration_hours)}</span>
-            </button>
+            {/* Sol: musteri marka logosu (yoksa bas harf karosu). */}
+            <CustomerLogo id={customer_id} name={customer_name || project_name} size={26} className="worklog-card-logo" />
+            <div className="worklog-card-main">
+                <button
+                    type="button"
+                    className="worklog-card-title worklog-card-open"
+                    aria-pressed={isSelected}
+                    /* Durum yalnizca RENKLE anlatilmaz: erisilebilir ad ile
+                       de bildirilir (renk korlugu / ekran okuyucu — CTO §5). */
+                    aria-label={
+                        `${project_name || 'Project'}, ${formatHours(duration_hours)}`
+                        + (isCopied ? ' — copied to clipboard' : '')
+                        + (isSelected ? ' — selected' : '')
+                    }
+                    onClick={(e) => {
+                        // Kok da ayni islemi tetikler; tekrari onle.
+                        e.stopPropagation()
+                        onSelect?.(workLog.id)
+                    }}
+                >
+                    <span className="worklog-card-name">{title}</span>
+                    <span className="worklog-card-duration">{formatHours(duration_hours)}</span>
+                </button>
 
-            {sub && <div className="worklog-card-description">{sub}</div>}
+                {sub && <div className="worklog-card-description">{sub}</div>}
+            </div>
 
             {/* Hover actions — stopPropagation so they don't trigger card select or day select */}
             <div className="worklog-card-actions">

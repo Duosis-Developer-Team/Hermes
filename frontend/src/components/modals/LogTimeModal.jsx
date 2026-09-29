@@ -17,7 +17,7 @@ import {
 import {
     ArrowLeftOutlined, ClockCircleOutlined, SearchOutlined,
 } from '@ant-design/icons'
-import { ChipGroup, FormSection, ModalHead, ModalSteps, OptionGrid } from '../liquid'
+import { ChipGroup, CustomerLogo, FormSection, ModalHead, ModalSteps, OptionGrid } from '../liquid'
 import HoursMinutesPicker from '../common/HoursMinutesPicker'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -384,7 +384,12 @@ function LogTimeModal({
         .filter((c) => matches(c.name))
         .map((c) => {
             const n = allProjects.filter((p) => p.customer_id === c.id).length
-            return { value: c.id, label: c.name, hint: t('logTime.projectCount', { count: n }) }
+            return {
+                value: c.id,
+                label: c.name,
+                hint: t('logTime.projectCount', { count: n }),
+                media: <CustomerLogo id={c.id} name={c.name} size={38} />,
+            }
         })
     const projectOptions = filteredProjects
         .filter((p) => matches(p.name))
@@ -461,7 +466,7 @@ function LogTimeModal({
                 {step === 1 && (
                     <div className="log-time-step fade-in">
                         <button type="button" className="lq-back" onClick={prevStep} aria-label={t('logTime.backToPrevious')}>
-                            <ArrowLeftOutlined aria-hidden="true" />{selectedCustomer?.name}
+                            <ArrowLeftOutlined aria-hidden="true" /><CustomerLogo id={selectedCustomer?.id} name={selectedCustomer?.name} size={20} />{selectedCustomer?.name}
                         </button>
                         {filteredProjects.length > 6 && (
                             <Input

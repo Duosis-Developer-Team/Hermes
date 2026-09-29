@@ -10,6 +10,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { userPhotoUrl, useUserPhotoStore } from '../../stores/userPhotoStore'
+import { customerLogoUrl, useCustomerLogoStore } from '../../stores/customerLogoStore'
 
 const reducedMotion = () =>
     typeof window !== 'undefined'
@@ -168,6 +169,36 @@ export function Avatar({ id, name, size = 28, title, className = '' }) {
 }
 
 /**
+ * Musteri marka logosu (kare karo). Logo yoksa (ya da yuklenemezse) renkli
+ * bas harf karosu — yonetim tablosundaki rozetle ayni dil. `etag` verilirse
+ * depo yerine o kullanilir (ornegin pasif musteriler, depoda olmayanlar).
+ */
+export function CustomerLogo({ id, name, size = 28, etag: etagProp, className = '', title }) {
+    const stored = useCustomerLogoStore((s) => (id ? s.etags[id] : undefined))
+    const etag = etagProp === undefined ? stored : etagProp
+    const [failed, setFailed] = useState(false)
+    const showLogo = id && etag && !failed
+    return (
+        <span
+            className={`lq-clogo${showLogo ? ' lq-clogo--img' : ''} ${className}`}
+            style={{
+                width: size,
+                height: size,
+                borderRadius: Math.round(size * 0.28),
+                fontSize: Math.round(size * 0.44),
+                background: showLogo ? undefined : avatarTone(id || name),
+            }}
+            title={title}
+            aria-hidden="true"
+        >
+            {showLogo ? (
+                <img src={customerLogoUrl(id, etag)} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
+            ) : (name || '?').trim().charAt(0).toLocaleUpperCase()}
+        </span>
+    )
+}
+
+/**
  * Yatay cubuk listesi (prototip "Musteriye / Projeye gore"): ad · soldan
  * buyuyen cubuk · deger. En buyuk degere oranlanir. `tone`: 'blue' |
  * 'violet' | 'green'.
@@ -254,9 +285,11 @@ export function OptionGrid({ options, onPick, emptyText, ariaLabel }) {
                     style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}
                     onClick={() => onPick(o.value, o)}
                 >
-                    <span className="lq-opt__icon" style={o.flat ? undefined : { background: avatarTone(o.value) }} aria-hidden="true">
-                        {o.icon ?? initialsOf(o.label).slice(0, 1)}
-                    </span>
+                    {o.media ?? (
+                        <span className="lq-opt__icon" style={o.flat ? undefined : { background: avatarTone(o.value) }} aria-hidden="true">
+                            {o.icon ?? initialsOf(o.label).slice(0, 1)}
+                        </span>
+                    )}
                     <span className="lq-opt__text">
                         <b>{o.label}</b>
                         {o.hint && <small>{o.hint}</small>}

@@ -370,3 +370,8 @@
 /* Alt satir (rozetler) kartin dibine yaslanir: esit boy kartlarda hizali. */
 .task-card .task-card-body { display: flex; flex: 1; flex-direction: column; }
 .task-card .task-card-badges { margin-top: auto; padding-top: 8px; }
+
+/* Musteri logosu (CTO 29.09): baslik satirinin solunda. */
+.task-card-head { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.task-card-head > .task-card-title { flex: 1; min-width: 0; }
+.task-card-logo { margin-top: 2px; box-shadow: inset 0 0 0 1px var(--h-border-subtle); }

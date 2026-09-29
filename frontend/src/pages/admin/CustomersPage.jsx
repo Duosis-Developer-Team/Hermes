@@ -40,13 +40,20 @@ const FORM_SHAPE = {
 }
 import { Page, PageHeader } from '../../components/ui'
 import { useT } from '../../i18n'
-import { ModalHead, avatarTone } from '../../components/liquid'
+import { CustomerLogo, ModalHead } from '../../components/liquid'
+import { queryKeys } from '../../query/queryKeys'
+import { useCustomerLogoStore } from '../../stores/customerLogoStore'
+import CustomerLogoField, { EMPTY_LOGO_DRAFT } from './CustomerLogoField'
 import dayjs from 'dayjs'
 
 function CustomersPage() {
     const [form] = Form.useForm()
     const [modalOpen, setModalOpen] = useState(false)
     const [editingId, setEditingId] = useState(null)
+    const [editingRecord, setEditingRecord] = useState(null)
+    // Logo taslagi: formla birlikte kaydedilir (CustomerLogoField).
+    const [logoDraft, setLogoDraft] = useState(EMPTY_LOGO_DRAFT)
+    const setLogoEtag = useCustomerLogoStore((s) => s.setOne)
     const queryClient = useQueryClient()
 
     // Data fetching
@@ -60,22 +67,53 @@ function CustomersPage() {
     })
 
     // Mutations
+    /**
+     * Musteri kaydindan SONRA logo taslagini uygular. Logo hatasi musteri
+     * kaydini geri almaz: kayit durur, uyari gosterilir.
+     */
+    const applyLogo = async (customerId) => {
+        try {
+            if (logoDraft.file) {
+                const res = await customerService.uploadLogo(customerId, logoDraft.file)
+                setLogoEtag(customerId, res?.logo_etag || null)
+            } else if (logoDraft.remove) {
+                await customerService.deleteLogo(customerId)
+                setLogoEtag(customerId, null)
+            }
+        } catch (err) {
+            message.warning(t('admin.logoFailed', { msg: normalizeApiError(err).message }))
+        }
+    }
+    const refreshCustomers = () => {
+        queryClient.invalidateQueries({ queryKey: ['customers'] })
+        // Kabuk + seciciler tenant kapsamli anahtardan okur.
+        queryClient.invalidateQueries({ queryKey: queryKeys.customers.all })
+    }
+
     const createMutation = useMutation({
-        mutationFn: customerService.create,
+        mutationFn: async (data) => {
+            const created = await customerService.create(data)
+            if (created?.id) await applyLogo(created.id)
+            return created
+        },
         onSuccess: () => {
             message.success(t('admin.entityCreated', { entity: t('entity.customer') }))
             handleCloseModal()
-            queryClient.invalidateQueries({ queryKey: ['customers'] })
+            refreshCustomers()
         },
         onError: (err) => message.error(normalizeApiError(err).message),
     })
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }) => customerService.update(id, data),
+        mutationFn: async ({ id, data }) => {
+            const updated = await customerService.update(id, data)
+            await applyLogo(id)
+            return updated
+        },
         onSuccess: () => {
             message.success(t('admin.entityUpdated', { entity: t('entity.customer') }))
             handleCloseModal()
-            queryClient.invalidateQueries({ queryKey: ['customers'] })
+            refreshCustomers()
         },
         onError: (err) => message.error(normalizeApiError(err).message),
     })
@@ -110,6 +148,8 @@ function CustomersPage() {
 
     // Handlers
     const handleOpenModal = (record = null) => {
+        setLogoDraft(EMPTY_LOGO_DRAFT)
+        setEditingRecord(record)
         if (record) {
             setEditingId(record.id)
             // resetAndFill: Edit A → Edit B gecisinde A'nin degeri TASINMAZ
@@ -129,6 +169,8 @@ function CustomersPage() {
     const handleCloseModal = () => {
         setModalOpen(false)
         setEditingId(null)
+        setEditingRecord(null)
+        setLogoDraft(EMPTY_LOGO_DRAFT)
         form.resetFields()
     }
 
@@ -196,9 +238,7 @@ function CustomersPage() {
             // Liquid: renkli bas harf kutusu + sozlesme ozeti.
             render: (name, record) => (
                 <span className="admin-name">
-                    <span className="admin-name__badge" style={{ background: avatarTone(record.id || name) }} aria-hidden="true">
-                        {(name || '?').trim().charAt(0).toLocaleUpperCase()}
-                    </span>
+                    <CustomerLogo id={record.id} name={name} size={36} etag={record.has_logo ? record.logo_etag : null} className="admin-name__logo" />
                     <span className="admin-name__text">
                         <b>{name || '—'}</b>
                         <small>
@@ -339,6 +379,17 @@ function CustomersPage() {
                         ]}
                     >
                         <Input placeholder={t('admin.customerNameExample')} maxLength={255} />
+                    </Form.Item>
+
+                    <Form.Item noStyle shouldUpdate={(a, b) => a.name !== b.name}>
+                        {({ getFieldValue }) => (
+                            <CustomerLogoField
+                                record={editingRecord}
+                                name={getFieldValue('name')}
+                                draft={logoDraft}
+                                onChange={setLogoDraft}
+                            />
+                        )}
                     </Form.Item>
 
                     {/* Sozlesme alanlari: backend ikisini de opsiyonel kabul

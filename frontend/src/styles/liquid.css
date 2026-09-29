@@ -230,6 +230,20 @@
 .lq-avs .lq-av { margin-left: -7px; box-shadow: 0 0 0 2px var(--h-bg-elevated); }
 .lq-avs .lq-av:first-child { margin-left: 0; }
 
+/* Musteri logosu (CustomerLogo): kare karo; logo beyaz zeminde, kenarli. */
+.lq-clogo {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  overflow: hidden;
+  color: #FFFFFF;
+  font-family: var(--h-font-family);
+  font-weight: 700;
+  line-height: 1;
+}
+.lq-clogo--img { background: #FFFFFF; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
+.lq-clogo--img img { width: 100%; height: 100%; padding: 12%; object-fit: contain; }
+
 /* Yatay cubuk listesi (BarList) */
 .lq-barlist { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .lq-barlist__row { display: grid; grid-template-columns: minmax(90px, 150px) minmax(0, 1fr) 52px; align-items: center; gap: 14px; }
@@ -625,3 +639,7 @@
 /* Panel: Musteriye / Projeye gore kartlari ayni satirda esit boy. */
 .dashboard-bento { align-items: stretch; }
 .dashboard-more { margin: 10px 0 0; color: var(--h-text-muted); font-size: 12px; }
+
+/* Musteri secici satiri: logo + ad (customerSelect.jsx). */
+.lq-copt { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; vertical-align: middle; }
+.lq-copt__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -27,6 +27,7 @@ import {
 } from '../../features/admin/shared/contractFields'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
+import { customerSelectRender } from '../../components/common/customerSelect'
 
 // Formda GERCEKTEN olan alanlar: API kaydindaki id/created_at gibi
 // alanlar form store'una sizmaz, eksik alan da bayat deger BIRAKMAZ.
@@ -368,6 +369,7 @@ function ProjectsPage() {
                                 (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                             }
                             options={customers.map(c => ({ value: c.id, label: c.name }))}
+                            {...customerSelectRender}
                         />
                     </Form.Item>
                     {editingId && (

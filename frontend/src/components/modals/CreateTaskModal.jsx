@@ -42,6 +42,7 @@ import {
     taskSubProjectService,
 } from '../../services/api'
 import { useT } from '../../i18n'
+import { customerSelectRender } from '../../components/common/customerSelect'
 
 // Oncelik listesi MODUL duzeyindeydi; ceviri bir hook'a bagli oldugu
 // icin artik bilesen icinde uretilir. Degerler (low/medium/...) API
@@ -435,6 +436,7 @@ function CreateTaskModal({
                         onChange={handleCustomerChange}
                         optionFilterProp="label"
                         options={customers.map((c) => ({ value: c.id, label: c.name }))}
+                        {...customerSelectRender}
                     />
                 </Form.Item>
 

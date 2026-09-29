@@ -29,7 +29,7 @@ import {
 import AppShell from './AppShell'
 import OrganizationSwitcher from './OrganizationSwitcher'
 import { useAuthStore } from '../../stores/authStore'
-import { authService } from '../../services/api'
+import { authService, customerService } from '../../services/api'
 import { useTaskPermissions } from '../../hooks/useTaskPermissions'
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { useT } from '../../i18n'
@@ -39,6 +39,7 @@ import { useNextMeeting } from '../../features/home/hooks/useNextMeeting'
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '../../query/queryKeys'
 import { useUserPhotoStore } from '../../stores/userPhotoStore'
+import { useCustomerLogoStore } from '../../stores/customerLogoStore'
 
 /**
  * Main Layout Component — izin filtreli menu, prefetch ve hesap menusu.
@@ -68,6 +69,19 @@ function MainLayout() {
         const rows = Array.isArray(directory.data) ? directory.data : []
         setPhotoIndex(user ? [...rows, user] : rows)
     }, [directory.data, user, setPhotoIndex])
+
+    // Musteri logolari: ayni desen — musteri listesi (has_logo + logo_etag)
+    // secicilerle AYNI anahtarda okunur, CustomerLogo yalniz depoyu okur.
+    const setLogoIndex = useCustomerLogoStore((s) => s.setFromCustomers)
+    const customerDir = useQuery({
+        queryKey: queryKeys.customers.all,
+        queryFn: () => customerService.getAll(),
+        enabled: !!user?.id,
+        staleTime: 10 * 60 * 1000,
+    })
+    useEffect(() => {
+        if (Array.isArray(customerDir.data)) setLogoIndex(customerDir.data)
+    }, [customerDir.data, setLogoIndex])
 
     const isAdmin = user?.is_admin === true
     const { canAccessAny } = useTaskPermissions()
