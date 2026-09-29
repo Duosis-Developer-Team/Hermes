@@ -326,29 +326,10 @@
     animation-duration: 420ms;
     animation-timing-function: var(--h-ease-spring);
 }
-@keyframes h-drop-in {
-    from { opacity: 0; transform: translateY(-8px) scale(0.94); }
-    to { opacity: 1; transform: none; }
-}
 @keyframes h-drop-out { to { opacity: 0; transform: translateY(-6px) scale(0.97); } }
 
-/* Bildirim mesajlari adanin hemen altindan akan cam hap (prototip toast). */
-:root .ant-message { top: 80px; }
-:root .ant-message .ant-message-notice-content {
-    padding: 10px 16px;
-    border-radius: var(--h-radius-pill);
-    background: var(--h-bg-elevated);
-    border: 1px solid var(--h-glass-edge);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    box-shadow: var(--h-shadow-dropdown);
-}
-:root .ant-message .ant-move-up-enter-active,
-:root .ant-message .ant-move-up-appear-active {
-    animation-name: h-drop-in;
-    animation-duration: 420ms;
-    animation-timing-function: var(--h-ease-spring);
-}
+/* Bildirim mesajlari (antd message): styles/liquid.css — giris ekrani dahil
+   her yerde ayni cam hap (30.09). */
 
 /* ---------- Icerik ---------- */
 .main-content {
