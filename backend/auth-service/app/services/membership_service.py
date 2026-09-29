@@ -187,6 +187,13 @@ def maybe_auto_join(db: Session, *, tenant, user):
     ):
         return None
 
+    # Aktif OLMAYAN bir uyelik satiri varsa (admin tarafindan 'removed'
+    # yapilmis, 'suspended' vb.) otomatik katilim onu DIRILTMEZ: bu bir
+    # yonetici kararidir. Onceden burada ikinci satir INSERT edilip
+    # benzersizlik kisitina carpiliyordu (500).
+    if get_membership(db, tenant_id=tenant.id, user_id=user.id) is not None:
+        return None
+
     membership = TenantMembership(
         tenant_id=tenant.id, user_id=user.id,
         status=ACTIVE_MEMBERSHIP_STATUS,

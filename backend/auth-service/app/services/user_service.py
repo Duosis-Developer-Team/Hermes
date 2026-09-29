@@ -170,7 +170,7 @@ class UserService:
     # olmayan kullanici (404, ayni yanit). Platform yuzeyi ayridir.
 
     @staticmethod
-    def _tenant_uuid(tenant_id) -> Optional[UUID]:
+    def tenant_uuid(tenant_id) -> Optional[UUID]:
         try:
             return UUID(str(tenant_id))
         except (TypeError, ValueError):
@@ -183,7 +183,7 @@ class UserService:
         from ..models.tenancy import TenantMembership
         from .membership_service import ACTIVE_MEMBERSHIP_STATUS
 
-        tid = self._tenant_uuid(tenant_id)
+        tid = self.tenant_uuid(tenant_id)
         query = self.db.query(User).join(
             TenantMembership,
             (TenantMembership.user_id == User.id)
@@ -387,13 +387,71 @@ class UserService:
         Raises:
             NotFoundError: Kullanıcı bulunamazsa
         """
-        db_user = self.get_in_tenant_or_404(user_id, tenant_id=tenant_id)
+        from ..models.rbac import RbacUserRole
+        from ..models.tenancy import TenantMembership
+        from .rbac_service import (
+            SYSTEM_ADMIN_CODE,
+            enforce_last_admin_guard,
+            get_role_by_code,
+        )
 
+        db_user = self.get_in_tenant_or_404(user_id, tenant_id=tenant_id)
+        tid = self.tenant_uuid(tenant_id)
+
+        # Bu tenant'ta system-admin atamasi var mi? (tenant-dogru kontrol;
+        # users.is_admin coklu tenant'ta anlamsiz bir turev sutundur)
+        admin_role = get_role_by_code(
+            self.db, SYSTEM_ADMIN_CODE, tenant_id=tid
+        )
+        holds_tenant_admin = admin_role is not None and (
+            self.db.query(RbacUserRole.id)
+            .filter(
+                RbacUserRole.user_id == db_user.id,
+                RbacUserRole.role_id == admin_role.id,
+                RbacUserRole.tenant_id == tid,
+            )
+            .first()
+            is not None
+        )
+
+        # CAPRAZ-TENANT KORUMASI (2026-09-29): `users` satiri GLOBALDIR.
+        # Kullanicinin BASKA tenant'larda uyeligi varsa bir tenant admini
+        # o kimligi yok edemez — yalnizca KENDI tenant'indaki uyelik
+        # 'removed' yapilir ve bu tenant'in rol atamalari silinir. Global
+        # satir ve diger uyelikler DOKUNULMADAN kalir.
+        other_memberships = (
+            self.db.query(TenantMembership.id)
+            .filter(
+                TenantMembership.user_id == db_user.id,
+                TenantMembership.tenant_id != tid,
+            )
+            .count()
+        )
+        if other_memberships:
+            # Son-admin kilidi: bu tenant'i adminsiz birakamaz (409).
+            if holds_tenant_admin:
+                enforce_last_admin_guard(
+                    self.db, losing_user_id=db_user.id, tenant_id=tid
+                )
+            self.db.query(RbacUserRole).filter(
+                RbacUserRole.user_id == db_user.id,
+                RbacUserRole.tenant_id == tid,
+            ).delete(synchronize_session=False)
+            # Satir SILINMEZ, 'removed' yapilir: (1) gecmis kayitlardaki ad
+            # cozumu (lookup include_inactive) calismaya devam eder; (2)
+            # satir silinseydi alan adi otomatik katilimi kullaniciyi bir
+            # sonraki SSO girisinde geri eklerdi.
+            self.db.query(TenantMembership).filter(
+                TenantMembership.user_id == db_user.id,
+                TenantMembership.tenant_id == tid,
+            ).update({"status": "removed"}, synchronize_session=False)
+            self.db.commit()
+            return True
+
+        # Bu tenant kullanicinin SON uyeligi: eski davranis aynen.
         # RBAC son-admin kilidi: son aktif system-admin silinirse/pasif
         # yapilirsa kimse RBAC yonetemez — 409 ile engellenir.
-        if db_user.is_admin:
-            from .rbac_service import enforce_last_admin_guard
-
+        if db_user.is_admin or holds_tenant_admin:
             enforce_last_admin_guard(
                 self.db, losing_user_id=db_user.id, tenant_id=tenant_id
             )
