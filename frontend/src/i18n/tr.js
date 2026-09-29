@@ -317,6 +317,10 @@ export default {
         noOverrides: 'Herkes kuruluş varsayılanını kullanıyor',
         inherit: 'varsayılan',
         mon: 'Pzt', tue: 'Sal', wed: 'Çar', thu: 'Per', fri: 'Cum', sat: 'Cmt', sun: 'Paz',
+        hoursPerDay: 'saat / gün',
+        daysPerWeek: 'iş günü / hafta',
+        hoursPerWeek: 'saat / hafta',
+        hourShort: 'sa',
     },
 
     tasks: {
@@ -486,6 +490,9 @@ export default {
         contractSummary: 'Sözleşme: {start} · {days} gün',
         noContract: 'Sözleşme bilgisi yok',
         update: 'Güncelle',
+        userUpdated: 'Kullanıcı güncellendi',
+        userCreated: 'Kullanıcı oluşturuldu',
+        daysTotal: 'Toplam {n} gün',
     },
 
     users: {
@@ -1200,6 +1207,17 @@ export default {
         },
     },
 
+    dict: {
+        add: 'Yeni {entity}',
+        edit: '{entity} düzenle',
+        created: '{entity} oluşturuldu.',
+        updated: '{entity} güncellendi.',
+        archivedMsg: '{entity} arşivlendi.',
+        deleted: '{entity} kalıcı olarak silindi.',
+        archived: 'Arşivde',
+        namePlaceholder: '{entity} adı',
+        codePlaceholder: '{entity} kodu',
+    },
     taskUi: {
         taskDetails: 'Görev ayrıntıları',
         closePanel: 'Paneli kapat',

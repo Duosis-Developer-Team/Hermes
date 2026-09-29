@@ -8,8 +8,7 @@
 
 import { useMemo, useState } from 'react'
 import {
-    Card, Table, Button, Space, Modal, Form, Input, Select,
-    message, Switch, Tag, InputNumber, DatePicker
+    Card, Table, Button, Space, Modal, Form, Input, Select, message, Switch, InputNumber, DatePicker,
 } from 'antd'
 import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, EditOutlined, FolderOutlined, PlusOutlined, SearchOutlined, TeamOutlined, WarningOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -220,7 +219,7 @@ function ProjectsPage() {
             dataIndex: 'is_active',
             key: 'is_active',
             width: 100,
-            render: (active) => <Tag color={active ? 'success' : 'default'}>{active ? 'Active' : 'Inactive'}</Tag>,
+            render: (active) => <span className={`lq-tag ${active ? 'lq-tag--ok' : ''}`}>{active ? t('common.active') : t('common.inactive')}</span>,
         },
         {
             title: t('admin.contract'),
@@ -228,21 +227,25 @@ function ProjectsPage() {
             width: 220,
             sorter: (a, b) => (a.contract_duration_days || 0) - (b.contract_duration_days || 0),
             render: (_, record) => {
-                if (!record.contract_duration_days) return <span style={{ color: 'rgba(var(--overlay-rgb), 0.3)' }}>-</span>
+                if (!record.contract_duration_days) return <span className="project-contract__none">—</span>
 
                 const totalBillableHours = billableSummary[record.id] || 0
                 const usedDays = Math.floor(totalBillableHours / HOURS_PER_DAY)
                 const remainingDays = Math.max(0, record.contract_duration_days - usedDays)
                 const pct = Math.min(100, (usedDays / record.contract_duration_days) * 100)
-                const color = pct >= 100 ? '#ff4d4f' : pct >= 80 ? '#ff4d4f' : pct >= 50 ? '#faad14' : 'rgba(var(--overlay-rgb), 0.45)'
+                const tone = pct >= 80 ? 'bad' : pct >= 50 ? 'warn' : 'ok'
 
+                // Liquid: toplam gun + kullanim cubugu + kalan/kullanilan.
                 return (
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ color: 'rgba(var(--overlay-rgb), 0.85)', fontSize: '14px' }}>
-                            {record.contract_duration_days} Days Total
+                    <div className="project-contract">
+                        <span className="project-contract__total">
+                            {t('admin.daysTotal', { n: record.contract_duration_days })}
                         </span>
-                        <span style={{ color, fontSize: '12px' }}>
-                            ({usedDays} used / {remainingDays} left)
+                        <span className={`project-contract__meter is-${tone}`} aria-hidden="true">
+                            <i style={{ width: `${pct}%` }} />
+                        </span>
+                        <span className="project-contract__meta">
+                            {t('contracts.daysUsed', { days: usedDays })} · {t('contracts.daysLeft', { days: remainingDays })}
                         </span>
                     </div>
                 )
@@ -253,23 +256,16 @@ function ProjectsPage() {
             key: 'contract_status',
             width: 160,
             render: (_, record) => {
-                if (!record.contract_duration_days) return <span style={{ color: 'rgba(var(--overlay-rgb), 0.3)' }}>-</span>
+                if (!record.contract_duration_days) return <span className="project-contract__none">—</span>
 
                 const totalBillableHours = billableSummary[record.id] || 0
                 const usedDays = Math.floor(totalBillableHours / HOURS_PER_DAY)
                 const pct = Math.min(100, (usedDays / record.contract_duration_days) * 100)
-                const tagStyle = { fontSize: 12, padding: '4px 10px', display: 'flex', alignItems: 'center', width: 'fit-content', gap: 6 }
-
-                if (pct >= 100) {
-                    return <Tag color="error" style={tagStyle} icon={<WarningOutlined />}>EXPIRED</Tag>
-                }
-                if (pct >= 80) {
-                    return <Tag color="error" style={tagStyle} icon={<WarningOutlined />}>CRITICAL</Tag>
-                }
-                if (pct >= 50) {
-                    return <Tag color="warning" style={tagStyle} icon={<ClockCircleOutlined />}>WARNING</Tag>
-                }
-                return <Tag color="success" style={tagStyle} icon={<CheckCircleOutlined />}>ACTIVE</Tag>
+                // Durum metinle + renkle (yalniz renk degil): sozlesme ekraniyla ayni etiketler.
+                if (pct >= 100) return <span className="lq-tag lq-tag--bad"><WarningOutlined aria-hidden="true" /> {t('contracts.status.expired')}</span>
+                if (pct >= 80) return <span className="lq-tag lq-tag--bad"><WarningOutlined aria-hidden="true" /> {t('contracts.status.critical')}</span>
+                if (pct >= 50) return <span className="lq-tag lq-tag--warn"><ClockCircleOutlined aria-hidden="true" /> {t('contracts.status.warning')}</span>
+                return <span className="lq-tag lq-tag--ok"><CheckCircleOutlined aria-hidden="true" /> {t('contracts.status.safe')}</span>
             }
         },
         {
@@ -374,7 +370,7 @@ function ProjectsPage() {
                     </Form.Item>
                     {editingId && (
                         <Form.Item name="is_active" label={t('common.status')} valuePropName="checked">
-                            <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+                            <Switch checkedChildren={t('common.active')} unCheckedChildren={t('common.inactive')} />
                         </Form.Item>
                     )}
                     <Form.Item
@@ -401,23 +397,15 @@ function ProjectsPage() {
                             min={1}
                             placeholder={t('admin.durationExample')}
                             style={{ width: '100%' }}
-                            className="contrast-placeholder"
                         />
                     </Form.Item>
 
-                    <style>{`
-                        .contrast-placeholder input::placeholder {
-                            color: rgba(var(--overlay-rgb), 0.35) !important;
-                        }
-                    `}</style>
-                    <Form.Item>
-                        <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                            <Button onClick={handleCloseModal}>{t('common.cancel')}</Button>
-                            <Button type="primary" htmlType="submit" loading={isSaving}>
-                                {editingId ? 'Update' : 'Create'}
-                            </Button>
-                        </Space>
-                    </Form.Item>
+                    <div className="lq-mf">
+                        <Button onClick={handleCloseModal}>{t('common.cancel')}</Button>
+                        <Button type="primary" htmlType="submit" loading={isSaving}>
+                            {editingId ? t('admin.update') : t('common.create')}
+                        </Button>
+                    </div>
                 </Form>
             </Modal>
 

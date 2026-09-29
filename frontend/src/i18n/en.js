@@ -315,6 +315,10 @@ export default {
         noOverrides: 'Everyone uses the organization defaults',
         inherit: 'default',
         mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun',
+        hoursPerDay: 'hours / day',
+        daysPerWeek: 'work days / week',
+        hoursPerWeek: 'hours / week',
+        hourShort: 'h',
     },
 
     // ---------------------------------------------------------------
@@ -492,6 +496,9 @@ export default {
         contractSummary: 'Contract: {start} · {days} days',
         noContract: 'No contract details',
         update: 'Update',
+        userUpdated: 'User updated',
+        userCreated: 'User created',
+        daysTotal: '{n} days total',
     },
 
     users: {
@@ -1206,6 +1213,17 @@ export default {
         },
     },
 
+    dict: {
+        add: 'Add {entity}',
+        edit: 'Edit {entity}',
+        created: '{entity} created.',
+        updated: '{entity} updated.',
+        archivedMsg: '{entity} archived.',
+        deleted: '{entity} permanently deleted.',
+        archived: 'Archived',
+        namePlaceholder: '{entity} name',
+        codePlaceholder: '{entity} code',
+    },
     taskUi: {
         taskDetails: 'Task details',
         closePanel: 'Close panel',

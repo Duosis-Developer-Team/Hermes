@@ -141,9 +141,9 @@
     box-shadow: var(--h-glass-shadow);
 }
 :root .settings-content .ant-card + .ant-card { margin-top: 16px; }
-:root .settings-content .ant-card-head { min-height: 52px; padding: 0 20px; border-bottom: 1px solid var(--h-border-subtle); }
-:root .settings-content .ant-card-head-title { font-size: 15px; font-weight: 650; }
-:root .settings-content .ant-card-body { padding: 16px 20px; }
+:root .settings-content .ant-card > .ant-card-head { min-height: 56px; margin: 0; padding: 0 20px; border-bottom: 1px solid var(--h-border-subtle); }
+:root .settings-content .ant-card > .ant-card-head .ant-card-head-title { padding: 14px 0; font-size: 15px; font-weight: 650; }
+:root .settings-content .ant-card > .ant-card-body { padding: 8px 20px 16px; }
 /* Tablolar: saydam, ince ayiricili, buyuk harf baslik. */
 :root .settings-content .ant-table,
 :root .settings-content .ant-table-container,
@@ -221,3 +221,14 @@
 .admin-name__text { display: flex; flex-direction: column; min-width: 0; }
 .admin-name__text b { overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .admin-name__text small { color: var(--h-text-muted); font-size: 12px; }
+.admin-code { font-family: var(--h-font-mono); font-size: 11.5px; }
+
+/* Projeler: sozlesme sutunu (toplam + kullanim cubugu + kalan). */
+.project-contract { display: flex; flex-direction: column; gap: 4px; min-width: 150px; }
+.project-contract__total { font-weight: 600; font-size: 13.5px; }
+.project-contract__meter { height: 6px; overflow: hidden; border-radius: 3px; background: var(--h-bg-hover); }
+.project-contract__meter i { display: block; height: 100%; border-radius: inherit; background: var(--h-success); }
+.project-contract__meter.is-warn i { background: var(--h-warning); }
+.project-contract__meter.is-bad i { background: var(--h-danger); }
+.project-contract__meta { color: var(--h-text-muted); font-size: 12px; }
+.project-contract__none { color: var(--h-text-muted); }

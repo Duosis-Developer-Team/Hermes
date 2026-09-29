@@ -29,7 +29,7 @@
  */
 import { useCallback, useMemo, useState } from 'react'
 import {
-    Alert, Button, Card, Form, Input, Modal, Space, Switch, Table, Tag,
+    Alert, Button, Card, Form, Input, Modal, Space, Switch, Table,
     message,
 } from 'antd'
 import { BookOutlined, DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
@@ -39,7 +39,8 @@ import DeleteModal from '../../../components/common/DeleteModal'
 import { generateCode } from '../../../utils/codeGenerator'
 import { applyErrorToForm, normalizeApiError } from '../shared/normalizeApiError'
 import { useT } from '../../../i18n'
-import { ModalHead } from '../../../components/liquid'
+import { ModalHead, avatarTone } from '../../../components/liquid'
+import { AdminEmptyState } from '../shared/AdminListStates'
 
 const FORM_FIELDS = ['name', 'code', 'description', 'is_active']
 
@@ -52,6 +53,9 @@ const FORM_FIELDS = ['name', 'code', 'description', 'is_active']
  * @param {object} props.service      { getAll, create, update, delete }
  * @param {Array}  props.queryKey     Merkezi factory'den gelen anahtar
  */
+// Sayfa kod rengi → ortak lq-tag tonu.
+const CODE_TONE = { blue: 'info', purple: 'violet', cyan: 'info', green: 'ok', orange: 'warn' }
+
 function DictionaryCrudPage({
     title, singular, description, codeColor = 'blue', service, queryKey,
 }) {
@@ -78,7 +82,7 @@ function DictionaryCrudPage({
     const createMutation = useMutation({
         mutationFn: (data) => service.create(data),
         onSuccess: () => {
-            message.success(`${singular} created.`)
+            message.success(t('dict.created', { entity: singular }))
             invalidate()
             closeModal()
         },
@@ -88,7 +92,7 @@ function DictionaryCrudPage({
     const updateMutation = useMutation({
         mutationFn: ({ id, data }) => service.update(id, data),
         onSuccess: () => {
-            message.success(`${singular} updated.`)
+            message.success(t('dict.updated', { entity: singular }))
             invalidate()
             closeModal()
         },
@@ -99,7 +103,7 @@ function DictionaryCrudPage({
     const archiveMutation = useMutation({
         mutationFn: ({ id }) => service.update(id, { is_active: false }),
         onSuccess: () => {
-            message.success(`${singular} archived.`)
+            message.success(t('dict.archivedMsg', { entity: singular }))
             setDeletingRecord(null)
             invalidate()
         },
@@ -113,7 +117,7 @@ function DictionaryCrudPage({
     const deleteMutation = useMutation({
         mutationFn: (id) => service.delete(id),
         onSuccess: () => {
-            message.success(`${singular} permanently deleted.`)
+            message.success(t('dict.deleted', { entity: singular }))
             setDeletingRecord(null)
             invalidate()
         },
@@ -194,19 +198,27 @@ function DictionaryCrudPage({
         {
             title: t('common.name'), dataIndex: 'name', key: 'name',
             sorter: (a, b) => (a.name || '').localeCompare(b.name || '', 'en'),
+            render: (name, record) => (
+                <span className="admin-name">
+                    <span className="admin-name__badge" style={{ background: avatarTone(record.id || name) }} aria-hidden="true">
+                        {(name || '?').trim().charAt(0).toLocaleUpperCase()}
+                    </span>
+                    <span className="admin-name__text"><b>{name}</b></span>
+                </span>
+            ),
         },
         {
             title: t('dictionary.code'), dataIndex: 'code', key: 'code',
-            render: (code) => <Tag color={codeColor}>{code}</Tag>,
+            render: (code) => (code ? <span className={`lq-tag lq-tag--${CODE_TONE[codeColor] || 'info'} admin-code`}>{code}</span> : '—'),
         },
         { title: t('common.description'), dataIndex: 'description', key: 'description' },
         {
             title: t('common.active'), dataIndex: 'is_active', key: 'is_active',
             // Durum yalniz RENKLE anlatilmaz: etiket metni de tasir.
             render: (active) => (
-                <Tag color={active ? 'green' : 'red'}>
-                    {active ? 'Active' : 'Archived'}
-                </Tag>
+                <span className={`lq-tag ${active ? 'lq-tag--ok' : ''}`}>
+                    {active ? t('common.active') : t('dict.archived')}
+                </span>
             ),
         },
         {
@@ -239,7 +251,7 @@ function DictionaryCrudPage({
         // Bagimliliklar DURUST: kolonlar yalnizca gercekten degistiginde
         // yeniden uretilir. `openEdit` useCallback ile stabil tutulur,
         // aksi halde memo hicbir sey kazandirmazdi.
-    ], [isDestroying, codeColor, openEdit])
+    ], [isDestroying, codeColor, openEdit, t])
 
     // Ilk yukleme ile arkaplan yenilemesi AYRI: mevcut veri arkaplan
     // refetch sirasinda kaybolmaz.
@@ -279,8 +291,8 @@ function DictionaryCrudPage({
                         <Input
                             allowClear
                             prefix={<SearchOutlined aria-hidden="true" />}
-                            placeholder={`Search ${title.toLowerCase()}`}
-                            aria-label={`Search ${title}`}
+                            placeholder={t('admin.searchEntity', { entity: title })}
+                            aria-label={t('admin.searchEntity', { entity: title })}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             style={{ width: 220 }}
@@ -288,10 +300,10 @@ function DictionaryCrudPage({
                         <Button
                             type="primary"
                             icon={<PlusOutlined />}
-                            aria-label={`Add ${singular}`}
+                            aria-label={t('dict.add', { entity: singular })}
                             onClick={openCreate}
                         >
-                            Add {singular}
+                            {t('dict.add', { entity: singular })}
                         </Button>
                     </Space>
                 }
@@ -307,9 +319,15 @@ function DictionaryCrudPage({
                     locale={{
                         // Ilk kullanim bosluğu ile FILTRE sonucu yoklugu
                         // AYRI mesajlanir.
-                        emptyText: search.trim()
-                            ? `No ${title.toLowerCase()} match “${search.trim()}”.`
-                            : `No ${title.toLowerCase()} yet. Use “Add ${singular}”.`,
+                        emptyText: (
+                            <AdminEmptyState
+                                filtered={!!search.trim()}
+                                term={search.trim()}
+                                entityLabel={title}
+                                createLabel={t('dict.add', { entity: singular })}
+                                onCreate={openCreate}
+                            />
+                        ),
                     }}
                 />
                 {isFetching && !initialLoading && (
@@ -325,11 +343,11 @@ function DictionaryCrudPage({
             </Card>
 
             <Modal
-                title={<ModalHead icon={<BookOutlined />} tone="blue" title={editingItem ? `Edit ${singular}` : `Add ${singular}`} />}
+                title={<ModalHead icon={<BookOutlined />} tone="blue" title={editingItem ? t('dict.edit', { entity: singular }) : t('dict.add', { entity: singular })} />}
                 open={modalOpen}
                 onCancel={closeModal}
                 onOk={handleSubmit}
-                okText={editingItem ? 'Save Changes' : `Add ${singular}`}
+                okText={editingItem ? t('taskModal.saveChanges') : t('dict.add', { entity: singular })}
                 confirmLoading={isSaving}
                 /* Pending'te kapanma kilidi (§7). */
                 closable={!isSaving}
@@ -361,7 +379,7 @@ function DictionaryCrudPage({
                         ]}
                     >
                         <Input
-                            placeholder={`${singular} name`}
+                            placeholder={t('dict.namePlaceholder', { entity: singular })}
                             maxLength={255}
                             onChange={(e) => {
                                 // Kod YALNIZCA yeni kayitta ada gore turetilir.
@@ -378,7 +396,7 @@ function DictionaryCrudPage({
                             { required: true, whitespace: true, message: t('dictionary.codeRequired') },
                         ]}
                     >
-                        <Input placeholder={`${singular} code`} maxLength={64} />
+                        <Input placeholder={t('dict.codePlaceholder', { entity: singular })} maxLength={64} />
                     </Form.Item>
                     <Form.Item name="description" label={t('common.description')}>
                         <Input.TextArea rows={2} maxLength={500} />

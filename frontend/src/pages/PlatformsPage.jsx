@@ -24,7 +24,7 @@ function PlatformsPage() {
     return (
         <DictionaryCrudPage
             title={t('entity.platforms')}
-            singular="Platform"
+            singular={t('entity.platform')}
             description={t('admin.managePlatforms')}
             codeColor="purple"
             service={platformService}

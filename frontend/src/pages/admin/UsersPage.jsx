@@ -16,7 +16,9 @@
  */
 
 import { useMemo, useRef, useState } from 'react'
-import { Card, Table, Button, Space, Modal, Form, Input, message, Select, Switch, Tabs } from 'antd'
+import {
+    Card, Table, Button, Space, Modal, Form, Input, message, Select, Switch, Tabs,
+} from 'antd'
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, CrownOutlined,
     SearchOutlined,
@@ -114,7 +116,7 @@ export function UsersTab() {
             }
         },
         onSuccess: () => {
-            message.success(editingId ? 'User updated' : 'User created')
+            message.success(editingId ? t('admin.userUpdated') : t('admin.userCreated'))
             handleCloseModal()
             invalidateUsers()
         },
@@ -334,7 +336,7 @@ export function UsersTab() {
                             <Input.Password placeholder={t('users.password')} />
                         </Form.Item>
                     )}
-                    {editingId && <Form.Item name="is_active" label={t('common.status')} valuePropName="checked"><Switch checkedChildren="Active" unCheckedChildren="Inactive" /></Form.Item>}
+                    {editingId && <Form.Item name="is_active" label={t('common.status')} valuePropName="checked"><Switch checkedChildren={t('common.active')} unCheckedChildren={t('common.inactive')} /></Form.Item>}
 
                     <Form.Item
                         name="role_ids"
@@ -352,7 +354,7 @@ export function UsersTab() {
                         />
                     </Form.Item>
 
-                    <Form.Item><Space style={{ width: '100%', justifyContent: 'flex-end' }}><Button onClick={handleCloseModal}>{t('common.cancel')}</Button><Button type="primary" htmlType="submit" loading={isSaving}>{editingId ? 'Update' : 'Create'}</Button></Space></Form.Item>
+                    <div className="lq-mf"><Button onClick={handleCloseModal}>{t('common.cancel')}</Button><Button type="primary" htmlType="submit" loading={isSaving}>{editingId ? t('admin.update') : t('common.create')}</Button></div>
                 </Form>
             </Modal>
 

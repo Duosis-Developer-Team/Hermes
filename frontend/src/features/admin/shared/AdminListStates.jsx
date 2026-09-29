@@ -70,9 +70,9 @@ export function AdminRefreshHint({ isFetching, hasData }) {
  * (adminEmptyText ile ayni kural, ama dil duyarli). `entityKey` cogul
  * varlik ceviri anahtari (orn. 'entity.customers').
  */
-export function AdminEmptyState({ filtered, term, entityKey, createLabel, onCreate }) {
+export function AdminEmptyState({ filtered, term, entityKey, entityLabel, createLabel, onCreate }) {
     const t = useT()
-    const entity = t(entityKey).toLocaleLowerCase()
+    const entity = (entityLabel ?? t(entityKey)).toLocaleLowerCase()
     const text = filtered
         ? (term
             ? t('admin.empty.filteredTerm', { entity, term })

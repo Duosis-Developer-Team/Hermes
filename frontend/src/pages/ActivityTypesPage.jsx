@@ -24,7 +24,7 @@ function ActivityTypesPage() {
     return (
         <DictionaryCrudPage
             title={t('entity.activityTypes')}
-            singular="Activity Type"
+            singular={t('entity.activityType')}
             description={t('admin.manageActivityTypes')}
             codeColor="blue"
             service={activityTypeService}

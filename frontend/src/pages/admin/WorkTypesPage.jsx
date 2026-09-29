@@ -7,7 +7,9 @@
  */
 
 import { useMemo, useState } from 'react'
-import { Card, Table, Button, Space, Modal, Form, Input, message, Switch, Tag } from 'antd'
+import {
+    Card, Table, Button, Space, Modal, Form, Input, message, Switch,
+} from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, ToolOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { workTypeService } from '../../services/api'
@@ -140,7 +142,7 @@ function WorkTypesPage() {
 
     const columns = [
         { title: t('admin.workTypeNameLabel'), dataIndex: 'name', key: 'name', sorter: (a, b) => a.name.localeCompare(b.name) },
-        { title: t('common.status'), dataIndex: 'is_active', key: 'is_active', width: 100, render: (active) => <Tag color={active ? 'success' : 'default'}>{active ? 'Active' : 'Inactive'}</Tag> },
+        { title: t('common.status'), dataIndex: 'is_active', key: 'is_active', width: 100, render: (active) => <span className={`lq-tag ${active ? 'lq-tag--ok' : ''}`}>{active ? t('common.active') : t('common.inactive')}</span> },
         {
             title: t('common.actions'), key: 'actions', width: 120, render: (_, record) => (
                 <Space>
@@ -226,8 +228,8 @@ function WorkTypesPage() {
                     <Form.Item name="name" label={t('admin.workTypeNameLabel')} rules={[{ required: true, whitespace: true, message: t('admin.nameRequired', { entity: t('entity.workType') }) }]}>
                         <Input placeholder={t('admin.workTypeNameLabel')} />
                     </Form.Item>
-                    {editingId && <Form.Item name="is_active" label={t('common.status')} valuePropName="checked"><Switch checkedChildren="Active" unCheckedChildren="Inactive" /></Form.Item>}
-                    <Form.Item><Space style={{ width: '100%', justifyContent: 'flex-end' }}><Button onClick={handleCloseModal}>{t('common.cancel')}</Button><Button type="primary" htmlType="submit" loading={isSaving}>{editingId ? 'Update' : 'Create'}</Button></Space></Form.Item>
+                    {editingId && <Form.Item name="is_active" label={t('common.status')} valuePropName="checked"><Switch checkedChildren={t('common.active')} unCheckedChildren={t('common.inactive')} /></Form.Item>}
+                    <div className="lq-mf"><Button onClick={handleCloseModal}>{t('common.cancel')}</Button><Button type="primary" htmlType="submit" loading={isSaving}>{editingId ? t('admin.update') : t('common.create')}</Button></div>
                 </Form>
             </Modal>
 

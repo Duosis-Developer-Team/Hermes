@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
     Button, Card, Checkbox, DatePicker, Form, Input, InputNumber, Popconfirm,
-    Select, Space, Table, Tag, Typography, message,
+    Select, Space, Table, Typography, message,
 } from 'antd'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -23,6 +23,8 @@ import { authService, capacityService } from '../../services/api'
 import { queryKeys } from '../../query/queryKeys'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import { useT } from '../../i18n'
+import { Avatar, ChipGroup } from '../../components/liquid'
+import './CapacitySettingsPage.css'
 
 const { Text } = Typography
 
@@ -32,10 +34,13 @@ const WEEKDAYS = [
 
 const asList = (value) => (Array.isArray(value) ? value : (value?.data || []))
 
+/** Gun secici (Liquid): Pzt…Paz coklu cip; deger sirali gun numaralari. */
 function WeekdayPicker({ value, onChange, t }) {
     return (
-        <Checkbox.Group
-            value={value}
+        <ChipGroup
+            multiple
+            ariaLabel={t('capacity.workingDays')}
+            value={value || []}
             onChange={(v) => onChange([...v].sort((a, b) => a - b))}
             options={WEEKDAYS.map(([n, key]) => ({ value: n, label: t(`capacity.${key}`) }))}
         />
@@ -58,8 +63,10 @@ function CapacitySettingsPage() {
     const [defaultsForm] = Form.useForm()
     useEffect(() => {
         if (!settings) return
+        // Deger yoksa/gecersizse "NaN" gostermez; 8 saate duser.
+        const hours = Number(settings.daily_expected_hours)
         defaultsForm.setFieldsValue({
-            daily_expected_hours: Number(settings.daily_expected_hours),
+            daily_expected_hours: Number.isFinite(hours) && hours > 0 ? hours : 8,
             working_days: settings.working_days || [1, 2, 3, 4, 5],
         })
     }, [settings, defaultsForm])
@@ -154,21 +161,37 @@ function CapacitySettingsPage() {
                     initialValues={{ daily_expected_hours: 8, working_days: [1, 2, 3, 4, 5] }}
                     onFinish={(values) => saveSettings.mutate(values)}
                 >
-                    <Form.Item
-                        name="daily_expected_hours" label={t('capacity.dailyHours')}
-                        rules={[{ required: true, message: t('logTime.required') }]}
-                    >
-                        <InputNumber min={0.25} max={24} step={0.25} style={{ width: 160 }} />
+                    {/* Ozet: gunluk saat · gun sayisi · haftalik toplam (canli). */}
+                    <Form.Item noStyle shouldUpdate>
+                        {() => {
+                            const h = Number(defaultsForm.getFieldValue('daily_expected_hours')) || 0
+                            const d = (defaultsForm.getFieldValue('working_days') || []).length
+                            return (
+                                <div className="capacity-summary">
+                                    <div><b>{h}</b><span>{t('capacity.hoursPerDay')}</span></div>
+                                    <div><b>{d}</b><span>{t('capacity.daysPerWeek')}</span></div>
+                                    <div className="is-total"><b>{Math.round(h * d * 100) / 100}</b><span>{t('capacity.hoursPerWeek')}</span></div>
+                                </div>
+                            )
+                        }}
                     </Form.Item>
-                    <Form.Item
-                        name="working_days" label={t('capacity.workingDays')}
-                        rules={[{ required: true, message: t('logTime.required') }]}
-                    >
-                        <WeekdayPicker t={t} />
-                    </Form.Item>
-                    <Button type="primary" htmlType="submit" loading={saveSettings.isPending}>
-                        {t('common.save')}
-                    </Button>
+                    <div className="capacity-row">
+                        <Form.Item
+                            name="daily_expected_hours" label={t('capacity.dailyHours')}
+                            rules={[{ required: true, message: t('logTime.required') }]}
+                        >
+                            <InputNumber min={0.25} max={24} step={0.25} addonAfter={t('capacity.hourShort')} style={{ width: 150 }} />
+                        </Form.Item>
+                        <Form.Item
+                            name="working_days" label={t('capacity.workingDays')}
+                            rules={[{ required: true, message: t('logTime.required') }]}
+                        >
+                            <WeekdayPicker t={t} />
+                        </Form.Item>
+                        <Button className="capacity-save" type="primary" htmlType="submit" loading={saveSettings.isPending}>
+                            {t('common.save')}
+                        </Button>
+                    </div>
                 </Form>
             </Card>
 
@@ -193,7 +216,18 @@ function CapacitySettingsPage() {
                     dataSource={holidays}
                     locale={{ emptyText: t('capacity.noHolidays') }}
                     columns={[
-                        { title: t('capacity.date'), dataIndex: 'holiday_date', width: 160 },
+                        {
+                            title: t('capacity.date'), dataIndex: 'holiday_date', width: 200,
+                            // Takvim yapragi rozeti: gun + ay, yaninda hafta gunu.
+                            render: (v) => (v && dayjs(v).isValid() ? (
+                                <span className="capacity-date">
+                                    <span className="capacity-date__leaf" aria-hidden="true">
+                                        <b>{dayjs(v).format('D')}</b><small>{dayjs(v).format('MMM')}</small>
+                                    </span>
+                                    <span>{dayjs(v).format('dddd, YYYY')}</span>
+                                </span>
+                            ) : v),
+                        },
                         { title: t('capacity.holidayName'), dataIndex: 'name' },
                         {
                             title: '', width: 60, render: (_, row) => (
@@ -247,14 +281,22 @@ function CapacitySettingsPage() {
                     dataSource={overrides}
                     locale={{ emptyText: t('capacity.noOverrides') }}
                     columns={[
-                        { title: t('capacity.user'), dataIndex: 'user_id', render: (id) => userName[id] || id },
+                        {
+                            title: t('capacity.user'), dataIndex: 'user_id',
+                            render: (id) => (
+                                <span className="admin-name">
+                                    <Avatar id={id} name={userName[id] || id} size={30} title="" />
+                                    <span className="admin-name__text"><b>{userName[id] || id}</b></span>
+                                </span>
+                            ),
+                        },
                         {
                             title: t('capacity.dailyHours'), dataIndex: 'daily_expected_hours',
-                            render: (v) => (v === null || v === undefined ? <Tag>{t('capacity.inherit')}</Tag> : `${Number(v)}h`),
+                            render: (v) => (v === null || v === undefined ? <span className="lq-tag">{t('capacity.inherit')}</span> : `${Number(v)}h`),
                         },
                         {
                             title: t('capacity.workingDays'), dataIndex: 'working_days',
-                            render: (v) => (v && v.length ? dayLabels(v) : <Tag>{t('capacity.inherit')}</Tag>),
+                            render: (v) => (v && v.length ? dayLabels(v) : <span className="lq-tag">{t('capacity.inherit')}</span>),
                         },
                         {
                             title: '', width: 60, render: (_, row) => (

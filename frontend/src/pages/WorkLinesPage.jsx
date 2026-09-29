@@ -24,7 +24,7 @@ function WorkLinesPage() {
     return (
         <DictionaryCrudPage
             title={t('entity.workLines')}
-            singular="Work Line"
+            singular={t('entity.workLine')}
             description={t('admin.manageWorkLines')}
             codeColor="cyan"
             service={workLineService}

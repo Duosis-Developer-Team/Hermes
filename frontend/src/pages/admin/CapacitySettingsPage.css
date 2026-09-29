@@ -1,0 +1,51 @@
+/* Kapasite ayarlari (Hermes Liquid): ozet sayilar, gun cipleri, takvim
+   yapragi tarih rozeti. Kart/tablo dili ayarlar kabugundan gelir. */
+.capacity-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 18px;
+}
+.capacity-summary > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: var(--h-bg-hover);
+}
+.capacity-summary b { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.capacity-summary span { color: var(--h-text-muted); font-size: 12.5px; }
+.capacity-summary .is-total { background: color-mix(in srgb, var(--h-brand) 12%, transparent); }
+.capacity-summary .is-total b { color: var(--h-brand); }
+.capacity-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 24px; }
+.capacity-row .ant-form-item { margin-bottom: 0; }
+.capacity-save { margin-left: auto; }
+
+.capacity-date { display: inline-flex; align-items: center; gap: 12px; }
+.capacity-date__leaf {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 44px;
+    overflow: hidden;
+    border-radius: 11px;
+    background: var(--h-bg-surface);
+    box-shadow: inset 0 0 0 1px var(--h-border-default);
+    line-height: 1.1;
+}
+.capacity-date__leaf small {
+    width: 100%;
+    padding: 2px 0;
+    background: var(--h-danger);
+    color: #FFFFFF;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+}
+.capacity-date__leaf b { padding: 3px 0 4px; font-size: 16px; }
+@media (max-width: 640px) {
+    .capacity-summary { grid-template-columns: 1fr; }
+    .capacity-save { margin-left: 0; }
+}
