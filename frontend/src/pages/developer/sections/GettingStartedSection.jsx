@@ -1,23 +1,43 @@
 /**
- * Developer Portal — Getting Started (Stage 4A).
+ * Developer Portal — Hizli baslangic (3 adim, ~5 dk).
  *
- * Bes adimli onboarding. Admin olmayan kullanici token OLUSTURAMAZ —
- * "contact an administrator" yonlendirmesi gosterilir (onayli D1).
+ * `api.manage` izni olmayan kullanici token OLUSTURAMAZ — kimden
+ * isteyecegi soylenir (onayli D1). Izni olan API Yonetimi'ne gider.
  * Tum ornekler kurgusaldir; gercek token/veri ASLA gosterilmez.
+ * Metin: devPortal.start.*
  */
-import { Alert, Button, Tag } from 'antd'
-import { ApiOutlined } from '@ant-design/icons'
-import { Link } from 'react-router-dom'
-import CodeBlock from '../CodeBlock'
+import { Button } from 'antd'
+import { ApiOutlined, InfoCircleOutlined } from '@ant-design/icons'
 
-const STEP1_ENV = `# Keep the base URL and token out of your code:
+import { useT } from '../../../i18n'
+import CodeBlock, { CodeTabs } from '../CodeBlock'
+import { Bullets, Fold, Rich, SectionHead } from '../parts'
+
+const ENV = `# Keep the base URL and token out of your code:
 export HERMES_BASE="https://<your-hermes-host>"
 export HERMES_API_TOKEN="hms_dev_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"`
 
-const STEP3_CURL = `curl -s "$HERMES_BASE/api/public/v1/me" \\
+const ME_CURL = `curl -s "$HERMES_BASE/api/public/v1/me" \\
   -H "Authorization: Bearer $HERMES_API_TOKEN"`
 
-const STEP3_RESPONSE = `{
+const ME_JS = `const res = await fetch(\`\${process.env.HERMES_BASE}/api/public/v1/me\`, {
+    headers: { Authorization: \`Bearer \${process.env.HERMES_API_TOKEN}\` },
+})
+const me = await res.json()
+// me.client.type, me.scopes, me.access -> "who am I, what may I do"`
+
+const ME_PY = `import os
+import requests
+
+r = requests.get(
+    f"{os.environ['HERMES_BASE']}/api/public/v1/me",
+    headers={"Authorization": f"Bearer {os.environ['HERMES_API_TOKEN']}"},
+    timeout=30,
+)
+r.raise_for_status()
+me = r.json()  # client, token prefix, scopes, access bindings`
+
+const ME_RESPONSE = `{
   "client": {
     "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "name": "Example Integration",
@@ -31,10 +51,10 @@ const STEP3_RESPONSE = `{
   "access": [{ "access_type": "user", "target_id": "9c85…" }]
 }`
 
-const STEP4_CURL = `curl -s "$HERMES_BASE/api/public/v1/tasks?limit=5&sort=-updated_at" \\
+const TASKS_CURL = `curl -s "$HERMES_BASE/api/public/v1/tasks?limit=5&sort=-updated_at" \\
   -H "Authorization: Bearer $HERMES_API_TOKEN"`
 
-const STEP4_RESPONSE = `{
+const TASKS_RESPONSE = `{
   "data": [
     {
       "task_code": "TASK-12",
@@ -49,137 +69,109 @@ const STEP4_RESPONSE = `{
   "pagination": { "limit": 5, "offset": 0, "count": 1, "has_more": false }
 }`
 
-const STEP5_CURL = `curl -s -X POST "$HERMES_BASE/api/public/v1/tasks/TASK-12/comments" \\
+const WRITE_CURL = `curl -s -X POST "$HERMES_BASE/api/public/v1/tasks/TASK-12/comments" \\
   -H "Authorization: Bearer $HERMES_API_TOKEN" \\
   -H "Content-Type: application/json" \\
   -H "Idempotency-Key: first-comment-0001" \\
   -d '{"body": "Deployed to staging, please verify."}'`
 
-function GettingStartedSection({ isAdmin, goTo }) {
+const TROUBLE = [
+    { code: '401 invalid_token', key: 'invalid', target: 'authentication' },
+    { code: '403 insufficient_scope', key: 'scope', target: 'scopes' },
+    { code: '403 resource_access_denied', key: 'denied', target: 'authentication' },
+    { code: '404 resource_not_found', key: 'notFound', target: 'errors' },
+]
+
+function Step({ n, title, time, children }) {
+    return (
+        <li className="dp-step">
+            <span className="dp-step__num" aria-hidden="true">{n}</span>
+            <div className="dp-step__body">
+                <div className="dp-step__head">
+                    <h3>{title}</h3>
+                    {time && <span className="lq-tag">{time}</span>}
+                </div>
+                {children}
+            </div>
+        </li>
+    )
+}
+
+function GettingStartedSection({ canManageApi, goTo, openApiManagement }) {
+    const t = useT()
     return (
         <div className="dp-section">
-            <h2>Getting Started</h2>
-            <p className="dp-lead">
-                Five steps from zero to a working integration. Every snippet
-                uses fictional data — replace the placeholders with your own
-                values.
-            </p>
+            <SectionHead
+                eyebrow={t('devPortal.start.eyebrow')}
+                title={t('devPortal.start.title')}
+                lead={t('devPortal.start.lead')}
+            />
 
             <ol className="dp-steps">
-                <li>
-                    <h3>1 · Get an API client and token</h3>
-                    <p>
-                        API clients and tokens are created by Hermes
-                        administrators in <b>API Management</b>. For most
-                        integrations you want a <b>user-bound</b> client (it
-                        acts as you, with your permissions and it is the only
-                        type that can write). <b>Service</b> clients are
-                        read-only in v1. Ask for the smallest set of scopes
-                        your integration needs.
-                    </p>
-                    {isAdmin ? (
-                        /* Kullanici bulgusu: aksiyon metne yapisikti ve
-                           parlak maviydi. Artik kendi nefes payi olan bir
-                           aksiyon satirinda ve ortak premium dilde. */
-                        <div className="dp-step-actions">
-                            <Link to="/api-management">
-                                <Button className="h-create-action" icon={<ApiOutlined />}>
-                                    Open API Management
-                                </Button>
-                            </Link>
+                <Step n={1} title={t('devPortal.start.s1.title')} time={t('devPortal.start.s1.time')}>
+                    <p><Rich text={t('devPortal.start.s1.text')} /></p>
+                    {canManageApi ? (
+                        <div className="dp-step__actions">
+                            <Button type="primary" icon={<ApiOutlined />} onClick={openApiManagement}>
+                                {t('devPortal.start.s1.open')}
+                            </Button>
+                            <span className="dp-muted">{t('devPortal.start.s1.openHint')}</span>
                         </div>
                     ) : (
-                        <Alert
-                            type="info"
-                            showIcon
-                            message="You need an administrator for this step"
-                            description={
-                                'Contact a Hermes administrator and tell ' +
-                                'them which resources you need (for ' +
-                                'example: read tasks, create work logs). ' +
-                                'They will create an API client bound to ' +
-                                'your user and hand you the token.'
-                            }
-                        />
+                        <div className="dp-callout" role="note">
+                            <InfoCircleOutlined aria-hidden="true" />
+                            <div>
+                                <b>{t('devPortal.start.s1.askTitle')}</b>
+                                <span>{t('devPortal.start.s1.askText')}</span>
+                            </div>
+                        </div>
                     )}
-                </li>
+                </Step>
 
-                <li>
-                    <h3>2 · Store the token securely</h3>
-                    <p>
-                        The token is shown <b>exactly once</b> when it is
-                        created — Hermes stores only a hash and can never
-                        show it again. Keep it in an environment variable or
-                        a secret manager; never commit it, never log it.
-                    </p>
-                    <CodeBlock title="shell" code={STEP1_ENV} />
-                </li>
+                <Step n={2} title={t('devPortal.start.s2.title')} time={t('devPortal.start.s2.time')}>
+                    <p><Rich text={t('devPortal.start.s2.text')} /></p>
+                    <CodeBlock title="shell" code={ENV} />
+                </Step>
 
-                <li>
-                    <h3>3 · Verify the token</h3>
-                    <p>
-                        <code>GET /v1/me</code> needs no scopes and answers
-                        “who am I, what may I do” in one call:
+                <Step n={3} title={t('devPortal.start.s3.title')} time={t('devPortal.start.s3.time')}>
+                    <p><Rich text={t('devPortal.start.s3.text')} /></p>
+                    <CodeTabs
+                        ariaLabel={t('devPortal.common.language')}
+                        samples={[
+                            { key: 'curl', label: 'curl', lang: 'bash', code: ME_CURL },
+                            { key: 'js', label: 'JavaScript', lang: 'js', code: ME_JS },
+                            { key: 'py', label: 'Python', lang: 'python', code: ME_PY },
+                        ]}
+                    />
+                    <CodeBlock title={t('devPortal.common.responseFictional')} lang="json" code={ME_RESPONSE} />
+                    <p className="dp-success">
+                        <Rich text={t('devPortal.start.s3.success')} />
                     </p>
-                    <CodeBlock title="curl" code={STEP3_CURL} />
-                    <CodeBlock title="response (fictional)" lang="json" code={STEP3_RESPONSE} />
-                </li>
-
-                <li>
-                    <h3>4 · Read your first data</h3>
-                    <p>
-                        List endpoints share one pagination envelope:{' '}
-                        <code>data</code> plus <code>pagination</code> with{' '}
-                        <code>limit / offset / count / has_more</code>. Sort
-                        with <code>field</code> or <code>-field</code>.
-                    </p>
-                    <CodeBlock title="curl" code={STEP4_CURL} />
-                    <CodeBlock title="response (fictional)" lang="json" code={STEP4_RESPONSE} />
-                </li>
-
-                <li>
-                    <h3>5 · Optional: your first write</h3>
-                    <p>
-                        Writes require a <b>user-bound</b> client and the
-                        matching write scope (here <code>tasks:comment</code>).
-                        The <code>Idempotency-Key</code> header makes retries
-                        safe: the same key replays the original response for
-                        24 hours instead of creating a duplicate.
-                    </p>
-                    <CodeBlock title="curl" code={STEP5_CURL} />
-                </li>
+                </Step>
             </ol>
 
-            <h3>If something fails</h3>
-            <ul className="dp-list">
-                <li>
-                    <Tag>401 invalid_token</Tag> missing/mistyped{' '}
-                    <code>Authorization: Bearer</code> header, or a revoked/
-                    expired token — see{' '}
-                    <button
-                        type="button"
-                        className="dp-inline-link"
-                        onClick={() => goTo('authentication')}
-                    >
-                        Authentication
+            <div className="lq-grp">{t('devPortal.start.nextTitle')}</div>
+            <div className="dp-folds">
+                <Fold title={t('devPortal.start.readTitle')} hint={t('devPortal.start.readHint')}>
+                    <CodeBlock title="curl" code={TASKS_CURL} />
+                    <CodeBlock title={t('devPortal.common.responseFictional')} lang="json" code={TASKS_RESPONSE} />
+                </Fold>
+                <Fold title={t('devPortal.start.writeTitle')} hint={t('devPortal.start.writeHint')}>
+                    <p><Rich text={t('devPortal.start.writeText')} /></p>
+                    <CodeBlock title="curl" code={WRITE_CURL} />
+                </Fold>
+            </div>
+
+            <div className="lq-grp">{t('devPortal.start.troubleTitle')}</div>
+            <div className="dp-trouble">
+                {TROUBLE.map((x) => (
+                    <button key={x.key} type="button" className="dp-trouble__item" onClick={() => goTo(x.target)}>
+                        <code>{x.code}</code>
+                        <span>{t(`devPortal.start.trouble.${x.key}`)}</span>
                     </button>
-                    .
-                </li>
-                <li>
-                    <Tag>403 insufficient_scope</Tag> the token lacks the
-                    scope the endpoint requires — ask an administrator to
-                    extend the client's scopes.
-                </li>
-                <li>
-                    <Tag>403 resource_access_denied</Tag> a write attempted
-                    with a service client (read-only in v1).
-                </li>
-                <li>
-                    <Tag>404 resource_not_found</Tag> the record does not
-                    exist <i>or</i> is outside your token's data access —
-                    the API deliberately does not reveal which.
-                </li>
-            </ul>
+                ))}
+            </div>
+            <Bullets items={[t('devPortal.start.placeholders')]} />
         </div>
     )
 }

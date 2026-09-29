@@ -1,212 +1,102 @@
 /**
- * Developer Portal — Changelog (Stage 4C).
+ * Developer Portal — Degisiklik gunlugu.
  *
  * Veri-odakli: yeni surum = CHANGELOG dizisinin BASINA bir kayit eklemek.
- * Girdi bicimi: { version, date, title?, entries: [string | {tag, text}] }.
- * Kod degisikligi gerektirmez, PR'da icerik olarak review edilir.
+ * Girdi bicimi: { version, date, titleKey, entries: [{ tag, key }] }.
+ * Metinler sozlukte: devPortal.changelog.<key> (iki dilde); PR'da icerik
+ * olarak review edilir. `date` ISO ay (YYYY-MM) — dile gore bicimlenir.
  */
-import { Tag } from 'antd'
+import { useT } from '../../../i18n'
+import { useLocaleStore } from '../../../stores/localeStore'
+import { SectionHead } from '../parts'
 
 const CHANGELOG = [
     {
         version: 'v1.2.0',
-        date: 'July 2026',
-        title: 'Group assignment',
+        date: '2026-07',
+        titleKey: 'r120',
         entries: [
-            {
-                tag: 'API',
-                text:
-                    'New POST /v1/task-groups — assign to every active ' +
-                    'member of a user group in one call (one work item per ' +
-                    'member, sharing one assignment_batch_id), matching the ' +
-                    'group assignment already available in the Hermes web ' +
-                    'app. Recipients are derived from the group; member ' +
-                    'lists are never sent or returned. Members without ' +
-                    'access are skipped and the bound user is never ' +
-                    'included, so created_count may be lower than the ' +
-                    "group's member count — skipped_count reports the " +
-                    'difference. Additive: POST /v1/tasks is unchanged and ' +
-                    'remains the single-assignee endpoint.',
-            },
-            {
-                tag: 'MCP',
-                text:
-                    'New hermes_create_task_for_group tool covering the ' +
-                    'same surface, so AI clients reach feature parity with ' +
-                    'the web app for group assignment. Write rules are ' +
-                    'unchanged: user-bound clients only, human approval ' +
-                    'annotation, optional idempotency key.',
-            },
-            {
-                tag: 'MCP',
-                text:
-                    'MCP status promoted from internal beta to ACTIVE. The ' +
-                    'service is live and reuses the Public API token, scope, ' +
-                    'binding, audit and rate-limit model unchanged. ' +
-                    'Bearer-token integrations are verified with Claude ' +
-                    'Code, Cursor and Codex. A native OAuth connector is ' +
-                    'still not available and remains documented as such — ' +
-                    'the missing authorization server limits that one ' +
-                    'connection path, not the service.',
-            },
-            {
-                tag: 'Fix',
-                text:
-                    'Directory endpoints (/v1/users, /v1/groups) returned ' +
-                    'internal_error in every deployment: the auth-service ' +
-                    'base URL was built without stripping the configured ' +
-                    '/api/v1 suffix, so the internal directory route ' +
-                    'answered 404. URL derivation now lives in one shared ' +
-                    'normaliser and is locked by a regression test.',
-            },
-            {
-                tag: 'Docs',
-                text:
-                    'Developer Portal refreshed against the live product: ' +
-                    'MCP status card, per-client compatibility matrix backed ' +
-                    'by real test evidence, full MCP setup/limits/audit ' +
-                    'guidance, and the group assignment endpoint and tool ' +
-                    'documented across API Reference and MCP sections.',
-            },
+            { tag: 'API', key: 'r120_api_groups' },
+            { tag: 'MCP', key: 'r120_mcp_group_tool' },
+            { tag: 'MCP', key: 'r120_mcp_active' },
+            { tag: 'Fix', key: 'r120_fix_directory' },
+            { tag: 'Docs', key: 'r120_docs' },
         ],
     },
     {
         version: 'v1.1.0',
-        date: 'July 2026',
-        title: 'Directory & MCP read foundation',
+        date: '2026-07',
+        titleKey: 'r110',
         entries: [
-            {
-                tag: 'API',
-                text:
-                    'users:read and groups:read activated — GET /v1/users, ' +
-                    '/v1/users/{id}, /v1/groups, /v1/groups/{id} with ' +
-                    'least-privilege directory visibility (non-global ' +
-                    'tokens resolve only identities present in records ' +
-                    'they can already access).',
-            },
-            {
-                tag: 'Platform',
-                text:
-                    'Recipient e-mail resolution for notifications moved ' +
-                    'to a dedicated service-to-service credential — ' +
-                    'API-triggered events gain e-mail parity once the ' +
-                    'credential is activated per deployment.',
-            },
+            { tag: 'API', key: 'r110_api_directory' },
+            { tag: 'Platform', key: 'r110_platform_s2s' },
         ],
     },
     {
         version: 'v1.0.0',
-        date: 'July 2026',
-        title: 'Initial public release',
+        date: '2026-07',
+        titleKey: 'r100',
         entries: [
-            {
-                tag: 'API',
-                text:
-                    'Public API v1 — tasks/issues/suggestions, customers, ' +
-                    'projects, work logs and meetings under /api/public/v1 ' +
-                    '(reads everywhere; user-bound writes for tasks, ' +
-                    'comments, status and work logs).',
-            },
-            {
-                tag: 'Auth',
-                text:
-                    'Token authentication — hashed at rest, shown once, ' +
-                    'environment-scoped (hms_dev_/hms_live_), rotate and ' +
-                    'revoke.',
-            },
-            {
-                tag: 'Auth',
-                text:
-                    'RBAC scopes plus data-access bindings as two ' +
-                    'independent authorization layers (least-privilege, ' +
-                    'fail-closed).',
-            },
-            {
-                tag: 'Admin',
-                text:
-                    'API Management — clients, tokens, bindings, request ' +
-                    'logs and retention controls for administrators.',
-            },
-            {
-                tag: 'Docs',
-                text:
-                    'Developer Portal (this site) with guided onboarding, ' +
-                    'plus public Swagger UI and a downloadable OpenAPI ' +
-                    'schema.',
-            },
-            {
-                tag: 'Platform',
-                text:
-                    'Per-token rate limiting with X-RateLimit-* headers ' +
-                    'and Retry-After.',
-            },
-            {
-                tag: 'Platform',
-                text:
-                    'Idempotency for all POST endpoints — 24-hour replay ' +
-                    'window, race-safe reservation, stable ' +
-                    'idempotency_request_in_progress signal.',
-            },
-            {
-                tag: 'Platform',
-                text:
-                    'Live machine-readable catalogs at /v1/capabilities ' +
-                    '(scopes, errors, limits, write policy) — this portal ' +
-                    'renders from them directly.',
-            },
+            { tag: 'API', key: 'r100_api' },
+            { tag: 'Auth', key: 'r100_auth_tokens' },
+            { tag: 'Auth', key: 'r100_auth_layers' },
+            { tag: 'Admin', key: 'r100_admin' },
+            { tag: 'Docs', key: 'r100_docs' },
+            { tag: 'Platform', key: 'r100_rate' },
+            { tag: 'Platform', key: 'r100_idem' },
+            { tag: 'Platform', key: 'r100_capabilities' },
         ],
     },
 ]
 
-const TAG_COLOR = {
-    API: 'blue',
-    Auth: 'purple',
-    Admin: 'gold',
-    Docs: 'green',
-    Platform: 'cyan',
+const TAG_TONE = {
+    API: 'info',
+    MCP: 'violet',
+    Auth: 'violet',
+    Admin: 'warn',
+    Docs: 'ok',
+    Fix: 'bad',
+    Platform: '',
+}
+
+function monthLabel(iso, locale) {
+    const [y, m] = iso.split('-').map(Number)
+    return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(
+        locale === 'tr' ? 'tr-TR' : 'en-US',
+        { month: 'long', year: 'numeric', timeZone: 'UTC' },
+    )
 }
 
 function ChangelogSection() {
+    const t = useT()
+    const locale = useLocaleStore((s) => s.locale)
     return (
         <div className="dp-section">
-            <h2>Changelog</h2>
-            <p className="dp-lead">
-                What shipped, per version. Additive changes (new fields, new
-                endpoints, new error codes) appear here; breaking changes
-                only ever ship under a new version prefix.
-            </p>
-
-            {CHANGELOG.map((rel) => (
-                <div key={rel.version} className="dp-release">
-                    <div className="dp-release-head">
-                        <span className="dp-release-version">
-                            {rel.version}
-                        </span>
-                        <span className="dp-release-date">{rel.date}</span>
-                        {rel.title && (
-                            <span className="dp-release-title">
-                                {rel.title}
-                            </span>
-                        )}
-                    </div>
-                    <ul className="dp-list">
-                        {rel.entries.map((e, i) => (
-                            <li key={i}>
-                                {typeof e === 'string' ? (
-                                    e
-                                ) : (
-                                    <>
-                                        <Tag color={TAG_COLOR[e.tag]}>
-                                            {e.tag}
-                                        </Tag>{' '}
-                                        {e.text}
-                                    </>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            ))}
+            <SectionHead
+                eyebrow={t('devPortal.changelog.eyebrow')}
+                title={t('devPortal.changelog.title')}
+                lead={t('devPortal.changelog.lead')}
+            />
+            <ol className="dp-timeline">
+                {CHANGELOG.map((rel, i) => (
+                    <li key={rel.version} className={`dp-release${i === 0 ? ' is-latest' : ''}`}>
+                        <div className="dp-release__head">
+                            <span className="dp-release__version">{rel.version}</span>
+                            {i === 0 && <span className="lq-tag lq-tag--ok">{t('devPortal.changelog.latest')}</span>}
+                            <b>{t(`devPortal.changelog.${rel.titleKey}`)}</b>
+                            <span className="dp-muted">{monthLabel(rel.date, locale)}</span>
+                        </div>
+                        <ul className="dp-release__entries">
+                            {rel.entries.map((e) => (
+                                <li key={e.key}>
+                                    <span className={`lq-tag${TAG_TONE[e.tag] ? ` lq-tag--${TAG_TONE[e.tag]}` : ''}`}>{e.tag}</span>
+                                    <span>{t(`devPortal.changelog.${e.key}`)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </li>
+                ))}
+            </ol>
         </div>
     )
 }

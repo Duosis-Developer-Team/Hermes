@@ -1,18 +1,24 @@
 /**
- * Developer Portal — MCP.
+ * Developer Portal — MCP (AI asistanlari).
  *
  * Durum ayrimi (CTO karari, 17.07.2026): SERVIS aktiftir; eksik olan tek
- * sey OAuth tabanli NATIVE CONNECTOR desteğidir. Bu yuzden OAuth'un
+ * sey OAuth tabanli NATIVE CONNECTOR destegidir. Bu yuzden OAuth'un
  * yoklugu tum MCP urununu "beta" gostermek icin KULLANILMAZ — ayri bir
- * yetenek satiri olarak durur ve dürüstce "not yet available" der.
+ * yetenek karti olarak durur ve durustce "not yet available" der.
  *
  * Client matrisi ../mcpClients.js icinde versiyonlu VERI olarak yasar:
  * test kanitidir, runtime metadata degil. "Verified" yalnizca gercekten
- * denenmis client'lar icindir.
+ * denenmis client'lar icindir. Tool listesi ../mcpTools.js (registry ile
+ * testte birebir kilitli). Metin: devPortal.mcp.*, devPortal.tools.*,
+ * devPortal.clients.*
  */
-import { Table, Tag } from 'antd'
+import { CheckCircleFilled, ExclamationCircleFilled, LockOutlined } from '@ant-design/icons'
+
+import { useT } from '../../../i18n'
 import CodeBlock from '../CodeBlock'
-import { MCP_CLIENTS, STATUS_TONE } from '../mcpClients'
+import { MCP_CLIENTS } from '../mcpClients'
+import { MCP_READ_TOOLS, MCP_WRITE_TOOLS } from '../mcpTools'
+import { Bullets, Fold, Rich, SectionHead } from '../parts'
 
 const CONFIG_EXAMPLE = `{
   "mcpServers": {
@@ -63,342 +69,173 @@ const GROUP_RESULT = `{
   ]
 }`
 
-function StatusRow({ label, value, tone, children }) {
+// Client durumu → sozluk anahtari + ton. Durum DEGERI veriden gelir.
+const CLIENT_STATUS = {
+    Verified: { key: 'statusVerified', tone: 'ok' },
+    Limited: { key: 'statusLimited', tone: 'warn' },
+    'Not yet tested': { key: 'statusUntested', tone: '' },
+}
+
+function Capability({ ok, label, value, children }) {
     return (
-        <li>
-            <b>{label}:</b> <Tag color={tone}>{value}</Tag>
-            {children}
-        </li>
+        <div className={`dp-cap${ok ? ' is-ok' : ' is-warn'}`}>
+            <span className="dp-cap__icon" aria-hidden="true">
+                {ok ? <CheckCircleFilled /> : <ExclamationCircleFilled />}
+            </span>
+            <div>
+                <span className="dp-cap__label">{label}</span>
+                <span className={`lq-tag ${ok ? 'lq-tag--ok' : 'lq-tag--warn'}`}>{value}</span>
+                <p>{children}</p>
+            </div>
+        </div>
+    )
+}
+
+function ToolList({ tools, write, t }) {
+    return (
+        <ul className="dp-tools">
+            {tools.map((x) => (
+                <li key={x.name}>
+                    <code>{x.name}</code>
+                    <span>{t(`devPortal.tools.${x.name}`)}</span>
+                    {write && <LockOutlined className="dp-tools__lock" aria-label={t('devPortal.mcp.needsApproval')} />}
+                </li>
+            ))}
+        </ul>
     )
 }
 
 function McpSection({ goTo }) {
+    const t = useT()
     return (
         <div className="dp-section">
-            <h2>
-                MCP Server <Tag color="green">Active</Tag>
-            </h2>
-            <p className="dp-lead">
-                The Hermes MCP server lets AI tools work with Hermes through
-                the Model Context Protocol. It is a deliberately{' '}
-                <b>thin layer over the Public API</b>: every tool maps to a
-                documented endpoint, and all authorization, data-access
-                bindings, rate limits, idempotency and audit logging are
-                enforced by the API on every call — one security model, not
-                two.
-            </p>
-
-            <h3>Status at a glance</h3>
-            <ul className="dp-list dp-status-list">
-                <StatusRow label="MCP service" value="Active" tone="green">
-                    {' '}
-                    Live and serving tool calls.
-                </StatusRow>
-                <StatusRow
-                    label="Bearer-token integrations"
-                    value="Supported"
-                    tone="green"
-                >
-                    {' '}
-                    Any client that can send a custom{' '}
-                    <code>Authorization</code> header works today.
-                </StatusRow>
-                <StatusRow
-                    label="Native OAuth connector support"
-                    value="Not yet available"
-                    tone="orange"
-                >
-                    {' '}
-                    Hermes does not run an OAuth 2.1 authorization server
-                    yet, so clients that <i>require</i> the full OAuth
-                    discovery flow (such as Claude Desktop&apos;s native
-                    connector) cannot connect directly. This limits that one
-                    path — it does not limit the service.
-                </StatusRow>
-            </ul>
-
-            <h3>Endpoint &amp; transport</h3>
-            <ul className="dp-list">
-                <li>
-                    Service URL: <code>https://&lt;your-hermes-host&gt;/mcp</code>{' '}
-                    — ask a Hermes administrator for the host for your
-                    environment.
-                </li>
-                <li>
-                    Transport: <b>Streamable HTTP</b> (the current MCP
-                    transport). No local install, no stdio server to run.
-                </li>
-                <li>
-                    Discovery: unauthenticated requests return{' '}
-                    <code>401</code> with a <code>WWW-Authenticate</code>{' '}
-                    challenge pointing at the standard Protected Resource
-                    Metadata document (
-                    <code>/.well-known/oauth-protected-resource/mcp</code>),
-                    which states the authentication reality machine-readably.
-                </li>
-            </ul>
-
-            <h3>Authentication</h3>
-            <ul className="dp-list">
-                <li>
-                    Credential: your existing Hermes API token, sent as{' '}
-                    <code>Authorization: Bearer hms_…</code> on every
-                    request. <b>No separate identity model</b> — nothing extra
-                    to issue, store or revoke.
-                </li>
-                <li>
-                    Environment rules carry over: a <code>hms_dev_</code>{' '}
-                    token cannot talk to a live endpoint and vice versa.
-                </li>
-                <li>
-                    <b>Revocation is immediate.</b> Revoke the token in API
-                    Management and the AI tool loses access on its very next
-                    call — authorization is re-checked by the API on every
-                    request, never cached. (A client that has already listed
-                    the tools may keep showing them until it reconnects; the
-                    calls themselves fail.)
-                </li>
-            </ul>
-
-            <h3>What a token can see and do</h3>
-            <ul className="dp-list">
-                <li>
-                    <b>User-bound clients</b> act as the bound Hermes user:
-                    they see what that user sees, and writes are recorded as
-                    that user under that user&apos;s permissions.
-                </li>
-                <li>
-                    <b>Service clients are read-only.</b> They never see write
-                    tools in <code>tools/list</code>, and a direct call is
-                    still rejected by the API — listing is a UX nicety, the
-                    API is the authority.
-                </li>
-                <li>
-                    Tools are filtered by scope: a token without{' '}
-                    <code>tasks:write</code> never even <i>sees</i>{' '}
-                    <code>hermes_create_task</code>, so a model cannot plan a
-                    call it may not make.
-                </li>
-                <li>
-                    Data-access bindings apply per call, unchanged. Records
-                    outside your access are indistinguishable from records
-                    that do not exist — deliberate non-disclosure.
-                </li>
-            </ul>
-
-            <h3>Recommended token setup</h3>
-            <ul className="dp-list">
-                <li>
-                    Use a dedicated <b>user-bound</b> API client per AI tool
-                    (clean audit trail; writes act as you under your
-                    permissions).
-                </li>
-                <li>
-                    Grant minimal scopes: start with <code>tasks:read</code>{' '}
-                    (+ <code>users:read</code> to resolve names); add write
-                    scopes only when needed.
-                </li>
-                <li>
-                    Want a strictly read-only agent? Issue a read-only token.
-                    There is nothing to configure on the MCP side.
-                </li>
-            </ul>
-
-            <h3>Client configuration (generic shape)</h3>
-            <p>
-                Clients that accept a remote server URL plus custom headers
-                use this shape; exact key names vary per client, and the
-                matrix below records only what has actually been verified.
-            </p>
-            <CodeBlock
-                title="mcp client config (fictional token)"
-                lang="json"
-                code={CONFIG_EXAMPLE}
+            <SectionHead
+                eyebrow={t('devPortal.mcp.eyebrow')}
+                title={t('devPortal.mcp.title')}
+                lead={t('devPortal.mcp.lead')}
+                extra={<span className="lq-tag lq-tag--ok">{t('devPortal.mcp.statusActive')}</span>}
             />
 
-            <h3>Client compatibility</h3>
-            <Table
-                className="dp-table"
-                size="small"
-                pagination={false}
-                rowKey="key"
-                columns={[
-                    { title: 'Client', dataIndex: 'client' },
-                    {
-                        title: 'Status',
-                        dataIndex: 'status',
-                        width: 140,
-                        render: (v) => (
-                            <Tag color={STATUS_TONE[v]}>{v}</Tag>
-                        ),
-                    },
-                    { title: 'Transport', dataIndex: 'transport', width: 170 },
-                    { title: 'Authentication', dataIndex: 'auth', width: 150 },
-                    { title: 'Notes', dataIndex: 'notes' },
-                ]}
-                dataSource={MCP_CLIENTS}
-                scroll={{ x: 'max-content' }}
-            />
-            <p>
-                A client is marked <b>Verified</b> only after a real
-                end-to-end run. <b>Not yet tested</b> means exactly that — it
-                is not a statement that the client fails, and we would rather
-                say “unknown” than guess.
-            </p>
+            <div className="dp-caps">
+                <Capability ok label={t('devPortal.mcp.capService')} value={t('devPortal.mcp.statusActive')}>
+                    {t('devPortal.mcp.capServiceText')}
+                </Capability>
+                <Capability ok label={t('devPortal.mcp.capBearer')} value={t('devPortal.mcp.supported')}>
+                    <Rich text={t('devPortal.mcp.capBearerText')} />
+                </Capability>
+                <Capability label={t('devPortal.mcp.capOauth')} value={t('devPortal.mcp.notYetAvailable')}>
+                    <Rich text={t('devPortal.mcp.capOauthText')} />
+                </Capability>
+            </div>
 
-            <h3>Smoke test</h3>
-            <CodeBlock title="curl" lang="bash" code={SMOKE} />
+            <div className="lq-grp">{t('devPortal.mcp.connectTitle')}</div>
+            <ol className="dp-steps is-compact">
+                {['c1', 'c2', 'c3'].map((k, i) => (
+                    <li key={k} className="dp-step">
+                        <span className="dp-step__num" aria-hidden="true">{i + 1}</span>
+                        <div className="dp-step__body">
+                            <div className="dp-step__head"><h3>{t(`devPortal.mcp.${k}.title`)}</h3></div>
+                            <p><Rich text={t(`devPortal.mcp.${k}.text`)} /></p>
+                            {k === 'c2' && (
+                                <CodeBlock title={t('devPortal.mcp.configTitle')} lang="json" code={CONFIG_EXAMPLE} />
+                            )}
+                        </div>
+                    </li>
+                ))}
+            </ol>
 
-            <h3>Write tools &amp; approval</h3>
-            <ul className="dp-list">
-                <li>
-                    Write tools (create task, create tasks for a group,
-                    update, comment, complete, change status, log time) are{' '}
-                    <b>user-bound only</b> and marked non-read-only, so MCP
-                    clients prompt for human approval before invoking them.
-                    Configure your client to auto-approve reads and{' '}
-                    <b>require approval for writes</b>.
-                </li>
-                <li>
-                    <b>No delete tools exist</b>, and nothing is annotated
-                    destructive. Ownership can never be set — a write always
-                    acts as the bound user.
-                </li>
+            <div className="lq-grp">
+                {t('devPortal.mcp.toolsTitle', { n: MCP_READ_TOOLS.length + MCP_WRITE_TOOLS.length })}
+            </div>
+            <div className="dp-toolcols">
+                <div className="dp-toolcol">
+                    <div className="dp-toolcol__head">
+                        <span className="lq-tag lq-tag--info">{t('devPortal.mcp.readTools', { n: MCP_READ_TOOLS.length })}</span>
+                        <small>{t('devPortal.mcp.readToolsHint')}</small>
+                    </div>
+                    <ToolList tools={MCP_READ_TOOLS} t={t} />
+                </div>
+                <div className="dp-toolcol">
+                    <div className="dp-toolcol__head">
+                        <span className="lq-tag lq-tag--violet">{t('devPortal.mcp.writeTools', { n: MCP_WRITE_TOOLS.length })}</span>
+                        <small>{t('devPortal.mcp.writeToolsHint')}</small>
+                    </div>
+                    <ToolList tools={MCP_WRITE_TOOLS} write t={t} />
+                </div>
+            </div>
+
+            <div className="lq-grp">{t('devPortal.mcp.clientsTitle')}</div>
+            <ul className="dp-clients">
+                {MCP_CLIENTS.map((c) => {
+                    const st = CLIENT_STATUS[c.status] || CLIENT_STATUS['Not yet tested']
+                    return (
+                        <li key={c.key} className="dp-client">
+                            <div className="dp-client__head">
+                                <b>{c.client}</b>
+                                <span className={`lq-tag${st.tone ? ` lq-tag--${st.tone}` : ''}`}>
+                                    {t(`devPortal.mcp.${st.key}`)}
+                                </span>
+                            </div>
+                            <span className="dp-client__meta">{c.transport} · {c.auth}</span>
+                            <p>{t(`devPortal.clients.${c.key}.notes`)}</p>
+                            <small>{t('devPortal.mcp.evidence')}: {t(`devPortal.clients.${c.key}.evidence`)}</small>
+                        </li>
+                    )
+                })}
             </ul>
+            <p className="dp-muted"><Rich text={t('devPortal.mcp.clientsLegend')} /></p>
 
-            <h3>Group assignment</h3>
-            <p>
-                <code>hermes_create_task_for_group</code> (scope{' '}
-                <code>tasks:write</code>, user-bound only) assigns to a whole
-                user group in one call — the same capability the Hermes web
-                app offers — backed by{' '}
-                <code>POST /api/public/v1/task-groups</code>.
-            </p>
-            <ul className="dp-list">
-                <li>
-                    One work item per <b>eligible active member</b>; all of
-                    them share a single <code>assignment_batch_id</code>.
-                </li>
-                <li>
-                    Recipients are <b>derived from the group</b> — you never
-                    send a member list, and member lists are never readable
-                    through the API.
-                </li>
-                <li>
-                    The existing Hermes rules stay authoritative: the bound
-                    user needs assignment permission for that group, members
-                    without effective task access are <b>skipped</b>, and the
-                    assigner is excluded from their own fan-out.
-                </li>
-                <li>
-                    Because of those rules <code>created_count</code> may be
-                    lower than the group&apos;s member count;{' '}
-                    <code>skipped_count</code> reports the difference honestly
-                    rather than letting you assume one task per member. If no
-                    member is eligible, <b>nothing is created</b> and the call
-                    fails.
-                </li>
-            </ul>
-            <CodeBlock
-                title="tools/call arguments (fictional ids)"
-                lang="json"
-                code={GROUP_CALL}
-            />
-            <CodeBlock
-                title="result (fictional)"
-                lang="json"
-                code={GROUP_RESULT}
-            />
+            <div className="lq-note" role="note">
+                <ExclamationCircleFilled aria-hidden="true" />
+                <span><Rich text={t('devPortal.mcp.limitNote')} /></span>
+            </div>
 
-            <h3>Idempotency for agent retries</h3>
-            <ul className="dp-list">
-                <li>
-                    Transport-level retries of the same tool call are
-                    automatically protected (a key is derived from the MCP
-                    request id).
-                </li>
-                <li>
-                    Retrying the same <i>logical</i> operation across separate
-                    agent turns is protected ONLY if you pass the same
-                    explicit <code>idempotency_key</code> argument — same key
-                    + same payload replays; same key + different payload
-                    returns <code>conflict</code>. Without a shared key,
-                    separate calls create separate records. We do not claim
-                    semantic de-duplication we cannot deliver.
-                </li>
-            </ul>
+            <div className="lq-grp">{t('devPortal.mcp.detailsTitle')}</div>
+            <div className="dp-folds">
+                <Fold title={t('devPortal.mcp.f.transport.title')} hint={t('devPortal.mcp.f.transport.hint')}>
+                    <Bullets items={[t('devPortal.mcp.f.transport.b1'), t('devPortal.mcp.f.transport.b2'), t('devPortal.mcp.f.transport.b3')]} />
+                </Fold>
+                <Fold title={t('devPortal.mcp.f.auth.title')} hint={t('devPortal.mcp.f.auth.hint')}>
+                    <Bullets items={[t('devPortal.mcp.f.auth.b1'), t('devPortal.mcp.f.auth.b2'), t('devPortal.mcp.f.auth.b3')]} />
+                </Fold>
+                <Fold title={t('devPortal.mcp.f.see.title')} hint={t('devPortal.mcp.f.see.hint')}>
+                    <Bullets items={[t('devPortal.mcp.f.see.b1'), t('devPortal.mcp.f.see.b2'), t('devPortal.mcp.f.see.b3'), t('devPortal.mcp.f.see.b4')]} />
+                </Fold>
+                <Fold title={t('devPortal.mcp.f.writes.title')} hint={t('devPortal.mcp.f.writes.hint')}>
+                    <Bullets items={[t('devPortal.mcp.f.writes.b1'), t('devPortal.mcp.f.writes.b2')]} />
+                </Fold>
+                <Fold title={t('devPortal.mcp.f.group.title')} hint={t('devPortal.mcp.f.group.hint')}>
+                    <p><Rich text={t('devPortal.mcp.f.group.lead')} /></p>
+                    <Bullets items={[t('devPortal.mcp.f.group.b1'), t('devPortal.mcp.f.group.b2'), t('devPortal.mcp.f.group.b3'), t('devPortal.mcp.f.group.b4')]} />
+                    <CodeBlock title={t('devPortal.mcp.f.group.callTitle')} lang="json" code={GROUP_CALL} />
+                    <CodeBlock title={t('devPortal.mcp.f.group.resultTitle')} lang="json" code={GROUP_RESULT} />
+                </Fold>
+                <Fold title={t('devPortal.mcp.f.idem.title')} hint={t('devPortal.mcp.f.idem.hint')}>
+                    <Bullets items={[t('devPortal.mcp.f.idem.b1'), t('devPortal.mcp.f.idem.b2')]} />
+                </Fold>
+                <Fold title={t('devPortal.mcp.f.audit.title')} hint={t('devPortal.mcp.f.audit.hint')}>
+                    <Bullets items={[t('devPortal.mcp.f.audit.b1'), t('devPortal.mcp.f.audit.b2'), t('devPortal.mcp.f.audit.b3')]} />
+                </Fold>
+                <Fold title={t('devPortal.mcp.f.safety.title')} hint={t('devPortal.mcp.f.safety.hint')}>
+                    <Bullets items={[t('devPortal.mcp.f.safety.b1'), t('devPortal.mcp.f.safety.b2'), t('devPortal.mcp.f.safety.b3')]} />
+                </Fold>
+                <Fold title={t('devPortal.mcp.f.smoke.title')} hint={t('devPortal.mcp.f.smoke.hint')}>
+                    <CodeBlock title="curl" lang="bash" code={SMOKE} />
+                </Fold>
+                <Fold title={t('devPortal.mcp.f.trouble.title')} hint={t('devPortal.mcp.f.trouble.hint')}>
+                    <Bullets items={[
+                        t('devPortal.mcp.f.trouble.b1'), t('devPortal.mcp.f.trouble.b2'),
+                        t('devPortal.mcp.f.trouble.b3'), t('devPortal.mcp.f.trouble.b4'),
+                        t('devPortal.mcp.f.trouble.b5'),
+                    ]} />
+                </Fold>
+            </div>
 
-            <h3>Audit &amp; rate limits</h3>
-            <ul className="dp-list">
-                <li>
-                    Every tool call is exactly one Public API request and
-                    appears in the admin Request Logs with its client, token,
-                    path, status and duration — User-Agent{' '}
-                    <code>hermes-mcp/… tool=…</code> makes per-tool usage
-                    queryable. AI traffic is not a separate, dimmer audit
-                    trail.
-                </li>
-                <li>
-                    MCP calls consume the <b>same per-token rate limit</b> as
-                    direct API calls — an agent cannot out-spend the
-                    integration it belongs to. A <code>429</code> surfaces
-                    with retry guidance. Consider a separate client per
-                    consumer so budgets and audit stay clean.
-                </li>
-                <li>
-                    List tools return at most 50 items per call with{' '}
-                    <code>has_more/next_offset</code>; long text fields are
-                    truncated at 4000 chars with an explicit{' '}
-                    <code>truncated</code> marker.
-                </li>
-            </ul>
-
-            <h3>Prompt-injection &amp; data safety</h3>
-            <ul className="dp-list">
-                <li>
-                    Hermes field values (titles, descriptions, comments,
-                    subjects) are <b>untrusted user data</b>. The server
-                    returns structured JSON only and never turns content into
-                    instructions — but your agent should treat those strings
-                    as data too, never as commands.
-                </li>
-                <li>
-                    Keep write approval ON for agents that read shared Hermes
-                    content; that is the effective backstop if a model follows
-                    injected text.
-                </li>
-                <li>
-                    Tool descriptions and schemas are static — no user content
-                    flows into them, so they cannot be influenced by whatever
-                    someone types into a task.
-                </li>
-            </ul>
-
-            <h3>Troubleshooting</h3>
-            <ul className="dp-list">
-                <li>
-                    <code>401 + WWW-Authenticate</code>: missing header — add
-                    the Bearer token. <code>Hermes token problem</code>:
-                    invalid/expired/revoked — check API Management.{' '}
-                    <code>insufficient_scope</code>: extend the client&apos;s
-                    scopes. <code>404 Not found (or not visible)</code>: the
-                    record may exist outside your data access — deliberate
-                    non-disclosure. <code>503 server busy</code>: concurrency
-                    guard — retry shortly.
-                </li>
-            </ul>
-
-            <p>
-                Scope semantics and data-access rules are identical to the
-                Public API — see{' '}
-                <button
-                    type="button"
-                    className="dp-inline-link"
-                    onClick={() => goTo('scopes')}
-                >
-                    Scopes &amp; Data Access
+            <p className="dp-muted">
+                {t('devPortal.mcp.scopesSame')}{' '}
+                <button type="button" className="dp-link" onClick={() => goTo('scopes')}>
+                    {t('devPortal.nav.scopes')}
                 </button>
-                .
             </p>
         </div>
     )

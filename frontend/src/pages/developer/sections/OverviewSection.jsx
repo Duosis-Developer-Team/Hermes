@@ -1,214 +1,137 @@
 /**
- * Developer Portal — Overview (Stage 4A).
- * Canli veriler /v1/capabilities'ten gelir (drift yok).
+ * Developer Portal — Genel bakis ("buradan basla").
+ *
+ * Ne insa edilebilir (kullanim senaryolari → ilgili bolum), canli durum
+ * (API Status /v1/health'ten; MCP Status AYRI blok — CTO karari), temel
+ * ilkeler ve ham referans kaynaklari. Metin: devPortal.overview.*
  */
-import { Tag } from 'antd'
 import {
     ApiOutlined,
+    BarChartOutlined,
+    CloudSyncOutlined,
+    DownloadOutlined,
     FileTextOutlined,
-    SafetyCertificateOutlined,
-    ThunderboltOutlined,
+    PlusSquareOutlined,
+    RightOutlined,
+    RobotOutlined,
 } from '@ant-design/icons'
+
+import { useT } from '../../../i18n'
 import { VERIFIED_CLIENTS } from '../mcpClients'
+import { Rich, SectionHead } from '../parts'
+
+const USE_CASES = [
+    { key: 'reports', icon: <BarChartOutlined />, tone: 'blue', target: 'code-examples',
+        chips: ['GET /v1/work-logs', 'work-logs:read'] },
+    { key: 'intake', icon: <PlusSquareOutlined />, tone: 'violet', target: 'api-reference',
+        chips: ['POST /v1/tasks', 'tasks:write'] },
+    { key: 'sync', icon: <CloudSyncOutlined />, tone: 'green', target: 'pagination',
+        chips: ['updated_after', 'has_more'] },
+    { key: 'ai', icon: <RobotOutlined />, tone: 'amber', target: 'mcp',
+        chips: ['/mcp', 'Bearer hms_…'] },
+]
+
+const PRINCIPLES = ['versioned', 'layers', 'envelope', 'retries', 'limits', 'writes']
 
 function StatusDot({ ok }) {
-    return (
-        <span
-            className={`dp-status-dot ${ok ? 'is-ok' : 'is-unknown'}`}
-            aria-hidden="true"
-        />
-    )
+    return <i className={`dp-dot${ok ? ' is-ok' : ''}`} aria-hidden="true" />
 }
 
 function OverviewSection({ capabilities, goTo, health, specInfo }) {
+    const t = useT()
     const version = capabilities?.api_version || 'v1'
-    // Canli durum: Public API health'ten, Swagger/OpenAPI spec info'nun
-    // yuklenebilmis olmasindan; portal zaten goruntuleniyor.
     const apiOk = health?.status === 'ok'
     const specOk = Boolean(specInfo?.version)
+
     return (
         <div className="dp-section">
-            <h2>Hermes Public API</h2>
-            <p className="dp-lead">
-                The Hermes Public API lets external systems and AI agents work
-                with tasks, projects, customers, work logs and meetings in a
-                secure, versioned way. Everything lives under{' '}
-                <code>/api/public/{version}</code> and authenticates with
-                scoped API tokens — never with your Hermes login session.
-            </p>
+            <SectionHead
+                eyebrow={t('devPortal.overview.eyebrow')}
+                title={t('devPortal.overview.title')}
+                lead={t('devPortal.overview.lead')}
+            />
 
-            {/* Onayli UX istegi: 1 dakikalik quick start — detayli
-                Getting Started'in YERINE degil, yanina. */}
-            <div className="dp-quickstart">
-                <div className="dp-quickstart-head">
-                    <span className="dp-quickstart-title">
-                        1-Minute Quick Start
-                    </span>
+            <div className="dp-usecases">
+                {USE_CASES.map((u) => (
                     <button
+                        key={u.key}
                         type="button"
-                        className="dp-inline-link"
-                        onClick={() => goTo('getting-started')}
+                        className="dp-usecase"
+                        onClick={() => goTo(u.target)}
                     >
-                        Full guide →
+                        <span className={`lq-mico lq-mico--${u.tone}`} aria-hidden="true">{u.icon}</span>
+                        <span className="dp-usecase__title">{t(`devPortal.overview.uc.${u.key}.title`)}</span>
+                        <span className="dp-usecase__desc">{t(`devPortal.overview.uc.${u.key}.desc`)}</span>
+                        <span className="dp-usecase__chips">
+                            {u.chips.map((c) => <code key={c}>{c}</code>)}
+                        </span>
+                        <span className="dp-usecase__go">
+                            {t(`devPortal.overview.uc.${u.key}.cta`)} <RightOutlined />
+                        </span>
                     </button>
-                </div>
-                <ol className="dp-quickstart-flow">
-                    <li>Obtain a user-bound API client</li>
-                    <li>Generate a token</li>
-                    <li>
-                        Call <code>GET /v1/me</code>
-                    </li>
-                    <li>
-                        Call <code>GET /v1/tasks</code>
-                    </li>
-                    <li className="is-done">Integration complete</li>
-                </ol>
+                ))}
             </div>
 
-            {/* API Status karti (onayli Stage 4 final polish) — canli
-                /v1/health + openapi info'dan beslenir. */}
-            <div className="dp-status" role="status">
-                <span className="dp-status-title">
-                    API Status:{' '}
-                    <b className={apiOk ? 'is-ok-text' : ''}>
-                        {apiOk ? 'Operational' : 'Checking…'}
-                    </b>
-                </span>
-                <span className="dp-status-item">
-                    <StatusDot ok={apiOk} /> Public API
-                </span>
-                <span className="dp-status-item">
-                    <StatusDot ok /> Developer Portal
-                </span>
-                <span className="dp-status-item">
-                    <StatusDot ok={specOk} /> Swagger / OpenAPI
-                </span>
-            </div>
-
-            {/* MCP durumu AYRI bir blok (CTO karari): API Status'un canli
-                sagligiyla karistirilmamali. Burada canli nokta YOK — /mcp
-                ingress'inde CORS bilerek kapali oldugu icin tarayicidan
-                prob atilamaz. Bu yuzden bunlar YETENEK etiketleridir,
+            {/* API Status canli /v1/health + spec info'dan. MCP durumu AYRI
+                blok (CTO karari): /mcp ingress'inde CORS bilerek kapali,
+                tarayicidan prob atilamaz — bunlar YETENEK etiketleridir,
                 canli saglik iddiasi degil. */}
-            <div className="dp-status is-mcp" role="status">
-                <span className="dp-status-title">
-                    MCP Status: <b className="is-ok-text">Active</b>
-                </span>
-                <span className="dp-status-item">
-                    <Tag color="green">Bearer integrations supported</Tag>
-                </span>
-                <span className="dp-status-item">
-                    <Tag color="orange">OAuth native connector planned</Tag>
-                </span>
+            <div className="dp-status-grid">
+                <div className="dp-status" role="status">
+                    <span className="dp-status__title">
+                        {t('devPortal.overview.apiStatus')}{' '}
+                        <b className={apiOk ? 'is-ok' : ''}>
+                            {apiOk ? t('devPortal.common.operational') : t('devPortal.common.checking')}
+                        </b>
+                    </span>
+                    <span className="dp-status__items">
+                        <span><StatusDot ok={apiOk} /> {t('devPortal.overview.statusApi', { version })}</span>
+                        <span><StatusDot ok /> {t('devPortal.overview.statusPortal')}</span>
+                        <span><StatusDot ok={specOk} /> {t('devPortal.overview.statusSpec')}</span>
+                    </span>
+                </div>
+                <div className="dp-status is-mcp" role="status">
+                    <span className="dp-status__title">
+                        {t('devPortal.overview.mcpStatus')}{' '}
+                        <b className="is-ok">{t('devPortal.overview.mcpActive')}</b>
+                    </span>
+                    <span className="dp-status__items">
+                        <span className="lq-tag lq-tag--ok">{t('devPortal.overview.mcpBearer')}</span>
+                        <span className="lq-tag lq-tag--warn">{t('devPortal.overview.mcpOauth')}</span>
+                    </span>
+                    <span className="dp-status__note">
+                        {t('devPortal.overview.mcpVerified', { clients: VERIFIED_CLIENTS.join(', ') })}
+                    </span>
+                </div>
             </div>
 
-            <div className="dp-cards">
-                <button
-                    type="button"
-                    className="dp-card"
-                    onClick={() => goTo('getting-started')}
-                >
-                    <ThunderboltOutlined className="dp-card-icon" />
-                    <span className="dp-card-title">Getting Started</span>
-                    <span className="dp-card-sub">
-                        From zero to your first successful API call in five
-                        steps.
-                    </span>
-                </button>
-                <button
-                    type="button"
-                    className="dp-card"
-                    onClick={() => goTo('authentication')}
-                >
-                    <SafetyCertificateOutlined className="dp-card-icon" />
-                    <span className="dp-card-title">Authentication</span>
-                    <span className="dp-card-sub">
-                        Bearer tokens, environments, rotation and client
-                        types.
-                    </span>
-                </button>
-                <a
-                    className="dp-card"
-                    href="/api/public/v1/docs"
-                    target="_blank"
-                    rel="noreferrer"
-                >
-                    <ApiOutlined className="dp-card-icon" />
-                    <span className="dp-card-title">
-                        Interactive API Reference
-                    </span>
-                    <span className="dp-card-sub">
-                        Swagger UI with every endpoint, schema and scope.
-                    </span>
-                </a>
-                <a
-                    className="dp-card"
-                    href="/api/public/v1/openapi.json"
-                    target="_blank"
-                    rel="noreferrer"
-                >
-                    <FileTextOutlined className="dp-card-icon" />
-                    <span className="dp-card-title">OpenAPI Schema</span>
-                    <span className="dp-card-sub">
-                        Machine-readable spec for client generation.
-                    </span>
-                </a>
+            <div className="lq-grp">{t('devPortal.overview.principlesTitle')}</div>
+            <div className="dp-principles">
+                {PRINCIPLES.map((p) => (
+                    <div key={p} className="dp-principle">
+                        <b>{t(`devPortal.overview.pr.${p}.title`)}</b>
+                        <span><Rich text={t(`devPortal.overview.pr.${p}.text`, { version })} /></span>
+                    </div>
+                ))}
             </div>
 
-            <h3>At a glance</h3>
-            <ul className="dp-list">
-                <li>
-                    <b>Versioned</b> — all endpoints live under{' '}
-                    <code>/{version}</code>; breaking changes only ship in a
-                    new version prefix.
-                </li>
-                <li>
-                    <b>Two authorization layers</b> — <i>scopes</i> say which
-                    operations a token may call; <i>data-access bindings</i>{' '}
-                    say which records it can see. Both always apply.
-                </li>
-                <li>
-                    <b>One error envelope</b> —{' '}
-                    <code>
-                        {'{'}"error": {'{'}"code", "message", "request_id"
-                        {'}'}{'}'}
-                    </code>{' '}
-                    on every failure.
-                </li>
-                <li>
-                    <b>Safe retries</b> — every POST accepts an optional{' '}
-                    <code>Idempotency-Key</code> header (24-hour replay
-                    window).
-                </li>
-                <li>
-                    <b>Rate limited</b> — per-token limits with{' '}
-                    <code>X-RateLimit-*</code> response headers.
-                </li>
-                <li>
-                    <b>Writes are user-bound</b> — service clients are
-                    read-only in {version}; write operations always act as the
-                    bound Hermes user under that user's permissions.
-                </li>
-            </ul>
-
-            <div className="dp-note">
-                <Tag color="green">MCP Active</Tag>
-                <span>
-                    The Hermes <b>MCP server</b> lets AI tools talk to Hermes
-                    natively — reusing exactly this API's token, scope,
-                    data-access, audit and rate-limit model. Verified with{' '}
-                    {VERIFIED_CLIENTS.join(', ')}. Bearer-token integrations
-                    are supported today; a native OAuth connector is not yet
-                    available. See the{' '}
-                    <button
-                        type="button"
-                        className="dp-inline-link"
-                        onClick={() => goTo('mcp')}
-                    >
-                        MCP Server
-                    </button>{' '}
-                    section for setup and per-client status.
-                </span>
+            <div className="lq-grp">{t('devPortal.overview.resourcesTitle')}</div>
+            <div className="dp-tiles">
+                <a className="dp-tile" href="/api/public/v1/docs" target="_blank" rel="noreferrer">
+                    <ApiOutlined className="dp-tile__icon" />
+                    <b>{t('devPortal.overview.res.swagger')}</b>
+                    <span>{t('devPortal.overview.res.swaggerDesc')}</span>
+                </a>
+                <a className="dp-tile" href="/api/public/v1/openapi.json" target="_blank" rel="noreferrer">
+                    <FileTextOutlined className="dp-tile__icon" />
+                    <b>{t('devPortal.overview.res.spec')}</b>
+                    <span>{t('devPortal.overview.res.specDesc')}</span>
+                </a>
+                <a className="dp-tile" href="/api/public/v1/openapi.json" download="hermes-public-api-v1.json">
+                    <DownloadOutlined className="dp-tile__icon" />
+                    <b>{t('devPortal.overview.res.download')}</b>
+                    <span>{t('devPortal.overview.res.downloadDesc')}</span>
+                </a>
             </div>
         </div>
     )

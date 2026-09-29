@@ -1,137 +1,76 @@
 /**
- * Developer Portal — Authentication (Stage 4A).
- * Token prefix'leri gibi canli degerler capabilities'ten okunur.
+ * Developer Portal — Kimlik dogrulama.
+ * Token prefix'leri canli capabilities'ten okunur. Metin: devPortal.auth.*
  */
-import { Table, Tag } from 'antd'
+import { useT } from '../../../i18n'
 import CodeBlock from '../CodeBlock'
+import { Bullets, Rich, SectionHead } from '../parts'
 
 const AUTH_HEADER = `curl -s "$HERMES_BASE/api/public/v1/tasks" \\
   -H "Authorization: Bearer $HERMES_API_TOKEN"`
 
 function AuthenticationSection({ capabilities }) {
+    const t = useT()
     const prefixes = capabilities?.authentication?.token_prefixes || [
         'hms_dev_',
         'hms_live_',
     ]
 
-    const clientTypeRows = [
-        {
-            key: 'user',
-            type: 'User-bound',
-            actsAs: 'The bound Hermes user (their permissions apply)',
-            reads: 'Ceiling: never beyond what the bound user can see',
-            writes: 'Yes — the only client type that can write in v1',
-        },
-        {
-            key: 'service',
-            type: 'Service',
-            actsAs: 'No user identity',
-            reads: 'Whatever its data-access bindings grant',
-            writes: 'No — read-only in v1 (writes return 403)',
-        },
-    ]
-
     return (
         <div className="dp-section">
-            <h2>Authentication</h2>
-            <p className="dp-lead">
-                Every request authenticates with an API token in the{' '}
-                <code>Authorization</code> header. Tokens are never accepted
-                via query parameters or cookies, and your Hermes browser
-                session is never used by the Public API.
-            </p>
-            <CodeBlock title="every request" code={AUTH_HEADER} />
-
-            <h3>Token format and environments</h3>
-            <ul className="dp-list">
-                <li>
-                    Tokens start with{' '}
-                    {prefixes.map((p) => (
-                        <Tag key={p}>
-                            <code>{p}…</code>
-                        </Tag>
-                    ))}
-                    — the prefix encodes the environment, and a token only
-                    works against the matching environment.
-                </li>
-                <li>
-                    The token value is shown <b>once</b>, at creation. Hermes
-                    stores only a SHA-256 hash; nobody — including
-                    administrators — can recover a lost token. Losing one
-                    means rotating it.
-                </li>
-                <li>
-                    Tokens may carry an expiry date. Expired tokens return{' '}
-                    <Tag>401 expired_token</Tag>.
-                </li>
-            </ul>
-
-            <h3>Rotation and revocation</h3>
-            <ul className="dp-list">
-                <li>
-                    <b>Rotate</b> issues a new token and kills the old one in
-                    the same operation — plan for a brief switchover in your
-                    deployment.
-                </li>
-                <li>
-                    <b>Revoke</b> stops a token immediately —{' '}
-                    <Tag>401 revoked_token</Tag> from that moment on.
-                </li>
-                <li>
-                    Disabling an API client stops <b>all</b> of its tokens at
-                    once.
-                </li>
-                <li>
-                    If a token ever leaks (a log line, a screenshot, a
-                    repository), treat it as compromised: ask an
-                    administrator to rotate it immediately.
-                </li>
-            </ul>
-
-            <h3>Client types</h3>
-            <Table
-                className="dp-table"
-                size="small"
-                pagination={false}
-                columns={[
-                    { title: 'Type', dataIndex: 'type', width: 130 },
-                    { title: 'Acts as', dataIndex: 'actsAs' },
-                    { title: 'Reads', dataIndex: 'reads' },
-                    { title: 'Writes', dataIndex: 'writes' },
-                ]}
-                dataSource={clientTypeRows}
-                scroll={{ x: 'max-content' }}
+            <SectionHead
+                eyebrow={t('devPortal.auth.eyebrow')}
+                title={t('devPortal.auth.title')}
+                lead={t('devPortal.auth.lead')}
             />
-            <p>
-                Scopes and data-access bindings are two <b>separate</b>{' '}
-                authorization layers on the client: scopes gate operations
-                (e.g. <code>tasks:read</code>), bindings gate records (e.g.
-                “only customer X”). A request must pass both. The full
-                catalog lives in the Scopes &amp; Data Access section
-                (arriving with the next portal update) and in the{' '}
-                <a
-                    href="/api/public/v1/docs"
-                    target="_blank"
-                    rel="noreferrer"
-                >
-                    API reference
-                </a>
-                .
-            </p>
+            <CodeBlock title={t('devPortal.auth.everyRequest')} code={AUTH_HEADER} />
 
-            <h3>Good hygiene</h3>
-            <ul className="dp-list">
-                <li>One client per integration — never share tokens.</li>
-                <li>
-                    Request the minimum scopes; extending them later is one
-                    admin action.
-                </li>
-                <li>
-                    Send <code>X-Request-ID</code> values from error
-                    responses when reporting problems — they let
-                    administrators find your exact request in the audit log.
-                </li>
-            </ul>
+            <div className="dp-facts">
+                <div className="dp-fact">
+                    <b>{t('devPortal.auth.formatTitle')}</b>
+                    <span className="dp-fact__chips">
+                        {prefixes.map((p) => <code key={p}>{p}…</code>)}
+                    </span>
+                    <p>{t('devPortal.auth.formatText')}</p>
+                </div>
+                <div className="dp-fact">
+                    <b>{t('devPortal.auth.onceTitle')}</b>
+                    <p><Rich text={t('devPortal.auth.onceText')} /></p>
+                </div>
+                <div className="dp-fact">
+                    <b>{t('devPortal.auth.expiryTitle')}</b>
+                    <p><Rich text={t('devPortal.auth.expiryText')} /></p>
+                </div>
+            </div>
+
+            <div className="lq-grp">{t('devPortal.auth.clientTypes')}</div>
+            <div className="dp-compare">
+                {['user', 'service'].map((k) => (
+                    <div key={k} className={`dp-compare__card${k === 'user' ? ' is-primary' : ''}`}>
+                        <div className="dp-compare__head">
+                            <b>{t(`devPortal.auth.${k}.name`)}</b>
+                            <span className={`lq-tag ${k === 'user' ? 'lq-tag--violet' : 'lq-tag--info'}`}>
+                                {t(`devPortal.auth.${k}.tag`)}
+                            </span>
+                        </div>
+                        <dl className="lq-kv">
+                            <dt>{t('devPortal.auth.actsAs')}</dt><dd>{t(`devPortal.auth.${k}.actsAs`)}</dd>
+                            <dt>{t('devPortal.auth.reads')}</dt><dd>{t(`devPortal.auth.${k}.reads`)}</dd>
+                            <dt>{t('devPortal.auth.writes')}</dt><dd>{t(`devPortal.auth.${k}.writes`)}</dd>
+                        </dl>
+                    </div>
+                ))}
+            </div>
+            <p className="dp-muted"><Rich text={t('devPortal.auth.layersNote')} /></p>
+
+            <div className="lq-grp">{t('devPortal.auth.rotationTitle')}</div>
+            <Bullets items={[
+                t('devPortal.auth.rot1'), t('devPortal.auth.rot2'),
+                t('devPortal.auth.rot3'), t('devPortal.auth.rot4'),
+            ]} />
+
+            <div className="lq-grp">{t('devPortal.auth.hygieneTitle')}</div>
+            <Bullets items={[t('devPortal.auth.hy1'), t('devPortal.auth.hy2'), t('devPortal.auth.hy3')]} />
         </div>
     )
 }

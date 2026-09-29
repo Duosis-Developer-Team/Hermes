@@ -1,9 +1,12 @@
 /**
- * Developer Portal — Code Examples (Stage 4C).
+ * Developer Portal — Kod ornekleri.
  * curl / Python / JavaScript sekmeleri; TAMAMI kurgusal veri.
+ * Ornek kod dizeleri BU dosyada kalir (frontendDebt'in console.log
+ * taramasi bu dosyayi bilerek haric tutar). Metin: devPortal.examples.*
  */
-import { Tabs } from 'antd'
-import CodeBlock from '../CodeBlock'
+import { useT } from '../../../i18n'
+import CodeBlock, { CodeTabs } from '../CodeBlock'
+import { Rich, SectionHead } from '../parts'
 
 const LIST_CURL = `curl -s "$HERMES_BASE/api/public/v1/tasks?status=in_progress&limit=25" \\
   -H "Authorization: Bearer $HERMES_API_TOKEN"`
@@ -147,74 +150,52 @@ const ERRORS_PY = `def call_hermes(fn, *, max_attempts=4):
         return r
     return r`
 
+function Example({ title, text, children }) {
+    return (
+        <section className="dp-example">
+            <h3>{title}</h3>
+            {text && <p className="dp-muted"><Rich text={text} /></p>}
+            {children}
+        </section>
+    )
+}
+
 function CodeExamplesSection() {
+    const t = useT()
+    const lang = t('devPortal.common.language')
     return (
         <div className="dp-section">
-            <h2>Code Examples</h2>
-            <p className="dp-lead">
-                Complete, runnable patterns in curl, Python and JavaScript.
-                Every value is fictional — swap in your own base URL, token
-                and ids.
-            </p>
-
-            <h3>List with pagination</h3>
-            <Tabs
-                className="dp-tabs"
-                size="small"
-                items={[
-                    {
-                        key: 'curl',
-                        label: 'curl',
-                        children: <CodeBlock title="curl" code={LIST_CURL} />,
-                    },
-                    {
-                        key: 'py',
-                        label: 'Python',
-                        children: (
-                            <CodeBlock title="python" lang="python" code={LIST_PY} />
-                        ),
-                    },
-                    {
-                        key: 'js',
-                        label: 'JavaScript',
-                        children: (
-                            <CodeBlock title="javascript" lang="js" code={LIST_JS} />
-                        ),
-                    },
-                ]}
+            <SectionHead
+                eyebrow={t('devPortal.examples.eyebrow')}
+                title={t('devPortal.examples.title')}
+                lead={t('devPortal.examples.lead')}
             />
 
-            <h3>Idempotent create (work log linked to a task)</h3>
-            <Tabs
-                className="dp-tabs"
-                size="small"
-                items={[
-                    {
-                        key: 'curl',
-                        label: 'curl',
-                        children: (
-                            <CodeBlock title="curl" code={CREATE_CURL} />
-                        ),
-                    },
-                    {
-                        key: 'py',
-                        label: 'Python',
-                        children: (
-                            <CodeBlock title="python" lang="python" code={CREATE_PY} />
-                        ),
-                    },
-                    {
-                        key: 'js',
-                        label: 'JavaScript',
-                        children: (
-                            <CodeBlock title="javascript" lang="js" code={CREATE_JS} />
-                        ),
-                    },
-                ]}
-            />
+            <Example title={t('devPortal.examples.listTitle')} text={t('devPortal.examples.listText')}>
+                <CodeTabs
+                    ariaLabel={lang}
+                    samples={[
+                        { key: 'curl', label: 'curl', lang: 'bash', code: LIST_CURL },
+                        { key: 'py', label: 'Python', lang: 'python', code: LIST_PY },
+                        { key: 'js', label: 'JavaScript', lang: 'js', code: LIST_JS },
+                    ]}
+                />
+            </Example>
 
-            <h3>Resilient error handling</h3>
-            <CodeBlock title="python" lang="python" code={ERRORS_PY} />
+            <Example title={t('devPortal.examples.createTitle')} text={t('devPortal.examples.createText')}>
+                <CodeTabs
+                    ariaLabel={lang}
+                    samples={[
+                        { key: 'curl', label: 'curl', lang: 'bash', code: CREATE_CURL },
+                        { key: 'py', label: 'Python', lang: 'python', code: CREATE_PY },
+                        { key: 'js', label: 'JavaScript', lang: 'js', code: CREATE_JS },
+                    ]}
+                />
+            </Example>
+
+            <Example title={t('devPortal.examples.retryTitle')} text={t('devPortal.examples.retryText')}>
+                <CodeBlock title="python" lang="python" code={ERRORS_PY} />
+            </Example>
         </div>
     )
 }

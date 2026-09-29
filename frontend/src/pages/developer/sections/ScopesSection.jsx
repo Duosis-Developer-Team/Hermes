@@ -1,138 +1,81 @@
 /**
- * Developer Portal — Scopes & Data Access (Stage 4B).
- * Scope katalogu CANLI /v1/capabilities'ten gelir (drift yok).
+ * Developer Portal — Kapsamlar ve veri erisimi.
+ * Scope katalogu CANLI /v1/capabilities'ten gelir (drift yok); scope
+ * aciklamalari da backend katalogunun kendi metnidir (API dili Ingilizce).
+ * Metin: devPortal.scopes.*
  */
-import { Table, Tag } from 'antd'
+import { useT } from '../../../i18n'
+import { Bullets, Rich, SectionHead } from '../parts'
+
+const BINDINGS = ['global', 'user', 'group', 'customer', 'project']
 
 function ScopesSection({ capabilities }) {
+    const t = useT()
     const scopeRows = Object.entries(capabilities?.scopes || {}).map(
         ([scope, description]) => ({
-            key: scope,
             scope,
             description,
-            reserved: description.startsWith('Reserved'),
-        })
+            reserved: String(description).startsWith('Reserved'),
+        }),
     )
-
-    const bindingRows = [
-        {
-            key: 'global',
-            type: 'global',
-            grants: 'Every record (scopes still apply)',
-            note: 'Cannot be combined with other bindings',
-        },
-        {
-            key: 'user',
-            type: 'user',
-            grants: 'Records belonging to the listed users',
-            note: 'Tasks they are assigned/assigner on, their work logs, meetings they attend',
-        },
-        {
-            key: 'group',
-            type: 'group',
-            grants: 'Records of the group’s active members',
-            note: 'Membership is resolved at request time',
-        },
-        {
-            key: 'customer',
-            type: 'customer',
-            grants: 'Records belonging to the listed customers',
-            note: 'Meetings are excluded (they have no customer relation)',
-        },
-        {
-            key: 'project',
-            type: 'project',
-            grants: 'Records belonging to the listed projects',
-            note: 'Meetings are excluded (they have no project relation)',
-        },
-    ]
 
     return (
         <div className="dp-section">
-            <h2>Scopes &amp; Data Access</h2>
-            <p className="dp-lead">
-                Authorization has two independent layers, and every request
-                must pass both. <b>Scopes</b> answer “which operations may
-                this token call?”. <b>Data-access bindings</b> answer “which
-                records may it see?”. A token with <code>tasks:read</code>{' '}
-                but no bindings gets an empty list — fail-closed, never
-                fail-open.
-            </p>
-
-            <h3>Scope catalog (live)</h3>
-            <Table
-                className="dp-table"
-                size="small"
-                pagination={false}
-                columns={[
-                    {
-                        title: 'Scope',
-                        dataIndex: 'scope',
-                        width: 180,
-                        render: (v, r) => (
-                            <span>
-                                <code>{v}</code>{' '}
-                                {r.reserved && <Tag>reserved</Tag>}
-                            </span>
-                        ),
-                    },
-                    { title: 'Description', dataIndex: 'description' },
-                ]}
-                dataSource={scopeRows}
-                scroll={{ x: 'max-content' }}
+            <SectionHead
+                eyebrow={t('devPortal.scopes.eyebrow')}
+                title={t('devPortal.scopes.title')}
+                lead={t('devPortal.scopes.lead')}
             />
-            <p>
-                <code>users:read</code> and <code>groups:read</code> grant
-                least-privilege <b>directory</b> visibility: non-global
-                tokens can only resolve identities they already encounter
-                in accessible business records — never enumerate the whole
-                company.
-            </p>
 
-            <h3>Data-access binding types</h3>
-            <Table
-                className="dp-table"
-                size="small"
-                pagination={false}
-                columns={[
-                    { title: 'Binding', dataIndex: 'type', width: 110,
-                      render: (v) => <code>{v}</code> },
-                    { title: 'Grants', dataIndex: 'grants' },
-                    { title: 'Notes', dataIndex: 'note' },
-                ]}
-                dataSource={bindingRows}
-                scroll={{ x: 'max-content' }}
-            />
-            <ul className="dp-list">
-                <li>
-                    Bindings across categories combine as a <b>union</b>: a
-                    customer binding plus a user binding grants records
-                    matching either.
-                </li>
-                <li>
-                    <b>User-bound clients have a hard ceiling</b>: whatever
-                    the bindings say, they can never see more than the bound
-                    Hermes user can see in the app.
-                </li>
+            <div className="dp-compare">
+                <div className="dp-compare__card is-primary">
+                    <div className="dp-compare__head">
+                        <b>{t('devPortal.scopes.layerScopes')}</b>
+                        <span className="lq-tag lq-tag--info">{t('devPortal.scopes.layerScopesQ')}</span>
+                    </div>
+                    <p><Rich text={t('devPortal.scopes.layerScopesText')} /></p>
+                </div>
+                <div className="dp-compare__card">
+                    <div className="dp-compare__head">
+                        <b>{t('devPortal.scopes.layerBindings')}</b>
+                        <span className="lq-tag lq-tag--violet">{t('devPortal.scopes.layerBindingsQ')}</span>
+                    </div>
+                    <p><Rich text={t('devPortal.scopes.layerBindingsText')} /></p>
+                </div>
+            </div>
+
+            <div className="lq-grp">{t('devPortal.scopes.catalogTitle')}</div>
+            {scopeRows.length === 0 ? (
+                <p className="dp-empty" role="status">{t('devPortal.common.loadingCatalog')}</p>
+            ) : (
+                <ul className="dp-scopes">
+                    {scopeRows.map((r) => (
+                        <li key={r.scope} className={r.reserved ? 'is-reserved' : ''}>
+                            <code>{r.scope}</code>
+                            {r.reserved && <span className="lq-tag">{t('devPortal.scopes.reserved')}</span>}
+                            <span>{r.description}</span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+            <p className="dp-muted"><Rich text={t('devPortal.scopes.directoryNote')} /></p>
+
+            <div className="lq-grp">{t('devPortal.scopes.bindingsTitle')}</div>
+            <ul className="dp-rows">
+                {BINDINGS.map((b) => (
+                    <li key={b}>
+                        <code>{b}</code>
+                        <b>{t(`devPortal.scopes.b.${b}.grants`)}</b>
+                        <span>{t(`devPortal.scopes.b.${b}.note`)}</span>
+                    </li>
+                ))}
             </ul>
 
-            <h3>Derived reference visibility</h3>
-            <p>
-                <code>/v1/customers</code> and <code>/v1/projects</code> do{' '}
-                <b>not</b> enumerate the company inventory. With user/group
-                bindings you only see customers and projects that are
-                actually referenced by tasks or work logs you can already
-                access; explicit customer/project bindings expose exactly the
-                bound entities; only global bindings see all active records.
-            </p>
-
-            <h3>Existence is never disclosed</h3>
-            <p>
-                A record outside your data access returns the <b>same</b>{' '}
-                <code>404 resource_not_found</code> envelope as a record that
-                does not exist. Do not treat 404 as proof of absence — it
-                only means “not visible to this token”.
-            </p>
+            <div className="lq-grp">{t('devPortal.scopes.rulesTitle')}</div>
+            <Bullets items={[
+                t('devPortal.scopes.rule1'), t('devPortal.scopes.rule2'),
+                t('devPortal.scopes.rule3'), t('devPortal.scopes.rule4'),
+            ]} />
         </div>
     )
 }

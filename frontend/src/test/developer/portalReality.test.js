@@ -20,6 +20,11 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
+import en from '../../i18n/en'
+import tr from '../../i18n/tr'
+import { ALL_ENDPOINTS } from '../../pages/developer/endpoints'
+import { MCP_TOOLS } from '../../pages/developer/mcpTools'
+
 const PORTAL_DIR = 'src/pages/developer'
 const SECTIONS = join(PORTAL_DIR, 'sections')
 const API_ROUTERS = '../backend/core-service/app/public_api/routers'
@@ -28,22 +33,29 @@ const SCOPES_PY = '../backend/core-service/app/public_api/scopes.py'
 const MCP_REGISTRY = '../backend/mcp-service/hermes_mcp/registry.py'
 
 const read = (p) => readFileSync(p, 'utf8')
-const portalText = () =>
-    readdirSync(SECTIONS)
-        .filter((f) => f.endsWith('.jsx'))
-        .map((f) => read(join(SECTIONS, f)))
-        .join('\n')
+const values = (node) => (typeof node === 'string'
+    ? [node]
+    : Object.values(node || {}).flatMap(values))
 
-/** Portalin API Reference bolumunde belgeledigi uclar. */
+/*
+ * Portal metni = portal klasorundeki TUM kaynaklar (bolumler, hero, veri
+ * dosyalari) + iki dildeki devPortal sozlugu. 29.09'da metin sozluge
+ * tasindi; tarama ALANI genisledi, kurallar ayni kaldi.
+ */
+const portalText = () => [
+    ...readdirSync(SECTIONS)
+        .filter((f) => f.endsWith('.jsx'))
+        .map((f) => read(join(SECTIONS, f))),
+    ...readdirSync(PORTAL_DIR)
+        .filter((f) => /\.(jsx?|css)$/.test(f))
+        .map((f) => read(join(PORTAL_DIR, f))),
+    ...values(en.devPortal),
+    ...values(tr.devPortal),
+].join('\n')
+
+/** Portalin API referansinda belgeledigi uclar (tek kaynak: endpoints.js). */
 function documentedEndpoints() {
-    const src = read(join(SECTIONS, 'ApiReferenceSection.jsx'))
-    const out = new Set()
-    for (const m of src.matchAll(/<Endpoint\b([\s\S]*?)>/g)) {
-        const method = /m="([A-Z]+)"/.exec(m[1])
-        const path = /path="([^"]*)"/.exec(m[1])
-        if (method && path) out.add(`${method[1]} ${path[1]}`)
-    }
-    return out
+    return new Set(ALL_ENDPOINTS.map((e) => `${e.m} ${e.path}`))
 }
 
 /** Gercek v1 uclari (router prefix + dekoratordeki yol). */
@@ -138,6 +150,36 @@ describe('scope iddialari', () => {
                 expect(real).toContain(candidate)
             }
         }
+        // Uc katalogundaki ve sozlukteki `scope` isaretli degerler de gercek.
+        for (const e of ALL_ENDPOINTS) {
+            if (e.scope) expect(real).toContain(e.scope)
+        }
+        for (const m of text.matchAll(/`((?:tasks|customers|projects|work-logs|meetings|users|groups):[a-z]+)`/g)) {
+            expect(real).toContain(m[1])
+        }
+    })
+})
+
+describe('MCP tool listesi registry ile BIREBIR', () => {
+    /** registry.py: her `name="hermes_x"` blogu, bir sonraki ada kadar. */
+    function registryTools() {
+        const src = read(MCP_REGISTRY)
+        const out = new Map()
+        const re = /name="(hermes_[a-z_]+)"/g
+        const hits = [...src.matchAll(re)]
+        hits.forEach((m, i) => {
+            const end = i + 1 < hits.length ? hits[i + 1].index : src.length
+            out.set(m[1], /write=True/.test(src.slice(m.index, end)))
+        })
+        return out
+    }
+
+    it('ad kumesi ve yazma bayragi ayni (uydurma/eksik tool yok)', () => {
+        const real = registryTools()
+        expect(real.size).toBeGreaterThan(10)
+        const listed = new Map(MCP_TOOLS.map((x) => [x.name, x.write]))
+        expect([...listed.keys()].sort()).toEqual([...real.keys()].sort())
+        for (const [name, write] of real) expect(listed.get(name), name).toBe(write)
     })
 })
 

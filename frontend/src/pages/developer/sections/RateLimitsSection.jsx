@@ -1,7 +1,9 @@
 /**
- * Developer Portal — Rate Limits (Stage 4B).
+ * Developer Portal — Hiz sinirlari. Metin: devPortal.rate.*
  */
+import { useT } from '../../../i18n'
 import CodeBlock from '../CodeBlock'
+import { Bullets, SectionHead } from '../parts'
 
 const HEADERS = `X-RateLimit-Limit: 60        # requests allowed in the current window
 X-RateLimit-Remaining: 42    # requests left
@@ -19,52 +21,24 @@ elif response.status >= 500:
     exponential_backoff_then_retry()        # 1s, 2s, 4s… + jitter`
 
 function RateLimitsSection() {
+    const t = useT()
     return (
         <div className="dp-section">
-            <h2>Rate Limits</h2>
-            <p className="dp-lead">
-                Requests are limited per token per minute. Every
-                authenticated response tells you where you stand, so a
-                well-behaved client never has to guess.
-            </p>
+            <SectionHead
+                eyebrow={t('devPortal.rate.eyebrow')}
+                title={t('devPortal.rate.title')}
+                lead={t('devPortal.rate.lead')}
+            />
+            <div className="dp-codegrid">
+                <CodeBlock title={t('devPortal.rate.headersTitle')} code={HEADERS} />
+                <CodeBlock title={t('devPortal.rate.retryTitle')} code={RETRY} />
+            </div>
 
-            <CodeBlock title="response headers" code={HEADERS} />
+            <div className="lq-grp">{t('devPortal.rate.hitTitle')}</div>
+            <Bullets items={[t('devPortal.rate.h1'), t('devPortal.rate.h2'), t('devPortal.rate.h3')]} />
 
-            <h3>When you hit the limit</h3>
-            <ul className="dp-list">
-                <li>
-                    You get <code>429 rate_limit_exceeded</code> (standard
-                    error envelope) plus a <code>Retry-After</code> header —{' '}
-                    <b>honour it</b> rather than hammering.
-                </li>
-                <li>
-                    Combine retries with an <code>Idempotency-Key</code> on
-                    POSTs so a retried write can never duplicate.
-                </li>
-                <li>
-                    Idempotent replays still count against the limit — cache
-                    responses on your side where possible.
-                </li>
-            </ul>
-            <CodeBlock title="retry pattern" code={RETRY} />
-
-            <h3>Staying under the limit</h3>
-            <ul className="dp-list">
-                <li>
-                    Prefer <code>updated_after</code> delta syncs over full
-                    re-reads, and the maximum <code>limit=100</code> page
-                    size over many small pages.
-                </li>
-                <li>
-                    Watch <code>X-RateLimit-Remaining</code> and slow down
-                    before hitting zero.
-                </li>
-                <li>
-                    If your integration legitimately needs more, ask a
-                    Hermes administrator — limits are configurable per API
-                    client, no code changes needed.
-                </li>
-            </ul>
+            <div className="lq-grp">{t('devPortal.rate.underTitle')}</div>
+            <Bullets items={[t('devPortal.rate.u1'), t('devPortal.rate.u2'), t('devPortal.rate.u3')]} />
         </div>
     )
 }

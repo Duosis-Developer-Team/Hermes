@@ -1,10 +1,13 @@
 /**
- * Developer Portal — Errors (Stage 4B, onayli D2).
+ * Developer Portal — Hatalar.
  * Katalog CANLI /v1/capabilities.errors'tan render edilir — backend'le
  * drift YAPISAL olarak imkansiz (kalici hizalama testleri backend'de).
+ * Kod aciklamalari backend katalogunun kendi metnidir. Metin:
+ * devPortal.errors.*
  */
-import { Table, Tag } from 'antd'
+import { useT } from '../../../i18n'
 import CodeBlock from '../CodeBlock'
+import { Bullets, Rich, SectionHead } from '../parts'
 
 const ENVELOPE = `{
   "error": {
@@ -14,76 +17,52 @@ const ENVELOPE = `{
   }
 }`
 
-function statusColor(status) {
-    if (status >= 500) return 'red'
-    if (status === 429) return 'orange'
-    if (status >= 400) return 'gold'
-    return 'default'
+function tone(status) {
+    if (status >= 500) return 'bad'
+    if (status === 429) return 'warn'
+    if (status >= 400) return 'info'
+    return ''
 }
 
 function ErrorsSection({ capabilities }) {
-    const rows = (capabilities?.errors || []).map((e) => ({
-        key: e.code,
-        ...e,
-    }))
+    const t = useT()
+    const rows = capabilities?.errors || []
 
     return (
         <div className="dp-section">
-            <h2>Errors</h2>
-            <p className="dp-lead">
-                Every failure — auth, validation, permissions, rate limits,
-                server errors — uses one envelope. Branch on{' '}
-                <code>error.code</code> (stable, machine-readable), show{' '}
-                <code>error.message</code> to humans, and log{' '}
-                <code>error.request_id</code>.
-            </p>
-
-            <CodeBlock title="the only error shape" lang="json" code={ENVELOPE} />
-
-            <h3>Error catalog (live)</h3>
-            <Table
-                className="dp-table"
-                size="small"
-                pagination={false}
-                columns={[
-                    {
-                        title: 'Code',
-                        dataIndex: 'code',
-                        width: 260,
-                        render: (v) => <code>{v}</code>,
-                    },
-                    {
-                        title: 'HTTP',
-                        dataIndex: 'status',
-                        width: 80,
-                        render: (v) => <Tag color={statusColor(v)}>{v}</Tag>,
-                    },
-                    { title: 'Meaning', dataIndex: 'description' },
-                ]}
-                dataSource={rows}
-                scroll={{ x: 'max-content' }}
+            <SectionHead
+                eyebrow={t('devPortal.errors.eyebrow')}
+                title={t('devPortal.errors.title')}
+                lead={t('devPortal.errors.lead')}
             />
 
-            <h3>Working with errors</h3>
-            <ul className="dp-list">
-                <li>
-                    <b>404 is not proof of absence</b> — records outside your
-                    data access return the same envelope as nonexistent ones
-                    (deliberate non-disclosure).
-                </li>
-                <li>
-                    Codes are a stable contract: new codes may be added
-                    (with a changelog entry), existing ones never change
-                    meaning. Messages are human wording and may improve —
-                    never parse them.
-                </li>
-                <li>
-                    When reporting a problem to your Hermes administrators,
-                    include the <code>request_id</code> (also present in the{' '}
-                    <code>X-Request-ID</code> response header) — it locates
-                    your exact request in the audit log.
-                </li>
-            </ul>
+            <div className="dp-codegrid">
+                <CodeBlock title={t('devPortal.errors.envelopeTitle')} lang="json" code={ENVELOPE} />
+                <dl className="lq-kv dp-kv dp-envelope-kv">
+                    <dt><code>error.code</code></dt><dd>{t('devPortal.errors.fieldCode')}</dd>
+                    <dt><code>error.message</code></dt><dd>{t('devPortal.errors.fieldMessage')}</dd>
+                    <dt><code>error.request_id</code></dt><dd>{t('devPortal.errors.fieldRequestId')}</dd>
+                </dl>
+            </div>
+
+            <div className="lq-grp">{t('devPortal.errors.catalogTitle', { n: rows.length || '…' })}</div>
+            {rows.length === 0 ? (
+                <p className="dp-empty" role="status">{t('devPortal.common.loadingCatalog')}</p>
+            ) : (
+                <ul className="dp-errors">
+                    {rows.map((e) => (
+                        <li key={e.code}>
+                            <span className={`lq-tag lq-mono${tone(e.status) ? ` lq-tag--${tone(e.status)}` : ''}`}>{e.status}</span>
+                            <code>{e.code}</code>
+                            <span>{e.description}</span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            <div className="lq-grp">{t('devPortal.errors.workingTitle')}</div>
+            <Bullets items={[t('devPortal.errors.w1'), t('devPortal.errors.w2'), t('devPortal.errors.w3')]} />
+            <p className="dp-muted"><Rich text={t('devPortal.errors.catalogNote')} /></p>
         </div>
     )
 }

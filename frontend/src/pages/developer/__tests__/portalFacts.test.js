@@ -10,6 +10,12 @@
  *      buradaki sorular "su ifade var mi / yok mu" seklinde, yani
  *      backend'deki _FORBIDDEN_SPEC_MARKERS taramasiyla ayni desen.
  *      Kirilgan bir render agacina bagimlilik eklemeye degmez.
+ *
+ * 29.09 (iki dilli yeniden tasarim): kullaniciya gorunen metin artik
+ * sozlukte (devPortal.<ns>.*). Bu yuzden bir bolumun "metni" = JSX
+ * kaynagi + o bolumun sozluk alt agaclarinin INGILIZCE degerleri
+ * (Ingilizce kaynak dildir). Iddialarin kendisi DEGISMEDI; yalnizca
+ * aradigimiz yer genisledi. TR anahtar paritesi i18n/locale testinde.
  */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -17,22 +23,34 @@ import { dirname, join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import en from '../../../i18n/en'
 import { MCP_CLIENTS, VERIFIED_CLIENTS } from '../mcpClients'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SECTIONS = join(HERE, '..', 'sections')
 
-const read = (f) => readFileSync(join(SECTIONS, f), 'utf8')
+const values = (node) => (typeof node === 'string'
+    ? [node]
+    : Object.values(node || {}).flatMap(values))
 
-const MCP = read('McpSection.jsx')
-const OVERVIEW = read('OverviewSection.jsx')
-const REFERENCE = read('ApiReferenceSection.jsx')
-const CHANGELOG = read('ChangelogSection.jsx')
-const LIMITS = read('KnownLimitationsSection.jsx')
+/** Bolum metni: kaynak + ilgili sozluk alt agaclarinin EN degerleri. */
+const read = (f, namespaces = []) => [
+    readFileSync(join(SECTIONS, f), 'utf8'),
+    ...namespaces.flatMap((ns) => values(en.devPortal[ns])),
+].join('\n')
+
+const MCP = read('McpSection.jsx', ['mcp', 'tools', 'clients'])
+const OVERVIEW = read('OverviewSection.jsx', ['overview'])
+const REFERENCE = read('ApiReferenceSection.jsx', ['ref', 'ep'])
+    + readFileSync(join(HERE, '..', 'endpoints.js'), 'utf8')
+const CHANGELOG = read('ChangelogSection.jsx', ['changelog'])
+const LIMITS = read('KnownLimitationsSection.jsx', ['limits'])
 
 describe('MCP durumu artik Active', () => {
     it('MCP bolumu servisi Active gosterir', () => {
-        expect(MCP).toContain('<Tag color="green">Active</Tag>')
+        // Baslik rozeti "ok" tonunda; etiket sozlukte "Active".
+        expect(MCP).toContain("lq-tag lq-tag--ok\">{t('devPortal.mcp.statusActive')}")
+        expect(en.devPortal.mcp.statusActive).toBe('Active')
         expect(MCP).toContain('MCP service')
     })
 

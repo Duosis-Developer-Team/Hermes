@@ -1,127 +1,88 @@
 /**
- * Developer Portal — Compatibility & Deprecation Policy (Stage 4 final
- * polish, CTO istegi). Stripe/GitHub/Slack tarzi acik politika sayfasi.
+ * Developer Portal — Uyumluluk politikasi + SDK'lar (eski #sdks buraya
+ * yonlenir). Stripe/GitHub/Slack tarzi acik politika. Metin:
+ * devPortal.compat.*
  */
-import { Table, Tag } from 'antd'
+import { useT } from '../../../i18n'
+import { Bullets, Rich, SectionHead } from '../parts'
 
-function CompatibilityPolicySection() {
-    const rows = [
-        {
-            key: '1',
-            change: 'Breaking changes',
-            policy: (
-                <span>
-                    Only ever ship under a <b>new version prefix</b> (v2).
-                    Nothing under <code>/v1</code> will break: fields are
-                    never removed or retyped, response envelopes never
-                    change shape, error codes never change meaning.
-                </span>
-            ),
-        },
-        {
-            key: '2',
-            change: 'Additive changes',
-            policy: (
-                <span>
-                    New endpoints, optional fields, new enum values and new
-                    error codes may appear in v1 at any time, always with a
-                    Changelog entry. Build clients that ignore unknown
-                    fields.
-                </span>
-            ),
-        },
-        {
-            key: '3',
-            change: 'Deprecations',
-            policy: (
-                <span>
-                    Announced in the Changelog and in the affected
-                    endpoint's documentation with a{' '}
-                    <b>minimum 90-day notice</b> before behaviour changes —
-                    and removal still only happens in a new major version.
-                </span>
-            ),
-        },
-        {
-            key: '4',
-            change: 'Security fixes',
-            policy: (
-                <span>
-                    Applied to <b>all supported versions</b> immediately,
-                    without notice if necessary. A security fix is never
-                    held back for compatibility reasons.
-                </span>
-            ),
-        },
-        {
-            key: '5',
-            change: 'Version support',
-            policy: (
-                <span>
-                    When v2 ships, v1 keeps working during a published
-                    migration window (announced with the v2 release — at
-                    least the same 90-day floor, expected longer).
-                </span>
-            ),
-        },
-    ]
+const POLICY = ['breaking', 'additive', 'deprecation', 'security', 'support']
 
+// SDK'lar HENUZ YOK: yalnizca planlanan paket adlari, "yakinda" etiketiyle.
+const SDKS = [
+    { key: 'python', name: 'Python', hint: 'pip install hermes-sdk' },
+    { key: 'ts', name: 'TypeScript', hint: 'npm install @hermes/sdk' },
+    { key: 'csharp', name: 'C#', hint: 'dotnet add package Hermes.Sdk' },
+    { key: 'go', name: 'Go', hint: 'go get hermes-sdk' },
+    { key: 'java', name: 'Java', hint: 'maven: hermes-sdk' },
+]
+
+function CompatibilityPolicySection({ goTo }) {
+    const t = useT()
     return (
         <div className="dp-section">
-            <h2>Compatibility Policy</h2>
-            <p className="dp-lead">
-                What you can rely on when you build against{' '}
-                <code>/api/public/v1</code>. Current status:{' '}
-                <Tag color="green">v1 · Stable</Tag>{' '}
-                <Tag>Backward compatible</Tag>{' '}
-                <Tag color="default">Next planned: v2 (future)</Tag>
-            </p>
-
-            <Table
-                className="dp-table"
-                size="small"
-                pagination={false}
-                columns={[
-                    { title: 'Change type', dataIndex: 'change', width: 170 },
-                    { title: 'Policy', dataIndex: 'policy' },
-                ]}
-                dataSource={rows}
-                scroll={{ x: 'max-content' }}
+            <SectionHead
+                eyebrow={t('devPortal.compat.eyebrow')}
+                title={t('devPortal.compat.title')}
+                lead={t('devPortal.compat.lead')}
+                extra={(
+                    <span className="dp-tagrow">
+                        <span className="lq-tag lq-tag--ok">{t('devPortal.compat.stable')}</span>
+                        <span className="lq-tag">{t('devPortal.compat.backward')}</span>
+                        <span className="lq-tag">{t('devPortal.compat.next')}</span>
+                    </span>
+                )}
             />
 
-            <h3>What counts as breaking</h3>
-            <ul className="dp-list">
-                <li>
-                    Removing/renaming a field, endpoint or enum value;
-                    changing a field's type or an error code's meaning;
-                    tightening validation on existing input; changing
-                    pagination or envelope shapes.
-                </li>
-                <li>
-                    <b>Not</b> breaking: new optional request fields, new
-                    response fields, new endpoints, new enum values, new
-                    error codes, improved human-readable{' '}
-                    <code>error.message</code> wording (never parse
-                    messages — branch on <code>error.code</code>).
-                </li>
+            <ul className="dp-rows">
+                {POLICY.map((k) => (
+                    <li key={k}>
+                        <b>{t(`devPortal.compat.p.${k}.title`)}</b>
+                        <span><Rich text={t(`devPortal.compat.p.${k}.text`)} /></span>
+                    </li>
+                ))}
             </ul>
 
-            <h3>How to stay compatible</h3>
-            <ul className="dp-list">
-                <li>Ignore unknown response fields.</li>
-                <li>
-                    Branch on <code>error.code</code>, never on message
-                    text.
-                </li>
-                <li>
-                    Treat enum-like strings (status, priority) as open
-                    sets.
-                </li>
-                <li>
-                    Watch the Changelog — additive changes and deprecation
-                    notices land there first.
-                </li>
-            </ul>
+            <div className="dp-compare">
+                <div className="dp-compare__card">
+                    <div className="dp-compare__head">
+                        <b>{t('devPortal.compat.breakingTitle')}</b>
+                        <span className="lq-tag lq-tag--bad">v2</span>
+                    </div>
+                    <p><Rich text={t('devPortal.compat.breakingText')} /></p>
+                </div>
+                <div className="dp-compare__card">
+                    <div className="dp-compare__head">
+                        <b>{t('devPortal.compat.notBreakingTitle')}</b>
+                        <span className="lq-tag lq-tag--ok">v1</span>
+                    </div>
+                    <p><Rich text={t('devPortal.compat.notBreakingText')} /></p>
+                </div>
+            </div>
+
+            <div className="lq-grp">{t('devPortal.compat.stayTitle')}</div>
+            <Bullets items={[
+                t('devPortal.compat.s1'), t('devPortal.compat.s2'),
+                t('devPortal.compat.s3'), t('devPortal.compat.s4'),
+            ]} />
+
+            <div className="lq-grp">{t('devPortal.compat.sdkTitle')}</div>
+            <p className="dp-muted"><Rich text={t('devPortal.compat.sdkLead')} /></p>
+            <div className="dp-sdks">
+                {SDKS.map((s) => (
+                    <div key={s.key} className="dp-sdk">
+                        <b>{s.name}</b>
+                        <code>{s.hint}</code>
+                        <span className="lq-tag lq-tag--violet">{t('devPortal.compat.soon')}</span>
+                    </div>
+                ))}
+            </div>
+            <p className="dp-muted">
+                <Rich text={t('devPortal.compat.sdkToday')} />{' '}
+                <button type="button" className="dp-link" onClick={() => goTo('api-reference')}>
+                    {t('devPortal.nav.apiReference')}
+                </button>
+            </p>
         </div>
     )
 }
