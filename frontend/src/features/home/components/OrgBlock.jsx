@@ -8,6 +8,10 @@
  * sahipsiz birikme). Esik SUNUCUDA; istemci yalniz `level`i boyar —
  * esik asilinca sinyal one cikar, digerleri notr kalir. Kisayollar:
  * raporlar, faturalanabilir saatler, sozlesme durumu, detay dashboard.
+ *
+ * Hermes Liquid (CTO 29.09, prototip): faturalanabilir oran halkasi +
+ * saat KPI'lari, sinyaller uc kutucuk, musteri kirilimi yatay cubuk
+ * (en cok CUSTOMER_MAX; fazlasi "+N" — kart boyu veriyle uzamaz).
  * =============================================================================
  */
 import { useQuery } from '@tanstack/react-query'
@@ -18,6 +22,9 @@ import { homeService } from '../../../services/api'
 import { queryKeys } from '../../../query/queryKeys'
 import { useT } from '../../../i18n'
 import { formatHours } from '../model/home'
+import { Ring } from '../../../components/liquid'
+
+const CUSTOMER_MAX = 4
 
 const SIGNAL_LABEL = {
     no_entry_users: 'home.org.noEntryUsers',
@@ -47,6 +54,11 @@ function OrgBlock() {
         queryKey: queryKeys.home.org({}),
         queryFn: () => homeService.org(),
     })
+    const ratio = data?.billable_ratio
+    const hasRatio = ratio !== null && ratio !== undefined
+    const customers = data?.by_customer || []
+    const shown = customers.slice(0, CUSTOMER_MAX)
+    const peak = Math.max(1, ...shown.map((r) => Number(r.hours) || 0))
 
     return (
         <section className="home-block home-org" aria-labelledby="home-org-title" aria-busy={isLoading} data-testid="home-org">
@@ -63,50 +75,49 @@ function OrgBlock() {
             {isError && <div className="h-inline-error">{t('home.loadFailed')}</div>}
             {data && (
                 <>
-                    <div className="h-metric-strip home-org__metrics">
-                        <div className="h-metric-strip__item">
-                            <span className="h-metric-strip__accent" />
-                            <div className="h-metric-strip__value">{formatHours(data.total_hours)}h</div>
-                            <div className="h-metric-strip__label">{t('home.org.totalHours')}</div>
-                        </div>
-                        <div className="h-metric-strip__item">
-                            <div className="h-metric-strip__value">
-                                {data.billable_ratio === null || data.billable_ratio === undefined ? '—' : `${data.billable_ratio}%`}
+                    <div className="home-org__top">
+                        <Ring value={hasRatio ? ratio : 0} size={100} stroke={12} color="var(--h-success)" label={t('home.org.billableRatio')}>
+                            <div className="home-org__ring">
+                                <b>{hasRatio ? `${ratio}%` : '—'}</b>
+                                <span>{t('home.org.billableShort')}</span>
                             </div>
-                            <div className="h-metric-strip__label">{t('home.org.billableRatio')}</div>
-                        </div>
-                        <div className="h-metric-strip__item">
-                            <div className="h-metric-strip__value">{formatHours(data.billable_hours)}h</div>
-                            <div className="h-metric-strip__label">{t('home.org.billableHours')}</div>
-                        </div>
+                        </Ring>
+                        <dl className="home-org__kpis">
+                            <div>
+                                <dd>{formatHours(data.total_hours)}h</dd>
+                                <dt>{t('home.org.totalHours')}</dt>
+                            </div>
+                            <div>
+                                <dd>{formatHours(data.billable_hours)}h</dd>
+                                <dt>{t('home.org.billableHours')}</dt>
+                            </div>
+                        </dl>
                     </div>
 
-                    <div className="home-org__columns">
-                        <div className="home-org__col">
-                            <div className="home-bucket__head">
-                                <span className="home-bucket__title">{t('home.org.signals')}</span>
-                            </div>
-                            <ul className="home-org__signals">
-                                {data.signals.map((s) => <Signal key={s.key} signal={s} />)}
-                            </ul>
-                        </div>
-                        <div className="home-org__col">
-                            <div className="home-bucket__head">
-                                <span className="home-bucket__title">{t('home.org.byCustomer')}</span>
-                            </div>
-                            {data.by_customer.length === 0 ? (
-                                <p className="home-bucket__empty">{t('home.org.noEffort')}</p>
-                            ) : (
-                                <ul className="home-org__customers">
-                                    {data.by_customer.map((row) => (
-                                        <li key={row.name} className="home-org__customer">
-                                            <span className="home-org__customer-name">{row.name}</span>
-                                            <span className="home-org__customer-hours">{formatHours(row.hours)}h</span>
-                                        </li>
-                                    ))}
-                                </ul>
+                    <ul className="home-org__signals" aria-label={t('home.org.signals')}>
+                        {data.signals.map((s) => <Signal key={s.key} signal={s} />)}
+                    </ul>
+
+                    <div className="home-org__byc">
+                        <div className="home-bucket__head">
+                            <span className="home-bucket__title">{t('home.org.byCustomer')}</span>
+                            {customers.length > CUSTOMER_MAX && (
+                                <span className="home-org__more">{t('home.org.moreCustomers', { count: customers.length - CUSTOMER_MAX })}</span>
                             )}
                         </div>
+                        {customers.length === 0 ? (
+                            <p className="home-bucket__empty">{t('home.org.noEffort')}</p>
+                        ) : (
+                            <ul className="home-org__customers">
+                                {shown.map((row) => (
+                                    <li key={row.name || row.display_name} className="home-org__customer">
+                                        <span className="home-org__customer-name">{row.name || row.display_name}</span>
+                                        <span className="home-org__bar" aria-hidden="true"><i style={{ width: `${((Number(row.hours) || 0) / peak) * 100}%` }} /></span>
+                                        <span className="home-org__customer-hours">{formatHours(row.hours)}h</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </div>
 
                     <nav className="home-org__shortcuts" aria-label={t('home.org.shortcuts')}>

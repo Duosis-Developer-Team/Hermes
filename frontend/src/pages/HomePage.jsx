@@ -17,11 +17,18 @@
  * dikkat (4), islerim (7) + takvim (5), ekibim (7) + organizasyon (5); bir
  * satirdaki kartlar ayni yukseklikte. Dar ekranda tek sutun.
  *
+ * Denge (CTO 29.09): satir yuksekligini listeler BELIRLEMEZ — her satirin
+ * sabit bir alt siniri var, uzun listeler kendi kartinda kayar (.home-fill).
+ * Satirda tek kart kalirsa (izin yok / ekip uygun degil) tam genislige
+ * yayilir; yaninda bos kolon kalmaz. Ekip uygunlugu icin ayni sorgu
+ * (react-query onbellegi — ikinci istek yok).
+ *
  * Hermes Liquid (R3, 28.09): baslik = Hermes isaretli karsilama alani +
  * hizli gecisler (yalniz mevcut rotalara BAGLANTI — yeni akis yok).
  * =============================================================================
  */
 import dayjs from 'dayjs'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { CalendarOutlined, CheckSquareOutlined, ClockCircleOutlined } from '@ant-design/icons'
 
@@ -32,6 +39,8 @@ import OrgBlock from '../features/home/components/OrgBlock'
 import TeamBlock from '../features/home/components/TeamBlock'
 import WeekBlock from '../features/home/components/WeekBlock'
 import { useTaskPermissions } from '../hooks/useTaskPermissions'
+import { homeService } from '../services/api'
+import { queryKeys } from '../query/queryKeys'
 import { useAuthStore } from '../stores/authStore'
 import { useT } from '../i18n'
 import './HomePage.css'
@@ -53,6 +62,8 @@ function HomePage() {
     // eligible=false derse blok cizilmez. Organizasyon: reports.view.
     const showOrg = can('reports.view')
     const tenantName = useAuthStore((s) => s.tenant?.display_name)
+    const { data: team } = useQuery({ queryKey: queryKeys.home.team, queryFn: () => homeService.team() })
+    const showTeam = team?.eligible === true
 
     return (
         <div className="home-page">
@@ -80,10 +91,10 @@ function HomePage() {
             <div className="lq-bento lq-enter home-bento">
                 <div className="lq-c8 home-slot home-slot--effort"><EffortStrip /></div>
                 <div className="lq-c4 home-slot home-slot--focus"><FocusBlock showMyWork={showMyWork} /></div>
-                {showMyWork && <div className="lq-c7 home-slot home-slot--work"><MyWorkBlock /></div>}
-                <div className={`${showMyWork ? 'lq-c5' : 'lq-c12'} home-slot home-slot--week`}><WeekBlock /></div>
-                <div className={`${showOrg ? 'lq-c7' : 'lq-c12'} home-slot home-slot--team`}><TeamBlock /></div>
-                {showOrg && <div className="lq-c5 home-slot home-slot--org"><OrgBlock /></div>}
+                {showMyWork && <div className="lq-c7 home-slot home-slot--work home-row-mid"><MyWorkBlock /></div>}
+                <div className={`${showMyWork ? 'lq-c5' : 'lq-c12'} home-slot home-slot--week home-row-mid`}><WeekBlock /></div>
+                <div className={`${showOrg ? 'lq-c7' : 'lq-c12'} home-slot home-slot--team home-row-low`}><TeamBlock /></div>
+                {showOrg && <div className={`${showTeam ? 'lq-c5' : 'lq-c12'} home-slot home-slot--org home-row-low`}><OrgBlock /></div>}
             </div>
         </div>
     )

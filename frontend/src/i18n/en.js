@@ -84,6 +84,7 @@ export default {
             nothingWeek: 'Nothing planned this week.',
             allDay: 'All day',
             due: 'Due',
+            pickDay: 'Pick a day',
         },
         team: {
             title: 'My team',
@@ -98,6 +99,14 @@ export default {
             overdueItems: 'Past due',
             noEffort: 'No entries this week',
             daysOverdue: '{count} days late',
+            tabMembers: 'Team',
+            tabAttention: 'Attention',
+            kpiOpen: 'Open items',
+            kpiOverdue: 'Overdue',
+            kpiEffort: 'Team effort',
+            kpiFill: 'Fill rate',
+            legendLoad: 'Workload',
+            legendEffort: 'Effort this week',
         },
         org: {
             title: 'Organization',
@@ -113,6 +122,8 @@ export default {
             unassigned: 'unassigned work items',
             newThisWeek: '(+{count} this week)',
             shortcuts: 'Shortcuts',
+            billableShort: 'billable',
+            moreCustomers: '+{count} more customers',
         },
         myWork: {
             todayPill: 'Today',
@@ -122,6 +133,7 @@ export default {
             dueToday: 'Due today',
             thisWeek: 'Later this week',
             noneToday: 'Nothing due today.',
+            filter: 'Filter work by bucket',
         },
         priority: {
             low: 'Low priority',

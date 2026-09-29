@@ -29,7 +29,8 @@
 /* ---------- Ayarlar merkezi ---------- */
 .settings-hub > .lq-hero { margin-bottom: 8px; }
 .settings-search.ant-input-affix-wrapper { width: 280px; height: 40px; border-radius: var(--h-radius-pill); }
-.settings-group { margin-top: 22px; }
+.settings-group { margin-top: 0; }
+.settings-groups { margin-top: 22px; }
 .settings-group__title {
     margin: 0 0 12px 4px;
     color: var(--h-text-secondary);
@@ -38,36 +39,31 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
 }
-.settings-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 12px;
-}
-.settings-tile {
+.settings-icon--lg { width: 76px; height: 76px; border-radius: 22px; font-size: 34px; }
+.settings-icon--dock { width: 40px; height: 40px; border-radius: 12px; font-size: 19px; }
+/* Uygulama izgarasi: buyuk ikonlar yan yana, adlari altlarinda. */
+/* Bolumler yan yana akar (az ogeli bolum koca satir kaplamaz). */
+.settings-groups { display: flex; flex-wrap: wrap; gap: 28px 48px; }
+.settings-grid { display: flex; flex-wrap: wrap; gap: 14px 6px; }
+.settings-app {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 14px;
-    min-height: 84px;
-    padding: 16px;
-    border: 1px solid var(--h-glass-edge);
+    gap: 10px;
+    width: 116px;
+    padding: 12px 6px;
     border-radius: 22px;
-    background: var(--h-bg-surface);
-    box-shadow: var(--h-glass-shadow);
     color: var(--h-text-primary);
+    text-align: center;
     text-decoration: none;
-    transition: transform 260ms var(--h-ease-spring), box-shadow 200ms, border-color 200ms;
+    transition: background 180ms;
 }
-.settings-tile:hover {
-    transform: translateY(-3px);
-    border-color: color-mix(in srgb, var(--h-brand) 40%, var(--h-glass-edge));
-    box-shadow: var(--h-glass-shadow), 0 18px 34px -20px rgba(12, 102, 228, 0.55);
-}
-.settings-tile:hover .settings-icon { transform: scale(1.06); }
-.settings-tile .settings-icon { transition: transform 300ms var(--h-ease-spring); }
-.settings-tile:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 3px; }
-.settings-tile__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.settings-tile__text b { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
-.settings-tile__text small { color: var(--h-text-muted); font-size: 12.5px; line-height: 1.4; }
+.settings-app .settings-icon { transition: transform 320ms var(--h-ease-spring), box-shadow 200ms; }
+.settings-app:hover { background: var(--h-bg-hover); }
+.settings-app:hover .settings-icon { transform: translateY(-4px) scale(1.06); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 18px 30px -14px rgba(0, 0, 0, 0.5); }
+.settings-app:active .settings-icon { transform: scale(0.94); }
+.settings-app:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
+.settings-app__label { font-size: 13px; font-weight: 600; line-height: 1.3; }
 .settings-empty { margin: 24px 4px; color: var(--h-text-muted); }
 
 /* ---------- Sayfa: geri + yatay ikon seridi ---------- */
@@ -90,35 +86,42 @@
     transition: transform 200ms var(--h-ease-spring), background 150ms;
 }
 .settings-back:hover { transform: translateX(-2px); background: var(--h-ghost-bg-hover); }
-.settings-strip {
+/* Dock: yalniz ikonlar, ustune gelince ad; imlece yakin ikon buyur. */
+.settings-dock {
     display: flex;
+    align-items: flex-end;
     gap: 6px;
     min-width: 0;
-    padding: 4px;
+    padding: 12px 8px 7px;
     overflow-x: auto;
+    overflow-y: visible;
     scrollbar-width: none;
-    border-radius: var(--h-radius-pill);
-    background: var(--h-nav-hover);
+    border: 1px solid var(--h-dock-edge);
+    border-radius: 20px;
+    background: var(--h-dock-bg);
 }
-.settings-strip::-webkit-scrollbar { display: none; }
-.settings-strip__item {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
+.settings-dock::-webkit-scrollbar { display: none; }
+.settings-dock__item {
+    position: relative;
     flex: none;
-    padding: 3px 12px 3px 3px;
-    border-radius: var(--h-radius-pill);
-    color: var(--h-text-secondary);
-    font-size: 13px;
-    font-weight: 500;
-    text-decoration: none;
-    white-space: nowrap;
-    transition: background 180ms, color 180ms;
+    border-radius: 12px;
+    transform: scale(var(--dock-scale, 1));
+    transform-origin: bottom center;
+    transition: transform 140ms var(--h-ease-standard);
 }
-.settings-strip__item:hover { background: var(--h-bg-hover); color: var(--h-text-primary); }
-.settings-strip__item.active { background: var(--h-nav-ind); color: var(--h-nav-on); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14); font-weight: 600; }
-.settings-strip__item:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 1px; }
-
+.settings-dock__item.active::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -5px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--h-text-primary);
+    transform: translateX(-50%);
+}
+.settings-dock__item:not(.active) .settings-icon { opacity: 0.85; }
+.settings-dock__item:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
 /* ---------- Icerik dili (tum ayar sayfalari) ---------- */
 .settings-content { min-width: 0; }
 .settings-content .page-header {
@@ -176,11 +179,11 @@
 
 @media (max-width: 640px) {
     .settings-search.ant-input-affix-wrapper { width: 100%; }
-    .settings-grid { grid-template-columns: 1fr; }
+    .settings-app { width: 100px; }
     .settings-topbar { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .settings-tile, .settings-tile .settings-icon, .settings-back { transition: none; }
+    .settings-app .settings-icon, .settings-back, .settings-dock__item { transition: none; }
 }
 
 /* Admin tablo boslugu ve yenileme ipucu (AdminListStates). */

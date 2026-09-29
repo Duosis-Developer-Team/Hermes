@@ -97,6 +97,7 @@ export default {
             nothing: 'Plan yok',
             nothingWeek: 'Bu hafta planlı bir şey yok.',
             allDay: 'Tüm gün',
+            pickDay: 'Gün seç',
             due: 'Termin',
         },
         team: {
@@ -111,6 +112,14 @@ export default {
             unassigned: 'Sahipsiz',
             overdueItems: 'Termini geçmiş',
             noEffort: 'Bu hafta efor girmemiş',
+            tabMembers: 'Ekip',
+            tabAttention: 'Dikkat',
+            kpiOpen: 'Açık iş',
+            kpiOverdue: 'Gecikmiş',
+            kpiEffort: 'Ekip eforu',
+            kpiFill: 'Doluluk',
+            legendLoad: 'İş yükü',
+            legendEffort: 'Bu hafta efor',
             daysOverdue: '{count} gün gecikmiş',
         },
         org: {
@@ -126,6 +135,8 @@ export default {
             overdue: 'termini geçmiş iş',
             unassigned: 'sahipsiz iş',
             newThisWeek: '(bu hafta +{count})',
+            billableShort: 'fatura',
+            moreCustomers: '+{count} müşteri daha',
             shortcuts: 'Kısayollar',
         },
         myWork: {
@@ -135,6 +146,7 @@ export default {
             overdue: 'Gecikmiş',
             dueToday: 'Bugün',
             thisWeek: 'Bu hafta',
+            filter: 'İşleri kovaya göre süz',
             noneToday: 'Bugün için terminli işin yok.',
         },
         priority: {

@@ -73,7 +73,7 @@ export function CountUp({ value, decimals = 0, duration = 900, format }) {
 }
 
 /** Ilerleme halkasi: acilista cizilerek dolar. `value` 0–100. */
-export function Ring({ value = 0, size = 132, stroke = 12, children, label }) {
+export function Ring({ value = 0, size = 132, stroke = 12, children, label, color = 'var(--hp-blue-500)' }) {
     const r = (size - stroke) / 2
     const c = 2 * Math.PI * r
     const pct = Math.max(0, Math.min(100, Number(value) || 0))
@@ -92,7 +92,7 @@ export function Ring({ value = 0, size = 132, stroke = 12, children, label }) {
                 <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--h-bg-hover)" {...line} />
                 <circle
                     cx={size / 2} cy={size / 2} r={r} fill="none"
-                    stroke="var(--hp-blue-500)" {...line} strokeLinecap="round"
+                    stroke={color} {...line} strokeLinecap="round"
                     strokeDasharray={c} strokeDashoffset={c * (1 - drawn / 100)}
                 />
             </svg>

@@ -4,13 +4,18 @@
  * =============================================================================
  * Iki kaynak TEK seritte (04-roller §4.3): toplantilar (Graph senkronu,
  * iptaller haric) ve termini o gune dusen islerim (Plan Time 29.09'da
- * kaldirildi). Ayri bir
- * takvim sayfasi degil, AJANDA: gun satirlari (tarih rozeti + kayitlar);
- * bos gunler cizilmez (yalniz bugun bos ise "plan yok" der). Tiklama
- * ilgili kaydi acar:
+ * kaldirildi).
+ *
+ * Tek gun ajandasi (CTO 29.09): hafta ici gun cipleri SECILIR, altta
+ * yalniz secili gunun kayitlari. Varsayilan HER ACILISTA bugundur (secim
+ * saklanmaz). Siradaki toplanti karti yalniz bugun seciliyken. Kayit
+ * listesi kartin kalan yuksekligini doldurur, tasarsa kendi icinde kayar
+ * (komsu kartla ayni satir yuksekligi — HomePage.css).
+ * Tiklama ilgili kaydi acar:
  *   toplanti → /meetings?date=   is → /work/KEY
  * =============================================================================
  */
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import dayjs from 'dayjs'
@@ -18,7 +23,7 @@ import dayjs from 'dayjs'
 import { homeService } from '../../../services/api'
 import { queryKeys } from '../../../query/queryKeys'
 import { useT } from '../../../i18n'
-import { dueTone, weekDaysToShow } from '../model/home'
+import { dueTone } from '../model/home'
 import { pickNextMeeting } from '../hooks/useNextMeeting'
 
 const hm = (iso) => dayjs(iso).format('HH:mm')
@@ -71,30 +76,32 @@ function DayRow({ day, today }) {
     )
 }
 
-/** Prototip: hafta ici gun cipleri; nokta sayisi = o gunun kayit sayisi.
- *  Tiklamak ajandada o gune kaydirir (ayri filtre DEGIL — liste tam kalir). */
-function DayChips({ week }) {
-    const days = (week?.days || []).filter((d) => {
-        const wd = dayjs(d.date).isoWeekday()
-        const n = (d.meetings?.length || 0) + (d.items?.length || 0)
-        return wd <= 5 || n > 0
-    })
+const countOf = (d) => (d.meetings?.length || 0) + (d.items?.length || 0)
+
+/** Cip gunleri: hafta ici + icerigi olan hafta sonu + bugun. */
+function chipDays(week) {
+    return (week?.days || []).filter((d) => dayjs(d.date).isoWeekday() <= 5 || countOf(d) > 0 || d.is_today)
+}
+
+/** Prototip: gun cipleri; nokta sayisi = o gunun kayit sayisi. Tiklamak
+ *  o gunu SECER (liste yalniz o gunu gosterir). */
+function DayChips({ days, selected, onSelect }) {
+    const t = useT()
     if (!days.length) return null
-    const jump = (date) => {
-        document.querySelector(`.home-week__day[data-date="${date}"]`)
-            ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }
     return (
-        <div className="home-week__chips">
+        <div className="home-week__chips" role="group" aria-label={t('home.week.pickDay')}>
             {days.map((d) => {
-                const n = (d.meetings?.length || 0) + (d.items?.length || 0)
+                const n = countOf(d)
+                const on = d.date === selected
                 return (
                     <button
                         key={d.date}
                         type="button"
-                        className={`home-week__chip${d.is_today ? ' is-today' : ''}`}
-                        onClick={() => jump(d.date)}
+                        className={`home-week__chip${on ? ' is-on' : ''}${d.is_today ? ' is-today' : ''}`}
+                        onClick={() => onSelect(d.date)}
+                        aria-pressed={on}
                         aria-label={dayjs(d.date).format('dddd DD MMMM')}
+                        data-date={d.date}
                     >
                         <span className="home-week__chip-name">{dayjs(d.date).format('ddd')}</span>
                         <span className="home-week__chip-num">{dayjs(d.date).format('D')}</span>
@@ -141,7 +148,13 @@ function WeekBlock() {
         queryKey: queryKeys.home.week({}),
         queryFn: () => homeService.week(),
     })
-    const days = weekDaysToShow(data)
+    // Secim yalniz bu bilesen omrunce yasar → sayfaya her donuste bugun.
+    const [picked, setPicked] = useState(null)
+    const days = chipDays(data)
+    const todayDate = data?.days?.find((d) => d.is_today)?.date || data?.today
+    const selected = picked || todayDate || days[0]?.date
+    const day = data?.days?.find((d) => d.date === selected)
+    const weekEmpty = !!data && (data.days || []).every((d) => countOf(d) === 0)
 
     return (
         <section className="home-block home-week" aria-labelledby="home-week-title" aria-busy={isLoading} data-testid="home-week">
@@ -156,15 +169,20 @@ function WeekBlock() {
                 <Link to="/meetings" className="home-block__link">{t('home.week.openMeetings')}</Link>
             </div>
             {isError && <div className="h-inline-error">{t('home.loadFailed')}</div>}
-            {data && <DayChips week={data} />}
-            {data && <NextMeetingHero week={data} />}
-            {data && days.length === 0 && (
-                <p className="home-week__none">{t('home.week.nothingWeek')}</p>
-            )}
-            {days.length > 0 && (
-                <ol className="home-week__days">
-                    {days.map((day) => <DayRow key={day.date} day={day} today={data.today} />)}
-                </ol>
+            {data && <DayChips days={days} selected={selected} onSelect={setPicked} />}
+            {data && selected === todayDate && <NextMeetingHero week={data} />}
+            {data && (
+                <div className="home-fill home-week__agenda">
+                    {/* Bugun her zaman kendi satiriyla ("plan yok"); bugun bu
+                        haftada degilse ve hafta bossa tek satir. */}
+                    {day && (day.is_today || !weekEmpty) ? (
+                        <ol className="home-week__days">
+                            <DayRow key={day.date} day={day} today={data.today} />
+                        </ol>
+                    ) : (
+                        <p className="home-week__none">{t('home.week.nothingWeek')}</p>
+                    )}
+                </div>
             )}
         </section>
     )

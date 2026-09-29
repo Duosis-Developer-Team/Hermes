@@ -10,7 +10,7 @@
  * =============================================================================
  */
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 
 const homeService = { myWork: vi.fn() }
 vi.mock('../../services/api', () => ({ homeService }))
@@ -41,8 +41,10 @@ describe('Islerim blogu', () => {
         homeService.myWork.mockResolvedValue(base)
         renderWithProviders(<MyWorkBlock />)
         expect(await screen.findByText('Nothing due today.')).toBeInTheDocument()
-        expect(screen.queryByText('Overdue')).toBeNull()
-        expect(screen.queryByText('Later this week')).toBeNull()
+        expect(document.querySelector('[data-bucket="overdue"]')).toBeNull()
+        expect(document.querySelector('[data-bucket="this_week"]')).toBeNull()
+        // Sayac kutulari sifir ve pasif (suzulecek bir sey yok).
+        expect(document.querySelector('[data-tile="overdue"]')).toBeDisabled()
         expect(document.querySelector('.ant-modal')).toBeNull()
     })
 
@@ -55,7 +57,7 @@ describe('Islerim blogu', () => {
         })
         renderWithProviders(<MyWorkBlock />)
 
-        const overdue = (await screen.findByText('Overdue')).closest('[data-bucket]')
+        const overdue = (await screen.findByTestId('home-bucket-count-overdue')).closest('[data-bucket]')
         expect(overdue.dataset.bucket).toBe('overdue')
         const badge = within(overdue).getByTestId('home-bucket-count-overdue')
         expect(badge).toHaveTextContent('2')
@@ -66,16 +68,23 @@ describe('Islerim blogu', () => {
         expect(rows.map((a) => a.getAttribute('href'))).toEqual(['/work/TASK-7', '/work/TASK-9'])
         expect(rows[0].closest('[data-due-tone]').dataset.dueTone).toBe('overdue')
 
-        const today = screen.getByText('Due today').closest('[data-bucket]')
+        const today = document.querySelector('[data-bucket="due_today"]')
         expect(within(today).getByText('Beymen · Portal')).toBeInTheDocument()
         expect(within(today).getByRole('link', { name: /Giris hatasi/ }).closest('[data-due-tone]').dataset.dueTone).toBe('today')
         expect(screen.queryByText('Nothing due today.')).toBeNull()
 
-        const week = screen.getByText('Later this week').closest('[data-bucket]')
+        const week = document.querySelector('[data-bucket="this_week"]')
         // Musterisi olmayan proje: yalnizca proje adi.
         expect(within(week).getByText('Ic proje')).toBeInTheDocument()
         expect(within(week).getByRole('link', { name: /Sprint plani/ }).closest('[data-due-tone]').dataset.dueTone).toBe('neutral')
 
+        // Sayac kutusu suzgec: gecikmis → yalniz o kova; tekrar → hepsi.
+        const tile = document.querySelector('[data-tile="overdue"]')
+        expect(tile).toHaveTextContent('2')
+        fireEvent.click(tile)
+        expect([...document.querySelectorAll('[data-bucket]')].map((b) => b.dataset.bucket)).toEqual(['overdue'])
+        fireEvent.click(tile)
+        expect(document.querySelectorAll('[data-bucket]')).toHaveLength(3)
         // Tum isler baglantisi is yuzeyine gider.
         expect(screen.getByRole('link', { name: 'All work items' })).toHaveAttribute('href', '/project-management')
     })

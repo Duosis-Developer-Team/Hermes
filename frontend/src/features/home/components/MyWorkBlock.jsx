@@ -9,8 +9,15 @@
  *
  * Satir gorsel dili (E4): tek renkli sinyal termindir; oncelik notr
  * ince cubuk; tip metin. Satir `/work/<KEY>` derin baglantisina gider.
+ *
+ * Hermes Liquid (CTO 29.09): ustte renkli karisim cubugu, altinda uc
+ * sayac kutusu (gecikmis · bugun · bu hafta) — kutu tiklaninca liste o
+ * kovaya suzulur (tekrar tiklamak suzgeci kaldirir). Liste kartin kalan
+ * yuksekligini doldurur, tasarsa kendi icinde kayar; boylece komsu
+ * Takvimim karti ile ayni satirda bos alan birakmaz.
  * =============================================================================
  */
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import dayjs from 'dayjs'
@@ -80,29 +87,37 @@ function Bucket({ kind, bucket, today }) {
     )
 }
 
-/** Prototip: gecikmis / bugun / bu hafta oranini gosteren yigin cubuk. */
-function MixBar({ data }) {
+const TILE_KEYS = ['overdue', 'due_today', 'this_week']
+
+/** Prototip: karisim cubugu + uc sayac kutusu (suzgec). */
+function MixTiles({ data, focus, onFocus }) {
     const t = useT()
     if (!data) return null
-    const parts = [
-        { key: 'overdue', n: data.overdue?.count || 0, label: t('home.myWork.overdue') },
-        { key: 'due_today', n: data.due_today?.count || 0, label: t('home.myWork.dueToday') },
-        { key: 'this_week', n: data.this_week?.count || 0, label: t('home.myWork.thisWeek') },
-    ]
+    const parts = TILE_KEYS.map((key) => ({ key, n: data[key]?.count || 0, label: t(BUCKET_LABEL_KEY[key]) }))
     const total = parts.reduce((a, p) => a + p.n, 0)
-    if (!total) return null
     return (
         <div className="home-mix">
             <div className="home-mix__bar" aria-hidden="true">
-                {parts.filter((p) => p.n > 0).map((p) => (
+                {total > 0 && parts.filter((p) => p.n > 0).map((p) => (
                     <i key={p.key} className={`home-mix__seg home-mix__seg--${p.key}`} style={{ flex: p.n }} />
                 ))}
             </div>
-            <ul className="home-mix__legend">
+            <div className="home-mix__tiles" role="group" aria-label={t('home.myWork.filter')}>
                 {parts.map((p) => (
-                    <li key={p.key}><i className={`home-mix__dot home-mix__seg--${p.key}`} />{p.label} {p.n}</li>
+                    <button
+                        key={p.key}
+                        type="button"
+                        className={`home-mix__tile home-mix__tile--${p.key}${focus === p.key ? ' is-on' : ''}`}
+                        aria-pressed={focus === p.key}
+                        disabled={p.n === 0}
+                        onClick={() => onFocus(focus === p.key ? null : p.key)}
+                        data-tile={p.key}
+                    >
+                        <span className="home-mix__tile-label"><i className={`home-mix__dot home-mix__seg--${p.key}`} />{p.label}</span>
+                        <b className="home-mix__tile-num">{p.n}</b>
+                    </button>
                 ))}
-            </ul>
+            </div>
         </div>
     )
 }
@@ -113,7 +128,8 @@ function MyWorkBlock() {
         queryKey: queryKeys.home.myWork,
         queryFn: () => homeService.myWork(),
     })
-    const buckets = visibleBuckets(data)
+    const [focus, setFocus] = useState(null)
+    const buckets = visibleBuckets(data).filter(({ key }) => !focus || key === focus)
 
     return (
         <section className="home-block home-work" aria-labelledby="home-work-title" aria-busy={isLoading} data-testid="home-work">
@@ -123,10 +139,14 @@ function MyWorkBlock() {
                 <Link to={PM_BASE} className="home-block__link">{t('home.myWork.openAll')}</Link>
             </div>
             {isError && <div className="h-inline-error">{t('home.loadFailed')}</div>}
-            <MixBar data={data} />
-            {buckets.map(({ key, bucket }) => (
-                <Bucket key={key} kind={key} bucket={bucket} today={data?.today} />
-            ))}
+            <MixTiles data={data} focus={focus} onFocus={setFocus} />
+            {data && (
+                <div className="home-fill home-work__list">
+                    {buckets.map(({ key, bucket }) => (
+                        <Bucket key={key} kind={key} bucket={bucket} today={data?.today} />
+                    ))}
+                </div>
+            )}
         </section>
     )
 }

@@ -6,13 +6,14 @@
  *      (Plan Time 29.09'da kaldirildi).
  *   2. Tiklama ilgili kaydi acar: /meetings?date= · /time-entry?week= ·
  *      /work/KEY.
- *   3. AJANDA: yalniz icerigi olan gunler + bugun; bos gun satiri yok,
- *      bugun bos ise "Nothing planned"; haftada hic sey yoksa tek satir.
+ *   3. TEK GUN (CTO 29.09): gun cipleri secilir, varsayilan bugun; altta
+ *      yalniz secili gun. Bugun bos ise "Nothing planned"; bugun bu
+ *      haftada degil ve hafta bossa tek satir.
  *   4. Bugun satiri isaretli; termin satiri tek renkli sinyal tasir.
  * =============================================================================
  */
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 
 const homeService = { week: vi.fn() }
 vi.mock('../../services/api', () => ({ homeService }))
@@ -54,24 +55,34 @@ describe('Takvimim blogu', () => {
         expect(screen.getByText('My calendar')).toBeInTheDocument()
         expect(await screen.findByText('14 Sep – 20 Sep')).toBeInTheDocument()
 
-        const days = document.querySelectorAll('.home-week__day')
-        // Ajanda: yalniz dolu gunler (Sal, Car, Paz); bugun (Car) zaten dolu.
-        expect([...days].map((d) => d.dataset.date)).toEqual([
-            '2026-09-15', '2026-09-16', '2026-09-20',
+        // Cipler: hafta ici + icerikli hafta sonu (Paz); bos Cmt yok.
+        const chips = [...document.querySelectorAll('.home-week__chip')]
+        expect(chips.map((c) => c.dataset.date)).toEqual([
+            '2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18', '2026-09-20',
         ])
-        expect(days[1].className).toContain('home-week__day--today')
+        // Varsayilan: yalniz bugun (Car) gosterilir ve secili.
+        let days = document.querySelectorAll('.home-week__day')
+        expect([...days].map((d) => d.dataset.date)).toEqual(['2026-09-16'])
+        expect(days[0].className).toContain('home-week__day--today')
+        expect(chips[2]).toHaveAttribute('aria-pressed', 'true')
         expect(screen.queryByText('Nothing planned')).toBeNull()
-
-        const tue = within(days[0])
-        expect(tue.getByRole('link', { name: /Vakko · ATM kickoff/ })).toHaveAttribute('href', '/meetings?date=2026-09-15')
-
-        const wed = within(days[1])
+        const wed = within(days[0])
         expect(wed.getByRole('link', { name: /Standup/ })).toHaveAttribute('href', '/meetings?date=2026-09-16')
         const item = wed.getByRole('link', { name: /Sertifika yenile/ })
         expect(item).toHaveAttribute('href', '/work/TASK-7')
         expect(item.closest('[data-due-tone]').dataset.dueTone).toBe('today')
-        expect([...days[1].querySelectorAll('[data-entry]')].map((e) => e.dataset.entry)).toEqual(['meeting', 'item'])
-
+        expect([...days[0].querySelectorAll('[data-entry]')].map((e) => e.dataset.entry)).toEqual(['meeting', 'item'])
+        expect(screen.queryByRole('link', { name: /Vakko · ATM kickoff/ })).toBeNull()
+        // Sal cipi → yalniz Sal.
+        fireEvent.click(chips[1])
+        days = document.querySelectorAll('.home-week__day')
+        expect([...days].map((d) => d.dataset.date)).toEqual(['2026-09-15'])
+        expect(chips[1]).toHaveAttribute('aria-pressed', 'true')
+        expect(within(days[0]).getByRole('link', { name: /Vakko · ATM kickoff/ })).toHaveAttribute('href', '/meetings?date=2026-09-15')
+        expect(screen.queryByRole('link', { name: /Standup/ })).toBeNull()
+        // Bos gun secilirse "Nothing planned".
+        fireEvent.click(chips[3])
+        expect(screen.getByText('Nothing planned')).toBeInTheDocument()
         expect(screen.getByRole('link', { name: 'Meetings' })).toHaveAttribute('href', '/meetings')
         expect(document.querySelector('.ant-modal')).toBeNull()
     })

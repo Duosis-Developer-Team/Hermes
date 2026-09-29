@@ -6,12 +6,13 @@
  *   2. Kisi satirlari sunucu sirasinda (bekleyen ise gore); kirmizi yalniz
  *      gecikmede; efor girmemis kisi sari isaretli.
  *   3. Dikkat: sahipsiz (notr sayac), termini gecmis (kirmizi), efor
- *      girmemis (sari); hepsi bos ise blok yok.
+ *      girmemis (sari); hepsi bos ise sekme yok. Ekip ve Dikkat ayni
+ *      kartta iki sekme (CTO 29.09).
  *   4. Kimlikler ada cevrilir; satirlar /work/KEY.
  * =============================================================================
  */
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 
 const homeService = { team: vi.fn() }
 const authService = { lookupUsers: vi.fn() }
@@ -73,6 +74,8 @@ describe('Ekibim blogu', () => {
         expect(within(rows[1]).getByText('8')).toBeInTheDocument()
         expect(within(rows[1]).getByText('/ 40h')).toBeInTheDocument()
 
+        expect(screen.queryByTestId('home-attention')).toBeNull()
+        fireEvent.click(screen.getByRole('button', { name: /Attention/ }))
         const attention = screen.getByTestId('home-attention')
         const unassigned = attention.querySelector('[data-attention="unassigned"]')
         expect(within(unassigned).getByRole('link', { name: /Sahipsiz is/ })).toHaveAttribute('href', '/work/TASK-9')
@@ -93,5 +96,6 @@ describe('Ekibim blogu', () => {
         renderWithProviders(<TeamBlock />)
         expect(await screen.findByText('No one is routed to you yet.')).toBeInTheDocument()
         expect(screen.queryByTestId('home-attention')).toBeNull()
+        expect(screen.queryByRole('button', { name: /Attention/ })).toBeNull()
     })
 })
