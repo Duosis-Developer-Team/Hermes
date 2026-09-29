@@ -1,6 +1,16 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { classify, deepLinkToUrl } = require('../src/navigation')
+const { classify, deepLinkToUrl, deepLinkFromArgv } = require('../src/navigation')
+
+test('argv: Windows ilk acilis / second-instance derin linki bulunur', () => {
+    const exe = 'C:\\Users\\a\\AppData\\Local\\Programs\\Hermes\\Hermes.exe'
+    assert.equal(deepLinkFromArgv([exe, 'hermes://work/TASK-56/']), 'hermes://work/TASK-56/')
+    assert.equal(deepLinkFromArgv([exe, '--allow-file-access-from-files', 'HERMES://open/x']), 'HERMES://open/x')
+    assert.equal(deepLinkFromArgv([exe]), null)
+    assert.equal(deepLinkFromArgv(undefined), null)
+    // Windows'un ekledigi sondaki '/' linki bozmaz.
+    assert.equal(deepLinkToUrl('hermes://work/TASK-56/', 'https://hermes.duosis.com'), 'https://hermes.duosis.com/work/TASK-56')
+})
 const { serverById, readSettings, writeSettings } = require('../src/servers')
 const os = require('node:os')
 const fs = require('node:fs')

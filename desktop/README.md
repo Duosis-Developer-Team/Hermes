@@ -58,6 +58,15 @@ Not: `ELECTRON_RUN_AS_NODE` ortam değişkeni tanımlıysa uygulama açılmaz
 CI: `.github/workflows/desktop-build.yml` (elle tetiklenir, macOS runner) iki
 .dmg'yi artifact olarak üretir.
 
+Windows: `npm run dist:win` → `dist/Hermes-<sürüm>-Setup-x64.exe` (NSIS,
+kullanıcı başına kurulum, dizin seçilebilir, masaüstü + Başlat kısayolu).
+CI: `.github/workflows/desktop-windows.yml` (elle tetiklenir, windows-latest)
+→ `hermes-windows` artifact'ı. İmzasız: SmartScreen ilk açılışta "Ek bilgi →
+Yine de çalıştır" ister. Windows'ta pencere düğmeleri `titleBarOverlay`,
+menü çubuğu gizli (Alt ile açılır; Ctrl+Shift+D Test ⇄ Dev), `hermes://`
+linkleri ilk açılışta da argv'den işlenir. İkon: `build/icon.ico`
+(icon.png'den Pillow ile, 16–256).
+
 ## Sıradaki (landing page öncesi)
 
 1. **İmza + notarization:** Apple Developer ID Application sertifikası +

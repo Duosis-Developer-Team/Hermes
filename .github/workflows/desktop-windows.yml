@@ -1,0 +1,55 @@
+# Hermes masaustu — Windows kurulum dosyasi (.exe, NSIS, x64).
+# Yalniz elle tetiklenir (workflow_dispatch); cd-dev / cd-test hattina
+# dokunmaz. Imza sertifikasi yok: imzasiz uretilir (SmartScreen bir kez
+# "Yine de calistir" sorar).
+name: desktop-windows
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: desktop
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # 22: `node --test test/*.test.js` globu Windows'ta (cmd globlamaz)
+          # node'un kendisi acar — 20'de bu destek yok.
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build NSIS installer
+        run: npm run dist:win -- --publish never
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: hermes-windows
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.blockmap
+            desktop/dist/latest.yml

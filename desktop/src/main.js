@@ -1,6 +1,6 @@
 /**
  * =============================================================================
- * Hermes masaustu (macOS) — ana surec
+ * Hermes masaustu (macOS + Windows) — ana surec
  * =============================================================================
  * Uygulama bir KABUKTUR: secili sunucudaki Hermes'i (varsayilan
  * hermes.duosis.com) kendi penceresinde acar. Siteden yapilabilen her
@@ -21,9 +21,10 @@ const path = require('node:path')
 const { app, BrowserWindow, Menu, ipcMain, shell, session, nativeTheme } = require('electron')
 
 const { SERVERS, serverById, readSettings, writeSettings } = require('./servers')
-const { classify, deepLinkToUrl } = require('./navigation')
-const { TRAFFIC_LIGHTS, DRAG_CSS } = require('./windowChrome')
+const { classify, deepLinkToUrl, deepLinkFromArgv } = require('./navigation')
+const { windowOptionsFor, overlayFor, chromeCssFor } = require('./windowChrome')
 
+const IS_MAC = process.platform === 'darwin'
 const PARTITION = 'persist:hermes'
 let mainWindow = null
 let pendingDeepLink = null
@@ -35,7 +36,12 @@ const currentServer = () => serverById(readSettings(settingsDir()).serverId)
 if (!app.requestSingleInstanceLock()) {
     app.quit()
 }
-app.setAsDefaultProtocolClient('hermes')
+if (!IS_MAC && process.defaultApp && process.argv.length >= 2) {
+    // Gelistirme (`electron .`): Windows kaydi electron.exe + betik yolu ister.
+    app.setAsDefaultProtocolClient('hermes', process.execPath, [path.resolve(process.argv[1])])
+} else {
+    app.setAsDefaultProtocolClient('hermes')
+}
 
 function handleDeepLink(link) {
     const target = deepLinkToUrl(link, currentServer().url)
@@ -54,9 +60,12 @@ app.on('open-url', (event, url) => {
     handleDeepLink(url)
 })
 app.on('second-instance', (_e, argv) => {
-    const link = argv.find((a) => a.startsWith('hermes://'))
+    const link = deepLinkFromArgv(argv)
     if (link) handleDeepLink(link)
-    else if (mainWindow) mainWindow.focus()
+    else if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore()
+        mainWindow.focus()
+    }
 })
 
 // --- Sertifika: yalniz dev sunucusunun sahte sertifikasi ----------------------
@@ -113,10 +122,10 @@ function createWindow() {
         // Ilk boya sivi zeminin tonunda (--h-liquid-base): yuklenirken
         // tema ile ters renkte flas olmaz.
         backgroundColor: nativeTheme.shouldUseDarkColors ? '#07080A' : '#D6DBE3',
-        // Hermes Liquid (R6): basliksiz pencere, trafik isiklari sivi
-        // zeminin ustunde; surukleme bolgesi windowChrome.DRAG_CSS'te.
-        titleBarStyle: 'hiddenInset',
-        trafficLightPosition: TRAFFIC_LIGHTS,
+        // Hermes Liquid (R6): basliksiz pencere. macOS: trafik isiklari sivi
+        // zeminin ustunde; Windows: sistem dugmeleri titleBarOverlay ile.
+        // Surukleme bolgesi windowChrome.DRAG_CSS'te.
+        ...windowOptionsFor(process.platform, nativeTheme.shouldUseDarkColors),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             partition: PARTITION,
@@ -128,7 +137,7 @@ function createWindow() {
     })
     attachNavigationPolicy(mainWindow)
     mainWindow.webContents.on('did-finish-load', () => {
-        mainWindow?.webContents.insertCSS(DRAG_CSS).catch(() => {})
+        mainWindow?.webContents.insertCSS(chromeCssFor(process.platform)).catch(() => {})
     })
     mainWindow.once('ready-to-show', () => mainWindow.show())
     mainWindow.on('close', () => {
@@ -174,7 +183,9 @@ function buildMenu() {
         click: () => switchServer(s.id),
     }))))
     const template = [
-        { role: 'appMenu' },
+        // macOS: uygulama menusu; Windows: Dosya (Cikis). Menu cubugu
+        // Windows'ta gizli, Alt ile acilir; kisayollar her zaman calisir.
+        IS_MAC ? { role: 'appMenu' } : { role: 'fileMenu' },
         { role: 'editMenu' },
         {
             label: 'Git',
@@ -250,8 +261,22 @@ app.whenReady().then(() => {
     ses.setPermissionRequestHandler((_wc, permission, callback) => {
         callback(['notifications', 'clipboard-sanitized-write', 'fullscreen'].includes(permission))
     })
+    // Windows/Linux: ilk acilistaki derin link argv'de gelir (macOS'ta
+    // open-url). Pencere henuz yok → pendingDeepLink olarak baslangic olur.
+    if (!IS_MAC) {
+        const link = deepLinkFromArgv(process.argv)
+        if (link) handleDeepLink(link)
+    }
     buildMenu()
     createWindow()
+    // Windows: sistem dugmelerinin zemini tema ile degissin.
+    if (!IS_MAC) {
+        nativeTheme.on('updated', () => {
+            try {
+                mainWindow?.setTitleBarOverlay(overlayFor(nativeTheme.shouldUseDarkColors))
+            } catch { /* overlay yoksa sessiz gec */ }
+        })
+    }
 })
 
 app.on('activate', () => {

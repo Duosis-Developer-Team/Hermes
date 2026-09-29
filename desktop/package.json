@@ -2,7 +2,7 @@
   "name": "hermes-desktop",
   "productName": "Hermes",
   "version": "0.1.0",
-  "description": "Hermes for macOS — native shell around the Hermes web app",
+  "description": "Hermes desktop (macOS + Windows) — native shell around the Hermes web app",
   "author": "Duosis",
   "private": true,
   "main": "src/main.js",
@@ -11,7 +11,9 @@
     "test": "node --test test/*.test.js",
     "icons": "node scripts/make-icons.mjs",
     "dist": "electron-builder --mac dmg --arm64 --x64",
-    "dist:arm64": "electron-builder --mac dmg --arm64"
+    "dist:arm64": "electron-builder --mac dmg --arm64",
+    "dist:x64": "electron-builder --mac dmg --x64",
+    "dist:win": "electron-builder --win nsis --x64"
   },
   "build": {
     "appId": "com.duosis.hermes",
@@ -61,6 +63,29 @@
         "width": 540,
         "height": 380
       }
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Hermes",
+      "artifactName": "Hermes-${version}-Setup-${arch}.${ext}",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     }
   },
   "devDependencies": {

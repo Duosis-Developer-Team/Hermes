@@ -62,4 +62,14 @@ function deepLinkToUrl(rawLink, serverUrl) {
     return null
 }
 
-module.exports = { classify, deepLinkToUrl, AUTH_HOSTS }
+/**
+ * Komut satirindaki hermes:// linki (Windows/Linux: ilk acilista
+ * process.argv, sonraki acilislarda 'second-instance' argv'si). Yoksa null.
+ */
+function deepLinkFromArgv(argv) {
+    if (!Array.isArray(argv)) return null
+    const hit = argv.find((a) => typeof a === 'string' && a.toLowerCase().startsWith('hermes://'))
+    return hit || null
+}
+
+module.exports = { classify, deepLinkToUrl, deepLinkFromArgv, AUTH_HOSTS }

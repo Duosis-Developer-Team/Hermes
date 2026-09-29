@@ -1,3 +1,6 @@
 node_modules/
 dist/
-!desktop/build/
+# Kokteki `build/` kurali ikon kaynaklarini yutmasin (bu dosyada yollar
+# desktop/'a gorelidir).
+!build/
+!build/icon.*
