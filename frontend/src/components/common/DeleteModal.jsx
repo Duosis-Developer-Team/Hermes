@@ -11,9 +11,17 @@
  * tokenlar konusuyor.
  */
 import { DeleteOutlined, StopOutlined } from '@ant-design/icons'
-import { ConfirmDialog, StatusBadge } from '../ui'
+
+import DangerConfirmModal from './DangerConfirmModal'
 import { useT } from '../../i18n'
 
+/**
+ * Liquid (29.09): ortak cam onay penceresi (DangerConfirmModal) uzerinde.
+ * Iki mod ayni: aktif kayit → Arsivle/Pasiflestir, pasif kayit → Kalici sil.
+ * `scope="workspace"`: kullanicilar icin — kayit CALISMA ALANINDAN
+ * kaldirilir; baska calisma alanlarina uyeyse orada hesabi surer (auth
+ * DELETE kurali, 51ab60d).
+ */
 const DeleteModal = ({
     open,
     isActive = false,
@@ -21,40 +29,27 @@ const DeleteModal = ({
     onConfirm,
     onCancel,
     loading = false,
+    scope = 'record',
 }) => {
     const t = useT()
     const isDeactivateMode = isActive === true
-
-    const title = isDeactivateMode ? 'Archive / Deactivate?' : 'Delete Permanently?'
-    const description = isDeactivateMode
-        ? 'This item is currently active. Archiving it will preserve existing logs but hide it from future selection.'
-        : 'This item is already inactive. Do you want to permanently delete it? This action CANNOT be undone and may fail if data exists.'
+    const k = scope === 'workspace' ? 'deleteModal.workspace' : 'deleteModal.record'
 
     return (
-        <ConfirmDialog
+        <DangerConfirmModal
             open={open}
-            pending={loading}
-            danger={!isDeactivateMode}
-            title={
-                <span className="h-inline" style={{ gap: 'var(--h-space-2)' }}>
-                    {isDeactivateMode ? <StopOutlined /> : <DeleteOutlined />}
-                    {title}
-                </span>
-            }
-            description={description}
-            confirmText={isDeactivateMode ? 'Archive' : 'Delete Permanently'}
-            cancelText={t('common.cancel')}
+            loading={loading}
+            tone={isDeactivateMode ? 'primary' : 'danger'}
+            badgeIcon={isDeactivateMode ? <StopOutlined /> : <DeleteOutlined />}
+            confirmIcon={null}
+            title={t(`${k}.${isDeactivateMode ? 'archiveTitle' : 'deleteTitle'}`)}
+            body={t(`${k}.${isDeactivateMode ? 'archiveBody' : 'deleteBody'}`)}
+            itemName={itemName}
+            confirmLabel={t(`${k}.${isDeactivateMode ? 'archiveConfirm' : 'deleteConfirm'}`)}
+            cancelLabel={t('common.cancel')}
             onConfirm={onConfirm}
             onCancel={onCancel}
-        >
-            {itemName && (
-                <p style={{ margin: 'var(--h-space-3) 0 0' }}>
-                    <StatusBadge tone={isDeactivateMode ? 'warning' : 'danger'}>
-                        {itemName}
-                    </StatusBadge>
-                </p>
-            )}
-        </ConfirmDialog>
+        />
     )
 }
 

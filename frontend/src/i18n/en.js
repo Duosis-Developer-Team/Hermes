@@ -1228,6 +1228,24 @@ export default {
         namePlaceholder: '{entity} name',
         codePlaceholder: '{entity} code',
     },
+    deleteModal: {
+        record: {
+            archiveTitle: 'Archive / Deactivate?',
+            archiveBody: 'This item is currently active. Archiving it will preserve existing logs but hide it from future selection.',
+            archiveConfirm: 'Archive',
+            deleteTitle: 'Delete Permanently?',
+            deleteBody: 'This item is already inactive. Do you want to permanently delete it? This action CANNOT be undone and may fail if data exists.',
+            deleteConfirm: 'Delete Permanently',
+        },
+        workspace: {
+            archiveTitle: 'Deactivate in this workspace?',
+            archiveBody: 'The user becomes inactive in this workspace and can no longer sign in here. Their account in other workspaces is not affected.',
+            archiveConfirm: 'Deactivate',
+            deleteTitle: 'Remove from this workspace?',
+            deleteBody: 'The user is removed from this workspace and their roles here are deleted. If they belong to other workspaces, their account and data there stay as they are.',
+            deleteConfirm: 'Remove from workspace',
+        },
+    },
     taskUi: {
         taskDetails: 'Task details',
         closePanel: 'Close panel',

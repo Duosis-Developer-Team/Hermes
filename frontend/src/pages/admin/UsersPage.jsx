@@ -364,6 +364,7 @@ export function UsersTab() {
                 open={deleteModalOpen}
                 isActive={deletingRecord?.is_active}
                 itemName={deletingRecord?.full_name || deletingRecord?.email}
+                scope="workspace"
                 onConfirm={handleDeleteConfirm}
                 onCancel={handleDeleteCancel}
                 loading={isDestroying}

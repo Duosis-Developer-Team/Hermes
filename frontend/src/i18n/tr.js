@@ -1222,6 +1222,24 @@ export default {
         namePlaceholder: '{entity} adı',
         codePlaceholder: '{entity} kodu',
     },
+    deleteModal: {
+        record: {
+            archiveTitle: 'Arşivlensin / pasifleştirilsin mi?',
+            archiveBody: 'Bu kayıt şu an aktif. Arşivlemek mevcut kayıtları korur ama yeni seçimlerde gizler.',
+            archiveConfirm: 'Arşivle',
+            deleteTitle: 'Kalıcı olarak silinsin mi?',
+            deleteBody: 'Bu kayıt zaten pasif. Kalıcı olarak silmek GERİ ALINAMAZ; bağlı veri varsa işlem başarısız olabilir.',
+            deleteConfirm: 'Kalıcı olarak sil',
+        },
+        workspace: {
+            archiveTitle: 'Bu çalışma alanında pasifleştirilsin mi?',
+            archiveBody: 'Kullanıcı bu çalışma alanında pasif olur ve giriş yapamaz. Başka çalışma alanlarına üyeyse orada hesabı etkilenmez.',
+            archiveConfirm: 'Pasifleştir',
+            deleteTitle: 'Çalışma alanından kaldırılsın mı?',
+            deleteBody: 'Kullanıcı bu çalışma alanından kaldırılır ve buradaki rolleri silinir. Başka çalışma alanlarına üyeyse oradaki hesabı ve verisi olduğu gibi kalır.',
+            deleteConfirm: 'Çalışma alanından kaldır',
+        },
+    },
     taskUi: {
         taskDetails: 'Görev ayrıntıları',
         closePanel: 'Paneli kapat',
