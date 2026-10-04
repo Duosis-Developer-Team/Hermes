@@ -2,7 +2,7 @@
  * =============================================================================
  * Giris ekrani — "Oturumu acik tut"
  * =============================================================================
- * Kutu Microsoft butonunun USTUNDEdir ve iki yola da uygulanir:
+ * Kutu Microsoft butonunun hemen ALTINDAdir (CTO 05.10) ve iki yola da uygulanir:
  *   - parola girisi: authService.login(..., { remember })
  *   - Microsoft: OAuth `state` icinde `rm:1` (callback geri okur)
  */
@@ -54,13 +54,13 @@ describe('Oturumu acik tut', () => {
         delete window._env_
     })
 
-    it('kutu Microsoft butonunun USTUNDE ve varsayilan olarak kapali', () => {
+    it('kutu Microsoft butonunun ALTINDA ve varsayilan olarak kapali', () => {
         renderLogin()
         const box = screen.getByRole('checkbox', { name: /oturumu a.+k tut|keep me signed in/i })
         expect(box).not.toBeChecked()
         const ms = screen.getByRole('button', { name: /microsoft/i })
-        // DOM sirasinda kutu butondan ONCE gelir.
-        expect(box.compareDocumentPosition(ms) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+        // DOM sirasinda kutu butondan SONRA gelir.
+        expect(box.compareDocumentPosition(ms) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
     })
 
     it('parola girisi remember=false gonderir (kutu kapali)', async () => {

@@ -274,23 +274,19 @@ function LoginPage() {
                         <p>{t('login.microsoftHint')}</p>
                     </div>
 
-                    {/* Oturumu acik tut — Microsoft butonunun USTUNDE: iki yola da uygulanir. */}
-                    <div className="login-remember">
-                        <Checkbox
-                            checked={remember}
-                            onChange={(e) => setRemember(e.target.checked)}
-                            aria-describedby="login-remember-hint"
-                        >
-                            {t('login.rememberMe')}
-                        </Checkbox>
-                        <small id="login-remember-hint">{t('login.rememberMeHint')}</small>
-                    </div>
-
                     {/* Primary: Microsoft SSO */}
                     <Button block onClick={handleMicrosoftLogin} className="ms-login-btn">
                         <MicrosoftMark />
                         {t('login.signInWithMicrosoft')}
                     </Button>
+
+                    {/* Oturumu acik tut — Microsoft butonunun hemen ALTINDA; iki giris
+                        yoluna da (Microsoft + e-posta) uygulanir. */}
+                    <div className="login-remember">
+                        <Checkbox checked={remember} onChange={(e) => setRemember(e.target.checked)}>
+                            {t('login.rememberMe')}
+                        </Checkbox>
+                    </div>
 
                     <div className="lg-or"><span>{t('login.or')}</span></div>
 

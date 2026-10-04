@@ -433,7 +433,6 @@ export default {
         signInWithMicrosoft: 'Sign in with Microsoft',
         microsoftHint: 'Use your Microsoft work account to continue',
         rememberMe: 'Keep me signed in',
-        rememberMeHint: 'You stay signed in for 30 days after your last visit',
         loginSuccess: 'Login successful!',
         signedInToPlatform: 'Signed in to Platform Administration',
         emailRequired: 'Please enter your email',
