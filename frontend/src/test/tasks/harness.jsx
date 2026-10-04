@@ -71,7 +71,7 @@ export function renderTasksPage({
  * (pointerdown/mousedown/pointerup/mouseup/click) uretir ve gecer.
  * Bu davranis olculdu, varsayilmadi.
  */
-export const setupUser = () => userEvent.setup({ delay: null, pointerEventsCheck: 0 })
+export const setupUser = () => userEvent.setup({ delay: null })
 
 /**
  * Gorev kartini KODUNDAN bulur.
