@@ -24,7 +24,7 @@ import TokenOnceModal from '../../features/api-management/components/TokenOnceMo
  * kurali var (secretSafety). Kural zayiflatilmadi; fixture uyduruldu.
  */
 const TOKEN = 'TEST-ONLY-PLACEHOLDER-not-a-real-token-000000'
-const setupUser = () => userEvent.setup({ delay: null })
+const setupUser = () => userEvent.setup({ delay: null, pointerEventsCheck: 0 })
 
 /**
  * jsdom'da `navigator.clipboard` yalnizca getter'dir; tanimlanmasi

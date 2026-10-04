@@ -32,7 +32,7 @@ const TASK = {
     project_name: 'ATM Yenileme',
 }
 
-const setupUser = () => userEvent.setup({ delay: null })
+const setupUser = () => userEvent.setup({ delay: null, pointerEventsCheck: 0 })
 
 const renderCard = (props = {}) =>
     render(

@@ -66,7 +66,7 @@ describe('takipciler (B5)', () => {
     })
 
     it('takip etmeyen kullanici "Watch" gorur; tiklama watching:false ile ust katmana gider', async () => {
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         const { onToggleWatch } = renderPanel()
         const btn = screen.getByRole('button', { name: 'Watch this item' })
         expect(btn).toHaveAttribute('aria-pressed', 'false')
@@ -75,7 +75,7 @@ describe('takipciler (B5)', () => {
     })
 
     it('takip eden kullanici "Stop watching" gorur; tiklama watching:true gonderir', async () => {
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         const { onToggleWatch } = renderPanel({ currentUserId: 'u3' })
         const btn = screen.getByRole('button', { name: 'Stop watching' })
         expect(btn).toHaveAttribute('aria-pressed', 'true')

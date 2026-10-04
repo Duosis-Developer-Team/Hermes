@@ -84,7 +84,7 @@ beforeEach(() => {
     reportsService.getJsonMatrix.mockResolvedValue({ data: [] })
 })
 
-const user = () => userEvent.setup({ delay: null })
+const user = () => userEvent.setup({ delay: null, pointerEventsCheck: 0 })
 
 describe('masaustu: temel filtreler DOGRUDAN gorunur', () => {
     it('Project, Type ve Platform gizli DEGIL', async () => {

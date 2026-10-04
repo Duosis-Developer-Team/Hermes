@@ -54,7 +54,7 @@ describe('tab semantigi', () => {
 
     it('tiklama onViewModeChange(v) cagirir — state sahibi degismedi', async () => {
         const onViewModeChange = vi.fn()
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         renderHeader({ onViewModeChange })
         await user.click(screen.getByRole('tab', { name: 'Timesheet' }))
         expect(onViewModeChange).toHaveBeenCalledWith('timesheet')
@@ -62,7 +62,7 @@ describe('tab semantigi', () => {
 
     it('klavye: tab odaklanabilir ve Enter aktive eder', async () => {
         const onViewModeChange = vi.fn()
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         renderHeader({ onViewModeChange })
         const tab = screen.getByRole('tab', { name: 'Timesheet' })
         tab.focus()

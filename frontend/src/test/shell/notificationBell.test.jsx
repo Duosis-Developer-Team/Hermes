@@ -59,7 +59,7 @@ describe('bildirim zili', () => {
     })
 
     it('tiklayinca liste acilir; satir okundu isaretlenir ve ise gidilir', async () => {
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         renderBell()
         await user.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }))
         expect(await screen.findByText('TASK-7 was assigned to you: Sertifika yenile')).toBeInTheDocument()
@@ -70,7 +70,7 @@ describe('bildirim zili', () => {
     })
 
     it('okunmus satir tekrar okundu isaretlenmez', async () => {
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         renderBell()
         await user.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }))
         await user.click(await screen.findByText('New comment on ISSUE-3: Giris hatasi'))
@@ -79,7 +79,7 @@ describe('bildirim zili', () => {
     })
 
     it('"tumunu okundu" ucu cagrilir', async () => {
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         renderBell()
         await user.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }))
         await user.click(await screen.findByRole('button', { name: 'Mark all as read' }))
@@ -89,7 +89,7 @@ describe('bildirim zili', () => {
     it('bildirim yoksa bos durum ve sade ad', async () => {
         notificationService.unreadCount.mockResolvedValue({ unread_count: 0 })
         notificationService.list.mockResolvedValue({ items: [], unread_count: 0 })
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         renderBell()
         await user.click(await screen.findByRole('button', { name: 'Notifications' }))
         expect(await screen.findByText('Nothing new')).toBeInTheDocument()

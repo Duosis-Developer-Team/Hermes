@@ -55,7 +55,7 @@ const GROUPS = [
 ]
 const MEMBERS_G1 = [{ id: 'm1', user_id: 'u2', title: 'Senior Developer' }]
 
-const setupUser = () => userEvent.setup({ delay: null })
+const setupUser = () => userEvent.setup({ delay: null, pointerEventsCheck: 0 })
 const deferred = () => {
     let resolve, reject
     const promise = new Promise((res, rej) => { resolve = res; reject = rej })

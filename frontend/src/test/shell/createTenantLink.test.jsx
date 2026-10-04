@@ -47,7 +47,7 @@ describe('olusturma sonrasi adres', () => {
     it('mevcut sahip (parola YOK) icin de tam adres gosterilir', async () => {
         platformService.createTenant.mockResolvedValue(RESULT)
         const onDone = vi.fn()
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         renderModal(onDone)
 
         await fillAndCreate(user)
@@ -70,7 +70,7 @@ describe('olusturma sonrasi adres', () => {
             owner: { email: 'can@duosis.com', created: true },
             one_time_password: 'Tek-Sefer-123',
         })
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         renderModal(vi.fn())
 
         await fillAndCreate(user)

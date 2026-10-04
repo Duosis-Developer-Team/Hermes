@@ -56,7 +56,7 @@ describe('Musteri logosu', () => {
     })
 
     it('yeni musteri: dosya kayitta PUT edilir, depo guncellenir', async () => {
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         customerService.create.mockResolvedValue({ id: 'c9', name: 'Arcelik' })
         customerService.uploadLogo.mockResolvedValue({ has_logo: true, logo_etag: 'new' })
         renderPage()
@@ -75,7 +75,7 @@ describe('Musteri logosu', () => {
     })
 
     it('tur ve boyut on kontrolu: istek yok, onizleme yok', async () => {
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         renderPage()
         await screen.findByText('Vakko')
         await user.click(screen.getByRole('button', { name: /New Customer/ }))
@@ -89,7 +89,7 @@ describe('Musteri logosu', () => {
     })
 
     it('duzenle + kaldir: guncellemeden sonra DELETE', async () => {
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         customerService.update.mockResolvedValue({ ...CUSTOMERS[0] })
         customerService.deleteLogo.mockResolvedValue()
         useCustomerLogoStore.setState({ etags: { c1: 'e1' } })

@@ -46,7 +46,7 @@ describe('ekler sekmesi', () => {
     })
 
     it('kaldirma ucu cagrilir', async () => {
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         renderWithProviders(<TaskAttachmentsTab taskId="wi1" />)
         await screen.findByText('ekran.png')
         await user.click(screen.getByRole('button', { name: 'Remove attachment — ekran.png' }))

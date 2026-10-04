@@ -69,7 +69,7 @@ describe('proje uyeleri drawer (B2)', () => {
 
     it('ekleme: secilen kullanici ve rol ile addMember cagrilir; lider secenegi yok', async () => {
         projectService.listMembers.mockResolvedValue(members())
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         renderDrawer()
         await screen.findByText('Ada Lovelace')
         await user.click(screen.getByRole('combobox', { name: 'Pick a user' }))
@@ -88,7 +88,7 @@ describe('proje uyeleri drawer (B2)', () => {
 
     it('cikarma removeMember ile gider', async () => {
         projectService.listMembers.mockResolvedValue(members())
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         renderDrawer()
         await screen.findByText('Grace Hopper')
         await user.click(screen.getByRole('button', { name: 'Remove member — Grace Hopper' }))
@@ -106,7 +106,7 @@ describe('proje uyeleri drawer (B2)', () => {
 
     it('projects.manage: lider secenegi var, lead satiri duzenlenebilir', async () => {
         projectService.listMembers.mockResolvedValue(members({ can_assign_lead: true }))
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         renderDrawer()
         await screen.findByText('Ada Lovelace')
         expect(screen.getByRole('button', { name: 'Remove member — Ada Lovelace' })).toBeInTheDocument()

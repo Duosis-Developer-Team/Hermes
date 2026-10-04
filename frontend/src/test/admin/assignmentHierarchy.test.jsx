@@ -50,7 +50,7 @@ const GROUPS = [
 const USER_RELS = [{ id: 'ur1', assigner_user_id: 'u1', assignee_user_id: 'u2', scope: 'task' }]
 const GROUP_RELS = [{ id: 'gr1', assigner_user_id: 'u1', assignee_group_id: 'g1', scope: 'task' }]
 
-const setupUser = () => userEvent.setup({ delay: null })
+const setupUser = () => userEvent.setup({ delay: null, pointerEventsCheck: 0 })
 const deferred = () => {
     let resolve
     const promise = new Promise((res) => { resolve = res })

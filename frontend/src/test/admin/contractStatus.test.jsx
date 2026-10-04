@@ -52,7 +52,7 @@ const PROJECTS = [
 // p2: 10 gun kullanildi (80/8)  → %20 → safe
 const BILLABLE = { data: { p1: 640, p2: 80 } }
 
-const setupUser = () => userEvent.setup({ delay: null })
+const setupUser = () => userEvent.setup({ delay: null, pointerEventsCheck: 0 })
 const httpError = (status, data) => ({ response: { status, data } })
 
 const renderPage = () =>

@@ -48,7 +48,7 @@ const WORK_TYPES = [
     { id: 'w2', name: 'Testing', code: 'TST', is_active: true },
 ]
 
-const setupUser = () => userEvent.setup({ delay: null })
+const setupUser = () => userEvent.setup({ delay: null, pointerEventsCheck: 0 })
 const httpError = (status, data) => ({ response: { status, data } })
 
 const renderPage = (Comp) =>

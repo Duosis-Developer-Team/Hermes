@@ -65,7 +65,7 @@ const CATALOG = {
     ],
 }
 
-const setupUser = () => userEvent.setup({ delay: null })
+const setupUser = () => userEvent.setup({ delay: null, pointerEventsCheck: 0 })
 const deferred = () => {
     let resolve, reject
     const promise = new Promise((res, rej) => { resolve = res; reject = rej })

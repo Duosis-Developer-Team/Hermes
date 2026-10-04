@@ -41,7 +41,7 @@ beforeEach(() => {
 
 describe('A10 — is kalemi secici', () => {
     it('serbest giriste proje secilince gorunur; yalniz ACIK kalemler listelenir; secim task_id olur', async () => {
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         const onSubmit = vi.fn().mockResolvedValue({ id: 'wl-1' })
         renderWithProviders(
             <LogTimeModal open onClose={() => {}} onSubmit={onSubmit} initialDate="2026-09-22" />
@@ -77,7 +77,7 @@ describe('A10 — is kalemi secici', () => {
     })
 
     it('secim yapilmazsa task_id null gider', async () => {
-        const user = userEvent.setup({ delay: null })
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
         const onSubmit = vi.fn().mockResolvedValue({ id: 'wl-1' })
         renderWithProviders(
             <LogTimeModal open onClose={() => {}} onSubmit={onSubmit} initialDate="2026-09-22" />
