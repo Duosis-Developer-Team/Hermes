@@ -683,6 +683,7 @@ export default {
         logoUpload: 'Upload logo',
         logoChange: 'Change',
         logoRemove: 'Remove',
+        logoDrop: 'Drag and drop an image here, or click the logo.',
         logoTooLarge: 'The logo can be at most 256 KB.',
         logoBadType: 'Only PNG, JPG or WEBP can be uploaded.',
         logoFailed: 'Customer saved, but the logo could not be updated: {msg}',

@@ -41,6 +41,7 @@ import MeetingReviewModal from '../components/modals/MeetingReviewModal'
 import LogTimeModal from '../components/modals/LogTimeModal'
 import { useT } from '../i18n'
 import './MeetingsPage.css'
+import { invalidateMeetingViews } from '../features/home/hooks/useMeetingAutoSync'
 
 dayjs.extend(isoWeek)
 
@@ -212,7 +213,8 @@ function MeetingsPage() {
                 (r) => r.status === 'fulfilled' && r.value?.ok
             )
             if (anyOk) {
-                queryClient.invalidateQueries({ queryKey: ['meetings'] })
+                // Ana sayfa (Takvimim + ada) da ayni toplantilari gosterir.
+                invalidateMeetingViews(queryClient)
             }
         })
         return () => {

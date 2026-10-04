@@ -40,6 +40,7 @@ import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '../../query/queryKeys'
 import { useUserPhotoStore } from '../../stores/userPhotoStore'
 import { useCustomerLogoStore } from '../../stores/customerLogoStore'
+import { useMeetingAutoSync } from '../../features/home/hooks/useMeetingAutoSync'
 
 /**
  * Main Layout Component — izin filtreli menu, prefetch ve hesap menusu.
@@ -296,6 +297,8 @@ function MainLayout() {
     ]
 
     // Adanin canli yuvasi: bugunun siradaki toplantisi (gercek veri).
+    // Bu haftanin Microsoft takvimi arka planda (15 dk'da bir en fazla).
+    useMeetingAutoSync(user?.id)
     const nextMeeting = useNextMeeting()
     const islandLive = nextMeeting ? {
         tone: nextMeeting.status,

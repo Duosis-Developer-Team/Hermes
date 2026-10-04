@@ -677,6 +677,7 @@ export default {
         logoUpload: 'Logo yükle',
         logoChange: 'Değiştir',
         logoRemove: 'Kaldır',
+        logoDrop: 'Görseli buraya sürükleyip bırakabilir ya da logoya tıklayabilirsiniz.',
         logoTooLarge: 'Logo en fazla 256 KB olabilir.',
         logoBadType: 'Yalnızca PNG, JPG veya WEBP yüklenebilir.',
         logoFailed: 'Müşteri kaydedildi ama logo güncellenemedi: {msg}',
