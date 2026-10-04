@@ -2,9 +2,11 @@
  * =============================================================================
  * HERMES - Masaustu sunucu anahtari (Test ⇄ Dev, tek tik)
  * =============================================================================
- * YALNIZ masaustu uygulamasinda gorunur: preload koprusu
- * (`window.hermesDesktop.getServers/switchServer`) varsa ada hapi cizilir;
- * tarayicida kopru yoktur → hicbir sey cizilmez. Gecisi ana surec yapar
+ * YALNIZ masaustu uygulamasinda VE dev sunucusuna bagliyken gorunur
+ * (CTO 04.10: prod'da kimse anahtari gorup dev'e gecmesin). Dev'e gecis
+ * gelistiricinin gizli kisayoluyla (Cmd+Shift+D) yapilir; dev'deyken
+ * anahtar test'e geri donmek icin gorunur. Tarayicida kopru yoktur →
+ * hicbir sey cizilmez. Gecisi ana surec yapar
  * (secimi saklar, pencereyi yeni sunucuya yukler); sayfa yalniz istegi
  * iletir. Oturumlar sunucu basina ayridir (cerez host'a bagli).
  * =============================================================================
@@ -17,7 +19,9 @@ import './ServerSwitch.css'
 function readServers() {
     try {
         const info = window.hermesDesktop?.getServers?.()
-        return info && Array.isArray(info.servers) && info.servers.length > 1 ? info : null
+        if (!info || !Array.isArray(info.servers) || info.servers.length < 2) return null
+        // Prod (test) penceresinde anahtar yok.
+        return info.current === 'dev' ? info : null
     } catch {
         return null
     }

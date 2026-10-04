@@ -1,0 +1,24 @@
+# =============================================================================
+# Masaustu indirmeleri (landing) — kalici disk
+# =============================================================================
+# .dmg / .exe dosyalari ve manifest.json IMAJA GOMULMEZ: bu disk frontend
+# pod'una /usr/share/nginx/html/downloads olarak SALT-OKUNUR baglanir
+# (04-frontend.yaml), nginx `location ^~ /downloads/` servis eder.
+# Yazma yalniz yardimci pod ile: scripts/k8s/publish-downloads.sh.
+# local-path: disk ilk baglanan pod'un dugumune sabitlenir (tek replika).
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hermes-downloads
+  namespace: hermes-test
+  labels:
+    app: frontend
+    purpose: desktop-downloads
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi

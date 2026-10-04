@@ -46,6 +46,16 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "200m"
+        # Landing indirmeleri: kalici disk, SALT-OKUNUR (downloads-pvc.yaml).
+        volumeMounts:
+        - name: downloads
+          mountPath: /usr/share/nginx/html/downloads
+          readOnly: true
+      volumes:
+      - name: downloads
+        persistentVolumeClaim:
+          claimName: hermes-downloads
+          readOnly: true
 ---
 # NodePort Service — test ortamı için farklı port üzerinden erişim
 # HTTP:  http://84.247.180.172:30880

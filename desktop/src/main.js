@@ -6,9 +6,9 @@
  * hermes.duosis.com) kendi penceresinde acar. Siteden yapilabilen her
  * sey buradan da yapilir; siteye cikan her yenilik uygulamaya da gelir.
  * Yerel katman:
- *   - macOS menusu (Duzen kisayollari, Git ⌘1–⌘4, Sunucu secimi ⌘⇧D)
- *   - Tek tikla Test/Dev gecisi: web adasindaki anahtar (preload koprusu)
- *     ve Dock ikonunun sag tik menusu
+ *   - macOS menusu (Duzen kisayollari, Git ⌘1–⌘4)
+ *   - Sunucu secimi prod'da GORUNMEZ: gizli kisayol ⌘⇧D (gelistirici);
+ *     adadaki Test/Dev anahtari yalniz dev'deyken gorunur
  *   - Dock rozeti (okunmamis bildirim — web uygulamasi bildirir)
  *   - hermes:// derin linkleri (hermes://work/TASK-56)
  *   - pencere boyutu/konumu hatirlanir; baglanti yoksa yerel hata sayfasi
@@ -175,13 +175,9 @@ function fromKnownServer(event) {
 // --- Menu --------------------------------------------------------------------------
 function buildMenu() {
     const active = currentServer().id
-    // Dock ikonu sag tik: sunucu secimi tek tikla.
-    app.dock?.setMenu(Menu.buildFromTemplate(SERVERS.map((s) => ({
-        label: s.label,
-        type: 'radio',
-        checked: s.id === active,
-        click: () => switchServer(s.id),
-    }))))
+    // Prod'da sunucu secimi GORUNMEZ (CTO 04.10): Dock menusu yok; yalniz
+    // dev'deyken temizlenir (eski surumden kalmissa).
+    app.dock?.setMenu(Menu.buildFromTemplate([]))
     const template = [
         // macOS: uygulama menusu; Windows: Dosya (Cikis). Menu cubugu
         // Windows'ta gizli, Alt ile acilir; kisayollar her zaman calisir.
@@ -201,18 +197,17 @@ function buildMenu() {
         },
         { role: 'viewMenu' },
         {
+            // Sunucu menusu KALDIRILDI (prod'da herkes dev'e gecmesin).
+            // Gelistirici gecisi: gizli kisayol Cmd+Shift+D (macOS'ta gizli
+            // ogenin kisayolu acceleratorWorksWhenHidden ile calisir).
             label: 'Sunucu',
+            visible: false,
             submenu: [
-                ...SERVERS.map((s) => ({
-                    label: s.label,
-                    type: 'radio',
-                    checked: s.id === active,
-                    click: () => switchServer(s.id),
-                })),
-                { type: 'separator' },
                 {
                     label: 'Test ⇄ Dev geçiş',
                     accelerator: 'CmdOrCtrl+Shift+D',
+                    visible: false,
+                    acceleratorWorksWhenHidden: true,
                     click: () => switchServer(active === 'dev' ? 'test' : 'dev'),
                 },
             ],
