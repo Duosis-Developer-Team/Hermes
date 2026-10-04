@@ -3,7 +3,7 @@
  * Davranis birebir ayni; yalnizca ev degisti. Tuketiciler ister buradan
  * ister (gecis boyunca) services/api.js facade'inden import eder.
  */
-import { authClient } from './httpClient'
+import { authClient, refreshSession } from './httpClient'
 
 export const authService = {
     /**
@@ -12,12 +12,15 @@ export const authService = {
      * [KRİTİK-6] Backend artık token döndürmez; HttpOnly cookie set eder.
      * Response yalnızca { user } içerir.
      *
+     * @param {Object} [opts] { remember } — "Oturumu acik tut": yenileme
+     *   cerezi 1 gun yerine 30 gun (son kullanimdan itibaren) yasar.
      * @returns {{ user: object }}
      */
-    login: async (email, password) => {
+    login: async (email, password, { remember = false } = {}) => {
         const formData = new URLSearchParams()
         formData.append('username', email)
         formData.append('password', password)
+        formData.append('remember', remember ? 'true' : 'false')
 
         const response = await authClient.post('/api/v1/auth/token', formData, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -31,7 +34,8 @@ export const authService = {
      *
      * [KRİTİK-6] Backend HttpOnly cookie set eder; response yalnızca { user }.
      *
-     * @param {Object} data { code, redirect_uri }
+     * @param {Object} data { code, redirect_uri, remember } — `remember`
+     *   giris ekranindan OAuth `state` ile geri gelir.
      * @param {Object} [opts] { workspace } — callback adresinde `?workspace=`
      *   bulunmadigi icin (OAuth `state`ten cozulup) acikca verilir.
      * @returns {{ user: object }}
@@ -75,6 +79,12 @@ export const authService = {
     logout: async () => {
         await authClient.post('/api/v1/auth/logout')
     },
+
+    /**
+     * Kayan oturum — yenileme cereziyle erisim cerezini tazeler (tek
+     * ucus; ayni anda gelen cagrilar ayni istegi bekler).
+     */
+    refreshSession: () => refreshSession(),
 
     /**
      * Mevcut kullanıcı bilgisi

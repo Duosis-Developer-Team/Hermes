@@ -43,10 +43,30 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 ALGORITHM = "RS256"
+# Erisim token'inin omru — TEK kaynak. Hem JWT `exp`'i hem de erisim
+# cerezinin max_age'i buradan gelir (eskiden iki ayri deger vardi: token
+# 1440 dk, cerez 60 dk; cerez dusunce kullanici 1 saatte cikis yapiyordu).
+# Kisa tutulur: pasiflestirilen bir kullanicinin erisimi en fazla bu kadar
+# surer. Oturum surekliligi yenileme cerezinden gelir (asagida).
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
 
 # Cookie adı — tüm servisler ve frontend'de tutarlı
 ACCESS_TOKEN_COOKIE_NAME = "access_token"
+
+# =============================================================================
+# Yenileme (refresh) token'i — kayan oturum
+# =============================================================================
+# Ayni RS256 anahtariyla imzalanir ama erisim token'i olarak ASLA gecemez:
+#   - AYRI audience (`hermes-tenant-refresh`): tenant audience'i bekleyen
+#     dogrulayici bunu jose seviyesinde zaten reddeder;
+#   - `typ: "refresh"`: verify_token bu claim'i gorurse ayrica reddeder
+#     (audience karisikligina karsi ikinci, acik kilit).
+# Durumsuzdur (DB tablosu yok). Iptal: her yenilemede kullanici aktifligi,
+# tenant uyeligi/durumu ve `users.session_version` CANLI kontrol edilir.
+# Cerez yalnizca auth API yoluna gider; core/reporting onu hic gormez.
+REFRESH_TOKEN_COOKIE_NAME = "hermes_refresh"
+REFRESH_TOKEN_TYPE = "refresh"
+REFRESH_AUDIENCE = "hermes-tenant-refresh"
 
 # =============================================================================
 # WS3 — Audience ayrimi (tenant duzlemi vs platform duzlemi)
@@ -316,6 +336,11 @@ def verify_token(token: str, *, expected_audience: str) -> TokenData:
             issuer=JWT_ISSUER,
         )
 
+        # Yenileme token'i erisim token'i olarak KULLANILAMAZ (audience
+        # zaten farkli; bu ikinci, acik kilittir).
+        if payload.get("typ") == REFRESH_TOKEN_TYPE:
+            raise UnauthorizedError("Kimlik doğrulama başarısız")
+
         user_id: Optional[str] = payload.get("user_id")
         email: Optional[str] = payload.get("email")
         is_admin: bool = payload.get("is_admin", False)
@@ -351,6 +376,84 @@ def verify_token(token: str, *, expected_audience: str) -> TokenData:
             extra={"error_type": type(e).__name__},
         )
         raise UnauthorizedError("Kimlik doğrulama başarısız")
+
+
+def create_refresh_token(
+    *,
+    user_id: str,
+    tenant_id: str,
+    membership_id: Optional[str],
+    auth_method: str,
+    session_version: int,
+    remember: bool,
+    expires_delta: timedelta,
+) -> str:
+    """Kayan oturum icin yenileme token'i uretir (YALNIZCA auth-service).
+
+    Icerik bilerek dardir: kimlik (`sub`), tenant baglami, giris yontemi,
+    `sv` (users.session_version) ve `rmb` (oturumu acik tut). E-posta,
+    is_admin gibi alanlar TASINMAZ — yenilemede DB'den taze okunur.
+    """
+    if not SIGNING_KEY:
+        raise RuntimeError(
+            "create_refresh_token yalnizca auth-service icinde cagrilabilir."
+        )
+    if not tenant_id:
+        raise ValueError("Yenileme token'i tenant_id olmadan uretilemez")
+
+    now = datetime.now(timezone.utc)
+    payload = {
+        "typ": REFRESH_TOKEN_TYPE,
+        "sub": str(user_id),
+        "tenant_id": str(tenant_id),
+        "membership_id": str(membership_id) if membership_id else None,
+        "auth_method": auth_method,
+        "sv": int(session_version),
+        "rmb": bool(remember),
+        "iss": JWT_ISSUER,
+        "aud": REFRESH_AUDIENCE,
+        "iat": now,
+        "nbf": now,
+        "exp": now + expires_delta,
+        "jti": uuid.uuid4().hex,
+    }
+    return jwt.encode(payload, SIGNING_KEY, algorithm=ALGORITHM)
+
+
+def verify_refresh_token(token: str) -> Dict[str, Any]:
+    """Yenileme token'ini dogrular ve payload'i doner.
+
+    Burada yalnizca imza/sure/issuer/audience/typ ve zorunlu alanlar
+    kontrol edilir. Kullanici aktifligi, uyelik ve session_version
+    kontrolu cagiranin (auth-service) isidir — DB gerektirir.
+
+    Raises:
+        UnauthorizedError: her basarisizlikta AYNI mesajla.
+    """
+    try:
+        payload = jwt.decode(
+            token,
+            VERIFY_KEY,  # type: ignore[arg-type]
+            algorithms=[ALGORITHM],
+            audience=REFRESH_AUDIENCE,
+            issuer=JWT_ISSUER,
+        )
+    except JWTError as e:
+        # Token/anahtar icerigi ASLA loglanmaz; yalnizca hata sinifi.
+        logger.warning(
+            "Refresh token dogrulama basarisiz",
+            extra={"error_type": type(e).__name__},
+        )
+        raise UnauthorizedError("Kimlik doğrulama başarısız")
+
+    if payload.get("typ") != REFRESH_TOKEN_TYPE:
+        raise UnauthorizedError("Kimlik doğrulama başarısız")
+    if not payload.get("sub") or not payload.get("tenant_id"):
+        raise UnauthorizedError("Kimlik doğrulama başarısız")
+    sv = payload.get("sv")
+    if not isinstance(sv, int) or isinstance(sv, bool):
+        raise UnauthorizedError("Kimlik doğrulama başarısız")
+    return payload
 
 
 # =============================================================================

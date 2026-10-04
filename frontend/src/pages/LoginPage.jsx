@@ -18,7 +18,7 @@
 
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Form, Input, Button, message } from 'antd'
+import { Form, Input, Button, Checkbox, message } from 'antd'
 import {
     CalendarOutlined,
     CheckSquareOutlined,
@@ -133,6 +133,9 @@ function LoginPage() {
     // email/password form is collapsed by default and mainly used for
     // admin / service accounts.
     const [showEmail, setShowEmail] = useState(false)
+    // "Oturumu acik tut": iki giris yoluna da uygulanir. Kapaliyken oturum
+    // son kullanimdan 1 gun, aciksa 30 gun sonra duser (yenileme cerezi).
+    const [remember, setRemember] = useState(false)
     const navigate = useNavigate()
     const { login } = useAuthStore()
     const platformLogin = usePlatformAuthStore((s) => s.login)
@@ -146,7 +149,9 @@ function LoginPage() {
         setLoading(true)
         try {
             // API'ye login isteği gönder
-            const response = await authService.login(values.email, values.password)
+            const response = await authService.login(
+                values.email, values.password, { remember },
+            )
 
             // [KRİTİK-6] Token cookie olarak backend'den geldi; store'a
             // yalnızca user + organizasyon özeti kaydedilir.
@@ -202,13 +207,15 @@ function LoginPage() {
             return
         }
 
-        // redirect_uri sabittir (Azure'da kayitli); `?workspace=` Microsoft
-        // donusunde kaybolmasin diye OAuth `state` icinde tasinir.
+        // redirect_uri sabittir (Azure'da kayitli); `?workspace=` ve
+        // "Oturumu acik tut" Microsoft donusunde kaybolmasin diye OAuth
+        // `state` icinde tasinir (AuthCallbackPage geri okur).
         window.location.href = buildMicrosoftAuthorizeUrl({
             tenantId,
             clientId,
             origin: window.location.origin,
             workspace,
+            remember,
         })
     }
 
@@ -265,6 +272,18 @@ function LoginPage() {
                     <div className="login-header">
                         <h2 id="lg-card-title">{t('login.signInToHermes')}</h2>
                         <p>{t('login.microsoftHint')}</p>
+                    </div>
+
+                    {/* Oturumu acik tut — Microsoft butonunun USTUNDE: iki yola da uygulanir. */}
+                    <div className="login-remember">
+                        <Checkbox
+                            checked={remember}
+                            onChange={(e) => setRemember(e.target.checked)}
+                            aria-describedby="login-remember-hint"
+                        >
+                            {t('login.rememberMe')}
+                        </Checkbox>
+                        <small id="login-remember-hint">{t('login.rememberMeHint')}</small>
                     </div>
 
                     {/* Primary: Microsoft SSO */}

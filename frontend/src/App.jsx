@@ -9,6 +9,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { loginPathFor } from './api/workspace'
+import { getLastSessionRefreshAt, refreshSession } from './api/httpClient'
 import { LEGACY_SETTINGS_PATHS } from './features/settings/sections'
 import { Spin } from 'antd'
 import { useAuthStore } from './stores/authStore'
@@ -152,6 +153,8 @@ export const TaskProtectedRoute = ({ children }) => {
     return children
 }
 
+const PROACTIVE_REFRESH_MS = 30 * 60 * 1000
+
 /**
  * Main App Component
  */
@@ -169,6 +172,9 @@ function App() {
         }
 
         // Sayfa yenilemesinde mevcut HttpOnly cookie üzerinden oturumu geri yükle.
+        // Kayan oturum: erisim cerezi dusmusse /me 401 alir; httpClient
+        // interceptor'u yenileme cereziyle BIR KEZ yeniler ve /me'yi
+        // tekrarlar. Yenileme de reddedilirse oturum kapali sayilir.
         // RBAC R3: kimlikle birlikte efektif izinler de yüklenir — can()
         // fail-closed olduğu için izinler gelene dek yönetim yüzeyleri
         // görünmez; hata halinde boş liste (yine fail-closed).
@@ -214,6 +220,21 @@ function App() {
         }
         // `setPermissions` de ayni sekilde stabil bir store aksiyonu.
     }, [isAuthenticated, permissions, setPermissions])
+
+    // Kayan oturum — sekme yeniden gorunur oldugunda, son yenileme ~30 dk'dan
+    // eskiyse proaktif yenile: uzun sure arka planda kalan sekmede ilk
+    // tiklama 401 + tekrar gecikmesi yasamasin. Hata sessizdir; gercek
+    // karar bir sonraki istekte interceptor'da verilir.
+    useEffect(() => {
+        if (!isAuthenticated || typeof document === 'undefined') return undefined
+        const onVisible = () => {
+            if (document.visibilityState !== 'visible') return
+            if (Date.now() - getLastSessionRefreshAt() < PROACTIVE_REFRESH_MS) return
+            refreshSession().catch(() => {})
+        }
+        document.addEventListener('visibilitychange', onVisible)
+        return () => document.removeEventListener('visibilitychange', onVisible)
+    }, [isAuthenticated])
 
     // /me kontrolü bitmeden route'ları render etme — aksi halde cookie hâlâ geçerliyken
     // isAuthenticated=false olduğu için login'e yönlendirme yapılır.

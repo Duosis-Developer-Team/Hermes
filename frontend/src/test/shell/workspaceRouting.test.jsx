@@ -30,8 +30,8 @@ vi.mock('../../hooks/useTaskPermissions', () => ({
 }))
 
 import {
-    buildMicrosoftAuthorizeUrl, decodeSsoState, encodeSsoState,
-    loginPathFor, readWorkspace,
+    buildMicrosoftAuthorizeUrl, decodeSsoRemember, decodeSsoState,
+    encodeSsoState, loginPathFor, readWorkspace,
 } from '../../api/workspace'
 import { ProtectedRoute, TaskProtectedRoute } from '../../App'
 import AuthCallbackPage from '../../pages/AuthCallbackPage'
@@ -78,6 +78,29 @@ describe('workspace yardimcilari', () => {
         expect(decodeSsoState(null)).toBeNull()
         expect(decodeSsoState('acme')).toBeNull()        // onek yok
         expect(decodeSsoState('ws:../evil')).toBeNull()
+    })
+
+    it('"Oturumu acik tut" state ile gidip doner; eski bicim bozulmaz', () => {
+        expect(encodeSsoState('acme', { remember: true })).toBe('ws:acme;rm:1')
+        expect(encodeSsoState(null, { remember: true })).toBe('rm:1')
+        expect(encodeSsoState('acme', { remember: false })).toBe('ws:acme')
+        expect(decodeSsoState('ws:acme;rm:1')).toBe('acme')
+        expect(decodeSsoRemember('ws:acme;rm:1')).toBe(true)
+        expect(decodeSsoState('rm:1')).toBeNull()
+        expect(decodeSsoRemember('rm:1')).toBe(true)
+        // Eski (yalniz workspace) state: remember YOK.
+        expect(decodeSsoRemember('ws:acme')).toBe(false)
+        expect(decodeSsoRemember(null)).toBe(false)
+        expect(decodeSsoRemember('rm:1x')).toBe(false)
+    })
+
+    it('"acik tut" secilince authorize adresine state eklenir', () => {
+        const url = buildMicrosoftAuthorizeUrl({
+            tenantId: 'tid', clientId: 'cid',
+            origin: 'https://hermes.duosis.com', remember: true,
+        })
+        expect(url.endsWith('&state=rm%3A1')).toBe(true)
+        expect(url).toContain('redirect_uri=https://hermes.duosis.com/auth/callback&')
     })
 
     it('workspace yokken authorize adresi ESKISIYLE BIREBIR aynidir', () => {
@@ -166,8 +189,26 @@ describe('Microsoft callback', () => {
         renderCallback('?code=abc&state=ws%3Aacme')
         await waitFor(() => expect(authService.microsoftLogin).toHaveBeenCalled())
         expect(authService.microsoftLogin).toHaveBeenCalledWith(
-            { code: 'abc', redirect_uri: redirectUri() },
+            { code: 'abc', redirect_uri: redirectUri(), remember: false },
             { workspace: 'acme' },
+        )
+    })
+
+    it('state icindeki "acik tut" sunucuya remember=true olarak gider', async () => {
+        renderCallback('?code=abc&state=ws%3Aacme%3Brm%3A1')
+        await waitFor(() => expect(authService.microsoftLogin).toHaveBeenCalled())
+        expect(authService.microsoftLogin).toHaveBeenCalledWith(
+            { code: 'abc', redirect_uri: redirectUri(), remember: true },
+            { workspace: 'acme' },
+        )
+    })
+
+    it('workspace olmadan yalniz "acik tut" da tasinir', async () => {
+        renderCallback('?code=abc&state=rm%3A1')
+        await waitFor(() => expect(authService.microsoftLogin).toHaveBeenCalled())
+        expect(authService.microsoftLogin).toHaveBeenCalledWith(
+            { code: 'abc', redirect_uri: redirectUri(), remember: true },
+            { workspace: null },
         )
     })
 
@@ -175,7 +216,7 @@ describe('Microsoft callback', () => {
         renderCallback('?code=abc')
         await waitFor(() => expect(authService.microsoftLogin).toHaveBeenCalled())
         expect(authService.microsoftLogin).toHaveBeenCalledWith(
-            { code: 'abc', redirect_uri: redirectUri() },
+            { code: 'abc', redirect_uri: redirectUri(), remember: false },
             { workspace: null },
         )
     })

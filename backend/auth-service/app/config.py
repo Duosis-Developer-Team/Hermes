@@ -25,7 +25,8 @@ class Settings(BaseSettings):
         - AUTH_DB_NAME: Veritabanı adı
         - JWT_SECRET_KEY: JWT token imzalama anahtarı (üretimde mutlaka değiştirin!)
         - JWT_ALGORITHM: JWT algoritması (default: HS256)
-        - JWT_EXPIRE_MINUTES: Token geçerlilik süresi (dakika)
+        - JWT_EXPIRE_MINUTES: (shared/auth.py okur) erisim token'i + cerezi, dakika
+        - REFRESH_TOKEN_DAYS / REFRESH_TOKEN_REMEMBER_DAYS: kayan oturum, gun
     """
     
     # ==========================================================================
@@ -99,10 +100,16 @@ class Settings(BaseSettings):
     #   JWT_PUBLIC_KEY  → shared/auth.py'de VERIFY_KEY olarak yüklenir
     #
     # Bu değerler shared/auth.py modülü tarafından doğrudan env'den okunur;
-    # burada yalnızca expire süresi ayarlanır.
+    # Erisim token'i omru BURADA DEGIL: tek kaynak shared/auth.py
+    # ACCESS_TOKEN_EXPIRE_MINUTES (env JWT_EXPIRE_MINUTES, varsayilan 60).
+    # Eskiden burada 1440 vardi ve cerez 60 dk ile dusuyordu (1 saatte
+    # cikis hatasi) — iki deger bilerek birlestirildi.
     # ==========================================================================
 
-    JWT_EXPIRE_MINUTES: int = 1440  # 24 saat
+    # Kayan oturum (yenileme cerezi): son kullanimdan itibaren gecerlilik.
+    # Varsayilan 1 gun; giriste "Oturumu acik tut" secilirse 30 gun.
+    REFRESH_TOKEN_DAYS: int = 1
+    REFRESH_TOKEN_REMEMBER_DAYS: int = 30
     
     # ==========================================================================
     # Azure AD / SSO Configuration

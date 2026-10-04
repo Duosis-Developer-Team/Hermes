@@ -437,6 +437,8 @@ export default {
         signIn: 'Giriş Yap',
         signInWithMicrosoft: 'Microsoft ile giriş yap',
         microsoftHint: 'Devam etmek için Microsoft iş hesabınızı kullanın',
+        rememberMe: 'Oturumu açık tut',
+        rememberMeHint: 'Son kullanımdan itibaren 30 gün boyunca oturumunuz açık kalır',
         loginSuccess: 'Giriş başarılı!',
         signedInToPlatform: 'Platform Yönetimi\'ne giriş yapıldı',
         emailRequired: 'Lütfen e-posta adresinizi girin',

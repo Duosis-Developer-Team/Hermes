@@ -72,6 +72,16 @@ class Token(BaseModel):
         default=None,
         description="Kullanicinin bu tenant'taki uyeligi (id, status)"
     )
+    # Kayan oturum: yenileme token'i YALNIZCA HttpOnly cerez olarak
+    # yazilir; router bu alani yanit govdesine KOYMAZ.
+    refresh_token: Optional[str] = Field(
+        default=None,
+        description="Yenileme token'i (yalnizca cerez icin, govdede donmez)"
+    )
+    remember: bool = Field(
+        default=False,
+        description="Oturumu acik tut secimi (yenileme cerezi omru)"
+    )
 
 
 # =============================================================================

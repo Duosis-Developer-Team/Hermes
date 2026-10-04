@@ -442,6 +442,14 @@ class UserService:
         # Şifre değişiyorsa hash'le
         if "password" in update_data:
             update_data["hashed_password"] = hash_password(update_data.pop("password"))
+            # Kayan oturum iptali: parola degisince acik yenileme
+            # oturumlari (her cihazda) bir sonraki yenilemede duser.
+            db_user.session_version = int(db_user.session_version or 1) + 1
+
+        # Global pasiflestirmede de oturumlar iptal edilir: hesap sonradan
+        # yeniden aktif edilse bile ESKI yenileme cerezleri canlanmaz.
+        if update_data.get("is_active") is False and db_user.is_active:
+            db_user.session_version = int(db_user.session_version or 1) + 1
         
         # Role değişiyorsa is_admin'i de güncelle
         if "role" in update_data:
@@ -559,6 +567,7 @@ class UserService:
         if soft:
             # Soft delete - sadece pasif yap
             db_user.is_active = False
+            db_user.session_version = int(db_user.session_version or 1) + 1
             self.db.commit()
         else:
             # Hard delete - veritabanından sil

@@ -41,30 +41,52 @@ export const loginPathFor = (search) => {
     return ws ? `/login?workspace=${encodeURIComponent(ws)}` : '/login'
 }
 
-/** OAuth `state` degeri (workspace yoksa null — parametre eklenmez). */
-export const encodeSsoState = (workspace) =>
-    isWorkspaceSlug(workspace) ? `${STATE_PREFIX}${workspace}` : null
+/*
+ * `state` bicimi: `;` ile ayrilmis parcalar. Eski bicim (`ws:<slug>`)
+ * AYNEN gecerlidir; "Oturumu acik tut" secimi ayri bir `rm:1` parcasi
+ * olarak eklenir (ornek: `ws:acme;rm:1` ya da yalniz `rm:1`). Slug
+ * kumesi `;` icermedigi icin ayrac belirsizlik yaratmaz.
+ */
+const PART_SEP = ';'
+const REMEMBER_PART = 'rm:1'
+
+const stateParts = (state) =>
+    (typeof state === 'string' ? state.split(PART_SEP) : [])
+
+/**
+ * OAuth `state` degeri. Ne workspace ne de "acik tut" varsa null —
+ * parametre hic eklenmez (Duosis'in authorize adresi birebir ayni kalir).
+ */
+export const encodeSsoState = (workspace, { remember = false } = {}) => {
+    const parts = []
+    if (isWorkspaceSlug(workspace)) parts.push(`${STATE_PREFIX}${workspace}`)
+    if (remember === true) parts.push(REMEMBER_PART)
+    return parts.length ? parts.join(PART_SEP) : null
+}
 
 /** Callback'te donen `state`ten workspace'i cozer (gecersizse null). */
 export const decodeSsoState = (state) => {
-    if (typeof state !== 'string' || !state.startsWith(STATE_PREFIX)) {
-        return null
-    }
-    const ws = state.slice(STATE_PREFIX.length)
+    const part = stateParts(state).find((p) => p.startsWith(STATE_PREFIX))
+    if (!part) return null
+    const ws = part.slice(STATE_PREFIX.length)
     return isWorkspaceSlug(ws) ? ws : null
 }
 
+/** Callback'te donen `state`te "Oturumu acik tut" secili miydi? */
+export const decodeSsoRemember = (state) =>
+    stateParts(state).includes(REMEMBER_PART)
+
 /**
  * Microsoft authorize adresi. Mevcut bicim AYNEN korunur (redirect_uri
- * token exchange'de ayni degerle gonderilir); workspace varsa yalnizca
- * `state` eklenir.
+ * token exchange'de ayni degerle gonderilir); workspace ya da "acik tut"
+ * varsa yalnizca `state` eklenir.
  */
 export const buildMicrosoftAuthorizeUrl = ({
-    tenantId, clientId, origin, workspace = null,
+    tenantId, clientId, origin, workspace = null, remember = false,
 }) => {
     const redirectUri = origin + '/auth/callback'
     let url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=User.Read&prompt=select_account`
-    const state = encodeSsoState(workspace)
+    const state = encodeSsoState(workspace, { remember })
     if (state) url += `&state=${encodeURIComponent(state)}`
     return url
 }

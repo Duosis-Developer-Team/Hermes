@@ -11,7 +11,7 @@ import { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { message, Spin } from 'antd'
 import { authService } from '../services/api'
-import { decodeSsoState } from '../api/workspace'
+import { decodeSsoRemember, decodeSsoState } from '../api/workspace'
 import { useAuthStore } from '../stores/authStore'
 import { useT } from '../i18n'
 
@@ -45,9 +45,13 @@ function AuthCallbackPage() {
                 // Giris ekranindaki `?workspace=` OAuth `state` ile geri
                 // doner; callback adresinde parametre olmadigi icin ACIKCA
                 // iletilir. Yoksa giris host'un tenant'ina dusuyordu.
-                const workspace = decodeSsoState(searchParams.get('state'))
+                const state = searchParams.get('state')
+                const workspace = decodeSsoState(state)
+                // "Oturumu acik tut" secimi de `state` ile doner; eski
+                // bicimde (yalniz `ws:`) yoksa false -> 1 gunluk oturum.
+                const remember = decodeSsoRemember(state)
                 const data = await authService.microsoftLogin(
-                    { code, redirect_uri: redirectUri },
+                    { code, redirect_uri: redirectUri, remember },
                     { workspace },
                 )
 

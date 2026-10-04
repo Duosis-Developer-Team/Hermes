@@ -8,13 +8,15 @@
 # Endpoint'ler:
 #   POST /auth/token      — E-posta/şifre girişi → cookie set
 #   POST /auth/microsoft  — SSO akışı → cookie set
+#   POST /auth/session/refresh — Yenileme cerezi ile oturumu kaydir
 #   POST /auth/logout     — Cookie temizle
 #   GET  /auth/users/me   — Mevcut kullanıcı bilgisi
 # =============================================================================
 
 from fastapi import (
-    APIRouter, Depends, HTTPException, Request, Response, status,
+    APIRouter, Depends, Form, HTTPException, Request, Response, status,
 )
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -29,7 +31,14 @@ from ..services.tenant_resolver import (
     WorkspaceUnavailable,
     resolve_request_tenant,
 )
-from shared.auth import ACCESS_TOKEN_COOKIE_NAME, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user, CurrentUser
+from shared.auth import (
+    ACCESS_TOKEN_COOKIE_NAME,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    REFRESH_TOKEN_COOKIE_NAME,
+    CurrentUser,
+    get_current_user,
+    verify_refresh_token,
+)
 from shared.exceptions import UnauthorizedError
 
 settings = get_settings()
@@ -43,7 +52,14 @@ router = APIRouter(
 # Cookie güvenlik ayarları — dev ortamında secure=False yapılabilir
 _COOKIE_SECURE = not settings.DEBUG       # DEBUG=True → dev HTTP; False → prod HTTPS
 _COOKIE_SAMESITE = "lax"                  # Strict'ten kaynaklı port-farkı cookie droplarını çözmek için lax (HTTP Only koruması sürer)
+# Erisim cerezi: JWT `exp` ile AYNI kaynak (shared/auth.py).
 _COOKIE_MAX_AGE = ACCESS_TOKEN_EXPIRE_MINUTES * 60  # saniye
+
+# Yenileme cerezi YALNIZCA auth API yoluna gider: core/reporting ve
+# statik dosya istekleri onu hic tasimaz. /auth altinda tutulur cunku
+# refresh disinda switch-tenant (yeni tenant'a tasima) ve logout
+# (silme) da onu gormelidir.
+REFRESH_COOKIE_PATH = "/api/v1/auth"
 
 
 def _set_auth_cookie(response: Response, access_token: str) -> None:
@@ -64,6 +80,56 @@ def _set_auth_cookie(response: Response, access_token: str) -> None:
         samesite=_COOKIE_SAMESITE,
         max_age=_COOKIE_MAX_AGE,
         path="/",
+    )
+
+
+def _set_refresh_cookie(
+    response: Response, refresh_token: str, *, remember: bool
+) -> None:
+    """HttpOnly yenileme cerezi - omru 1 gun ya da (acik tut) 30 gun.
+
+    Kayan oturum: her basarili yenilemede bastan yazilir, yani sure
+    SON KULLANIMDAN itibaren isler.
+    """
+    days = (
+        settings.REFRESH_TOKEN_REMEMBER_DAYS if remember
+        else settings.REFRESH_TOKEN_DAYS
+    )
+    response.set_cookie(
+        key=REFRESH_TOKEN_COOKIE_NAME,
+        value=refresh_token,
+        httponly=True,
+        secure=_COOKIE_SECURE,
+        samesite=_COOKIE_SAMESITE,
+        max_age=int(days) * 24 * 60 * 60,
+        path=REFRESH_COOKIE_PATH,
+    )
+
+
+def _set_session_cookies(response: Response, token_obj) -> None:
+    """Giris/yenileme sonrasi IKI cerezi birlikte yazar."""
+    _set_auth_cookie(response, token_obj.access_token)
+    if token_obj.refresh_token:
+        _set_refresh_cookie(
+            response, token_obj.refresh_token, remember=token_obj.remember
+        )
+
+
+def _clear_session_cookies(response: Response) -> None:
+    """Erisim + yenileme cerezlerini siler (logout / basarisiz yenileme)."""
+    response.delete_cookie(
+        key=ACCESS_TOKEN_COOKIE_NAME,
+        path="/",
+        httponly=True,
+        secure=_COOKIE_SECURE,
+        samesite=_COOKIE_SAMESITE,
+    )
+    response.delete_cookie(
+        key=REFRESH_TOKEN_COOKIE_NAME,
+        path=REFRESH_COOKIE_PATH,
+        httponly=True,
+        secure=_COOKIE_SECURE,
+        samesite=_COOKIE_SAMESITE,
     )
 
 
@@ -162,6 +228,7 @@ async def get_workspace(
 async def login(
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
+    remember: bool = Form(False),
     db: Session = Depends(get_db),
     tenant: ResolvedTenant = Depends(tenant_context),
 ) -> dict:
@@ -186,6 +253,7 @@ async def login(
             email=form_data.username,
             password=form_data.password,
             tenant=tenant,
+            remember=remember,
         )
     except UnauthorizedError as e:
         raise HTTPException(
@@ -194,7 +262,7 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    _set_auth_cookie(response, token_obj.access_token)
+    _set_session_cookies(response, token_obj)
 
     # Token body'de DÖNMEZ — yalnızca kullanıcı + organizasyon ozeti
     return {
@@ -211,6 +279,9 @@ async def login(
 class MicrosoftLoginRequest(BaseModel):
     code: str
     redirect_uri: str
+    # "Oturumu acik tut" - giris ekranindaki secim OAuth `state` ile
+    # Microsoft'tan geri doner; eski istemciler gondermezse 1 gun.
+    remember: bool = False
 
 
 @router.post(
@@ -243,6 +314,7 @@ async def microsoft_login(
             code=login_request.code,
             redirect_uri=login_request.redirect_uri,
             tenant=tenant,
+            remember=login_request.remember,
         )
     except UnauthorizedError as e:
         raise HTTPException(
@@ -255,12 +327,62 @@ async def microsoft_login(
             detail="SSO authentication failed",
         )
 
-    _set_auth_cookie(response, token_obj.access_token)
+    _set_session_cookies(response, token_obj)
 
     return {
         "user": token_obj.user,
         "tenant": token_obj.tenant,
         "membership": token_obj.membership,
+    }
+
+
+# =============================================================================
+# POST /auth/session/refresh - Kayan oturum
+# =============================================================================
+
+@router.post(
+    "/session/refresh",
+    summary="Oturumu yenile",
+    description=(
+        "Yenileme cerezi (HttpOnly) ile yeni bir erisim cerezi ve yeni bir "
+        "yenileme cerezi yazar. Erisim cerezi GEREKMEZ. Basarisizlikta 401 "
+        "doner ve iki cerez de silinir."
+    ),
+    status_code=status.HTTP_200_OK,
+)
+async def refresh_session(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """Kullanici aktifligi, uyelik, tenant durumu ve session_version her
+    cagrida CANLI kontrol edilir - durumsuz token'in iptal yolu budur.
+
+    Tenant istekten (host / ?workspace) DEGIL, imzali yenileme
+    token'indan gelir: oturum hangi organizasyonda acildiysa orada surer
+    (switch-tenant yenileme cerezini de yeni tenant'a tasir).
+    """
+    token = request.cookies.get(REFRESH_TOKEN_COOKIE_NAME)
+    try:
+        if not token:
+            raise UnauthorizedError("Authentication required")
+        token_obj = AuthService(db).refresh_session(token)
+    except UnauthorizedError:
+        # Hangi kontrolun dustugu SIZDIRILMAZ; iki cerez de silinir ki
+        # istemci olu bir yenileme cereziyle donguye girmesin.
+        failed = JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Authentication required"},
+        )
+        _clear_session_cookies(failed)
+        return failed
+
+    _set_session_cookies(response, token_obj)
+    return {
+        "user": token_obj.user,
+        "tenant": token_obj.tenant,
+        "membership": token_obj.membership,
+        "remember": token_obj.remember,
     }
 
 
@@ -276,15 +398,10 @@ async def microsoft_login(
 )
 async def logout(response: Response) -> dict:
     """
-    Cookie'yi sıfır max_age ile yeniden set ederek tarayıcıdan siler.
+    Erisim VE yenileme cerezlerini sifir max_age ile yeniden set ederek
+    tarayicidan siler. Platform oturumu (ayri cerez) etkilenmez.
     """
-    response.delete_cookie(
-        key=ACCESS_TOKEN_COOKIE_NAME,
-        path="/",
-        httponly=True,
-        secure=_COOKIE_SECURE,
-        samesite=_COOKIE_SAMESITE,
-    )
+    _clear_session_cookies(response)
     return {"detail": "Signed out"}
 
 
@@ -333,6 +450,7 @@ class SwitchTenantRequest(BaseModel):
     ),
 )
 async def switch_tenant(
+    request: Request,
     response: Response,
     payload: SwitchTenantRequest,
     current_user: CurrentUser = Depends(get_current_user),
@@ -382,11 +500,35 @@ async def switch_tenant(
         display_name=tenant_row.display_name,
         status=tenant_row.status,
     )
-    token = AuthService(db)._create_token_for_user(
+    auth_service = AuthService(db)
+    token = auth_service._create_token_for_user(
         user, tenant=resolved, membership=membership,
         auth_method=current_user.auth_method,
     )
     _set_auth_cookie(response, token)
+
+    # Kayan oturum yeni tenant'a TASINIR; aksi halde bir sonraki
+    # yenileme oturumu eski organizasyona geri dondururdu. "Acik tut"
+    # secimi mevcut (ayni kullaniciya ait, gecerli) yenileme cerezinden
+    # devralinir. Destek oturumu yenileme cerezi ALMAZ.
+    if current_user.auth_method in ("local", "microsoft"):
+        remember = False
+        existing = request.cookies.get(REFRESH_TOKEN_COOKIE_NAME)
+        if existing:
+            try:
+                prev = verify_refresh_token(existing)
+                if prev.get("sub") == str(user.id):
+                    remember = bool(prev.get("rmb"))
+            except UnauthorizedError:
+                pass
+        _set_refresh_cookie(
+            response,
+            auth_service._create_refresh_token_for_user(
+                user, tenant_id=resolved.id, membership_id=membership.id,
+                auth_method=current_user.auth_method, remember=remember,
+            ),
+            remember=remember,
+        )
 
     return {
         "tenant": {

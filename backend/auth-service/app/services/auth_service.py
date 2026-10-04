@@ -12,7 +12,10 @@ from ..models.user import User
 from ..schemas.token import Token
 from ..config import get_settings
 from shared.auth import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
     TENANT_AUDIENCE,
+    create_refresh_token,
+    verify_refresh_token,
     verify_password,
     create_access_token,
     hash_password
@@ -46,7 +49,9 @@ class AuthService:
     # Authentication
     # =========================================================================
     
-    def authenticate(self, email: str, password: str, *, tenant) -> Token:
+    def authenticate(
+        self, email: str, password: str, *, tenant, remember: bool = False
+    ) -> Token:
         """
         Kullanıcıyı e-posta ve şifre ile, BELIRLI BIR TENANT icinde doğrular.
 
@@ -108,8 +113,13 @@ class AuthService:
 
         return Token(
             access_token=access_token,
+            refresh_token=self._create_refresh_token_for_user(
+                user, tenant_id=tenant.id, membership_id=membership.id,
+                auth_method="local", remember=remember,
+            ),
+            remember=bool(remember),
             token_type="bearer",
-            expires_in=self.settings.JWT_EXPIRE_MINUTES * 60,  # Saniye cinsinden
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Saniye cinsinden
             user={
                 "id": str(user.id),
                 "email": user.email,
@@ -186,12 +196,132 @@ class AuthService:
             "auth_method": auth_method,
         }
 
-        expires_delta = timedelta(minutes=self.settings.JWT_EXPIRE_MINUTES)
+        # Tek kaynak: erisim cerezinin max_age'i de ayni sabitten gelir.
+        expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
         return create_access_token(
             data=token_data,
             expires_delta=expires_delta,
             audience=TENANT_AUDIENCE,
+        )
+
+    # =========================================================================
+    # Kayan oturum (yenileme token'i)
+    # =========================================================================
+
+    def refresh_lifetime(self, remember: bool) -> timedelta:
+        """Yenileme cerezi/token'i omru: 1 gun ya da (acik tut) 30 gun."""
+        days = (
+            self.settings.REFRESH_TOKEN_REMEMBER_DAYS if remember
+            else self.settings.REFRESH_TOKEN_DAYS
+        )
+        return timedelta(days=days)
+
+    def _create_refresh_token_for_user(
+        self, user: User, *, tenant_id, membership_id, auth_method: str,
+        remember: bool,
+    ) -> str:
+        """Kullanicinin GUNCEL session_version'i ile yenileme token'i."""
+        return create_refresh_token(
+            user_id=str(user.id),
+            tenant_id=str(tenant_id),
+            membership_id=str(membership_id) if membership_id else None,
+            auth_method=auth_method,
+            session_version=int(user.session_version or 1),
+            remember=bool(remember),
+            expires_delta=self.refresh_lifetime(remember),
+        )
+
+    def refresh_session(self, refresh_token: str) -> Token:
+        """Yenileme token'iyla yeni erisim + yenileme token'i uretir.
+
+        Her cagrida CANLI kontrol edilir (durumsuz token'in iptal yolu):
+          - imza / sure / issuer / audience / typ (shared.verify_refresh_token)
+          - kullanici var ve AKTIF
+          - token'daki `sv` == users.session_version
+          - token'daki tenant'ta AKTIF uyelik ve token'daki uyelik ile ayni
+          - tenant KULLANILABILIR durumda (active / grace)
+        Hepsi AYNI UnauthorizedError'i firlatir (hangi kontrolun
+        dustugu istemciye sizmaz).
+
+        Destek oturumlari (auth_method=support) yenileme token'i hic
+        almaz; yine de gelirse reddedilir.
+        """
+        from uuid import UUID
+
+        from ..models.tenancy import Tenant
+        from . import membership_service
+        from .tenant_resolver import USABLE_STATUSES, ResolvedTenant
+
+        generic = "Kimlik doğrulama başarısız"
+        payload = verify_refresh_token(refresh_token)
+
+        auth_method = payload.get("auth_method") or "local"
+        if auth_method not in ("local", "microsoft"):
+            raise UnauthorizedError(generic)
+
+        try:
+            user_id = UUID(str(payload["sub"]))
+            tenant_id = UUID(str(payload["tenant_id"]))
+        except (ValueError, TypeError, KeyError):
+            raise UnauthorizedError(generic)
+
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if user is None or not user.is_active:
+            raise UnauthorizedError(generic)
+        if int(user.session_version or 1) != payload["sv"]:
+            raise UnauthorizedError(generic)
+
+        membership = membership_service.get_active_membership(
+            self.db, tenant_id=tenant_id, user_id=user.id
+        )
+        if membership is None:
+            raise UnauthorizedError(generic)
+        token_membership = payload.get("membership_id")
+        if token_membership and str(membership.id) != str(token_membership):
+            # Uyelik silinip yeniden acildiysa eski oturum devam etmez.
+            raise UnauthorizedError(generic)
+
+        tenant_row = self.db.query(Tenant).filter(Tenant.id == tenant_id).first()
+        if tenant_row is None or tenant_row.status not in USABLE_STATUSES:
+            raise UnauthorizedError(generic)
+
+        tenant = ResolvedTenant(
+            id=str(tenant_row.id),
+            slug=tenant_row.slug,
+            display_name=tenant_row.display_name,
+            status=tenant_row.status,
+        )
+        remember = bool(payload.get("rmb"))
+
+        return Token(
+            access_token=self._create_token_for_user(
+                user, tenant=tenant, membership=membership,
+                auth_method=auth_method,
+            ),
+            refresh_token=self._create_refresh_token_for_user(
+                user, tenant_id=tenant.id, membership_id=membership.id,
+                auth_method=auth_method, remember=remember,
+            ),
+            remember=remember,
+            token_type="bearer",
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            user={
+                "id": str(user.id),
+                "email": user.email,
+                "full_name": user.full_name,
+                "is_admin": user.is_admin,
+                "is_active": user.is_active,
+            },
+            tenant={
+                "id": tenant.id,
+                "slug": tenant.slug,
+                "display_name": tenant.display_name,
+            },
+            membership={
+                "id": str(membership.id),
+                "status": membership.status,
+            },
         )
     
     # =========================================================================
@@ -199,7 +329,7 @@ class AuthService:
     # =========================================================================
     
     async def authenticate_microsoft(
-        self, code: str, redirect_uri: str, *, tenant
+        self, code: str, redirect_uri: str, *, tenant, remember: bool = False
     ) -> Token:
         """
         Microsoft hesabı ile BELIRLI BIR TENANT icinde giriş yapar.
@@ -329,8 +459,13 @@ class AuthService:
 
         return Token(
             access_token=jwt,
+            refresh_token=self._create_refresh_token_for_user(
+                user, tenant_id=tenant.id, membership_id=membership.id,
+                auth_method="microsoft", remember=remember,
+            ),
+            remember=bool(remember),
             token_type="bearer",
-            expires_in=self.settings.JWT_EXPIRE_MINUTES * 60,
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             user={
                 "id": str(user.id),
                 "email": user.email,
@@ -379,6 +514,8 @@ class AuthService:
         
         # Yeni şifreyi hash'le ve kaydet
         user.hashed_password = hash_password(new_password)
+        # Parola degisince ACIK yenileme oturumlari duser.
+        user.session_version = int(user.session_version or 1) + 1
         self.db.commit()
         
         return True
