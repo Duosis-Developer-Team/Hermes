@@ -46,7 +46,7 @@ Açık karar kalmadı; P1 (F00 şema dondurma) başlayabilir.
 | "Bir işe link verilemiyor" (01 §3.4) | `?item=<uuid>` tek seferlik derin link var, URL'den siliniyor | E6 (kalıcı `/work/KEY`) geçerli |
 | Efor sayfasında doluluk yok (04 §1) | Gün/hafta çubuğu vardı, 8h/40h sabit kodlu; eksik gün sinyali yoktu | D2 bu commit'te: sabitler kapasite ayarına bağlandı |
 | `project_memberships` hiç kullanılmıyor, `issues` yalnız etiket (00 K2/K3) | İkisi de `issues` CRUD router'ında canlı | A5 veri taşımasız; router emekliliği kod işi |
-| Kaynaklar: Niş-Strateji.docx, Rakip-Analizi.md | Repoda yok (ayrı repoda olabilir); `readme2.md` PRD v2 değil TAD | 00'ın vizyon kilitleri bu repodan doğrulanamıyor |
+| Kaynaklar: Niş-Strateji.docx, Rakip-Analizi.md | Repoda yok (ayrı repoda olabilir); `docs/history/2025-11-technical-architecture-v1.md` PRD v2 değil TAD | 00'ın vizyon kilitleri bu repodan doğrulanamıyor |
 | ~3.700 satır JSX (00 K7) | `components/tasks` + `features/tasks` .jsx = 3.541; tüm js/jsx 5.618 | Kapsam belirtilmeli |
 
 ## 4. Doküman içi boşluklar

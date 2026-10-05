@@ -121,6 +121,7 @@ export function LandingFooter({ onCookiePrefs }) {
                 {t('landing.footerRights', { year: new Date().getFullYear() })}
             </span>
             <nav className="ld-footer__links" aria-label={t('landing.kvkk')}>
+                <Link to="/patch-notes">{t('patchNotes.eyebrow')}</Link>
                 <Link to="/kvkk">{t('landing.kvkk')}</Link>
                 <Link to="/cerez-politikasi">{t('landing.cookies')}</Link>
                 <button type="button" onClick={onCookiePrefs}>{t('landing.cookiePrefs')}</button>

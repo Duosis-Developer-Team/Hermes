@@ -1,7 +1,7 @@
 # =============================================================================
 # HERMES PLATFORM - Customer Model (SQLAlchemy)
 # =============================================================================
-# Bu dosya, TAD'da (readme2.md) tanımlanan 'customers' tablosunun SQLAlchemy
+# Bu dosya, TAD'da (docs/history/2025-11-technical-architecture-v1.md) tanımlanan 'customers' tablosunun SQLAlchemy
 # model tanımını içerir. Tablo yapısı birebir TAD ile uyumludur.
 #
 # TAD Referansı (core_db):

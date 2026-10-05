@@ -260,6 +260,92 @@ export default {
         retry: 'Tekrar dene',
     },
     // KVKK aydinlatma metni + cerez politikasi (features/landing/legalContent.js yapisi).
+    patchNotes: {
+        badge: 'Hermes {version}',
+        badgeHint: 'Sürüm notlarını gör',
+        badgeAria: 'Hermes {version} — sürüm notlarını aç',
+        menuItem: 'Sürüm notları · {version}',
+        eyebrow: 'Sürüm notları',
+        latest: 'Güncel sürüm',
+        released: '{date} tarihinde yayınlandı',
+        highlights: 'Öne çıkanlar',
+        highlightsLead: 'Bu sürümde Hermes\'i en çok değiştiren altı yenilik.',
+        allChanges: 'Tüm değişiklikler',
+        kind: {
+            new: 'Yeni',
+            improved: 'İyileştirildi',
+            fixed: 'Düzeltildi',
+        },
+        count: {
+            new: '{count} yeni',
+            improved: '{count} iyileştirme',
+            fixed: '{count} düzeltme',
+        },
+        versions: 'Sürümler',
+        versioning: 'Sürüm numarası nasıl okunur: küçük güncellemeler v1.1, v1.2.5 gibi ilerler; büyük değişiklikler v2.0 olur.',
+        back: 'Hermes\'e dön',
+        open: 'Hermes\'i aç',
+        copyLink: 'Bağlantıyı kopyala',
+        copied: 'Bağlantı kopyalandı',
+    },
+    releases: {
+        v1_0: {
+            title: 'Yeni Hermes',
+            summary: 'Hermes baştan tasarlandı: cam yüzeyli yeni arayüz, kişisel ana sayfa, yeniden kurulan iş yönetimi, kendiliğinden güncellenen toplantı takvimi ve Mac ile Windows için masaüstü uygulaması. v1.0 bugüne kadar yapılan her şeyi tek sürümde topluyor.',
+            h: {
+                liquid: {
+                    title: 'Hermes Liquid tasarımı',
+                    body: 'Cam yüzeyler, üstte dinamik ada, altta hızlı erişim dock\'u. Açık ve koyu tema, Türkçe ve İngilizce tek dokunuşla; tüm sayfalar ve pencereler aynı dili konuşuyor.',
+                },
+                home: {
+                    title: 'Kişisel ana sayfa',
+                    body: 'Haftalık efor halkası, dikkat isteyen işler, Takvimim ve işlerin tek ekranda. Toplantıların açılışta kendiliğinden senkronlanır.',
+                },
+                work: {
+                    title: 'İşler yeniden kuruldu',
+                    body: 'Hazır görünümler (Benim işlerim, Atadıklarım, Triage, Gecikenler), pano, liste ve takvim yerleşimi, kayıtlı görünümler, alt işler, bağlar, takipçiler, ekler ve proje üyeleri.',
+                },
+                meet: {
+                    title: 'Toplantı takvimi',
+                    body: 'Outlook toplantıların saat ızgarasında; Gün, İş haftası, Hafta ve Ajanda görünümleri. Toplantıdan tek tıkla efor girişi.',
+                },
+                desktop: {
+                    title: 'Masaüstü uygulaması',
+                    body: 'Mac (Apple Silicon ve Intel) ve Windows için Hermes. Web\'deki her yenilik uygulamaya kendiliğinden gelir.',
+                },
+                brand: {
+                    title: 'Müşteri ve proje logoları',
+                    body: 'Logolar seçicilerde, iş kartlarında, efor girişinde ve takvimde. Yüklemek için sürükleyip bırakman yeterli.',
+                },
+            },
+            new: {
+                patchNotes: 'Sürüm notları: sağ üstteki sürüm rozetinden her sürümde neyin değiştiğini görebilirsin.',
+                notifications: 'Uygulama içi bildirimler: atamalar, yorumlar ve durum değişiklikleri zil simgesinde.',
+                session: 'Oturum 1 gün açık kalır; "Oturumu açık tut" ile 30 gün. Microsoft ile girişte de çalışır.',
+                landing: 'hermes.duosis.com\'da yeni tanıtım sayfası: indirmeler, KVKK aydınlatma metni ve çerez politikası.',
+                photo: 'Microsoft profil fotoğrafları avatarlarda ve yeni profil kartında.',
+                capacity: 'Kapasite ayarları ve haftalık efor şeridi: kim ne kadar dolu, tek bakışta.',
+                workLink: 'İşlere doğrudan bağlantı: /work/TASK-56 gibi bir adres işi açar.',
+            },
+            improved: {
+                search: 'Aramalar büyük/küçük harf ve Türkçe karakter duyarsız: "iga" yazınca "İGA", "sabanci" yazınca "Sabancı" bulunur.',
+                settings: 'Ayarlar tek merkezde: büyük ikonlu uygulama ızgarası ve kaydırmalı ray.',
+                reports: 'Panel, Raporlar, Faturalanabilir saatler ve Sözleşme durumu yeni tasarımda; panel animasyonu yalnızca ilk açılışta oynar.',
+                tickets: 'Talepler hub\'ı ve destek portalı yenilendi; durum hapına tıklayarak talebin durumunu değiştirebilirsin.',
+                timeEntry: 'Zaman girişinde gün sütunundaki tek "+" ile doğrudan efor; Plan Time kaldırıldı.',
+                meetings: 'Toplantılarda yönetici varsayılan olarak kendi takvimini görür; hafta sonu isteğe bağlı.',
+                devPortal: 'Geliştirici portalı iki dilli (TR/EN) ve yeni tasarımda.',
+            },
+            fixed: {
+                logo: 'Logo yüklemesi kaydedilmiş gibi görünüp kaydedilmiyordu.',
+                staleChunk: 'Güncelleme sonrası açık pencerede "beklenmeyen hata" yerine sayfa kendini bir kez yeniler.',
+                calendar: 'Ana sayfa takviminde toplantılar görünmüyordu ("Nothing planned").',
+                sessionDrop: 'Oturum yaklaşık bir saat sonra kendiliğinden kapanıyordu.',
+                tasksCalendar: 'İşler takviminde toplantılar yerine yalnızca işler var; terminsiz işler kart olarak listelenir.',
+                dashboard: 'Panelde ay değiştirince sayfa baştan yüklenmiyor; değerler doğrudan gelir.',
+            },
+        },
+    },
     legal: {
         kvkkTitle: 'KVKK Aydınlatma Metni',
         kvkkIntro: 'Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") uyarınca, Hermes iş platformunu kullanan kişilerin kişisel verilerinin nasıl işlendiğini açıklar.',

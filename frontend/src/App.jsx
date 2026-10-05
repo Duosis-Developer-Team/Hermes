@@ -50,6 +50,7 @@ import { routeLoaders } from './routes/loaders'
 const LoginPage = lazy(routeLoaders.login)
 const LandingPage = lazy(routeLoaders.landing)
 const LegalPage = lazy(routeLoaders.legal)
+const PatchNotesPage = lazy(routeLoaders.patchNotes)
 const AuthCallbackPage = lazy(routeLoaders.authCallback)
 const PlatformConsole = lazy(routeLoaders.platformConsole)
 const DashboardPage = lazy(routeLoaders.dashboard)
@@ -283,6 +284,21 @@ function App() {
             {/* Herkese acik yasal sayfalar (oturumdan bagimsiz). */}
             <Route path="/kvkk" element={<LegalPage kind="kvkk" />} />
             <Route path="/cerez-politikasi" element={<LegalPage kind="cookies" />} />
+
+            {/* Surum notlari: oturum aciksa kabuk icinde (ada + dock),
+                degilse landing cercevesiyle herkese acik (paylasilabilir). */}
+            <Route
+                path="/patch-notes"
+                element={
+                    isAuthenticated ? (
+                        <ProtectedRoute>
+                            <MainLayout />
+                        </ProtectedRoute>
+                    ) : <PatchNotesPage standalone />
+                }
+            >
+                <Route index element={<PatchNotesPage />} />
+            </Route>
 
             {/* Protected Routes - Main Layout */}
             <Route

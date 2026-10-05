@@ -12,6 +12,8 @@ export const routeLoaders = {
     login: () => import('../pages/LoginPage'),
     landing: () => import('../pages/landing/LandingPage'),
     legal: () => import('../pages/landing/LegalPage'),
+    // Surum notlari: oturumlu (kabuk ici) ve oturumsuz (herkese acik) ayni chunk.
+    patchNotes: () => import('../pages/PatchNotesPage'),
     // WS9: Platform konsolu AYRI bir chunk. Normal tenant
     // kullanicisi bu kodu HIC indirmez.
     platformConsole: () => import('../pages/platform/PlatformConsole'),

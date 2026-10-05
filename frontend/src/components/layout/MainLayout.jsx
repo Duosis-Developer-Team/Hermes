@@ -19,6 +19,7 @@ import {
     ClockCircleOutlined,
     FileTextOutlined,
     LogoutOutlined,
+    ReadOutlined,
     FileExcelOutlined,
     SettingOutlined,
     CheckSquareOutlined,
@@ -28,6 +29,8 @@ import {
 } from '@ant-design/icons'
 import AppShell from './AppShell'
 import OrganizationSwitcher from './OrganizationSwitcher'
+import VersionBadge from './VersionBadge'
+import { APP_VERSION, PATCH_NOTES_PATH, formatVersion } from '../../features/releases/releases'
 import { useAuthStore } from '../../stores/authStore'
 import { authService, customerService, projectService } from '../../services/api'
 import { useTaskPermissions } from '../../hooks/useTaskPermissions'
@@ -280,6 +283,13 @@ function MainLayout() {
     // User dropdown menu
     const userMenuItems = [
         {
+            // Rozet sigmadiginda (dar ekran, mobil) surum notlarina buradan.
+            key: 'patch-notes',
+            icon: <ReadOutlined />,
+            label: t('patchNotes.menuItem', { version: formatVersion(APP_VERSION) }),
+            onClick: () => navigate(PATCH_NOTES_PATH),
+        },
+        {
             key: 'logout',
             icon: <LogoutOutlined />,
             label: t('nav.logout'),
@@ -364,6 +374,7 @@ function MainLayout() {
             /* WS8: organizasyon secici — YALNIZCA birden fazla aktif
                uyelik varsa render eder. */
             headerExtra={<OrganizationSwitcher />}
+            headerCorner={<VersionBadge />}
             contentKey={location.pathname}
             islandLive={islandLive}
             dockActions={dockActions}

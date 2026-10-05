@@ -3,7 +3,7 @@
 **v2 · 09.09.2026 · vizyon dosyalarıyla hizalandı.**
 v1 (`00-...v1.md`) strateji dokümanları okunmadan yazıldı; bu sürüm onun yerini alır.
 
-Kaynaklar: `readme.md` (PRD v1/v2) · `backend/core-service` (modeller, `task_service.py`, `ticketing.py`) ·
+Kaynaklar: `docs/history/2025-11-prd-v1-v2.md` (PRD v1/v2) · `backend/core-service` (modeller, `task_service.py`, `ticketing.py`) ·
 `frontend/src/features/tasks` · `duo-business-strategy/Hermes/Hermes-Nis-Strateji.docx` (12 Tem 2026, v2) ·
 `_kaynak/Hermes-Rakip-Analizi.md` (28 Tem 2026).
 
@@ -356,7 +356,7 @@ Kalan dört karar:
 ## Kaynaklar
 
 **İç:** `Hermes-Nis-Strateji.docx` (12 Tem 2026) · `_kaynak/Hermes-Rakip-Analizi.md` (28 Tem 2026) ·
-`readme.md` PRD v1/v2 · `docs/support-ticketing.md` · `HERMES_TENANT_CUTOVER_EVIDENCE.md`
+`docs/history/2025-11-prd-v1-v2.md` PRD v1/v2 · `docs/support-ticketing.md` · `HERMES_TENANT_CUTOVER_EVIDENCE.md`
 
 **Dış:**
 - Linear — Concepts: https://linear.app/docs/conceptual-model

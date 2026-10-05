@@ -2,7 +2,7 @@
 
 > Durum: **taslak / karar bekliyor**. Vizyon dosyaları paylaşıldıktan sonra §8 kararları kapatılıp `01-hedef-sema.md` ve `02-migration-plani.md` yazılacak.
 > Kapsam kararı: veri modeli değişikliği (breaking migration) serbest. Ürün hedefi: satılacak SaaS.
-> Kaynak inceleme: `backend/core-service/app/models/*`, `services/task_service.py`, `routers/tasks.py`, `frontend/src/features/tasks/*`, `readme.md` (PRD v1/v2).
+> Kaynak inceleme: `backend/core-service/app/models/*`, `services/task_service.py`, `routers/tasks.py`, `frontend/src/features/tasks/*`, `docs/history/2025-11-prd-v1-v2.md` (PRD v1/v2).
 
 ---
 

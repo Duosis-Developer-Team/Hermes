@@ -1,7 +1,7 @@
 # =============================================================================
 # HERMES PLATFORM - User Model (SQLAlchemy)
 # =============================================================================
-# Bu dosya, TAD'da (readme2.md) tanımlanan 'users' tablosunun SQLAlchemy
+# Bu dosya, TAD'da (docs/history/2025-11-technical-architecture-v1.md) tanımlanan 'users' tablosunun SQLAlchemy
 # model tanımını içerir. Tablo yapısı birebir TAD ile uyumludur.
 #
 # TAD Referansı (auth_db):

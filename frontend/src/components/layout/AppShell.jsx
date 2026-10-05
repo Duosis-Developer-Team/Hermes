@@ -60,6 +60,9 @@ const MOBILE_QUERY = '(max-width: 768px)'
 // Dock ikonlari icin Hermes paleti — oge sirasina gore dongusel.
 const DOCK_TONES = ['#388BFF', '#22A06B', '#8F7EE7', '#E2B203', '#526174', '#0C66E4', '#E2483D', '#6E5DD3']
 const MOBILE_TABS = 4
+// Sag kose ogesinin (surum rozeti) gorunmesi icin adanin yaninda gereken
+// en az bos alan (px): rozet + kenar boslugu + adayla arasindaki nefes.
+const CORNER_MIN_SPACE = 190
 
 const textOf = (it) => it.text ?? (typeof it.label === 'string' ? it.label : it.key)
 
@@ -97,6 +100,8 @@ function AppShell({
     accountRole,
     accountMenuItems = [],
     headerExtra = null,
+    /** Adanin sagindaki bos kose (orn. surum rozeti); sigmazsa gizlenir. */
+    headerCorner = null,
     contentKey,
     islandLive = null,
     dockActions = [],
@@ -216,6 +221,29 @@ function AppShell({
         window.addEventListener('resize', measure)
         return () => window.removeEventListener('resize', measure)
     }, [selectedKey, menuItems])
+
+    // Sag kose ogesi yalniz ada ile ekran kenari arasinda GERCEKTEN yer
+    // varsa gorunur (ada genisligi role/dile gore degisir; sabit kirilim
+    // noktasi yanlis olurdu). Sigmadiginda profil kartindaki satir kalir.
+    const headerRef = useRef(null)
+    const islandRef = useRef(null)
+    const [cornerFits, setCornerFits] = useState(false)
+    useLayoutEffect(() => {
+        if (!headerCorner) return undefined
+        const header = headerRef.current
+        const island = islandRef.current
+        if (!header || !island) return undefined
+        const measure = () => {
+            const free = (header.clientWidth - island.offsetWidth) / 2
+            setCornerFits(free >= CORNER_MIN_SPACE)
+        }
+        measure()
+        if (typeof ResizeObserver === 'undefined') return undefined
+        const ro = new ResizeObserver(measure)
+        ro.observe(header)
+        ro.observe(island)
+        return () => ro.disconnect()
+    }, [headerCorner])
 
     const routeContent = useMemo(() => (
         // Sprint 3 §6: route girisi opacity+4px; kabuk sabit kalir.
@@ -337,8 +365,8 @@ function AppShell({
             <LiquidBackdrop />
 
             {/* Ada — ust gezinme */}
-            <header className="main-header" data-scrolled={scrolled || undefined}>
-                <nav className="island" aria-label="Hermes">
+            <header className="main-header" data-scrolled={scrolled || undefined} ref={headerRef}>
+                <nav className="island" aria-label="Hermes" ref={islandRef}>
                     <button
                         type="button"
                         className="island-brand"
@@ -419,6 +447,11 @@ function AppShell({
                         </button>
                     </Dropdown>
                 </nav>
+                {headerCorner && (
+                    <div className="main-header__corner" hidden={!cornerFits}>
+                        {headerCorner}
+                    </div>
+                )}
             </header>
 
             {offline && (

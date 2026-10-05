@@ -255,6 +255,92 @@ export default {
     // Giris
     // ---------------------------------------------------------------
     // KVKK aydinlatma metni + cerez politikasi (features/landing/legalContent.js yapisi).
+    patchNotes: {
+        badge: 'Hermes {version}',
+        badgeHint: 'View patch notes',
+        badgeAria: 'Hermes {version} — open patch notes',
+        menuItem: 'Patch notes · {version}',
+        eyebrow: 'Patch notes',
+        latest: 'Latest release',
+        released: 'Released on {date}',
+        highlights: 'Highlights',
+        highlightsLead: 'The six changes that reshape Hermes the most in this release.',
+        allChanges: 'All changes',
+        kind: {
+            new: 'New',
+            improved: 'Improved',
+            fixed: 'Fixed',
+        },
+        count: {
+            new: '{count} new',
+            improved: '{count} improvements',
+            fixed: '{count} fixes',
+        },
+        versions: 'Releases',
+        versioning: 'How to read the version: small updates move like v1.1 or v1.2.5; big changes become v2.0.',
+        back: 'Back to Hermes',
+        open: 'Open Hermes',
+        copyLink: 'Copy link',
+        copied: 'Link copied',
+    },
+    releases: {
+        v1_0: {
+            title: 'The new Hermes',
+            summary: 'Hermes has been redesigned from the ground up: a new glass interface, a personal home page, rebuilt work management, a meetings calendar that keeps itself up to date and a desktop app for Mac and Windows. v1.0 brings everything built so far into a single release.',
+            h: {
+                liquid: {
+                    title: 'Hermes Liquid design',
+                    body: 'Glass surfaces, a dynamic island on top and a quick-access dock below. Light and dark themes, Turkish and English in one tap; every page and window speaks the same language.',
+                },
+                home: {
+                    title: 'A personal home page',
+                    body: 'Your weekly effort ring, work that needs attention, My calendar and your tasks on one screen. Your meetings sync automatically when Hermes opens.',
+                },
+                work: {
+                    title: 'Work, rebuilt',
+                    body: 'Ready-made views (My work, Assigned by me, Triage, Overdue), board, list and calendar layouts, saved views, subtasks, links, watchers, attachments and project members.',
+                },
+                meet: {
+                    title: 'Meetings calendar',
+                    body: 'Your Outlook meetings on an hourly grid, with Day, Work week, Week and Agenda views. Log effort from a meeting in one click.',
+                },
+                desktop: {
+                    title: 'Desktop app',
+                    body: 'Hermes for Mac (Apple Silicon and Intel) and Windows. Every web update reaches the app automatically.',
+                },
+                brand: {
+                    title: 'Customer and project logos',
+                    body: 'Logos in pickers, work cards, effort entry and the calendar. Just drag and drop to upload.',
+                },
+            },
+            new: {
+                patchNotes: 'Patch notes: see what changed in every release from the version badge in the top-right corner.',
+                notifications: 'In-app notifications: assignments, comments and status changes under the bell.',
+                session: 'Sessions stay open for 1 day, or 30 days with "Keep me signed in". Works with Microsoft sign-in too.',
+                landing: 'A new home page at hermes.duosis.com with downloads, the privacy notice and the cookie policy.',
+                photo: 'Microsoft profile photos in avatars and the new profile card.',
+                capacity: 'Capacity settings and a weekly effort strip: who is how busy, at a glance.',
+                workLink: 'Direct links to work: an address like /work/TASK-56 opens the item.',
+            },
+            improved: {
+                search: 'Search ignores letter case and Turkish characters: typing "iga" finds "IGA", and plain letters match their Turkish forms (i, u, o, s, c, g).',
+                settings: 'Settings in one place: a large-icon app grid and a scrolling rail.',
+                reports: 'Dashboard, Reports, Billable hours and Contract status in the new design; the dashboard animation plays only on first open.',
+                tickets: 'The ticket hub and support portal were redesigned; click the status pill to change a ticket\'s status.',
+                timeEntry: 'A single "+" in each day column logs effort directly; Plan Time was removed.',
+                meetings: 'Admins see their own calendar by default in Meetings; weekends are optional.',
+                devPortal: 'The developer portal is bilingual (TR/EN) and redesigned.',
+            },
+            fixed: {
+                logo: 'Logo uploads looked saved but were not stored.',
+                staleChunk: 'After an update, an open window reloads itself once instead of showing "unexpected error".',
+                calendar: 'Meetings were missing from the home calendar ("Nothing planned").',
+                sessionDrop: 'Sessions ended on their own after about an hour.',
+                tasksCalendar: 'The work calendar shows only work, not meetings; items without a due date are listed as cards.',
+                dashboard: 'Changing the month on the dashboard no longer reloads the page; values update in place.',
+            },
+        },
+    },
     legal: {
         kvkkTitle: 'Privacy Notice (KVKK)',
         kvkkIntro: 'This notice explains, under Turkish Personal Data Protection Law No. 6698 ("KVKK"), how the personal data of people using the Hermes work platform is processed.',

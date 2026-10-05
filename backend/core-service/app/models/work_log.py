@@ -1,7 +1,7 @@
 # =============================================================================
 # HERMES PLATFORM - Work Log Model (SQLAlchemy)
 # =============================================================================
-# Bu dosya, TAD'da (readme2.md) tanımlanan 'work_logs' tablosunun SQLAlchemy
+# Bu dosya, TAD'da (docs/history/2025-11-technical-architecture-v1.md) tanımlanan 'work_logs' tablosunun SQLAlchemy
 # model tanımını içerir. Tablo yapısı birebir TAD ile uyumludur.
 #
 # TAD Referansı (core_db):

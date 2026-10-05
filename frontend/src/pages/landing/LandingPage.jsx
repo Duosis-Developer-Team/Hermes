@@ -27,7 +27,7 @@ import { useT } from '../../i18n'
 import './LandingPage.css'
 
 /** Hero'daki uygulama penceresi maketi (ana sayfanin kucuk kopyasi). */
-function AppMock() {
+export function AppMock() {
     const t = useT()
     return (
         <div className="ld-mock" aria-hidden="true">
@@ -79,7 +79,7 @@ function AppMock() {
 }
 
 /** Ozellik karti ici kucuk gorseller. */
-function FeatureVisual({ kind }) {
+export function FeatureVisual({ kind }) {
     if (kind === 'time') {
         return (
             <div className="ld-fv ld-fv--time" aria-hidden="true">

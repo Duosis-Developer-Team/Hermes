@@ -50,6 +50,8 @@ describe('i18n sozlukleri', () => {
             // "Efor · Plan" alt eylemi: Plan Turkcede de ayni sozcuk.
             'meetingsPage.filter.online',
             'platform.emailDomainsExample',
+            // "Hermes {version}": urun adi + surum, cevrilmez.
+            'patchNotes.badge',
         ])
         const untranslated = flatten(en).filter((key) => {
             if (SAME_BY_DESIGN.has(key)) return false
