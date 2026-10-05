@@ -831,6 +831,7 @@ export default {
         projectNameExample: 'e.g. E-Commerce Platform',
         customerOptional: 'Customer (Optional)',
         selectCustomerHint: 'Select customer (leave empty for internal projects)',
+        peekNoProjects: 'No projects yet',
         internalProject: 'Internal Project',
         manageProjects: 'Manage projects',
         manageWorkTypes: 'Manage work types',

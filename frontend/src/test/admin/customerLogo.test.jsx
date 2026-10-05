@@ -19,7 +19,8 @@ const customerService = {
     getAll: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(),
     uploadLogo: vi.fn(), deleteLogo: vi.fn(),
 }
-vi.mock('../../services/api', () => ({ customerService }))
+const projectService = { getAll: vi.fn() }
+vi.mock('../../services/api', () => ({ customerService, projectService }))
 
 const CustomersPage = (await import('../../pages/admin/CustomersPage')).default
 const { BrandLogos, CustomerLogo, ProjectLogo } = await import('../../components/liquid')
@@ -39,6 +40,11 @@ const png = (bytes = 10) => new File([new Uint8Array(bytes)], 'logo.png', { type
 beforeEach(() => {
     vi.clearAllMocks()
     customerService.getAll.mockResolvedValue(CUSTOMERS)
+    projectService.getAll.mockResolvedValue([
+        { id: 'p1', customer_id: 'c1', name: 'ATM Support', is_active: true, project_type_id: 't1', project_type_name: 'Destek', project_type_color: 'blue', logo_glyph: 'device' },
+        { id: 'p2', customer_id: 'c1', name: 'Eski Proje', is_active: false },
+        { id: 'p3', customer_id: 'c2', name: 'Beko Portal', is_active: true },
+    ])
     useCustomerLogoStore.setState({ etags: {}, projects: {} })
     globalThis.URL.createObjectURL = vi.fn(() => 'blob:preview')
     globalThis.URL.revokeObjectURL = vi.fn()
@@ -95,13 +101,37 @@ describe('Musteri logosu', () => {
         useCustomerLogoStore.setState({ etags: { c1: 'e1' } })
         renderPage()
         const row = (await screen.findByText('Vakko')).closest('tr')
-        await user.click(within(row).getAllByRole('button')[0])
+        await user.click(within(row).getByRole('button', { name: 'Edit Vakko' }))
         const dialog = await screen.findByRole('dialog')
         await user.click(within(dialog).getByRole('button', { name: 'Remove' }))
         await user.click(within(dialog).getByRole('button', { name: 'Update' }))
         await waitFor(() => expect(customerService.deleteLogo).toHaveBeenCalledWith('c1'))
         expect(customerService.uploadLogo).not.toHaveBeenCalled()
         expect(useCustomerLogoStore.getState().etags.c1).toBeUndefined()
+    })
+
+    it('satira tikla: altinda musterinin projeleri; tekrar tikla: kapanir', async () => {
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
+        renderPage()
+        const cell = await screen.findByText('Vakko')
+        expect(screen.queryByText('ATM Support')).toBeNull()
+        await user.click(cell)
+        const list = await screen.findByRole('list', { name: 'Projects' })
+        expect(within(list).getByText('ATM Support')).toBeInTheDocument()
+        expect(within(list).getByText('Destek')).toBeInTheDocument()
+        expect(within(list).getByText('Eski Proje')).toBeInTheDocument()
+        expect(within(list).queryByText('Beko Portal')).toBeNull()
+        await user.click(cell)
+        await waitFor(() => expect(screen.queryByRole('list', { name: 'Projects' })).toBeNull())
+    })
+
+    it('duzenle dugmesi paneli acmaz', async () => {
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
+        renderPage()
+        const row = (await screen.findByText('Vakko')).closest('tr')
+        await user.click(within(row).getByRole('button', { name: 'Edit Vakko' }))
+        await screen.findByRole('dialog')
+        expect(screen.queryByRole('list', { name: 'Projects' })).toBeNull()
     })
 
     it('CustomerLogo depodan okur; etag yoksa bas harf', () => {

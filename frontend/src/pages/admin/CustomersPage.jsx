@@ -13,7 +13,7 @@ import {
 } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, ShopOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { customerService } from '../../services/api'
+import { customerService, projectService } from '../../services/api'
 import DeleteModal from '../../components/common/DeleteModal'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import {
@@ -40,6 +40,7 @@ const FORM_SHAPE = {
 }
 import { Page, PageHeader } from '../../components/ui'
 import { useT } from '../../i18n'
+import { ProjectPeek, useRowDisclosure } from '../../features/admin/shared/ProjectPeek'
 import { CustomerLogo, ModalHead } from '../../components/liquid'
 import { queryKeys } from '../../query/queryKeys'
 import { useCustomerLogoStore } from '../../stores/customerLogoStore'
@@ -66,6 +67,19 @@ function CustomersPage() {
         queryKey: ['customers', { include_inactive: true }],
         queryFn: () => customerService.getAll({ include_inactive: true }),
     })
+
+    // Satira tikla → altinda musterinin projeleri (yalniz goruntuleme).
+    // Projeler sayfasiyla AYNI anahtar: onbellek paylasilir.
+    const { data: allProjects = [], isLoading: projectsLoading } = useQuery({
+        queryKey: ['projects', { include_inactive: true }],
+        queryFn: () => projectService.getAll({ include_inactive: true }),
+    })
+    const projectsByCustomer = useMemo(() => {
+        const out = {}
+        for (const p of allProjects) if (p.customer_id) (out[p.customer_id] ||= []).push(p)
+        return out
+    }, [allProjects])
+    const rowDisclosure = useRowDisclosure()
 
     // Mutations
     /**
@@ -332,6 +346,9 @@ function CustomersPage() {
                 })}
             >
                 <Table
+                    {...rowDisclosure((record) => (
+                        <ProjectPeek projects={projectsByCustomer[record.id] || []} meta="type" loading={projectsLoading} />
+                    ))}
                     dataSource={filteredCustomers}
                     columns={columns}
                     rowKey="id"

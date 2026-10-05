@@ -825,6 +825,7 @@ export default {
         projectNameExample: 'örn. E-Ticaret Platformu',
         customerOptional: 'Müşteri (İsteğe bağlı)',
         selectCustomerHint: 'Müşteri seçin (iç projeler için boş bırakın)',
+        peekNoProjects: 'Henüz proje yok',
         internalProject: 'İç Proje',
         manageProjects: 'Projeleri yönetin',
         manageWorkTypes: 'İş türlerini yönetin',

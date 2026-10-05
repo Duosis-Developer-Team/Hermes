@@ -11,18 +11,19 @@
  * baska ture tasinir).
  * =============================================================================
  */
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Button, Card, Form, Input, Modal, Space, Table, message } from 'antd'
 import { BgColorsOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { projectTypeService } from '../../services/api'
+import { projectService, projectTypeService } from '../../services/api'
 import { queryKeys } from '../../query/queryKeys'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import { AdminErrorAlert, AdminRefreshHint } from '../../features/admin/shared/AdminListStates'
 import { GenericLogo, ModalHead } from '../../components/liquid'
 import { PROJECT_TYPE_COLOR_KEYS, PROJECT_TYPE_PALETTE } from '../../features/projectTypes/palette'
 import { useT } from '../../i18n'
+import { ProjectPeek, useRowDisclosure } from '../../features/admin/shared/ProjectPeek'
 import './ProjectTypesPage.css'
 
 // Onizlemede renk + glif mantigini gosteren ornek glifler.
@@ -67,6 +68,18 @@ function ProjectTypesPage() {
         queryKey: queryKeys.projectTypes.all,
         queryFn: () => projectTypeService.getAll(),
     })
+
+    // Satira tikla → altinda turun projeleri (yalniz goruntuleme).
+    const { data: allProjects = [], isLoading: projectsLoading } = useQuery({
+        queryKey: ['projects', { include_inactive: true }],
+        queryFn: () => projectService.getAll({ include_inactive: true }),
+    })
+    const projectsByType = useMemo(() => {
+        const out = {}
+        for (const p of allProjects) if (p.project_type_id) (out[p.project_type_id] ||= []).push(p)
+        return out
+    }, [allProjects])
+    const rowDisclosure = useRowDisclosure()
 
     // Tur rengi/adi projelerin yanitinda tasinir: proje listeleri de tazelenir
     // (jenerik logolar yeni renge gecer).
@@ -170,6 +183,9 @@ function ProjectTypesPage() {
                 extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => open(null)}>{t('projectTypes.newType')}</Button>}
             >
                 <Table
+                    {...rowDisclosure((record) => (
+                        <ProjectPeek projects={projectsByType[record.id] || []} meta="customer" loading={projectsLoading} />
+                    ))}
                     dataSource={types}
                     columns={columns}
                     rowKey="id"

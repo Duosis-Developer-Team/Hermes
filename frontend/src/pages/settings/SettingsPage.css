@@ -376,3 +376,23 @@
 .customer-logo-field__body small { color: var(--h-text-secondary); font-size: 12px; line-height: 1.45; }
 .customer-logo-field__body .customer-logo-field__drop-hint { color: var(--h-text-muted); }
 .customer-logo-field__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+/* Satira tikla → altinda projeler (Musteriler, Proje turleri). */
+.peek-row { cursor: pointer; }
+.peek-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 6px 14px;
+    margin: 0;
+    padding: 6px 4px 8px 40px;
+    list-style: none;
+}
+.peek-item { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 6px 8px; border-radius: 12px; }
+.peek-item:hover { background: var(--h-bg-hover); }
+.peek-item.is-inactive { opacity: 0.6; }
+.peek-item__text { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.peek-item__text b { overflow: hidden; color: var(--h-text-primary); font-size: 13.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.peek-item__text small { color: var(--h-text-muted); font-size: 12px; }
+.peek-item__text .pt-chip { gap: 6px; font-weight: 500; }
+.peek-item__text .pt-chip i { width: 10px; height: 10px; border-radius: 3px; }
+.peek-empty { margin: 0; padding: 8px 0 8px 40px; color: var(--h-text-muted); font-size: 13px; }

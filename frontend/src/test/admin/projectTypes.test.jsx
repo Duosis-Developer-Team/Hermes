@@ -130,6 +130,23 @@ describe('Proje turleri sayfasi', () => {
         await waitFor(() => expect(projectTypeService.create).toHaveBeenCalledWith({ name: 'Proje', color: 'teal' }))
     })
 
+    it('satira tikla: altinda turun projeleri (musterisiyle); tekrar tikla: kapanir', async () => {
+        const user = setup()
+        projectService.getAll.mockResolvedValue([
+            { id: 'p1', name: 'Level3 Support', customer_id: 'c1', customer_name: 'Iga', is_active: true, project_type_id: 't1', project_type_name: 'Destek', project_type_color: 'red', logo_glyph: 'lv3' },
+            { id: 'p2', name: 'CMS Talep', customer_id: 'c2', customer_name: 'Turkcell', is_active: true, project_type_id: 't2' },
+        ])
+        withClient(<ProjectTypesPage />)
+        const cell = await screen.findByText('Destek')
+        await user.click(cell)
+        const list = await screen.findByRole('list', { name: 'Projects' })
+        expect(within(list).getByText('Level3 Support')).toBeInTheDocument()
+        expect(within(list).getByText('Iga')).toBeInTheDocument()
+        expect(within(list).queryByText('CMS Talep')).toBeNull()
+        await user.click(cell)
+        await waitFor(() => expect(screen.queryByRole('list', { name: 'Projects' })).toBeNull())
+    })
+
     it('kullanimdaki tur silinmez; bos tur silinir', async () => {
         const user = setup()
         projectTypeService.delete.mockResolvedValue()
