@@ -771,6 +771,12 @@
     align-items: center;
 }
 .main-header__corner[hidden] { display: none; }
+/* Masaustu uygulamasi basligi pencere SURUKLEME alani yapar (desktop/src/
+   windowChrome.js: .main-header drag, yalniz adanin ici no-drag). Kose
+   adanin DISINDA: no-drag olmazsa tiklama surukleme sayilir ve rozet
+   calismaz. Web'den gelir — kabuk yeniden kurulmadan duzelir. */
+.main-header__corner,
+.main-header__corner * { -webkit-app-region: no-drag; }
 .version-badge {
     position: relative;
     display: inline-flex;

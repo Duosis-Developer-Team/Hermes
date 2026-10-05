@@ -8,6 +8,8 @@
  *      (standalone) baglamda da acilir.
  */
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { screen, within } from '@testing-library/react'
 
 import {
@@ -95,5 +97,15 @@ describe('landing alt bilgisi', () => {
     it('surum notlarina baglanti verir', () => {
         renderWithProviders(<LandingFooter onCookiePrefs={() => {}} />)
         expect(screen.getByRole('link', { name: 'Patch notes' })).toHaveAttribute('href', '/patch-notes')
+    })
+})
+
+describe('masaustu uygulamasi', () => {
+    it('rozet kosesi pencere surukleme alani DEGIL (tiklama calisir)', () => {
+        // Kabuk .main-header'i surukleme alani yapar; kose adanin disinda.
+        const css = readFileSync(join('src', 'components/layout/MainLayout.css'), 'utf8')
+        expect(css).toMatch(/\.main-header__corner,\s*\.main-header__corner \*\s*\{\s*-webkit-app-region:\s*no-drag;/)
+        const shell = readFileSync(join('..', 'desktop/src/windowChrome.js'), 'utf8')
+        expect(shell).toMatch(/\.main-header \{ -webkit-app-region: drag; \}/)
     })
 })
