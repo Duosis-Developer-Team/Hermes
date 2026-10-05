@@ -5,6 +5,7 @@
 from .customers import router as customers_router
 from .work_types import router as work_types_router
 from .projects import router as projects_router
+from .project_types import router as project_types_router
 from .work_logs import router as work_logs_router
 from .activity_types import router as activity_types_router
 from .platforms import router as platforms_router
@@ -32,6 +33,7 @@ __all__ = [
     "customers_router",
     "work_types_router",
     "projects_router",
+    "project_types_router",
     "work_logs_router",
     "activity_types_router",
     "platforms_router",

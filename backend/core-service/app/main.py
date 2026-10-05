@@ -28,6 +28,7 @@ from app.routers import (
     customers_router,
     work_types_router,
     projects_router,
+    project_types_router,
     work_logs_router,
     activity_types_router,
     platforms_router,
@@ -181,6 +182,7 @@ app.include_router(internal_support_router)
 app.include_router(customers_router, prefix=API_PREFIX)
 app.include_router(work_types_router, prefix=API_PREFIX)
 app.include_router(projects_router, prefix=API_PREFIX)
+app.include_router(project_types_router, prefix=API_PREFIX)
 app.include_router(work_logs_router, prefix=API_PREFIX)
 app.include_router(activity_types_router, prefix=API_PREFIX)
 app.include_router(platforms_router, prefix=API_PREFIX)

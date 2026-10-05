@@ -10,10 +10,12 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from ..models.project import Project
+from ..models.project_type import ProjectType
 from ..models.customer import Customer
+from ..project_type_catalog import LOGO_GLYPHS
 from ..schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
 from .base import BaseCRUDService
-from shared.exceptions import NotFoundError
+from shared.exceptions import NotFoundError, ValidationError
 
 
 class ProjectService(BaseCRUDService[Project, ProjectCreate, ProjectUpdate]):
@@ -26,6 +28,16 @@ class ProjectService(BaseCRUDService[Project, ProjectCreate, ProjectUpdate]):
     
     def __init__(self, db: Session):
         super().__init__(db, Project, "Proje")
+
+    def _check_type_and_glyph(self, values: dict) -> None:
+        """Tur bu tenant'ta var mi, glif sozlukte mi? (RLS altinda sorgu:
+        baska tenant'in turu "yok" gorunur → ayni 404)."""
+        type_id = values.get("project_type_id")
+        if type_id and not self.db.query(ProjectType.id).filter(ProjectType.id == type_id).first():
+            raise NotFoundError("ProjectType", type_id)
+        glyph = values.get("logo_glyph")
+        if glyph is not None and glyph not in LOGO_GLYPHS:
+            raise ValidationError(f"Unknown logo glyph: {glyph}")
     
     def create(self, data: ProjectCreate) -> Project:
         """
@@ -43,6 +55,8 @@ class ProjectService(BaseCRUDService[Project, ProjectCreate, ProjectUpdate]):
             if not customer:
                 raise NotFoundError("Customer", data.customer_id)
         
+        self._check_type_and_glyph(data.model_dump())
+
         # Contract duration verilip start_date verilmemişse bugünü ata
         if data.contract_duration_days and not data.contract_start_date:
             data.contract_start_date = datetime.now(timezone.utc)
@@ -66,6 +80,8 @@ class ProjectService(BaseCRUDService[Project, ProjectCreate, ProjectUpdate]):
             if not customer:
                 raise NotFoundError("Customer", update_data['customer_id'])
         
+        self._check_type_and_glyph(update_data)
+
         # Contract duration verilip start_date yoksa otomatik bugünü ata
         if 'contract_duration_days' in update_data and update_data['contract_duration_days']:
             if 'contract_start_date' not in update_data or not update_data.get('contract_start_date'):
@@ -108,4 +124,9 @@ class ProjectService(BaseCRUDService[Project, ProjectCreate, ProjectUpdate]):
             "contract_duration_days": project.contract_duration_days,
             # PM rework A8 (karar 3): is kalemleri bu varsayilani miras alir.
             "is_billable_default": bool(project.is_billable_default),
+            # Proje turu (0016): jenerik logo rengi turden gelir.
+            "project_type_id": project.project_type_id,
+            "project_type_name": project.project_type.name if project.project_type else None,
+            "project_type_color": project.project_type.color if project.project_type else None,
+            "logo_glyph": project.logo_glyph,
         }

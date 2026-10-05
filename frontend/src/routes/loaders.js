@@ -35,6 +35,7 @@ export const routeLoaders = {
     settings: () => import('../pages/settings/SettingsPage'),
     customers: () => import('../pages/admin/CustomersPage'),
     projects: () => import('../pages/admin/ProjectsPage'),
+    projectTypes: () => import('../pages/admin/ProjectTypesPage'),
     workTypes: () => import('../pages/admin/WorkTypesPage'),
     activityTypes: () => import('../pages/ActivityTypesPage'),
     platforms: () => import('../pages/PlatformsPage'),
@@ -77,6 +78,7 @@ export const loaderByPath = {
     '/settings/reference/work-lines': routeLoaders.workLines,
     '/settings/customers/customers': routeLoaders.customers,
     '/settings/customers/projects': routeLoaders.projects,
+    '/settings/customers/project-types': routeLoaders.projectTypes,
     '/settings/integrations/api': routeLoaders.apiManagement,
     '/settings/integrations/tickets': routeLoaders.ticketIntegrations,
 }

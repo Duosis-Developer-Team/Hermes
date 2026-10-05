@@ -136,6 +136,26 @@ class Project(TenantOwnedMixin, Base):
         nullable=False,
         comment="Proje aktif mi? (False = soft deleted)"
     )
+
+    # ==========================================================================
+    # Proje turu + jenerik logo (05.10, 0016)
+    # ==========================================================================
+    # Tur silinirse proje turusuz kalir (SET NULL); enforce fazi FK'yi
+    # (tenant_id, project_type_id) composite'ine cevirir.
+    project_type_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("project_types.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Proje turu (Destek, Talep...); turu yoksa NULL",
+    )
+    # Jenerik logo glifi (app/project_type_catalog.LOGO_GLYPHS). Rengi
+    # projenin TURUNDEN gelir. Yuklenmis ozel logo (project_logos) onceliklidir.
+    logo_glyph = Column(
+        String(32),
+        nullable=True,
+        comment="Jenerik logo glifi; NULL = jenerik logo yok",
+    )
     
     # ==========================================================================
     # Timestamps
@@ -158,6 +178,8 @@ class Project(TenantOwnedMixin, Base):
         back_populates="projects"
     )
     
+    project_type = relationship("ProjectType", lazy="joined")
+
     work_logs = relationship(
         "WorkLog",
         back_populates="project",

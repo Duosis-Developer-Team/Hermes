@@ -34,6 +34,9 @@ class ProjectCreate(ProjectBase):
     )
     # PM rework A8 (karar 3): iş kalemleri bu varsayılanı miras alır.
     is_billable_default: bool = True
+    # Proje turu + jenerik logo glifi (0016). Renk turden gelir.
+    project_type_id: Optional[UUID] = None
+    logo_glyph: Optional[str] = Field(None, max_length=32)
 
 
 class ProjectUpdate(BaseModel):
@@ -45,6 +48,8 @@ class ProjectUpdate(BaseModel):
     contract_start_date: Optional[datetime] = None
     contract_duration_days: Optional[int] = Field(None, ge=1)
     is_billable_default: Optional[bool] = None
+    project_type_id: Optional[UUID] = None
+    logo_glyph: Optional[str] = Field(None, max_length=32)
 
 
 class ProjectResponse(ProjectBase):
@@ -60,6 +65,11 @@ class ProjectResponse(ProjectBase):
     # Frontend `/projects/{id}/logo?v=<etag>` ile onbellegi kirar.
     has_logo: bool = False
     logo_etag: Optional[str] = None
+    # Proje turu (0016): ad + renk anahtari; jenerik logo = tur rengi + glif.
+    project_type_id: Optional[UUID] = None
+    project_type_name: Optional[str] = None
+    project_type_color: Optional[str] = None
+    logo_glyph: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

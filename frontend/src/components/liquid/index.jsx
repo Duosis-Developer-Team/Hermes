@@ -11,6 +11,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { userPhotoUrl, useUserPhotoStore } from '../../stores/userPhotoStore'
 import { customerLogoUrl, projectLogoUrl, useCustomerLogoStore } from '../../stores/customerLogoStore'
+import { genericLogoUrl } from '../../features/projectTypes/genericLogo'
 
 const reducedMotion = () =>
     typeof window !== 'undefined'
@@ -215,7 +216,7 @@ export function CustomerLogo({ id, name, size = 28, etag: etagProp, className = 
 const LOGO_MAX_RATIO = 2.2
 
 /** Tek logo karosu (gorsel); yuklenemezse `onFail`. Oran yuklenince olculur. */
-function LogoTile({ src, size, onFail }) {
+function LogoTile({ src, size, onFail, generic = false }) {
     const [ratio, setRatio] = useState(1)
     const onLoad = (e) => {
         const { naturalWidth: w, naturalHeight: h } = e.currentTarget
@@ -223,7 +224,7 @@ function LogoTile({ src, size, onFail }) {
     }
     return (
         <span
-            className={`lq-clogo lq-clogo--img${ratio > 1.15 ? ' lq-clogo--wide' : ''}`}
+            className={`lq-clogo lq-clogo--img${generic ? ' lq-clogo--generic' : ''}${ratio > 1.15 ? ' lq-clogo--wide' : ''}`}
             style={{ width: Math.round(size * ratio), height: size, borderRadius: Math.round(size * 0.28) }}
             aria-hidden="true"
         >
@@ -233,14 +234,30 @@ function LogoTile({ src, size, onFail }) {
 }
 
 /**
- * Proje logosu (varsa). Logo yoksa ya da yuklenemezse `fallback`
- * (varsayilan: hicbir sey) — secicilerde projenin kendi ikonu korunur.
+ * Jenerik proje logosu: tur RENGI + glif (features/projectTypes). Renk
+ * verilmezse notr gri. Gorsel istemcide uretilir; ag istegi yok.
+ */
+export function GenericLogo({ glyph, color, size = 28 }) {
+    const src = genericLogoUrl(glyph, color)
+    if (!src) return null
+    // Jenerik logo kendi karosunu tasir: beyaz cerceve/ic bosluk yok.
+    return <LogoTile src={src} size={size} generic />
+}
+
+/**
+ * Proje logosu: yuklenmis ozel logo > jenerik logo (tur rengi + glif).
+ * Ikisi de yoksa ya da yuklenemezse `fallback` (varsayilan: hicbir sey) —
+ * secicilerde projenin kendi ikonu korunur.
  */
 export function ProjectLogo({ id, size = 28, fallback = null }) {
     const etag = useCustomerLogoStore((s) => (id ? s.projects[id] : undefined))
+    const generic = useCustomerLogoStore((s) => (id ? s.generic[id] : undefined))
     const [failed, setFailed] = useState(null)
-    if (!id || !etag || failed === etag) return fallback
-    return <LogoTile src={projectLogoUrl(id, etag)} size={size} onFail={() => setFailed(etag)} />
+    if (id && etag && failed !== etag) {
+        return <LogoTile src={projectLogoUrl(id, etag)} size={size} onFail={() => setFailed(etag)} />
+    }
+    if (generic) return <GenericLogo glyph={generic.glyph} color={generic.color} size={size} />
+    return fallback
 }
 
 /**
@@ -254,17 +271,21 @@ export function BrandLogos({
 }) {
     const cStored = useCustomerLogoStore((s) => (customerId ? s.etags[customerId] : undefined))
     const pStored = useCustomerLogoStore((s) => (projectId ? s.projects[projectId] : undefined))
+    const pGeneric = useCustomerLogoStore((s) => (projectId ? s.generic[projectId] : undefined))
     const [failed, setFailed] = useState({})
     const cEtag = cStored && failed.c !== cStored ? cStored : undefined
     const pEtag = pStored && failed.p !== pStored ? pStored : undefined
-    if (!cEtag && !pEtag) {
+    // Yuklenmis proje logosu yoksa jenerik logo (tur rengi + glif).
+    const pGenericUrl = !pEtag && pGeneric ? genericLogoUrl(pGeneric.glyph, pGeneric.color) : null
+    if (!cEtag && !pEtag && !pGenericUrl) {
         if (fallback !== undefined) return fallback
         return <CustomerLogo id={customerId} name={customerName || projectName} size={size} etag={null} className={className} />
     }
     return (
-        <span className={`lq-brand ${className}`} data-logos={cEtag && pEtag ? 'both' : cEtag ? 'customer' : 'project'}>
+        <span className={`lq-brand ${className}`} data-logos={cEtag && (pEtag || pGenericUrl) ? 'both' : cEtag ? 'customer' : 'project'}>
             {cEtag && <LogoTile src={customerLogoUrl(customerId, cEtag)} size={size} onFail={() => setFailed((f) => ({ ...f, c: cEtag }))} />}
             {pEtag && <LogoTile src={projectLogoUrl(projectId, pEtag)} size={size} onFail={() => setFailed((f) => ({ ...f, p: pEtag }))} />}
+            {pGenericUrl && <LogoTile src={pGenericUrl} size={size} generic />}
         </span>
     )
 }

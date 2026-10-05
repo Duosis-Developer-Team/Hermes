@@ -113,6 +113,28 @@ export const workTypeService = {
 }
 
 // =============================================================================
+// CORE SERVICE - Proje turleri (Destek, Talep...; renk = jenerik logo rengi)
+// =============================================================================
+
+export const projectTypeService = {
+    getAll: async () => {
+        const response = await coreApi.get('/api/v1/core/project-types')
+        return response.data
+    },
+    create: async (data) => {
+        const response = await coreApi.post('/api/v1/core/project-types', data)
+        return response.data
+    },
+    update: async (id, data) => {
+        const response = await coreApi.put(`/api/v1/core/project-types/${id}`, data)
+        return response.data
+    },
+    delete: async (id) => {
+        await coreApi.delete(`/api/v1/core/project-types/${id}`)
+    },
+}
+
+// =============================================================================
 // CORE SERVICE - Projeler
 // =============================================================================
 

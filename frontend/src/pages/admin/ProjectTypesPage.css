@@ -1,0 +1,119 @@
+/**
+ * =============================================================================
+ * HERMES - Proje turleri: renk secici, onizleme, tablo hapciklari
+ * =============================================================================
+ * Renkler YALNIZ token'dan; secilebilir renk ornekleri paletten (inline
+ * gradyan). Renk secici ve logo secici (ProjectLogoField) ayni dili konusur.
+ * =============================================================================
+ */
+
+.pt-colors {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    gap: 8px;
+}
+.pt-color {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 6px 8px;
+    border: 1px solid var(--h-border-subtle);
+    border-radius: 16px;
+    background: var(--h-surface-subtle);
+    color: var(--h-text-secondary);
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 220ms var(--h-ease-spring), border-color var(--h-motion-fast), background var(--h-motion-fast);
+}
+.pt-color:hover { transform: translateY(-2px); color: var(--h-text-primary); }
+.pt-color:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
+.pt-color.is-on {
+    border-color: var(--h-brand);
+    background: color-mix(in srgb, var(--h-brand) 10%, var(--h-bg-surface));
+    color: var(--h-text-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--h-brand) 18%, transparent);
+}
+.pt-color__swatch {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 16px -10px rgba(0, 0, 0, 0.5);
+}
+.pt-color.is-on .pt-color__swatch::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 12px;
+    height: 7px;
+    border: solid #FFFFFF;
+    border-width: 0 0 3px 3px;
+    transform: translateY(-2px) rotate(-45deg);
+}
+
+.pt-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 4px 0 18px;
+    padding: 14px;
+    border: 1px solid var(--h-border-subtle);
+    border-radius: 16px;
+    background: var(--h-surface-subtle);
+}
+.pt-preview__label {
+    font-size: var(--h-font-label);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--h-text-muted);
+}
+.pt-preview__row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.pt-preview__name { margin-left: 4px; font-size: 15px; color: var(--h-text-primary); }
+
+.pt-chip { display: inline-flex; align-items: center; gap: 8px; color: var(--h-text-secondary); font-weight: 600; }
+.pt-chip i { width: 14px; height: 14px; border-radius: 5px; background: var(--h-bg-hover); }
+.pt-count { color: var(--h-text-secondary); font-variant-numeric: tabular-nums; }
+
+.pt-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 12px; }
+.pt-empty b { color: var(--h-text-primary); }
+.pt-empty p { max-width: 46ch; margin: 0 0 8px; color: var(--h-text-secondary); }
+
+/* Logo secici (ProjectLogoField): ayni karo dili. */
+.plf-glyphs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 8px;
+    max-height: 360px;
+    overflow-y: auto;
+    padding: 2px;
+}
+.plf-glyph {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 6px 8px;
+    border: 1px solid var(--h-border-subtle);
+    border-radius: 16px;
+    background: var(--h-surface-subtle);
+    color: var(--h-text-secondary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 220ms var(--h-ease-spring), border-color var(--h-motion-fast);
+}
+.plf-glyph:hover { transform: translateY(-2px); color: var(--h-text-primary); }
+.plf-glyph:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
+.plf-glyph.is-on {
+    border-color: var(--h-brand);
+    color: var(--h-text-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--h-brand) 18%, transparent);
+}
+.plf-hint { margin: 0 0 12px; color: var(--h-text-secondary); font-size: 13px; }

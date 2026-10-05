@@ -52,6 +52,8 @@ describe('i18n sozlukleri', () => {
             'platform.emailDomainsExample',
             // "Hermes {version}": urun adi + surum, cevrilmez.
             'patchNotes.badge',
+            // Teknik terim (DevOps), Turkcede de aynen kullanilir.
+            'projectTypes.glyph.devops',
         ])
         const untranslated = flatten(en).filter((key) => {
             if (SAME_BY_DESIGN.has(key)) return false

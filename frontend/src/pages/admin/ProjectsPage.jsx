@@ -12,7 +12,7 @@ import {
 } from 'antd'
 import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, EditOutlined, FolderOutlined, PlusOutlined, SearchOutlined, TeamOutlined, WarningOutlined } from '@ant-design/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { projectService, customerService, workLogService } from '../../services/api'
+import { projectService, projectTypeService, customerService, workLogService } from '../../services/api'
 
 const HOURS_PER_DAY = 8
 import DeleteModal from '../../components/common/DeleteModal'
@@ -29,7 +29,8 @@ import { useT } from '../../i18n'
 import { BrandLogos, ModalHead } from '../../components/liquid'
 import { queryKeys } from '../../query/queryKeys'
 import { useCustomerLogoStore } from '../../stores/customerLogoStore'
-import CustomerLogoField, { EMPTY_LOGO_DRAFT } from './CustomerLogoField'
+import ProjectLogoField, { EMPTY_PROJECT_LOGO_DRAFT } from './ProjectLogoField'
+import { toneOf } from '../../features/projectTypes/palette'
 import { customerSelectRender } from '../../components/common/customerSelect'
 import { selectFilter, matchesAny } from '../../utils/searchText'
 
@@ -46,6 +47,8 @@ const FORM_SHAPE = {
     contract_start_date: null, contract_duration_days: undefined,
     // PM rework A8 (karar 3): is kalemleri bu varsayilani miras alir.
     is_billable_default: true,
+    // Proje turu (05.10): efor girisinde gruplama + jenerik logo rengi.
+    project_type_id: null,
 }
 
 
@@ -70,6 +73,15 @@ function ProjectsPage() {
         queryFn: () => customerService.getAll(),
     })
 
+    // Proje turleri: secici + tabloda tur hapcigi + logo rengi.
+    const { data: projectTypes = [] } = useQuery({
+        queryKey: queryKeys.projectTypes.all,
+        queryFn: () => projectTypeService.getAll(),
+    })
+    const typeById = Object.fromEntries(projectTypes.map((pt) => [pt.id, pt]))
+    const selectedTypeId = Form.useWatch('project_type_id', form)
+    const selectedType = selectedTypeId ? typeById[selectedTypeId] : null
+
     const { data: billableSummaryResponse } = useQuery({
         queryKey: ['billable-summary'],
         queryFn: () => workLogService.getBillableSummary(),
@@ -79,7 +91,7 @@ function ProjectsPage() {
     // Proje logosu (CTO 29.09): taslak formla birlikte kaydedilir; logo
     // hatasi proje kaydini geri almaz (musteri formuyla ayni desen).
     const [editingRecord, setEditingRecord] = useState(null)
-    const [logoDraft, setLogoDraft] = useState(EMPTY_LOGO_DRAFT)
+    const [logoDraft, setLogoDraft] = useState(EMPTY_PROJECT_LOGO_DRAFT)
     const setProjectLogo = useCustomerLogoStore((s) => s.setProject)
     const applyLogo = async (projectId) => {
         try {
@@ -97,6 +109,8 @@ function ProjectsPage() {
     const refreshProjects = () => {
         queryClient.invalidateQueries({ queryKey: ['projects'] })
         queryClient.invalidateQueries({ queryKey: queryKeys.projects.all })
+        // Tur basina proje sayilari.
+        queryClient.invalidateQueries({ queryKey: queryKeys.projectTypes.all })
     }
 
     // Mutations
@@ -186,7 +200,7 @@ function ProjectsPage() {
     }
 
     const handleOpenModal = (record = null) => {
-        setLogoDraft(EMPTY_LOGO_DRAFT)
+        setLogoDraft(EMPTY_PROJECT_LOGO_DRAFT)
         setEditingRecord(record)
         if (record) {
             setEditingId(record.id)
@@ -208,7 +222,7 @@ function ProjectsPage() {
         setModalOpen(false)
         setEditingId(null)
         setEditingRecord(null)
-        setLogoDraft(EMPTY_LOGO_DRAFT)
+        setLogoDraft(EMPTY_PROJECT_LOGO_DRAFT)
         form.resetFields()
     }
 
@@ -229,6 +243,9 @@ function ProjectsPage() {
         // gelir, arada iki mutation acilabiliyordu.
         if (isSaving) return
         const data = { ...values, ...contractToPayload(values) }
+        data.project_type_id = values.project_type_id || null
+        // Jenerik logo: yalniz taslakta degistiyse gonderilir (null = kaldir).
+        if (logoDraft.glyph !== undefined) data.logo_glyph = logoDraft.glyph
         if (editingId) {
             updateMutation.mutate({ id: editingId, data })
         } else {
@@ -249,13 +266,25 @@ function ProjectsPage() {
                     <BrandLogos
                         customerId={record.customer_id}
                         customerName={record.customer_name}
-                        projectId={record.has_logo ? record.id : undefined}
+                        projectId={record.has_logo || record.logo_glyph ? record.id : undefined}
                         projectName={name}
                         size={32}
                     />
                     <span className="admin-name__text"><b>{name}</b></span>
                 </span>
             ),
+        },
+        {
+            title: t('projectTypes.type'),
+            dataIndex: 'project_type_name',
+            key: 'project_type_name',
+            sorter: (a, b) => (a.project_type_name || '').localeCompare(b.project_type_name || ''),
+            render: (name, record) => (name ? (
+                <span className="pt-chip">
+                    <i style={{ background: `linear-gradient(135deg, ${toneOf(record.project_type_color).from}, ${toneOf(record.project_type_color).to})` }} aria-hidden="true" />
+                    {name}
+                </span>
+            ) : <span className="project-contract__none">—</span>),
         },
         {
             title: t('entity.customer'),
@@ -410,17 +439,37 @@ function ProjectsPage() {
                     <Form.Item name="name" label={t('admin.projectNameLabel')} rules={[{ required: true, message: t('admin.nameRequired', { entity: t('entity.project') }) }]}>
                         <Input placeholder={t('admin.projectNameExample')} />
                     </Form.Item>
-                    <Form.Item noStyle shouldUpdate={(a, b) => a.name !== b.name}>
-                        {({ getFieldValue }) => (
-                            <CustomerLogoField
-                                kind="project"
-                                record={editingRecord}
-                                name={getFieldValue('name')}
-                                draft={logoDraft}
-                                onChange={setLogoDraft}
-                            />
-                        )}
+                    <Form.Item name="project_type_id" label={t('projectTypes.type')}>
+                        <Select
+                            placeholder={t('projectTypes.typeHint')}
+                            allowClear
+                            showSearch
+                            filterOption={selectFilter}
+                            options={projectTypes.map((pt) => ({ value: pt.id, label: pt.name, color: pt.color }))}
+                            optionRender={(opt) => (
+                                <span className="pt-chip">
+                                    <i style={{ background: `linear-gradient(135deg, ${toneOf(opt.data.color).from}, ${toneOf(opt.data.color).to})` }} aria-hidden="true" />
+                                    {opt.label}
+                                </span>
+                            )}
+                            labelRender={({ value, label }) => {
+                                const pt = typeById[value]
+                                return pt ? (
+                                    <span className="pt-chip">
+                                        <i style={{ background: `linear-gradient(135deg, ${toneOf(pt.color).from}, ${toneOf(pt.color).to})` }} aria-hidden="true" />
+                                        {label}
+                                    </span>
+                                ) : label
+                            }}
+                        />
                     </Form.Item>
+                    <ProjectLogoField
+                        record={editingRecord}
+                        draft={logoDraft}
+                        onChange={setLogoDraft}
+                        typeColor={selectedType?.color || null}
+                        typeName={selectedType?.name || null}
+                    />
                     <Form.Item name="customer_id" label={t('admin.customerOptional')}>
                         <Select
                             placeholder={t('admin.selectCustomerHint')}

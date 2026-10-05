@@ -48,6 +48,8 @@ export const SETTINGS_SECTIONS = [
         items: [
             { key: 'customers', path: '/settings/customers/customers', labelKey: 'nav.customers', perm: 'customers.manage' },
             { key: 'projects', path: '/settings/customers/projects', labelKey: 'nav.projects', perm: 'projects.manage' },
+            // Proje turleri (05.10): tur rengi = jenerik proje logosunun rengi.
+            { key: 'project-types', path: '/settings/customers/project-types', labelKey: 'nav.projectTypes', perm: 'projects.manage' },
         ],
     },
     {

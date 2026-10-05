@@ -17,7 +17,7 @@ import {
 import {
     ArrowLeftOutlined, ClockCircleOutlined, SearchOutlined,
 } from '@ant-design/icons'
-import { ChipGroup, CustomerLogo, FormSection, ModalHead, ModalSteps, OptionGrid, ProjectLogo } from '../liquid'
+import { ChipGroup, CustomerLogo, FormSection, GenericLogo, ModalHead, ModalSteps, OptionGrid, ProjectLogo } from '../liquid'
 import HoursMinutesPicker from '../common/HoursMinutesPicker'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -36,6 +36,8 @@ import './LogTimeModal.css'
 import { useT } from '../../i18n'
 import { useCustomerLogoStore } from '../../stores/customerLogoStore'
 import { selectFilter, matchesSearch } from '../../utils/searchText'
+import { UNTYPED, groupProjectsByType } from '../../features/projectTypes/grouping'
+import { toneOf } from '../../features/projectTypes/palette'
 
 const { TextArea } = Input
 
@@ -394,16 +396,22 @@ function LogTimeModal({
             }
         })
     const projectLogos = useCustomerLogoStore((s) => s.projects)
-    const projectOptions = filteredProjects
-        .filter((p) => matches(p.name))
-        .map((p) => ({
-            value: p.id,
-            label: p.name,
-            hint: p.code || selectedCustomer?.name,
-            flat: true,
-            // Proje logosu varsa kart ikonu yerine o (yoksa duz ikon kalir).
-            media: projectLogos[p.id] ? <ProjectLogo id={p.id} size={38} /> : undefined,
-        }))
+    const visibleProjects = filteredProjects.filter((p) => matches(p.name))
+    const projectOption = (p) => ({
+        value: p.id,
+        label: p.name,
+        hint: p.code || selectedCustomer?.name,
+        flat: true,
+        // Proje logosu varsa kart ikonu yerine o: ozel logo > jenerik (tur
+        // rengi + glif, projenin kendi verisinden). Yoksa duz ikon kalir.
+        media: projectLogos[p.id]
+            ? <ProjectLogo id={p.id} size={38} />
+            : p.logo_glyph ? <GenericLogo glyph={p.logo_glyph} color={p.project_type_color} size={38} /> : undefined,
+    })
+    // Projeler TURE gore alt basliklar altinda (05.10); tursuzler en sonda.
+    // Musterinin hic turlu projesi yoksa tek liste (baslik yok).
+    const projectGroups = groupProjectsByType(visibleProjects, t('projectTypes.untyped'))
+        .map((g) => ({ ...g, options: g.projects.map(projectOption) }))
 
     const durationChips = [0.25, 0.5, 1, 2, 4, 8].map((h) => ({
         value: h,
@@ -487,15 +495,33 @@ function LogTimeModal({
                                 className="log-time-search"
                             />
                         )}
-                        <OptionGrid
-                            ariaLabel={t('logTime.selectProject')}
-                            options={projectOptions}
-                            emptyText={t('logTime.noMatch')}
-                            onPick={(id) => {
-                                handleProjectSelect(id)
-                                nextStep()
-                            }}
-                        />
+                        {projectGroups.length === 0 || (projectGroups.length === 1 && projectGroups[0].key === UNTYPED) ? (
+                            <OptionGrid
+                                ariaLabel={t('logTime.selectProject')}
+                                options={projectGroups[0]?.options || []}
+                                emptyText={t('logTime.noMatch')}
+                                onPick={(id) => {
+                                    handleProjectSelect(id)
+                                    nextStep()
+                                }}
+                            />
+                        ) : projectGroups.map((g) => (
+                            <section key={g.key} className="log-time-type" data-testid="log-time-type-group">
+                                <FormSection>
+                                    <span className="log-time-type__dot" style={{ background: `linear-gradient(135deg, ${toneOf(g.color).from}, ${toneOf(g.color).to})` }} aria-hidden="true" />
+                                    {g.name}
+                                </FormSection>
+                                <OptionGrid
+                                    ariaLabel={`${t('logTime.selectProject')}: ${g.name}`}
+                                    options={g.options}
+                                    emptyText={t('logTime.noMatch')}
+                                    onPick={(id) => {
+                                        handleProjectSelect(id)
+                                        nextStep()
+                                    }}
+                                />
+                            </section>
+                        ))}
                     </div>
                 )}
 

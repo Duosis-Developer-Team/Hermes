@@ -7,6 +7,7 @@
 from .customer import Customer
 from .customer_logo import CUSTOMER_LOGO_TABLES, CustomerLogo
 from .work_type import WorkType
+from .project_type import PROJECT_TYPE_TABLES, ProjectType
 from .project import Project
 from .project_logo import PROJECT_LOGO_TABLES, ProjectLogo
 from .work_log import WorkLog
@@ -153,4 +154,7 @@ __all__ = [
     # Proje logosu (0015)
     "ProjectLogo",
     "PROJECT_LOGO_TABLES",
+    # Proje turu (0016)
+    "ProjectType",
+    "PROJECT_TYPE_TABLES",
 ]

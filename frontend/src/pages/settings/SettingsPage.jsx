@@ -17,9 +17,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Input, Spin } from 'antd'
 import {
-    ApiOutlined, AppstoreOutlined, BarChartOutlined, BranchesOutlined,
-    CustomerServiceOutlined, DatabaseOutlined, FolderOutlined, LeftOutlined,
-    RightOutlined, SearchOutlined, SettingOutlined, ShopOutlined, TagsOutlined, TeamOutlined,
+    ApiOutlined, AppstoreOutlined, BarChartOutlined, BgColorsOutlined, BranchesOutlined, CustomerServiceOutlined, DatabaseOutlined, FolderOutlined, LeftOutlined, RightOutlined, SearchOutlined, SettingOutlined, ShopOutlined, TagsOutlined, TeamOutlined,
 } from '@ant-design/icons'
 
 import { PageHero } from '../../components/liquid'
@@ -41,6 +39,7 @@ const ITEMS = {
     'work-lines': [<BranchesOutlined key="i" />, 'pink'],
     customers: [<ShopOutlined key="i" />, 'green'],
     projects: [<FolderOutlined key="i" />, 'blue'],
+    'project-types': [<BgColorsOutlined key="i" />, 'violet'],
     api: [<ApiOutlined key="i" />, 'ink'],
     tickets: [<CustomerServiceOutlined key="i" />, 'red'],
 }

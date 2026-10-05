@@ -18,16 +18,15 @@ import { Button, message } from 'antd'
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons'
 
 import { CustomerLogo } from '../../components/liquid'
-import { projectLogoUrl } from '../../stores/customerLogoStore'
 import { useT } from '../../i18n'
 
 export const LOGO_MAX_BYTES = 256 * 1024
 export const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 export const EMPTY_LOGO_DRAFT = { file: null, previewUrl: null, remove: false }
 
-/** draft: { file, previewUrl, remove }; record: duzenlenen kayit (ya da null);
- *  kind: 'customer' | 'project' (mevcut logonun adresi). */
-function CustomerLogoField({ record, name, draft, onChange, kind = 'customer' }) {
+/** draft: { file, previewUrl, remove }; record: duzenlenen musteri (ya da null).
+ *  Proje formu kendi alanini kullanir (ProjectLogoField: ozel ya da jenerik). */
+function CustomerLogoField({ record, name, draft, onChange }) {
     const t = useT()
     const inputRef = useRef(null)
 
@@ -70,9 +69,9 @@ function CustomerLogoField({ record, name, draft, onChange, kind = 'customer' })
                 onClick={() => inputRef.current?.click()}
                 aria-label={showing ? t('admin.logoChange') : t('admin.logoUpload')}
             >
-                {draft.previewUrl || (kind === 'project' && hasCurrent) ? (
+                {draft.previewUrl ? (
                     <span className="lq-clogo lq-clogo--img customer-logo-field__preview" aria-hidden="true">
-                        <img src={draft.previewUrl || projectLogoUrl(record.id, record.logo_etag)} alt="" />
+                        <img src={draft.previewUrl} alt="" />
                     </span>
                 ) : !hasCurrent && !(name || record?.name) ? (
                     // Ad yokken "?" yerine yukleme simgesi.

@@ -257,6 +257,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
         with engine.begin() as conn:
             # 0009 + 0010'un getirdikleri gider; alembic isareti 0008'e.
             for table in (
+                "project_types",
                 "project_logos",
                 "customer_logos",
                 "work_item_notifications",
@@ -268,6 +269,9 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             ):
                 conn.execute(text(f"DROP TABLE IF EXISTS {table} CASCADE"))
             conn.execute(text("ALTER TABLE projects DROP COLUMN IF EXISTS is_billable_default"))
+            # 0016: proje turu kolonlari gider.
+            conn.execute(text("ALTER TABLE projects DROP COLUMN IF EXISTS project_type_id"))
+            conn.execute(text("ALTER TABLE projects DROP COLUMN IF EXISTS logo_glyph"))
             conn.execute(text("ALTER TABLE work_logs DROP COLUMN IF EXISTS work_item_id"))
             # 0012'nin getirdikleri de gider.
             conn.execute(text("ALTER TABLE task_notification_settings DROP COLUMN IF EXISTS email_enabled"))
@@ -305,7 +309,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
                     "'medium', 'pending', :b, now(), now())"
                 ), {"t": tenant_id, "cid": customer_id, "pid": project_id, "b": batch})
 
-        _run_migration(disposable_db)      # 0008 → 0009 → ... → 0014 → 0015
+        _run_migration(disposable_db)      # 0008 → 0009 → ... → 0015 → 0016
 
         with engine.connect() as conn:
             head = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
@@ -338,6 +342,18 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
                 "SELECT is_nullable FROM information_schema.columns "
                 "WHERE table_name = 'project_logos' AND column_name = 'tenant_id'"
             )).scalar()
+            project_type_fk = conn.execute(text(
+                "SELECT pg_get_constraintdef(con.oid) FROM pg_constraint con "
+                "JOIN pg_class c ON c.oid = con.conrelid "
+                "WHERE c.relname = 'projects' AND con.contype = 'f' "
+                "AND pg_get_constraintdef(con.oid) LIKE '%project_type_id%'"
+            )).scalar()
+            project_type_forced = conn.execute(text(
+                "SELECT relforcerowsecurity FROM pg_class WHERE relname = 'project_types'"
+            )).scalar()
+            kept_project = conn.execute(text(
+                "SELECT name FROM projects WHERE id = :id"
+            ), {"id": project_id}).scalar()
             logo_fk = conn.execute(text(
                 "SELECT pg_get_constraintdef(con.oid) FROM pg_constraint con "
                 "JOIN pg_class c ON c.oid = con.conrelid "
@@ -349,7 +365,13 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             )).scalar()
     finally:
         engine.dispose()
-    assert head == "0015_project_logos"
+    assert head == "0016_project_types"
+    # 0016: proje turu — composite FK (yalniz proje kolonunu bosaltan SET NULL),
+    # RLS+FORCE; mevcut proje satiri aynen durur (additive).
+    assert "(tenant_id, project_type_id)" in project_type_fk
+    assert "SET NULL (project_type_id)" in project_type_fk
+    assert project_type_forced is True
+    assert kept_project == "Proje"
     assert items == 1 and parts == 2, "2 kopyalik batch tek is kalemi olmali"
     assert watchers == 1
     assert forced == 6

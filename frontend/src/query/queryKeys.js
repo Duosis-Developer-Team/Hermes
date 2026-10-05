@@ -152,6 +152,7 @@ export const queryKeys = {
     },
     customers: { get all() { return k('customers') } },
     projects: { get all() { return k('projects') } },
+    projectTypes: { get all() { return k('projectTypes') } },
     workTypes: { get all() { return k('workTypes') } },
     workLines: { get all() { return k('workLines') } },
     platforms: { get all() { return k('platforms') } },

@@ -498,6 +498,25 @@ def apply_p2_attachments_expand(conn) -> None:
         conn.execute(text(stmt))
 
 
+# Proje turu + jenerik logo (0016): `project_types` create_all ile gelir;
+# projects'e eklenen iki kolon MEVCUT tabloya oldugu icin ACIKCA kosulur.
+# FK tek kolonlu eklenir; enforce fazi (tenant_id, project_type_id)
+# composite'ine cevirir (ON DELETE SET NULL yalniz proje kolonunu bosaltir).
+PROJECT_TYPES_EXPAND_STATEMENTS = (
+    "ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_type_id UUID "
+    "REFERENCES project_types(id) ON DELETE SET NULL",
+    "ALTER TABLE projects ADD COLUMN IF NOT EXISTS logo_glyph VARCHAR(32)",
+    "CREATE INDEX IF NOT EXISTS ix_projects_project_type_id "
+    "ON projects (project_type_id)",
+)
+
+
+def apply_project_types_expand(conn) -> None:
+    """projects.project_type_id + projects.logo_glyph (0016)."""
+    for stmt in PROJECT_TYPES_EXPAND_STATEMENTS:
+        conn.execute(text(stmt))
+
+
 def apply_all(conn) -> None:
     """Testler icin: bugunku head semasinin tamami.
 
@@ -510,3 +529,4 @@ def apply_all(conn) -> None:
     apply_work_items_expand(conn)
     apply_p2_notifications_expand(conn)
     apply_p2_attachments_expand(conn)
+    apply_project_types_expand(conn)

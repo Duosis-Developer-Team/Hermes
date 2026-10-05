@@ -732,3 +732,10 @@
     animation-duration: 420ms;
     animation-timing-function: var(--h-ease-spring);
 }
+
+/* Jenerik proje logosu (tur rengi + glif): kendi karosu tasir — beyaz
+   cerceve, ic golge ve ic bosluk YOK. Dosya sonunda: marka satiri
+   (.lq-brand .lq-clogo--img) golge kuralini ezer. */
+.lq-brand .lq-clogo--generic,
+.lq-clogo--img.lq-clogo--generic { background: transparent; box-shadow: none; }
+.lq-clogo--generic img { padding: 0; }

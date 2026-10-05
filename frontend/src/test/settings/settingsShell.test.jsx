@@ -38,7 +38,8 @@ describe('katalog', () => {
     it('yalniz izinli bolum ve sayfalar kalir', () => {
         const sections = visibleSections(canWith(['reference.manage', 'projects.manage']))
         expect(sections.map((s) => s.key)).toEqual(['reference', 'customers'])
-        expect(sections[1].items.map((i) => i.key)).toEqual(['projects'])   // customers.manage yok
+        // customers.manage yok; proje turleri de projects.manage ile gelir.
+        expect(sections[1].items.map((i) => i.key)).toEqual(['projects', 'project-types'])
         expect(firstSettingsPath(canWith(['projects.manage']))).toBe('/settings/customers/projects')
     })
 

@@ -13,6 +13,10 @@
  *
  * Proje logolari (29.09) AYNI depoda ayri haritada: `projects` (proje id →
  * etag), `setFromProjects` / `setProject`. BrandLogos ikisini birlikte okur.
+ *
+ * Jenerik proje logolari (05.10): `generic` (proje id → { glyph, color }).
+ * Renk projenin TURUNDEN gelir; tur rengi degisince proje listesi yeniden
+ * gelir ve tum jenerik logolar yeni renge gecer. Yuklenmis logo onceliklidir.
  * =============================================================================
  */
 import { create } from 'zustand'
@@ -31,10 +35,26 @@ const indexOf = (rows) => {
     return out
 }
 
+const genericOf = (rows) => {
+    const out = {}
+    for (const r of rows || []) {
+        if (r?.id && r.logo_glyph) out[r.id] = { glyph: r.logo_glyph, color: r.project_type_color || null }
+    }
+    return out
+}
+
 export const useCustomerLogoStore = create((set) => ({
     etags: {},
     projects: {},
-    setFromProjects: (projects) => set({ projects: indexOf(projects) }),
+    generic: {},
+    setFromProjects: (projects) => set({ projects: indexOf(projects), generic: genericOf(projects) }),
+    /** Tek projenin jenerik logosu (kaydedince aninda; liste beklenmez). */
+    setProjectGeneric: (id, glyph, color) => set((s) => {
+        const generic = { ...s.generic }
+        if (glyph) generic[id] = { glyph, color: color || null }
+        else delete generic[id]
+        return { generic }
+    }),
     setProject: (id, etag) => set((s) => {
         const projects = { ...s.projects }
         if (etag) projects[id] = etag

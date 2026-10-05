@@ -11,3 +11,14 @@
 .log-time-quick { margin: -6px 0 14px; }
 
 .log-time-step.fade-in { animation: lq-rise 360ms var(--h-ease-enter) both; }
+
+/* Proje adimi: tur alt basliklari (05.10). Nokta = turun rengi. */
+.log-time-type + .log-time-type { margin-top: 6px; }
+.log-time-type__dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 8px;
+    border-radius: 4px;
+    vertical-align: -1px;
+}

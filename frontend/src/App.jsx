@@ -59,6 +59,7 @@ const HomePage = lazy(routeLoaders.home)
 const WorkLinkPage = lazy(routeLoaders.workLink)
 const CustomersPage = lazy(routeLoaders.customers)
 const ProjectsPage = lazy(routeLoaders.projects)
+const ProjectTypesPage = lazy(routeLoaders.projectTypes)
 const WorkTypesPage = lazy(routeLoaders.workTypes)
 const UsersPage = lazy(routeLoaders.users)
 const CapacitySettingsPage = lazy(routeLoaders.capacitySettings)
@@ -415,6 +416,9 @@ function App() {
                     } />
                     <Route path="customers/projects" element={
                         <ProtectedRoute permission={'projects.manage'}><ProjectsPage /></ProtectedRoute>
+                    } />
+                    <Route path="customers/project-types" element={
+                        <ProtectedRoute permission={'projects.manage'}><ProjectTypesPage /></ProtectedRoute>
                     } />
                     <Route path="integrations/api" element={
                         <ProtectedRoute permission={'api.manage'}><ApiManagementPage /></ProtectedRoute>
