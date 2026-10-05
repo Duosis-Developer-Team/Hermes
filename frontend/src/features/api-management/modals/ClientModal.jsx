@@ -16,6 +16,7 @@ import { KeyOutlined, PlusOutlined } from '@ant-design/icons'
 import { BINDING_LABEL, SCOPE_HELP } from '../model/format'
 import { useT } from '../../../i18n'
 import { ModalHead } from '../../../components/liquid'
+import { selectFilter } from '../../../utils/searchText'
 
 export default function ClientModal({ open, editing, scopes, pickers, onClose, onSubmit, saving }) {
     const t = useT()
@@ -175,7 +176,7 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
                     >
                         <Select
                             showSearch
-                            optionFilterProp="label"
+                            filterOption={selectFilter}
                             options={targetOptions('user')}
                             placeholder={t('api.boundUserHint')}
                             disabled={!!editing}
@@ -237,7 +238,7 @@ export default function ClientModal({ open, editing, scopes, pickers, onClose, o
                                             >
                                                 <Select
                                                     showSearch
-                                                    optionFilterProp="label"
+                                                    filterOption={selectFilter}
                                                     placeholder={t('api.selectTarget')}
                                                     options={targetOptions(
                                                         row.access_type

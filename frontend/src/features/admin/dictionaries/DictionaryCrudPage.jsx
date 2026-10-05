@@ -41,6 +41,7 @@ import { applyErrorToForm, normalizeApiError } from '../shared/normalizeApiError
 import { useT } from '../../../i18n'
 import { ModalHead, avatarTone } from '../../../components/liquid'
 import { AdminEmptyState } from '../shared/AdminListStates'
+import { matchesAny } from '../../../utils/searchText'
 
 const FORM_FIELDS = ['name', 'code', 'description', 'is_active']
 
@@ -185,13 +186,8 @@ function DictionaryCrudPage({
     }
 
     const filtered = useMemo(() => {
-        const q = search.trim().toLowerCase()
-        if (!q) return items
-        return items.filter((i) =>
-            [i.name, i.code, i.description]
-                .filter(Boolean)
-                .some((v) => String(v).toLowerCase().includes(q))
-        )
+        if (!search.trim()) return items
+        return items.filter((i) => matchesAny([i.name, i.code, i.description], search))
     }, [items, search])
 
     const columns = useMemo(() => [

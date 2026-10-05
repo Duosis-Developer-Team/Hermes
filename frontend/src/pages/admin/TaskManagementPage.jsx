@@ -65,6 +65,7 @@ import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
 import { SettingsEmpty, SettingsKpis, SettingsSection, SettingsTabs } from './settingsKit'
 import { customerSelectRender, projectSelectRender } from '../../components/common/customerSelect'
+import { selectFilter } from '../../utils/searchText'
 
 // =============================================================================
 // Sub Projects
@@ -311,7 +312,7 @@ export function SubProjectsTab() {
                             setFilterCustomer(v)
                             setFilterProject(null)
                         }}
-                        optionFilterProp="label"
+                        filterOption={selectFilter}
                         options={customers.map((c) => ({ value: c.id, label: c.name }))}
                         {...customerSelectRender}
                     />
@@ -324,7 +325,7 @@ export function SubProjectsTab() {
                         value={filterProject}
                         disabled={!filterCustomer}
                         onChange={setFilterProject}
-                        optionFilterProp="label"
+                        filterOption={selectFilter}
                         options={filteredProjects.map((p) => ({
                             value: p.id,
                             label: p.name,
@@ -389,7 +390,7 @@ export function SubProjectsTab() {
                                 disabled={!!editing}
                                 showSearch
                                 placeholder={t('task.selectCustomer')}
-                                optionFilterProp="label"
+                                filterOption={selectFilter}
                                 onChange={() => {
                                     form.setFieldsValue({ project_id: undefined })
                                 }}
@@ -412,7 +413,7 @@ export function SubProjectsTab() {
                                         ? t('pm.selectProject')
                                         : t('pm.selectCustomerFirst')
                                 }
-                                optionFilterProp="label"
+                                filterOption={selectFilter}
                                 options={formProjectsList.map((p) => ({
                                     value: p.id,
                                     label: p.name,

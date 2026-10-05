@@ -6,10 +6,10 @@
  * =============================================================================
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Spin, Button } from 'antd'
 import { BarChartOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts'
 import dayjs from 'dayjs'
 import { reportsService, authService } from '../services/api'
@@ -42,7 +42,19 @@ function DashboardPage() {
             end_date: dateRange[1]?.format('YYYY-MM-DD'),
         }),
         enabled: !!dateRange[0] && !!dateRange[1],
+        // Tarih degisince sayfa spinner'a dusup yeniden KURULMAZ: onceki
+        // veri yeni gelene kadar durur (animasyon yalniz ilk acilista).
+        placeholderData: keepPreviousData,
     })
+
+    // Giris animasyonu (sayac, cubuklar, grafik) yalniz sayfanin ILK
+    // acilisinda oynar; ay degisiminde degerler dogrudan yerine oturur.
+    const [settled, setSettled] = useState(false)
+    useEffect(() => {
+        if (!data || settled) return undefined
+        const id = setTimeout(() => setSettled(true), 1200)
+        return () => clearTimeout(id)
+    }, [data, settled])
 
     /* Yalniz "By User" serisindeki kimlikleri ADA cevirmek icin. Eskiden
        admin-only /auth/users ucundan geliyordu; users.manage olmayan
@@ -208,11 +220,11 @@ function DashboardPage() {
 
             <div className="lq-bento lq-enter dashboard-bento">
                 <GlassCard className="lq-c6" title={t('dashboard.byCustomer')} link={<span className="dashboard-unit">{t('dashboard.hoursUnit')}</span>}>
-                    <BarList items={listItems(customerData)} tone="blue" emptyText={emptyText} />
+                    <BarList items={listItems(customerData)} tone="blue" emptyText={emptyText} animate={!settled} />
                     {moreNote(customerData)}
                 </GlassCard>
                 <GlassCard className="lq-c6" title={t('dashboard.byProject')} link={<span className="dashboard-unit">{t('dashboard.hoursUnit')}</span>}>
-                    <BarList items={listItems(projectData)} tone="violet" emptyText={emptyText} />
+                    <BarList items={listItems(projectData)} tone="violet" emptyText={emptyText} animate={!settled} />
                     {moreNote(projectData)}
                 </GlassCard>
                 <GlassCard className="lq-c12" title={t('dashboard.byUser')} link={<span className="dashboard-unit">{t('dashboard.hoursUnit')}</span>}>
@@ -239,7 +251,7 @@ function DashboardPage() {
                                 <YAxis stroke="var(--h-chart-axis)" tickLine={false} axisLine={false} />
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--h-bg-hover)', radius: 12 }} />
                                 <Bar dataKey="hours" name="Hours" fill="url(#dash-user-bar)" radius={[14, 14, 14, 14]} maxBarSize={72} animationDuration={900}
-                                    isAnimationActive={!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches}>
+                                    isAnimationActive={!settled && !window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches}>
                                     <LabelList dataKey="hours" position="top" fill="var(--h-text-secondary)" fontSize={12} />
                                 </Bar>
                             </BarChart>

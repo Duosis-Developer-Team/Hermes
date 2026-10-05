@@ -27,7 +27,6 @@ import {
 } from '../features/tasks/model/permissions'
 import useTaskTypeRoute from '../features/tasks/hooks/useTaskTypeRoute'
 import useViewWorkspace from '../features/tasks/hooks/useViewWorkspace'
-import useCalendarMeetings from '../features/tasks/hooks/useCalendarMeetings'
 import useTaskDirectory from '../features/tasks/hooks/useTaskDirectory'
 import useTasksQuery from '../features/tasks/hooks/useTasksQuery'
 import useTaskMutations from '../features/tasks/hooks/useTaskMutations'
@@ -128,9 +127,6 @@ function TasksPage() {
     })
     const status = useTaskStatusMutation()
     const workLog = useTaskWorkLog()
-    const { meetings } = useCalendarMeetings({
-        enabled: ws.layout === 'calendar', weekStart: ws.weekStart,
-    })
 
     // Sol kolon "Projeler": sonuc kumesinin Musteri → Proje agaci.
     const projectTree = buildHierarchy(
@@ -348,7 +344,6 @@ function TasksPage() {
                         onPreviousWeek={ws.goToPreviousWeek}
                         onNextWeek={ws.goToNextWeek}
                         onCurrentWeek={ws.goToCurrentWeek}
-                        meetings={meetings}
                     />
                 </div>
             </div>

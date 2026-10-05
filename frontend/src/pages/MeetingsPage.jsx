@@ -42,8 +42,20 @@ import LogTimeModal from '../components/modals/LogTimeModal'
 import { useT } from '../i18n'
 import './MeetingsPage.css'
 import { invalidateMeetingViews } from '../features/home/hooks/useMeetingAutoSync'
+import { selectFilter } from '../utils/searchText'
 
 dayjs.extend(isoWeek)
+
+const CALENDAR_MODE_KEY = 'hermes.meetings.calendarMode'
+const CALENDAR_MODES = ['day', 'workweek', 'week', 'agenda']
+
+function readCalendarMode() {
+    try {
+        const saved = localStorage.getItem(CALENDAR_MODE_KEY)
+        if (CALENDAR_MODES.includes(saved)) return saved
+    } catch { /* depolama kapali */ }
+    return 'workweek'
+}
 
 
 function MeetingsPage() {
@@ -67,12 +79,13 @@ function MeetingsPage() {
     const weekStartStr = weekStart.format('YYYY-MM-DD')
     const weekEndStr = weekEnd.format('YYYY-MM-DD')
 
-    // Admin-only user selector — now MULTI-select. Each id added shows
+    // Admin-only user selector — MULTI-select. Each id added shows
     // that user's calendar; the week view is the union of all selected
-    // users' meetings. Empty selection = every meeting in the system
-    // (the admin's existing "see everyone" default). Non-admin never
-    // sees the selector and is always scoped to themselves server-side.
-    const [selectedUserIds, setSelectedUserIds] = useState([])
+    // users' meetings. Varsayilan = admin'in KENDI takvimi (herkesinkini
+    // tek ekranda gormek karisikti); secim temizlenirse "herkes" gorunur.
+    // Non-admin never sees the selector and is always scoped to
+    // themselves server-side.
+    const [selectedUserIds, setSelectedUserIds] = useState(() => (user?.id ? [user.id] : []))
     // Stable key for the meetings query — order-independent so the same
     // set of users doesn't refetch just because tag order changed.
     const selectedKey = isAdmin
@@ -87,7 +100,12 @@ function MeetingsPage() {
 
     const [reviewMeeting, setReviewMeeting] = useState(null)
     // Hermes Liquid: takvim gorunumu ve sol raydaki takvim filtreleri.
-    const [calendarMode, setCalendarMode] = useState('week')
+    // Gorunum kullanici basina hatirlanir (hafta sonu tercihi kalici olsun).
+    const [calendarMode, setCalendarModeState] = useState(readCalendarMode)
+    const setCalendarMode = (mode) => {
+        setCalendarModeState(mode)
+        try { localStorage.setItem(CALENDAR_MODE_KEY, mode) } catch { /* depolama kapali */ }
+    }
     const [calendarFilters, setCalendarFilters] = useState({
         online: true, offline: true, logged: true, cancelled: false,
     })
@@ -311,11 +329,7 @@ function MeetingsPage() {
                         options={userSelectorOptions}
                         suffixIcon={<TeamOutlined />}
                         showSearch
-                        filterOption={(input, option) =>
-                            (option?.label ?? '')
-                                .toLowerCase()
-                                .includes(input.toLowerCase())
-                        }
+                        filterOption={selectFilter}
                     />
                 ) : null}
             />
@@ -357,6 +371,7 @@ function MeetingsPage() {
                             onChange={setCalendarMode}
                             options={[
                                 { value: 'day', label: t('meetingsPage.modeDay') },
+                                { value: 'workweek', label: t('meetingsPage.modeWorkWeek') },
                                 { value: 'week', label: t('meetingsPage.modeWeek') },
                                 { value: 'agenda', label: t('meetingsPage.modeAgenda') },
                             ]}

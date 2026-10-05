@@ -18,6 +18,7 @@ import TasksSearchBar from '../../../components/tasks/TasksSearchBar'
 import TaskLifecycleSwitcher from './TaskLifecycleSwitcher'
 import { PageHero } from '../../../components/liquid'
 import { useT } from '../../../i18n'
+import { selectFilter } from '../../../utils/searchText'
 
 /*
  * Hermes Liquid (28.09): prototipteki sayfa basligi — "Isler" + aktif
@@ -77,11 +78,7 @@ function TasksHeader({
                             options={userSelectorOptions}
                             suffixIcon={<TeamOutlined />}
                             showSearch
-                            filterOption={(input, option) =>
-                                (option?.label ?? '')
-                                    .toLowerCase()
-                                    .includes(input.toLowerCase())
-                            }
+                            filterOption={selectFilter}
                         />
                     )}
                     {/* Serbest metin arama — gorunurluk sunucuda uygulanir */}

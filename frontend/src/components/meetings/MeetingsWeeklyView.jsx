@@ -4,7 +4,8 @@
  * =============================================================================
  * Saat izgarali takvim: toplantilar baslangic/bitis saatine gore KONUMLANIR
  * (eski "gun basina kart yigini" yerine). Uc gorunum:
- *   week   hafta ici 5 gun (hafta sonunda toplanti varsa 7 gun)
+ *   workweek is haftasi — hafta ici 5 gun (Outlook "Work week")
+ *   week     tam hafta — hafta sonu dahil 7 gun
  *   day    tek gun (focusDate)
  *   agenda gun gun liste
  * Cakisan toplantilar yan yana seritlere bolunur. Bugun basliginda ortak
@@ -103,7 +104,7 @@ function MeetingsWeeklyView({
     meetings = [],
     loggedMeetingIds,
     onSelectMeeting,
-    mode = 'week',
+    mode = 'workweek',
     focusDate,
 }) {
     const t = useT()
@@ -125,9 +126,9 @@ function MeetingsWeeklyView({
             const f = dayjs(focusDate || weekStart)
             return [all.find((d) => d.isSame(f, 'day')) || all[0]]
         }
-        const weekendBusy = all.slice(5).some((d) => (byDay[d.format('YYYY-MM-DD')] || []).length)
-        return weekendBusy || mode === 'agenda' ? all : all.slice(0, 5)
-    }, [weekStart, mode, focusDate, byDay])
+        // Hafta sonu yalniz kullanici isterse (Outlook gibi): is haftasi 5 gun.
+        return mode === 'workweek' ? all.slice(0, 5) : all
+    }, [weekStart, mode, focusDate])
 
     if (mode === 'agenda') {
         return <Agenda days={days} byDay={byDay} loggedMeetingIds={loggedMeetingIds} onSelectMeeting={onSelectMeeting} />

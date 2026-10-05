@@ -84,7 +84,6 @@ function TasksSurface({
     /* Takvim yerlesimi (E5) */
     weekStart,
     onPreviousWeek, onNextWeek, onCurrentWeek,
-    meetings = null,
 }) {
     /* Referans kararliligi: alt agaclar memo'lu oldugu icin bu nesne
        her render'da yeniden uretilirse memo hicbir zaman tutmaz. */
@@ -138,7 +137,6 @@ function TasksSurface({
                         onNextWeek={onNextWeek}
                         onCurrentWeek={onCurrentWeek}
                         onOpenPanel={onOpenPanel}
-                        meetings={meetings}
                     />
                 ) : (
                     <TasksBoardView

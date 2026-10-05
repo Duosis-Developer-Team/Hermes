@@ -31,6 +31,7 @@ import { queryKeys } from '../../query/queryKeys'
 import { useCustomerLogoStore } from '../../stores/customerLogoStore'
 import CustomerLogoField, { EMPTY_LOGO_DRAFT } from './CustomerLogoField'
 import { customerSelectRender } from '../../components/common/customerSelect'
+import { selectFilter, matchesAny } from '../../utils/searchText'
 
 // Formda GERCEKTEN olan alanlar: API kaydindaki id/created_at gibi
 // alanlar form store'una sizmaz, eksik alan da bayat deger BIRAKMAZ.
@@ -212,13 +213,11 @@ function ProjectsPage() {
     }
 
     /** Arama: proje adi, kodu ve MUSTERI adinda. */
-    const query = search.trim().toLowerCase()
+    const query = search.trim()
     const filteredProjects = useMemo(() => {
         if (!query) return projects
         return projects.filter((p) =>
-            [p.name, p.code, p.customer_name]
-                .filter(Boolean)
-                .some((val) => String(val).toLowerCase().includes(query))
+            matchesAny([p.name, p.code, p.customer_name], query)
         )
     }, [projects, query])
 
@@ -427,9 +426,7 @@ function ProjectsPage() {
                             placeholder={t('admin.selectCustomerHint')}
                             allowClear
                             showSearch
-                            filterOption={(input, option) =>
-                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
+                            filterOption={selectFilter}
                             options={customers.map(c => ({ value: c.id, label: c.name }))}
                             {...customerSelectRender}
                         />

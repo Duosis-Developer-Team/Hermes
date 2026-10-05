@@ -37,6 +37,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useT } from '../i18n'
 import { Avatar as LqAvatar, CountUp, GlassCard, PageHero } from '../components/liquid'
 import './BillableHoursPage.css'
+import { selectFilter } from '../utils/searchText'
 
 dayjs.extend(isoWeek)
 
@@ -396,9 +397,7 @@ function BillableHoursPage() {
                                 </span>
                             )}
                             showSearch
-                            filterOption={(input, option) =>
-                                String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
+                            filterOption={selectFilter}
                         />
                         <div className="bh-toolbar h-inline-toolbar">
                             <Button shape="circle" aria-label={t('billableHours.previousWeek')} icon={<LeftOutlined />} onClick={goToPreviousWeek} />

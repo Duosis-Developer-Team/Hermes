@@ -15,7 +15,7 @@ import dayjs from 'dayjs'
 
 import {
     EMPTY_FILTERS, filtersOfView, isViewDirty, normalizeSavedView, resolveView,
-    systemViewsFor, toFilterJson, viewQueryInputs, createTypeOfView,
+    systemViewsFor, toFilterJson, viewQueryInputs, createTypeOfView, groupOfView,
 } from '../../features/tasks/model/views'
 import { dueBucketOf, partitionTasks, tasksByDay } from '../../features/tasks/model/viewGroups'
 
@@ -56,6 +56,10 @@ describe('resolveView / systemViewsFor', () => {
         expect(systemViewsFor({ canViewAssignedByMe: false }).map((v) => v.id)).not.toContain('assigned-by-me')
         expect(resolveView('assigned-by-me', [], { canViewAssignedByMe: false }).id).toBe('mine')
         expect(resolveView('assigned-by-me', [], { canViewAssignedByMe: true }).id).toBe('assigned-by-me')
+        // CTO 05.10: "Assigned by me" varsayilan gruplamasi DURUM (sahip degil).
+        const abm = resolveView('assigned-by-me', [], { canViewAssignedByMe: true })
+        expect(groupOfView(abm, 'board')).toBe('status')
+        expect(groupOfView(abm, 'list')).toBe('status')
     })
     it('kayitli gorunum cozulur; bilinmeyen kimlik varsayilana duser', () => {
         const saved = normalizeSavedView({
@@ -141,5 +145,7 @@ describe('gruplama ve takvim (viewGroups)', () => {
         expect(out.byDay['2026-09-14']).toEqual([])
         expect(out.outside).toBe(1)
         expect(out.undated).toBe(1)
+        // Terminsiz isler kaybolmaz: takvimin altinda kart olarak cizilir.
+        expect(out.undatedItems).toHaveLength(1)
     })
 })

@@ -13,6 +13,7 @@ import { Modal } from 'antd'
 import { SearchOutlined, EnterOutlined } from '@ant-design/icons'
 
 import { useT } from '../../i18n'
+import { matchesSearch } from '../../utils/searchText'
 
 export default function CommandPalette({ open, items, onClose, onSelect }) {
     const t = useT()
@@ -29,10 +30,8 @@ export default function CommandPalette({ open, items, onClose, onSelect }) {
     }, [open])
 
     const results = useMemo(() => {
-        const q = query.trim().toLocaleLowerCase()
-        if (!q) return items
-        return items.filter((it) =>
-            `${it.text} ${it.group || ''}`.toLocaleLowerCase().includes(q))
+        if (!query.trim()) return items
+        return items.filter((it) => matchesSearch(`${it.text} ${it.group || ''}`, query))
     }, [items, query])
 
     const choose = (it) => {

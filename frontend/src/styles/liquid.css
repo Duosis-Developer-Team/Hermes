@@ -258,6 +258,7 @@
     transform-origin: left;
     animation: lq-grow-x 900ms var(--h-ease-enter) both;
 }
+.lq-barlist--static .lq-barlist__track i { animation: none; }
 .lq-barlist--violet .lq-barlist__track i { background: linear-gradient(90deg, var(--hp-purple-500), var(--hp-blue-400)); }
 .lq-barlist--green .lq-barlist__track i { background: linear-gradient(90deg, var(--hp-green-500), var(--hp-green-300)); }
 .lq-barlist__value { text-align: right; font: 500 12.5px var(--h-font-mono); color: var(--h-text-secondary); font-variant-numeric: tabular-nums; }

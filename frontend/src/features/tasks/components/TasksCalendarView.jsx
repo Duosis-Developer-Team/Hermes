@@ -3,12 +3,11 @@
  * HERMES - Takvim yerlesimi (PM rework P3.5 / E5)
  * =============================================================================
  * Ayri bir takvim sayfasi DEGIL: secili gorunumun isleri, TERMINE gore
- * hafta izgarasinda. Uzerine kullanicinin toplantilari (ana sayfa
- * takvim verisi) — takvime yazma/davet YOK (05 kapsam disi). Kart
- * tiklamasi detay panelini acar. Terminsiz ve hafta disi isler sayiyla
- * soylenir, kaybolmaz.
+ * hafta izgarasinda. Burasi IS alanidir: toplanti GOSTERILMEZ (toplantilar
+ * /meetings'te). Kart tiklamasi detay panelini acar. Terminsiz isler
+ * izgaranin altinda kart olarak durur; hafta disi isler sayiyla soylenir.
  *
- * SUNUM KATMANI: sorgu yok (toplantilar prop olarak gelir).
+ * SUNUM KATMANI: sorgu yok.
  * =============================================================================
  */
 import { Button } from 'antd'
@@ -20,22 +19,47 @@ import { useT } from '../../../i18n'
 import './tasksViews.css'
 import { BrandLogos } from '../../../components/liquid'
 
-const hm = (iso) => dayjs(iso).format('HH:mm')
-
 function TasksCalendarView({
     tasks = [],
     userMap = {},
     weekStart,
     onPreviousWeek, onNextWeek, onCurrentWeek,
     onOpenPanel,
-    /** Ana sayfa /home/week ciktisi (gun → toplantilar); istege bagli. */
-    meetings = null,
 }) {
     const t = useT()
     const today = dayjs()
     const days = calendarDays(weekStart)
-    const { byDay, outside, undated } = tasksByDay(tasks, weekStart, { userMap })
-    const meetingsByDay = Object.fromEntries((meetings?.days || []).map((d) => [d.date, d.meetings || []]))
+    const { byDay, outside, undatedItems } = tasksByDay(tasks, weekStart, { userMap })
+
+    const renderItem = (item) => {
+        const task = item.assignments[0]?.task
+        const completed = item.aggregateStatus === 'completed'
+        const tone = completed ? 'completed' : (item.dueDate ? dueBucketOf(item.dueDate, today) : 'none')
+        return (
+            <li key={item.key}>
+                <button
+                    type="button"
+                    className={`tv-cal__item tv-cal__item--${tone}`}
+                    data-entry="item"
+                    data-due-tone={tone}
+                    onClick={() => task && onOpenPanel?.(task)}
+                >
+                    {task && (
+                        <BrandLogos
+                            customerId={task.customer_id}
+                            customerName={task.customer_name}
+                            projectId={task.project_id}
+                            projectName={task.project_name}
+                            size={20}
+                            className="tv-cal__logo"
+                        />
+                    )}
+                    <span className="tv-cal__key">{task?.task_code}</span>
+                    <span className="tv-cal__label">{item.title}</span>
+                </button>
+            </li>
+        )
+    }
 
     return (
         <div className="tv-cal" data-testid="tasks-calendar">
@@ -53,7 +77,6 @@ function TasksCalendarView({
                     const isToday = day.isSame(today, 'day')
                     const weekend = day.isoWeekday() >= 6
                     const items = byDay[key] || []
-                    const dayMeetings = meetingsByDay[key] || []
                     return (
                         <li
                             key={key}
@@ -65,53 +88,25 @@ function TasksCalendarView({
                                 <span className="tv-cal__day-num">{day.format('DD')}</span>
                             </div>
                             <ul className="tv-cal__list">
-                                {dayMeetings.map((m) => (
-                                    <li key={m.id}>
-                                        <div className="tv-cal__item tv-cal__item--meeting" data-entry="meeting">
-                                            <span className="tv-cal__time">{`${hm(m.start_datetime)}–${hm(m.end_datetime)}`}</span>
-                                            <span className="tv-cal__label">{m.subject}</span>
-                                        </div>
-                                    </li>
-                                ))}
-                                {items.map((item) => {
-                                    const task = item.assignments[0]?.task
-                                    const completed = item.aggregateStatus === 'completed'
-                                    const tone = completed ? 'completed' : dueBucketOf(item.dueDate, today)
-                                    return (
-                                        <li key={item.key}>
-                                            <button
-                                                type="button"
-                                                className={`tv-cal__item tv-cal__item--${tone}`}
-                                                data-entry="item"
-                                                data-due-tone={tone}
-                                                onClick={() => task && onOpenPanel?.(task)}
-                                            >
-                                                {task && (
-                                                    <BrandLogos
-                                                        customerId={task.customer_id}
-                                                        customerName={task.customer_name}
-                                                        projectId={task.project_id}
-                                                        projectName={task.project_name}
-                                                        size={20}
-                                                        className="tv-cal__logo"
-                                                    />
-                                                )}
-                                                <span className="tv-cal__key">{task?.task_code}</span>
-                                                <span className="tv-cal__label">{item.title}</span>
-                                            </button>
-                                        </li>
-                                    )
-                                })}
+                                {items.map(renderItem)}
                             </ul>
                         </li>
                     )
                 })}
             </ol>
-            {(outside > 0 || undated > 0) && (
+            {undatedItems.length > 0 && (
+                <section className="tv-cal__undated" data-testid="tasks-calendar-undated">
+                    <h4 className="tv-cal__undated-title">
+                        {t('views.noDueDate')} <span>{undatedItems.length}</span>
+                    </h4>
+                    <ul className="tv-cal__list tv-cal__undated-list">
+                        {undatedItems.map(renderItem)}
+                    </ul>
+                </section>
+            )}
+            {outside > 0 && (
                 <p className="tv-cal__outside" role="status">
-                    {outside > 0 ? `${outside} outside this week` : ''}
-                    {outside > 0 && undated > 0 ? ' · ' : ''}
-                    {undated > 0 ? `${undated} ${t('views.noDueDate').toLowerCase()}` : ''}
+                    {t('views.outsideWeek', { count: outside })}
                 </p>
             )}
         </div>

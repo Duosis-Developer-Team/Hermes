@@ -20,6 +20,7 @@ import dayjs from 'dayjs'
 import { useT } from '../../i18n'
 import { CountUp, GlassCard, PageHero } from '../../components/liquid'
 import './ContractStatusPage.css'
+import { matchesAny } from '../../utils/searchText'
 
 const HOURS_PER_DAY = 8
 
@@ -99,10 +100,9 @@ function ContractStatusPage() {
     // Filter by Search (customer name or project name)
     // `p.name` null olabilir: ham `p.name.toLowerCase()` cagrisi tum
     // sayfayi COKERTIYORDU (arama yazilmasi bile gerekmiyordu).
-    const query = searchText.trim().toLowerCase()
+    const query = searchText.trim()
     const filteredData = processedData.filter(p =>
-        (p.customer_name || '').toLowerCase().includes(query) ||
-        (p.name || '').toLowerCase().includes(query)
+        matchesAny([p.customer_name, p.name], query)
     )
 
     const STATUS_TONE = { expired: 'bad', critical: 'bad', warning: 'warn', safe: 'ok' }

@@ -45,6 +45,7 @@ import { resetAndFill } from '../../features/admin/shared/formLifecycle'
 import { useT } from '../../i18n'
 import { Avatar, FormSection, ModalHead } from '../../components/liquid'
 import { SettingsEmpty } from './settingsKit'
+import { selectFilter, matchesAny } from '../../utils/searchText'
 
 function userLabel(u) {
     if (!u) return '—'
@@ -255,7 +256,7 @@ function AddRuleModal({
                     <Select
                         showSearch
                         placeholder={t('assignment.selectAssigner')}
-                        optionFilterProp="label"
+                        filterOption={selectFilter}
                         options={eligibleAssigners.map((u) => ({
                             value: u.id,
                             label: userLabel(u),
@@ -300,7 +301,7 @@ function AddRuleModal({
                         allowClear
                         showSearch
                         placeholder={t('assignment.selectUsers')}
-                        optionFilterProp="label"
+                        filterOption={selectFilter}
                         maxTagCount="responsive"
                         options={eligibleAssignees.map((u) => ({
                             value: u.id,
@@ -324,7 +325,7 @@ function AddRuleModal({
                         allowClear
                         showSearch
                         placeholder={t('assignment.selectGroups')}
-                        optionFilterProp="label"
+                        filterOption={selectFilter}
                         maxTagCount="responsive"
                         options={eligibleGroups.map((g) => ({
                             value: g.id,
@@ -440,7 +441,7 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
 
     const sortedAssignerCards = useMemo(() => {
         const ids = Array.from(cardsByAssigner.keys())
-        const term = assignerSearch.trim().toLowerCase()
+        const term = assignerSearch.trim()
         return ids
             .map((id) => ({
                 assigner: usersById[id] || { id, full_name: id },
@@ -449,10 +450,7 @@ function AssignmentHierarchyTab({ scope = 'task' }) {
             }))
             .filter(({ assigner }) => {
                 if (!term) return true
-                return (
-                    userLabel(assigner).toLowerCase().includes(term) ||
-                    (assigner.email || '').toLowerCase().includes(term)
-                )
+                return matchesAny([userLabel(assigner), assigner.email], term)
             })
             .sort((a, b) =>
                 userLabel(a.assigner).localeCompare(userLabel(b.assigner))

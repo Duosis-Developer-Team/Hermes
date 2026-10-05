@@ -42,6 +42,7 @@ import { queryKeys } from '../query/queryKeys'
 import { useT } from '../i18n'
 import { Avatar, CountUp, GlassCard, LiquidSegmented, PageHero } from '../components/liquid'
 import './ReportsPage.css'
+import { selectFilter } from '../utils/searchText'
 
 dayjs.extend(isoWeek)
 
@@ -333,7 +334,7 @@ function FilterControls({ t, dateRange, onDateRange, presets, activePreset, grou
                         options={g.options}
                         allowClear
                         showSearch
-                        filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+                        filterOption={selectFilter}
                         maxTagCount={2}
                         className="reports-select"
                         optionRender={g.people ? (o) => (

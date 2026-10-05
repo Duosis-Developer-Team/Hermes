@@ -21,6 +21,7 @@ import {
 import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecycle'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
+import { matchesAny } from '../../utils/searchText'
 
 // Formda GERCEKTEN olan alanlar. API kaydindaki id/created_at gibi
 // alanlar form store'una sizmaz.
@@ -118,13 +119,11 @@ function WorkTypesPage() {
     const handleCloseModal = () => { setModalOpen(false); setEditingId(null); form.resetFields() }
 
     /** Arama: ad ve kodda. */
-    const query = search.trim().toLowerCase()
+    const query = search.trim()
     const filteredWorkTypes = useMemo(() => {
         if (!query) return workTypes
         return workTypes.filter((w) =>
-            [w.name, w.code]
-                .filter(Boolean)
-                .some((val) => String(val).toLowerCase().includes(query))
+            matchesAny([w.name, w.code], query)
         )
     }, [workTypes, query])
 

@@ -45,6 +45,7 @@ import { queryKeys } from '../../query/queryKeys'
 import { useCustomerLogoStore } from '../../stores/customerLogoStore'
 import CustomerLogoField, { EMPTY_LOGO_DRAFT } from './CustomerLogoField'
 import dayjs from 'dayjs'
+import { matchesAny } from '../../utils/searchText'
 
 function CustomersPage() {
     const [form] = Form.useForm()
@@ -175,13 +176,11 @@ function CustomersPage() {
     }
 
     /** Arama: ad, kod ve iletisim alanlarinda. */
-    const query = search.trim().toLowerCase()
+    const query = search.trim()
     const filteredCustomers = useMemo(() => {
         if (!query) return customers
         return customers.filter((c) =>
-            [c.name, c.code, c.contact_person, c.email]
-                .filter(Boolean)
-                .some((val) => String(val).toLowerCase().includes(query))
+            matchesAny([c.name, c.code, c.contact_person, c.email], query)
         )
     }, [customers, query])
 

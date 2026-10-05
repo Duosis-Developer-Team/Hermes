@@ -30,6 +30,7 @@ import { resetAndFill } from '../../features/admin/shared/formLifecycle'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
 import { UserAddOutlined } from '@ant-design/icons'
+import { selectFilter } from '../../utils/searchText'
 
 const FORM_FIELDS = ['user_ids', 'title']
 
@@ -183,7 +184,7 @@ function UserGroupMemberModal({
                             mode="multiple"
                             showSearch
                             placeholder={t('memberModal.selectUsers')}
-                            optionFilterProp="label"
+                            filterOption={selectFilter}
                             options={userOptions}
                             maxTagCount="responsive"
                         />

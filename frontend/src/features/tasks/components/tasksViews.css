@@ -249,7 +249,6 @@
     min-width: 0;
 }
 .tv-cal__item:hover, .tv-cal__item:focus-visible { background: var(--h-bg-hover); outline: none; }
-.tv-cal__item--meeting { border-left-color: var(--h-brand); cursor: default; }
 .tv-cal__item--overdue { border-left-color: var(--h-danger); }
 .tv-cal__item--today { border-left-color: var(--h-warning); }
 .tv-cal__item--completed { color: var(--h-text-muted); }
@@ -262,7 +261,17 @@
     -webkit-box-orient: vertical;
     line-height: 1.35;
 }
-.tv-cal__time { font-size: var(--h-font-meta); color: var(--h-text-secondary); font-variant-numeric: tabular-nums; }
+.tv-cal__undated { margin-top: var(--h-space-4); }
+.tv-cal__undated-title {
+    margin: 0 0 var(--h-space-2);
+    font-size: var(--h-font-label);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--h-text-secondary);
+}
+.tv-cal__undated-title span { color: var(--h-text-muted); font-variant-numeric: tabular-nums; margin-left: 4px; }
+.tv-cal__undated-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
 .tv-cal__outside {
     margin-top: var(--h-space-3);
     font-size: var(--h-font-meta);

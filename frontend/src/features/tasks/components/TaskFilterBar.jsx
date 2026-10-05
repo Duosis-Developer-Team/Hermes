@@ -18,6 +18,7 @@ import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '../model/constants'
 import { ChipGroup, FormSection } from '../../../components/liquid'
 import { useT } from '../../../i18n'
 import { customerSelectRender, projectSelectRender } from '../../../components/common/customerSelect'
+import { selectFilter } from '../../../utils/searchText'
 
 function Field({ id, label, children }) {
     return (
@@ -66,7 +67,7 @@ function TaskFilterBar({
                         id="tf-assignee"
                         allowClear
                         showSearch
-                        optionFilterProp="label"
+                        filterOption={selectFilter}
                         aria-label={t('taskUi.filterByUser')}
                         placeholder={t('taskUi.any')}
                         value={filters.assignee || undefined}
@@ -84,7 +85,7 @@ function TaskFilterBar({
                     placeholder={t('taskUi.any')}
                     value={filters.customer}
                     onChange={onCustomerChange}
-                    optionFilterProp="label"
+                    filterOption={selectFilter}
                     options={customers.map((c) => ({ value: c.id, label: c.name }))}
                     {...customerSelectRender}
                 />
@@ -99,7 +100,7 @@ function TaskFilterBar({
                     value={filters.project}
                     disabled={!filters.customer}
                     onChange={onProjectChange}
-                    optionFilterProp="label"
+                    filterOption={selectFilter}
                     options={projects.map((p) => ({ value: p.id, label: p.name }))}
                     {...projectSelectRender}
                 />
@@ -114,7 +115,7 @@ function TaskFilterBar({
                     value={filters.subProject}
                     disabled={!filters.project}
                     onChange={onSubProjectChange}
-                    optionFilterProp="label"
+                    filterOption={selectFilter}
                     options={subProjects.map((s) => ({ value: s.id, label: s.name }))}
                 />
             </Field>

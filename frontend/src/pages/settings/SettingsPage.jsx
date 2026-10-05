@@ -28,6 +28,7 @@ import { loaderByPath } from '../../routes/loaders'
 import { useAuthStore } from '../../stores/authStore'
 import { useT } from '../../i18n'
 import './SettingsPage.css'
+import { matchesAny } from '../../utils/searchText'
 
 // Kutucuk ikonu + rengi (uygulama ikonu gibi gradyan kare).
 const ITEMS = {
@@ -87,13 +88,12 @@ export function SettingsIndex() {
         return <div className="settings-loading"><Spin /></div>
     }
     if (!hasAnySettings(canAny)) return <Navigate to="/time-entry" replace />
-    const q = query.trim().toLocaleLowerCase()
+    const q = query.trim()
     const sections = visibleSections(canAny)
         .map((section) => ({
             ...section,
             items: section.items.filter((item) => !q
-                || t(item.labelKey).toLocaleLowerCase().includes(q)
-                || t(`settings.desc.${item.key}`).toLocaleLowerCase().includes(q)),
+                || matchesAny([t(item.labelKey), t(`settings.desc.${item.key}`)], q)),
         }))
         .filter((section) => section.items.length > 0)
 

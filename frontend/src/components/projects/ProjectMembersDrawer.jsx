@@ -21,6 +21,7 @@ import { authService } from '../../api/authApi'
 import { queryKeys } from '../../query/queryKeys'
 import { useT } from '../../i18n'
 import { ModalHead } from '../liquid'
+import { selectFilter } from '../../utils/searchText'
 
 const { Text } = Typography
 
@@ -109,9 +110,7 @@ function ProjectMembersDrawer({ open, projectId, projectName, onClose }) {
                         value={newUserId}
                         onChange={setNewUserId}
                         options={candidateOptions}
-                        filterOption={(input, option) =>
-                            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                        }
+                        filterOption={selectFilter}
                         style={{ flex: 1 }}
                     />
                     <Select

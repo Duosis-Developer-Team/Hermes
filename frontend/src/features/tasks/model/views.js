@@ -56,7 +56,7 @@ export const legacyLayoutOf = (value) => {
 export const SYSTEM_VIEWS = [
     { id: 'mine', labelKey: 'views.sys.mine', filter: { scope: 'my-tasks' } },
     { id: 'assigned-by-me', labelKey: 'views.sys.assignedByMe', assignerOnly: true,
-      filter: { scope: 'assigned-by-me' }, defaultGroup: 'owner' },
+      filter: { scope: 'assigned-by-me' }, defaultGroup: 'status' },
     { id: 'triage', labelKey: 'views.sys.triage', filter: { scope: 'all', owner: 'none' },
       defaultLayout: 'list' },
     { id: 'overdue', labelKey: 'views.sys.overdue', filter: { scope: 'my-tasks', due: 'overdue' } },

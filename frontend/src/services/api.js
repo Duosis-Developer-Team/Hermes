@@ -24,6 +24,21 @@ export { authService, rbacService }
 
 const coreApi = coreClient
 
+/*
+ * Dosya yuklemesi: istemcinin varsayilan `Content-Type: application/json`
+ * basligi kalirsa axios FormData'yi JSON'a CEVIRIR (dosya `{}` olur →
+ * sunucu 422; canli bug: "logo ekliyormus gibi gorunuyor ama yok").
+ * multipart beyani bu donusumu kapatir; tarayici boundary'yi kendisi ekler.
+ */
+const MULTIPART = { headers: { 'Content-Type': 'multipart/form-data' } }
+
+const uploadFile = async (url, file) => {
+    const body = new FormData()
+    body.append('file', file)
+    const response = await coreApi.put(url, body, MULTIPART)
+    return response.data
+}
+
 // =============================================================================
 // AUTH SERVICE
 // =============================================================================
@@ -65,12 +80,7 @@ export const customerService = {
     },
 
     /** Marka logosu (PNG/JPEG/WEBP, en fazla 256 KB) → { has_logo, logo_etag }. */
-    uploadLogo: async (id, file) => {
-        const body = new FormData()
-        body.append('file', file)
-        const response = await coreApi.put(`/api/v1/core/customers/${id}/logo`, body)
-        return response.data
-    },
+    uploadLogo: (id, file) => uploadFile(`/api/v1/core/customers/${id}/logo`, file),
 
     deleteLogo: async (id) => {
         await coreApi.delete(`/api/v1/core/customers/${id}/logo`)
@@ -132,12 +142,7 @@ export const projectService = {
     },
 
     /** Proje logosu (PNG/JPEG/WEBP, en fazla 256 KB) → { has_logo, logo_etag }. */
-    uploadLogo: async (id, file) => {
-        const body = new FormData()
-        body.append('file', file)
-        const response = await coreApi.put(`/api/v1/core/projects/${id}/logo`, body)
-        return response.data
-    },
+    uploadLogo: (id, file) => uploadFile(`/api/v1/core/projects/${id}/logo`, file),
 
     deleteLogo: async (id) => {
         await coreApi.delete(`/api/v1/core/projects/${id}/logo`)

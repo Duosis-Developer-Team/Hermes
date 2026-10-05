@@ -14,6 +14,7 @@ import { Button, Select } from 'antd'
 import { FileExcelOutlined, PlusOutlined, TeamOutlined } from '@ant-design/icons'
 import { useT } from '../../../i18n'
 import { PageHero } from '../../../components/liquid'
+import { selectFilter } from '../../../utils/searchText'
 
 function TimeEntryHeader({
     canSelectUser, targetUserId, usersList, onSelectUser,
@@ -39,7 +40,7 @@ function TimeEntryHeader({
                                 label: u.full_name || u.email,
                             }))}
                             showSearch
-                            optionFilterProp="label"
+                            filterOption={selectFilter}
                             suffixIcon={<TeamOutlined />}
                             aria-label={t('timeEntryHeader.selectUser')}
                         />

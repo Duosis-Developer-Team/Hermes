@@ -526,6 +526,7 @@ export default {
         unlogged: 'not logged',
         calendars: 'Calendars',
         modeDay: 'Day',
+        modeWorkWeek: 'Work week',
         modeWeek: 'Week',
         modeAgenda: 'Agenda',
         filter: {
@@ -1735,6 +1736,7 @@ export default {
         deleted: 'View deleted',
         saveFailed: 'Could not save the view',
         noDueDate: 'No due date',
+        outsideWeek: '{count} outside this week',
         noOwner: 'Unassigned',
         weekOf: 'Week of {date}',
         sys: {

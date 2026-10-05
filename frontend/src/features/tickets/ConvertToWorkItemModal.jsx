@@ -18,6 +18,7 @@ import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
 import { SwapOutlined } from '@ant-design/icons'
 import { customerSelectRender, projectSelectRender } from '../../components/common/customerSelect'
+import { selectFilter } from '../../utils/searchText'
 
 const { TextArea } = Input
 
@@ -113,9 +114,7 @@ function ConvertToWorkItemModal({ open, ticket, onClose, onCreated }) {
                             setCustomerId(val)
                             form.setFieldValue('project_id', undefined)
                         }}
-                        filterOption={(input, option) =>
-                            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                        }
+                        filterOption={selectFilter}
                     />
                 </Form.Item>
                 <Form.Item name="project_id" label={t('entity.project')} rules={[{ required: true }]}>
@@ -123,9 +122,7 @@ function ConvertToWorkItemModal({ open, ticket, onClose, onCreated }) {
                         showSearch
                         options={projectOptions}
                         {...projectSelectRender}
-                        filterOption={(input, option) =>
-                            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                        }
+                        filterOption={selectFilter}
                     />
                 </Form.Item>
                 <Form.Item name="title" label={t('hub.title')} rules={[{ required: true }]}>

@@ -525,6 +525,7 @@ export default {
         unlogged: 'efor yok',
         calendars: 'Takvimler',
         modeDay: 'Gün',
+        modeWorkWeek: 'İş haftası',
         modeWeek: 'Hafta',
         modeAgenda: 'Ajanda',
         filter: {
@@ -1729,6 +1730,7 @@ export default {
         deleted: 'Görünüm silindi',
         saveFailed: 'Görünüm kaydedilemedi',
         noDueDate: 'Terminsiz',
+        outsideWeek: 'Bu hafta dışında {count} iş',
         noOwner: 'Sahipsiz',
         weekOf: '{date} haftası',
         sys: {

@@ -50,24 +50,32 @@ export function GlassCard({ as: Tag = 'section', className = '', title, link, ch
     )
 }
 
-/** Sayiyi 0'dan hedefe yumusakca sayar (ease-out). */
+/** Sayiyi 0'dan hedefe yumusakca sayar (ease-out). Yalniz ILK gosterimde:
+ *  sonraki deger degisimleri (orn. tarih araligi) animasyonsuz yerine oturur. */
 export function CountUp({ value, decimals = 0, duration = 900, format }) {
     const target = Number(value) || 0
     const [shown, setShown] = useState(() => (reducedMotion() ? target : 0))
+    const playedRef = useRef(false)
     useEffect(() => {
-        if (reducedMotion()) { setShown(target); return undefined }
+        if (reducedMotion() || playedRef.current) { setShown(target); return undefined }
+        playedRef.current = true
         let frame = 0
         const start = performance.now()
         const from = 0
-        const tick = (now) => {
-            // rAF zaman damgasi baslangictan once olabilir: negatif ilerleme (-0, -47) olmaz.
-            const k = Math.min(1, Math.max(0, (now - start) / duration))
+        const tick = () => {
+            // Ilerleme ayni saatten (performance.now) olculur: rAF damgasi
+            // ortama gore farkli kokten gelebilir; negatif ilerleme olmaz.
+            const k = Math.min(1, Math.max(0, (performance.now() - start) / duration))
             const eased = 1 - Math.pow(1 - k, 3)
             setShown(from + (target - from) * eased)
             if (k < 1) frame = requestAnimationFrame(tick)
         }
         frame = requestAnimationFrame(tick)
-        return () => cancelAnimationFrame(frame)
+        return () => {
+            cancelAnimationFrame(frame)
+            // Yarida kesilen ilk animasyon (StrictMode cift effect'i) hakki yakmaz.
+            if (performance.now() - start < duration) playedRef.current = false
+        }
     }, [target, duration])
     const n = Number(shown.toFixed(decimals))
     return <>{format ? format(n) : n.toLocaleString(undefined, { maximumFractionDigits: decimals })}</>
@@ -266,13 +274,13 @@ export function BrandLogos({
  * buyuyen cubuk · deger. En buyuk degere oranlanir. `tone`: 'blue' |
  * 'violet' | 'green'.
  */
-export function BarList({ items = [], tone = 'blue', format = (v) => v, emptyText }) {
+export function BarList({ items = [], tone = 'blue', format = (v) => v, emptyText, animate = true }) {
     const max = Math.max(0, ...items.map((it) => Number(it.value) || 0))
     if (!items.length || max <= 0) {
         return emptyText ? <p className="lq-barlist__empty" role="status">{emptyText}</p> : null
     }
     return (
-        <ul className={`lq-barlist lq-barlist--${tone}`}>
+        <ul className={`lq-barlist lq-barlist--${tone}${animate ? '' : ' lq-barlist--static'}`}>
             {items.map((it, i) => (
                 <li key={it.key ?? it.name} className="lq-barlist__row">
                     <span className="lq-barlist__name" title={it.name}>{it.name}</span>

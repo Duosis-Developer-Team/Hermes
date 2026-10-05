@@ -35,6 +35,7 @@ import { queryKeys } from '../../query/queryKeys'
 import './LogTimeModal.css'
 import { useT } from '../../i18n'
 import { useCustomerLogoStore } from '../../stores/customerLogoStore'
+import { selectFilter, matchesSearch } from '../../utils/searchText'
 
 const { TextArea } = Input
 
@@ -379,8 +380,8 @@ function LogTimeModal({
     const selectedProject = allProjects.find(p => p.id === selectedProjectId)
     const selectedCustomer = customers.find(c => c.id === selectedCustomerId)
 
-    const q = query.trim().toLocaleLowerCase('tr')
-    const matches = (label) => !q || String(label || '').toLocaleLowerCase('tr').includes(q)
+    // Turkce/Ingilizce karakter ve buyuk/kucuk harf duyarsiz (iga = İGA).
+    const matches = (label) => matchesSearch(label, query)
     const customerOptions = customers
         .filter((c) => matches(c.name))
         .map((c) => {
@@ -410,8 +411,6 @@ function LogTimeModal({
     }))
     const headDate = watchedDate || (initialDate ? dayjs(initialDate) : dayjs())
     const byLabel = (a, b) => a.name.localeCompare(b.name, 'tr')
-    const selectFilter = (input, option) =>
-        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
 
     return (
         <Modal

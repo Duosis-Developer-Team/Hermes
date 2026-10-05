@@ -38,6 +38,7 @@ import './UsersPage.css'
 import { useT } from '../../i18n'
 import { Avatar } from '../../components/liquid'
 import { ModalHead } from '../../components/liquid'
+import { selectFilter, matchesAny } from '../../utils/searchText'
 /**
  * Formda GERCEKTEN olan alanlar. `password` bilerek `undefined`: bos
  * string yazilirsa duzenlemede sunucuya BOS PAROLA gonderilebilirdi.
@@ -69,13 +70,11 @@ export function UsersTab() {
     const users = useMemo(() => usersData?.data || [], [usersData])
 
     /** Arama: e-posta ve tam adda. */
-    const query = search.trim().toLowerCase()
+    const query = search.trim()
     const filteredUsers = useMemo(() => {
         if (!query) return users
         return users.filter((u) =>
-            [u.email, u.full_name]
-                .filter(Boolean)
-                .some((val) => String(val).toLowerCase().includes(query))
+            matchesAny([u.email, u.full_name], query)
         )
     }, [users, query])
 
@@ -342,7 +341,7 @@ export function UsersTab() {
                         <Select
                             mode="multiple"
                             placeholder={t('users.selectRoles')}
-                            optionFilterProp="label"
+                            filterOption={selectFilter}
                             options={assignableRoles.map((r) => ({
                                 value: r.id,
                                 label: r.name,

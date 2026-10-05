@@ -20,6 +20,7 @@
  * referans veya yetki) kimlik EKRANA BASILMAZ, notr etiket kullanilir.
  * =============================================================================
  */
+import { matchesAny } from '../../../utils/searchText'
 
 export const NO_CUSTOMER = '__no_customer__'
 export const NO_PROJECT = '__no_project__'
@@ -217,8 +218,6 @@ export function reconcileSelection(tree, selection) {
  * eslesen item'i olan klasor otomatik hayatta kalir.
  */
 export const matchesSearch = (item, term) => {
-    const q = (term || '').trim().toLocaleLowerCase('en')
-    if (!q) return true
     const haystack = [
         item.title,
         item.taskCode,
@@ -226,7 +225,8 @@ export const matchesSearch = (item, term) => {
         item.projectName,
         item.subProjectName,
     ]
-    return haystack.some((v) => v && String(v).toLocaleLowerCase('en').includes(q))
+    // Turkce/Ingilizce karakter + buyuk/kucuk harf duyarsiz (utils/searchText).
+    return matchesAny(haystack, term)
 }
 
 /**

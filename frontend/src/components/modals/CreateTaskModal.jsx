@@ -43,6 +43,7 @@ import {
 } from '../../services/api'
 import { useT } from '../../i18n'
 import { customerSelectRender, projectSelectRender } from '../../components/common/customerSelect'
+import { selectFilter } from '../../utils/searchText'
 
 // Oncelik listesi MODUL duzeyindeydi; ceviri bir hook'a bagli oldugu
 // icin artik bilesen icinde uretilir. Degerler (low/medium/...) API
@@ -434,7 +435,7 @@ function CreateTaskModal({
                         showSearch
                         placeholder={t('task.selectCustomer')}
                         onChange={handleCustomerChange}
-                        optionFilterProp="label"
+                        filterOption={selectFilter}
                         options={customers.map((c) => ({ value: c.id, label: c.name }))}
                         {...customerSelectRender}
                     />
@@ -450,7 +451,7 @@ function CreateTaskModal({
                         placeholder={customerId ? t('taskModal.selectProject') : t('taskModal.customerFirst')}
                         disabled={!customerId}
                         onChange={handleProjectChange}
-                        optionFilterProp="label"
+                        filterOption={selectFilter}
                         options={filteredProjects.map((p) => ({
                             value: p.id,
                             label: p.name,
@@ -470,7 +471,7 @@ function CreateTaskModal({
                         placeholder={projectId ? t('taskModal.selectSubProject') : t('taskModal.projectFirst')}
                         disabled={!projectId}
                         loading={subProjectsLoading}
-                        optionFilterProp="label"
+                        filterOption={selectFilter}
                         options={subProjects.map((s) => ({ value: s.id, label: s.name }))}
                         /* AntD 5.x: dropdownRender deprecated → popupRender. */
                         popupRender={(menu) => (
@@ -537,7 +538,7 @@ function CreateTaskModal({
                                 : t('taskModal.selectUsersGroups')
                         }
                         disabled={noAssignableUsers}
-                        optionFilterProp="label"
+                        filterOption={selectFilter}
                         options={assigneeOptions}
                     />
                 </Form.Item>

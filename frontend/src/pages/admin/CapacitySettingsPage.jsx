@@ -25,6 +25,7 @@ import { normalizeApiError } from '../../features/admin/shared/normalizeApiError
 import { useT } from '../../i18n'
 import { Avatar, ChipGroup } from '../../components/liquid'
 import './CapacitySettingsPage.css'
+import { selectFilter } from '../../utils/searchText'
 
 const { Text } = Typography
 
@@ -252,7 +253,7 @@ function CapacitySettingsPage() {
                     <Space align="start" wrap>
                         <Form.Item name="user_id" label={t('capacity.user')} rules={[{ required: true, message: t('logTime.required') }]}>
                             <Select
-                                showSearch optionFilterProp="label" style={{ width: 240 }}
+                                showSearch filterOption={selectFilter} style={{ width: 240 }}
                                 options={users.map((u) => ({ value: u.id, label: u.full_name || u.email }))}
                             />
                         </Form.Item>

@@ -96,12 +96,12 @@ export function tasksByDay(tasks, weekStart, { userMap = {} } = {}) {
     const to = days[6].format('YYYY-MM-DD')
     const byDay = Object.fromEntries(days.map((d) => [d.format('YYYY-MM-DD'), []]))
     let outside = 0
-    let undated = 0
+    const undatedItems = []
     for (const item of items) {
-        if (!item.dueDate) { undated += 1; continue }
+        if (!item.dueDate) { undatedItems.push(item); continue }
         const key = dayjs(item.dueDate).format('YYYY-MM-DD')
         if (key < from || key > to) { outside += 1; continue }
         byDay[key].push(item)
     }
-    return { byDay, outside, undated }
+    return { byDay, outside, undated: undatedItems.length, undatedItems }
 }
