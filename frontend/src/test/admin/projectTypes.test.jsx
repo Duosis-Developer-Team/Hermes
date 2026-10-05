@@ -147,6 +147,15 @@ describe('Proje turleri sayfasi', () => {
         await waitFor(() => expect(screen.queryByRole('list', { name: 'Projects' })).toBeNull())
     })
 
+    it('tur satirinda logo degil bas harf karosu (tur renginde)', async () => {
+        withClient(<ProjectTypesPage />)
+        const row = (await screen.findByText('Destek')).closest('tr')
+        expect(row.querySelector('img')).toBeNull()
+        const badge = row.querySelector('.admin-name__badge')
+        expect(badge).toHaveTextContent('D')
+        expect(badge.style.background).toContain('linear-gradient')
+    })
+
     it('kullanimdaki tur silinmez; bos tur silinir', async () => {
         const user = setup()
         projectTypeService.delete.mockResolvedValue()

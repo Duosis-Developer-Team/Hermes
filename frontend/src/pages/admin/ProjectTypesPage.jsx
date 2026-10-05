@@ -21,7 +21,7 @@ import { queryKeys } from '../../query/queryKeys'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import { AdminErrorAlert, AdminRefreshHint } from '../../features/admin/shared/AdminListStates'
 import { GenericLogo, ModalHead } from '../../components/liquid'
-import { PROJECT_TYPE_COLOR_KEYS, PROJECT_TYPE_PALETTE } from '../../features/projectTypes/palette'
+import { PROJECT_TYPE_COLOR_KEYS, PROJECT_TYPE_PALETTE, toneOf } from '../../features/projectTypes/palette'
 import { useT } from '../../i18n'
 import { ProjectPeek, useRowDisclosure } from '../../features/admin/shared/ProjectPeek'
 import './ProjectTypesPage.css'
@@ -130,7 +130,14 @@ function ProjectTypesPage() {
             key: 'name',
             render: (value, record) => (
                 <span className="admin-name">
-                    <GenericLogo glyph="general" color={record.color} size={32} />
+                    {/* Is kollarindaki gibi bas harf karosu; zemin turun KENDI rengi. */}
+                    <span
+                        className="admin-name__badge"
+                        style={{ background: `linear-gradient(135deg, ${toneOf(record.color).from}, ${toneOf(record.color).to})` }}
+                        aria-hidden="true"
+                    >
+                        {(value || '?').trim().charAt(0).toLocaleUpperCase('tr')}
+                    </span>
                     <span className="admin-name__text"><b>{value}</b></span>
                 </span>
             ),
