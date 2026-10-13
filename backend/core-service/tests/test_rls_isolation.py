@@ -821,3 +821,19 @@ def test_ticket_network_link_is_global_and_ticket_stays_with_provider(
     # Talep edenin KENDI baglami (ve baglamsiz oturum) talebi GORMEZ.
     assert visible(TENANT_B) == 0
     assert visible(None) == 0
+
+
+def test_post_deploy_smoke_classifies_the_same_global_tables():
+    """CD'deki izolasyon dumani global tablo listesini KENDI tasir; Python
+    beyaniyla (mixins) ayni olmali. 2026-10-14: 0018 yeni global tabloyu
+    eklediginde duman 'siniflandirilmamis tablo' diye kirmiziya dustu."""
+    import re
+    from pathlib import Path
+
+    from app.models.mixins import GLOBAL_TABLES, LEGACY_UNMANAGED_TABLES
+
+    root = Path(__file__).resolve().parents[3]
+    script = (root / "scripts/k8s/post-deploy-tenant-smoke.sh").read_text()
+    block = script[script.index("unclassified="):script.index('if [ -z "$unclassified" ]')]
+    listed = set(re.findall(r"'([a-z_]+)'", block.split("NOT IN", 1)[1]))
+    assert listed == set(GLOBAL_TABLES) | set(LEGACY_UNMANAGED_TABLES)

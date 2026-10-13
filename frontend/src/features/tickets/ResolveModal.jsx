@@ -2,7 +2,7 @@
  * HERMES - Çözüm modalı.
  *
  * Iki alan bilincli olarak AYRI ve acikca etiketlidir:
- *   - "Müşteriye görünecek çözüm özeti" (ZORUNLU, en az 20 karakter)
+ *   - "Müşteriye görünecek çözüm özeti" (ZORUNLU; alt sinir kontrattan — bos olamaz)
  *   - "Kök neden — yalnızca ekip" (opsiyonel, MUSTERIYE GITMEZ)
  *
  * Onizleme, musterinin GORECEGI karti gosterir; boylece ic bilginin

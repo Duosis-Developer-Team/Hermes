@@ -113,7 +113,8 @@ provası + satır sayımı).
 |---|---|---|---|
 | 1 — Tenant modülleri | `610314c` | canlı (14.10) | auth 0006 / core 0017 head; acme + duosis 6 modülle (davranış değişmedi); auth 256, core 837, MCP 104, frontend 1156 test |
 | 2 — Süper-admin konsolu | `591095c` | canlı (14.10) | auth 260, frontend 1163 test; görsel kontrol açık/koyu + 500 px |
-| 3.0 — Talep ağı | (bu commit) | CD sonrası | core 854 (RLS kanıtı dahil), auth 262, frontend 1166 |
+| 3.0 — Talep ağı | `8a3883a` | canlı (14.10; acme → duosis geri dolduruldu) | core 854 (RLS kanıtı dahil), auth 262, frontend 1166 |
+| 3.1 — Dalga A | (bu commit) | CD sonrası | core 861, frontend 1171 |
 
 Faz 2 notları:
 - Konsol adresli: `/platform-admin` (genel bakış), `/tenants`, `/tenants/:id`
@@ -135,3 +136,14 @@ Faz 3.0 notları (talep ağı):
 - Konsol: Talep ağı sayfası (sağlayıcı kartları, ekip seçimi, aç/kapa, yeni
   bağlantı) + kiracı detayında özet. Eski `/support/routing` uçları kaldırıldı.
 - LogiSlot entegrasyonu ve sözleşme değişmedi (Duosis = destek tenant'ı).
+
+Dalga A notları:
+- Çözüm özeti: servis hâlâ 20 karakter istiyordu (kontrat 28.08'de 1'e inmişti) → kontrat sabiti.
+- Ajan "Yeniden aç" gerekçesiz gidiyordu (409) → pencere gerekçe/soru sorar
+  (yeniden aç, iptal: gerekçe; müşteride bekliyor: müşteriye soru, taslak dolu).
+- Talep paneli: öncelik, atanan kişi + "Bana ata" (yanıt yetkisi yeter; başkasına
+  atamak `tickets.assign`), işlem geçmişi (denetim olayları).
+- Liste: öncelik/kategori/ekip filtresi, sıralama (son güncellenen/en yeni/en
+  eski/öncelik), sayfalama (50; portal 24), 30 sn canlı yenileme (liste+detay).
+- Portal: müşteri iptali yalnız sunucu izin verince (`can_cancel`), yanıta ek.
+- CD dumanı: global tablo listesi `mixins.GLOBAL_TABLES` ile parite testine bağlandı.

@@ -184,6 +184,7 @@ class TicketCustomerOut(TicketCustomerListItem):
     occurred_at: Optional[datetime] = None
     closed_at: Optional[datetime] = None
     reopen_window_open: bool = False
+    can_cancel: bool = False
     messages: List[MessagePublicOut] = Field(default_factory=list)
     resolution: Optional[ResolutionPublicOut] = None
     resolution_history: List[ResolutionPublicOut] = Field(

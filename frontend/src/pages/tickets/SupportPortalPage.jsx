@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Input, message, Skeleton } from 'antd'
+import { Alert, Input, message, Pagination, Select, Skeleton } from 'antd'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
@@ -26,6 +26,7 @@ import {
 import { LiquidSegmented, PageHero } from '../../components/liquid'
 import CreateTicketModal from '../../features/tickets/CreateTicketModal'
 import CustomerTicketDetail from '../../features/tickets/CustomerTicketDetail'
+import { LIVE_REFRESH_MS } from '../../features/tickets/AgentWorkbench'
 import {
     ERROR_MESSAGES, isResolvedLike,
 } from '../../features/tickets/constants'
@@ -54,6 +55,9 @@ const TABS = [
     },
 ]
 
+const PAGE_SIZE = 24
+const SORTS = ['updated', 'newest', 'oldest']
+
 export default function SupportPortalPage() {
     const t = useT()
     const tl = useTicketLabel()
@@ -63,6 +67,8 @@ export default function SupportPortalPage() {
 
     const [tab, setTab] = useState('open')
     const [search, setSearch] = useState('')
+    const [page, setPage] = useState(1)
+    const [sort, setSort] = useState('updated')
     const [createOpen, setCreateOpen] = useState(false)
     // Secili talep + saglayicisi (birden fazla saglayicida detay/komut
     // cagrilari saglayiciyi tasir).
@@ -79,15 +85,21 @@ export default function SupportPortalPage() {
         [tab],
     )
 
+    // Sekme/arama/siralama degisince ilk sayfaya donulur.
+    useEffect(() => { setPage(1) }, [tab, search, sort])
+
     const list = useQuery({
-        queryKey: queryKeys.supportTickets.list({ tab, search }),
+        queryKey: queryKeys.supportTickets.list({ tab, search, sort, page }),
         queryFn: () => supportPortalService.list({
             status: statuses,
             search: search || undefined,
-            limit: 50,
+            sort: sort === 'updated' ? undefined : sort,
+            limit: PAGE_SIZE,
+            offset: (page - 1) * PAGE_SIZE,
         }),
         enabled: context.isPortal,
         keepPreviousData: true,
+        refetchInterval: LIVE_REFRESH_MS,
     })
 
     const invalidate = () => queryClient.invalidateQueries({
@@ -205,6 +217,13 @@ export default function SupportPortalPage() {
                     onChange={setTab}
                     options={TABS.map((item) => ({ value: item.key, label: t(item.labelKey) }))}
                 />
+                <Select
+                    className="tickets-sort"
+                    aria-label={t('hub.sortBy')}
+                    value={sort}
+                    onChange={setSort}
+                    options={SORTS.map((value) => ({ value, label: t(`hub.sort.${value}`) }))}
+                />
             </div>
 
             <div className="support-grid lq-enter">
@@ -243,6 +262,17 @@ export default function SupportPortalPage() {
                     </Card>
                 ))}
             </div>
+            {(list.data?.total ?? 0) > PAGE_SIZE && (
+                <Pagination
+                    className="support-pager"
+                    simple
+                    size="small"
+                    current={page}
+                    pageSize={PAGE_SIZE}
+                    total={list.data.total}
+                    onChange={setPage}
+                />
+            )}
             {!rows.length && !list.isLoading && (
                 <EmptyState
                     title={t('portal.noRequests')}
@@ -269,6 +299,7 @@ export default function SupportPortalPage() {
             <CustomerTicketDetail
                 ticketId={selected?.id}
                 provider={selected?.provider}
+                attachmentsEnabled={context.attachmentsEnabled}
                 open={Boolean(selected)}
                 onClose={() => setSelected(null)}
                 onChanged={invalidate}

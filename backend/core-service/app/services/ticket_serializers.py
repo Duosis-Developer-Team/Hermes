@@ -48,7 +48,7 @@ from ..schemas.ticketing import (
 )
 from ..ticket_contract import format_ticket_number
 from . import ticket_state
-from .ticket_service import customer_window_open
+from .ticket_service import customer_window_open, has_agent_reply
 
 
 # =============================================================================
@@ -244,6 +244,11 @@ def customer_detail(db: Session, ticket: Ticket) -> TicketCustomerOut:
         closed_at=ticket.closed_at,
         reopen_window_open=(
             ticket.status == "resolved" and customer_window_open(ticket)
+        ),
+        # Iptal kurali SUNUCUDA (02 §3): yalniz `open` ve henuz destek
+        # cevabi yokken. Istemci dugmeyi buna gore gosterir.
+        can_cancel=ticket_state.can_requester_cancel(
+            status=ticket.status, has_agent_reply=has_agent_reply(db, ticket),
         ),
         messages=[
             message_public_out(m, grouped.get(f"m:{m.id}", []))

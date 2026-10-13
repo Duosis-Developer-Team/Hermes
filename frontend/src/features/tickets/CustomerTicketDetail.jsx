@@ -15,7 +15,10 @@ import {
     Button, EmptyState, Inline, Stack, StatusBadge, Surface,
 } from '../../components/ui'
 import { queryKeys } from '../../query/queryKeys'
+import AttachmentDropzone from './AttachmentDropzone'
+import { readyAttachmentIds } from './attachmentState'
 import TicketTimeline from './TicketTimeline'
+import { LIVE_REFRESH_MS } from './AgentWorkbench'
 import {
     ERROR_MESSAGES,
 } from './constants'
@@ -32,17 +35,23 @@ export default function CustomerTicketDetail({
     ticketId, open, onClose, onChanged,
     // Talep agi: talebin saglayicisi (birden fazla saglayicida zorunlu).
     provider,
+    attachmentsEnabled = false,
 }) {
     const t = useT()
     const tl = useTicketLabel()
     const queryClient = useQueryClient()
     const [draft, setDraft] = useState('')
     const [reason, setReason] = useState('')
+    const [attachments, setAttachments] = useState([])
+    const [cancelling, setCancelling] = useState(false)
+    const [cancelReason, setCancelReason] = useState('')
 
     const detail = useQuery({
         queryKey: queryKeys.supportTickets.detail(ticketId),
         queryFn: () => supportPortalService.get(ticketId, provider),
         enabled: Boolean(ticketId) && open,
+        // Canli yenileme: destek yaniti acik pencereye 30 sn icinde duser.
+        refetchInterval: LIVE_REFRESH_MS,
     })
     const ticket = detail.data
 
@@ -77,6 +86,10 @@ export default function CustomerTicketDetail({
     const confirmClose = useMutation({
         mutationFn: (payload) =>
             supportPortalService.confirmClose(ticketId, payload, provider),
+        ...handlers,
+    })
+    const cancel = useMutation({
+        mutationFn: (payload) => supportPortalService.cancel(ticketId, payload, provider),
         ...handlers,
     })
 
@@ -119,6 +132,36 @@ export default function CustomerTicketDetail({
                             </Text>
                         )}
                     </Inline>
+
+                    {ticket.can_cancel && (
+                        <div className="customer-cancel">
+                            {!cancelling ? (
+                                <Button onClick={() => setCancelling(true)}>{t('customerTicket.cancelRequest')}</Button>
+                            ) : (
+                                <Inline gap={2}>
+                                    <Input
+                                        autoFocus
+                                        placeholder={t('customerTicket.cancelReason')}
+                                        aria-label={t('customerTicket.cancelReason')}
+                                        value={cancelReason}
+                                        maxLength={500}
+                                        onChange={(e) => setCancelReason(e.target.value)}
+                                        style={{ maxWidth: 320 }}
+                                    />
+                                    <Button
+                                        danger
+                                        disabled={!cancelReason.trim()}
+                                        loading={cancel.isPending}
+                                        onClick={() => cancel.mutate(
+                                            { reason: cancelReason.trim(), expected_version: ticket.version },
+                                            { onSuccess: () => { setCancelling(false); setCancelReason('') } },
+                                        )}
+                                    >{t('customerTicket.confirmCancel')}</Button>
+                                    <Button onClick={() => setCancelling(false)}>{t('common.cancel')}</Button>
+                                </Inline>
+                            )}
+                        </div>
+                    )}
 
                     {ticket.status === 'waiting_customer' && (
                         <Alert
@@ -206,14 +249,28 @@ export default function CustomerTicketDetail({
                             placeholder={t('customerTicket.replyPlaceholder')}
                             aria-label={t('customerTicket.replyToSupport')}
                         />
+                        <AttachmentDropzone
+                            enabled={attachmentsEnabled}
+                            value={attachments}
+                            onChange={setAttachments}
+                            onOpenSession={(params) => supportPortalService.openAttachmentSession(
+                                provider ? { ...params, provider } : params,
+                            )}
+                            onUploadContent={(id, file) =>
+                                supportPortalService.uploadAttachmentContent(id, file, provider)}
+                        />
                         <Inline gap={2}>
                             <Button
                                 variant="primary"
                                 disabled={!draft.trim()}
                                 loading={reply.isPending}
                                 onClick={() => reply.mutate(
-                                    { body: draft, expected_version: ticket.version },
-                                    { onSuccess: () => setDraft('') },
+                                    {
+                                        body: draft,
+                                        expected_version: ticket.version,
+                                        attachment_ids: readyAttachmentIds(attachments),
+                                    },
+                                    { onSuccess: () => { setDraft(''); setAttachments([]) } },
                                 )}
                             >{t('customerTicket.reply')}</Button>
                         </Inline>

@@ -123,8 +123,8 @@ unclassified="$(q_core "
                     WHERE col.table_name = c.relname
                       AND col.column_name = 'tenant_id')
     AND c.relname NOT IN ('alembic_version','tenant_registry',
-                          'tenant_counters','task_groups',
-                          'task_group_members')")"
+                          'tenant_counters','ticket_network_links',
+                          'task_groups','task_group_members')")"
 if [ -z "$unclassified" ]; then
   ok "siniflandirilmamis tablo yok"
 else

@@ -52,6 +52,7 @@ from ..ticket_contract import (
     EVENT_TICKET_STATUS_CHANGED,
     MESSAGE_MAX_LENGTH,
     RESOLUTION_SUMMARY_MAX_LENGTH,
+    RESOLUTION_SUMMARY_MIN_LENGTH,
     TICKET_COUNTER_KEY,
     TITLE_MAX_LENGTH,
 )
@@ -938,10 +939,11 @@ def resolve(
     summary = sanitize_body(
         public_summary, max_length=RESOLUTION_SUMMARY_MAX_LENGTH
     )
-    if len(summary) < 20:
+    # Alt sinir KONTRATTAN gelir (2026-08-28'de 20 → 1 indirildi; bu
+    # kontrol o gun guncellenmemisti ve kisa ozetler 400 aliyordu).
+    if len(summary.strip()) < RESOLUTION_SUMMARY_MIN_LENGTH:
         raise TicketValidationError(
-            "The customer-visible resolution summary must be at least "
-            "20 characters."
+            "The customer-visible resolution summary is required."
         )
 
     previous = (

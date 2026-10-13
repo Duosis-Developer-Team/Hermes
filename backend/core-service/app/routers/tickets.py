@@ -339,6 +339,7 @@ def list_tickets(
     created_to: Optional[datetime] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    sort: Optional[str] = Query(None, pattern="^(updated|newest|oldest|priority)$"),
     scope: visibility.HubScope = Depends(hub_scope),
     db: Session = Depends(get_support_db),
 ):
@@ -356,7 +357,7 @@ def list_tickets(
         created_to=created_to,
     )
     rows, total = ticket_queries.list_hub_tickets(
-        db, scope, filters, limit=limit, offset=offset
+        db, scope, filters, limit=limit, offset=offset, sort=sort,
     )
     apps, sources = ticket_queries.load_refs(db, rows)
     return TicketListResponse(
@@ -514,7 +515,12 @@ def assign_user(
     scope: visibility.HubScope = Depends(hub_scope),
     db: Session = Depends(get_support_db),
 ):
-    _require(scope, Perm.TICKETS_ASSIGN)
+    # "Bana ata" (talebi ustlenmek) yanit yetkisiyle yeterlidir; BASKASINA
+    # atamak `tickets.assign` ister. Hedef yine grubun aktif uyesi olmali
+    # (servis dogrular) — atama gorunurluk URETMEZ.
+    taking = payload.user_id is not None and str(payload.user_id) == str(current_user.id)
+    if not (taking and scope.can_respond):
+        _require(scope, Perm.TICKETS_ASSIGN)
     ticket = _load_ticket(db, ticket_id, scope, for_update=True)
     try:
         ticket_service.assign_user(

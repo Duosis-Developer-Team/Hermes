@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session
 
 from ..models.ticketing import (
@@ -25,7 +25,7 @@ from ..models.ticketing import (
     Ticket,
     TicketMessage,
 )
-from ..ticket_contract import OPEN_STATUSES
+from ..ticket_contract import OPEN_STATUSES, PRIORITIES
 from . import ticket_visibility as visibility
 
 # Kuyruk katalogu — anahtar SOZLESMEDIR (URL'de yasar, paylasilabilir).
@@ -40,6 +40,23 @@ QUEUES = (
     ("all", "All tickets"),
 )
 QUEUE_KEYS = tuple(k for k, _ in QUEUES)
+
+# Liste siralamalari. Her biri `id` ile biter: esit zaman damgalarinda
+# sayfalar arasi atlama/tekrar olmasin (deterministik sayfalama).
+SORTS = ("updated", "newest", "oldest", "priority")
+_PRIORITY_RANK = case(
+    {p: i for i, p in enumerate(PRIORITIES)}, value=Ticket.priority, else_=0,
+)
+
+
+def order_by_for(sort: Optional[str]):
+    if sort == "newest":
+        return (Ticket.created_at.desc(), Ticket.id.desc())
+    if sort == "oldest":
+        return (Ticket.created_at.asc(), Ticket.id.asc())
+    if sort == "priority":
+        return (_PRIORITY_RANK.desc(), Ticket.updated_at.desc(), Ticket.id.desc())
+    return (Ticket.updated_at.desc(), Ticket.id.desc())
 
 
 def _now():
@@ -183,12 +200,12 @@ def hub_query(db: Session, scope: visibility.HubScope,
 
 def list_hub_tickets(
     db: Session, scope: visibility.HubScope, filters: TicketFilters,
-    *, limit: int = 50, offset: int = 0,
+    *, limit: int = 50, offset: int = 0, sort: Optional[str] = None,
 ) -> Tuple[List[Ticket], int]:
     query = hub_query(db, scope, filters)
     total = query.with_entities(func.count(Ticket.id)).scalar() or 0
     rows = (
-        query.order_by(Ticket.updated_at.desc())
+        query.order_by(*order_by_for(sort))
         .limit(limit).offset(offset).all()
     )
     return rows, int(total)
@@ -287,12 +304,12 @@ def portal_query(db: Session, scope: visibility.PortalScope,
 
 def list_portal_tickets(
     db: Session, scope: visibility.PortalScope, filters: TicketFilters,
-    *, limit: int = 50, offset: int = 0,
+    *, limit: int = 50, offset: int = 0, sort: Optional[str] = None,
 ) -> Tuple[List[Ticket], int]:
     query = portal_query(db, scope, filters)
     total = query.with_entities(func.count(Ticket.id)).scalar() or 0
     rows = (
-        query.order_by(Ticket.updated_at.desc())
+        query.order_by(*order_by_for(sort))
         .limit(limit).offset(offset).all()
     )
     return rows, int(total)
@@ -301,6 +318,8 @@ def list_portal_tickets(
 __all__ = [
     "QUEUES",
     "QUEUE_KEYS",
+    "SORTS",
+    "order_by_for",
     "TicketFilters",
     "application_counts",
     "hub_query",

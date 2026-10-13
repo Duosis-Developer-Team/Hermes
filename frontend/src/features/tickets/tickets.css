@@ -283,3 +283,23 @@
 .ticket-status-modal .lq-grp { margin-top: 16px; }
 .ticket-status-tech { margin-top: 14px; }
 .ticket-status-tech summary { cursor: pointer; color: var(--h-text-secondary); font-size: 13px; }
+
+/* --- Dalga A: filtreler, sayfalama, talep paneli ------------------------------ */
+.tickets-filters__more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.tickets-filters__more .tickets-status-filter { min-width: 150px; max-width: 240px; }
+.tickets-sort { min-width: 160px; }
+.tickets-list__pager, .support-pager { display: flex; justify-content: center; padding: 12px 0 4px; }
+.support-tabs { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.tickets-surface-switch { margin-bottom: 14px; }
+.ticket-status-input { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.ticket-status-input label { font-size: 13px; font-weight: 600; color: var(--h-text-secondary); }
+.ticket-status-input__actions { display: flex; justify-content: flex-end; gap: 8px; }
+.ticket-status-targets .lq-opt__item.is-on { outline: 2px solid var(--h-accent, var(--hp-blue-500)); outline-offset: -2px; }
+.ticket-assignee { display: flex; gap: 8px; align-items: center; }
+.ticket-activity { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.ticket-activity li { display: grid; gap: 2px; padding-left: 12px; border-left: 2px solid var(--h-border-subtle); }
+.ticket-activity__what { font-size: 13.5px; color: var(--h-text-primary); }
+.ticket-activity__meta { font-size: 12px; color: var(--h-text-muted); }
+.ticket-activity__reason { font-size: 12.5px; color: var(--h-text-secondary); font-style: italic; }
+.customer-cancel { display: flex; justify-content: flex-end; }
+.ticket-create-modal__provider { display: flex; flex-direction: column; gap: 6px; }

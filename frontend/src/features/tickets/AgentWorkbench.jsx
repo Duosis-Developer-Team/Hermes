@@ -9,10 +9,9 @@
  * SİLMEZ. Yazılmış bir yanıtı bir 409 yüzünden kaybettirmek, kullanıcının
  * bu ekrana güvenini bitiren türden bir davranıştır.
  */
-import { Fragment, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Drawer, Modal, Select, Skeleton, Typography } from 'antd'
+import { Alert, Drawer, Skeleton, Typography } from 'antd'
 
 import { ticketErrorCode, ticketHubService } from '../../api/ticketsApi'
 import {
@@ -23,6 +22,7 @@ import AgentComposer from './AgentComposer'
 import ResolveModal from './ResolveModal'
 import ConvertToWorkItemModal from './ConvertToWorkItemModal'
 import TicketTimeline from './TicketTimeline'
+import TicketStatusModal from './TicketStatusModal'
 
 import { TicketPriorityBadge, TicketStatusBadge } from './TicketStatusBadge'
 import './tickets.css'
@@ -33,161 +33,8 @@ import { CustomerServiceOutlined, DownOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 
-/**
- * Talep durumu penceresi (Hermes Liquid): basliktaki durum hapindan acilir.
- * Eskiden sagda duran baglam kolonunun (durum, ayrintilar, hedef ekip)
- * yerini alir — gorunum simetrik kalir, bilgi tek dokunusla gelir.
- * Durum gecisi ve Coz burada; davranis cagirandaki mutasyonlarla ayni.
- */
-function TicketStatusModal({
-    open, onClose, ticket, groups, canAssign, canRespond, canResolve, pending,
-    onAssignGroup, onTransition, onResolve,
-}) {
-    const t = useT()
-    const tl = useTicketLabel()
-    if (!ticket) return null
-    const targets = (ticket.allowed_transitions ?? []).filter((x) => x !== 'resolved')
-    const canResolveNow = (ticket.allowed_transitions ?? []).includes('resolved')
-    return (
-        <Modal
-            open={open}
-            onCancel={onClose}
-            footer={null}
-            width={640}
-            destroyOnHidden
-            className="ticket-status-modal"
-            title={(
-                <ModalHead
-                    icon={<CustomerServiceOutlined />}
-                    tone="red"
-                    title={t('hub.statusTitle')}
-                    subtitle={`${ticket.ticket_number} · ${ticket.title}`}
-                />
-            )}
-        >
-            <div className="ticket-status-now">
-                <TicketStatusBadge status={ticket.status} surface="hub" />
-                <TicketPriorityBadge priority={ticket.priority} />
-            </div>
-
-            {(targets.length > 0 || canResolveNow) && (
-                <>
-                    <h3 className="lq-grp">{t('hub.changeStatus')}</h3>
-                    <div className="ticket-status-targets">
-                        {targets.map((target) => (
-                            <button
-                                key={target}
-                                type="button"
-                                className="lq-opt__item"
-                                disabled={!canRespond || pending}
-                                onClick={() => onTransition(target)}
-                            >
-                                <span className="lq-opt__text">
-                                    <b>{tl('agentStatus', target)}</b>
-                                </span>
-                            </button>
-                        ))}
-                        {canResolveNow && (
-                            <button
-                                type="button"
-                                className="lq-opt__item ticket-status-targets__resolve"
-                                disabled={!canResolve}
-                                onClick={onResolve}
-                            >
-                                <span className="lq-opt__text"><b>{t('hub.resolve')}</b></span>
-                            </button>
-                        )}
-                    </div>
-                    {targets.includes('waiting_customer') && (
-                        <p className="lq-note">{t('hub.waitingHint')}</p>
-                    )}
-                </>
-            )}
-
-            <h3 className="lq-grp">{t('review.details')}</h3>
-            <dl className="lq-kv">
-                <dt>{t('integrations.application')}</dt>
-                <dd>{ticket.application?.display_name ?? '—'}</dd>
-                <dt>{t('entity.customer')}</dt>
-                <dd>{ticket.source_tenant?.display_name ?? '—'}</dd>
-                <dt>{t('hub.requester')}</dt>
-                <dd>{ticket.requester_display_name ?? '—'}</dd>
-                <dt>{t('hub.category')}</dt>
-                <dd>{tl('category', ticket.category)}</dd>
-                <dt>{t('hub.impact')}</dt>
-                <dd>{tl('impact', ticket.impact)}</dd>
-                <dt>{t('hub.errorCode')}</dt>
-                <dd>{ticket.error_code || '—'}</dd>
-                <dt>{t('hub.correlation')}</dt>
-                <dd>{ticket.correlation_id || '—'}</dd>
-                <dt>{t('hub.firstResponse')}</dt>
-                <dd>
-                    {ticket.first_response_at
-                        ? new Date(ticket.first_response_at).toLocaleString()
-                        : t('hub.firstResponsePending')}
-                </dd>
-                {/* A6: bu ticket'tan dogan is kalemleri */}
-                <dt>{t('hub.workItems')}</dt>
-                <dd>
-                    {(ticket.work_items ?? []).length === 0 ? '—' : (
-                        <ul className="h-ticket-work-items">
-                            {ticket.work_items.map((w) => (
-                                <li key={w.id}>
-                                    <Link to={`/project-management/tasks?item=${w.id}`}>{w.item_key}</Link>
-                                    {' '}
-                                    <span className="h-ticket-work-items__title">{w.title}</span>
-                                    {' '}
-                                    <StatusBadge tone="neutral">{w.status}</StatusBadge>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </dd>
-            </dl>
-
-            {ticket.impact === 'security_or_data_risk' && (
-                <Alert
-                    style={{ marginTop: 14 }}
-                    type="warning"
-                    showIcon
-                    message={t('hub.securityRisk')}
-                    description={t('hub.securityRiskHint')}
-                />
-            )}
-
-            <h3 className="lq-grp">{t('hub.targetTeam')}</h3>
-            <Select
-                aria-label={t('hub.targetTeam')}
-                value={ticket.assigned_group?.id}
-                disabled={!canAssign || pending}
-                onChange={onAssignGroup}
-                options={(groups ?? []).map((group) => ({
-                    value: group.id,
-                    label: `${group.name} (${group.member_count})`,
-                }))}
-                style={{ width: '100%' }}
-            />
-
-            {Object.keys(ticket.client_context || {}).length > 0 && (
-                <details className="ticket-status-tech">
-                    <summary>{t('hub.technicalContext')}</summary>
-                    <dl className="lq-kv">
-                        {Object.entries(ticket.client_context).map(([key, value]) => (
-                            <Fragment key={key}>
-                                <dt>{key}</dt>
-                                <dd>{String(value)}</dd>
-                            </Fragment>
-                        ))}
-                    </dl>
-                </details>
-            )}
-
-            <div className="lq-mf">
-                <Button onClick={onClose}>{t('common.close')}</Button>
-            </div>
-        </Modal>
-    )
-}
+/** Acik talebin ve listenin canli yenileme araligi. */
+export const LIVE_REFRESH_MS = 30_000
 
 export default function AgentWorkbench({
     ticketId, open, onClose, context, onChanged, onError, inline = false,
@@ -206,10 +53,13 @@ export default function AgentWorkbench({
         setConflict(false)
     }, [ticketId])
 
+    // Canli yenileme: acik talep 30 sn'de bir tazelenir (sekme gorunurken;
+    // react-query arka planda yoklamaz). Taslak bundan etkilenmez.
     const detail = useQuery({
         queryKey: queryKeys.tickets.detail(ticketId),
         queryFn: () => ticketHubService.get(ticketId),
         enabled: Boolean(ticketId) && open,
+        refetchInterval: LIVE_REFRESH_MS,
     })
 
     const groups = useQuery({
@@ -258,6 +108,14 @@ export default function AgentWorkbench({
         mutationFn: (payload) => ticketHubService.resolve(ticketId, payload),
         ...handlers,
     })
+    const assignUser = useMutation({
+        mutationFn: (payload) => ticketHubService.assignUser(ticketId, payload),
+        ...handlers,
+    })
+    const priority = useMutation({
+        mutationFn: (payload) => ticketHubService.setPriority(ticketId, payload),
+        ...handlers,
+    })
 
     const canRespond = context?.can('tickets.respond')
         || context?.can('tickets.admin')
@@ -268,12 +126,20 @@ export default function AgentWorkbench({
 
     // Eylemler (gecis, coz, is kalemi ac) — cekmecede sabit altlikta,
     // satir ici bolmede basligin sagindadir (Hermes Liquid prototipi).
-    const doTransition = (target) => transition.mutate({
-        to_status: target,
+    // Gerekce/soru isteyen gecislerde girdi pencerede SORULUR (Dalga A:
+    // eskiden "yeniden ac" gerekcesiz gidiyor ve 409 aliyordu).
+    const doTransition = ({ to, reason, publicMessage }, done) => transition.mutate({
+        to_status: to,
         expected_version: ticket.version,
-        public_message: target === 'waiting_customer' ? draft || undefined : undefined,
-        reason: target === 'cancelled' ? 'Cancelled by an agent' : undefined,
-    }, { onSuccess: () => setStatusOpen(false) })
+        public_message: publicMessage || undefined,
+        reason: reason || undefined,
+    }, {
+        onSuccess: () => {
+            done?.()
+            if (to === 'waiting_customer' && publicMessage && publicMessage === draft.trim()) setDraft('')
+            setStatusOpen(false)
+        },
+    })
 
     // Baslik eylemleri (Liquid): tiklanabilir durum hapi → Talep durumu
     // penceresi; Coz ve Is kalemi ac yaninda. Durum gecisleri pencerede.
@@ -395,9 +261,19 @@ export default function AgentWorkbench({
                 canAssign={canAssign}
                 canRespond={canRespond}
                 canResolve={canResolve}
-                pending={assignGroup.isPending || transition.isPending}
+                pending={assignGroup.isPending || transition.isPending
+                    || assignUser.isPending || priority.isPending}
+                draft={draft}
                 onAssignGroup={(groupId) => assignGroup.mutate({
                     group_id: groupId,
+                    expected_version: ticket.version,
+                })}
+                onAssignUser={(userId) => assignUser.mutate({
+                    user_id: userId,
+                    expected_version: ticket.version,
+                })}
+                onPriority={(next) => priority.mutate({
+                    priority: next,
                     expected_version: ticket.version,
                 })}
                 onTransition={doTransition}

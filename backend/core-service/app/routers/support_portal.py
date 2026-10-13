@@ -191,6 +191,7 @@ def list_my_tickets(
     created_to: Optional[datetime] = Query(None),
     limit: int = Query(25, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    sort: Optional[str] = Query(None, pattern="^(updated|newest|oldest)$"),
     current_user: CurrentUser = Depends(require_customer_surface),
     gdb: Session = Depends(get_global_db),
 ):
@@ -222,7 +223,7 @@ def list_my_tickets(
                 rows, n = ticket_queries.list_portal_tickets(
                     db, scope, filters,
                     limit=limit if single else offset + limit,
-                    offset=offset if single else 0,
+                    offset=offset if single else 0, sort=sort,
                 )
                 ref = _provider_ref(link)
                 merged.extend(
@@ -235,7 +236,10 @@ def list_my_tickets(
         except support.SupportNotConfigured:
             continue
     if not single:
-        merged.sort(key=lambda item: item.updated_at, reverse=True)
+        if sort in ("newest", "oldest"):
+            merged.sort(key=lambda item: item.created_at, reverse=sort == "newest")
+        else:
+            merged.sort(key=lambda item: item.updated_at, reverse=True)
         merged = merged[offset:offset + limit]
     return TicketCustomerListResponse(
         items=merged, total=total, limit=limit, offset=offset,

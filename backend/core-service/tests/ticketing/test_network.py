@@ -181,7 +181,7 @@ def test_merged_list_orders_across_providers(monkeypatch, api, ticket_world):
     stamp = {TEST_TENANT_ID: [5, 1], THIRD_TENANT_ID: [3]}
     calls = []
 
-    def fake_list(db, scope, filters, *, limit, offset):
+    def fake_list(db, scope, filters, *, limit, offset, sort=None):
         provider = [p for p in stamp if p not in calls][0]
         calls.append(provider)
         return [(provider, h) for h in stamp[provider]], len(stamp[provider])
