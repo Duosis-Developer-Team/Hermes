@@ -22,6 +22,19 @@ REQUESTER = Actor(
 )
 
 
+
+def _link_third(world):
+    """THIRD tenant'i AYNI saglayiciya bagla (en guclu capraz-tenant sinavi)."""
+    from app.services import ticket_network
+
+    from ..conftest import TEST_TENANT_ID
+
+    ticket_network.upsert_link(
+        world["session"], requester=THIRD_TENANT_ID, provider=TEST_TENANT_ID,
+        active=True, actor="test",
+    )
+    world["session"].commit()
+
 def _seed_ticket(world, *, requester_id="user-1", app_key="logislot_app",
                  src_key="logislot_src", route_key="logislot_route"):
     s = world["session"]
@@ -254,7 +267,9 @@ def test_view_all_widens_to_the_workspace_but_never_beyond(
     ).json()
     assert body["total"] == 2
 
-    # Baska bir tenant HICBIR sekilde gormez (view_all olsa bile).
+    # Baska bir tenant HICBIR sekilde gormez (view_all olsa bile) — AYNI
+    # saglayiciya bagli olsa bile.
+    _link_third(ticket_world)
     ticket_world["grants"][str(ticket_world["customer"])] = [
         "tickets.access", "tickets.create", "tickets.view_all",
     ]
@@ -272,6 +287,7 @@ def test_customer_cannot_read_another_tenants_ticket_by_id(
         app_key="hermes_app", src_key="hermes_src",
         route_key="hermes_route",
     )
+    _link_third(ticket_world)
     response = api(ticket_world["customer"], THIRD_TENANT_ID).get(
         f"/api/v1/core/support/tickets/{ticket.id}"
     )

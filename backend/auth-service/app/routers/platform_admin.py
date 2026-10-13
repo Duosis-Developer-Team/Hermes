@@ -843,156 +843,172 @@ def list_audit_events(
 
 
 # =============================================================================
-# Tenant destek yonlendirmesi (Ticket Hub)
+# Talep agi (Ticket Hub) — kim kime talep acabilir?
 # =============================================================================
-# "Bu tenant ticket acabilir mi, KIME ve HANGI EKIBE?" sorusunu Platform
-# Admin cevaplar. Konfigurasyon core_db'de yasar; platform token'i core'a
-# GIREMEZ, bu yuzden dar bir S2S ucundan gecilir (core_support_client).
+# "Hangi tenant, HANGI tenant'a ve oradaki HANGI EKIBE talep acabilir?"
+# sorusunu Platform Admin cevaplar (CTO karari K3, 14.10: ag yalniz
+# super-admin'den kurulur). Konfigurasyon core_db'de yasar; platform
+# token'i core'a GIREMEZ, bu yuzden dar bir S2S ucundan gecilir
+# (core_support_client).
 #
 # IZIN: yeni bir platform izni EKLENMEDI, `platform.tenants.view/manage`
 # kullanildi. Neden: platform izinleri `platform_admins.permissions`
 # icinde ANLIK GORUNTU olarak durur ve katalog buyuyunce mevcut
-# adminlere OTOMATIK dagitilmaz (tenant RBAC'inin aksine). Yeni bir izin
-# eklemek ya ekrani mevcut adminler icin 403 yapar ya da "yeni izinleri
-# otomatik ver" gibi sessiz bir yetki genisletmesi gerektirirdi. Ikisi de
-# istenmez; yonlendirme zaten tenant yasam dongusu konfigurasyonudur.
+# adminlere OTOMATIK dagitilmaz. Yeni bir izin ya ekrani mevcut adminler
+# icin 403 yapar ya da sessiz bir yetki genisletmesi gerektirirdi.
 #
-# SINIR: bu uclar ticket ICERIGI dondurmez ve donduremez — core tarafi
+# SINIR: bu uclar talep ICERIGI dondurmez ve donduremez — core tarafi
 # yalnizca konfigurasyon serialize eder.
 
-@router.get("/support/providers", summary="Destek saglayicilari")
+
+def _support_error(exc: "core_support.CoreSupportError") -> HTTPException:
+    return HTTPException(status_code=exc.status_code, detail=exc.as_detail())
+
+
+def _tenant_names(db: Session) -> dict:
+    return {
+        str(t.id): (t.display_name or t.slug)
+        for t in db.query(Tenant.id, Tenant.display_name, Tenant.slug).all()
+    }
+
+
+@router.get("/support/providers", summary="Talep alabilecek saglayicilar")
 def support_providers(
     _: PlatformPrincipal = Depends(
         svc.require_platform_permissions(PlatformPerm.TENANTS_VIEW)
     ),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Ticket'in gonderilebilecegi saglayicilar + ekipleri.
-
-    Bugun TEK saglayici var (Duosis support tenant'i); liste bilerek
-    coklu modellendi ki ileride saglayici eklendiginde ekranin sekli
-    degismesin.
-    """
+    """Tickets modulu acik + calisir her tenant ve AKTIF ekipleri."""
     try:
         payload = core_support.list_providers()
     except core_support.CoreSupportError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
-
-    # Saglayici ADI auth_db'de; core yalnizca slug biliyor.
-    items = []
-    for item in payload.get("items", []):
-        tenant = db.query(Tenant).filter(
-            Tenant.id == item["tenant_id"]
-        ).first()
-        items.append({
-            **item,
-            "display_name": (
-                tenant.display_name if tenant else item.get("slug")
-            ),
-        })
+        raise _support_error(exc)
+    names = _tenant_names(db)
+    items = [
+        {**item, "display_name": names.get(str(item["tenant_id"]),
+                                           item.get("slug"))}
+        for item in payload.get("items", [])
+    ]
     return {"providers": items,
             "module_state": payload.get("module_state", "unknown")}
 
 
-@router.get("/support/routing", summary="Tenant destek yonlendirmeleri")
-def support_routing(
+@router.get("/support/network", summary="Talep agi baglantilari")
+def support_network(
     _: PlatformPrincipal = Depends(
         svc.require_platform_permissions(PlatformPerm.TENANTS_VIEW)
     ),
     db: Session = Depends(get_db),
 ) -> dict:
-    """TUM tenant'lar + yonlendirme durumu.
-
-    Yonlendirmesi olmayan tenant da listede gorunur (`enabled=false`) —
-    aksi halde "ticket acamayan tenant" ekranda HIC gorunmez ve
-    operator neyi acacagini bulamazdi.
-    """
+    """Tum baglantilar; adlar auth'un GUNCEL adlariyla (core snapshot'i
+    yalnizca auth'ta kaydi olmayan eski bir tenant icin kullanilir)."""
     try:
-        payload = core_support.list_routing()
+        payload = core_support.list_network()
     except core_support.CoreSupportError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
-
-    by_tenant = {str(r["tenant_id"]): r for r in payload.get("items", [])}
-    rows = db.query(Tenant).order_by(Tenant.display_name.asc()).all()
-    out = []
-    for tenant in rows:
-        routing = by_tenant.get(str(tenant.id), {})
-        out.append({
-            "tenant_id": str(tenant.id),
-            "slug": tenant.slug,
-            "display_name": tenant.display_name,
-            "tenant_status": tenant.status,
-            "enabled": bool(routing.get("enabled")),
-            "provider_tenant_id": routing.get("provider_tenant_id"),
-            "group_id": routing.get("group_id"),
-            "group_name": routing.get("group_name"),
-            "group_active": routing.get("group_active"),
-            "route_version": routing.get("route_version"),
+        raise _support_error(exc)
+    names = _tenant_names(db)
+    items = []
+    for item in payload.get("items", []):
+        items.append({
+            **item,
+            "requester_display_name": names.get(
+                str(item["requester_tenant_id"]),
+                item.get("requester_display_name"),
+            ),
+            "provider_display_name": names.get(
+                str(item["provider_tenant_id"]),
+                item.get("provider_display_name"),
+            ),
         })
-    return {"items": out}
+    return {"items": items,
+            "module_state": payload.get("module_state", "unknown")}
 
 
-class SupportRoutingRequest(BaseModel):
-    provider_tenant_id: UUID
+class NetworkLinkRequest(BaseModel):
     group_id: UUID
+    expected_version: Optional[int] = None
 
 
-@router.put("/support/routing/{tenant_id}",
-            summary="Tenant'a ticket acma yetkisi ver")
-def set_support_routing(
-    tenant_id: UUID,
-    payload: SupportRoutingRequest,
+def _tenant_or_404(db: Session, tenant_id: UUID) -> Tenant:
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if tenant is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "unknown_tenant", "message": "Tenant not found."},
+        )
+    return tenant
+
+
+@router.put(
+    "/support/network/{requester_tenant_id}/{provider_tenant_id}",
+    summary="Baglanti kur / ekibi degistir / yeniden ac",
+)
+def set_network_link(
+    requester_tenant_id: UUID,
+    provider_tenant_id: UUID,
+    payload: NetworkLinkRequest,
     principal: PlatformPrincipal = Depends(
         svc.require_platform_permissions(PlatformPerm.TENANTS_MANAGE)
     ),
     db: Session = Depends(get_db),
 ) -> dict:
-    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
-    if tenant is None:
-        raise HTTPException(status_code=404, detail="Tenant not found.")
+    requester = _tenant_or_404(db, requester_tenant_id)
+    provider = _tenant_or_404(db, provider_tenant_id)
     try:
-        result = core_support.set_routing(
-            str(tenant_id),
-            provider_tenant_id=str(payload.provider_tenant_id),
+        result = core_support.set_link(
+            str(requester.id), str(provider.id),
             group_id=str(payload.group_id),
-            display_name=tenant.display_name or tenant.slug,
+            requester_display_name=requester.display_name or requester.slug,
+            provider_display_name=provider.display_name or provider.slug,
+            expected_version=payload.expected_version,
+            actor_id=str(principal.id),
         )
     except core_support.CoreSupportError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
-
-    # Imza: record_audit yalniz bilinen anahtar kelimeleri alir. Eskiden
-    # `actor_id`/`detail` gonderiliyordu → TypeError (core'da degisiklik
-    # UYGULANMISKEN istek 500 donuyor, denetim yazilmiyordu).
+        raise _support_error(exc)
     svc.record_audit(
-        db, action="support.routing.set",
-        actor_user_id=UUID(principal.id), target_tenant_id=tenant_id,
-        target_type="tenant", target_id=str(tenant_id),
-        metadata={"group_id": str(payload.group_id),
+        db, action="support.network.linked",
+        actor_user_id=UUID(principal.id), target_tenant_id=requester.id,
+        target_type="tenant", target_id=str(requester.id),
+        metadata={"provider_tenant_id": str(provider.id),
+                  "group_id": str(payload.group_id),
                   "route_version": result.get("route_version")},
     )
     db.commit()
-    return result
+    return {
+        **result,
+        "requester_display_name": requester.display_name or requester.slug,
+        "provider_display_name": provider.display_name or provider.slug,
+    }
 
 
-@router.delete("/support/routing/{tenant_id}",
-               summary="Tenant'in ticket acma yetkisini kaldir")
-def disable_support_routing(
-    tenant_id: UUID,
+@router.delete(
+    "/support/network/{requester_tenant_id}/{provider_tenant_id}",
+    summary="Baglantiyi kapat",
+)
+def disable_network_link(
+    requester_tenant_id: UUID,
+    provider_tenant_id: UUID,
+    expected_version: Optional[int] = None,
     principal: PlatformPrincipal = Depends(
         svc.require_platform_permissions(PlatformPerm.TENANTS_MANAGE)
     ),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Yonlendirmeyi PASIFE alir. Mevcut ticket'lar SILINMEZ ve
-    gorunmeye devam eder; yalnizca yeni ticket acilamaz."""
+    """Baglantiyi PASIFE alir. Mevcut talepler SILINMEZ ve iki tarafta da
+    gorunmeye devam eder; yalnizca yeni talep acilamaz."""
     try:
-        result = core_support.disable_routing(str(tenant_id))
+        result = core_support.disable_link(
+            str(requester_tenant_id), str(provider_tenant_id),
+            expected_version=expected_version, actor_id=str(principal.id),
+        )
     except core_support.CoreSupportError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+        raise _support_error(exc)
     svc.record_audit(
-        db, action="support.routing.disabled",
-        actor_user_id=UUID(principal.id), target_tenant_id=tenant_id,
-        target_type="tenant", target_id=str(tenant_id),
+        db, action="support.network.unlinked",
+        actor_user_id=UUID(principal.id), target_tenant_id=requester_tenant_id,
+        target_type="tenant", target_id=str(requester_tenant_id),
+        metadata={"provider_tenant_id": str(provider_tenant_id)},
     )
     db.commit()
     return result

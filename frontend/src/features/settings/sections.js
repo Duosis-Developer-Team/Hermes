@@ -62,7 +62,9 @@ export const SETTINGS_SECTIONS = [
         items: [
             { key: 'api', path: '/settings/integrations/api', labelKey: 'nav.apiManagement', perm: 'api.manage', module: 'developer' },
             // Ticket entegrasyonu: mevcut rota iki izinden birini kabul ediyordu.
-            { key: 'tickets', path: '/settings/integrations/tickets', labelKey: 'nav.ticketIntegrations', perm: ['tickets.config.manage', 'tickets.admin'], module: 'tickets' },
+            // Dis entegrasyonlar (LogiSlot vb.) YALNIZ ana destek tenant'inda
+            // anlamli; talep agindaki diger saglayicilarda gizlenir.
+            { key: 'tickets', path: '/settings/integrations/tickets', labelKey: 'nav.ticketIntegrations', perm: ['tickets.config.manage', 'tickets.admin'], module: 'tickets', requires: 'ticketIntegrations' },
         ],
     },
 ]
@@ -86,26 +88,31 @@ export const LEGACY_SETTINGS_PATHS = {
 const permsOf = (item) => (Array.isArray(item.perm) ? item.perm : [item.perm])
 
 const ALL_ON = () => true
+// Yetenek haritasi verilmezse kisit yok (geriye uyumlu cagiranlar).
+const capOk = (item, caps) => !item.requires || !caps || caps[item.requires] !== false
 const moduleOk = (item, hasModule) => {
     if (!item.module) return true
     const mods = Array.isArray(item.module) ? item.module : [item.module]
     return mods.some((m) => hasModule(m))
 }
 
-/** Verilen `canAny(...perms)` + tenant modulleri ile GORUNUR bolumler
- *  (bos bolum dusurulur). `hasModule` verilmezse modul filtresi yok. */
-export const visibleSections = (canAny, hasModule = ALL_ON) =>
+/** Verilen `canAny(...perms)` + tenant modulleri (+ istege bagli yetenek
+ *  haritasi `caps`, orn. `{ ticketIntegrations: false }`) ile GORUNUR
+ *  bolumler (bos bolum dusurulur). `hasModule` verilmezse modul filtresi
+ *  yok; `caps` verilmezse yetenek filtresi yok. */
+export const visibleSections = (canAny, hasModule = ALL_ON, caps = null) =>
     SETTINGS_SECTIONS
         .map((s) => ({
             ...s,
-            items: s.items.filter((i) => moduleOk(i, hasModule) && canAny(...permsOf(i))),
+            items: s.items.filter((i) => moduleOk(i, hasModule) && capOk(i, caps)
+                && canAny(...permsOf(i))),
         }))
         .filter((s) => s.items.length > 0)
 
 /** Kullanicinin ilk gorebilecegi ayar sayfasi; hicbiri yoksa null. */
-export const firstSettingsPath = (canAny, hasModule = ALL_ON) =>
-    visibleSections(canAny, hasModule)[0]?.items[0]?.path ?? null
+export const firstSettingsPath = (canAny, hasModule = ALL_ON, caps = null) =>
+    visibleSections(canAny, hasModule, caps)[0]?.items[0]?.path ?? null
 
 /** Kenar cubugundaki tek "Ayarlar" ogesi icin: en az bir bolum var mi? */
-export const hasAnySettings = (canAny, hasModule = ALL_ON) =>
-    firstSettingsPath(canAny, hasModule) !== null
+export const hasAnySettings = (canAny, hasModule = ALL_ON, caps = null) =>
+    firstSettingsPath(canAny, hasModule, caps) !== null

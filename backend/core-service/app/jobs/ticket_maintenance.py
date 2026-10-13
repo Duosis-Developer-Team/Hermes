@@ -13,6 +13,10 @@
 #
 # Ticket, mesaj, cozum ve audit kayitlari HICBIR kosulda silinmez
 # (02 §10: v1 otomatik silme yapmaz).
+#
+# Talep agi: isler HER SAGLAYICIDA kosar (yapilandirilmis destek tenant'i
+# + baglantilarin saglayici ucu). Modulu kapali/askidaki saglayici
+# atlanir (gecit acilmaz) ve sayilir.
 # =============================================================================
 
 from __future__ import annotations
@@ -33,6 +37,34 @@ logger = logging.getLogger("hermes.ticket.maintenance")
 LOCK_KEY = 8_140_2252
 
 
+def provider_ids() -> list:
+    """Bakim gereken saglayicilar — destek tenant'i ONCE, sonra baglantilar."""
+    ids = [support.support_tenant_id()]
+    with support.global_session() as gdb:
+        rows = gdb.execute(sa_text(
+            "SELECT DISTINCT provider_tenant_id FROM ticket_network_links"
+        )).all()
+    ids.extend(str(r[0]) for r in rows)
+    seen, out = set(), []
+    for tid in ids:
+        if tid and tid not in seen:
+            seen.add(tid)
+            out.append(tid)
+    return out
+
+
+def _maintain(db) -> dict:
+    closed = ticket_service.auto_close_due_tickets(db)
+    expired = ticket_attachment_service.expire_orphaned_uploads(db)
+    purged = idem.purge_expired(db)
+    return {
+        "auto_closed": closed.get("closed", 0),
+        "auto_close_window_days": closed.get("window_days"),
+        "expired_uploads": expired.get("expired", 0),
+        "purged_idempotency_keys": purged,
+    }
+
+
 def run_once() -> dict:
     # Bu AYRI bir surectir: API'nin startup dogrulamasi burada
     # KOSMAMISTIR. Once dogrula, sonra karar ver — aksi halde is her
@@ -50,16 +82,25 @@ def run_once() -> dict:
             return {"ok": True, "status": "skipped",
                     "reason": "another_run_in_progress"}
         try:
-            closed = ticket_service.auto_close_due_tickets(db)
-            expired = ticket_attachment_service.expire_orphaned_uploads(db)
-            purged = idem.purge_expired(db)
-            return {
-                "ok": True, "status": "completed",
-                "auto_closed": closed.get("closed", 0),
-                "auto_close_window_days": closed.get("window_days"),
-                "expired_uploads": expired.get("expired", 0),
-                "purged_idempotency_keys": purged,
+            summary = {
+                "ok": True, "status": "completed", "providers": 0,
+                "providers_skipped": 0, "auto_closed": 0,
+                "auto_close_window_days": None, "expired_uploads": 0,
+                "purged_idempotency_keys": 0,
             }
+            for tenant_id in provider_ids():
+                try:
+                    with support.provider_session(tenant_id) as pdb:
+                        part = _maintain(pdb)
+                except support.SupportNotConfigured:
+                    summary["providers_skipped"] += 1
+                    continue
+                summary["providers"] += 1
+                for key in ("auto_closed", "expired_uploads",
+                            "purged_idempotency_keys"):
+                    summary[key] += int(part[key] or 0)
+                summary["auto_close_window_days"] = part["auto_close_window_days"]
+            return summary
         finally:
             db.execute(
                 sa_text("SELECT pg_advisory_unlock(:k)"), {"k": LOCK_KEY}

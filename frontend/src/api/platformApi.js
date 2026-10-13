@@ -67,29 +67,30 @@ export const platformService = {
     // -----------------------------------------------------------------
     // Ticket Hub — tenant destek yonlendirmesi
     // -----------------------------------------------------------------
-    // "Bu tenant ticket acabilir mi, KIME ve HANGI EKIBE?" Konfigurasyon
-    // core_db'de yasar; auth-service dar bir S2S ucundan okur/yazar.
-    // Bu uclar ticket ICERIGI DONDURMEZ.
+    // Talep agi konfigurasyonu core_db'de yasar; auth-service dar bir S2S
+    // ucundan okur/yazar. Bu uclar talep ICERIGI DONDURMEZ.
     supportProviders: async () => {
         const { data } = await platformClient.get(`${BASE}/support/providers`)
         return data
     },
 
-    supportRouting: async () => {
-        const { data } = await platformClient.get(`${BASE}/support/routing`)
-        return data.items || []
+    // Talep agi: "kim, kime (hangi ekibe) talep acabilir?"
+    supportNetwork: async () => {
+        const { data } = await platformClient.get(`${BASE}/support/network`)
+        return data
     },
 
-    setSupportRouting: async (tenantId, payload) => {
+    setNetworkLink: async (requesterId, providerId, payload) => {
         const { data } = await platformClient.put(
-            `${BASE}/support/routing/${tenantId}`, payload,
+            `${BASE}/support/network/${requesterId}/${providerId}`, payload,
         )
         return data
     },
 
-    disableSupportRouting: async (tenantId) => {
+    disableNetworkLink: async (requesterId, providerId, expectedVersion) => {
         const { data } = await platformClient.delete(
-            `${BASE}/support/routing/${tenantId}`,
+            `${BASE}/support/network/${requesterId}/${providerId}`,
+            { params: expectedVersion ? { expected_version: expectedVersion } : {} },
         )
         return data
     },

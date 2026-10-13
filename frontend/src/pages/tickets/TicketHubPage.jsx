@@ -31,6 +31,7 @@ import {
 import {
     TicketPriorityBadge, TicketStatusBadge,
 } from '../../features/tickets/TicketStatusBadge'
+import SurfaceSwitch from '../../features/tickets/SurfaceSwitch'
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { queryKeys } from '../../query/queryKeys'
 import '../../features/tickets/tickets.css'
@@ -74,11 +75,12 @@ export default function TicketHubPage() {
         setParams(next, { replace: true })
     }, [params, setParams])
 
-    // Yuzey karari SUNUCUDAN: portal kullanicisi buraya gelirse kendi
-    // ekranina yonlendirilir (404 yerine dogru yer).
+    // Yuzey karari SUNUCUDAN: yalniz talep eden (saglayici olmayan) tenant
+    // buraya gelirse kendi ekranina yonlendirilir (404 yerine dogru yer).
+    // Hem saglayici hem talep eden tenant iki sayfayi da kullanir.
     useEffect(() => {
-        if (context.isPortal) navigate('/support', { replace: true })
-    }, [context.isPortal, navigate])
+        if (context.isPortal && !context.isHub) navigate('/support', { replace: true })
+    }, [context.isPortal, context.isHub, navigate])
 
     const queue = params.get('queue') || DEFAULT_QUEUE
     const applicationId = params.get('application') || undefined
@@ -195,6 +197,7 @@ export default function TicketHubPage() {
 
     return (
         <Page className="tickets-page">
+            <SurfaceSwitch />
             <PageHero
                 title={t('hub.tickets')}
                 subtitle={`${t('hub.countLabel', { count: total })} \u00b7 ${tl('queue', queue)}`}

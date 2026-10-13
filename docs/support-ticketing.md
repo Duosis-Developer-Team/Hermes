@@ -20,9 +20,36 @@ Kaynak: `hermes-logislot-ticketing-cto-pack-v1.0/`.
 | Musteri portali API | `app/routers/support_portal.py` |
 | Entegrasyon yonetimi | `app/routers/ticket_admin.py` |
 | Integration API (izole) | `app/support_api/` → `/api/integrations/v1/support` |
+| Talep agi | `app/models/ticket_network.py`, `app/services/ticket_network.py`, `app/routers/internal_support.py` (S2S) |
 | Joblar | `app/jobs/ticket_dispatcher.py`, `app/jobs/ticket_maintenance.py` |
 | Frontend | `frontend/src/pages/tickets/`, `frontend/src/features/tickets/` |
 | Sozlesme fixture'lari | `docs/contracts/support-ticketing-v1/` |
+
+## 1b. Talep agi (2026-10-14, 0018)
+
+Canonical talep artik **saglayicinin** verisinde durur; Duosis tek saglayici
+degildir. Kim kime talep acar sorusunu super-admin konsolu (Talep agi)
+cevaplar: `ticket_network_links` (GLOBAL, RLS'siz) = talep eden → saglayici;
+varsayilan ekip saglayicinin `support_ticket_routes` satirindadir (ayni
+transaction'da yazilir).
+
+| Yuzey | Oturum | Kim gorur |
+|---|---|---|
+| Hub (Gelen talepler) | cagiranin KENDI tenant'i | yapilandirilmis destek tenant'i + her baglantinin saglayicisi |
+| Portal (Actigim talepler) | baglantidan COZULEN saglayici (`provider_session`) | baglantisi olan her tenant |
+| Integration API (LogiSlot) | yapilandirilmis destek tenant'i (`support_session`) | degismedi |
+
+- Portalda birden fazla saglayici varsa istemci `?provider=<tenant>` gonderir;
+  deger baglanti kumesine karsi dogrulanir (disi = 404, eksik = 422
+  `provider_required`). Liste tum saglayicilardan birlesir.
+- Pasif baglanti YENI talebi durdurur; gecmis talepler iki tarafta gorunur.
+- Saglayicinin `tickets` modulu kapali/tenant askidaysa gecit acilmaz.
+- Dis entegrasyon yonetimi (`/tickets/admin`) YALNIZ yapilandirilmis destek
+  tenant'inda; diger saglayicilarda ayar sayfasi gizlidir.
+- Bakim isi (auto-close, upload/idempotency temizligi) HER saglayicida kosar;
+  dispatcher yalniz destek tenant'inda (callback'li uygulamalar orada).
+- 0018 mevcut `hermes` yonlendirmelerini baglantiya geri doldurur (tekrar
+  kosulabilir; saglayici verisine yazmaz).
 
 ## 2. Zorunlu konfigurasyon
 

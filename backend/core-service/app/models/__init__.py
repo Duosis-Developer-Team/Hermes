@@ -45,6 +45,7 @@ from .api_client import (
 from .task_activity import TaskActivityEvent
 from .task_comment import TaskComment
 from .tenancy import TenantCounter, TenantRegistry
+from .ticket_network import TICKET_NETWORK_TABLES, TicketNetworkLink
 from .meeting import Meeting, MeetingAttendee
 from .user_group import (
     UserGroup,
@@ -118,6 +119,8 @@ __all__ = [
     "TaskGroupMemberOverride",
     # Tenant projeksiyonu + sayaclar (WS2) — tenant OTORITESI auth_db'dir.
     "TenantRegistry",
+    "TicketNetworkLink",
+    "TICKET_NETWORK_TABLES",
     "TenantCounter",
     # Ticket Hub
     "SupportApplication",

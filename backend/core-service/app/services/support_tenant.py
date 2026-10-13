@@ -201,6 +201,69 @@ def ensure_verified() -> str:
     return state
 
 
+def _provider_runnable(db: Session, tenant_id: str) -> bool:
+    """Saglayici calistirilabilir mi + `tickets` modulu acik mi?
+
+    Projeksiyondan okunur (auth'a senkron cagri YOK). Modul kapali bir
+    tenant'in verisine talep gecidi ACILMAZ: superadmin modulu kapattiysa
+    o tenant'ta talep yuzeyi de, oraya acilan baglanti da durur.
+    """
+    from shared.modules import Module
+
+    row = db.execute(
+        text(
+            "SELECT status, enabled_modules FROM tenant_registry "
+            " WHERE tenant_id = CAST(:t AS uuid)"
+        ),
+        {"t": tenant_id},
+    ).first()
+    if row is None or row[0] not in RUNNABLE_TENANT_STATUSES:
+        return False
+    modules = row[1] if isinstance(row[1], list) else []
+    return Module.TICKETS in modules
+
+
+@contextmanager
+def provider_session(tenant_id, *, require_runnable: bool = True):
+    """Bir SAGLAYICI tenant baglaminda transaction-local oturum.
+
+    Talep aginin dar gecidi: tenant kimligi cagiran tarafindan talep agi
+    kaydina (`ticket_network_links`) veya cagiranin kendi oturumuna karsi
+    DOGRULANMIS olarak gelir; burada ayrica saglayicinin calisir durumda
+    ve `tickets` modulunun acik oldugu kontrol edilir (fail-closed).
+
+    Modulun kendisi (dagitim seviyesinde) kapaliysa da acilmaz.
+
+    `require_runnable=False` YALNIZCA konsolun baglanti KAPATMA/listeleme
+    yolu icindir: modulu kapatilmis bir saglayiciya giden baglanti da
+    kapatilabilmeli ve gorulebilmeli. Talep okuma/yazma yollari bunu
+    KULLANMAZ.
+    """
+    require_available()
+    try:
+        tenant = str(uuid.UUID(str(tenant_id)))
+    except (ValueError, AttributeError, TypeError):
+        raise SupportNotConfigured("provider_unavailable")
+    with TenantSession(tenant) as db:
+        if require_runnable and not _provider_runnable(db, tenant):
+            raise SupportNotConfigured("provider_unavailable")
+        yield db
+
+
+@contextmanager
+def global_session():
+    """Yalnizca GLOBAL tablolari (tenant_registry, ticket_network_links)
+    okumak icin tenant'siz oturum. RLS'li hicbir tablo bundan okunamaz —
+    tenant baglami yoktur (fail-closed)."""
+    from ..database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 @contextmanager
 def support_session():
     """Support tenant baglaminda transaction-local bir oturum.

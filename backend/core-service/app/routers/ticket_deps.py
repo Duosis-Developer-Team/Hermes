@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from shared.auth import CurrentUser, get_current_user
 
 from ..services import support_tenant as support
+from ..services import ticket_network as network
 from ..services import ticket_visibility as visibility
 from ..services.ticket_service import TicketConflict, TicketValidationError
 from ..services.ticket_state import TransitionError
@@ -87,28 +88,43 @@ def client_ip(request: Request) -> Optional[str]:
 
 
 # =============================================================================
-# Support tenant oturumu
+# Oturumlar — talep agi (00-plan §4.0)
 # =============================================================================
+# Canonical talep SAGLAYICININ verisinde durur. Iki yuz, iki oturum:
+#   hub    → cagiranin KENDI tenant'i (saglayiciysa)
+#   portal → cagiranin talep agi baglantilarindan COZULEN saglayici
+# Tenant kimligi hicbir zaman istek govdesinden alinmaz; portalda istemci
+# yalnizca baglanti kumesinden SECER (`provider`), kume sunucudadir.
 
-def get_support_db() -> Generator[Optional[Session], None, None]:
-    """Canonical ticket verisine erisen TEK oturum.
+PROVIDER_PARAM = "provider"
+PROVIDER_HEADER = "x-ticket-provider"
 
-    `support_session()` tenant'i SUNUCU KONFIGURASYONUNDAN alir; istek
-    govdesindeki hicbir deger bu baglami degistiremez.
 
-    Modul yapilandirilmamissa `None` doner — HATA FIRLATMAZ. Nedeni:
-    yuzey kapilari (`require_support_surface` / `require_customer_surface`
-    / `_support_admin`) zaten `require_module_enabled()` cagirir ve
-    daha anlamli bir 503 uretir; ayrica `/tickets/context` ucu, modul
-    kapaliyken de CEVAP VEREBILMEK zorundadir (frontend "yuzey yok"
-    durumunu bu yanittan ogrenir). Bos liste donmek gibi sessiz bir
-    ariza YOKTUR: db None iken hicbir sorgu calismaz.
+def get_global_db() -> Generator[Session, None, None]:
+    """Talep agi kararlari icin GLOBAL okuma oturumu (tenant'siz)."""
+    with support.global_session() as db:
+        yield db
+
+
+def get_support_db(
+    current_user: CurrentUser = Depends(get_current_user),
+    gdb: Session = Depends(get_global_db),
+) -> Generator[Optional[Session], None, None]:
+    """HUB oturumu: cagiranin kendi tenant'i — yalnizca SAGLAYICIYSA.
+
+    Modul kapaliysa veya tenant saglayici degilse `None` doner — HATA
+    FIRLATMAZ. Yuzey kapilari (`require_support_surface`, `_support_admin`)
+    zaten anlamli bir 503/404 uretir; `/tickets/context` ise modul
+    kapaliyken de cevap vermek zorundadir. db None iken hicbir sorgu
+    calismaz (sessiz bos liste yok).
     """
-    if not support.is_available():
+    if not support.is_available() or not network.is_provider(
+        gdb, current_user.tenant_id
+    ):
         yield None
         return
     try:
-        with support.support_session() as db:
+        with support.provider_session(current_user.tenant_id) as db:
             yield db
     except support.SupportNotConfigured as exc:
         raise http_error("support_not_configured", str(exc))
@@ -125,20 +141,21 @@ def require_module_enabled() -> None:
 
 
 # =============================================================================
-# Hub (Duosis agent) kapisi
+# Hub (gelen talepler) kapisi
 # =============================================================================
 
 def require_support_surface(
     current_user: CurrentUser = Depends(get_current_user),
+    gdb: Session = Depends(get_global_db),
 ) -> CurrentUser:
-    """Cagiran Duosis support tenant'inda mi?
+    """Cagiranin tenant'i bir SAGLAYICI mi?
 
-    Degilse 404: baska bir tenant'in kullanicisi icin hub ucu VAR
-    DEGILDIR. 403 dondurmek, "boyle bir yuzey var ama sana kapali"
+    Degilse 404: saglayici olmayan bir tenant'in kullanicisi icin hub ucu
+    VAR DEGILDIR. 403 dondurmek, "boyle bir yuzey var ama sana kapali"
     bilgisini sizdirirdi.
     """
     require_module_enabled()
-    if not support.is_support_tenant(current_user.tenant_id):
+    if not network.is_provider(gdb, current_user.tenant_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Not found",
@@ -156,20 +173,70 @@ def hub_scope(
         raise translate(exc)
 
 
+# =============================================================================
+# Portal (actigim talepler) kapisi
+# =============================================================================
+
 def require_customer_surface(
     current_user: CurrentUser = Depends(get_current_user),
+    gdb: Session = Depends(get_global_db),
 ) -> CurrentUser:
-    """Musteri portali: support tenant'i DISINDAKI her tenant.
+    """Musteri portali: talep agi baglantisi OLAN her tenant.
 
-    Support tenant'inin kendi kullanicilari portali kullanmaz — onlarin
-    yuzeyi hub'dir. Iki yuzeyin ayni tenant'ta ust uste binmesi,
-    "kendi kendine ticket acan destek ekibi" gibi kafa karistirici bir
-    duruma yol acardi.
+    Baglantisi olmayan tenant icin portal ucu yoktur (404). Bir tenant
+    hem saglayici hem talep eden olabilir (iki sekme); saglayicinin
+    KENDINE baglantisi ise semada yasaktir.
     """
     require_module_enabled()
-    if support.is_support_tenant(current_user.tenant_id):
+    if not network.requester_links(gdb, current_user.tenant_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Not found",
         )
     return current_user
+
+
+def requested_provider(request: Request) -> Optional[str]:
+    return (
+        request.query_params.get(PROVIDER_PARAM)
+        or request.headers.get(PROVIDER_HEADER)
+        or None
+    )
+
+
+def network_http_error(exc: network.NetworkError) -> HTTPException:
+    if exc.code == "provider_required":
+        return HTTPException(
+            status_code=exc.status, detail=str(exc),
+            headers={ERROR_CODE_HEADER: exc.code},
+        )
+    return http_error(exc.code, str(exc))
+
+
+def portal_provider(
+    request: Request,
+    current_user: CurrentUser = Depends(require_customer_surface),
+    gdb: Session = Depends(get_global_db),
+) -> network.ProviderLink:
+    """Bu portal isteginin saglayicisi (baglanti kumesinden)."""
+    links = network.requester_links(gdb, current_user.tenant_id)
+    try:
+        return network.resolve_provider(links, requested_provider(request))
+    except network.NetworkError as exc:
+        raise network_http_error(exc)
+
+
+def get_portal_db(
+    link: network.ProviderLink = Depends(portal_provider),
+) -> Generator[Session, None, None]:
+    """PORTAL oturumu: cozulmus saglayicinin verisi (dar gecit)."""
+    if not link.available:
+        raise http_error(
+            "support_not_configured",
+            "This support provider is not available right now.",
+        )
+    try:
+        with support.provider_session(link.provider_tenant_id) as db:
+            yield db
+    except support.SupportNotConfigured as exc:
+        raise http_error("support_not_configured", str(exc))

@@ -30,6 +30,8 @@ const { Text, Paragraph } = Typography
 
 export default function CustomerTicketDetail({
     ticketId, open, onClose, onChanged,
+    // Talep agi: talebin saglayicisi (birden fazla saglayicida zorunlu).
+    provider,
 }) {
     const t = useT()
     const tl = useTicketLabel()
@@ -39,7 +41,7 @@ export default function CustomerTicketDetail({
 
     const detail = useQuery({
         queryKey: queryKeys.supportTickets.detail(ticketId),
-        queryFn: () => supportPortalService.get(ticketId),
+        queryFn: () => supportPortalService.get(ticketId, provider),
         enabled: Boolean(ticketId) && open,
     })
     const ticket = detail.data
@@ -65,16 +67,16 @@ export default function CustomerTicketDetail({
     }
 
     const reply = useMutation({
-        mutationFn: (payload) => supportPortalService.reply(ticketId, payload),
+        mutationFn: (payload) => supportPortalService.reply(ticketId, payload, provider),
         ...handlers,
     })
     const reopen = useMutation({
-        mutationFn: (payload) => supportPortalService.reopen(ticketId, payload),
+        mutationFn: (payload) => supportPortalService.reopen(ticketId, payload, provider),
         ...handlers,
     })
     const confirmClose = useMutation({
         mutationFn: (payload) =>
-            supportPortalService.confirmClose(ticketId, payload),
+            supportPortalService.confirmClose(ticketId, payload, provider),
         ...handlers,
     })
 
@@ -191,7 +193,7 @@ export default function CustomerTicketDetail({
                             selfType="requester"
                             messages={ticket.messages}
                             downloadUrl={(fileId) =>
-                                supportPortalService.downloadUrl(ticket.id, fileId)}
+                                supportPortalService.downloadUrl(ticket.id, fileId, provider)}
                         />
                     </Surface>
 

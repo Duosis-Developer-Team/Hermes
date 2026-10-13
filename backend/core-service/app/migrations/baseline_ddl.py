@@ -351,7 +351,8 @@ def _backfill_type_number(conn) -> None:
 
 # Cutover ile GELEN tablolar — 0001 baseline'a AIT DEGILDIR.
 # (0001 "bugunku sema"yi tarif eder; tenant nesneleri 0002'de gelir.)
-POST_BASELINE_TABLES = ("tenant_registry", "tenant_counters")
+# `ticket_network_links` 0018'de gelir (FK → tenant_registry).
+POST_BASELINE_TABLES = ("tenant_registry", "tenant_counters", "ticket_network_links")
 
 
 def apply_baseline(conn) -> None:
@@ -406,7 +407,8 @@ def apply_tenant_projection(conn) -> None:
 
     Base.metadata.create_all(
         bind=conn,
-        tables=[Base.metadata.tables[name] for name in POST_BASELINE_TABLES],
+        tables=[Base.metadata.tables[name]
+                for name in ("tenant_registry", "tenant_counters")],
         checkfirst=True,
     )
 
@@ -534,6 +536,22 @@ def apply_tenant_modules(conn) -> None:
         conn.execute(text(stmt))
 
 
+def apply_ticket_network(conn) -> None:
+    """`ticket_network_links` (0018) — GLOBAL talep agi indeksi.
+
+    tenant-owned DEGIL (iki tenant'a birden ait); RLS almaz, erisim S2S
+    konsol ucu + runtime rol grant'i ile sinirlidir (models/ticket_network).
+    """
+    import app.models  # noqa: F401 — modelleri Base'e kaydeder
+    from app.database import Base
+
+    Base.metadata.create_all(
+        bind=conn,
+        tables=[Base.metadata.tables["ticket_network_links"]],
+        checkfirst=True,
+    )
+
+
 def apply_all(conn) -> None:
     """Testler icin: bugunku head semasinin tamami.
 
@@ -548,3 +566,4 @@ def apply_all(conn) -> None:
     apply_p2_attachments_expand(conn)
     apply_project_types_expand(conn)
     apply_tenant_modules(conn)
+    apply_ticket_network(conn)

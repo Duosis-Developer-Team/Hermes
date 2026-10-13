@@ -1,8 +1,8 @@
 # =============================================================================
 # Faz 2 — Super-admin konsolu arka ucu (docs/tenant-platform/00-plan.md §3)
 # =============================================================================
-#   1. Talep yonlendirmesi ac/kapa DENETIM yazar (eskiden record_audit'e
-#      bilinmeyen anahtar → TypeError → 500).
+#   1. Talep agi baglantisi kur/kapat DENETIM yazar; core'a GUNCEL adlar ve
+#      aktor gider; core'un makine-okur hata kodu ekrana tasinir.
 #   2. Tenant uyeleri: kimlik + uyelik + yonetici bayragi; is verisi YOK.
 #   3. Duzenlemede iyimser kilit: eski surumle PATCH → 409.
 #   4. Bilinmeyen plan kodu temiz 400 (FK hatasi degil).
@@ -44,18 +44,61 @@ def admin_client(platform_client, pg_session):
     return platform_client
 
 
-def test_support_routing_toggle_is_audited(admin_client, pg_session):
-    tid = admin_client.tenant_id
-    with patch.object(core_support, "set_routing", return_value={"route_version": 2}):
-        r = admin_client.put(f"{BASE}/support/routing/{tid}", json={
-            "provider_tenant_id": tid, "group_id": tid,
-        })
+def _provider(admin_client):
+    with patch.object(prov, "_project_to_core", return_value=None):
+        return admin_client.post(f"{BASE}/tenants", json={
+            "slug": "intertech", "display_name": "Intertech",
+            "owner_email": "owner@intertech.com",
+        }).json()["tenant"]["id"]
+
+
+def test_network_link_toggle_is_audited(admin_client, pg_session):
+    req = admin_client.tenant_id
+    prov_id = _provider(admin_client)
+    group = "11111111-1111-1111-1111-111111111111"
+    with patch.object(core_support, "set_link",
+                      return_value={"route_version": 2, "version": 1}) as call:
+        r = admin_client.put(f"{BASE}/support/network/{req}/{prov_id}",
+                             json={"group_id": group})
     assert r.status_code == 200, r.text
-    with patch.object(core_support, "disable_routing", return_value={"enabled": False}):
-        r = admin_client.delete(f"{BASE}/support/routing/{tid}")
+    kwargs = call.call_args.kwargs
+    assert kwargs["requester_display_name"] == "Acme"
+    assert kwargs["provider_display_name"] == "Intertech"
+    assert kwargs["group_id"] == group and kwargs["actor_id"]
+    with patch.object(core_support, "disable_link",
+                      return_value={"is_active": False}):
+        r = admin_client.delete(f"{BASE}/support/network/{req}/{prov_id}")
     assert r.status_code == 200, r.text
-    actions = [e.action for e in pg_session.query(PlatformAuditEvent).all()]
-    assert "support.routing.set" in actions and "support.routing.disabled" in actions
+    events = {e.action: e for e in pg_session.query(PlatformAuditEvent).all()}
+    assert "support.network.linked" in events
+    assert "support.network.unlinked" in events
+    assert str(events["support.network.linked"].target_tenant_id) == req
+
+
+def test_network_core_error_code_reaches_console(admin_client):
+    req = admin_client.tenant_id
+    prov_id = _provider(admin_client)
+    err = core_support.CoreSupportError(
+        "The provider workspace must be active with the Tickets module enabled.",
+        status_code=409, code="provider_unavailable",
+    )
+    with patch.object(core_support, "set_link", side_effect=err):
+        r = admin_client.put(
+            f"{BASE}/support/network/{req}/{prov_id}",
+            json={"group_id": "11111111-1111-1111-1111-111111111111"},
+        )
+    assert r.status_code == 409
+    assert r.json()["detail"]["code"] == "provider_unavailable"
+
+
+def test_network_unknown_tenant_is_404(admin_client):
+    r = admin_client.put(
+        f"{BASE}/support/network/{admin_client.tenant_id}/"
+        "22222222-2222-2222-2222-222222222222",
+        json={"group_id": "11111111-1111-1111-1111-111111111111"},
+    )
+    assert r.status_code == 404
+    assert r.json()["detail"]["code"] == "unknown_tenant"
 
 
 def test_members_list_is_identity_metadata_only(admin_client):

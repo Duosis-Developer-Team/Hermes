@@ -112,7 +112,8 @@ provası + satır sayımı).
 | Faz | Commit | Dev | Kanıt |
 |---|---|---|---|
 | 1 — Tenant modülleri | `610314c` | canlı (14.10) | auth 0006 / core 0017 head; acme + duosis 6 modülle (davranış değişmedi); auth 256, core 837, MCP 104, frontend 1156 test |
-| 2 — Süper-admin konsolu | (bu commit) | CD sonrası | auth 260, frontend 1163 test; görsel kontrol açık/koyu + 500 px |
+| 2 — Süper-admin konsolu | `591095c` | canlı (14.10) | auth 260, frontend 1163 test; görsel kontrol açık/koyu + 500 px |
+| 3.0 — Talep ağı | (bu commit) | CD sonrası | core 854 (RLS kanıtı dahil), auth 262, frontend 1166 |
 
 Faz 2 notları:
 - Konsol adresli: `/platform-admin` (genel bakış), `/tenants`, `/tenants/:id`
@@ -124,3 +125,13 @@ Faz 2 notları:
   platform düzleminde çağrılıyordu) kaldırıldı.
 - Yeni uç: `GET /api/platform/v1/tenants/{id}/members` (yalnız metadata; yönetici
   bilgisi aktif `system-admin` rolünden).
+
+Faz 3.0 notları (talep ağı):
+- `ticket_network_links` (0018, GLOBAL): talep eden → sağlayıcı; varsayılan ekip
+  sağlayıcının route'unda. Mevcut Hermes yönlendirmeleri geri dolduruldu.
+- Hub = kendi tenant'ı sağlayıcıysa; portal = bağlantısı varsa; ikisi birden
+  olabilir (üstte "Gelen talepler / Açtığım talepler" anahtarı).
+- Birden fazla sağlayıcıda istemci `provider` seçer (sunucu doğrular).
+- Konsol: Talep ağı sayfası (sağlayıcı kartları, ekip seçimi, aç/kapa, yeni
+  bağlantı) + kiracı detayında özet. Eski `/support/routing` uçları kaldırıldı.
+- LogiSlot entegrasyonu ve sözleşme değişmedi (Duosis = destek tenant'ı).

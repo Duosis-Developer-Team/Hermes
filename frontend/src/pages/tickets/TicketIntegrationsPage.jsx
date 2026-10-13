@@ -570,7 +570,9 @@ export default function TicketIntegrationsPage() {
         </div>
     )
 
-    if (!context.isHub) {
+    // Dis entegrasyonlar (LogiSlot vb.) yalniz ANA destek tenant'inda;
+    // talep agindaki diger saglayicilar da hub'a sahiptir ama bu ekrana degil.
+    if (!context.isHub || !context.integrations) {
         return (
             <div className="ti-page">
                 {header}

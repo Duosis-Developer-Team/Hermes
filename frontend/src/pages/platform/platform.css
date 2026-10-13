@@ -251,3 +251,32 @@
     .pc-mcard, .pc-chip { transition: none; }
     .pc-mcard:hover:not(:disabled) { transform: none; }
 }
+
+/* --- Talep agi (Faz 3.0) --------------------------------------------------------- */
+.pc-form { display: flex; flex-direction: column; gap: 14px; }
+.pc-field { display: flex; flex-direction: column; gap: 6px; }
+.pc-field > span { color: var(--h-text-secondary); font-size: 13px; font-weight: 600; }
+.pc-warn { color: var(--h-warning, #b7791f); }
+.pc-net__grid { margin-top: 2px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr)); gap: 16px; }
+.pc-net__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.pc-net__badges { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.pc-net__list { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.pc-net__list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(140px, 200px) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 4px;
+    border-top: 1px solid var(--h-border-subtle, rgba(0, 0, 0, 0.06));
+}
+.pc-net__list li:first-child { border-top: 0; }
+.pc-net__list li.is-off .pc-tenant { opacity: 0.6; }
+.pc-net__team { width: 100%; }
+.pc-net__state { display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end; min-width: 92px; }
+.pc-net-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px 24px; }
+.pc-net-summary h4 { margin: 0 0 6px; font-size: 12px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; color: var(--h-text-muted); }
+.pc-net-summary ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; }
+@media (max-width: 560px) {
+    .pc-net__list li { grid-template-columns: minmax(0, 1fr) auto; }
+    .pc-net__team { grid-column: 1 / -1; grid-row: 2; }
+}

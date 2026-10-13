@@ -6,7 +6,7 @@
  *   /platform-admin                 genel bakis
  *   /platform-admin/tenants         kiraci listesi
  *   /platform-admin/tenants/:id     kiraci detayi (moduller, uyeler, erisim…)
- *   /platform-admin/routing         talep yonlendirmesi
+ *   /platform-admin/network         talep agi (kim kime talep acar)
  *   /platform-admin/audit           denetim kaydi
  *
  * TASARIM: Hermes'in KENDI kabugu (AppShell) — tenant tarafiyla ayni
@@ -22,7 +22,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Empty, Table, Tag, message } from 'antd'
 import {
-    ApartmentOutlined, CustomerServiceOutlined, DashboardOutlined, FileSearchOutlined,
+    ApartmentOutlined, ClusterOutlined, DashboardOutlined, FileSearchOutlined,
     LogoutOutlined, SafetyCertificateOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
@@ -32,7 +32,7 @@ import { GlassCard, PageHero } from '../../components/liquid'
 import { platformService } from '../../api/platformApi'
 import { usePlatformAuthStore } from '../../stores/platformAuthStore'
 import { useT } from '../../i18n'
-import SupportRoutingTab from './SupportRoutingTab'
+import TicketNetwork from './TicketNetwork'
 import SupportSessionBanner from './SupportSessionBanner'
 import PlatformOverview from './PlatformOverview'
 import TenantList from './TenantList'
@@ -91,7 +91,7 @@ function TenantDetailRoute({ onSupportStarted }) {
 const SECTIONS = [
     { key: ROOT, icon: <DashboardOutlined />, labelKey: 'platform.overview' },
     { key: `${ROOT}/tenants`, icon: <ApartmentOutlined />, labelKey: 'platform.tenants' },
-    { key: `${ROOT}/routing`, icon: <CustomerServiceOutlined />, labelKey: 'platform.supportRouting' },
+    { key: `${ROOT}/network`, icon: <ClusterOutlined />, labelKey: 'platform.ticketNetwork', subtitleKey: 'platform.network.intro' },
     { key: `${ROOT}/audit`, icon: <FileSearchOutlined />, labelKey: 'platform.auditLog' },
 ]
 
@@ -163,7 +163,7 @@ export default function PlatformConsole() {
                     <PageHero
                         className="lq-enter"
                         title={t(section.labelKey)}
-                        subtitle={t('platform.consoleSubtitle')}
+                        subtitle={t(section.subtitleKey || 'platform.consoleSubtitle')}
                     />
                 )}
                 <Routes>
@@ -178,7 +178,9 @@ export default function PlatformConsole() {
                     />
                     <Route path="tenants" element={<TenantList onOpen={(id) => navigate(`${ROOT}/tenants/${id}`)} />} />
                     <Route path="tenants/:tenantId" element={<TenantDetailRoute onSupportStarted={setSupportSession} />} />
-                    <Route path="routing" element={<SupportRoutingTab />} />
+                    <Route path="network" element={<TicketNetwork />} />
+                    {/* Eski adres (tek saglayicili yonlendirme) → talep agi. */}
+                    <Route path="routing" element={<Navigate to={`${ROOT}/network`} replace />} />
                     <Route path="audit" element={<AuditPage />} />
                     <Route path="*" element={<Navigate to={ROOT} replace />} />
                 </Routes>

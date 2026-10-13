@@ -43,10 +43,19 @@ function collectDiagnostics() {
 export default function CreateTicketModal({
     open, onCancel, onSubmit, pending, groupName, routeReady,
     attachmentsEnabled = false,
+    // Talep agi: talep acilabilecek saglayicilar (birden fazlaysa kullanici
+    // KIME actigini secer). Ekler secili saglayicinin deposuna yuklenir.
+    providers = [], provider = null, onProviderChange,
 }) {
     const t = useT()
     const [form] = Form.useForm()
     const [attachments, setAttachments] = useState([])
+    const providerId = provider?.tenant_id
+    const pickProvider = (next) => {
+        // Yuklenmis ekler onceki saglayicidadir; secim degisince birakilir.
+        setAttachments([])
+        onProviderChange?.(next)
+    }
     // Idempotency anahtari MODAL ACILISINDA uretilir ve retry'larda
     // AYNI kalir: ag hatasi sonrasi "tekrar dene", ikinci bir ticket
     // ACMAZ.
@@ -94,14 +103,29 @@ export default function CreateTicketModal({
             width={680}
         >
             <Stack gap={3}>
+                {providers.length > 1 && (
+                    <label className="ticket-create-modal__provider">
+                        <Text strong>{t('ticket.sendTo')}</Text>
+                        <Select
+                            aria-label={t('ticket.sendTo')}
+                            value={providerId}
+                            onChange={pickProvider}
+                            options={providers.map((p) => ({
+                                value: p.tenant_id, label: p.display_name,
+                            }))}
+                        />
+                    </label>
+                )}
                 {routeReady ? (
                     <Alert
                         type="info"
                         showIcon
                         message={(
                             <span>
-                                This request will go to the{' '}
-                                <strong>{groupName}</strong> team.
+                                {provider?.display_name ? `${provider.display_name} · ` : ''}
+                                {t('ticket.goesToTeamPrefix')}
+                                <strong>{groupName}</strong>
+                                {t('ticket.goesToTeamSuffix')}
                             </span>
                         )}
                         description={t('ticket.targetTeamFixed')}
@@ -230,8 +254,11 @@ export default function CreateTicketModal({
                     enabled={attachmentsEnabled}
                     value={attachments}
                     onChange={setAttachments}
-                    onOpenSession={supportPortalService.openAttachmentSession}
-                    onUploadContent={supportPortalService.uploadAttachmentContent}
+                    onOpenSession={(params) => supportPortalService.openAttachmentSession(
+                        providerId ? { ...params, provider: providerId } : params,
+                    )}
+                    onUploadContent={(id, file) =>
+                        supportPortalService.uploadAttachmentContent(id, file, providerId)}
                 />
 
                 <Stack gap={1}>

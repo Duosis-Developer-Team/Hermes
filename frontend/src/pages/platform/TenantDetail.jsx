@@ -16,9 +16,10 @@ import {
 } from 'antd'
 import {
     ArrowLeftOutlined, CopyOutlined, PauseCircleOutlined, PlayCircleOutlined,
-    SafetyCertificateOutlined,
+    RightOutlined, SafetyCertificateOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import { useNavigate } from 'react-router-dom'
 
 import { platformService } from '../../api/platformApi'
 import { GlassCard, LiquidSegmented, ModalHead } from '../../components/liquid'
@@ -144,6 +145,53 @@ function SupportModal({ tenant, onClose, onStarted }) {
 // Sekmeler
 // =============================================================================
 
+/** Bu kiracinin talep agi: kime talep acar, kimden talep alir. */
+function NetworkSummary({ tenant }) {
+    const t = useT()
+    const navigate = useNavigate()
+    const [links, setLinks] = useState(null)
+    useEffect(() => {
+        Promise.resolve()
+            .then(() => platformService.supportNetwork())
+            .then((d) => setLinks(d?.items || []))
+            .catch(() => setLinks([]))
+    }, [tenant.id])
+    if (!links) return null
+    const outgoing = links.filter((l) => l.requester_tenant_id === tenant.id)
+    const incoming = links.filter((l) => l.provider_tenant_id === tenant.id)
+    const line = (name, l) => (
+        <li key={`${l.requester_tenant_id}-${l.provider_tenant_id}`} className={l.is_active ? '' : 'pc-muted'}>
+            {name}{l.group_name ? ` · ${l.group_name}` : ''}
+            {!l.is_active && ` (${t('platform.network.inactive')})`}
+        </li>
+    )
+    return (
+        <GlassCard
+            title={t('platform.ticketNetwork')}
+            link={(
+                <Button type="link" size="small" onClick={() => navigate('/platform-admin/network')}>
+                    {t('platform.network.openNetwork')} <RightOutlined />
+                </Button>
+            )}
+        >
+            <div className="pc-net-summary">
+                <div>
+                    <h4>{t('platform.network.outgoing')}</h4>
+                    {outgoing.length
+                        ? <ul>{outgoing.map((l) => line(l.provider_display_name, l))}</ul>
+                        : <span className="pc-muted">{t('platform.network.none')}</span>}
+                </div>
+                <div>
+                    <h4>{t('platform.network.incoming')}</h4>
+                    {incoming.length
+                        ? <ul>{incoming.map((l) => line(l.requester_display_name, l))}</ul>
+                        : <span className="pc-muted">{t('platform.network.none')}</span>}
+                </div>
+            </div>
+        </GlassCard>
+    )
+}
+
 function OverviewSection({ tenant, canManage, onSuspend, onReactivate, onSupport, canSupport }) {
     const t = useT()
     return (
@@ -160,6 +208,7 @@ function OverviewSection({ tenant, canManage, onSuspend, onReactivate, onSupport
                     <dt>{t('platform.activatedAt')}</dt><dd>{tenant.activated_at ? dayjs(tenant.activated_at).format('D MMM YYYY HH:mm') : '—'}</dd>
                 </dl>
             </GlassCard>
+            <NetworkSummary tenant={tenant} />
             {(canManage || canSupport) && (
                 <GlassCard title={t('platform.dangerZone')} className="pc-danger">
                     <div className="pc-section">

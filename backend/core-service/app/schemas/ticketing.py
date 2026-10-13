@@ -149,6 +149,13 @@ class ResolutionAgentOut(ResolutionPublicOut):
 # Musteri yuzeyi
 # =============================================================================
 
+class ProviderRef(BaseModel):
+    """Talebin canonical kaydinin yasadigi saglayici (talep agi)."""
+
+    tenant_id: str
+    display_name: Optional[str] = None
+
+
 class TicketCustomerListItem(BaseModel):
     id: UUID
     ticket_number: str
@@ -163,6 +170,9 @@ class TicketCustomerListItem(BaseModel):
     last_public_activity_at: Optional[datetime] = None
     requester_display_name: Optional[str] = None
     version: int
+    # Talep agi: portal istemcisi detay/komut cagrilarinda bunu `provider`
+    # olarak geri gonderir (birden fazla saglayicisi olan tenant'lar icin).
+    provider: Optional[ProviderRef] = None
 
 
 class TicketCustomerOut(TicketCustomerListItem):
@@ -408,6 +418,22 @@ class TicketContextOut(BaseModel):
     has_scope: bool = True
     attachments_enabled: bool = False
     route: Optional["RouteStatusOut"] = None
+    # Talep agi: bir tenant hem saglayici (hub = gelen talepler) hem talep
+    # eden (portal = actigim talepler) olabilir. `surface` birincil yuzeydir
+    # (eski istemciler icin); `surfaces` ikisini birden listeler.
+    surfaces: List[Literal["hub", "portal"]] = Field(default_factory=list)
+    providers: List["PortalProviderOut"] = Field(default_factory=list)
+    # Dis entegrasyon (LogiSlot vb.) yonetimi YALNIZ yapilandirilmis destek
+    # tenant'inda anlamlidir; diger saglayicilarda ayar sayfasi gizlenir.
+    integrations: bool = False
+
+
+class PortalProviderOut(BaseModel):
+    tenant_id: str
+    display_name: Optional[str] = None
+    is_active: bool
+    can_create: bool
+    route: Optional["RouteStatusOut"] = None
 
 
 class RouteStatusOut(BaseModel):
@@ -593,5 +619,6 @@ class TicketHealthOut(BaseModel):
     unrouted_source_tenants: int
 
 
+PortalProviderOut.model_rebuild()
 TicketContextOut.model_rebuild()
 SourceTenantOut.model_rebuild()

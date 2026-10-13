@@ -1,17 +1,19 @@
 # =============================================================================
 # HERMES core — Musteri destek portali (Hermes tenant'lari)
 # =============================================================================
-# Bu yuzey, Duosis DISINDAKI her Hermes tenant'inda calisir.
+# Talep agi baglantisi OLAN her Hermes tenant'inda calisir ("Actigim
+# talepler"). Canonical kayit SAGLAYICININ verisindedir.
 #
 # GUVEN SINIRI (00 §4 / 03 §6): musteri tenant'inin normal RLS
-# transaction'i canonical Duosis tablosuna YAZMAZ. Akis:
+# transaction'i saglayici tablosuna YAZMAZ. Akis:
 #   1) normal tenant oturumu dogrulanir (JWT, tenant audience);
 #   2) `tickets.create` ve modul erisimi kontrol edilir;
 #   3) baglam yalnizca ALLOWLIST alanlardan kurulur;
-#   4) DAR bir gecit (`support_session`) Duosis baglamina gecer ve
-#      YALNIZCA ticket ingress islerini yapar.
-# Bu, genel bir `bypass_rls` DEGILDIR: gecit tenant kimligini sunucu
-# konfigurasyonundan alir ve baska hicbir tabloya yol acmaz.
+#   4) saglayici, cagiranin talep agi baglantilarindan COZULUR (istemci
+#      `provider` ile yalnizca bu kumeden secer) ve DAR bir gecit
+#      (`provider_session`) o baglama gecer.
+# Bu, genel bir `bypass_rls` DEGILDIR: gecilebilecek tenant kumesi
+# sunucudaki baglanti kaydidir ve baska hicbir tabloya yol acmaz.
 # =============================================================================
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ from ..models.ticketing import Ticket, TicketAttachment
 from ..public_api.rate_limit import get_limiter
 from ..schemas.ticketing import (
     AttachmentOut,
+    ProviderRef,
     ConfirmCloseRequest,
     CustomerMessageCreateRequest,
     MessagePublicOut,
@@ -44,7 +47,9 @@ from ..schemas.ticketing import (
     TicketCustomerOut,
 )
 from ..services import (
+    support_tenant as support,
     ticket_attachment_service,
+    ticket_network as network,
     ticket_idempotency as idem,
     ticket_queries,
     ticket_routing,
@@ -57,9 +62,13 @@ from ..ticket_contract import HEADER_IDEMPOTENCY_KEY
 from .ticket_deps import (
     client_ip,
     correlation_id,
-    get_support_db,
+    get_global_db,
+    get_portal_db,
     http_error,
+    network_http_error,
+    portal_provider,
     require_customer_surface,
+    requested_provider,
     translate,
 )
 
@@ -83,39 +92,51 @@ def _tenant_display_name(db: Session, tenant_id: str) -> str:
     return (row[0] if row else str(tenant_id))
 
 
-def portal_scope(
-    current_user: CurrentUser = Depends(require_customer_surface),
-    db: Session = Depends(get_support_db),
+def _scope_in(
+    db: Session, current_user: CurrentUser, permissions
 ) -> visibility.PortalScope:
-    """Musterinin kapsami: uygulama SABIT (`hermes`), kaynak tenant
-    CAGIRANIN tenant'i, requester CAGIRANIN kullanici kimligi.
-
-    Hicbiri istek govdesinden gelmez — kaynak dogrulanmis oturumdur
-    (05 §2: tenant kimligi URL/body'den turetilmez).
-    """
+    """Bir saglayici oturumunda musterinin kapsami: uygulama SABIT
+    (`hermes`), kaynak tenant CAGIRANIN tenant'i, requester CAGIRANIN
+    kullanici kimligi. Hicbiri istek govdesinden gelmez."""
     settings = get_settings()
+    app = ticket_routing.get_application(
+        db, settings.SUPPORT_HERMES_APPLICATION_CODE
+    )
+    src = None
+    if app is not None:
+        src = ticket_routing.get_source_tenant(
+            db, application_id=app.id,
+            source_tenant_id=str(current_user.tenant_id),
+        )
+    return visibility.PortalScope(
+        # Uygulama henuz yoksa (saglayicida hic talep acilmamis) sifir
+        # satir: kaynak satiri da yoktur → predicate kapali.
+        application_id=app.id if app is not None else uuid.uuid4(),
+        source_tenant_row_id=src.id if src else None,
+        requester_source_user_id=str(current_user.id),
+        permissions=permissions,
+    )
+
+
+def _require_access(current_user: CurrentUser):
     permissions = visibility.effective_ticket_permissions(current_user)
     if Perm.TICKETS_ACCESS not in permissions:
         raise http_error(
             "forbidden", "tickets.access permission is required."
         )
-    app = ticket_routing.get_application(
-        db, settings.SUPPORT_HERMES_APPLICATION_CODE
-    )
-    if app is None:
-        raise http_error(
-            "support_not_configured",
-            "The Hermes support application is not configured.",
-        )
-    src = ticket_routing.get_source_tenant(
-        db, application_id=app.id,
-        source_tenant_id=str(current_user.tenant_id),
-    )
-    return visibility.PortalScope(
-        application_id=app.id,
-        source_tenant_row_id=src.id if src else None,
-        requester_source_user_id=str(current_user.id),
-        permissions=permissions,
+    return permissions
+
+
+def portal_scope(
+    current_user: CurrentUser = Depends(require_customer_surface),
+    db: Session = Depends(get_portal_db),
+) -> visibility.PortalScope:
+    return _scope_in(db, current_user, _require_access(current_user))
+
+
+def _provider_ref(link: network.ProviderLink) -> ProviderRef:
+    return ProviderRef(
+        tenant_id=link.provider_tenant_id, display_name=link.display_name,
     )
 
 
@@ -162,6 +183,7 @@ def _rate_limit(key: str, limit: int, window: int, message: str) -> None:
 
 @router.get("/tickets", response_model=TicketCustomerListResponse)
 def list_my_tickets(
+    request: Request,
     status: List[str] = Query(default_factory=list),
     category: List[str] = Query(default_factory=list),
     search: Optional[str] = Query(None, max_length=120),
@@ -169,19 +191,54 @@ def list_my_tickets(
     created_to: Optional[datetime] = Query(None),
     limit: int = Query(25, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    scope: visibility.PortalScope = Depends(portal_scope),
-    db: Session = Depends(get_support_db),
+    current_user: CurrentUser = Depends(require_customer_surface),
+    gdb: Session = Depends(get_global_db),
 ):
+    """Tum saglayicilardaki taleplerim — `provider` verilirse yalniz o.
+
+    Birden fazla saglayicida: her birinden `offset+limit` kayit alinir,
+    `updated_at`'e gore birlestirilir ve dilimlenir (sayfalama dogru kalir;
+    saglayici sayisi kucuktur).
+    """
+    permissions = _require_access(current_user)
+    links = network.requester_links(gdb, current_user.tenant_id)
+    requested = requested_provider(request)
+    if requested:
+        try:
+            links = [network.resolve_provider(links, requested)]
+        except network.NetworkError as exc:
+            raise network_http_error(exc)
+    links = [link for link in links if link.available]
     filters = ticket_queries.TicketFilters(
         statuses=tuple(status), categories=tuple(category),
         search=search, created_from=created_from, created_to=created_to,
     )
-    rows, total = ticket_queries.list_portal_tickets(
-        db, scope, filters, limit=limit, offset=offset
-    )
+    single = len(links) == 1
+    merged, total = [], 0
+    for link in links:
+        try:
+            with support.provider_session(link.provider_tenant_id) as db:
+                scope = _scope_in(db, current_user, permissions)
+                rows, n = ticket_queries.list_portal_tickets(
+                    db, scope, filters,
+                    limit=limit if single else offset + limit,
+                    offset=offset if single else 0,
+                )
+                ref = _provider_ref(link)
+                merged.extend(
+                    ser.customer_list_item(t).model_copy(
+                        update={"provider": ref}
+                    )
+                    for t in rows
+                )
+                total += n
+        except support.SupportNotConfigured:
+            continue
+    if not single:
+        merged.sort(key=lambda item: item.updated_at, reverse=True)
+        merged = merged[offset:offset + limit]
     return TicketCustomerListResponse(
-        items=[ser.customer_list_item(t) for t in rows],
-        total=total, limit=limit, offset=offset,
+        items=merged, total=total, limit=limit, offset=offset,
     )
 
 
@@ -189,10 +246,13 @@ def list_my_tickets(
 def get_my_ticket(
     ticket_id: UUID,
     scope: visibility.PortalScope = Depends(portal_scope),
-    db: Session = Depends(get_support_db),
+    link: network.ProviderLink = Depends(portal_provider),
+    db: Session = Depends(get_portal_db),
 ):
     ticket = _load_ticket(db, ticket_id, scope)
-    return ser.customer_detail(db, ticket)
+    return ser.customer_detail(db, ticket).model_copy(
+        update={"provider": _provider_ref(link)}
+    )
 
 
 # =============================================================================
@@ -205,7 +265,8 @@ def create_ticket(
     request: Request,
     current_user: CurrentUser = Depends(require_customer_surface),
     scope: visibility.PortalScope = Depends(portal_scope),
-    db: Session = Depends(get_support_db),
+    link: network.ProviderLink = Depends(portal_provider),
+    db: Session = Depends(get_portal_db),
     idempotency_key: Optional[str] = Header(
         None, alias=HEADER_IDEMPOTENCY_KEY,
     ),
@@ -214,6 +275,12 @@ def create_ticket(
     if Perm.TICKETS_CREATE not in scope.permissions:
         raise http_error(
             "forbidden", "tickets.create permission is required."
+        )
+    # Pasif baglanti YENI talebi durdurur (gecmis gorunur kalir).
+    if not link.can_create:
+        raise http_error(
+            "route_missing",
+            "Your workspace can no longer open tickets with this provider.",
         )
 
     ip = client_ip(request) or "unknown"
@@ -235,11 +302,14 @@ def create_ticket(
     )
     # Mapping YALNIZCA yazma yolunda olusturulur: okuma uclarinin
     # yan etkisi olmaz.
+    slug = _tenant_display_name(db, current_user.tenant_id)
     source_tenant = ticket_routing.ensure_source_tenant(
         db, application=app,
         source_tenant_id=str(current_user.tenant_id),
-        display_name=_tenant_display_name(db, current_user.tenant_id),
-        slug=_tenant_display_name(db, current_user.tenant_id),
+        # Konsolun yazdigi gorunen ad (baglanti snapshot'i) slug'dan
+        # ONCELIKLIDIR: hub "Acme Holding" gormeli, "acme" degil.
+        display_name=link.requester_display_name or slug,
+        slug=slug,
     )
 
     body = payload.model_dump(mode="json")
@@ -289,7 +359,9 @@ def create_ticket(
             route_version=route.route_version, data=data,
             actor=_actor(current_user, request),
         )
-        response = ser.customer_detail(db, ticket)
+        response = ser.customer_detail(db, ticket).model_copy(
+            update={"provider": _provider_ref(link)}
+        )
     except Exception as exc:  # noqa: BLE001
         guard.release()
         raise translate(exc)
@@ -311,7 +383,7 @@ def add_reply(
     request: Request,
     current_user: CurrentUser = Depends(require_customer_surface),
     scope: visibility.PortalScope = Depends(portal_scope),
-    db: Session = Depends(get_support_db),
+    db: Session = Depends(get_portal_db),
 ):
     settings = get_settings()
     _rate_limit(
@@ -351,7 +423,8 @@ def reopen(
     request: Request,
     current_user: CurrentUser = Depends(require_customer_surface),
     scope: visibility.PortalScope = Depends(portal_scope),
-    db: Session = Depends(get_support_db),
+    link: network.ProviderLink = Depends(portal_provider),
+    db: Session = Depends(get_portal_db),
 ):
     from ..models.ticketing import SupportApplication, SupportSourceTenant
 
@@ -367,7 +440,9 @@ def reopen(
         )
     except Exception as exc:  # noqa: BLE001
         raise translate(exc)
-    return ser.customer_detail(db, ticket)
+    return ser.customer_detail(db, ticket).model_copy(
+        update={"provider": _provider_ref(link)}
+    )
 
 
 @router.post("/tickets/{ticket_id}/confirm-close",
@@ -378,7 +453,8 @@ def confirm_close(
     request: Request,
     current_user: CurrentUser = Depends(require_customer_surface),
     scope: visibility.PortalScope = Depends(portal_scope),
-    db: Session = Depends(get_support_db),
+    link: network.ProviderLink = Depends(portal_provider),
+    db: Session = Depends(get_portal_db),
 ):
     from ..models.ticketing import SupportApplication, SupportSourceTenant
 
@@ -393,7 +469,9 @@ def confirm_close(
         )
     except Exception as exc:  # noqa: BLE001
         raise translate(exc)
-    return ser.customer_detail(db, ticket)
+    return ser.customer_detail(db, ticket).model_copy(
+        update={"provider": _provider_ref(link)}
+    )
 
 
 @router.post("/tickets/{ticket_id}/cancel",
@@ -404,7 +482,8 @@ def cancel(
     request: Request,
     current_user: CurrentUser = Depends(require_customer_surface),
     scope: visibility.PortalScope = Depends(portal_scope),
-    db: Session = Depends(get_support_db),
+    link: network.ProviderLink = Depends(portal_provider),
+    db: Session = Depends(get_portal_db),
 ):
     from ..models.ticketing import SupportApplication, SupportSourceTenant
 
@@ -420,7 +499,9 @@ def cancel(
         )
     except Exception as exc:  # noqa: BLE001
         raise translate(exc)
-    return ser.customer_detail(db, ticket)
+    return ser.customer_detail(db, ticket).model_copy(
+        update={"provider": _provider_ref(link)}
+    )
 
 
 # =============================================================================
@@ -436,7 +517,7 @@ def open_attachment_session(
     sha256: Optional[str] = Query(None, min_length=64, max_length=64),
     current_user: CurrentUser = Depends(require_customer_surface),
     scope: visibility.PortalScope = Depends(portal_scope),
-    db: Session = Depends(get_support_db),
+    db: Session = Depends(get_portal_db),
 ):
     settings = get_settings()
     _rate_limit(
@@ -473,7 +554,7 @@ async def upload_attachment_content(
     request: Request,
     current_user: CurrentUser = Depends(require_customer_surface),
     scope: visibility.PortalScope = Depends(portal_scope),
-    db: Session = Depends(get_support_db),
+    db: Session = Depends(get_portal_db),
 ):
     settings = get_settings()
     body = await request.body()
@@ -504,7 +585,7 @@ def download_attachment(
     request: Request,
     current_user: CurrentUser = Depends(require_customer_surface),
     scope: visibility.PortalScope = Depends(portal_scope),
-    db: Session = Depends(get_support_db),
+    db: Session = Depends(get_portal_db),
 ):
     ticket = _load_ticket(db, ticket_id, scope)
     row = db.get(TicketAttachment, attachment_id)

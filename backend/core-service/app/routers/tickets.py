@@ -54,6 +54,7 @@ from ..schemas.ticketing import (
     TransitionRequest,
 )
 from ..services import support_tenant as support
+from ..services import ticket_network as network
 from ..services import (
     ticket_attachment_service,
     ticket_queries,
@@ -65,6 +66,7 @@ from ..services import (
 from ..services.ticket_service import Actor
 from .ticket_deps import (
     correlation_id,
+    get_global_db,
     get_support_db,
     hub_scope,
     http_error,
@@ -141,22 +143,53 @@ def _require(scope: visibility.HubScope, code: str) -> None:
 # Baglam — HANGI yuzey? (her tenant icin calisir)
 # =============================================================================
 
+def _route_status(db: Session, tenant_id: str):
+    """Saglayici oturumunda talep edenin varsayilan ekibi hazir mi?"""
+    from ..config import get_settings
+    from ..schemas.ticketing import RouteStatusOut
+
+    app = ticket_routing.get_application(
+        db, get_settings().SUPPORT_HERMES_APPLICATION_CODE
+    )
+    if app is None:
+        return RouteStatusOut(configured=False)
+    src = ticket_routing.get_source_tenant(
+        db, application_id=app.id, source_tenant_id=str(tenant_id),
+    )
+    route = (
+        ticket_routing.active_route(db, source_tenant_row_id=src.id)
+        if src is not None else None
+    )
+    if route is None:
+        return RouteStatusOut(configured=False)
+    group = db.get(UserGroup, route.group_id)
+    return RouteStatusOut(
+        configured=bool(group and group.is_active),
+        group_name=group.name if group else None,
+        route_version=int(route.route_version),
+    )
+
+
 @router.get("/context", response_model=TicketContextOut)
 def ticket_context(
     current_user: CurrentUser = Depends(get_current_user),
     db: Optional[Session] = Depends(get_support_db),
+    gdb: Session = Depends(get_global_db),
 ):
-    """Frontend'in hangi yuzeyi acacagini SUNUCU soyler.
+    """Frontend'in hangi yuzey(ler)i acacagini SUNUCU soyler.
 
-    Tenant kimligi (Duosis UUID'si) frontend'e ASLA gomulmez; istemci
-    yalnizca `surface` degerini okur. Boylece support tenant'i
-    degistiginde tek bir ConfigMap degeri yeter.
+    Tenant kimligi frontend'e ASLA gomulmez; istemci `surfaces` ve
+    `providers` alanlarini okur. Talep aginda bir tenant:
+      - saglayiciysa  → hub ("Gelen talepler"),
+      - baglantisi varsa → portal ("Actigim talepler"),
+      - ikisi birden olabilir.
     """
     from ..config import get_settings
+    from ..schemas.ticketing import PortalProviderOut, RouteStatusOut
 
     settings = get_settings()
     state, _detail = support.module_state()
-    if db is None:
+    if not support.is_available():
         return TicketContextOut(
             module_enabled=bool(settings.SUPPORT_TICKETS_ENABLED),
             surface="unavailable", reason=state,
@@ -168,56 +201,60 @@ def ticket_context(
     ticket_permissions = sorted(
         p for p in permissions if p.startswith("tickets.")
     )
-
-    if support.is_support_tenant(current_user.tenant_id):
-        if not has_access:
-            return TicketContextOut(
-                module_enabled=True, surface="unavailable",
-                reason="missing_permission",
-                permissions=ticket_permissions,
-            )
-        groups = visibility.active_group_ids(db, current_user.id)
+    if not has_access:
         return TicketContextOut(
-            module_enabled=True, surface="hub",
+            module_enabled=True, surface="unavailable",
+            reason="missing_permission",
             permissions=ticket_permissions,
-            can_create=False,
-            has_scope=bool(groups) or Perm.TICKETS_ADMIN in permissions,
-            attachments_enabled=bool(settings.TICKET_ATTACHMENTS_ENABLED),
         )
 
-    # Musteri portali: route hazir mi?
-    from ..schemas.ticketing import RouteStatusOut
+    is_hub = db is not None and network.is_provider(gdb, current_user.tenant_id)
+    links = network.requester_links(gdb, current_user.tenant_id)
+    can_create_perm = Perm.TICKETS_CREATE in permissions
 
-    route_status = RouteStatusOut(configured=False)
-    if has_access:
-        app = ticket_routing.get_application(
-            db, settings.SUPPORT_HERMES_APPLICATION_CODE
+    providers = []
+    for link in links:
+        route = RouteStatusOut(configured=False)
+        if link.available:
+            try:
+                with support.provider_session(link.provider_tenant_id) as pdb:
+                    route = _route_status(pdb, current_user.tenant_id)
+            except support.SupportNotConfigured:
+                pass
+        providers.append(PortalProviderOut(
+            tenant_id=link.provider_tenant_id,
+            display_name=link.display_name,
+            is_active=link.is_active,
+            can_create=bool(
+                can_create_perm and link.can_create and route.configured
+            ),
+            route=route,
+        ))
+
+    surfaces = (["hub"] if is_hub else []) + (["portal"] if links else [])
+    if not surfaces:
+        return TicketContextOut(
+            module_enabled=True, surface="unavailable",
+            reason="not_connected", permissions=ticket_permissions,
         )
-        if app is not None:
-            src = ticket_routing.get_source_tenant(
-                db, application_id=app.id,
-                source_tenant_id=str(current_user.tenant_id),
-            )
-            if src is not None:
-                route = ticket_routing.active_route(
-                    db, source_tenant_row_id=src.id
-                )
-                if route is not None:
-                    group = db.get(UserGroup, route.group_id)
-                    route_status = RouteStatusOut(
-                        configured=bool(group and group.is_active),
-                        group_name=group.name if group else None,
-                        route_version=int(route.route_version),
-                    )
+
+    has_scope = True
+    if is_hub:
+        groups = visibility.active_group_ids(db, current_user.id)
+        has_scope = bool(groups) or Perm.TICKETS_ADMIN in permissions
+    # Tek saglayicili eski istemciler `route`/`can_create` okur.
+    primary_route = providers[0].route if len(providers) == 1 else None
     return TicketContextOut(
         module_enabled=True,
-        surface="portal" if has_access else "unavailable",
-        reason=None if has_access else "missing_permission",
+        surface=surfaces[0],
+        surfaces=surfaces,
         permissions=ticket_permissions,
-        can_create=Perm.TICKETS_CREATE in permissions
-        and route_status.configured,
+        can_create=any(p.can_create for p in providers),
+        has_scope=has_scope,
         attachments_enabled=bool(settings.TICKET_ATTACHMENTS_ENABLED),
-        route=route_status,
+        route=primary_route,
+        providers=providers,
+        integrations=is_hub and support.is_support_tenant(current_user.tenant_id),
     )
 
 

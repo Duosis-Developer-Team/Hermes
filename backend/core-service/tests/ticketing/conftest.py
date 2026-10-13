@@ -42,8 +42,61 @@ def support_settings(monkeypatch):
     support_tenant._force_state_for_tests("unverified")
 
 
+def ensure_registry(session, tenant_id, slug, modules=None, status="active"):
+    """tenant_registry projeksiyon satiri (talep agi FK'si + modul kapisi)."""
+    import json
+
+    from sqlalchemy import text as sa_text
+
+    from shared.modules import ALL_MODULES
+
+    session.execute(sa_text(
+        "INSERT INTO tenant_registry (tenant_id, slug, status, placement_key, "
+        " source_version, enabled_modules, provisioned_at, updated_at) "
+        "VALUES (CAST(:t AS uuid), :s, :st, 'shared-default', 1, "
+        "        CAST(:m AS jsonb), now(), now()) "
+        "ON CONFLICT (tenant_id) DO UPDATE SET status = EXCLUDED.status, "
+        "  enabled_modules = EXCLUDED.enabled_modules"
+    ), {"t": tenant_id, "s": slug, "st": status,
+        "m": json.dumps(list(modules if modules is not None else ALL_MODULES))})
+
+
 @pytest.fixture()
-def ticket_world(pg_session, support_settings, authz_grants):
+def network_sessions(pg_session, monkeypatch):
+    """Talep aginin iki gecidi testin oturumunu kullanir.
+
+    Testler superuser ile baglanir (RLS asilir): saglayici IZOLASYONU
+    tests/test_rls_isolation.py'de kanitlanir; burada yalnizca hangi
+    saglayiciya GIDILEBILECEGI (cozum mantigi) sinanir. Saglayicinin
+    calisir/modul kontrolu GERCEK fonksiyonla yapilir.
+    """
+    from contextlib import contextmanager
+
+    from app.services import support_tenant
+
+    opened = []
+
+    @contextmanager
+    def provider_session(tenant_id, *, require_runnable=True):
+        support_tenant.require_available()
+        if require_runnable and not support_tenant._provider_runnable(
+            pg_session, str(tenant_id)
+        ):
+            raise support_tenant.SupportNotConfigured("provider_unavailable")
+        opened.append(str(tenant_id))
+        yield pg_session
+
+    @contextmanager
+    def global_session():
+        yield pg_session
+
+    monkeypatch.setattr(support_tenant, "provider_session", provider_session)
+    monkeypatch.setattr(support_tenant, "global_session", global_session)
+    return opened
+
+
+@pytest.fixture()
+def ticket_world(pg_session, support_settings, authz_grants, network_sessions):
     """Temiz ticket dunyasi: uygulama, kaynak tenant, route, grup."""
     from sqlalchemy import text as sa_text
 
@@ -61,6 +114,10 @@ def ticket_world(pg_session, support_settings, authz_grants):
         "user_group_members, user_groups CASCADE"
     ))
     s.execute(sa_text("DELETE FROM tenant_counters"))
+    s.execute(sa_text("DELETE FROM ticket_network_links"))
+    ensure_registry(s, TEST_TENANT_ID, "test-tenant")
+    ensure_registry(s, OTHER_TENANT_ID, "acme")
+    ensure_registry(s, THIRD_TENANT_ID, "globex")
     s.commit()
 
     devops = UserGroup(id=uuid.uuid4(), name="DevOps Team", is_active=True)
@@ -104,6 +161,13 @@ def ticket_world(pg_session, support_settings, authz_grants):
         s, source_tenant=logislot_src, group=devops,
         actor_type="support_agent", actor_id=str(admin),
     )
+    # Talep agi: Acme → destek tenant'i (0018 geri doldurmasinin karsiligi).
+    from app.services import ticket_network
+
+    hermes_link = ticket_network.upsert_link(
+        s, requester=OTHER_TENANT_ID, provider=TEST_TENANT_ID, active=True,
+        actor="test", requester_name="Acme", provider_name="Duosis",
+    )
     s.commit()
 
     authz_grants[str(agent_a)] = [
@@ -130,6 +194,7 @@ def ticket_world(pg_session, support_settings, authz_grants):
         "logislot_src": logislot_src,
         "hermes_route": hermes_route,
         "logislot_route": logislot_route,
+        "hermes_link": hermes_link,
         "grants": authz_grants,
     }
 

@@ -744,3 +744,80 @@ def test_global_tables_are_declared_not_stale(rls_db):
 
     stale = sorted(GLOBAL_TABLES - physical)
     assert not stale, f"GLOBAL_TABLES'ta artik var olmayan tablo: {stale}"
+
+
+# =============================================================================
+# Talep agi (00-plan §4.0): saglayici verisi saglayicida kalir
+# =============================================================================
+
+def _seed_provider_ticket(migrator_engine, provider, requester):
+    """Saglayici A'da (RLS sahibi) Hermes uygulamasi + B eslemesi + route +
+    bir talep — servis katmaniyla, kurulum rolu ile."""
+    from sqlalchemy.orm import Session
+
+    from app.models.user_group import UserGroup
+    from app.services import ticket_routing, ticket_service
+    from app.services.ticket_service import Actor, TicketCreateInput
+    from app.tenant_db import bind_tenant
+
+    with Session(bind=migrator_engine) as s:
+        bind_tenant(s, provider)
+        team = UserGroup(id=uuid.uuid4(), name="Saglayici Ekibi", is_active=True)
+        s.add(team)
+        s.flush()
+        app = ticket_routing.ensure_application(
+            s, code="hermes", display_name="Hermes", environment="dev")
+        src = ticket_routing.ensure_source_tenant(
+            s, application=app, source_tenant_id=requester, display_name="B")
+        route = ticket_routing.set_route(
+            s, source_tenant=src, group=team, actor_type="test", actor_id=None)
+        ticket = ticket_service.create_ticket(
+            s, application=app, source_tenant=src, group=team,
+            route_version=route.route_version,
+            data=TicketCreateInput(
+                source_ticket_id=str(uuid.uuid4()),
+                requester_source_user_id="b-user", title="Saglayicida duran talep",
+                description="Bu kayit yalnizca saglayici baglaminda gorunur.",
+                category="bug", impact="single_user",
+            ),
+            actor=Actor(type="tenant_user", role="requester", id="b-user"),
+        )
+        s.commit()
+        return str(ticket.id)
+
+
+def test_ticket_network_link_is_global_and_ticket_stays_with_provider(
+    rls_db, app_engine
+):
+    from sqlalchemy.orm import Session
+
+    from app.services import ticket_network
+
+    ticket_id = _seed_provider_ticket(rls_db["migrator"], TENANT_A, TENANT_B)
+
+    # Baglanti GLOBAL: uygulama rolu tenant baglami OLMADAN yazar ve okur
+    # (0018 grant'i). Portalin "kime acabilirim?" sorusu buradan cevaplanir.
+    with Session(bind=app_engine) as s:
+        ticket_network.upsert_link(
+            s, requester=TENANT_B, provider=TENANT_A, active=True, actor="test")
+        s.commit()
+        links = ticket_network.requester_links(s, TENANT_B)
+        assert [link.provider_tenant_id for link in links] == [TENANT_A]
+        assert ticket_network.is_provider(s, TENANT_A)
+        assert not ticket_network.is_provider(s, TENANT_B)
+
+    def visible(tenant):
+        with app_engine.begin() as conn:
+            if tenant:
+                conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"),
+                             {"t": tenant})
+            return conn.execute(
+                text("SELECT count(*) FROM tickets WHERE id = CAST(:i AS uuid)"),
+                {"i": ticket_id},
+            ).scalar()
+
+    # Talep SAGLAYICIDA: yalnizca A baglaminda (portal gecidi A'yi acar).
+    assert visible(TENANT_A) == 1
+    # Talep edenin KENDI baglami (ve baglamsiz oturum) talebi GORMEZ.
+    assert visible(TENANT_B) == 0
+    assert visible(None) == 0

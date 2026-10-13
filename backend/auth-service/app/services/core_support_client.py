@@ -29,11 +29,19 @@ _TIMEOUT = 10.0
 
 
 class CoreSupportError(RuntimeError):
-    """core-service destek konfigurasyon cagrisi basarisiz."""
+    """core-service destek konfigurasyon cagrisi basarisiz.
 
-    def __init__(self, message: str, status_code: int = 502):
+    `code` core'un makine-okur kodudur (version_conflict, group_inactive,
+    provider_unavailable, self_link ...); ekran ona gore mesaj secer."""
+
+    def __init__(self, message: str, status_code: int = 502,
+                 code: Optional[str] = None):
         self.status_code = status_code
+        self.code = code
         super().__init__(message)
+
+    def as_detail(self) -> Dict[str, Any]:
+        return {"code": self.code or "support_error", "message": str(self)}
 
 
 def _base() -> str:
@@ -75,12 +83,15 @@ def _request(
         ) from exc
 
     if response.status_code >= 400:
-        detail = None
+        detail, code = None, None
         try:
             body = response.json()
             detail = body.get("detail") if isinstance(body, dict) else None
         except Exception:  # noqa: BLE001
             detail = None
+        if isinstance(detail, dict):
+            code = detail.get("code")
+            detail = detail.get("message")
         logger.warning(
             "core support call rejected status=%s path=%s",
             response.status_code, path,
@@ -92,6 +103,7 @@ def _request(
                 if response.status_code in (400, 404, 409, 503)
                 else 502
             ),
+            code=code,
         )
     return response.json()
 
@@ -100,23 +112,40 @@ def list_providers() -> Dict[str, Any]:
     return _request("GET", "/providers")
 
 
-def list_routing() -> Dict[str, Any]:
-    return _request("GET", "/routing")
+def list_network() -> Dict[str, Any]:
+    return _request("GET", "/network")
 
 
-def set_routing(
-    tenant_id: str, *, provider_tenant_id: str, group_id: str,
-    display_name: Optional[str] = None,
+def set_link(
+    requester_tenant_id: str, provider_tenant_id: str, *, group_id: str,
+    requester_display_name: Optional[str] = None,
+    provider_display_name: Optional[str] = None,
+    expected_version: Optional[int] = None,
+    actor_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     return _request(
-        "PUT", f"/routing/{tenant_id}",
+        "PUT", f"/network/{requester_tenant_id}/{provider_tenant_id}",
         json_body={
-            "provider_tenant_id": provider_tenant_id,
             "group_id": group_id,
-            "display_name": display_name,
+            "requester_display_name": requester_display_name,
+            "provider_display_name": provider_display_name,
+            "expected_version": expected_version,
+            "actor_id": actor_id,
         },
     )
 
 
-def disable_routing(tenant_id: str) -> Dict[str, Any]:
-    return _request("DELETE", f"/routing/{tenant_id}")
+def disable_link(
+    requester_tenant_id: str, provider_tenant_id: str, *,
+    expected_version: Optional[int] = None, actor_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    query = []
+    if expected_version is not None:
+        query.append(f"expected_version={int(expected_version)}")
+    if actor_id:
+        query.append(f"actor_id={actor_id}")
+    suffix = ("?" + "&".join(query)) if query else ""
+    return _request(
+        "DELETE",
+        f"/network/{requester_tenant_id}/{provider_tenant_id}{suffix}",
+    )

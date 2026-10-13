@@ -137,62 +137,81 @@ export const ticketHubService = {
     },
 }
 
+/** Talep agi: birden fazla saglayicisi olan tenant'ta portal cagrilari
+ *  `provider` tasir (sunucu baglanti kumesine karsi dogrular). Tek
+ *  saglayicida verilmeyebilir. */
+const withProvider = (provider, params = {}) =>
+    (provider ? { ...params, provider } : params)
+
 export const supportPortalService = {
     list: async (params = {}) => {
         const { data } = await coreClient.get(`${CORE}/support/tickets`, { params })
         return data
     },
-    get: async (id) => {
-        const { data } = await coreClient.get(`${CORE}/support/tickets/${id}`)
+    get: async (id, provider) => {
+        const { data } = await coreClient.get(
+            `${CORE}/support/tickets/${id}`, { params: withProvider(provider) },
+        )
         return data
     },
     /** Idempotency-Key ZORUNLU DEGIL ama gonderiyoruz: ag hatasinda
      *  yapilan retry ikinci bir ticket ACMASIN. */
-    create: async (payload, idempotencyKey) => {
+    create: async (payload, idempotencyKey, provider) => {
         const { data } = await coreClient.post(
             `${CORE}/support/tickets`, payload,
-            idempotencyKey
-                ? { headers: { 'Idempotency-Key': idempotencyKey } }
-                : undefined,
+            {
+                params: withProvider(provider),
+                ...(idempotencyKey
+                    ? { headers: { 'Idempotency-Key': idempotencyKey } }
+                    : {}),
+            },
         )
         return data
     },
-    reply: async (id, payload) => {
+    reply: async (id, payload, provider) => {
         const { data } = await coreClient.post(
             `${CORE}/support/tickets/${id}/messages`, payload,
+            { params: withProvider(provider) },
         )
         return data
     },
-    reopen: async (id, payload) => {
+    reopen: async (id, payload, provider) => {
         const { data } = await coreClient.post(
             `${CORE}/support/tickets/${id}/reopen`, payload,
+            { params: withProvider(provider) },
         )
         return data
     },
-    confirmClose: async (id, payload) => {
+    confirmClose: async (id, payload, provider) => {
         const { data } = await coreClient.post(
             `${CORE}/support/tickets/${id}/confirm-close`, payload,
+            { params: withProvider(provider) },
         )
         return data
     },
-    cancel: async (id, payload) => {
+    cancel: async (id, payload, provider) => {
         const { data } = await coreClient.post(
             `${CORE}/support/tickets/${id}/cancel`, payload,
+            { params: withProvider(provider) },
         )
         return data
     },
-    downloadUrl: (ticketId, attachmentId) =>
-        `${CORE}/support/tickets/${ticketId}/attachments/${attachmentId}/download`,
+    downloadUrl: (ticketId, attachmentId, provider) =>
+        `${CORE}/support/tickets/${ticketId}/attachments/${attachmentId}/download`
+        + (provider ? `?provider=${encodeURIComponent(provider)}` : ''),
     openAttachmentSession: async (params) => {
         const { data } = await coreClient.post(
             `${CORE}/support/attachments`, null, { params },
         )
         return data
     },
-    uploadAttachmentContent: async (attachmentId, file) => {
+    uploadAttachmentContent: async (attachmentId, file, provider) => {
         const { data } = await coreClient.post(
             `${CORE}/support/attachments/${attachmentId}/content`, file,
-            { headers: { 'Content-Type': file.type || 'application/octet-stream' } },
+            {
+                params: withProvider(provider),
+                headers: { 'Content-Type': file.type || 'application/octet-stream' },
+            },
         )
         return data
     },

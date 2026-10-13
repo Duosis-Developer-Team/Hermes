@@ -257,6 +257,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
         with engine.begin() as conn:
             # 0009 + 0010'un getirdikleri gider; alembic isareti 0008'e.
             for table in (
+                "ticket_network_links",
                 "project_types",
                 "project_logos",
                 "customer_logos",
@@ -356,6 +357,9 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             registry_modules = conn.execute(text(
                 "SELECT enabled_modules FROM tenant_registry WHERE tenant_id = :t"
             ), {"t": tenant_id}).scalar()
+            network_table = conn.execute(text(
+                "SELECT to_regclass('public.ticket_network_links') IS NOT NULL"
+            )).scalar()
             kept_project = conn.execute(text(
                 "SELECT name FROM projects WHERE id = :id"
             ), {"id": project_id}).scalar()
@@ -370,7 +374,9 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             )).scalar()
     finally:
         engine.dispose()
-    assert head == "0017_tenant_modules"
+    assert head == "0018_ticket_network"
+    # 0018: talep agi indeksi gelir (global, RLS'siz).
+    assert network_table is True
     # 0017: geride kalmis tenant TUM modullerle doner (davranis degismez).
     from shared.modules import ALL_MODULES
     assert set(registry_modules) == set(ALL_MODULES)

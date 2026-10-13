@@ -27,9 +27,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
+from shared.modules import Module
+
 from ..config import get_settings
 from ..models.user_group import UserGroup
 from ..services import support_tenant as support
+from ..services import ticket_network as network
 from ..services import ticket_routing
 from ..services.ticket_service import TicketValidationError
 from .internal_tenants import require_s2s
@@ -51,17 +54,12 @@ class GroupOut(BaseModel):
 
 
 class ProviderOut(BaseModel):
-    """Ticket'in GIDECEGI destek saglayicisi.
-
-    Bugun TEK bir saglayici var (yapilandirilmis Duosis support
-    tenant'i) ve liste bilerek TEK ELEMANLIDIR — cok saglayicili
-    dunyaya gecildiginde bu ucun SEKLI degismesin diye liste olarak
-    modellendi. Ekran da dropdown cizer; yarin ikinci saglayici
-    eklendiginde arayuz aynen calisir.
-    """
+    """Talep alabilecek bir saglayici (tickets modulu acik, calisir) ve
+    AKTIF ekipleri. Uye KIMLIKLERI donmez — yalnizca ad ve sayi."""
 
     tenant_id: UUID
     slug: Optional[str] = None
+    is_support_tenant: bool = False
     groups: List[GroupOut] = Field(default_factory=list)
 
 
@@ -70,26 +68,33 @@ class ProvidersResponse(BaseModel):
     module_state: str
 
 
-class RoutingOut(BaseModel):
-    tenant_id: str
-    display_name: Optional[str] = None
-    enabled: bool
-    provider_tenant_id: Optional[UUID] = None
+class LinkOut(BaseModel):
+    requester_tenant_id: str
+    requester_display_name: Optional[str] = None
+    provider_tenant_id: str
+    provider_display_name: Optional[str] = None
+    is_active: bool
     group_id: Optional[UUID] = None
     group_name: Optional[str] = None
     group_active: Optional[bool] = None
     route_version: Optional[int] = None
+    version: int
+    provider_available: bool = True
+    requester_has_tickets: bool = True
     updated_at: Optional[str] = None
 
 
-class RoutingListResponse(BaseModel):
-    items: List[RoutingOut]
+class LinkListResponse(BaseModel):
+    items: List[LinkOut]
+    module_state: str
 
 
-class RoutingUpsert(BaseModel):
-    provider_tenant_id: UUID
+class LinkUpsert(BaseModel):
     group_id: UUID
-    display_name: Optional[str] = Field(None, max_length=200)
+    requester_display_name: Optional[str] = Field(None, max_length=200)
+    provider_display_name: Optional[str] = Field(None, max_length=200)
+    expected_version: Optional[int] = None
+    actor_id: Optional[str] = Field(None, max_length=64)
 
 
 # =============================================================================
@@ -104,15 +109,84 @@ def _require_module() -> str:
         raise HTTPException(status_code=503, detail=str(exc))
 
 
-def _hermes_application(db):
-    settings = get_settings()
-    return ticket_routing.require_application(
-        db, settings.SUPPORT_HERMES_APPLICATION_CODE
+def _error(status_code: int, code: str, message: str) -> HTTPException:
+    return HTTPException(
+        status_code=status_code, detail={"code": code, "message": message}
     )
+
+
+def _uuid(value) -> str:
+    try:
+        return str(UUID(str(value)))
+    except (ValueError, TypeError, AttributeError):
+        raise _error(400, "invalid_tenant", "Invalid tenant id.")
 
 
 def _iso(value):
     return value.isoformat() if value is not None else None
+
+
+def _hermes_application(db):
+    return ticket_routing.ensure_application(
+        db, code=get_settings().SUPPORT_HERMES_APPLICATION_CODE,
+        display_name="Hermes",
+    )
+
+
+def _team(db, requester: str):
+    """Saglayici oturumunda talep edenin AKTIF route'u + ekibi."""
+    app = ticket_routing.get_application(
+        db, get_settings().SUPPORT_HERMES_APPLICATION_CODE
+    )
+    if app is None:
+        return None, None
+    src = ticket_routing.get_source_tenant(
+        db, application_id=app.id, source_tenant_id=requester
+    )
+    route = (
+        ticket_routing.active_route(db, source_tenant_row_id=src.id)
+        if src is not None else None
+    )
+    group = db.get(UserGroup, route.group_id) if route else None
+    return route, group
+
+
+def _registry(db, tenant_ids) -> dict:
+    """tenant_id → (status, modules) — projeksiyondan."""
+    ids = [str(t) for t in tenant_ids]
+    if not ids:
+        return {}
+    rows = db.execute(text(
+        "SELECT tenant_id, status, enabled_modules FROM tenant_registry "
+        " WHERE tenant_id = ANY(CAST(:ids AS uuid[]))"
+    ), {"ids": ids}).all()
+    return {
+        str(r[0]): (r[1], r[2] if isinstance(r[2], list) else [])
+        for r in rows
+    }
+
+
+def _link_out(link, route, group, registry) -> LinkOut:
+    req = registry.get(str(link.requester_tenant_id), (None, []))
+    prov = registry.get(str(link.provider_tenant_id), (None, []))
+    return LinkOut(
+        requester_tenant_id=str(link.requester_tenant_id),
+        requester_display_name=link.requester_display_name,
+        provider_tenant_id=str(link.provider_tenant_id),
+        provider_display_name=link.provider_display_name,
+        is_active=bool(link.is_active),
+        group_id=route.group_id if route else None,
+        group_name=group.name if group else None,
+        group_active=bool(group.is_active) if group else None,
+        route_version=int(route.route_version) if route else None,
+        version=int(link.version),
+        provider_available=(
+            prov[0] in support.RUNNABLE_TENANT_STATUSES
+            and Module.TICKETS in prov[1]
+        ),
+        requester_has_tickets=Module.TICKETS in req[1],
+        updated_at=_iso(link.updated_at),
+    )
 
 
 # =============================================================================
@@ -122,177 +196,201 @@ def _iso(value):
 @router.get(
     "/providers",
     response_model=ProvidersResponse,
-    summary="Destek saglayicilari ve ekipleri (S2S)",
+    summary="Talep alabilecek saglayicilar ve ekipleri (S2S)",
     dependencies=[Depends(require_s2s)],
 )
 def list_providers() -> ProvidersResponse:
-    """Ticket'in gonderilebilecegi saglayicilar ve her birinin AKTIF
-    ekipleri. Uye KIMLIKLERI donmez — yalnizca ad ve aktif uye sayisi
-    (04 §3 veri minimizasyonu)."""
+    """Tickets modulu ACIK ve calisir durumdaki her tenant + AKTIF ekipleri.
+    Uye KIMLIKLERI donmez (04 §3 veri minimizasyonu)."""
     state, _detail = support.module_state()
     if state != "ok":
         return ProvidersResponse(items=[], module_state=state)
 
-    tenant_id = support.support_tenant_id()
-    with support.support_session() as db:
-        items, _version = ticket_routing.routing_group_catalog(db)
-        slug = db.execute(
-            text(
-                "SELECT slug FROM tenant_registry "
-                " WHERE tenant_id = CAST(:t AS uuid)"
-            ),
-            {"t": tenant_id},
-        ).scalar()
-        groups = [
-            GroupOut(
-                id=item["id"], name=item["name"],
-                description=item.get("description"),
-                member_count=int(item.get("member_count", 0)),
-            )
-            for item in items
-        ]
-    return ProvidersResponse(
-        items=[ProviderOut(tenant_id=tenant_id, slug=slug, groups=groups)],
-        module_state=state,
-    )
+    with support.global_session() as gdb:
+        rows = gdb.execute(text(
+            "SELECT tenant_id, slug FROM tenant_registry "
+            " WHERE status = ANY(:st) "
+            "   AND enabled_modules ? :m ORDER BY slug"
+        ), {"st": list(support.RUNNABLE_TENANT_STATUSES),
+            "m": Module.TICKETS}).all()
+    items: List[ProviderOut] = []
+    for tenant_id, slug in rows:
+        try:
+            with support.provider_session(tenant_id) as db:
+                catalog, _version = ticket_routing.routing_group_catalog(db)
+        except support.SupportNotConfigured:
+            continue
+        items.append(ProviderOut(
+            tenant_id=tenant_id, slug=slug,
+            is_support_tenant=support.is_support_tenant(tenant_id),
+            groups=[
+                GroupOut(
+                    id=g["id"], name=g["name"],
+                    description=g.get("description"),
+                    member_count=int(g.get("member_count", 0)),
+                )
+                for g in catalog
+            ],
+        ))
+    # Yapilandirilmis destek tenant'i (dis entegrasyonlarin saglayicisi)
+    # listenin basinda.
+    items.sort(key=lambda p: (not p.is_support_tenant, p.slug or ""))
+    return ProvidersResponse(items=items, module_state=state)
 
 
 @router.get(
-    "/routing",
-    response_model=RoutingListResponse,
-    summary="Tenant basina destek yonlendirmesi (S2S)",
+    "/network",
+    response_model=LinkListResponse,
+    summary="Talep agi baglantilari (S2S)",
     dependencies=[Depends(require_s2s)],
 )
-def list_routing() -> RoutingListResponse:
-    """YALNIZCA `hermes` uygulamasinin kaynak tenant'lari.
+def list_network() -> LinkListResponse:
+    """Tum baglantilar + saglayici tarafindaki varsayilan ekip.
 
-    LogiSlot gibi DIS uygulamalarin tenant'lari bu listede YOKTUR: onlar
-    Duosis tarafindaki `/tickets/admin` ekranindan yonetilir. Iki yuzeyi
-    ayirmak bilincli — platform operatoru Hermes tenant'larini,
-    Duosis destek yoneticisi dis entegrasyonlari yonetir.
+    Yalnizca KONFIGURASYON doner; talep icerigi bu router'dan cikmaz.
     """
-    _require_module()
-    out: List[RoutingOut] = []
-    with support.support_session() as db:
-        app = _hermes_application(db)
-        for src in ticket_routing.list_source_tenants(
-            db, application_id=app.id
-        ):
-            route = ticket_routing.active_route(
-                db, source_tenant_row_id=src.id
-            )
-            group = db.get(UserGroup, route.group_id) if route else None
-            out.append(RoutingOut(
-                tenant_id=src.source_tenant_id,
-                display_name=src.display_name,
-                enabled=bool(route and group and group.is_active),
-                provider_tenant_id=(
-                    support.support_tenant_id() if route else None
-                ),
-                group_id=route.group_id if route else None,
-                group_name=group.name if group else None,
-                group_active=bool(group.is_active) if group else None,
-                route_version=int(route.route_version) if route else None,
-                updated_at=_iso(route.updated_at) if route else None,
-            ))
-    return RoutingListResponse(items=out)
+    state, _detail = support.module_state()
+    if state != "ok":
+        return LinkListResponse(items=[], module_state=state)
+    with support.global_session() as gdb:
+        links = network.list_links(gdb)
+        for link in links:
+            gdb.expunge(link)
+        registry = _registry(
+            gdb,
+            {l.requester_tenant_id for l in links}
+            | {l.provider_tenant_id for l in links},
+        )
+    by_provider: dict = {}
+    for link in links:
+        by_provider.setdefault(str(link.provider_tenant_id), []).append(link)
+    out: List[LinkOut] = []
+    for provider, group_links in by_provider.items():
+        with support.provider_session(provider, require_runnable=False) as db:
+            for link in group_links:
+                route, group = _team(db, str(link.requester_tenant_id))
+                out.append(_link_out(link, route, group, registry))
+    out.sort(key=lambda l: (
+        (l.requester_display_name or "").lower(),
+        (l.provider_display_name or "").lower(),
+    ))
+    return LinkListResponse(items=out, module_state=state)
 
 
 @router.put(
-    "/routing/{tenant_id}",
-    response_model=RoutingOut,
-    summary="Tenant'in destek yonlendirmesini ayarla (S2S)",
+    "/network/{requester_tenant_id}/{provider_tenant_id}",
+    response_model=LinkOut,
+    summary="Baglanti kur / ekibi degistir / yeniden ac (S2S)",
     dependencies=[Depends(require_s2s)],
 )
-def set_routing(tenant_id: str, payload: RoutingUpsert) -> RoutingOut:
-    """Tenant'a ticket acma yetkisi verir: mapping + AKTIF route.
+def upsert_network_link(
+    requester_tenant_id: str, provider_tenant_id: str, payload: LinkUpsert,
+) -> LinkOut:
+    """Talep edeni saglayiciya baglar: global indeks + saglayici verisinde
+    kaynak tenant eslemesi + AKTIF route — TEK transaction.
 
-    Route degisikligi YALNIZCA yeni ticket'lari etkiler; mevcut
-    ticket'lar topluca TASINMAZ (02 §5).
+    Ekip degisikligi YALNIZCA yeni talepleri etkiler (02 §5).
     """
-    configured = _require_module()
-
-    # Bugun tek saglayici var; istekteki deger DOGRULANIR, sessizce
-    # duzeltilmez. Yanlis saglayiciya yonlendirme, ticket'in yanlis
-    # sirkete gitmesi demektir.
-    if str(payload.provider_tenant_id) != configured:
-        raise HTTPException(
-            status_code=400,
-            detail="Unknown support provider for this deployment.",
-        )
-    # Saglayici KENDINE ticket acamaz: support tenant'inda musteri
-    # portali zaten yoktur (o tenant hub yuzeyini gorur).
-    if str(tenant_id) == configured:
-        raise HTTPException(
-            status_code=400,
-            detail="The support workspace cannot route tickets to itself.",
-        )
-
-    with support.support_session() as db:
-        app = _hermes_application(db)
-        group = db.get(UserGroup, payload.group_id)
-        if group is None or not group.is_active:
-            raise HTTPException(
-                status_code=409,
-                detail="The selected team is not active.",
+    _require_module()
+    requester = _uuid(requester_tenant_id)
+    provider = _uuid(provider_tenant_id)
+    if requester == provider:
+        raise _error(400, "self_link",
+                     "A workspace cannot open tickets to itself.")
+    with support.global_session() as gdb:
+        registry = _registry(gdb, [requester, provider])
+    if requester not in registry or provider not in registry:
+        raise _error(404, "unknown_tenant", "Unknown workspace.")
+    try:
+        with support.provider_session(provider) as db:
+            link = network.get_link(db, requester, provider)
+            if link is not None:
+                try:
+                    network.check_link_version(link, payload.expected_version)
+                except network.NetworkError as exc:
+                    raise _error(exc.status, exc.code, str(exc))
+            group = db.get(UserGroup, payload.group_id)
+            if group is None or not group.is_active:
+                raise _error(409, "group_inactive",
+                             "The selected team is not active.")
+            app = _hermes_application(db)
+            try:
+                src = ticket_routing.ensure_source_tenant(
+                    db, application=app, source_tenant_id=requester,
+                    display_name=payload.requester_display_name or requester,
+                )
+                route = ticket_routing.set_route(
+                    db, source_tenant=src, group=group,
+                    actor_type="platform_admin", actor_id=payload.actor_id,
+                )
+            except TicketValidationError as exc:
+                raise _error(409, exc.code, str(exc))
+            link = network.upsert_link(
+                db, requester=requester, provider=provider, active=True,
+                actor=payload.actor_id,
+                requester_name=payload.requester_display_name,
+                provider_name=payload.provider_display_name,
             )
-        try:
-            src = ticket_routing.ensure_source_tenant(
-                db, application=app, source_tenant_id=str(tenant_id),
-                display_name=payload.display_name or str(tenant_id),
-            )
-            route = ticket_routing.set_route(
-                db, source_tenant=src, group=group,
-                actor_type="platform_admin", actor_id=None,
-            )
-        except TicketValidationError as exc:
-            raise HTTPException(status_code=409, detail=str(exc))
-        result = RoutingOut(
-            tenant_id=src.source_tenant_id,
-            display_name=src.display_name,
-            enabled=True,
-            provider_tenant_id=configured,
-            group_id=route.group_id,
-            group_name=group.name,
-            group_active=True,
-            route_version=int(route.route_version),
-            updated_at=_iso(route.updated_at),
+            result = _link_out(link, route, group, registry)
+    except support.SupportNotConfigured:
+        raise _error(
+            409, "provider_unavailable",
+            "The provider workspace must be active with the Tickets module "
+            "enabled.",
         )
     logger.info(
-        "support routing set tenant=%s route_version=%s",
-        tenant_id, result.route_version,
+        "ticket network link set requester=%s provider=%s route_version=%s",
+        requester, provider, result.route_version,
     )
     return result
 
 
 @router.delete(
-    "/routing/{tenant_id}",
-    response_model=RoutingOut,
-    summary="Tenant'in destek yonlendirmesini kapat (S2S)",
+    "/network/{requester_tenant_id}/{provider_tenant_id}",
+    response_model=LinkOut,
+    summary="Baglantiyi kapat (S2S)",
     dependencies=[Depends(require_s2s)],
 )
-def disable_routing(tenant_id: str) -> RoutingOut:
-    """Yonlendirmeyi PASIFE alir — kayit SILINMEZ.
+def deactivate_network_link(
+    requester_tenant_id: str, provider_tenant_id: str,
+    expected_version: Optional[int] = None,
+    actor_id: Optional[str] = None,
+) -> LinkOut:
+    """Baglantiyi PASIFE alir — kayit SILINMEZ.
 
-    Mevcut ticket'lar yerinde kalir ve gorunmeye devam eder; yalnizca
-    YENI ticket acilamaz. Silmek, gecmis yonlendirme bilgisini yok
-    ederdi.
+    Mevcut talepler iki tarafta da gorunmeye devam eder; yalnizca YENI
+    talep acilamaz. Saglayicinin modulu kapali olsa da calisir.
     """
     _require_module()
-    with support.support_session() as db:
-        app = _hermes_application(db)
-        src = ticket_routing.get_source_tenant(
-            db, application_id=app.id, source_tenant_id=str(tenant_id)
+    requester = _uuid(requester_tenant_id)
+    provider = _uuid(provider_tenant_id)
+    with support.global_session() as gdb:
+        registry = _registry(gdb, [requester, provider])
+    with support.provider_session(provider, require_runnable=False) as db:
+        link = network.get_link(db, requester, provider)
+        if link is None:
+            raise _error(404, "not_found", "This connection does not exist.")
+        try:
+            network.check_link_version(link, expected_version)
+        except network.NetworkError as exc:
+            raise _error(exc.status, exc.code, str(exc))
+        app = ticket_routing.get_application(
+            db, get_settings().SUPPORT_HERMES_APPLICATION_CODE
         )
-        if src is None:
-            raise HTTPException(
-                status_code=404, detail="This workspace has no routing."
-            )
-        ticket_routing.deactivate_route(db, source_tenant=src)
-        result = RoutingOut(
-            tenant_id=src.source_tenant_id,
-            display_name=src.display_name,
-            enabled=False,
+        src = (
+            ticket_routing.get_source_tenant(
+                db, application_id=app.id, source_tenant_id=requester
+            ) if app is not None else None
         )
-    logger.info("support routing disabled tenant=%s", tenant_id)
+        if src is not None:
+            ticket_routing.deactivate_route(db, source_tenant=src)
+        link = network.upsert_link(
+            db, requester=requester, provider=provider, active=False,
+            actor=actor_id,
+        )
+        result = _link_out(link, None, None, registry)
+    logger.info(
+        "ticket network link disabled requester=%s provider=%s",
+        requester, provider,
+    )
     return result

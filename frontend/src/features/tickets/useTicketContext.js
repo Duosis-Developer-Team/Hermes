@@ -6,11 +6,33 @@
  * hem kırılgan hem de yanlış olurdu: support tenant'ı bir ConfigMap
  * değeridir ve ortama göre değişir.
  */
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { create } from 'zustand'
 
 import { ticketContextService } from '../../api/ticketsApi'
 import { queryKeys } from '../../query/queryKeys'
 import { useAuthStore } from '../../stores/authStore'
+
+/** Ayar katalogunun ihtiyac duydugu ticket yetenekleri. Ayar sayfalari
+ *  react-query'ye bagimli olmasin diye baglam yuklenince buraya yazilir;
+ *  `null` = henuz bilinmiyor (filtre uygulanmaz). */
+export const useTicketCaps = create(() => ({ integrations: null }))
+
+export const ticketSettingsCaps = (integrations) =>
+    (integrations === null || integrations === undefined
+        ? null : { ticketIntegrations: Boolean(integrations) })
+
+/** Saglayici listesi. Eski sunucu (`providers` yok) icin tek saglayici
+ *  `route`tan turetilir — frontend ile core ayri anda yayina cikmayabilir. */
+const providersOf = (data) => {
+    if (Array.isArray(data?.providers)) return data.providers
+    if (data?.surface !== 'portal') return []
+    return [{
+        tenant_id: null, display_name: null, is_active: true,
+        can_create: Boolean(data.can_create), route: data.route ?? null,
+    }]
+}
 
 export function useTicketContext() {
     // Talepler MODULU kapali tenant'ta baglam sorulmaz (yuzey yok).
@@ -23,12 +45,26 @@ export function useTicketContext() {
         enabled: ticketsEnabled,
     })
     const data = ticketsEnabled ? query.data : undefined
+    // Talep agi: bir tenant hem saglayici (hub) hem talep eden (portal)
+    // olabilir. Eski sunucu `surfaces` gondermezse `surface`tan turetilir.
+    const surfaces = Array.isArray(data?.surfaces) && data.surfaces.length
+        ? data.surfaces
+        : (data?.surface && data.surface !== 'unavailable' ? [data.surface] : [])
+    useEffect(() => {
+        if (data) useTicketCaps.setState({ integrations: Boolean(data.integrations) })
+    }, [data])
+    const isHub = surfaces.includes('hub')
+    const isPortal = surfaces.includes('portal')
     return {
         ...query,
         context: data,
         surface: data?.surface ?? null,
-        isHub: data?.surface === 'hub',
-        isPortal: data?.surface === 'portal',
+        surfaces,
+        isHub,
+        isPortal,
+        isDual: isHub && isPortal,
+        providers: providersOf(data),
+        integrations: Boolean(data?.integrations),
         permissions: data?.permissions ?? [],
         can: (code) => (data?.permissions ?? []).includes(code),
         canCreate: Boolean(data?.can_create),

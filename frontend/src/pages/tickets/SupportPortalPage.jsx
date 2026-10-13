@@ -2,7 +2,9 @@
  * =============================================================================
  * HERMES - Müşteri destek portalı
  * =============================================================================
- * Duosis DIŞINDAKİ her Hermes tenant'ında görünür.
+ * Talep ağı bağlantısı OLAN her tenant'ta görünür ("Açtığım talepler").
+ * Birden fazla sağlayıcı varsa kullanıcı talebi KİME açtığını seçer;
+ * liste tüm sağlayıcılardaki talepleri birlikte gösterir.
  *
  * Hedef ekip DEĞİŞTİRİLEMEZ bir bilgi kutusudur: son kullanıcı ekip
  * seçmez (yanlış kuyruğa düşen ticket, kaybolan ticket demektir). Route
@@ -28,6 +30,7 @@ import {
     ERROR_MESSAGES, isResolvedLike,
 } from '../../features/tickets/constants'
 import { TicketStatusBadge } from '../../features/tickets/TicketStatusBadge'
+import SurfaceSwitch from '../../features/tickets/SurfaceSwitch'
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { queryKeys } from '../../query/queryKeys'
 import '../../features/tickets/tickets.css'
@@ -61,12 +64,15 @@ export default function SupportPortalPage() {
     const [tab, setTab] = useState('open')
     const [search, setSearch] = useState('')
     const [createOpen, setCreateOpen] = useState(false)
-    const [selectedId, setSelectedId] = useState(null)
+    // Secili talep + saglayicisi (birden fazla saglayicida detay/komut
+    // cagrilari saglayiciyi tasir).
+    const [selected, setSelected] = useState(null)
+    const [providerId, setProviderId] = useState(null)
 
-    // Duosis kullanicisi buraya gelirse hub'a yonlendirilir.
+    // Yalniz saglayici (talep acmayan) tenant buraya gelirse hub'a gider.
     useEffect(() => {
-        if (context.isHub) navigate('/tickets', { replace: true })
-    }, [context.isHub, navigate])
+        if (context.isHub && !context.isPortal) navigate('/tickets', { replace: true })
+    }, [context.isHub, context.isPortal, navigate])
 
     const statuses = useMemo(
         () => TABS.find((item) => item.key === tab)?.statuses ?? [],
@@ -89,12 +95,12 @@ export default function SupportPortalPage() {
     })
 
     const create = useMutation({
-        mutationFn: ({ payload, idempotencyKey }) =>
-            supportPortalService.create(payload, idempotencyKey),
+        mutationFn: ({ payload, idempotencyKey, provider }) =>
+            supportPortalService.create(payload, idempotencyKey, provider),
         onSuccess: (created) => {
             invalidate()
             setCreateOpen(false)
-            setSelectedId(created.id)
+            setSelected({ id: created.id, provider: created.provider?.tenant_id })
             message.success(
                 `Your request was received: ${created.ticket_number}`,
             )
@@ -122,26 +128,41 @@ export default function SupportPortalPage() {
             <Page className="tickets-page fade-in">
                 <EmptyState
                     title={t('portal.unavailable')}
-                    description={
-                        context.context?.reason === 'missing_permission'
-                            ? 'You do not have access to the support module.'
-                            : 'The support module is not configured on this environment.'
-                    }
+                    description={(() => {
+                        const reason = context.context?.reason
+                        if (reason === 'missing_permission') return 'You do not have access to the support module.'
+                        if (reason === 'not_connected') return t('portal.notConnected')
+                        return 'The support module is not configured on this environment.'
+                    })()}
                 />
             </Page>
         )
     }
 
     const rows = list.data?.items ?? []
-    const routeReady = Boolean(context.route?.configured)
+    const providers = context.providers
+    const multi = providers.length > 1
+    const creatable = providers.filter((p) => p.can_create)
+    const activeProvider = creatable.find((p) => p.tenant_id === providerId) || creatable[0] || null
+    const routeReady = Boolean(activeProvider)
+    const subtitle = (() => {
+        if (multi) return t('portal.providersSubtitle', { count: providers.length })
+        const only = providers[0]
+        if (only?.can_create && only.route?.group_name) {
+            return only.display_name
+                ? t('portal.goesTo', { provider: only.display_name, team: only.route.group_name })
+                : t('portal.goesToTeam', { team: only.route.group_name })
+        }
+        return t('portal.routingNotConfigured')
+    })()
+    const openTicket = (ticket) => setSelected({ id: ticket.id, provider: ticket.provider?.tenant_id })
 
     return (
         <Page className="tickets-page support-portal">
+            <SurfaceSwitch />
             <PageHero
-                title={t('portal.support')}
-                subtitle={routeReady
-                    ? `Your requests go to the ${context.route.group_name} team.`
-                    : 'Support routing has not been configured yet.'}
+                title={context.isDual ? t('tickets.outgoing') : t('portal.support')}
+                subtitle={subtitle}
                 actions={(
                     <>
                         <Input.Search
@@ -192,11 +213,11 @@ export default function SupportPortalPage() {
                         key={ticket.id}
                         interactive
                         className={`support-card${isResolvedLike(ticket.status) ? ' h-ticket-row--resolved' : ''}`}
-                        onClick={() => setSelectedId(ticket.id)}
+                        onClick={() => openTicket(ticket)}
                         onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
                                 event.preventDefault()
-                                setSelectedId(ticket.id)
+                                openTicket(ticket)
                             }
                         }}
                         aria-label={`${ticket.ticket_number} ${ticket.title}`}
@@ -210,6 +231,11 @@ export default function SupportPortalPage() {
                             <StatusBadge tone="neutral">
                                 {tl('category', ticket.category)}
                             </StatusBadge>
+                            {multi && ticket.provider?.display_name && (
+                                <StatusBadge tone="info">
+                                    {ticket.provider.display_name}
+                                </StatusBadge>
+                            )}
                         </span>
                         <span className="support-card__when">
                             {dayjs(ticket.updated_at).fromNow()}
@@ -230,17 +256,21 @@ export default function SupportPortalPage() {
                 open={createOpen}
                 onCancel={() => setCreateOpen(false)}
                 onSubmit={(payload, idempotencyKey) =>
-                    create.mutate({ payload, idempotencyKey })}
+                    create.mutate({ payload, idempotencyKey, provider: activeProvider?.tenant_id })}
                 pending={create.isPending}
-                groupName={context.route?.group_name}
+                groupName={activeProvider?.route?.group_name}
                 routeReady={routeReady}
                 attachmentsEnabled={context.attachmentsEnabled}
+                providers={creatable}
+                provider={activeProvider}
+                onProviderChange={setProviderId}
             />
 
             <CustomerTicketDetail
-                ticketId={selectedId}
-                open={Boolean(selectedId)}
-                onClose={() => setSelectedId(null)}
+                ticketId={selected?.id}
+                provider={selected?.provider}
+                open={Boolean(selected)}
+                onClose={() => setSelected(null)}
                 onChanged={invalidate}
             />
         </Page>

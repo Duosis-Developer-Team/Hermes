@@ -87,6 +87,10 @@ GLOBAL_TABLES = {
     # Tenant basina task sayaci. Satirin ANAHTARI zaten tenant_id'dir
     # (kolon degil), bu yuzden tenant-owned mixin'i tasimaz.
     "tenant_counters",
+    # Talep agi (requester → provider) indeksi. IKI tenant'a birden ait
+    # oldugu icin tek bir tenant_id'ye baglanamaz; yalnizca S2S konsol ucu
+    # yazar, talep icerigi tasimaz (models/ticket_network.py).
+    "ticket_network_links",
 }
 
 # Eski `sql_scripts/migrations/005` tarafindan olusturulmus, `006` ile

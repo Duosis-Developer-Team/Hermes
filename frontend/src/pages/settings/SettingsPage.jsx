@@ -22,6 +22,7 @@ import {
 
 import { PageHero } from '../../components/liquid'
 import { hasAnySettings, visibleSections } from '../../features/settings/sections'
+import { ticketSettingsCaps, useTicketCaps } from '../../features/tickets/useTicketContext'
 import { landingPath } from '../../features/modules/catalog'
 import { loaderByPath } from '../../routes/loaders'
 import { useAuthStore } from '../../stores/authStore'
@@ -84,14 +85,15 @@ export function SettingsIndex() {
     const canAny = useAuthStore((s) => s.canAny)
     const hasModule = useAuthStore((s) => s.hasModule)
     const tenant = useAuthStore((s) => s.tenant)
+    const caps = ticketSettingsCaps(useTicketCaps((s) => s.integrations))
     const [query, setQuery] = useState('')
     // Izinler henuz yuklenmediyse karar verilmez (fail-closed bekleme).
     if (permissions === null) {
         return <div className="settings-loading"><Spin /></div>
     }
-    if (!hasAnySettings(canAny, hasModule)) return <Navigate to={landingPath(tenant)} replace />
+    if (!hasAnySettings(canAny, hasModule, caps)) return <Navigate to={landingPath(tenant)} replace />
     const q = query.trim()
-    const sections = visibleSections(canAny, hasModule)
+    const sections = visibleSections(canAny, hasModule, caps)
         .map((section) => ({
             ...section,
             items: section.items.filter((item) => !q
@@ -191,10 +193,12 @@ function SettingsPage() {
     const canAny = useAuthStore((s) => s.canAny)
     const hasModule = useAuthStore((s) => s.hasModule)
     useAuthStore((s) => s.permissions) // izin gelince yeniden render
+    const integrations = useTicketCaps((s) => s.integrations)
     const { pathname } = useLocation()
     const isHub = pathname.replace(/\/+$/, '') === '/settings'
     if (isHub) return <Outlet />
-    const items = visibleSections(canAny, hasModule).flatMap((s) => s.items)
+    const caps = ticketSettingsCaps(integrations)
+    const items = visibleSections(canAny, hasModule, caps).flatMap((s) => s.items)
 
     return (
         <div className="settings-page">

@@ -120,7 +120,14 @@ function MainLayout() {
 
     // Ticket yuzeyi: hub mu portal mi? Karar SUNUCUDA verilir.
     const ticketContext = useTicketContext()
-    const ticketsPath = ticketContext.isPortal ? '/support' : '/tickets'
+    // Talep agi: saglayici (hub) varsa once "Gelen talepler"; yalniz talep
+    // eden tenant'ta portal. Hem ikisi olan tenant sayfada anahtarla gecer.
+    const ticketsPath = ticketContext.isHub || !ticketContext.isPortal ? '/tickets' : '/support'
+    // Baglam yuklendiyse ve hicbir yuzey yoksa (talep agina bagli degil)
+    // menu ogesi gosterilmez; yukleniyorsa gosterilir (titreme olmasin).
+    const ticketsVisible = ticketContext.isLoading || ticketContext.surfaces.length > 0
+    // Dis entegrasyon ayarlari yalniz ana destek tenant'inda.
+    const settingsCaps = ticketContext.context ? { ticketIntegrations: ticketContext.integrations } : null
 
     // Dashboard, Billable Hours, Raporlar ve Sozlesmeler AYAR DEGILDIR;
     // "Yonetim" grubunda kalirlar (03-yetenekler §6).
@@ -138,7 +145,7 @@ function MainLayout() {
      * sayfasi "YAPILANDIRMA" grubunda, ucu de "YONETIM"de duz listeydi.
      */
     const canAny = useAuthStore((s) => s.canAny)
-    const settingsItems = hasAnySettings(canAny, hasModule) ? [
+    const settingsItems = hasAnySettings(canAny, hasModule, settingsCaps) ? [
         { key: '/settings', icon: <SettingOutlined />, label: t('nav.settings') },
     ] : []
 
@@ -248,7 +255,7 @@ function MainLayout() {
         // HEDEF ROTA sunucunun bildirdigi yuzeye gore secilir — tenant
         // kimligi frontend'e GOMULMEZ. Baglam henuz yuklenmediyse
         // /tickets kullanilir ve sayfa gerekirse /support'a yonlendirir.
-        ...(mod.tickets && can('tickets.access') ? [{
+        ...(mod.tickets && can('tickets.access') && ticketsVisible ? [{
             key: ticketsPath,
             icon: <CustomerServiceOutlined />,
             label: ticketsPath === '/support' ? t('nav.support') : t('nav.tickets'),
