@@ -220,34 +220,44 @@ describe('tek giris noktasi', () => {
  * =============================================================================
  */
 describe('tenant yonetimi', () => {
-    const consoleSrc = () => readFileSync(
-        resolve(process.cwd(), 'src/pages/platform/PlatformConsole.jsx'), 'utf-8')
+    // Faz 2 (14.10): konsol bolumlere ayrildi — liste, sihirbaz, detay.
+    const src = (f) => readFileSync(resolve(process.cwd(), `src/pages/platform/${f}`), 'utf-8')
 
     it('yeni tenant ve duzenleme aksiyonlari vardir', () => {
-        const src = consoleSrc()
-        // i18n sonrasi metin sozlukten gelir; kilit ANAHTAR uzerinde.
-        // Kilitlenen sey "yeni tenant aksiyonu var" idi ve aynen duruyor.
-        expect(src).toMatch(/platform\.newTenant/)
-        expect(src).toMatch(/CreateTenantModal/)
-        expect(src).toMatch(/EditTenantModal/)
+        expect(src('TenantList.jsx')).toMatch(/platform\.newTenant/)
+        expect(src('TenantList.jsx')).toMatch(/CreateTenantModal/)
+        // Duzenleme detay sayfasinda: kimlik/erisim ve moduller.
+        expect(src('TenantDetail.jsx')).toMatch(/function AccessSection/)
+        expect(src('TenantDetail.jsx')).toMatch(/function ModulesSection/)
     })
 
-    it('plan SECILEBILIR (salt okunur etiket degil)', () => {
-        // Sikayet buydu: plan gorunuyor ama degistirilemiyor.
-        expect(consoleSrc()).toMatch(/name="plan_code"[\s\S]{0,400}<Select/)
+    it('moduller olusturmada ve duzenlemede SECILEBILIR (K2: paket yerine modul)', () => {
+        expect(src('TenantWizard.jsx')).toMatch(/<ModulePicker\b/)
+        expect(src('TenantDetail.jsx')).toMatch(/<ModulePicker\b/)
+        // Paket/plan secici arayuzden kalkti (CTO karari K2).
+        for (const f of ['PlatformConsole.jsx', 'TenantWizard.jsx', 'TenantDetail.jsx']) {
+            expect(src(f)).not.toMatch(/name="plan_code"/)
+        }
     })
 
     it('tek seferlik parola YALNIZCA ekranda gosterilir, saklanmaz', () => {
-        const src = consoleSrc()
-        expect(src).toMatch(/one_time_password/)
-        // Hicbir depolamaya yazilmamali.
-        expect(src).not.toMatch(/localStorage|sessionStorage/)
+        expect(src('TenantWizard.jsx')).toMatch(/one_time_password/)
+        expect(src('TenantDetail.jsx')).toMatch(/one_time_password/)
+        for (const f of ['PlatformConsole.jsx', 'TenantWizard.jsx', 'TenantDetail.jsx', 'TenantList.jsx']) {
+            expect(src(f)).not.toMatch(/localStorage|sessionStorage/)
+        }
     })
 
     it('workspace adresi kullaniciya SOYLENIR', () => {
-        // Slug ile adreslenen bir tenant, adresi gosterilmezse
-        // ulasilamaz olur.
-        expect(consoleSrc()).toMatch(/workspace_hint/)
+        expect(src('TenantWizard.jsx')).toMatch(/workspace_hint/)
+        expect(src('TenantDetail.jsx')).toMatch(/workspaceUrl/)
+    })
+
+    it('hicbir konsol dosyasi tenant store\'unu import etmez', () => {
+        for (const f of ['PlatformConsole.jsx', 'TenantWizard.jsx', 'TenantDetail.jsx',
+                         'TenantList.jsx', 'PlatformOverview.jsx', 'ModulePicker.jsx']) {
+            expect(src(f)).not.toMatch(/stores\/authStore/)
+        }
     })
 })
 
@@ -315,27 +325,23 @@ describe('tek giris ekrani', () => {
  * alan gizlenmez, neden kilitli oldugu soylenir.
  */
 describe('duzenleme paritesi', () => {
-    const consoleSrc = () => readFileSync(resolve(
-        process.cwd(), 'src/pages/platform/PlatformConsole.jsx'), 'utf-8')
-
-    const editBlock = () => {
-        const s = consoleSrc()
-        const start = s.indexOf('function EditTenantModal')
-        return s.slice(start, s.indexOf('\nfunction ', start + 10))
+    const access = () => {
+        const d = readFileSync(resolve(process.cwd(), 'src/pages/platform/TenantDetail.jsx'), 'utf-8')
+        const start = d.indexOf('function AccessSection')
+        return d.slice(start, d.indexOf('\nfunction ', start + 10))
     }
 
     it('olusturmadaki alanlarin hepsi duzenlemede de vardir', () => {
-        const edit = editBlock()
-        for (const field of ['display_name', 'email_domains', 'plan_code',
-                             'owner_email']) {
+        const edit = access()
+        for (const field of ['display_name', 'email_domains', 'owner_email']) {
             expect(edit).toMatch(new RegExp(`name="${field}"`))
         }
-        // Slug degistirilemez ama GOSTERILIR. (i18n: anahtar uzerinden.)
+        // Slug degistirilemez ama GOSTERILIR.
         expect(edit).toMatch(/platform\.workspaceAddress/)
         expect(edit).toMatch(/disabled/)
     })
 
-    it('plan duzenlemede de SECILEBILIR', () => {
-        expect(editBlock()).toMatch(/name="plan_code"[\s\S]{0,300}<Select/)
+    it('duzenleme iyimser kilitle gider (expected_version)', () => {
+        expect(access()).toMatch(/expected_version: tenant\.version/)
     })
 })

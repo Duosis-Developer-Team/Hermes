@@ -1,627 +1,66 @@
 /**
  * =============================================================================
- * HERMES - Platform Admin Console (WS9)
+ * HERMES - Platform Admin Console (super-admin) — Faz 2
  * =============================================================================
- * Operator konsolunun kabugu: genel bakis, tenant listesi/detayi,
- * yasam dongusu aksiyonlari, destek erisimi ve denetim kaydi.
+ * Kabuk + bolumler. Bolumler ADRESLIDIR (paylasilabilir, geri tusu calisir):
+ *   /platform-admin                 genel bakis
+ *   /platform-admin/tenants         kiraci listesi
+ *   /platform-admin/tenants/:id     kiraci detayi (moduller, uyeler, erisim…)
+ *   /platform-admin/routing         talep yonlendirmesi
+ *   /platform-admin/audit           denetim kaydi
  *
- * TASARIM: mevcut Hermes tasarim dilini kullanir (ayni antd tokenlari,
- * ayni tipografi/aralik, light/dark). "Platform" rozeti duzlemi ayirt
- * ettirir ama urun Hermes'e AITTIR.
+ * TASARIM: Hermes'in KENDI kabugu (AppShell) — tenant tarafiyla ayni
+ * bilesen; "Platform" rozeti duzlemi ayirt ettirir.
  *
- * GUVENLIK SINIRI: bu ekranlarin HICBIRI tenant is verisi gostermez —
- * yalnizca metadata (durum, plan, uye SAYISI). Is verisine bakmak icin
- * sureli/gerekceli bir destek izni alinir ve o erisim AYRI, bannerli
- * bir baglamda acilir.
+ * GUVENLIK SINIRI: hicbir ekran tenant is verisi gostermez — yalnizca
+ * metadata (durum, moduller, uyelik). Is verisine bakmak icin sureli/
+ * gerekceli destek izni alinir ve o erisim AYRI, bannerli baglamda acilir.
+ * Kimlik `usePlatformAuthStore`dan; istekler yalniz /api/platform'a gider.
+ * =============================================================================
  */
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Empty, Table, Tag, message } from 'antd'
 import {
-    Button, Card, Descriptions, Empty, Form, Input,
-    InputNumber, Modal, Select, Space, Table,
-    Tag, Typography, message,
-} from 'antd'
-import { ApartmentOutlined, CheckCircleOutlined, CustomerServiceOutlined, DashboardOutlined, FileSearchOutlined, LogoutOutlined, PlusOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
+    ApartmentOutlined, CustomerServiceOutlined, DashboardOutlined, FileSearchOutlined,
+    LogoutOutlined, SafetyCertificateOutlined,
+} from '@ant-design/icons'
+import dayjs from 'dayjs'
 
 import AppShell from '../../components/layout/AppShell'
-import { CountUp, GlassCard, PageHero } from '../../components/liquid'
+import { GlassCard, PageHero } from '../../components/liquid'
 import { platformService } from '../../api/platformApi'
-import SupportRoutingTab from './SupportRoutingTab'
 import { usePlatformAuthStore } from '../../stores/platformAuthStore'
-import SupportSessionBanner from './SupportSessionBanner'
 import { useT } from '../../i18n'
-import { ModalHead } from '../../components/liquid'
+import SupportRoutingTab from './SupportRoutingTab'
+import SupportSessionBanner from './SupportSessionBanner'
+import PlatformOverview from './PlatformOverview'
+import TenantList from './TenantList'
+import TenantDetail from './TenantDetail'
+import './platform.css'
 
-const { Text } = Typography
-
-/** Durum → renk + METIN. Renk TEK BASINA anlam tasimaz (erisilebilirlik). */
-const STATUS_TONE = {
-    active: 'ok',
-    provisioning: 'info',
-    grace: 'warn',
-    suspended: 'bad',
-    deprovisioning: 'warn',
-    failed: 'bad',
-}
-
-function TenantStatus({ status }) {
-    return (
-        <span className={`lq-tag lq-tag--${STATUS_TONE[status] || 'muted'}`}>
-            {status}
-        </span>
-    )
-}
+const ROOT = '/platform-admin'
 
 // =============================================================================
-// Genel bakis
+// Denetim (tum kiracilar)
 // =============================================================================
 
-function OverviewTab() {
+function AuditPage() {
     const t = useT()
-    const [data, setData] = useState(null)
-    const [error, setError] = useState(null)
-
+    const [rows, setRows] = useState(null)
     useEffect(() => {
-        platformService.overview().then(setData).catch(() =>
-            setError('Could not load the overview.'))
-    }, [])
-
-    if (error) return <Empty description={error} />
-    if (!data) return <Card loading />
-
-    const byStatus = data.tenants?.by_status || {}
-    const kpis = [
-        { key: 'total', label: t('platform.tenants'), value: data.tenants?.total ?? 0 },
-        { key: 'active', label: t('common.active'), value: byStatus.active ?? 0 },
-        { key: 'suspended', label: t('platform.suspended'), value: byStatus.suspended ?? 0 },
-        { key: 'sessions', label: t('platform.activeSessions'), value: data.support_sessions_active ?? 0 },
-    ]
-    return (
-        <div className="lq-kpis lq-enter" role="group" aria-label={t('platform.overview')}>
-            {kpis.map((k) => (
-                <GlassCard key={k.key} className="lq-kpi">
-                    <span className="lq-kpi__dash" aria-hidden="true" />
-                    <span className="lq-kpi__value"><CountUp value={k.value} /></span>
-                    <span className="lq-kpi__label">{k.label}</span>
-                </GlassCard>
-            ))}
-        </div>
-    )
-}
-
-// =============================================================================
-// Tenant listesi + yasam dongusu
-// =============================================================================
-
-function TenantsTab({ onSupportStarted }) {
-    const t = useT()
-    const [rows, setRows] = useState([])
-    const [loading, setLoading] = useState(true)
-    const [target, setTarget] = useState(null)     // suspend hedefi
-    const [supportFor, setSupportFor] = useState(null)
-    const [creating, setCreating] = useState(false)
-    const [editing, setEditing] = useState(null)
-    const can = usePlatformAuthStore((s) => s.can)
-
-    const reload = useCallback(() => {
-        setLoading(true)
-        platformService.listTenants()
-            .then((d) => setRows(d.tenants || []))
-            .catch(() => message.error(t('platform.loadTenantsFailed')))
-            .finally(() => setLoading(false))
-    }, [t])
-
-    useEffect(reload, [reload])
-
-    const columns = [
-        { title: t('platform.organization'), dataIndex: 'display_name' },
-        { title: t('platform.slug'), dataIndex: 'slug', responsive: ['md'] },
-        {
-            title: t('common.status'), dataIndex: 'status',
-            render: (s) => <TenantStatus status={s} />,
-        },
-        {
-            title: t('platform.plan'), dataIndex: 'plan_code', responsive: ['lg'],
-            render: (p) => (p ? <Tag>{p}</Tag> : <Text type="secondary">—</Text>),
-        },
-        {
-            title: t('platform.members'), dataIndex: 'active_members', responsive: ['lg'],
-        },
-        {
-            title: t('common.actions'),
-            render: (_, row) => (
-                <Space wrap>
-                    {can('platform.tenants.manage') && row.status === 'active' && (
-                        <Button size="small" danger
-                                onClick={() => setTarget(row)}>{t('platform.suspend')}</Button>
-                    )}
-                    {can('platform.tenants.manage') && row.status === 'suspended' && (
-                        <Button size="small" onClick={() => reactivate(row)}>{t('platform.reactivate')}</Button>
-                    )}
-                    {can('platform.tenants.manage') && (
-                        <Button size="small" onClick={() => setEditing(row)}>{t('common.edit')}</Button>
-                    )}
-                    {can('platform.support_access.create') && (
-                        <Button size="small" onClick={() => setSupportFor(row)}>{t('platform.supportAccess')}</Button>
-                    )}
-                </Space>
-            ),
-        },
-    ]
-
-    const reactivate = async (row) => {
-        try {
-            await platformService.reactivateTenant(row.id, {
-                reason: 'Reactivated from Platform Console',
-                version: row.version,
-            })
-            message.success(`${row.display_name} reactivated.`)
-            reload()
-        } catch (err) {
-            message.error(
-                err?.response?.data?.detail?.message
-                || 'Could not reactivate this tenant.',
-            )
-        }
-    }
-
-    return (
-        <>
-            <Space style={{ marginBottom: 16 }}>
-                {can('platform.tenants.manage') && (
-                    <Button type="primary" icon={<PlusOutlined />}
-                            onClick={() => setCreating(true)}>{t('platform.newTenant')}</Button>
-                )}
-            </Space>
-            <GlassCard className="lq-card--flush lq-enter">
-                <Table
-                    rowKey="id" columns={columns} dataSource={rows}
-                    loading={loading} size="middle"
-                    // Genis tablo mobilde SAYFAYI degil KENDINI kaydirir.
-                    scroll={{ x: 'max-content' }}
-                    locale={{ emptyText: <Empty description={t('platform.noTenants')} /> }}
-                />
-            </GlassCard>
-            <SuspendModal
-                tenant={target} onClose={() => setTarget(null)}
-                onDone={() => { setTarget(null); reload() }}
-            />
-            <SupportModal
-                tenant={supportFor} onClose={() => setSupportFor(null)}
-                onStarted={(grant) => {
-                    setSupportFor(null)
-                    onSupportStarted(grant)
-                }}
-            />
-            <CreateTenantModal
-                open={creating} onClose={() => setCreating(false)}
-                onDone={() => { setCreating(false); reload() }}
-            />
-            <EditTenantModal
-                tenant={editing} onClose={() => setEditing(null)}
-                onDone={() => { setEditing(null); reload() }}
-            />
-        </>
-    )
-}
-
-/** Askiya alma: gerekce + slug'in ELLE yazilmasi (yuksek riskli aksiyon). */
-// =============================================================================
-// Yeni tenant — SEMA YARATILMAZ
-// =============================================================================
-// Mimari karar geregi tenant basina veritabani/sema YOKTUR; izolasyonu
-// FORCE ROW LEVEL SECURITY sagliyor. Bu yuzden yeni tenant saniyeler
-// icinde hazir olur ve DDL beklemesi gerekmez.
-
-function usePlans() {
-    const [plans, setPlans] = useState([])
-    useEffect(() => {
-        platformService.listPlans()
-            .then(setPlans)
-            .catch(() => setPlans([]))   // plan katalogu yoksa alan bos kalir
-    }, [])
-    return plans
-}
-
-export function CreateTenantModal({ open, onClose, onDone }) {
-    const t = useT()
-    const [form] = Form.useForm()
-    const [busy, setBusy] = useState(false)
-    const [created, setCreated] = useState(null)
-    const plans = usePlans()
-
-    const submit = async () => {
-        const values = await form.validateFields()
-        setBusy(true)
-        try {
-            const result = await platformService.createTenant(values)
-            // Sonuc ekrani HER ZAMAN acilir: tenant'in adresi operatorun
-            // eline gecmeli. Eskiden sahip zaten kayitliysa (parola
-            // uretilmez) yalnizca toast cikiyor ve adres HIC gosterilmiyordu
-            // (duotest, 2026-09-03). Parola ise YALNIZCA burada, BIR KEZ
-            // gosterilir; hicbir yere kaydedilmez.
-            setCreated(result)
-        } catch (err) {
-            const d = err?.response?.data?.detail
-            message.error(d?.message || d || 'Could not create tenant.')
-        } finally {
-            setBusy(false)
-        }
-    }
-
-    // Basarili olusturma ekrani: ADRES her zaman, parola yalnizca yeni
-    // kullanici yaratildiysa.
-    if (created) {
-        const workspaceUrl = window.location.origin + created.workspace_hint
-        const close = () => { setCreated(null); onDone() }
-        return (
-            <Modal
-                open title={<ModalHead icon={<CheckCircleOutlined />} tone="green" title={t('platform.tenantCreated')} />} onCancel={close}
-                onOk={close}
-                okText={created.one_time_password ? t('platform.savedPassword') : undefined}
-                cancelButtonProps={{ style: { display: 'none' } }}
-                closable={false} maskClosable={false}
-            >
-                <Space direction="vertical" style={{ width: '100%' }}>
-                    <Text>
-                        <strong>{created.tenant.display_name}</strong> is ready.
-                    </Text>
-                    <Descriptions column={1} size="small" bordered>
-                        <Descriptions.Item label={t('platform.workspaceLink')}>
-                            <Text code copyable>{workspaceUrl}</Text>
-                        </Descriptions.Item>
-                        <Descriptions.Item label={t('platform.owner')}>
-                            {created.owner.email}
-                        </Descriptions.Item>
-                        {created.one_time_password && (
-                            <Descriptions.Item label={t('platform.oneTimePassword')}>
-                                <Text code copyable>{created.one_time_password}</Text>
-                            </Descriptions.Item>
-                        )}
-                    </Descriptions>
-                    <Text type="secondary">{t('platform.workspaceLinkShare')}</Text>
-                    {created.one_time_password && (
-                        <Text type="warning">
-                            This password is shown once and is not stored anywhere.
-                            Share it securely; the owner should change it at first
-                            sign-in.
-                        </Text>
-                    )}
-                </Space>
-            </Modal>
-        )
-    }
-
-    return (
-        <Modal
-            open={open} title={<ModalHead icon={<ApartmentOutlined />} tone="violet" title={t('platform.newTenant')} />} onCancel={onClose} onOk={submit}
-            confirmLoading={busy} okText={t('common.create')} destroyOnHidden
-        >
-            <Form form={form} layout="vertical" preserve={false}>
-                <Form.Item
-                    name="display_name" label={t('platform.organizationName')}
-                    rules={[{ required: true, message: t('logTime.required') }]}
-                >
-                    <Input placeholder="Acme Industries" />
-                </Form.Item>
-                <Form.Item
-                    name="slug" label={t('platform.workspaceAddress')}
-                    extra={t('platform.workspaceHint')}
-                    rules={[
-                        { required: true, message: t('logTime.required') },
-                        {
-                            pattern: /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/,
-                            message: t('platform.slugRule'),
-                        },
-                    ]}
-                >
-                    <Input placeholder="acme" />
-                </Form.Item>
-                <Form.Item
-                    name="owner_email" label={t('platform.ownerEmail')}
-                    extra={t('platform.ownerBecomesTenant')}
-                    rules={[
-                        { required: true, message: t('logTime.required') },
-                        { type: 'email', message: t('platform.emailInvalid') },
-                    ]}
-                >
-                    <Input placeholder="admin@acme.com" />
-                </Form.Item>
-                <Form.Item name="owner_full_name" label={t('platform.ownerName')}>
-                    <Input placeholder="Ada Lovelace" />
-                </Form.Item>
-                <Form.Item
-                    name="email_domains" label={t('platform.emailDomainsOptional')}
-                    extra={
-                        'Anyone with an e-mail at these domains joins this '
-                        + 'tenant on first sign-in. Comma separated.'
-                    }
-                >
-                    <Input placeholder={t('platform.emailDomainsExample')} />
-                </Form.Item>
-                <Form.Item name="plan_code" label={t('platform.plan')}>
-                    <Select
-                        allowClear placeholder={t('platform.selectPlan')}
-                        options={plans.map((p) => ({
-                            value: p.code, label: p.display_name || p.code,
-                        }))}
-                    />
-                </Form.Item>
-            </Form>
-        </Modal>
-    )
-}
-
-function EditTenantModal({ tenant, onClose, onDone }) {
-    const t = useT()
-    const [form] = Form.useForm()
-    const [busy, setBusy] = useState(false)
-    const plans = usePlans()
-
-    useEffect(() => {
-        if (tenant) {
-            form.setFieldsValue({
-                display_name: tenant.display_name,
-                plan_code: tenant.plan_code || undefined,
-                email_domains: (tenant.email_domains || []).join(', '),
-                status: tenant.status,
-            })
-        }
-    }, [tenant, form])
-
-    const submit = async () => {
-        const values = await form.validateFields()
-        setBusy(true)
-        try {
-            await platformService.updateTenant(tenant.id, values)
-            message.success(t('platform.tenantUpdated'))
-            onDone()
-        } catch (err) {
-            const d = err?.response?.data?.detail
-            message.error(d?.message || d || 'Could not update tenant.')
-        } finally {
-            setBusy(false)
-        }
-    }
-
-    return (
-        <Modal
-            open={!!tenant} title={`Edit ${tenant?.display_name || ''}`}
-            onCancel={onClose} onOk={submit} confirmLoading={busy}
-            okText={t('common.save')} destroyOnHidden
-        >
-            <Form form={form} layout="vertical" preserve={false}>
-                <Form.Item
-                    name="display_name" label={t('platform.organizationName')}
-                    rules={[{ required: true, message: t('logTime.required') }]}
-                >
-                    <Input />
-                </Form.Item>
-
-                {/* Workspace adresi DEGISTIRILEMEZ: mevcut baglantilar,
-                    kayitli oturumlar ve e-posta linkleri ona bagli. Yine de
-                    GOSTERILIR — duzenleme ekrani, olusturma ekranindaki her
-                    alani icermeli; degistirilemeyen alan gizlenmez, neden
-                    kilitli oldugu SOYLENIR. */}
-                <Form.Item label={t('platform.workspaceAddress')}>
-                    <Input value={tenant?.slug} disabled />
-                    {tenant?.slug && (
-                        <div>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                {t('platform.workspaceLink')}:{' '}
-                            </Text>
-                            <Text code copyable style={{ fontSize: 12 }}>
-                                {`${window.location.origin}/?workspace=${tenant.slug}`}
-                            </Text>
-                        </div>
-                    )}
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        Cannot be changed — existing links and sessions
-                        depend on it.
-                    </Text>
-                </Form.Item>
-
-                <Form.Item
-                    name="email_domains" label={t('platform.emailDomains')}
-                    extra={
-                        'Anyone with an e-mail at these domains joins this '
-                        + 'tenant on first sign-in. Comma separated; empty '
-                        + 'disables domain auto-join.'
-                    }
-                >
-                    <Input placeholder={t('platform.emailDomainsExample')} />
-                </Form.Item>
-
-                <Form.Item name="plan_code" label={t('platform.plan')}>
-                    <Select
-                        allowClear placeholder={t('platform.selectPlan')}
-                        options={plans.map((p) => ({
-                            value: p.code, label: p.display_name || p.code,
-                        }))}
-                    />
-                </Form.Item>
-
-                {/* Yasam dongusu: askiya alma/geri acma buradan da
-                    yapilabilir. Askiya alma YIKICI bir islemdir — ayri
-                    onay akisi (SuspendModal) korunur, burada yalnizca
-                    geri acma dogrudan sunulur. */}
-                <Form.Item label={t('common.status')}>
-                    <Space>
-                        <TenantStatus status={tenant?.status} />
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            Use Suspend / Reactivate on the tenant row —
-                            suspending requires typed confirmation.
-                        </Text>
-                    </Space>
-                </Form.Item>
-
-                <Form.Item
-                    name="owner_email" label={t('platform.addAnotherAdmin')}
-                    extra={
-                        'Optional. Grants this person tenant-admin rights. '
-                        + 'If they do not have an account yet, one is created '
-                        + 'and a one-time password is shown once.'
-                    }
-                    rules={[{ type: 'email', message: t('platform.emailInvalid') }]}
-                >
-                    <Input placeholder="admin@acme.com" allowClear />
-                </Form.Item>
-            </Form>
-        </Modal>
-    )
-}
-
-function SuspendModal({ tenant, onClose, onDone }) {
-    const t = useT()
-    const [form] = Form.useForm()
-    const [saving, setSaving] = useState(false)
-    if (!tenant) return null
-
-    const submit = async (values) => {
-        setSaving(true)
-        try {
-            await platformService.suspendTenant(tenant.id, {
-                reason: values.reason,
-                confirmSlug: values.confirm_slug,
-                version: tenant.version,
-            })
-            message.success(`${tenant.display_name} suspended.`)
-            onDone()
-        } catch (err) {
-            message.error(
-                err?.response?.data?.detail?.message
-                || 'Could not suspend this tenant.',
-            )
-        } finally {
-            setSaving(false)
-        }
-    }
-
-    return (
-        <Modal
-            open title={`Suspend ${tenant.display_name}`}
-            onCancel={onClose} okText={t('platform.suspend')} okButtonProps={{ danger: true }}
-            confirmLoading={saving} onOk={() => form.submit()}
-        >
-            <Text type="secondary">
-                Browser, API and MCP access stop within the documented
-                revocation window. Jobs skip this tenant. No data is deleted.
-            </Text>
-            <Form form={form} layout="vertical" onFinish={submit}
-                  style={{ marginTop: 16 }}>
-                <Form.Item
-                    name="reason" label={t('platform.reason')}
-                    rules={[{ required: true, min: 3 }]}
-                >
-                    <Input.TextArea rows={2}
-                                    placeholder={t('platform.reasonSuspendExample')} />
-                </Form.Item>
-                <Form.Item
-                    name="confirm_slug"
-                    label={`Type "${tenant.slug}" to confirm`}
-                    rules={[{
-                        required: true,
-                        validator: (_, v) => v === tenant.slug
-                            ? Promise.resolve()
-                            : Promise.reject(new Error('Slug does not match')),
-                    }]}
-                >
-                    <Input autoComplete="off" />
-                </Form.Item>
-            </Form>
-        </Modal>
-    )
-}
-
-/** Destek erisimi: salt-okunur VARSAYILAN, azami 30 dakika. */
-function SupportModal({ tenant, onClose, onStarted }) {
-    const t = useT()
-    const [form] = Form.useForm()
-    const [saving, setSaving] = useState(false)
-    if (!tenant) return null
-
-    const submit = async (values) => {
-        setSaving(true)
-        try {
-            const grant = await platformService.createSupportGrant({
-                tenantId: tenant.id,
-                mode: values.mode,
-                reason: values.reason,
-                durationMinutes: values.duration_minutes,
-            })
-            onStarted({ ...grant, tenant })
-        } catch (err) {
-            message.error(
-                err?.response?.data?.detail?.message
-                || 'Could not create the support grant.',
-            )
-        } finally {
-            setSaving(false)
-        }
-    }
-
-    return (
-        <Modal
-            open title={`Support access — ${tenant.display_name}`}
-            onCancel={onClose} okText={t('platform.startSession')}
-            confirmLoading={saving} onOk={() => form.submit()}
-        >
-            <Text type="secondary">
-                Access is time-limited, audited and shown in a permanent
-                banner. Read-only is the default; read-write needs an
-                additional permission.
-            </Text>
-            <Form
-                form={form} layout="vertical" onFinish={submit}
-                initialValues={{ mode: 'read_only', duration_minutes: 15 }}
-                style={{ marginTop: 16 }}
-            >
-                <Form.Item name="mode" label={t('platform.mode')}>
-                    <Select options={[
-                        { value: 'read_only', label: t('platform.readOnly') },
-                        { value: 'read_write', label: t('platform.readWrite') },
-                    ]} />
-                </Form.Item>
-                <Form.Item
-                    name="duration_minutes" label={t('platform.durationMinutes')}
-                    rules={[{ required: true }]}
-                >
-                    <InputNumber min={1} max={30} style={{ width: '100%' }} />
-                </Form.Item>
-                <Form.Item
-                    name="reason" label={t('platform.reasonTicket')}
-                    rules={[{ required: true, min: 3 }]}
-                >
-                    <Input placeholder={t('platform.reasonExample')} />
-                </Form.Item>
-            </Form>
-        </Modal>
-    )
-}
-
-// =============================================================================
-// Denetim
-// =============================================================================
-
-function AuditTab() {
-    const t = useT()
-    const [rows, setRows] = useState([])
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        platformService.listAuditEvents()
+        platformService.listAuditEvents({ limit: 200 })
             .then(setRows)
-            .catch(() => message.error(t('platform.loadAuditFailed')))
-            .finally(() => setLoading(false))
+            .catch(() => { setRows([]); message.error(t('platform.loadAuditFailed')) })
     }, [t])
-
     return (
         <GlassCard className="lq-card--flush lq-enter">
             <Table
-                rowKey="id" loading={loading} dataSource={rows} size="small"
+                rowKey="id" loading={rows === null} dataSource={rows || []} size="small"
+                pagination={{ pageSize: 25, hideOnSinglePage: true }}
                 scroll={{ x: 'max-content' }}
                 columns={[
-                    { title: t('platform.when'), dataIndex: 'occurred_at' },
+                    { title: t('platform.when'), dataIndex: 'occurred_at', render: (v) => (v ? dayjs(v).format('D MMM YYYY HH:mm') : '—') },
                     { title: t('platform.action'), dataIndex: 'action' },
                     { title: t('platform.result'), dataIndex: 'result' },
                     { title: t('platform.reason'), dataIndex: 'reason', responsive: ['md'] },
@@ -632,42 +71,51 @@ function AuditTab() {
     )
 }
 
-// =============================================================================
-// Kabuk — Hermes'in KENDI kabugu (AppShell), tenant tarafiyla AYNI bilesen
-// =============================================================================
-// Onceden burada kendi `Layout` + `Tabs` yapisi vardi ve Hermes'e
-// benzemiyordu. "Benzer" yetmez: ayni bilesen ve ayni CSS kullanilmadikca
-// iki kabuk zamanla ayrisir. Artik tenant menusunun yerinde platform
-// bolumleri duruyor; sidebar, header, tema, collapse ve mobil drawer
-// davranisi BIREBIR ayni.
-//
-// Izolasyon korunur: bu dosya hicbir tenant store'una dokunmaz, kimlik
-// `usePlatformAuthStore`dan gelir ve istekler yalnizca /api/platform'a
-// gider.
+function TenantDetailRoute({ onSupportStarted }) {
+    const { tenantId } = useParams()
+    const navigate = useNavigate()
+    return (
+        <TenantDetail
+            tenantId={tenantId}
+            onBack={() => navigate(`${ROOT}/tenants`)}
+            onSupportStarted={onSupportStarted}
+        />
+    )
+}
 
-// Bolum listesi ANAHTAR tasir; ceviri render'da yapilir (bkz. useSections).
+// =============================================================================
+// Kabuk
+// =============================================================================
+
+// Bolum listesi ANAHTAR tasir; ceviri render'da yapilir.
 const SECTIONS = [
-    { key: 'overview', icon: <DashboardOutlined />, labelKey: 'platform.overview' },
-    { key: 'tenants', icon: <ApartmentOutlined />, labelKey: 'platform.tenants' },
-    { key: 'support', icon: <CustomerServiceOutlined />, labelKey: 'platform.supportRouting' },
-    { key: 'audit', icon: <FileSearchOutlined />, labelKey: 'platform.auditLog' },
+    { key: ROOT, icon: <DashboardOutlined />, labelKey: 'platform.overview' },
+    { key: `${ROOT}/tenants`, icon: <ApartmentOutlined />, labelKey: 'platform.tenants' },
+    { key: `${ROOT}/routing`, icon: <CustomerServiceOutlined />, labelKey: 'platform.supportRouting' },
+    { key: `${ROOT}/audit`, icon: <FileSearchOutlined />, labelKey: 'platform.auditLog' },
 ]
+
+/** Bulunulan adresin bolumu (en uzun on ek). */
+const sectionOf = (pathname) => SECTIONS
+    .filter((s) => pathname === s.key || pathname.startsWith(`${s.key}/`))
+    .sort((a, b) => b.key.length - a.key.length)[0] || SECTIONS[0]
 
 export default function PlatformConsole() {
     const t = useT()
     const admin = usePlatformAuthStore((s) => s.admin)
     const logout = usePlatformAuthStore((s) => s.logout)
     const [supportSession, setSupportSession] = useState(null)
-    const [section, setSection] = useState('overview')
     const navigate = useNavigate()
+    const { pathname } = useLocation()
+    const section = sectionOf(pathname)
+    const isDetail = /\/tenants\/[^/]+/.test(pathname)
 
     const endSupport = async () => {
         if (supportSession?.id) {
             try {
                 await platformService.revokeSupportGrant(supportSession.id)
             } catch {
-                // Iptal edilemese bile banner kalkar; sunucu tarafinda
-                // izin zaten SURELIDIR.
+                // Iptal edilemese bile banner kalkar; sunucu tarafinda izin SURELIDIR.
             }
         }
         setSupportSession(null)
@@ -679,34 +127,18 @@ export default function PlatformConsole() {
         } finally {
             logout()
             // Ayri platform giris ekrani YOK: cikista ANA giris ekranina
-            // donulur. `replace` ile gecmise yazilmaz, geri tusu kapali
-            // konsola dondurmez.
+            // donulur; `replace` ile geri tusu kapali konsola dondurmez.
             navigate('/login', { replace: true })
         }
     }
 
     const accountMenuItems = [
-        {
-            key: 'logout',
-            icon: <LogoutOutlined />,
-            label: t('platform.signOut'),
-            danger: true,
-            onClick: handleLogout,
-        },
+        { key: 'logout', icon: <LogoutOutlined />, label: t('platform.signOut'), danger: true, onClick: handleLogout },
     ]
-
-    const body = section === 'tenants'
-        ? <TenantsTab onSupportStarted={setSupportSession} />
-        : section === 'support'
-            ? <SupportRoutingTab />
-            : section === 'audit'
-                ? <AuditTab />
-                : <OverviewTab />
 
     return (
         <>
-            {/* Destek oturumu banner'i EN USTTE ve kapatilamaz — kabugun
-                disinda durur ki hicbir sayfa onu ortemesin. */}
+            {/* Destek oturumu banner'i EN USTTE ve kapatilamaz. */}
             <SupportSessionBanner
                 session={supportSession}
                 onEnd={endSupport}
@@ -714,27 +146,42 @@ export default function PlatformConsole() {
             />
             <AppShell
                 menuItems={SECTIONS.map((s) => ({ ...s, label: t(s.labelKey) }))}
-                selectedKey={section}
-                onMenuClick={({ key }) => setSection(key)}
-                onLogoClick={() => setSection('overview')}
+                selectedKey={section.key}
+                onMenuClick={({ key }) => navigate(key)}
+                onLogoClick={() => navigate(ROOT)}
                 accountName={admin?.full_name || admin?.email}
                 accountRole="Platform Admin"
                 accountMenuItems={accountMenuItems}
-                /* Duzlem rozeti: bu konsolun tenant arayuzu OLMADIGI her
-                   ekranda gorunur kalir. */
+                // Bildirimler KIRACI verisidir; platform duzleminde zil yok.
+                showNotifications={false}
                 headerExtra={(
-                    <Tag icon={<SafetyCertificateOutlined />} color="purple">
-                        PLATFORM
-                    </Tag>
+                    <Tag icon={<SafetyCertificateOutlined />} color="purple">PLATFORM</Tag>
                 )}
-                contentKey={section}
+                contentKey={pathname}
             >
-                <PageHero
-                    className="lq-enter"
-                    title={t(SECTIONS.find((x) => x.key === section)?.labelKey || 'platform.overview')}
-                    subtitle={admin?.full_name || admin?.email}
-                />
-                {body}
+                {!isDetail && (
+                    <PageHero
+                        className="lq-enter"
+                        title={t(section.labelKey)}
+                        subtitle={t('platform.consoleSubtitle')}
+                    />
+                )}
+                <Routes>
+                    <Route
+                        index
+                        element={(
+                            <PlatformOverview
+                                onOpenTenant={(id) => navigate(`${ROOT}/tenants/${id}`)}
+                                onViewTenants={() => navigate(`${ROOT}/tenants`)}
+                            />
+                        )}
+                    />
+                    <Route path="tenants" element={<TenantList onOpen={(id) => navigate(`${ROOT}/tenants/${id}`)} />} />
+                    <Route path="tenants/:tenantId" element={<TenantDetailRoute onSupportStarted={setSupportSession} />} />
+                    <Route path="routing" element={<SupportRoutingTab />} />
+                    <Route path="audit" element={<AuditPage />} />
+                    <Route path="*" element={<Navigate to={ROOT} replace />} />
+                </Routes>
             </AppShell>
         </>
     )

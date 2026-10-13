@@ -1,0 +1,253 @@
+/**
+ * =============================================================================
+ * HERMES - Super-admin konsolu (Faz 2) — Hermes Liquid dili
+ * =============================================================================
+ * Renkler YALNIZ token'dan (--h-*, --hp-*); modul tonlari Hermes paleti.
+ * Siniflar `pc-` onekli (platform console) — tenant arayuzuyle cakismaz.
+ * =============================================================================
+ */
+
+.pc-muted { color: var(--h-text-muted); }
+
+/* --- Ton paleti (modul kartlari, rozetler) --------------------------------- */
+.pc-tone--blue { --pc-tone: var(--hp-blue-500); }
+.pc-tone--green { --pc-tone: var(--hp-green-500); }
+.pc-tone--violet { --pc-tone: var(--hp-purple-500); }
+.pc-tone--red { --pc-tone: var(--hp-red-500); }
+.pc-tone--amber { --pc-tone: var(--hp-amber-500); }
+.pc-tone--ink { --pc-tone: var(--hp-neutral-600); }
+
+/* --- Modul rozetleri (tablo) ------------------------------------------------ */
+.pc-mbadges { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.pc-mbadge {
+    display: inline-grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    color: #FFFFFF;
+    font-size: 12px;
+    background: linear-gradient(150deg, color-mix(in srgb, var(--pc-tone) 78%, white), var(--pc-tone));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* --- Modul secici ------------------------------------------------------------- */
+.pc-modules { display: flex; flex-direction: column; gap: 14px; }
+.pc-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pc-presets__label {
+    margin-right: 4px;
+    font-size: var(--h-font-label);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--h-text-muted);
+}
+.pc-chip {
+    padding: 6px 14px;
+    border: 1px solid var(--h-border-subtle);
+    border-radius: var(--h-radius-pill);
+    background: var(--h-surface-subtle);
+    color: var(--h-text-secondary);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--h-motion-fast), color var(--h-motion-fast), border-color var(--h-motion-fast);
+}
+.pc-chip:hover:not(:disabled) { color: var(--h-text-primary); }
+.pc-chip.is-on { border-color: var(--h-brand); background: color-mix(in srgb, var(--h-brand) 12%, transparent); color: var(--h-text-primary); }
+.pc-chip:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
+
+.pc-mgrid {
+    display: grid;
+    /* 6 modul: 3 sutun = iki dolu satir (tek basina kalan kart yok). */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.pc-mcard {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    height: 100%;
+    padding: 14px;
+    border: 1px solid var(--h-border-subtle);
+    border-radius: 18px;
+    background: var(--h-surface-subtle);
+    color: var(--h-text-primary);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 220ms var(--h-ease-spring), border-color var(--h-motion-fast), background var(--h-motion-fast), box-shadow var(--h-motion-fast);
+}
+.pc-mcard:hover:not(:disabled) { transform: translateY(-2px); }
+.pc-mcard:focus-visible { outline: 2px solid var(--h-focus); outline-offset: 2px; }
+.pc-mcard:disabled { cursor: default; opacity: 0.7; }
+.pc-mcard.is-on {
+    border-color: color-mix(in srgb, var(--pc-tone) 55%, transparent);
+    background: color-mix(in srgb, var(--pc-tone) 9%, var(--h-bg-surface));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc-tone) 14%, transparent);
+}
+.pc-mcard__icon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
+    color: #FFFFFF;
+    font-size: 18px;
+    background: linear-gradient(150deg, color-mix(in srgb, var(--pc-tone) 78%, white), var(--pc-tone));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), 0 10px 18px -12px rgba(0, 0, 0, 0.5);
+    filter: saturate(0.35) opacity(0.75);
+    transition: filter var(--h-motion-fast);
+}
+.pc-mcard.is-on .pc-mcard__icon { filter: none; }
+.pc-mcard__text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pc-mcard__text b { font-size: 14.5px; font-weight: 700; }
+.pc-mcard__text small { color: var(--h-text-secondary); font-size: 12.5px; line-height: 1.45; }
+.pc-mcard__dep { color: var(--h-text-muted); font-size: 11.5px; font-style: normal; font-weight: 600; }
+.pc-mcard__check {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border: 1.5px solid var(--h-border-strong);
+    border-radius: 7px;
+    color: #FFFFFF;
+    font-size: 12px;
+}
+.pc-mcard.is-on .pc-mcard__check { border-color: var(--pc-tone); background: var(--pc-tone); }
+.pc-core { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--h-text-muted); font-size: 12.5px; }
+.pc-note {
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--h-info, var(--h-brand)) 10%, transparent);
+    color: var(--h-text-secondary);
+    font-size: 13px;
+}
+
+/* --- Kaydet cubugu (kaydedilmemis degisiklik) ---------------------------------- */
+.pc-savebar {
+    position: sticky;
+    bottom: 12px;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 10px 14px;
+    border: 1px solid var(--h-glass-edge);
+    border-radius: 16px;
+    background: var(--h-bg-elevated);
+    box-shadow: var(--h-shadow-dropdown);
+}
+.pc-savebar span { color: var(--h-text-secondary); font-size: 13px; font-weight: 600; }
+.pc-savebar__actions { display: flex; gap: 8px; }
+
+/* --- Liste ------------------------------------------------------------------------ */
+.pc-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+.pc-toolbar__search { flex: 1 1 260px; max-width: 420px; }
+.pc-toolbar__spacer { flex: 1; }
+.pc-tenant { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pc-tenant__mark {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    color: #FFFFFF;
+    font-weight: 750;
+    font-size: 15px;
+    background: linear-gradient(150deg, var(--hp-blue-400), var(--hp-purple-500));
+}
+.pc-tenant__text { display: flex; flex-direction: column; min-width: 0; }
+.pc-tenant__text b { overflow: hidden; color: var(--h-text-primary); text-overflow: ellipsis; white-space: nowrap; }
+.pc-tenant__text small { color: var(--h-text-muted); font-family: var(--h-font-mono); font-size: 12px; }
+.pc-row { cursor: pointer; }
+
+/* --- Detay ---------------------------------------------------------------------- */
+.pc-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--h-text-secondary);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.pc-back:hover { color: var(--h-text-primary); }
+.pc-dhero { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 18px; }
+.pc-dhero .pc-tenant__mark { width: 56px; height: 56px; border-radius: 17px; font-size: 24px; }
+.pc-dhero__text { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 240px; }
+.pc-dhero__text h2 { margin: 0; font-size: 24px; font-weight: 760; letter-spacing: -0.02em; }
+.pc-dhero__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--h-text-muted); font-size: 13px; }
+.pc-dhero__meta code { font-family: var(--h-font-mono); }
+.pc-tabs { margin-bottom: 16px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.pc-tabs::-webkit-scrollbar { display: none; }
+.pc-tabs button { flex: none; white-space: nowrap; }
+.pc-section { display: flex; flex-direction: column; gap: 16px; }
+.pc-dl { display: grid; grid-template-columns: minmax(120px, max-content) minmax(0, 1fr); gap: 10px 18px; margin: 0; }
+.pc-dl dt { color: var(--h-text-muted); font-size: 13px; }
+.pc-dl dd { margin: 0; color: var(--h-text-primary); font-size: 13.5px; min-width: 0; overflow-wrap: anywhere; }
+.pc-link { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
+.pc-link code { min-width: 0; overflow-wrap: anywhere; padding: 3px 8px; border-radius: 8px; background: var(--h-surface-subtle); font-family: var(--h-font-mono); font-size: 12.5px; }
+.pc-danger { border-color: color-mix(in srgb, var(--h-danger) 35%, var(--h-glass-edge)); }
+.pc-danger__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.pc-danger__row p { margin: 0; max-width: 60ch; color: var(--h-text-secondary); font-size: 13px; }
+
+/* --- Genel bakis ------------------------------------------------------------------ */
+.pc-ov { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+.pc-mstat { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.pc-mstat li { display: grid; grid-template-columns: 24px minmax(110px, 160px) minmax(0, 1fr) 40px; align-items: center; gap: 10px; }
+.pc-mstat__name { font-size: 13px; color: var(--h-text-primary); }
+.pc-mstat__track { height: 8px; overflow: hidden; border-radius: var(--h-radius-pill); background: var(--h-bg-hover); }
+.pc-mstat__track i { display: block; height: 100%; border-radius: inherit; background: var(--pc-tone); }
+.pc-mstat__n { text-align: right; font: 600 12.5px var(--h-font-mono); color: var(--h-text-secondary); font-variant-numeric: tabular-nums; }
+.pc-recent { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.pc-recent button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    padding: 8px;
+    border: 0;
+    border-radius: 12px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.pc-recent button:hover { background: var(--h-bg-hover); }
+
+/* --- Sihirbaz ---------------------------------------------------------------------- */
+.pc-wizard__steps { margin-bottom: 20px; }
+.pc-wizard__foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.pc-review { display: flex; flex-direction: column; gap: 12px; }
+
+@media (max-width: 900px) {
+    .pc-ov { grid-template-columns: minmax(0, 1fr); }
+    .pc-mstat li { grid-template-columns: 24px minmax(90px, 120px) minmax(0, 1fr) 32px; }
+    .pc-mgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+    .pc-mgrid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .pc-mcard, .pc-chip { transition: none; }
+    .pc-mcard:hover:not(:disabled) { transform: none; }
+}

@@ -47,6 +47,7 @@ from ..services import core_support_client as core_support
 from ..services import platform_service as svc
 from ..services import tenant_provisioning as provisioning
 from ..services.tenant_modules import modules_list, set_modules
+from ..services.rbac_service import SYSTEM_ADMIN_CODE
 
 logger = logging.getLogger(__name__)
 
@@ -360,6 +361,53 @@ class TenantUpdateRequest(BaseModel):
     owner_email: Optional[EmailStr] = None
     # Modul secimi (tam liste; bos liste = yalniz cekirdek).
     modules: Optional[List[str]] = None
+    # Iyimser kilit: ekranin okudugu surum. Verilirse ve tenant o arada
+    # degistiyse 409 (iki operator ayni anda duzenlerse sessiz ezme yok).
+    expected_version: Optional[int] = None
+
+
+@router.get("/tenants/{tenant_id}/members", summary="Tenant uyeleri (kontrol duzlemi)")
+def list_tenant_members(
+    tenant_id: UUID,
+    principal: PlatformPrincipal = Depends(
+        svc.require_platform_permissions(PlatformPerm.TENANTS_VIEW)
+    ),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Kim uye, kim yonetici? Yalniz KIMLIK + uyelik metadata'si — hicbir
+    is verisi (gorev, efor, talep) donmez."""
+    from ..models.rbac import RbacRole, RbacUserRole
+
+    if db.query(Tenant.id).filter(Tenant.id == tenant_id).first() is None:
+        raise HTTPException(status_code=404, detail="Tenant not found.")
+    rows = (
+        db.query(TenantMembership, User)
+        .join(User, User.id == TenantMembership.user_id)
+        .filter(TenantMembership.tenant_id == tenant_id)
+        .order_by(User.full_name.asc())
+        .limit(500)
+        .all()
+    )
+    admin_ids = {
+        uid for (uid,) in db.query(RbacUserRole.user_id)
+        .join(RbacRole, RbacRole.id == RbacUserRole.role_id)
+        .filter(RbacUserRole.tenant_id == tenant_id,
+                RbacRole.tenant_id == tenant_id,
+                RbacRole.code == SYSTEM_ADMIN_CODE,
+                RbacRole.is_active.is_(True))
+        .all()
+    }
+    return {"members": [
+        {
+            "user_id": str(u.id),
+            "email": u.email,
+            "full_name": u.full_name,
+            "status": m.status,
+            "is_admin": u.id in admin_ids,
+            "joined_at": m.joined_at or m.created_at,
+        }
+        for m, u in rows
+    ]}
 
 
 @router.get("/plans", summary="Plan katalogu")
@@ -432,6 +480,13 @@ def update_tenant(
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant bulunamadi.")
+    if (payload.expected_version is not None
+            and payload.expected_version != tenant.version):
+        raise HTTPException(status_code=409, detail={
+            "code": "version_conflict",
+            "message": "This tenant was changed by someone else. Reload and try again.",
+            "current_version": tenant.version,
+        })
 
     changed = {}
     if payload.display_name and payload.display_name != tenant.display_name:
@@ -459,6 +514,10 @@ def update_tenant(
         changed["email_domains"] = domains
 
     if payload.plan_code:
+        if db.query(Plan).filter(Plan.code == payload.plan_code).first() is None:
+            raise HTTPException(status_code=400, detail={
+                "code": "unknown_plan", "message": "Unknown plan code.",
+            })
         sub = db.query(TenantSubscription).filter(
             TenantSubscription.tenant_id == tenant.id,
             TenantSubscription.status == "active",
@@ -901,11 +960,15 @@ def set_support_routing(
     except core_support.CoreSupportError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc))
 
+    # Imza: record_audit yalniz bilinen anahtar kelimeleri alir. Eskiden
+    # `actor_id`/`detail` gonderiliyordu → TypeError (core'da degisiklik
+    # UYGULANMISKEN istek 500 donuyor, denetim yazilmiyordu).
     svc.record_audit(
-        db, actor_id=principal.id, action="support.routing.set",
+        db, action="support.routing.set",
+        actor_user_id=UUID(principal.id), target_tenant_id=tenant_id,
         target_type="tenant", target_id=str(tenant_id),
-        detail={"group_id": str(payload.group_id),
-                "route_version": result.get("route_version")},
+        metadata={"group_id": str(payload.group_id),
+                  "route_version": result.get("route_version")},
     )
     db.commit()
     return result
@@ -927,7 +990,8 @@ def disable_support_routing(
     except core_support.CoreSupportError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc))
     svc.record_audit(
-        db, actor_id=principal.id, action="support.routing.disabled",
+        db, action="support.routing.disabled",
+        actor_user_id=UUID(principal.id), target_tenant_id=tenant_id,
         target_type="tenant", target_id=str(tenant_id),
     )
     db.commit()

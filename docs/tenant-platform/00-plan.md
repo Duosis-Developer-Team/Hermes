@@ -106,3 +106,21 @@ görüntüsünde). Helpdesk katmanının etkinlik kaydı ayrı tabloda tutulur.
 Her faz: backend + frontend testleri, dev'de canlı doğrulama, `07-durum` gibi
 kısa durum notu. Test'e ff: §ff-provası (yedek + geçici namespace'te migration
 provası + satır sayımı).
+
+## 6. Durum
+
+| Faz | Commit | Dev | Kanıt |
+|---|---|---|---|
+| 1 — Tenant modülleri | `610314c` | canlı (14.10) | auth 0006 / core 0017 head; acme + duosis 6 modülle (davranış değişmedi); auth 256, core 837, MCP 104, frontend 1156 test |
+| 2 — Süper-admin konsolu | (bu commit) | CD sonrası | auth 260, frontend 1163 test; görsel kontrol açık/koyu + 500 px |
+
+Faz 2 notları:
+- Konsol adresli: `/platform-admin` (genel bakış), `/tenants`, `/tenants/:id`
+  (Genel · Modüller · Üyeler · Erişim ve kimlik · Denetim), `/routing`, `/audit`.
+- Talep ağı sekmesi Faz 3.0'a kaldı (bağlantı kaydı o fazın tablosu).
+- Düzeltilen hatalar: yönlendirme aç/kapa `record_audit` TypeError; yenilemede
+  oturum düşmesi (`/me` ile geri yükleme); bilinmeyen plan kodu 400;
+  PATCH `expected_version` → 409; konsolda kiracı bildirim zili (kiracı API'si
+  platform düzleminde çağrılıyordu) kaldırıldı.
+- Yeni uç: `GET /api/platform/v1/tenants/{id}/members` (yalnız metadata; yönetici
+  bilgisi aktif `system-admin` rolünden).

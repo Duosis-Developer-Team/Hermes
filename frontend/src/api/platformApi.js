@@ -54,6 +54,14 @@ export const platformService = {
         return data
     },
 
+    /** Kiraci uyeleri: kimlik + uyelik + yonetici bayragi (is verisi yok). */
+    listTenantMembers: async (tenantId) => {
+        const { data } = await platformClient.get(
+            `${BASE}/tenants/${tenantId}/members`,
+        )
+        return data.members || []
+    },
+
     /** Askiya alma: gerekce + yazili slug onayi ZORUNLU. */
     // WS12 — tenant olusturma / duzenleme
     // -----------------------------------------------------------------

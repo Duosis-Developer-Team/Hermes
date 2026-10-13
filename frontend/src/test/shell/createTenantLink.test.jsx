@@ -19,7 +19,8 @@ vi.mock('../../api/platformApi', () => ({
 }))
 
 import { platformService } from '../../api/platformApi'
-import { CreateTenantModal } from '../../pages/platform/PlatformConsole'
+import { CreateTenantModal, slugify } from '../../pages/platform/TenantWizard'
+import { MODULE_CODES } from '../../features/modules/catalog'
 
 const RESULT = {
     tenant: { id: 't1', slug: 'acme', display_name: 'Acme', status: 'active' },
@@ -28,11 +29,16 @@ const RESULT = {
     workspace_hint: '/?workspace=acme',
 }
 
-const fillAndCreate = async (user) => {
+// Sihirbaz (Faz 2): Bilgiler → Moduller → Yonetici → Ozet. Kisa ad addan
+// TURETILIR (elle yazilmadikca).
+const fillAndCreate = async (user, { preset } = {}) => {
     await user.type(screen.getByPlaceholderText('Acme Industries'), 'Acme')
-    await user.type(screen.getByPlaceholderText('acme'), 'acme')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    if (preset) await user.click(await screen.findByRole('button', { name: preset }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
     await user.type(screen.getByPlaceholderText('admin@acme.com'), 'can@duosis.com')
-    await user.click(screen.getByRole('button', { name: 'Create' }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(await screen.findByRole('button', { name: 'Create tenant' }))
 }
 
 const renderModal = (onDone) => render(
@@ -79,5 +85,30 @@ describe('olusturma sonrasi adres', () => {
             .toBeInTheDocument()
         expect(screen.getByText('Tek-Sefer-123')).toBeInTheDocument()
         expect(screen.getByText(/shown once/)).toBeInTheDocument()
+    })
+
+    it('istek tam katalogu tasir; sablonla yalniz talepler secilebilir', async () => {
+        platformService.createTenant.mockResolvedValue(RESULT)
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
+        renderModal(vi.fn())
+        await fillAndCreate(user)
+        await screen.findByText(`${window.location.origin}/?workspace=acme`)
+        const sent = platformService.createTenant.mock.calls[0][0]
+        expect(sent).toMatchObject({ slug: 'acme', display_name: 'Acme', owner_email: 'can@duosis.com' })
+        expect(sent.modules).toEqual(MODULE_CODES)
+    })
+
+    it('yalniz talepler sablonu', async () => {
+        platformService.createTenant.mockResolvedValue(RESULT)
+        const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 })
+        renderModal(vi.fn())
+        await fillAndCreate(user, { preset: 'Tickets only' })
+        await screen.findByText(`${window.location.origin}/?workspace=acme`)
+        expect(platformService.createTenant.mock.calls[0][0].modules).toEqual(['tickets'])
+    })
+
+    it('kisa ad turetme: Turkce harf ve bosluk', () => {
+        expect(slugify('Acme Endüstri A.Ş.')).toBe('acme-endustri-a-s')
+        expect(slugify('  İstanbul   Grup ')).toBe('istanbul-grup')
     })
 })

@@ -14,6 +14,7 @@ import { LEGACY_SETTINGS_PATHS } from './features/settings/sections'
 import { Spin } from 'antd'
 import { useAuthStore } from './stores/authStore'
 import { usePlatformAuthStore } from './stores/platformAuthStore'
+import { platformService } from './api/platformApi'
 import { authService, rbacService } from './services/api'
 import { AppErrorBoundary } from './components/common/ErrorBoundaries'
 
@@ -101,6 +102,29 @@ export const PublicHome = () => {
         return <Navigate to={loginPathFor(location.search)} replace />
     }
     return <LandingPage />
+}
+
+/**
+ * Super-admin oturumu sayfa yenilemesinde kaybolmasin: platform store'u
+ * bellekte yasar, cerez (HttpOnly, /api/platform) ise hala gecerli olabilir.
+ * Bir kez /me sorulur; gecerliyse oturum geri yuklenir, degilse `fallback`.
+ */
+const PlatformSessionGate = ({ fallback }) => {
+    const restorePlatform = usePlatformAuthStore((s) => s.login)
+    const [state, setState] = useState('checking')
+    useEffect(() => {
+        let cancelled = false
+        platformService.me()
+            .then((me) => {
+                if (cancelled) return
+                restorePlatform(me.admin, me.permissions || [])
+                setState('ok')
+            })
+            .catch(() => { if (!cancelled) setState('none') })
+        return () => { cancelled = true }
+    }, [restorePlatform])
+    if (state === 'checking') return <CenteredLoader />
+    return state === 'none' ? fallback : null
 }
 
 /** Izinsiz/kapali bir rotadan donus: tenant'in ACIK ilk modulu; o da
@@ -292,10 +316,10 @@ function App() {
                     platformAuthenticated
                         ? <PlatformConsole />
                         /* Ayri platform giris ekrani KALDIRILDI: giris tek
-                           yerden yapilir. Oturum yoksa ana giris ekranina
-                           gidilir; orasi platform kimligini de kabul eder
-                           ve konsola yonlendirir. */
-                        : <Navigate to="/login" replace />
+                           yerden yapilir. Sayfa yenilenince platform
+                           cerezi hala gecerliyse oturum /me ile geri
+                           yuklenir; yoksa ana giris ekranina gidilir. */
+                        : <PlatformSessionGate fallback={<Navigate to="/login" replace />} />
                 }
             />
 
