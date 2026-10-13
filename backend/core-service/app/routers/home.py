@@ -22,7 +22,10 @@ from sqlalchemy.orm import Session
 from shared.auth import CurrentUser, get_current_user
 from shared.permissions import Perm
 
+from shared.modules import Module
+
 from ..authz import require_permissions
+from ..module_gate import require_any_module
 from ..schemas.home import MyWeekResponse, MyWorkResponse, OrgResponse, TeamResponse
 from ..services import home_service
 from ..tenant_db import get_tenant_db
@@ -53,7 +56,8 @@ def my_work(
 @router.get("/week", response_model=MyWeekResponse)
 def my_week(
     start: Optional[date] = Query(None, description="Any day of the wanted week (defaults to this week)."),
-    current_user: CurrentUser = Depends(get_current_user),
+    # Hafta = toplantilar + is terminleri: ikisi de kapaliysa uc yok (404).
+    current_user: CurrentUser = Depends(require_any_module(Module.MEETINGS, Module.WORK)),
     db: Session = Depends(get_tenant_db),
 ):
     return home_service.my_week(db, current_user, start=start)

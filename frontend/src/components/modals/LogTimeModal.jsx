@@ -38,6 +38,7 @@ import { useCustomerLogoStore } from '../../stores/customerLogoStore'
 import { selectFilter, matchesSearch } from '../../utils/searchText'
 import { UNTYPED, groupProjectsByType } from '../../features/projectTypes/grouping'
 import { toneOf } from '../../features/projectTypes/palette'
+import { useAuthStore } from '../../stores/authStore'
 
 const { TextArea } = Input
 
@@ -159,8 +160,9 @@ function LogTimeModal({
      * olanlar elenir. Secim `task_id` olarak gider; sunucu onu is
      * kalemine cozer (work_logs.work_item_id) ve log_time olayi yazar.
      */
+    const workEnabled = useAuthStore((s) => s.hasModule('work'))
     const showWorkItemPicker = Boolean(
-        open && step === 2 && !editingLog && !prefillTask && selectedProjectId
+        workEnabled && open && step === 2 && !editingLog && !prefillTask && selectedProjectId
     )
     const { data: projectItems = [] } = useQuery({
         queryKey: queryKeys.tasks.list({

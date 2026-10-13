@@ -30,6 +30,9 @@ from ..models.api_client import ApiClient, ApiToken
 from ..services import api_client_service
 from .errors import PublicAPIError
 from .rate_limit import get_limiter, rate_limit_headers
+from shared.modules import Module
+from ..module_gate import tenant_modules
+from .scopes import effective_scopes
 
 # last_used_at guncellemesi en fazla bu araliklarla yazilir (yazma
 # amplifikasyonunu onler; amendment'a uygun "throttled" metadata).
@@ -251,6 +254,16 @@ async def get_api_context(
             "This token's environment does not match this deployment.",
         )
 
+    # 6b) Tenant modulleri: gelistirici platformu KAPALI tenant'ta API
+    #     kullanilamaz (mevcut token'lar dahil). Kapsam disi modullerin
+    #     scope'lari asagida efektif kumeden duser.
+    modules = tenant_modules(client.tenant_id, db=db)
+    if Module.DEVELOPER not in modules:
+        raise PublicAPIError(
+            "resource_access_denied",
+            "API access is not enabled for this workspace.",
+        )
+
     # 7) Token/client rate limiti (basarili kimlik dogrulama sonrasi).
     limit = client.rate_limit_per_min or settings.PUBLIC_API_DEFAULT_RATE_LIMIT
     # Anahtar tenant'i DE tasir: token id'leri zaten benzersiz, ama
@@ -275,7 +288,8 @@ async def get_api_context(
     ctx = ApiContext(
         client=client,
         token=token,
-        scopes=frozenset(client.scopes or []),
+        # Efektif scope = kayitli scope ∩ ACIK modullerin scope'lari.
+        scopes=effective_scopes(client.scopes or [], modules),
     )
     # Audit / rate-limit katmanlari icin (2C) request.state'e isle.
     # Denetim kaydi tenant'i buradan alir (istekten DEGIL).

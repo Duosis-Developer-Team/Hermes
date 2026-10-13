@@ -28,6 +28,9 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..models.rbac import RbacUserRole
+from shared.modules import ALL_MODULES, ModuleSelectionError, normalize
+
+from .tenant_modules import modules_list
 from ..models.tenancy import (
     Tenant,
     TenantIdentityProvider,
@@ -113,6 +116,8 @@ def _project_to_core(tenant: Tenant) -> None:
                 "status": tenant.status,
                 "placement_key": tenant.placement_key or "shared-default",
                 "source_version": int(tenant.version or 1),
+                # Tenant modulleri: core izinsiz-acik uclari buna gore acar.
+                "enabled_modules": modules_list(tenant),
             },
             headers={"Authorization": f"Bearer {token}"},
             timeout=10.0,
@@ -139,10 +144,14 @@ def provision_tenant(
     owner_full_name: Optional[str] = None,
     email_domains=None,
     plan_code: Optional[str] = None,
+    modules=None,
     actor_user_id=None,
     idempotency_key: Optional[str] = None,
 ) -> dict:
-    """Yeni tenant acar. Commit CAGIRANA aittir."""
+    """Yeni tenant acar. Commit CAGIRANA aittir.
+
+    `modules`: shared/modules.py kodlari; verilmezse TUM katalog.
+    """
     slug = (slug or "").strip().lower()
     display_name = (display_name or "").strip()
     owner_email = (owner_email or "").strip().lower()
@@ -161,6 +170,10 @@ def provision_tenant(
     if db.query(Tenant).filter(Tenant.slug == slug).first():
         raise ProvisioningError(f"'{slug}' zaten kullaniliyor.")
     domains = normalize_domains(email_domains)
+    try:
+        selected_modules = normalize(ALL_MODULES if modules is None else modules)
+    except ModuleSelectionError as exc:
+        raise ProvisioningError(str(exc)) from exc
 
     # Idempotency: cift tiklama ya da agdaki tekrar, IKINCI bir tenant
     # yaratmamali. Anahtar verilmezse uretilir (kolon NOT NULL'dur ve
@@ -216,6 +229,7 @@ def provision_tenant(
             status="provisioning",
             placement_key="shared-default",
             version=1,
+            enabled_modules=selected_modules,
         )
         db.add(tenant)
         db.flush()
@@ -331,6 +345,7 @@ def provision_tenant(
             "slug": slug,
             "email_domains": domains,
             "plan_code": plan_code,
+            "modules": selected_modules,
             "owner_created": one_time_password is not None,
         },
     )
@@ -341,6 +356,7 @@ def provision_tenant(
             "slug": tenant.slug,
             "display_name": tenant.display_name,
             "status": tenant.status,
+            "modules": modules_list(tenant),
         },
         "owner": {"email": owner_email, "created": one_time_password is not None},
         # YALNIZCA yeni kullanici yaratildiysa ve YALNIZCA BU YANITTA.

@@ -33,6 +33,7 @@ from shared.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES, PlatformPrincipal, create_access_token,
     get_platform_principal, verify_password,
 )
+from shared.modules import ModuleSelectionError
 from shared.platform_permissions import PlatformPerm
 
 from ..config import get_settings
@@ -45,6 +46,7 @@ from ..models.user import User
 from ..services import core_support_client as core_support
 from ..services import platform_service as svc
 from ..services import tenant_provisioning as provisioning
+from ..services.tenant_modules import modules_list, set_modules
 
 logger = logging.getLogger(__name__)
 
@@ -227,6 +229,7 @@ def _tenant_summary(db: Session, tenant: Tenant) -> dict:
         "status": tenant.status,
         "plan_code": subscription.plan_code if subscription else None,
         "email_domains": list(idp.allowed_email_domains or []) if idp else [],
+        "modules": modules_list(tenant),
         "active_members": active_members,
         "created_at": tenant.created_at,
         "activated_at": tenant.activated_at,
@@ -342,6 +345,8 @@ class TenantCreateRequest(BaseModel):
         ),
     )
     plan_code: Optional[str] = Field(default=None, max_length=50)
+    # Tenant modulleri (shared/modules.py). Verilmezse TUM katalog.
+    modules: Optional[List[str]] = None
 
 
 class TenantUpdateRequest(BaseModel):
@@ -353,6 +358,8 @@ class TenantUpdateRequest(BaseModel):
     # sunmalidir. Yeni bir yonetici eklemek olusturmada mumkundu ama
     # duzenlemede degildi.
     owner_email: Optional[EmailStr] = None
+    # Modul secimi (tam liste; bos liste = yalniz cekirdek).
+    modules: Optional[List[str]] = None
 
 
 @router.get("/plans", summary="Plan katalogu")
@@ -396,6 +403,7 @@ def create_tenant(
             owner_full_name=payload.owner_full_name,
             email_domains=payload.email_domains,
             plan_code=payload.plan_code,
+            modules=payload.modules,
             actor_user_id=UUID(principal.id),
             idempotency_key=idempotency_key,
         )
@@ -463,6 +471,18 @@ def update_tenant(
         else:
             sub.plan_code = payload.plan_code
         changed["plan_code"] = payload.plan_code
+
+    if payload.modules is not None:
+        before = modules_list(tenant)
+        try:
+            after = set_modules(db, tenant, payload.modules)
+        except ModuleSelectionError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "invalid_modules", "message": str(exc)},
+            ) from exc
+        if after != before:
+            changed["modules"] = after
 
     # Ek yonetici: var olan tenant'a admin ekleme (olusturma paritesi).
     one_time_password = None

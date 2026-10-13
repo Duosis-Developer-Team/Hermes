@@ -30,7 +30,7 @@
 import dayjs from 'dayjs'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { CalendarOutlined, CheckSquareOutlined, ClockCircleOutlined } from '@ant-design/icons'
+import { CalendarOutlined, CheckSquareOutlined, ClockCircleOutlined, CustomerServiceOutlined } from '@ant-design/icons'
 
 import EffortStrip from '../features/home/components/EffortStrip'
 import FocusBlock from '../features/home/components/FocusBlock'
@@ -57,13 +57,24 @@ function HomePage() {
     const can = useAuthStore((s) => s.can)
     useAuthStore((s) => s.permissions) // izinler cozulunce yeniden ciz
     const { canAccessAny, isTaskAdmin } = useTaskPermissions()
-    const showMyWork = !!user?.is_admin || isTaskAdmin || canAccessAny
+    // Tenant modulleri: kapali modulun blogu/kisayolu hic cizilmez.
+    const hasModule = useAuthStore((s) => s.hasModule)
+    useAuthStore((s) => s.tenant)
+    const mod = {
+        time: hasModule('time_entry'), work: hasModule('work'),
+        meetings: hasModule('meetings'), tickets: hasModule('tickets'),
+    }
+    const showMyWork = mod.work && (!!user?.is_admin || isTaskAdmin || canAccessAny)
     // Ekibim: liderlik istemcide bilinmez → uc hep cagrilir, sunucu
     // eligible=false derse blok cizilmez. Organizasyon: reports.view.
     const showOrg = can('reports.view')
     const tenantName = useAuthStore((s) => s.tenant?.display_name)
-    const { data: team } = useQuery({ queryKey: queryKeys.home.team, queryFn: () => homeService.team() })
-    const showTeam = team?.eligible === true
+    const { data: team } = useQuery({
+        queryKey: queryKeys.home.team, queryFn: () => homeService.team(), enabled: mod.work,
+    })
+    const showTeam = mod.work && team?.eligible === true
+    const showWeek = mod.meetings || mod.work
+    const ticketsPath = '/tickets' // sayfa gerekirse portala (/support) yonlendirir
 
     return (
         <div className="home-page">
@@ -78,22 +89,37 @@ function HomePage() {
                     <span className="home-page__date">{dayjs().format('dddd, DD MMMM YYYY')}</span>
                 </div>
                 <nav className="home-hero__actions" aria-label={t('nav.home')}>
-                    <Link to="/meetings" className="home-hero__action"><CalendarOutlined aria-hidden="true" />{t('home.quickMeetings')}</Link>
+                    {mod.meetings && (
+                        <Link to="/meetings" className="home-hero__action"><CalendarOutlined aria-hidden="true" />{t('home.quickMeetings')}</Link>
+                    )}
                     {showMyWork && (
                         <Link to="/project-management" className="home-hero__action"><CheckSquareOutlined aria-hidden="true" />{t('home.quickWork')}</Link>
                     )}
-                    <Link to="/time-entry" className="home-hero__action home-hero__action--primary"><ClockCircleOutlined aria-hidden="true" />{t('home.quickLog')}</Link>
+                    {mod.tickets && can('tickets.access') && (
+                        <Link to={ticketsPath} className={`home-hero__action${mod.time ? '' : ' home-hero__action--primary'}`}><CustomerServiceOutlined aria-hidden="true" />{t('nav.tickets')}</Link>
+                    )}
+                    {mod.time && (
+                        <Link to="/time-entry" className="home-hero__action home-hero__action--primary"><ClockCircleOutlined aria-hidden="true" />{t('home.quickLog')}</Link>
+                    )}
                 </nav>
             </header>
 
             {/* Hermes Liquid bento (prototip): efor + dikkat, islerim +
                 takvim, ekibim + organizasyon; kartlar kademeli yukselir. */}
             <div className="lq-bento lq-enter home-bento">
-                <div className="lq-c8 home-slot home-slot--effort"><EffortStrip /></div>
-                <div className="lq-c4 home-slot home-slot--focus"><FocusBlock showMyWork={showMyWork} /></div>
-                {showMyWork && <div className="lq-c7 home-slot home-slot--work home-row-mid"><MyWorkBlock /></div>}
-                <div className={`${showMyWork ? 'lq-c5' : 'lq-c12'} home-slot home-slot--week home-row-mid`}><WeekBlock /></div>
-                <div className={`${showOrg ? 'lq-c7' : 'lq-c12'} home-slot home-slot--team home-row-low`}><TeamBlock /></div>
+                {mod.time && (
+                    <div className={`${mod.work ? 'lq-c8' : 'lq-c12'} home-slot home-slot--effort`}><EffortStrip /></div>
+                )}
+                {mod.work && (
+                    <div className={`${mod.time ? 'lq-c4' : 'lq-c12'} home-slot home-slot--focus`}><FocusBlock showMyWork={showMyWork} /></div>
+                )}
+                {showMyWork && <div className={`${showWeek ? 'lq-c7' : 'lq-c12'} home-slot home-slot--work home-row-mid`}><MyWorkBlock /></div>}
+                {showWeek && (
+                    <div className={`${showMyWork ? 'lq-c5' : 'lq-c12'} home-slot home-slot--week home-row-mid`}><WeekBlock /></div>
+                )}
+                {showTeam && (
+                    <div className={`${showOrg ? 'lq-c7' : 'lq-c12'} home-slot home-slot--team home-row-low`}><TeamBlock /></div>
+                )}
                 {showOrg && <div className={`${showTeam ? 'lq-c5' : 'lq-c12'} home-slot home-slot--org home-row-low`}><OrgBlock /></div>}
             </div>
         </div>

@@ -43,6 +43,7 @@ import LiquidBackdrop from '../components/layout/LiquidBackdrop'
 import ServerSwitch from '../components/layout/ServerSwitch'
 import './LoginPage.css'
 import { useT } from '../i18n'
+import { landingPath } from '../features/modules/catalog'
 
 /** Microsoft dort kare isareti (resmi renkler). */
 function MicrosoftMark() {
@@ -160,7 +161,8 @@ function LoginPage() {
             login(response.user, response.tenant || null)
 
             message.success(t('login.loginSuccess'))
-            navigate('/time-entry')
+            // Tenant'in ACIK ilk modulu (eskiden sabit /time-entry).
+            navigate(landingPath(response.tenant))
         } catch (error) {
             /*
              * TEK GIRIS NOKTASI — iki AYRI guvenlik duzlemi.

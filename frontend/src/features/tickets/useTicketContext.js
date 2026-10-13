@@ -10,15 +10,19 @@ import { useQuery } from '@tanstack/react-query'
 
 import { ticketContextService } from '../../api/ticketsApi'
 import { queryKeys } from '../../query/queryKeys'
+import { useAuthStore } from '../../stores/authStore'
 
 export function useTicketContext() {
+    // Talepler MODULU kapali tenant'ta baglam sorulmaz (yuzey yok).
+    const ticketsEnabled = useAuthStore((s) => s.hasModule('tickets'))
     const query = useQuery({
         queryKey: queryKeys.ticketContext.all,
         queryFn: ticketContextService.get,
         staleTime: 60_000,
         retry: 1,
+        enabled: ticketsEnabled,
     })
-    const data = query.data
+    const data = ticketsEnabled ? query.data : undefined
     return {
         ...query,
         context: data,

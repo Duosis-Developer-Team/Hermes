@@ -25,6 +25,7 @@ import { DownOutlined, TeamOutlined } from '@ant-design/icons'
 import { authService } from '../../api/authApi'
 import { useAuthStore } from '../../stores/authStore'
 import { useT } from '../../i18n'
+import { landingPath } from '../../features/modules/catalog'
 
 const { Text } = Typography
 
@@ -70,7 +71,7 @@ export default function OrganizationSwitcher() {
             message.success(`Switched to ${result.tenant.display_name}`)
             // Guvenli baslangic: eski rota yeni organizasyonda anlamsiz
             // (hatta var olmayan) bir kaydi gosteriyor olabilir.
-            navigate('/time-entry', { replace: true })
+            navigate(landingPath(result.tenant), { replace: true })
         } catch (error) {
             const detail = error?.response?.data?.detail
             message.error(

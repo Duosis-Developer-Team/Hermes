@@ -262,6 +262,14 @@ export default {
         retry: 'Tekrar dene',
     },
     // KVKK aydinlatma metni + cerez politikasi (features/landing/legalContent.js yapisi).
+    modules: {
+        time_entry: 'Zaman girişi',
+        work: 'İş yönetimi',
+        meetings: 'Toplantılar ve takvim',
+        tickets: 'Talepler',
+        reports: 'Raporlar ve panel',
+        developer: 'Geliştirici platformu',
+    },
     projectTypes: {
         title: 'Proje türleri',
         subtitle: 'Projeleri sınıflandırın; türün rengi, projelerin jenerik logolarının rengidir',

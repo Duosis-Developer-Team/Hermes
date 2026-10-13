@@ -28,6 +28,7 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from shared.auth import CurrentUser, get_current_user
+from shared.modules import filter_permissions
 from shared.permissions import ALL_PERMISSIONS, PERMISSION_REQUIRES, Perm
 
 from ..database import get_db
@@ -109,7 +110,12 @@ def effective_permissions(db: Session, user_id, *, tenant_id) -> frozenset:
     perms: set = set()
     for (plist,) in rows:
         perms.update(plist or [])
-    return frozenset(perms & set(ALL_PERMISSIONS))
+    # Tenant modulleri (shared/modules.py): KAPALI modulun izni rolde kayitli
+    # olsa bile verilmez — core/reporting izni buradan cozdugu icin modul
+    # kapisi oralarda da kendiliginden uygulanir.
+    from .tenant_modules import enabled_modules
+
+    return filter_permissions(perms & set(ALL_PERMISSIONS), enabled_modules(db, tid))
 
 
 def user_role_rows(db: Session, user_id: UUID, *, tenant_id):

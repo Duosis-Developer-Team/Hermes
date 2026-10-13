@@ -31,6 +31,7 @@ from ..services.tenant_resolver import (
     WorkspaceUnavailable,
     resolve_request_tenant,
 )
+from ..services.tenant_modules import modules_list
 from shared.auth import (
     ACCESS_TOKEN_COOKIE_NAME,
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -499,6 +500,7 @@ async def switch_tenant(
         slug=tenant_row.slug,
         display_name=tenant_row.display_name,
         status=tenant_row.status,
+        modules=tuple(modules_list(tenant_row)),
     )
     auth_service = AuthService(db)
     token = auth_service._create_token_for_user(
@@ -535,6 +537,7 @@ async def switch_tenant(
             "id": resolved.id,
             "slug": resolved.slug,
             "display_name": resolved.display_name,
+            "modules": list(resolved.modules),
         },
         "membership": {
             "id": str(membership.id),
@@ -591,6 +594,8 @@ async def get_current_user_info(
             "id": str(tenant_row.id),
             "slug": tenant_row.slug,
             "display_name": tenant_row.display_name,
+            # Tenant modulleri: arayuz yalniz acik modulleri gosterir.
+            "modules": modules_list(tenant_row),
         }
         if tenant_row is not None
         else None

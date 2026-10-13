@@ -64,16 +64,18 @@ function scopeView(data, scope) {
 
 export function useTaskPermissions() {
     const { isAuthenticated, user } = useAuthStore()
+    // Is yonetimi MODULU kapali tenant'ta hic sorulmaz; tum bayraklar false.
+    const workEnabled = useAuthStore((s) => s.hasModule('work'))
 
     const query = useQuery({
         queryKey: ['task-permissions', user?.id],
         queryFn: () => taskPermissionService.getMyPermissions(),
-        enabled: isAuthenticated && !!user?.id,
+        enabled: isAuthenticated && !!user?.id && workEnabled,
         staleTime: 5 * 60 * 1000,
         retry: false,
     })
 
-    const data = query.data || DEFAULT_PERMISSIONS
+    const data = (workEnabled && query.data) || DEFAULT_PERMISSIONS
     const isAdmin = !!data.is_admin
     const taskScope = scopeView(data, 'task')
     const issueScope = scopeView(data, 'issue')

@@ -22,6 +22,7 @@ import {
 
 import { PageHero } from '../../components/liquid'
 import { hasAnySettings, visibleSections } from '../../features/settings/sections'
+import { landingPath } from '../../features/modules/catalog'
 import { loaderByPath } from '../../routes/loaders'
 import { useAuthStore } from '../../stores/authStore'
 import { useT } from '../../i18n'
@@ -81,14 +82,16 @@ export function SettingsIndex() {
     const t = useT()
     const permissions = useAuthStore((s) => s.permissions)
     const canAny = useAuthStore((s) => s.canAny)
+    const hasModule = useAuthStore((s) => s.hasModule)
+    const tenant = useAuthStore((s) => s.tenant)
     const [query, setQuery] = useState('')
     // Izinler henuz yuklenmediyse karar verilmez (fail-closed bekleme).
     if (permissions === null) {
         return <div className="settings-loading"><Spin /></div>
     }
-    if (!hasAnySettings(canAny)) return <Navigate to="/time-entry" replace />
+    if (!hasAnySettings(canAny, hasModule)) return <Navigate to={landingPath(tenant)} replace />
     const q = query.trim()
-    const sections = visibleSections(canAny)
+    const sections = visibleSections(canAny, hasModule)
         .map((section) => ({
             ...section,
             items: section.items.filter((item) => !q
@@ -186,11 +189,12 @@ function SettingsRail({ items, label, pathname }) {
 function SettingsPage() {
     const t = useT()
     const canAny = useAuthStore((s) => s.canAny)
+    const hasModule = useAuthStore((s) => s.hasModule)
     useAuthStore((s) => s.permissions) // izin gelince yeniden render
     const { pathname } = useLocation()
     const isHub = pathname.replace(/\/+$/, '') === '/settings'
     if (isHub) return <Outlet />
-    const items = visibleSections(canAny).flatMap((s) => s.items)
+    const items = visibleSections(canAny, hasModule).flatMap((s) => s.items)
 
     return (
         <div className="settings-page">

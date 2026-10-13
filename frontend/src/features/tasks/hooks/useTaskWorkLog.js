@@ -20,6 +20,7 @@ import { message } from 'antd'
 
 import { workLogService } from '../../../services/api'
 import useTaskInvalidation from './useTaskInvalidation'
+import { useAuthStore } from '../../../stores/authStore'
 
 export function useTaskWorkLog() {
     const { invalidateWorkLogFamilies } = useTaskInvalidation()
@@ -54,9 +55,12 @@ export function useTaskWorkLog() {
         })
     }
 
+    // Zaman girisi MODULU kapaliysa tamamla → efor akisi hic acilmaz.
+    const canLogTime = useAuthStore.getState().hasModule('time_entry')
     return {
         logTimeTask,
-        openLogTime: setLogTimeTask,
+        canLogTime,
+        openLogTime: canLogTime ? setLogTimeTask : () => {},
         closeLogTime: () => setLogTimeTask(null),
         submitWorkLog,
         isLoggingTime: workLogMutation.isPending,

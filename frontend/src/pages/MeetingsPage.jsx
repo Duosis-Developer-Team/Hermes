@@ -66,6 +66,9 @@ function MeetingsPage() {
     const can = useAuthStore((s) => s.can)
     useAuthStore((s) => s.permissions) // izinler degisince re-render
     const isAdmin = can('meetings.admin')
+    // Zaman girisi modulu kapaliysa toplantidan efor girisi ve "Logged"
+    // rozetleri yok (work-logs uclari zaten 404).
+    const timeEnabled = useAuthStore((s) => s.hasModule('time_entry'))
 
     // PM rework P3 / D4: ana sayfa takvim seridinden `?date=` o gunun
     // haftasini acar (derin baglanti; state URL'den bir kez okunur).
@@ -162,7 +165,7 @@ function MeetingsPage() {
                         : undefined,
             }),
         enabled:
-            !!user?.id && (!isAdmin || singleSelectedUserId !== null),
+            timeEnabled && !!user?.id && (!isAdmin || singleSelectedUserId !== null),
     })
     const loggedMeetingIds = useMemo(() => {
         const set = new Set()
@@ -398,7 +401,7 @@ function MeetingsPage() {
                 open={!!reviewMeeting}
                 meeting={reviewMeeting}
                 onClose={() => setReviewMeeting(null)}
-                onLogTime={handleOpenLogTime}
+                onLogTime={timeEnabled ? handleOpenLogTime : undefined}
                 isLogged={
                     !!reviewMeeting &&
                     loggedMeetingIds.has(reviewMeeting.id)

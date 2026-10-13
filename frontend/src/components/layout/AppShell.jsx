@@ -105,6 +105,8 @@ function AppShell({
     contentKey,
     islandLive = null,
     dockActions = [],
+    /** Bildirim zili (kapali modul tenant'inda gereksiz yoklama yapmasin). */
+    showNotifications = true,
     children,
 }) {
     const t = useT()
@@ -423,7 +425,7 @@ function AppShell({
                     </button>
                     {islandPrefs}
                     {/* PM rework P2.2: uygulama ici bildirim zili. */}
-                    <NotificationBell />
+                    {showNotifications && <NotificationBell />}
                     {/* Kabuga ozel eklenti: tenant tarafinda organizasyon
                         secici, platform tarafinda duzlem rozeti. */}
                     {headerExtra && <span className="island-extra">{headerExtra}</span>}

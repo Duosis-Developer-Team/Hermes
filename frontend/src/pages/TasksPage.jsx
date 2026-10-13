@@ -332,7 +332,7 @@ function TasksPage() {
                         onEditTask={dialogs.openEdit}
                         onDeleteTask={dialogs.openDelete}
                         onOpenReview={dialogs.openReview}
-                        onOpenLogTime={workLog.openLogTime}
+                        onOpenLogTime={workLog.canLogTime ? workLog.openLogTime : undefined}
                         onToggleCompletion={dialogs.requestToggle}
                         onCardDrop={handleCardDrop}
                         onMultiAssignmentDrop={multi.start}

@@ -80,6 +80,7 @@ const TicketHubPage = lazy(routeLoaders.ticketHub)
 const SupportPortalPage = lazy(routeLoaders.supportPortal)
 const TicketIntegrationsPage = lazy(routeLoaders.ticketIntegrations)
 import { useTaskPermissions } from './hooks/useTaskPermissions'
+import { landingPath } from './features/modules/catalog'
 
 /**
  * Protected Route Component
@@ -102,7 +103,17 @@ export const PublicHome = () => {
     return <LandingPage />
 }
 
-export const ProtectedRoute = ({ children, permission = null }) => {
+/** Izinsiz/kapali bir rotadan donus: tenant'in ACIK ilk modulu; o da
+ *  bulunulan yolsa (dongu) ana sayfa. Eskiden sabit `/time-entry` idi. */
+// Musteri/proje ayarlari: is ya da zaman girisi acik olmali.
+const WORK_OR_TIME = ['work', 'time_entry']
+
+const fallbackFor = (tenant, pathname) => {
+    const target = landingPath(tenant)
+    return target === pathname ? '/' : target
+}
+
+export const ProtectedRoute = ({ children, permission = null, module = null }) => {
     // RBAC R3: rota koruması izin-tabanlı. `permission` string veya
     // dizi (dizi = herhangi biri yeterli). Backend her koşulda gerçek
     // otorite — bu yalnızca UX katmanı. İzinler henüz yüklenmediyse
@@ -110,6 +121,8 @@ export const ProtectedRoute = ({ children, permission = null }) => {
     const { isAuthenticated } = useAuthStore()
     const permissions = useAuthStore((s) => s.permissions)
     const canAny = useAuthStore((s) => s.canAny)
+    const hasModule = useAuthStore((s) => s.hasModule)
+    const tenant = useAuthStore((s) => s.tenant)
     const location = useLocation()
 
     if (!isAuthenticated) {
@@ -118,11 +131,19 @@ export const ProtectedRoute = ({ children, permission = null }) => {
         return <Navigate to={loginPathFor(location.search)} replace />
     }
 
+    // Tenant modulu (dizi = herhangi biri): kapaliysa rota YOK.
+    if (module) {
+        const mods = Array.isArray(module) ? module : [module]
+        if (!mods.some((m) => hasModule(m))) {
+            return <Navigate to={fallbackFor(tenant, location.pathname)} replace />
+        }
+    }
+
     if (permission) {
         if (permissions === null) return <CenteredLoader />
         const wanted = Array.isArray(permission) ? permission : [permission]
         if (!canAny(...wanted)) {
-            return <Navigate to="/time-entry" replace />
+            return <Navigate to={fallbackFor(tenant, location.pathname)} replace />
         }
     }
 
@@ -136,10 +157,16 @@ export const ProtectedRoute = ({ children, permission = null }) => {
 export const TaskProtectedRoute = ({ children }) => {
     const { isAuthenticated, user } = useAuthStore()
     const { isLoading, canAccessAny, isTaskAdmin } = useTaskPermissions()
+    const hasModule = useAuthStore((s) => s.hasModule)
+    const tenant = useAuthStore((s) => s.tenant)
     const location = useLocation()
 
     if (!isAuthenticated) {
         return <Navigate to={loginPathFor(location.search)} replace />
+    }
+    // Is yonetimi modulu kapaliysa yonetici dahil kimse giremez.
+    if (!hasModule('work')) {
+        return <Navigate to={fallbackFor(tenant, location.pathname)} replace />
     }
     if (user?.is_admin) {
         return children
@@ -150,7 +177,7 @@ export const TaskProtectedRoute = ({ children }) => {
         return <CenteredLoader />
     }
     if (!canAccessAny && !isTaskAdmin) {
-        return <Navigate to="/time-entry" replace />
+        return <Navigate to={fallbackFor(tenant, location.pathname)} replace />
     }
     return children
 }
@@ -318,10 +345,10 @@ function App() {
 
                 {/* E6: bir ise link verilebilir — /work/TASK-56 kodu cozer
                     ve is yuzeyini ?item= ile acar. */}
-                <Route path="work/:key" element={<WorkLinkPage />} />
+                <Route path="work/:key" element={<ProtectedRoute module="work"><WorkLinkPage /></ProtectedRoute>} />
 
                 {/* Standard User Pages */}
-                <Route path="time-entry" element={<TimeEntryPage />} />
+                <Route path="time-entry" element={<ProtectedRoute module="time_entry"><TimeEntryPage /></ProtectedRoute>} />
 
                 {/* Project Management — Tasks / Issues / Suggestions (admin
                     or users with access). The optional :type segment
@@ -351,7 +378,7 @@ function App() {
                 <Route
                     path="tickets"
                     element={
-                        <ProtectedRoute permission={'tickets.access'}>
+                        <ProtectedRoute module="tickets" permission={'tickets.access'}>
                             <TicketHubPage />
                         </ProtectedRoute>
                     }
@@ -359,7 +386,7 @@ function App() {
                 <Route
                     path="support"
                     element={
-                        <ProtectedRoute permission={'tickets.access'}>
+                        <ProtectedRoute module="tickets" permission={'tickets.access'}>
                             <SupportPortalPage />
                         </ProtectedRoute>
                     }
@@ -394,37 +421,37 @@ function App() {
                         <ProtectedRoute permission={'users.manage'}><UsersPage /></ProtectedRoute>
                     } />
                     <Route path="organization/capacity" element={
-                        <ProtectedRoute permission={'users.manage'}><CapacitySettingsPage /></ProtectedRoute>
+                        <ProtectedRoute module="time_entry" permission={'users.manage'}><CapacitySettingsPage /></ProtectedRoute>
                     } />
                     <Route path="work/pm" element={
-                        <ProtectedRoute permission={'tasks.permissions.manage'}><TaskManagementPage /></ProtectedRoute>
+                        <ProtectedRoute module="work" permission={'tasks.permissions.manage'}><TaskManagementPage /></ProtectedRoute>
                     } />
                     <Route path="reference/work-types" element={
-                        <ProtectedRoute permission={'reference.manage'}><WorkTypesPage /></ProtectedRoute>
+                        <ProtectedRoute module="time_entry" permission={'reference.manage'}><WorkTypesPage /></ProtectedRoute>
                     } />
                     <Route path="reference/activity-types" element={
-                        <ProtectedRoute permission={'reference.manage'}><ActivityTypesPage /></ProtectedRoute>
+                        <ProtectedRoute module="time_entry" permission={'reference.manage'}><ActivityTypesPage /></ProtectedRoute>
                     } />
                     <Route path="reference/platforms" element={
-                        <ProtectedRoute permission={'reference.manage'}><PlatformsPage /></ProtectedRoute>
+                        <ProtectedRoute module="time_entry" permission={'reference.manage'}><PlatformsPage /></ProtectedRoute>
                     } />
                     <Route path="reference/work-lines" element={
-                        <ProtectedRoute permission={'reference.manage'}><WorkLinesPage /></ProtectedRoute>
+                        <ProtectedRoute module="time_entry" permission={'reference.manage'}><WorkLinesPage /></ProtectedRoute>
                     } />
                     <Route path="customers/customers" element={
-                        <ProtectedRoute permission={'customers.manage'}><CustomersPage /></ProtectedRoute>
+                        <ProtectedRoute module={WORK_OR_TIME} permission={'customers.manage'}><CustomersPage /></ProtectedRoute>
                     } />
                     <Route path="customers/projects" element={
-                        <ProtectedRoute permission={'projects.manage'}><ProjectsPage /></ProtectedRoute>
+                        <ProtectedRoute module={WORK_OR_TIME} permission={'projects.manage'}><ProjectsPage /></ProtectedRoute>
                     } />
                     <Route path="customers/project-types" element={
-                        <ProtectedRoute permission={'projects.manage'}><ProjectTypesPage /></ProtectedRoute>
+                        <ProtectedRoute module={WORK_OR_TIME} permission={'projects.manage'}><ProjectTypesPage /></ProtectedRoute>
                     } />
                     <Route path="integrations/api" element={
-                        <ProtectedRoute permission={'api.manage'}><ApiManagementPage /></ProtectedRoute>
+                        <ProtectedRoute module="developer" permission={'api.manage'}><ApiManagementPage /></ProtectedRoute>
                     } />
                     <Route path="integrations/tickets" element={
-                        <ProtectedRoute permission={['tickets.config.manage', 'tickets.admin']}><TicketIntegrationsPage /></ProtectedRoute>
+                        <ProtectedRoute module="tickets" permission={['tickets.config.manage', 'tickets.admin']}><TicketIntegrationsPage /></ProtectedRoute>
                     } />
                 </Route>
                 {/* Eski ayar adresleri: favoriler ve e-posta baglantilari
@@ -433,18 +460,18 @@ function App() {
                     <Route key={from} path={from.slice(1)} element={<Navigate to={to} replace />} />
                 ))}
 
-                <Route path="meetings" element={<MeetingsPage />} />
+                <Route path="meetings" element={<ProtectedRoute module="meetings"><MeetingsPage /></ProtectedRoute>} />
 
                 {/* Developer Portal — Public API dokumantasyonu (D1:
                     TUM oturum acmis kullanicilar; token yonetimi
                     API Management'ta admin-only kalir). */}
-                <Route path="developer" element={<DeveloperPortalPage />} />
+                <Route path="developer" element={<ProtectedRoute module="developer"><DeveloperPortalPage /></ProtectedRoute>} />
 
                 {/* Admin Pages */}
                 <Route
                     path="dashboard"
                     element={
-                        <ProtectedRoute permission={'reports.view'}>
+                        <ProtectedRoute module="reports" permission={'reports.view'}>
                             <DashboardPage />
                         </ProtectedRoute>
                     }
@@ -452,7 +479,7 @@ function App() {
                 <Route
                     path="/management/billable-hours"
                     element={
-                        <ProtectedRoute permission={'reports.view'}>
+                        <ProtectedRoute module="reports" permission={'reports.view'}>
                             <BillableHoursPage />
                         </ProtectedRoute>
                     }
@@ -460,7 +487,7 @@ function App() {
                 <Route
                     path="/management/reports"
                     element={
-                        <ProtectedRoute permission={'reports.view'}>
+                        <ProtectedRoute module="reports" permission={'reports.view'}>
                             <ReportsPage />
                         </ProtectedRoute>
                     }
@@ -468,7 +495,7 @@ function App() {
                 <Route
                     path="/management/contracts"
                     element={
-                        <ProtectedRoute permission={'reports.view'}>
+                        <ProtectedRoute module="reports" permission={'reports.view'}>
                             <ContractStatusPage />
                         </ProtectedRoute>
                     }

@@ -22,6 +22,7 @@ import { create } from 'zustand'
 
 import { queryClient } from '../query/queryClient'
 import { setTenantScope } from '../query/queryKeys'
+import { tenantHasModule } from '../features/modules/catalog'
 
 export const useAuthStore = create((set, get) => ({
     // =========================================================================
@@ -155,6 +156,9 @@ export const useAuthStore = create((set, get) => ({
 
     /** Birden fazla aktif uyelik var mi? (organizasyon secici kosulu) */
     hasMultipleTenants: () => (get().memberships || []).length > 1,
+
+    /** Tenant bu modulu kullaniyor mu? (features/modules/catalog.js) */
+    hasModule: (code) => tenantHasModule(get().tenant, code),
 
     /** Verilen izinlerin TÜMÜ var mı? (fail-closed: yüklenmediyse false) */
     can: (...codes) => {

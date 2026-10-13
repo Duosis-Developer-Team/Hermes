@@ -165,6 +165,24 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Router Registration
 API_PREFIX = "/api/v1/core"
 
+# Tenant modul kapisi (docs/tenant-platform/00-plan.md §2.3): modulu kapali
+# tenant'ta router'in TUM uclari 404 doner. Cekirdek (musteri, proje,
+# gruplar, bildirimler, ana sayfa) router'lari kapisizdir; ana sayfa bloklari
+# kendi uclarinda kapilanir (routers/home.py).
+from fastapi import Depends as _Depends  # noqa: E402
+
+from shared.modules import Module  # noqa: E402
+
+from .module_gate import require_module  # noqa: E402
+
+TIME_ENTRY, WORK, MEETINGS = Module.TIME_ENTRY, Module.WORK, Module.MEETINGS
+TICKETS, REPORTS, DEVELOPER = Module.TICKETS, Module.REPORTS, Module.DEVELOPER
+
+
+def _module(code):
+    return [_Depends(require_module(code))]
+
+
 # S2S tenant projeksiyonu (WS12): yeni tenant provision edilince auth
 # burayi cagirir. Kullaniciya donuk akislar bu ucu KULLANMAZ.
 from .routers.internal_tenants import router as internal_tenants_router  # noqa: E402
@@ -180,37 +198,37 @@ from .routers.internal_support import router as internal_support_router  # noqa:
 app.include_router(internal_support_router)
 
 app.include_router(customers_router, prefix=API_PREFIX)
-app.include_router(work_types_router, prefix=API_PREFIX)
+app.include_router(work_types_router, prefix=API_PREFIX, dependencies=_module(TIME_ENTRY))
 app.include_router(projects_router, prefix=API_PREFIX)
 app.include_router(project_types_router, prefix=API_PREFIX)
-app.include_router(work_logs_router, prefix=API_PREFIX)
-app.include_router(activity_types_router, prefix=API_PREFIX)
-app.include_router(platforms_router, prefix=API_PREFIX)
-app.include_router(work_lines_router, prefix=API_PREFIX)
+app.include_router(work_logs_router, prefix=API_PREFIX, dependencies=_module(TIME_ENTRY))
+app.include_router(activity_types_router, prefix=API_PREFIX, dependencies=_module(TIME_ENTRY))
+app.include_router(platforms_router, prefix=API_PREFIX, dependencies=_module(TIME_ENTRY))
+app.include_router(work_lines_router, prefix=API_PREFIX, dependencies=_module(TIME_ENTRY))
 app.include_router(issues_router, prefix=API_PREFIX)
 
-app.include_router(project_memberships_router, prefix=API_PREFIX)
-app.include_router(project_members_router, prefix=API_PREFIX)
+app.include_router(project_memberships_router, prefix=API_PREFIX, dependencies=_module(WORK))
+app.include_router(project_members_router, prefix=API_PREFIX, dependencies=_module(WORK))
 app.include_router(notifications_router, prefix=API_PREFIX)
 app.include_router(home_router, prefix=API_PREFIX)
-app.include_router(views_router, prefix=API_PREFIX)
-app.include_router(timesheets_router, prefix=API_PREFIX)
-app.include_router(dashboard_router, prefix=API_PREFIX)
-app.include_router(reports_router, prefix=API_PREFIX)
+app.include_router(views_router, prefix=API_PREFIX, dependencies=_module(WORK))
+app.include_router(timesheets_router, prefix=API_PREFIX, dependencies=_module(TIME_ENTRY))
+app.include_router(dashboard_router, prefix=API_PREFIX, dependencies=_module(REPORTS))
+app.include_router(reports_router, prefix=API_PREFIX, dependencies=_module(REPORTS))
 # PM rework P0 / D1+D2: kapasite ayarlari + efor seridi verisi.
 from .routers.capacity import router as capacity_router  # noqa: E402
-app.include_router(capacity_router, prefix=API_PREFIX)
-app.include_router(tasks_router, prefix=API_PREFIX)
-app.include_router(task_admin_router, prefix=API_PREFIX)
+app.include_router(capacity_router, prefix=API_PREFIX, dependencies=_module(TIME_ENTRY))
+app.include_router(tasks_router, prefix=API_PREFIX, dependencies=_module(WORK))
+app.include_router(task_admin_router, prefix=API_PREFIX, dependencies=_module(WORK))
 app.include_router(user_group_admin_router, prefix=API_PREFIX)
-app.include_router(api_admin_router, prefix=API_PREFIX)
-app.include_router(meetings_router, prefix=API_PREFIX)
+app.include_router(api_admin_router, prefix=API_PREFIX, dependencies=_module(DEVELOPER))
+app.include_router(meetings_router, prefix=API_PREFIX, dependencies=_module(MEETINGS))
 # Ortak urun ticket platformu — Duosis hub, musteri portali ve
 # entegrasyon yonetimi. Uc router da AYNI izin katalogunu kullanir;
 # hangi yuzeyin acilacagini istegin TENANT'i belirler.
-app.include_router(tickets_router, prefix=API_PREFIX)
-app.include_router(support_portal_router, prefix=API_PREFIX)
-app.include_router(ticket_admin_router, prefix=API_PREFIX)
+app.include_router(tickets_router, prefix=API_PREFIX, dependencies=_module(TICKETS))
+app.include_router(support_portal_router, prefix=API_PREFIX, dependencies=_module(TICKETS))
+app.include_router(ticket_admin_router, prefix=API_PREFIX, dependencies=_module(TICKETS))
 
 # =============================================================================
 # Public API (dis entegrasyonlar) — /api/public altina mount edilen IZOLE

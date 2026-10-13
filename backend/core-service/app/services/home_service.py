@@ -36,6 +36,8 @@ from ..models.work_item import (
     TERMINAL_CATEGORIES, WorkflowState, WorkItem, WorkItemParticipant,
 )
 from ..models.work_log import WorkLog
+from shared.modules import Module
+from ..module_gate import module_enabled
 from .capacity_service import CAPACITY_TZ, resolve_week, today_in_tenant_tz, week_monday
 from .meeting_service import list_meetings_for_user
 from .task_service import (
@@ -137,7 +139,10 @@ def my_work(db: Session, user: CurrentUser, *, today: Optional[date] = None) -> 
 
 def has_work_access(user: CurrentUser) -> bool:
     """Islerim/termin verisi: herhangi bir is modulune erisim (task VEYA
-    issue) ya da tasks.admin. Fail-closed."""
+    issue) ya da tasks.admin. Fail-closed. Is yonetimi MODULU kapali
+    tenant'ta (yonetici atlamasi dahil) hicbir zaman."""
+    if not module_enabled(user.tenant_id, Module.WORK):
+        return False
     return is_task_admin(user) or user_has(user, Perm.TASKS_ACCESS) or user_has(user, Perm.ISSUES_ACCESS)
 
 
@@ -175,10 +180,11 @@ def my_week(db: Session, user: CurrentUser, *, start: Optional[date] = None,
     # Toplantilar: HEP kendi katildiklarim (meetings.admin olsam da) —
     # "nerede olmam gerekiyor" sorusu kisiseldir. Gun, kiraci saat
     # dilimine gore; UTC pencere bir gun genis tutulup yerelde kirpilir.
+    # Toplantilar MODULU kapaliysa haftada toplanti yok (yalniz is terminleri).
     meetings = list_meetings_for_user(
         db, user, start_date=week_start - timedelta(days=1),
         end_date=week_end + timedelta(days=1), target_user_ids=[me],
-    )
+    ) if module_enabled(user.tenant_id, Module.MEETINGS) else []
     by_day: Dict[date, dict] = {d: {"meetings": [], "items": []} for d in days}
     for m in meetings:
         d = _local_date(m.start_datetime)
@@ -293,6 +299,8 @@ def my_team(db: Session, user: CurrentUser, *, today: Optional[date] = None) -> 
     week_start = week_monday(today)
     week_end = week_start + timedelta(days=6)
     eligible, ids, led = team_scope(db, user)
+    # Ekibim is yonetimi verisidir: modul kapaliysa blok yok.
+    eligible = eligible and module_enabled(user.tenant_id, Module.WORK)
     empty = {"unassigned_count": 0, "unassigned": [], "overdue_count": 0, "overdue": [], "no_effort_user_ids": []}
     base = {"eligible": eligible, "today": today, "week_start": week_start, "week_end": week_end}
     if not eligible:

@@ -33,10 +33,18 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
+from shared.modules import ALL_MODULES
+
 from ..database import Base
+
+# Sunucu varsayilani: TUM modul katalogu (JSON dizi). Migration 0006 mevcut
+# satirlari bununla doldurur; yeni moduller eklenince bu deger buyur ama
+# MEVCUT tenant'lara kendiliginden eklenmez (yonetici karari).
+ALL_MODULES_SQL_DEFAULT = "'[" + ",".join(f'"{m}"' for m in ALL_MODULES) + "]'::jsonb"
 
 
 def _now():
@@ -110,6 +118,15 @@ class Tenant(Base):
     # Iyimser kilit: lifecycle aksiyonlari beklenen surumu gonderir,
     # uyusmazsa 409 doner (es zamanli suspend/reactivate carpismasi).
     version = Column(Integer, nullable=False, default=1)
+
+    # Tenant'in kullandigi moduller (shared/modules.py katalogu; 0006).
+    # Efektif izinler bu kumeyle kesisir; core'a projeksiyonla gider.
+    # Varsayilan TUM katalog: mevcut tenant'larin davranisi degismez.
+    enabled_modules = Column(
+        JSONB, nullable=False,
+        default=lambda: list(ALL_MODULES),
+        server_default=text(ALL_MODULES_SQL_DEFAULT),
+    )
 
     created_at = Column(DateTime(timezone=True), default=_now,
                         nullable=False)

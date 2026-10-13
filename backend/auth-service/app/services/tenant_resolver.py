@@ -27,6 +27,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from ..models.tenancy import Tenant, TenantDomain
+from .tenant_modules import modules_list
 
 logger = logging.getLogger("hermes.tenant")
 
@@ -43,6 +44,9 @@ class ResolvedTenant:
     slug: str
     display_name: str
     status: str
+    # Tenant modulleri (shared/modules.py, katalog sirasinda). Giris ve
+    # oturum yanitlarinda `tenant.modules` olarak frontend'e gider.
+    modules: tuple = ()
 
     @property
     def is_usable(self) -> bool:
@@ -133,6 +137,7 @@ def resolve_by_hostname(db: Session, hostname: Optional[str]) -> ResolvedTenant:
         slug=tenant.slug,
         display_name=tenant.display_name,
         status=tenant.status,
+        modules=tuple(modules_list(tenant)),
     )
     if not resolved.is_usable:
         raise WorkspaceUnavailable(tenant.status)
@@ -161,6 +166,7 @@ def resolve_by_slug(db: Session, slug: Optional[str]) -> ResolvedTenant:
         slug=tenant.slug,
         display_name=tenant.display_name,
         status=tenant.status,
+        modules=tuple(modules_list(tenant)),
     )
     if not resolved.is_usable:
         raise WorkspaceUnavailable(tenant.status)

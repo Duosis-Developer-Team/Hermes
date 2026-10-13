@@ -257,6 +257,14 @@ export default {
     // Giris
     // ---------------------------------------------------------------
     // KVKK aydinlatma metni + cerez politikasi (features/landing/legalContent.js yapisi).
+    modules: {
+        time_entry: 'Time entry',
+        work: 'Work management',
+        meetings: 'Meetings and calendar',
+        tickets: 'Tickets',
+        reports: 'Reports and dashboard',
+        developer: 'Developer platform',
+    },
     projectTypes: {
         title: 'Project types',
         subtitle: 'Classify projects; a type\'s colour is the colour of its projects\' generic logos',

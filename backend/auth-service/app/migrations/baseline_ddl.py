@@ -120,9 +120,27 @@ def apply_user_photos(conn) -> None:
     _create(conn, USER_PHOTO_TABLES)
 
 
+def tenant_modules_statements() -> List[str]:
+    """0006: tenants.enabled_modules. ADD COLUMN ... DEFAULT mevcut satirlari
+    TUM katalogla doldurur (PG hizli varsayilan) — davranis degismez."""
+    from app.models.tenancy import ALL_MODULES_SQL_DEFAULT
+
+    return [
+        "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS enabled_modules JSONB "
+        f"NOT NULL DEFAULT {ALL_MODULES_SQL_DEFAULT}",
+    ]
+
+
+def apply_tenant_modules(conn) -> None:
+    """Tenant modul secimi kolonu (0006). Yalnizca EKLER; idempotent."""
+    for stmt in tenant_modules_statements():
+        conn.execute(text(stmt))
+
+
 def apply_all(conn) -> None:
     """Testler icin: bugunku head semasinin tamami."""
     apply_baseline(conn)
     apply_control_plane(conn)
     apply_tenant_constraints(conn)
     apply_user_photos(conn)
+    apply_tenant_modules(conn)

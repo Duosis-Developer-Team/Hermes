@@ -27,10 +27,17 @@ from sqlalchemy import (
     DateTime,
     Integer,
     String,
+    text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+
+from shared.modules import ALL_MODULES
 
 from ..database import Base
+
+
+# Sunucu varsayilani: TUM katalog — mevcut tenant'lar davranis degistirmez.
+ALL_MODULES_SQL_DEFAULT = "'[" + ",".join(f'"{m}"' for m in ALL_MODULES) + "]'::jsonb"
 
 
 def _now():
@@ -54,6 +61,14 @@ class TenantRegistry(Base):
     # mesajinin daha yeni durumu ezmesini engeller (deterministik olarak
     # yok sayilir).
     source_version = Column(Integer, nullable=False, default=0)
+
+    # Tenant modulleri (shared/modules.py) — auth `tenants.enabled_modules`
+    # projeksiyonu (0017). Izinsiz-acik uclarin modul kapisi bunu okur.
+    enabled_modules = Column(
+        JSONB, nullable=False,
+        default=lambda: list(ALL_MODULES),
+        server_default=text(ALL_MODULES_SQL_DEFAULT),
+    )
 
     provisioned_at = Column(DateTime(timezone=True), default=_now,
                             nullable=False)

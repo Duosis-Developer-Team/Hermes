@@ -199,10 +199,12 @@ def test_platform_api_exposes_no_business_data(platform_http, pg_session):
     # ve platform admin'in YONETTIGI seydir — gorev/musteri/zaman kaydi
     # gibi tenant is verisiyle karistirilmamalidir. Liste bilerek DAR
     # tutulur: buraya yeni bir alan eklemek acik bir karardir.
+    # `modules` (14.10): tenant'in hangi Hermes bolumlerini kullandigi —
+    # platform admin'in yonettigi konfigurasyon, is verisi degil.
     allowed = {
         "id", "slug", "display_name", "status", "plan_code",
-        "email_domains", "active_members", "created_at", "activated_at",
-        "version",
+        "email_domains", "modules", "active_members", "created_at",
+        "activated_at", "version",
     }
     assert set(body.keys()) == allowed
 

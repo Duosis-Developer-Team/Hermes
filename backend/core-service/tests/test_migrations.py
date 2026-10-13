@@ -272,6 +272,8 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             # 0016: proje turu kolonlari gider.
             conn.execute(text("ALTER TABLE projects DROP COLUMN IF EXISTS project_type_id"))
             conn.execute(text("ALTER TABLE projects DROP COLUMN IF EXISTS logo_glyph"))
+            # 0017: tenant modulleri kolonu gider.
+            conn.execute(text("ALTER TABLE tenant_registry DROP COLUMN IF EXISTS enabled_modules"))
             conn.execute(text("ALTER TABLE work_logs DROP COLUMN IF EXISTS work_item_id"))
             # 0012'nin getirdikleri de gider.
             conn.execute(text("ALTER TABLE task_notification_settings DROP COLUMN IF EXISTS email_enabled"))
@@ -351,6 +353,9 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             project_type_forced = conn.execute(text(
                 "SELECT relforcerowsecurity FROM pg_class WHERE relname = 'project_types'"
             )).scalar()
+            registry_modules = conn.execute(text(
+                "SELECT enabled_modules FROM tenant_registry WHERE tenant_id = :t"
+            ), {"t": tenant_id}).scalar()
             kept_project = conn.execute(text(
                 "SELECT name FROM projects WHERE id = :id"
             ), {"id": project_id}).scalar()
@@ -365,7 +370,10 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             )).scalar()
     finally:
         engine.dispose()
-    assert head == "0016_project_types"
+    assert head == "0017_tenant_modules"
+    # 0017: geride kalmis tenant TUM modullerle doner (davranis degismez).
+    from shared.modules import ALL_MODULES
+    assert set(registry_modules) == set(ALL_MODULES)
     # 0016: proje turu — composite FK (yalniz proje kolonunu bosaltan SET NULL),
     # RLS+FORCE; mevcut proje satiri aynen durur (additive).
     assert "(tenant_id, project_type_id)" in project_type_fk

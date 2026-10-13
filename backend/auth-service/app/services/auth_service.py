@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from ..models.user import User
 from ..schemas.token import Token
 from ..config import get_settings
+from .tenant_modules import modules_list
 from shared.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     TENANT_AUDIENCE,
@@ -131,6 +132,7 @@ class AuthService:
                 "id": tenant.id,
                 "slug": tenant.slug,
                 "display_name": tenant.display_name,
+                "modules": list(tenant.modules),
             },
             membership={
                 "id": str(membership.id),
@@ -291,6 +293,7 @@ class AuthService:
             slug=tenant_row.slug,
             display_name=tenant_row.display_name,
             status=tenant_row.status,
+            modules=tuple(modules_list(tenant_row)),
         )
         remember = bool(payload.get("rmb"))
 
@@ -317,6 +320,7 @@ class AuthService:
                 "id": tenant.id,
                 "slug": tenant.slug,
                 "display_name": tenant.display_name,
+                "modules": list(tenant.modules),
             },
             membership={
                 "id": str(membership.id),
@@ -477,6 +481,7 @@ class AuthService:
                 "id": tenant.id,
                 "slug": tenant.slug,
                 "display_name": tenant.display_name,
+                "modules": list(tenant.modules),
             },
             membership={
                 "id": str(membership.id),

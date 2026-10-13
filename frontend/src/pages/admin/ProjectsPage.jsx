@@ -33,6 +33,7 @@ import ProjectLogoField, { EMPTY_PROJECT_LOGO_DRAFT } from './ProjectLogoField'
 import { toneOf } from '../../features/projectTypes/palette'
 import { customerSelectRender } from '../../components/common/customerSelect'
 import { selectFilter, matchesAny } from '../../utils/searchText'
+import { useAuthStore } from '../../stores/authStore'
 
 // Formda GERCEKTEN olan alanlar: API kaydindaki id/created_at gibi
 // alanlar form store'una sizmaz, eksik alan da bayat deger BIRAKMAZ.
@@ -82,9 +83,13 @@ function ProjectsPage() {
     const selectedTypeId = Form.useWatch('project_type_id', form)
     const selectedType = selectedTypeId ? typeById[selectedTypeId] : null
 
+    // Sozlesme kullanimi efor verisinden: zaman girisi modulu kapaliysa yok.
+    const timeEnabled = useAuthStore((s) => s.hasModule('time_entry'))
+    const workEnabled = useAuthStore((s) => s.hasModule('work'))
     const { data: billableSummaryResponse } = useQuery({
         queryKey: ['billable-summary'],
         queryFn: () => workLogService.getBillableSummary(),
+        enabled: timeEnabled,
     })
     const billableSummary = billableSummaryResponse?.data || {}
 
@@ -353,12 +358,14 @@ function ProjectsPage() {
             width: 120,
             render: (_, record) => (
                 <Space>
-                    <Button
-                        type="text"
-                        icon={<TeamOutlined />}
-                        aria-label={`Members ${record.name}`}
-                        onClick={() => setMembersProject(record)}
-                    />
+                    {workEnabled && (
+                        <Button
+                            type="text"
+                            icon={<TeamOutlined />}
+                            aria-label={`Members ${record.name}`}
+                            onClick={() => setMembersProject(record)}
+                        />
+                    )}
                     <Button
                         type="text"
                         icon={<EditOutlined />}

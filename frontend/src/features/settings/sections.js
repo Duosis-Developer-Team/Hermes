@@ -16,49 +16,53 @@
  * =============================================================================
  */
 
+// Musteri/proje ayarlari is ya da zaman girisi icin vardir (talep-yalniz
+// tenant'ta gereksiz). Dizi = herhangi biri acik olmali.
+const WORK_OR_TIME = ['work', 'time_entry']
+
 export const SETTINGS_SECTIONS = [
     {
         key: 'organization',
         labelKey: 'settings.organization',
         items: [
             { key: 'users', path: '/settings/organization/users', labelKey: 'nav.users', perm: 'users.manage' },
-            { key: 'capacity', path: '/settings/organization/capacity', labelKey: 'nav.capacity', perm: 'users.manage' },
+            { key: 'capacity', path: '/settings/organization/capacity', labelKey: 'nav.capacity', perm: 'users.manage', module: 'time_entry' },
         ],
     },
     {
         key: 'work',
         labelKey: 'settings.work',
         items: [
-            { key: 'pm', path: '/settings/work/pm', labelKey: 'nav.pmConfigurations', perm: 'tasks.permissions.manage' },
+            { key: 'pm', path: '/settings/work/pm', labelKey: 'nav.pmConfigurations', perm: 'tasks.permissions.manage', module: 'work' },
         ],
     },
     {
         key: 'reference',
         labelKey: 'settings.reference',
         items: [
-            { key: 'work-types', path: '/settings/reference/work-types', labelKey: 'nav.workTypes', perm: 'reference.manage' },
-            { key: 'activity-types', path: '/settings/reference/activity-types', labelKey: 'nav.activityTypes', perm: 'reference.manage' },
-            { key: 'platforms', path: '/settings/reference/platforms', labelKey: 'nav.platforms', perm: 'reference.manage' },
-            { key: 'work-lines', path: '/settings/reference/work-lines', labelKey: 'nav.workLines', perm: 'reference.manage' },
+            { key: 'work-types', path: '/settings/reference/work-types', labelKey: 'nav.workTypes', perm: 'reference.manage', module: 'time_entry' },
+            { key: 'activity-types', path: '/settings/reference/activity-types', labelKey: 'nav.activityTypes', perm: 'reference.manage', module: 'time_entry' },
+            { key: 'platforms', path: '/settings/reference/platforms', labelKey: 'nav.platforms', perm: 'reference.manage', module: 'time_entry' },
+            { key: 'work-lines', path: '/settings/reference/work-lines', labelKey: 'nav.workLines', perm: 'reference.manage', module: 'time_entry' },
         ],
     },
     {
         key: 'customers',
         labelKey: 'settings.customers',
         items: [
-            { key: 'customers', path: '/settings/customers/customers', labelKey: 'nav.customers', perm: 'customers.manage' },
-            { key: 'projects', path: '/settings/customers/projects', labelKey: 'nav.projects', perm: 'projects.manage' },
+            { key: 'customers', path: '/settings/customers/customers', labelKey: 'nav.customers', perm: 'customers.manage', module: WORK_OR_TIME },
+            { key: 'projects', path: '/settings/customers/projects', labelKey: 'nav.projects', perm: 'projects.manage', module: WORK_OR_TIME },
             // Proje turleri (05.10): tur rengi = jenerik proje logosunun rengi.
-            { key: 'project-types', path: '/settings/customers/project-types', labelKey: 'nav.projectTypes', perm: 'projects.manage' },
+            { key: 'project-types', path: '/settings/customers/project-types', labelKey: 'nav.projectTypes', perm: 'projects.manage', module: WORK_OR_TIME },
         ],
     },
     {
         key: 'integrations',
         labelKey: 'settings.integrations',
         items: [
-            { key: 'api', path: '/settings/integrations/api', labelKey: 'nav.apiManagement', perm: 'api.manage' },
+            { key: 'api', path: '/settings/integrations/api', labelKey: 'nav.apiManagement', perm: 'api.manage', module: 'developer' },
             // Ticket entegrasyonu: mevcut rota iki izinden birini kabul ediyordu.
-            { key: 'tickets', path: '/settings/integrations/tickets', labelKey: 'nav.ticketIntegrations', perm: ['tickets.config.manage', 'tickets.admin'] },
+            { key: 'tickets', path: '/settings/integrations/tickets', labelKey: 'nav.ticketIntegrations', perm: ['tickets.config.manage', 'tickets.admin'], module: 'tickets' },
         ],
     },
 ]
@@ -81,15 +85,27 @@ export const LEGACY_SETTINGS_PATHS = {
 
 const permsOf = (item) => (Array.isArray(item.perm) ? item.perm : [item.perm])
 
-/** Verilen `canAny(...perms)` ile GORUNUR bolumler (bos bolum dusurulur). */
-export const visibleSections = (canAny) =>
+const ALL_ON = () => true
+const moduleOk = (item, hasModule) => {
+    if (!item.module) return true
+    const mods = Array.isArray(item.module) ? item.module : [item.module]
+    return mods.some((m) => hasModule(m))
+}
+
+/** Verilen `canAny(...perms)` + tenant modulleri ile GORUNUR bolumler
+ *  (bos bolum dusurulur). `hasModule` verilmezse modul filtresi yok. */
+export const visibleSections = (canAny, hasModule = ALL_ON) =>
     SETTINGS_SECTIONS
-        .map((s) => ({ ...s, items: s.items.filter((i) => canAny(...permsOf(i))) }))
+        .map((s) => ({
+            ...s,
+            items: s.items.filter((i) => moduleOk(i, hasModule) && canAny(...permsOf(i))),
+        }))
         .filter((s) => s.items.length > 0)
 
 /** Kullanicinin ilk gorebilecegi ayar sayfasi; hicbiri yoksa null. */
-export const firstSettingsPath = (canAny) =>
-    visibleSections(canAny)[0]?.items[0]?.path ?? null
+export const firstSettingsPath = (canAny, hasModule = ALL_ON) =>
+    visibleSections(canAny, hasModule)[0]?.items[0]?.path ?? null
 
 /** Kenar cubugundaki tek "Ayarlar" ogesi icin: en az bir bolum var mi? */
-export const hasAnySettings = (canAny) => firstSettingsPath(canAny) !== null
+export const hasAnySettings = (canAny, hasModule = ALL_ON) =>
+    firstSettingsPath(canAny, hasModule) !== null

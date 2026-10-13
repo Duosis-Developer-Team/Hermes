@@ -27,6 +27,8 @@ import {
 import { resetAndFill } from '../../features/admin/shared/formLifecycle'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
+import { PERMISSION_MODULE } from '../../features/modules/catalog'
+import { useAuthStore } from '../../stores/authStore'
 
 // Formda GERCEKTEN olan alanlar. Alanlar MODA GORE kosullu cizildigi
 // icin (code yalniz olusturmada, is_active yalniz edit-ve-system-degil)
@@ -147,7 +149,13 @@ function RolesTab() {
     // `catalogData?.permissions || []` her render'da YENI dizi uretir;
     // memo bagimliligi surekli degisirdi. Referans stabil tutulur.
     const catalog = useMemo(() => catalogData?.permissions || [], [catalogData])
-    const grouped = useMemo(() => groupCatalog(catalog), [catalog])
+    // Tenant modulleri: kapali modulun izni verilemez (sunucu zaten duser);
+    // editorde de gosterilmez.
+    const hasModule = useAuthStore((s) => s.hasModule)
+    const grouped = useMemo(
+        () => groupCatalog(catalog.filter((p) => !PERMISSION_MODULE[p.code] || hasModule(PERMISSION_MODULE[p.code]))),
+        [catalog, hasModule],
+    )
 
     const invalidate = () => {
         queryClient.invalidateQueries({ queryKey: ['rbac-roles'] })

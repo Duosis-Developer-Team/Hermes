@@ -155,6 +155,28 @@ def audit_records(monkeypatch):
 # gerektiren HER dunya kurulumunun kullanici→izin eslemesi vermesi
 # gerekir. grants dict'i: user_id(str) -> izin kodu listesi.
 
+# Tenant modul kapisi (app/module_gate.py): varsayilan TUM moduller acik
+# (mevcut testler modul bilincli degildir). Modul testleri
+# `tenant_modules[tenant_id] = [...]` ile tenant basina secim kurar.
+@pytest.fixture(autouse=True)
+def tenant_modules(monkeypatch):
+    from app import module_gate as _gate
+    from shared.modules import ALL_MODULES
+
+    selection: dict = {}
+
+    def resolver(tenant_id):
+        if tenant_id in selection:
+            return frozenset(selection[tenant_id])
+        return frozenset(ALL_MODULES)
+
+    _gate.set_resolver(resolver)
+    # Testte onbellek yok: secim test icinde degisebilir.
+    monkeypatch.setattr(_gate, "TTL_SECONDS", 0.0)
+    yield selection
+    _gate.set_resolver(None)
+
+
 @pytest.fixture()
 def authz_grants(monkeypatch):
     import httpx as _httpx

@@ -99,8 +99,16 @@ function MainLayout() {
     }, [projectDir.data, setProjectLogoIndex])
 
     const isAdmin = user?.is_admin === true
+    // Tenant modulleri (features/modules/catalog.js): kapali modul kabukta
+    // HIC gorunmez — menu, dock eylemi, ada yuvasi, acilis cagrilari.
+    const hasModule = useAuthStore((s) => s.hasModule)
+    useAuthStore((s) => s.tenant) // modul listesi degisince re-render
+    const mod = {
+        time: hasModule('time_entry'), work: hasModule('work'), meetings: hasModule('meetings'),
+        tickets: hasModule('tickets'), reports: hasModule('reports'), developer: hasModule('developer'),
+    }
     const { canAccessAny } = useTaskPermissions()
-    const showTasksItem = isAdmin || canAccessAny
+    const showTasksItem = mod.work && (isAdmin || canAccessAny)
 
     // RBAC R3: menu ogeleri artik ROL/izin bazli gorunur — "hepsi ya da
     // hicbiri" admin blogu yerine her oge kendi iznini ister. Bir grup,
@@ -121,7 +129,7 @@ function MainLayout() {
         { key: '/management/billable-hours', icon: <ClockCircleOutlined />, label: t('nav.billableHours'), perm: 'reports.view' },
         { key: '/management/reports', icon: <FileExcelOutlined />, label: t('nav.reports'), perm: 'reports.view' },
         { key: '/management/contracts', icon: <FileTextOutlined />, label: t('nav.contractStatus'), perm: 'reports.view' },
-    ].filter((i) => can(i.perm)).map(({ perm, ...i }) => i)
+    ].filter((i) => mod.reports && can(i.perm)).map(({ perm, ...i }) => i)
 
     /*
      * B1 — ayarlar TEK cati altinda: menude tek "Ayarlar" ogesi. Hangi
@@ -130,7 +138,7 @@ function MainLayout() {
      * sayfasi "YAPILANDIRMA" grubunda, ucu de "YONETIM"de duz listeydi.
      */
     const canAny = useAuthStore((s) => s.canAny)
-    const settingsItems = hasAnySettings(canAny) ? [
+    const settingsItems = hasAnySettings(canAny, hasModule) ? [
         { key: '/settings', icon: <SettingOutlined />, label: t('nav.settings') },
     ] : []
 
@@ -202,11 +210,11 @@ function MainLayout() {
         },
 
         // Standart Kullanıcı Menüsü
-        {
+        ...(mod.time ? [{
             key: '/time-entry',
             icon: <ClockCircleOutlined />,
             label: t('nav.timeEntry'),
-        },
+        }] : []),
 
         ...(showTasksItem ? [
             {
@@ -219,28 +227,28 @@ function MainLayout() {
         // Meetings — synced from Microsoft Teams / Outlook calendars.
         // Visible to every authenticated user; backend filters down to
         // meetings the user is actually an attendee of.
-        {
+        ...(mod.meetings ? [{
             key: '/meetings',
             icon: <CalendarOutlined />,
             label: t('nav.meetings'),
-        },
+        }] : []),
 
         // Developer Portal — Public API dokumantasyonu. D3: ust seviye
         // giris, TUM oturum acmis kullanicilara acik (D1). Token/client
         // YONETIMI API Management'ta admin-only kalir.
         // Hermes Liquid: ada sekmesi degil, DOCK'ta (sistem modulu).
-        {
+        ...(mod.developer ? [{
             key: '/developer',
             icon: <CodeOutlined />,
             label: t('nav.developer'),
             dock: true,
-        },
+        }] : []),
 
         // Ticket Hub / Destek. Menu ogesi `tickets.access` ile gorunur;
         // HEDEF ROTA sunucunun bildirdigi yuzeye gore secilir — tenant
         // kimligi frontend'e GOMULMEZ. Baglam henuz yuklenmediyse
         // /tickets kullanilir ve sayfa gerekirse /support'a yonlendirir.
-        ...(can('tickets.access') ? [{
+        ...(mod.tickets && can('tickets.access') ? [{
             key: ticketsPath,
             icon: <CustomerServiceOutlined />,
             label: ticketsPath === '/support' ? t('nav.support') : t('nav.tickets'),
@@ -308,8 +316,8 @@ function MainLayout() {
 
     // Adanin canli yuvasi: bugunun siradaki toplantisi (gercek veri).
     // Bu haftanin Microsoft takvimi arka planda (15 dk'da bir en fazla).
-    useMeetingAutoSync(user?.id)
-    const nextMeeting = useNextMeeting()
+    useMeetingAutoSync(mod.meetings ? user?.id : null)
+    const nextMeeting = useNextMeeting({ enabled: mod.meetings })
     const islandLive = nextMeeting ? {
         tone: nextMeeting.status,
         meta: nextMeeting.status === 'now'
@@ -325,10 +333,10 @@ function MainLayout() {
     // Dock hizli eylemleri (prototip): efor gir ve yeni is — mevcut derin
     // baglantilar uzerinden (yeni akis yok; izinler hedef sayfada ayni).
     const dockActions = [
-        {
+        ...(mod.time ? [{
             key: 'log', label: t('home.quickLog'), icon: <ClockCircleOutlined />, tone: '#388BFF',
             onClick: () => navigate(`/time-entry?date=${dayjs().format('YYYY-MM-DD')}`),
-        },
+        }] : []),
         ...(showTasksItem ? [{
             key: 'new-work', label: t('board.newTask'), icon: <PlusOutlined />, tone: '#22A06B',
             onClick: () => navigate('/project-management?new=task'),
@@ -376,8 +384,10 @@ function MainLayout() {
             headerExtra={<OrganizationSwitcher />}
             headerCorner={<VersionBadge />}
             contentKey={location.pathname}
-            islandLive={islandLive}
+            islandLive={mod.meetings ? islandLive : null}
             dockActions={dockActions}
+            /* Bildirimler bugun yalniz is kalemi olaylaridir. */
+            showNotifications={mod.work}
         >
             <Outlet />
         </AppShell>

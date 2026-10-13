@@ -34,6 +34,28 @@ SCOPES: dict[str, str] = {
 }
 
 
+# Tenant modulleri (shared/modules.py): bir scope'un verdigi veri hangi
+# module ait? Modul kapali tenant'ta o scope token'da kayitli olsa bile
+# EFEKTIF degildir (insufficient_scope). Listede olmayan scope cekirdektir.
+SCOPE_MODULE: dict[str, str] = {
+    "tasks:read": "work",
+    "tasks:write": "work",
+    "tasks:comment": "work",
+    "tasks:complete": "work",
+    "work-logs:read": "time_entry",
+    "work-logs:write": "time_entry",
+    "meetings:read": "meetings",
+}
+
+
+def effective_scopes(scopes, modules) -> frozenset:
+    enabled = set(modules)
+    return frozenset(
+        s for s in scopes
+        if SCOPE_MODULE.get(s) is None or SCOPE_MODULE[s] in enabled
+    )
+
+
 def is_valid_scope(scope: str) -> bool:
     return scope in SCOPES
 

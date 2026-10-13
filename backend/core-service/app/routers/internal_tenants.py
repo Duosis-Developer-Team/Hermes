@@ -18,16 +18,20 @@
 # =============================================================================
 
 import hmac
+import json
 import logging
 import time
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from shared.modules import ALL_MODULES, ModuleSelectionError, normalize
+
 from ..config import get_settings
+from ..module_gate import forget_tenant_modules
 from ..database import get_db
 
 logger = logging.getLogger(__name__)
@@ -97,6 +101,9 @@ class TenantProjection(BaseModel):
     status: str
     placement_key: str = Field(default="shared-default", max_length=64)
     source_version: int = Field(default=1, ge=0)
+    # Tenant modulleri (shared/modules.py). Verilmezse (eski auth surumu)
+    # MEVCUT deger korunur; yeni satirda TUM katalog.
+    enabled_modules: Optional[List[str]] = None
 
 
 @router.post(
@@ -110,6 +117,12 @@ def upsert_projection(
 ) -> dict:
     if payload.status not in _VALID_STATUS:
         raise HTTPException(status_code=422, detail="invalid status")
+    modules_json = None
+    if payload.enabled_modules is not None:
+        try:
+            modules_json = json.dumps(normalize(payload.enabled_modules))
+        except ModuleSelectionError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     # Tek ifade: ekle ya da YALNIZCA daha yeni bir surumse guncelle.
     # `source_version` karsilastirmasi, agdan sirasiz gelen eski bir
@@ -117,19 +130,30 @@ def upsert_projection(
     result = db.execute(text("""
         INSERT INTO tenant_registry
             (tenant_id, slug, status, placement_key, source_version,
-             provisioned_at, updated_at)
+             enabled_modules, provisioned_at, updated_at)
         VALUES (CAST(:tenant_id AS uuid), :slug, :status, :placement_key,
-                :source_version, now(), now())
+                :source_version,
+                COALESCE(CAST(:modules AS jsonb), CAST(:all_modules AS jsonb)),
+                now(), now())
         ON CONFLICT (tenant_id) DO UPDATE
            SET slug = EXCLUDED.slug,
                status = EXCLUDED.status,
                placement_key = EXCLUDED.placement_key,
                source_version = EXCLUDED.source_version,
+               enabled_modules = COALESCE(CAST(:modules AS jsonb),
+                                          tenant_registry.enabled_modules),
                updated_at = now()
          WHERE tenant_registry.source_version < EXCLUDED.source_version
         RETURNING tenant_id
-    """), payload.model_dump())
+    """), {
+        **payload.model_dump(exclude={"enabled_modules"}),
+        "modules": modules_json,
+        "all_modules": json.dumps(list(ALL_MODULES)),
+    })
     applied = result.first() is not None
+    if applied:
+        # Modul kapisi onbellegi: degisiklik bu pod'da hemen gecerli olur.
+        forget_tenant_modules(payload.tenant_id)
     db.commit()
 
     logger.info("tenant projeksiyonu: slug=%s status=%s uygulandi=%s",

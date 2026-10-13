@@ -517,6 +517,23 @@ def apply_project_types_expand(conn) -> None:
         conn.execute(text(stmt))
 
 
+# Tenant modulleri (0017): tenant_registry.enabled_modules. ADD COLUMN
+# DEFAULT mevcut satirlari TUM katalogla doldurur — davranis degismez.
+def tenant_modules_statements():
+    from app.models.tenancy import ALL_MODULES_SQL_DEFAULT
+
+    return (
+        "ALTER TABLE tenant_registry ADD COLUMN IF NOT EXISTS enabled_modules "
+        f"JSONB NOT NULL DEFAULT {ALL_MODULES_SQL_DEFAULT}",
+    )
+
+
+def apply_tenant_modules(conn) -> None:
+    """tenant_registry.enabled_modules (0017)."""
+    for stmt in tenant_modules_statements():
+        conn.execute(text(stmt))
+
+
 def apply_all(conn) -> None:
     """Testler icin: bugunku head semasinin tamami.
 
@@ -530,3 +547,4 @@ def apply_all(conn) -> None:
     apply_p2_notifications_expand(conn)
     apply_p2_attachments_expand(conn)
     apply_project_types_expand(conn)
+    apply_tenant_modules(conn)
