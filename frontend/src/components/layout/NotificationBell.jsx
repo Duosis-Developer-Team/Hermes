@@ -16,6 +16,7 @@ import { BellOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { notificationService } from '../../services/api'
+import { ticketHelpdeskService } from '../../api/ticketsApi'
 import { queryKeys } from '../../query/queryKeys'
 import { useT } from '../../i18n'
 
@@ -32,13 +33,21 @@ const KIND_KEY = {
     log_time_created: 'notifications.kind_logTime',
 }
 
-export const notificationText = (t, n) =>
-    t(KIND_KEY[n.kind] || 'notifications.kind_generic', {
+export const notificationText = (t, n) => (n.source === 'ticket'
+    ? t(`notifications.ticket.${n.kind}`, {
+        number: n.ticket_number || '', title: n.title || '', actor: n.actor_display_name || '',
+    })
+    : t(KIND_KEY[n.kind] || 'notifications.kind_generic', {
         item: n.item_key || '',
         title: n.item_title || '',
-    })
+    }))
 
-function NotificationBell() {
+/**
+ * `sources`: hangi bildirimler — is kalemleri (`work`) ve/veya talepler
+ * (`tickets`, yalniz saglayici tenant'ta; Dalga B). Ikisi birlesik, en
+ * yeniden eskiye listelenir; okunmamis sayisi toplamdir.
+ */
+function NotificationBell({ sources = { work: true, tickets: false } }) {
     const t = useT()
     const navigate = useNavigate()
     const queryClient = useQueryClient()
@@ -47,6 +56,7 @@ function NotificationBell() {
     const count = useQuery({
         queryKey: queryKeys.notifications.unreadCount,
         queryFn: () => notificationService.unreadCount(),
+        enabled: sources.work,
         refetchOnWindowFocus: true,
         refetchInterval: 60 * 1000,
         staleTime: 15 * 1000,
@@ -55,24 +65,45 @@ function NotificationBell() {
     const list = useQuery({
         queryKey: queryKeys.notifications.list({ limit: 20 }),
         queryFn: () => notificationService.list({ limit: 20 }),
-        enabled: open,
+        enabled: open && sources.work,
         refetchOnWindowFocus: true,
         retry: false,
     })
-    const invalidate = () =>
+    // Talep bildirimleri tek uctan (liste + okunmamis sayisi).
+    const tickets = useQuery({
+        queryKey: queryKeys.tickets.notifications,
+        queryFn: () => ticketHelpdeskService.notifications({ limit: 20 }),
+        enabled: sources.tickets,
+        refetchOnWindowFocus: true,
+        refetchInterval: 60 * 1000,
+        staleTime: 15 * 1000,
+        retry: false,
+    })
+    const invalidate = () => {
         queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all })
+        queryClient.invalidateQueries({ queryKey: queryKeys.tickets.notifications })
+    }
 
     const markRead = useMutation({
-        mutationFn: (id) => notificationService.markRead(id),
+        mutationFn: (n) => (n.source === 'ticket'
+            ? ticketHelpdeskService.readNotification(n.id)
+            : notificationService.markRead(n.id)),
         onSettled: invalidate,
     })
     const markAll = useMutation({
-        mutationFn: () => notificationService.markAllRead(),
+        mutationFn: () => Promise.all([
+            sources.work ? notificationService.markAllRead() : null,
+            sources.tickets ? ticketHelpdeskService.readAllNotifications() : null,
+        ]),
         onSettled: invalidate,
     })
 
-    const unread = count.data?.unread_count ?? 0
-    const items = list.data?.items ?? []
+    const unread = (sources.work ? count.data?.unread_count ?? 0 : 0)
+        + (sources.tickets ? tickets.data?.unread ?? 0 : 0)
+    const items = [
+        ...(sources.work ? list.data?.items ?? [] : []),
+        ...(sources.tickets ? (tickets.data?.items ?? []).map((n) => ({ ...n, source: 'ticket' })) : []),
+    ].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 20)
 
     // Hermes masaustu (macOS): okunmamis sayisi Dock rozetine yansir.
     // Tarayicida `window.hermesDesktop` yoktur — etkisiz.
@@ -81,9 +112,11 @@ function NotificationBell() {
     }, [unread])
 
     const openItem = (n) => {
-        if (!n.read_at) markRead.mutate(n.id)
+        if (!n.read_at) markRead.mutate(n)
         setOpen(false)
-        navigate(`/project-management/tasks?item=${n.work_item_id}`)
+        navigate(n.source === 'ticket'
+            ? `/tickets?ticket=${n.ticket_id}`
+            : `/project-management/tasks?item=${n.work_item_id}`)
     }
 
     const panel = (
@@ -97,7 +130,7 @@ function NotificationBell() {
                     onClick={() => markAll.mutate()}
                 >{t('notifications.markAllRead')}</Button>
             </div>
-            {list.isLoading ? (
+            {(sources.work ? list.isLoading : tickets.isLoading) ? (
                 <div className="notif-panel__empty"><Spin size="small" /></div>
             ) : items.length === 0 ? (
                 <div className="notif-panel__empty">

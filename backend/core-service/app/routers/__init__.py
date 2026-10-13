@@ -28,6 +28,7 @@ from .meetings import router as meetings_router
 from .tickets import router as tickets_router
 from .support_portal import router as support_portal_router
 from .ticket_admin import router as ticket_admin_router
+from .ticket_helpdesk import router as ticket_helpdesk_router
 
 __all__ = [
     "customers_router",
@@ -55,4 +56,5 @@ __all__ = [
     "tickets_router",
     "support_portal_router",
     "ticket_admin_router",
+    "ticket_helpdesk_router",
 ]

@@ -217,6 +217,35 @@ export const supportPortalService = {
     },
 }
 
+/** Dalga B — helpdesk: SLA, etiket, hazir yanit, gorunum, takip, toplu
+ *  islem, talep bildirimleri. Hepsi saglayicinin (hub) kendi verisi. */
+const HD = `${CORE}/tickets/helpdesk`
+export const ticketHelpdeskService = {
+    slaPolicy: async () => (await coreClient.get(`${HD}/sla-policy`)).data,
+    saveSlaPolicy: async (payload) => (await coreClient.put(`${HD}/sla-policy`, payload)).data,
+    tags: async (params = {}) => (await coreClient.get(`${HD}/tags`, { params })).data,
+    createTag: async (payload) => (await coreClient.post(`${HD}/tags`, payload)).data,
+    updateTag: async (id, payload) => (await coreClient.patch(`${HD}/tags/${id}`, payload)).data,
+    setTicketTags: async (ticketId, tagIds) =>
+        (await coreClient.put(`${CORE}/tickets/${ticketId}/tags`, { tag_ids: tagIds })).data,
+    macros: async () => (await coreClient.get(`${HD}/macros`)).data,
+    createMacro: async (payload) => (await coreClient.post(`${HD}/macros`, payload)).data,
+    updateMacro: async (id, payload) => (await coreClient.patch(`${HD}/macros/${id}`, payload)).data,
+    applyMacro: async (ticketId, macroId, payload) =>
+        (await coreClient.post(`${CORE}/tickets/${ticketId}/macros/${macroId}/apply`, payload)).data,
+    views: async () => (await coreClient.get(`${HD}/views`)).data,
+    createView: async (payload) => (await coreClient.post(`${HD}/views`, payload)).data,
+    deleteView: async (id) => { await coreClient.delete(`${HD}/views/${id}`) },
+    watch: async (ticketId, watching) =>
+        (await coreClient.put(`${CORE}/tickets/${ticketId}/watch`, { watching })).data,
+    requesterHistory: async (ticketId) =>
+        (await coreClient.get(`${CORE}/tickets/${ticketId}/requester-history`)).data,
+    bulk: async (payload) => (await coreClient.post(`${CORE}/tickets/bulk`, payload)).data,
+    notifications: async (params = {}) => (await coreClient.get(`${HD}/notifications`, { params })).data,
+    readNotification: async (id) => { await coreClient.post(`${HD}/notifications/${id}/read`) },
+    readAllNotifications: async () => { await coreClient.post(`${HD}/notifications/read-all`) },
+}
+
 export const ticketAdminService = {
     listApplications: async () => {
         const { data } = await coreClient.get(

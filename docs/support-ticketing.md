@@ -51,6 +51,19 @@ transaction'da yazilir).
 - 0018 mevcut `hermes` yonlendirmelerini baglantiya geri doldurur (tekrar
   kosulabilir; saglayici verisine yazmaz).
 
+## 1c. Helpdesk katmani (2026-10-14, 0019)
+
+SLA, etiket, hazir yanit, kayitli gorunum, takip, okundu bilgisi ve talep
+bildirimleri saglayicinin verisinde YENI tablolardir (`app/models/ticket_helpdesk.py`,
+`app/services/ticket_{sla,helpdesk}.py`, `app/routers/ticket_helpdesk.py`).
+- Ayar: Ayarlar → Talep yonetimi (yalniz saglayici; `tickets.config.manage` /
+  `tickets.admin`). Politika yoksa SLA yoktur.
+- Saat kurallari ticket_service kancalarinda AYNI transaction'da calisir; ihlal
+  okumada hesaplanir (ayri is yok).
+- Sozlesme etkisi YOK: `ticket_events` turleri ve outbox alanlari degismedi.
+- Bakim: okunmus talep bildirimleri mevcut `notification_cleanup` isiyle 90 gunde
+  silinir (yeni CronJob gerekmez).
+
 ## 2. Zorunlu konfigurasyon
 
 Modul **fail-closed**'dur: `HERMES_SUPPORT_TENANT_ID` bos veya

@@ -47,6 +47,8 @@ from ..schemas.ticketing import (
     ReasonRequest,
     ResolveRequest,
     RoutingGroupOut,
+    SlaStateOut,
+    TagRef,
     TicketAgentOut,
     TicketContextOut,
     TicketEventOut,
@@ -57,7 +59,9 @@ from ..services import support_tenant as support
 from ..services import ticket_network as network
 from ..services import (
     ticket_attachment_service,
+    ticket_helpdesk as helpdesk,
     ticket_queries,
+    ticket_sla,
     ticket_routing,
     ticket_serializers as ser,
     ticket_service,
@@ -122,14 +126,46 @@ def _refs(db: Session, ticket: Ticket):
     )
 
 
+def _sla_out(clock) -> Optional[SlaStateOut]:
+    state = ticket_sla.clock_state(clock)
+    return SlaStateOut(**state) if state else None
+
+
+def _tag_refs(tags) -> list:
+    return [TagRef(id=t.id, name=t.name, color=t.color) for t in tags]
+
+
+def _enrich_rows(db: Session, rows, items, scope: visibility.HubScope):
+    """Liste satirlarina SLA + etiket + okunmamis (tek seferde, N+1 yok)."""
+    ids = [t.id for t in rows]
+    clocks = ticket_sla.clocks_for(db, ids)
+    tags = helpdesk.tags_for(db, ids)
+    reads = helpdesk.read_map(db, ids, reader=scope.user_id)
+    return [
+        item.model_copy(update={
+            "sla": _sla_out(clocks.get(t.id)),
+            "tags": _tag_refs(tags.get(t.id, [])),
+            "unread": helpdesk.agent_unread(t, reads.get(t.id)),
+        })
+        for t, item in zip(rows, items)
+    ]
+
+
 def _detail(
     db: Session, ticket: Ticket, scope: visibility.HubScope
 ) -> TicketAgentOut:
     app, src = _refs(db, ticket)
-    return ser.agent_detail(
+    out = ser.agent_detail(
         db, ticket, application=app, source_tenant=src,
         is_admin=scope.is_admin,
     )
+    watchers = helpdesk.watchers_of(db, ticket.id)
+    return out.model_copy(update={
+        "sla": _sla_out(ticket_sla.clocks_for(db, [ticket.id]).get(ticket.id)),
+        "tags": _tag_refs(helpdesk.tags_for(db, [ticket.id]).get(ticket.id, [])),
+        "watching": any(str(w) == str(scope.user_id) for w in watchers),
+        "watcher_count": len(watchers),
+    })
 
 
 def _require(scope: visibility.HubScope, code: str) -> None:
@@ -339,7 +375,8 @@ def list_tickets(
     created_to: Optional[datetime] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    sort: Optional[str] = Query(None, pattern="^(updated|newest|oldest|priority)$"),
+    sort: Optional[str] = Query(None, pattern="^(updated|newest|oldest|priority|due)$"),
+    tag: List[UUID] = Query(default_factory=list),
     scope: visibility.HubScope = Depends(hub_scope),
     db: Session = Depends(get_support_db),
 ):
@@ -355,20 +392,22 @@ def list_tickets(
         search=search,
         created_from=created_from,
         created_to=created_to,
+        tag_ids=tuple(tag),
     )
     rows, total = ticket_queries.list_hub_tickets(
         db, scope, filters, limit=limit, offset=offset, sort=sort,
     )
     apps, sources = ticket_queries.load_refs(db, rows)
+    items = [
+        ser.agent_list_item(
+            t,
+            application=apps.get(t.application_id),
+            source_tenant=sources.get(t.source_tenant_row_id),
+        )
+        for t in rows
+    ]
     return TicketListResponse(
-        items=[
-            ser.agent_list_item(
-                t,
-                application=apps.get(t.application_id),
-                source_tenant=sources.get(t.source_tenant_row_id),
-            )
-            for t in rows
-        ],
+        items=_enrich_rows(db, rows, items, scope),
         total=total, limit=limit, offset=offset,
     )
 
@@ -390,6 +429,8 @@ def get_ticket(
         ticket_service.record_admin_access(
             db, ticket, actor=_actor(current_user, scope, request)
         )
+    # Okundu bilgisi (Dalga B): listede "okunmamis" isareti bundan cikar.
+    helpdesk.mark_read(db, ticket.id, scope.user_id)
     return _detail(db, ticket, scope)
 
 

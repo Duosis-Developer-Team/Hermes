@@ -181,13 +181,17 @@ def test_merged_list_orders_across_providers(monkeypatch, api, ticket_world):
     stamp = {TEST_TENANT_ID: [5, 1], THIRD_TENANT_ID: [3]}
     calls = []
 
+    from types import SimpleNamespace
+
     def fake_list(db, scope, filters, *, limit, offset, sort=None):
         provider = [p for p in stamp if p not in calls][0]
         calls.append(provider)
-        return [(provider, h) for h in stamp[provider]], len(stamp[provider])
+        rows = [SimpleNamespace(id=uuid.uuid4(), provider=provider, hours=h,
+                                last_public_activity_at=None) for h in stamp[provider]]
+        return rows, len(stamp[provider])
 
     def fake_item(row):
-        provider, hours = row
+        provider, hours = row.provider, row.hours
         return TicketCustomerListItem(
             id=uuid.uuid4(), ticket_number=f"TKT-{provider[-2:]}-{hours}",
             title="x" * 10, status="open", category="bug",

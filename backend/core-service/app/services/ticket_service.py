@@ -57,7 +57,8 @@ from ..ticket_contract import (
     TITLE_MAX_LENGTH,
 )
 from . import ticket_event_service as events
-from . import ticket_metrics, ticket_state, tenant_counters
+from . import ticket_metrics
+from . import ticket_sla, ticket_state, tenant_counters
 from .ticket_text import sanitize_body, sanitize_single_line
 
 
@@ -387,6 +388,13 @@ def create_ticket(
             application=application, source_tenant=source_tenant,
         )
 
+    # SLA (Dalga B): saglayicinin politikasi varsa saat baslar — ayni
+    # transaction; politika yoksa hicbir sey yazilmaz.
+    ticket_sla.start(db, ticket)
+    # Uygulama ici bildirim (Dalga B): ekibe "yeni talep" — ayni transaction.
+    from . import ticket_helpdesk
+    ticket_helpdesk.on_created(db, ticket)
+
     ticket_metrics.ticket_created(application.code, ticket.category)
     ticket_metrics.observe_create_duration(time.perf_counter() - started)
     return ticket
@@ -589,8 +597,14 @@ def add_message(
 
     if visibility == "public":
         ticket.last_public_activity_at = _now()
+        if author_type == "requester":
+            from . import ticket_helpdesk
+            ticket_helpdesk.on_customer_reply(
+                db, ticket, actor_display_name=actor.display_name,
+            )
         if author_type == "agent" and ticket.first_response_at is None:
             ticket.first_response_at = _now()
+            ticket_sla.on_first_response(db, ticket, at=ticket.first_response_at)
             created = _aware(ticket.created_at)
             if created:
                 ticket_metrics.observe_first_response(
@@ -687,6 +701,13 @@ def _apply_transition(
     )
 
     ticket.status = to_status
+    ticket_sla.on_status(db, ticket, from_status=from_status, to_status=to_status)
+    if to_status == "reopened":
+        from . import ticket_helpdesk
+        ticket_helpdesk.on_reopened(
+            db, ticket, actor_user_id=actor.user_id,
+            actor_display_name=actor.display_name,
+        )
     now = _now()
     if to_status == "resolved":
         ticket.resolved_at = now
@@ -867,6 +888,12 @@ def assign_user(
     previous = ticket.assigned_user_id
     ticket.assigned_user_id = user_id
     _bump(ticket)
+    if user_id is not None and user_id != previous:
+        from . import ticket_helpdesk
+        ticket_helpdesk.on_assigned(
+            db, ticket, actor_user_id=actor.user_id,
+            actor_display_name=actor.display_name,
+        )
     events.record_event(
         db, ticket,
         event_type=EVENT_TICKET_ASSIGNMENT_CHANGED,
@@ -895,6 +922,7 @@ def set_priority(
         )
     previous = ticket.priority
     ticket.priority = clamped
+    ticket_sla.on_priority(db, ticket)
     _bump(ticket)
     events.record_event(
         db, ticket,

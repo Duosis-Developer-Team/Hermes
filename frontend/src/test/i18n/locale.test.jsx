@@ -47,6 +47,8 @@ describe('i18n sozlukleri', () => {
             'admin.entityCount', 'logTime.platform',
             // Urun adi / odunc sozcuk: cevrilmez.
             'meeting.teams', 'meetingCard.teams', 'platform.plan',
+            // Sektor kisaltmasi (Service Level Agreement); Turkce arayuzde de SLA.
+            'sla.title',
             // "Efor · Plan" alt eylemi: Plan Turkcede de ayni sozcuk.
             'meetingsPage.filter.online',
             'platform.emailDomainsExample',

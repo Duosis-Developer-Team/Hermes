@@ -231,7 +231,7 @@ export default function SupportPortalPage() {
                     <Card
                         key={ticket.id}
                         interactive
-                        className={`support-card${isResolvedLike(ticket.status) ? ' h-ticket-row--resolved' : ''}`}
+                        className={`support-card${isResolvedLike(ticket.status) ? ' h-ticket-row--resolved' : ''}${ticket.has_update ? ' has-update' : ''}`}
                         onClick={() => openTicket(ticket)}
                         onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
@@ -241,7 +241,10 @@ export default function SupportPortalPage() {
                         }}
                         aria-label={`${ticket.ticket_number} ${ticket.title}`}
                     >
-                        <span className="support-card__code">{ticket.ticket_number}</span>
+                        <span className="support-card__code">
+                            {ticket.has_update && <span className="tickets-row__dot" aria-label={t('portal.hasUpdate')} />}
+                            {ticket.ticket_number}
+                        </span>
                         {/* Baslik STRIKETHROUGH YAPILMAZ: cozulmus bir
                             talebin basligi da okunabilir kalmali. */}
                         <b className="support-card__title">{ticket.title}</b>

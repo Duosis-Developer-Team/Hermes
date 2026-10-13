@@ -164,13 +164,20 @@ def purge_read(db: Session, *, tenant_id=None, older_than_days: int = READ_RETEN
     diger anahtarlar) tenant_runner'dan gelir; baglam zaten kurulu, burada
     yalniz rapora yazilir. Canli bulgu (dev, 22.09): `trigger` kabul
     edilmeyince job TypeError ile dusuyordu — runner yolu testle kilitli."""
+    from ..models.ticket_helpdesk import TicketNotification
+
     cutoff = _now() - timedelta(days=older_than_days)
-    q = db.query(WorkItemNotification).filter(
-        WorkItemNotification.read_at.isnot(None), WorkItemNotification.read_at < cutoff
-    )
-    count = q.count()
+    # Is kalemi + talep bildirimleri (Dalga B) ayni kural: okunmus ve eski.
+    queries = [
+        db.query(model).filter(model.read_at.isnot(None), model.read_at < cutoff)
+        for model in (WorkItemNotification, TicketNotification)
+    ]
+    counts = [q.count() for q in queries]
+    count = sum(counts)
     if not dry_run and count:
-        q.delete(synchronize_session=False)
+        for q, n in zip(queries, counts):
+            if n:
+                q.delete(synchronize_session=False)
         db.commit()
     return {"ok": True, "dry_run": dry_run, "deleted": 0 if dry_run else count,
             "candidates": count, "older_than_days": older_than_days,

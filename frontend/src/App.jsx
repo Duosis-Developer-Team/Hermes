@@ -80,6 +80,7 @@ const MeetingsPage = lazy(routeLoaders.meetings)
 const TicketHubPage = lazy(routeLoaders.ticketHub)
 const SupportPortalPage = lazy(routeLoaders.supportPortal)
 const TicketIntegrationsPage = lazy(routeLoaders.ticketIntegrations)
+const TicketHelpdeskSettings = lazy(routeLoaders.ticketHelpdesk)
 import { useTaskPermissions } from './hooks/useTaskPermissions'
 import { landingPath } from './features/modules/catalog'
 
@@ -476,6 +477,9 @@ function App() {
                     } />
                     <Route path="integrations/tickets" element={
                         <ProtectedRoute module="tickets" permission={['tickets.config.manage', 'tickets.admin']}><TicketIntegrationsPage /></ProtectedRoute>
+                    } />
+                    <Route path="tickets/helpdesk" element={
+                        <ProtectedRoute module="tickets" permission={['tickets.config.manage', 'tickets.admin']}><TicketHelpdeskSettings /></ProtectedRoute>
                     } />
                 </Route>
                 {/* Eski ayar adresleri: favoriler ve e-posta baglantilari

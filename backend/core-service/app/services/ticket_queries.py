@@ -19,6 +19,7 @@ from uuid import UUID
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session
 
+from ..models.ticket_helpdesk import TicketSlaClock, TicketTagLink
 from ..models.ticketing import (
     SupportApplication,
     SupportSourceTenant,
@@ -37,19 +38,50 @@ QUEUES = (
     ("customer_replied", "Customer replied"),
     ("waiting_customer", "Waiting on customer"),
     ("recently_resolved", "Recently resolved"),
+    ("sla_breached", "SLA breached"),
     ("all", "All tickets"),
 )
 QUEUE_KEYS = tuple(k for k, _ in QUEUES)
 
 # Liste siralamalari. Her biri `id` ile biter: esit zaman damgalarinda
 # sayfalar arasi atlama/tekrar olmasin (deterministik sayfalama).
-SORTS = ("updated", "newest", "oldest", "priority")
+SORTS = ("updated", "newest", "oldest", "priority", "due")
 _PRIORITY_RANK = case(
     {p: i for i, p in enumerate(PRIORITIES)}, value=Ticket.priority, else_=0,
 )
 
 
+def _sla_breached():
+    """Karsilanmamis ve vadesi gecmis (duraklamadaki cozum haric) hedef."""
+    now = _now()
+    return select(TicketSlaClock.ticket_id).where(or_(
+        and_(TicketSlaClock.first_response_at.is_(None),
+             TicketSlaClock.first_response_due_at < now),
+        and_(TicketSlaClock.resolution_at.is_(None),
+             TicketSlaClock.paused_at.is_(None),
+             TicketSlaClock.resolution_due_at < now),
+    ))
+
+
+def _next_due():
+    """Talebin en yakin karsilanmamis SLA vadesi (yoksa NULL)."""
+    return (
+        select(func.least(
+            case((TicketSlaClock.first_response_at.is_(None),
+                  TicketSlaClock.first_response_due_at)),
+            case((and_(TicketSlaClock.resolution_at.is_(None),
+                       TicketSlaClock.paused_at.is_(None)),
+                  TicketSlaClock.resolution_due_at)),
+        ))
+        .where(TicketSlaClock.ticket_id == Ticket.id)
+        .correlate(Ticket)
+        .scalar_subquery()
+    )
+
+
 def order_by_for(sort: Optional[str]):
+    if sort == "due":
+        return (_next_due().asc().nullslast(), Ticket.updated_at.desc(), Ticket.id.desc())
     if sort == "newest":
         return (Ticket.created_at.desc(), Ticket.id.desc())
     if sort == "oldest":
@@ -102,6 +134,8 @@ def queue_predicate(queue: str, scope: visibility.HubScope):
         )
     if queue == "waiting_customer":
         return Ticket.status == "waiting_customer"
+    if queue == "sla_breached":
+        return and_(Ticket.status.in_(OPEN_STATUSES), Ticket.id.in_(_sla_breached()))
     if queue == "recently_resolved":
         return and_(
             Ticket.status.in_(("resolved", "closed")),
@@ -136,6 +170,7 @@ class TicketFilters:
     created_to: Optional[datetime] = None
     updated_from: Optional[datetime] = None
     updated_to: Optional[datetime] = None
+    tag_ids: Tuple = ()
 
 
 def _apply_filters(query, filters: TicketFilters):
@@ -155,6 +190,10 @@ def _apply_filters(query, filters: TicketFilters):
         query = query.filter(Ticket.category.in_(filters.categories))
     if filters.priorities:
         query = query.filter(Ticket.priority.in_(filters.priorities))
+    if filters.tag_ids:
+        query = query.filter(Ticket.id.in_(
+            select(TicketTagLink.ticket_id).where(TicketTagLink.tag_id.in_(filters.tag_ids))
+        ))
     if filters.created_from:
         query = query.filter(Ticket.created_at >= filters.created_from)
     if filters.created_to:

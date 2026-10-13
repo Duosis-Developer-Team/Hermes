@@ -49,6 +49,8 @@ export const routeLoaders = {
     supportPortal: () => import('../pages/tickets/SupportPortalPage'),
     ticketIntegrations: () =>
         import('../pages/tickets/TicketIntegrationsPage'),
+    ticketHelpdesk: () =>
+        import('../pages/tickets/TicketHelpdeskSettings'),
 }
 
 /** Nav path'i → loader (Sprint 3 hover/focus prefetch). YALNIZCA kodu

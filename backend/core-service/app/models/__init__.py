@@ -46,6 +46,11 @@ from .task_activity import TaskActivityEvent
 from .task_comment import TaskComment
 from .tenancy import TenantCounter, TenantRegistry
 from .ticket_network import TICKET_NETWORK_TABLES, TicketNetworkLink
+from .ticket_helpdesk import (
+    TICKET_HELPDESK_TABLES, TicketMacro, TicketNotification, TicketRead,
+    TicketSlaClock, TicketSlaPolicy, TicketTag, TicketTagLink, TicketView,
+    TicketWatcher,
+)
 from .meeting import Meeting, MeetingAttendee
 from .user_group import (
     UserGroup,
@@ -120,6 +125,16 @@ __all__ = [
     # Tenant projeksiyonu + sayaclar (WS2) — tenant OTORITESI auth_db'dir.
     "TenantRegistry",
     "TicketNetworkLink",
+    "TICKET_HELPDESK_TABLES",
+    "TicketMacro",
+    "TicketNotification",
+    "TicketRead",
+    "TicketSlaClock",
+    "TicketSlaPolicy",
+    "TicketTag",
+    "TicketTagLink",
+    "TicketView",
+    "TicketWatcher",
     "TICKET_NETWORK_TABLES",
     "TenantCounter",
     # Ticket Hub

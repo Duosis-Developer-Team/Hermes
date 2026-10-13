@@ -49,6 +49,7 @@ from ..schemas.ticketing import (
 from ..services import (
     support_tenant as support,
     ticket_attachment_service,
+    ticket_helpdesk as helpdesk,
     ticket_network as network,
     ticket_idempotency as idem,
     ticket_queries,
@@ -226,10 +227,14 @@ def list_my_tickets(
                     offset=offset if single else 0, sort=sort,
                 )
                 ref = _provider_ref(link)
+                reads = helpdesk.read_map(
+                    db, [t.id for t in rows], reader=str(current_user.id),
+                )
                 merged.extend(
-                    ser.customer_list_item(t).model_copy(
-                        update={"provider": ref}
-                    )
+                    ser.customer_list_item(t).model_copy(update={
+                        "provider": ref,
+                        "has_update": helpdesk.customer_has_update(t, reads.get(t.id)),
+                    })
                     for t in rows
                 )
                 total += n
@@ -254,6 +259,7 @@ def get_my_ticket(
     db: Session = Depends(get_portal_db),
 ):
     ticket = _load_ticket(db, ticket_id, scope)
+    helpdesk.mark_read(db, ticket.id, scope.requester_source_user_id)
     return ser.customer_detail(db, ticket).model_copy(
         update={"provider": _provider_ref(link)}
     )
@@ -363,6 +369,7 @@ def create_ticket(
             route_version=route.route_version, data=data,
             actor=_actor(current_user, request),
         )
+        helpdesk.mark_read(db, ticket.id, str(current_user.id))
         response = ser.customer_detail(db, ticket).model_copy(
             update={"provider": _provider_ref(link)}
         )
@@ -410,6 +417,8 @@ def add_reply(
         )
     except Exception as exc:  # noqa: BLE001
         raise translate(exc)
+    # Kendi yanitini "guncelleme" saymasin.
+    helpdesk.mark_read(db, ticket.id, str(current_user.id))
     attachments = [
         a for a in ser.load_attachments(
             db, ticket.id, include_internal=False

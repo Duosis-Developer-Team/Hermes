@@ -106,6 +106,7 @@ export const QUEUE_LABELS = {
     waiting_customer: 'Waiting on customer',
     recently_resolved: 'Recently resolved',
     all: 'All tickets',
+    sla_breached: 'SLA breached',
 }
 
 /** Sozlesme kodu → kullaniciya gosterilecek aciklama. Ham kodu

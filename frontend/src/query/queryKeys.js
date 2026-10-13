@@ -179,6 +179,13 @@ export const queryKeys = {
         get applications() { return k('tickets', 'applications') },
         get routingGroups() { return k('tickets', 'routing-groups') },
         groupMembers: (groupId) => k('tickets', 'group-members', groupId),
+        // Dalga B: helpdesk katalogu (saglayici bazinda)
+        get slaPolicy() { return k('tickets', 'helpdesk', 'sla') },
+        get tags() { return k('tickets', 'helpdesk', 'tags') },
+        get macros() { return k('tickets', 'helpdesk', 'macros') },
+        get views() { return k('tickets', 'helpdesk', 'views') },
+        get notifications() { return k('tickets', 'helpdesk', 'notifications') },
+        requesterHistory: (id) => k('tickets', 'requester-history', id),
     },
     supportTickets: {
         get all() { return k('support-tickets') },

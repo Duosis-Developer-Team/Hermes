@@ -303,3 +303,81 @@
 .ticket-activity__reason { font-size: 12.5px; color: var(--h-text-secondary); font-style: italic; }
 .customer-cancel { display: flex; justify-content: flex-end; }
 .ticket-create-modal__provider { display: flex; flex-direction: column; gap: 6px; }
+
+/* --- Dalga B: secim, okunmamis, SLA, etiket, gorunum, toplu islem ------------- */
+.tickets-list__head { display: flex; align-items: center; gap: 8px; padding: 2px 14px 8px; color: var(--h-text-secondary); font-size: 12.5px; }
+.tickets-list__item { display: flex; align-items: center; gap: 4px; }
+.tickets-row__check { flex: none; padding-left: 10px; }
+.tickets-list__item .tickets-row { flex: 1; min-width: 0; }
+.tickets-row .tickets-row__title { font-weight: 560; }
+.tickets-row.is-unread .tickets-row__title { font-weight: 720; }
+.tickets-row__dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--h-brand); vertical-align: middle; }
+.tickets-row__badges { flex-direction: column; align-items: center; gap: 4px; }
+.sla-badge { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ticket-tags { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.ticket-tag {
+    display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 600; line-height: 18px; white-space: nowrap;
+    --tag: var(--hp-blue-500, #3b82f6);
+    color: var(--tag); background: color-mix(in srgb, var(--tag) 14%, transparent);
+}
+.ticket-tag--green { --tag: var(--h-success, #16a34a); }
+.ticket-tag--orange { --tag: #ea7a1a; }
+.ticket-tag--red { --tag: var(--h-danger, #dc2626); }
+.ticket-tag--purple { --tag: #8b5cf6; }
+.ticket-tag--cyan { --tag: #0891b2; }
+.ticket-tag--gold { --tag: #b7791f; }
+.ticket-tag--gray { --tag: var(--h-text-secondary, #64748b); }
+.ticket-views { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
+.ticket-view { display: inline-flex; align-items: center; gap: 2px; padding: 0; }
+.ticket-view > button { border: 0; background: none; color: inherit; font: inherit; cursor: pointer; padding: 4px 10px; }
+.ticket-view .ticket-view__remove { padding: 4px 8px 4px 0; opacity: 0.6; font-size: 11px; }
+.ticket-view .ticket-view__remove:hover { opacity: 1; }
+.ticket-view-form { display: flex; flex-direction: column; gap: 8px; }
+.ticket-view-form label { font-size: 13px; font-weight: 600; color: var(--h-text-secondary); }
+.ticket-view-form__shared { display: inline-flex; align-items: center; gap: 8px; font-weight: 500 !important; }
+.ticket-bulk {
+    position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    margin: 0 4px 8px; padding: 8px 12px; border-radius: 14px;
+    background: var(--h-bg-selected); border: 1px solid color-mix(in srgb, var(--h-brand) 30%, transparent);
+}
+.ticket-bulk .ant-select { min-width: 140px; }
+.ticket-meta-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ticket-macro-pick { min-width: 200px; margin-left: auto; }
+.ticket-macro-actions { margin: 0; padding: 6px 10px; border-radius: 10px; font-size: 12.5px; color: var(--h-text-secondary); background: var(--h-bg-hover); }
+.ticket-history { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.ticket-history button {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%;
+    padding: 6px 8px; border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.ticket-history button:hover { background: var(--h-bg-hover); }
+.ticket-history__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ticket-sla-leg { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.support-card.has-update { border-color: color-mix(in srgb, var(--h-brand) 40%, transparent); }
+
+/* Talep yonetimi ayarlari */
+.sla-targets { width: 100%; border-collapse: collapse; }
+.sla-targets th, .sla-targets td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--h-border-subtle); }
+.sla-targets thead th { font-size: 12px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; color: var(--h-text-muted); }
+.sla-targets tbody th { font-weight: 600; }
+.sla-calendar { display: flex; flex-direction: column; gap: 14px; }
+.sla-field { display: flex; flex-direction: column; gap: 6px; }
+.sla-field > span { font-size: 13px; font-weight: 600; color: var(--h-text-secondary); }
+.sla-days { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.sla-days li { display: grid; grid-template-columns: 140px minmax(0, 260px); align-items: center; gap: 12px; }
+.sk-inline { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.sk-savebar { display: flex; justify-content: flex-end; margin-top: 12px; }
+.tags-new { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.tags-new .ant-input { flex: 1 1 200px; }
+.tags-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.tags-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; }
+.tags-list li.is-off { opacity: 0.55; }
+.macro-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.macro-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.macro-list button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 8px 10px; border: 0; border-radius: 12px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.macro-list button:hover { background: var(--h-bg-hover); }
+@media (max-width: 640px) {
+    .sla-days li { grid-template-columns: 1fr; }
+    .macro-grid { grid-template-columns: 1fr; }
+    .sla-targets th, .sla-targets td { padding: 6px 4px; }
+}

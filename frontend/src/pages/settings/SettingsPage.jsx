@@ -85,7 +85,7 @@ export function SettingsIndex() {
     const canAny = useAuthStore((s) => s.canAny)
     const hasModule = useAuthStore((s) => s.hasModule)
     const tenant = useAuthStore((s) => s.tenant)
-    const caps = ticketSettingsCaps(useTicketCaps((s) => s.integrations))
+    const caps = ticketSettingsCaps(useTicketCaps())
     const [query, setQuery] = useState('')
     // Izinler henuz yuklenmediyse karar verilmez (fail-closed bekleme).
     if (permissions === null) {
@@ -193,11 +193,11 @@ function SettingsPage() {
     const canAny = useAuthStore((s) => s.canAny)
     const hasModule = useAuthStore((s) => s.hasModule)
     useAuthStore((s) => s.permissions) // izin gelince yeniden render
-    const integrations = useTicketCaps((s) => s.integrations)
+    const ticketCaps = useTicketCaps()
     const { pathname } = useLocation()
     const isHub = pathname.replace(/\/+$/, '') === '/settings'
     if (isHub) return <Outlet />
-    const caps = ticketSettingsCaps(integrations)
+    const caps = ticketSettingsCaps(ticketCaps)
     const items = visibleSections(canAny, hasModule, caps).flatMap((s) => s.items)
 
     return (

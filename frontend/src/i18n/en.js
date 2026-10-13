@@ -14,6 +14,7 @@ export default {
     // Kabuk: gezinme, tema, dil
     // ---------------------------------------------------------------
     nav: {
+        ticketHelpdesk: 'Ticket management',
         home: 'Home',
         dashboard: 'Dashboard',
         billableHours: 'Billable Hours',
@@ -154,6 +155,7 @@ export default {
     // Ayarlar catisi (PM rework P0 / B1)
     // ---------------------------------------------------------------
     settings: {
+        support: 'Ticket management',
         scrollLeft: 'Scroll left',
         scrollRight: 'Scroll right',
         searchPlaceholder: 'Search settings…',
@@ -165,6 +167,7 @@ export default {
         customers: 'Customers & projects',
         integrations: 'Integrations',
         desc: {
+            'helpdesk': 'SLA targets, business hours, tags and canned responses',
             'users': 'People, roles and groups',
             'capacity': 'Working hours, holidays and leave',
             'pm': 'Workflow, assignment and notification rules',
@@ -223,6 +226,7 @@ export default {
     // Her ekranda tekrar eden metinler
     // ---------------------------------------------------------------
     common: {
+        add: 'Add',
         save: 'Save',
         cancel: 'Cancel',
         create: 'Create',
@@ -760,6 +764,12 @@ export default {
     // Bu ekranlar AYNI CRUD sozlugunu paylasir; metin yer tutucuyla
     // uretilir, ayni cumle alti kez YAZILMAZ.
     notifications: {
+        ticket: {
+            new_ticket: 'New ticket {number}: {title}',
+            assigned: '{number} was assigned to you',
+            customer_replied: 'Customer replied on {number}: {title}',
+            reopened: '{number} was reopened',
+        },
         title: 'Notifications',
         bell: 'Notifications',
         bellWithCount: 'Notifications, {count} unread',
@@ -1694,7 +1704,96 @@ export default {
         incoming: 'Incoming requests',
         outgoing: 'My requests',
     },
+    sla: {
+        title: 'SLA',
+        spanDH: '{d}d {h}h',
+        spanHM: '{h}h {m}m',
+        spanM: '{m}m',
+        breachedBy: 'overdue {span}',
+        paused: 'paused',
+        met: 'met',
+        left: '{span} left',
+        due: 'due {at}',
+        leg: { first_response: 'First response', resolution: 'Resolution' },
+        saved: 'SLA saved.',
+        saveFailed: 'The SLA could not be saved.',
+        suggested: 'No SLA yet. These are suggested targets; save to start using them.',
+        targets: 'Targets',
+        targetsHint: 'Business hours per priority. New targets apply to new tickets; a ticket whose priority changes gets the new target.',
+        active: 'SLA active',
+        hoursUnit: 'business hours',
+        calendar: 'Business hours',
+        calendarHint: 'The clock only runs inside these hours and pauses while waiting on the customer.',
+        always: 'Around the clock (24/7)',
+        timezone: 'Time zone',
+        day: { 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday', 7: 'Sunday' },
+        hoursFor: 'Hours for {day}',
+        holidays: 'Holidays',
+    },
+    tags: {
+        hint: 'Label tickets to group and filter them. Inactive tags stay on old tickets but cannot be added.',
+        newName: 'New tag name',
+        color: 'Colour',
+        colorFor: 'Colour of {name}',
+        activeFor: '{name} active',
+        empty: 'No tags yet.',
+        saveFailed: 'The tag could not be saved.',
+        colors: { blue: 'Blue', green: 'Green', orange: 'Orange', red: 'Red', purple: 'Purple', cyan: 'Cyan', gold: 'Gold', gray: 'Gray' },
+    },
+    macros: {
+        hint: 'Shared canned responses for the team. Agents can also keep personal ones.',
+        new: 'New canned response',
+        edit: 'Edit canned response',
+        name: 'Name',
+        body: 'Text',
+        visibility: 'Sent as',
+        setStatus: 'Then set status',
+        setPriority: 'Then set priority',
+        addTags: 'Then add tags',
+        noChange: 'No change',
+        waitingNeedsPublic: '"Waiting on customer" sends the text to the customer as the question.',
+        empty: 'No shared canned responses yet.',
+        saveFailed: 'The canned response could not be saved.',
+    },
+    helpdesk: {
+        title: 'Ticket management',
+        subtitle: 'SLA targets and business hours, tags and canned responses for incoming tickets',
+        unavailable: 'Not available',
+        providerOnly: 'These settings are for workspaces that receive tickets.',
+    },
     hub: {
+        views: 'Saved views',
+        sharedView: 'Shared with the team',
+        deleteView: 'Delete view "{name}"',
+        saveView: 'Save view',
+        viewName: 'View name',
+        shareWithTeam: 'Share with the team',
+        viewHint: 'A view saves the current filters. It never grants access: everyone still sees only the tickets they are allowed to.',
+        viewSaved: 'View saved.',
+        viewSaveFailed: 'The view could not be saved.',
+        bulkTitle: 'Bulk actions',
+        selected: '{count} selected',
+        bulkPriority: 'Set priority for selected',
+        bulkTeam: 'Move selected to team',
+        addTag: 'Add tag',
+        bulkStart: 'Start working',
+        watch: 'Follow',
+        unwatch: 'Unfollow',
+        bulkPartial: '{ok} updated, {skipped} skipped (out of scope or not allowed).',
+        bulkDone: '{count} tickets updated.',
+        bulkFailed: 'The bulk action failed.',
+        tags: 'Tags',
+        selectTicket: 'Select {number}',
+        selectPage: 'Select page',
+        unread: 'Unread',
+        macros: 'Canned responses',
+        macroWill: 'Sending this will also:',
+        macroStatus: 'status → {status}',
+        macroPriority: 'priority → {priority}',
+        macroTags: '+{count} tags',
+        applyAndSend: 'Apply and send',
+        requesterHistory: "{name}'s other tickets",
+        noOtherTickets: 'No other tickets from this requester.',
         activity: 'Activity history',
         event: {
             created: 'Ticket opened',
@@ -1727,6 +1826,7 @@ export default {
         takeIt: 'Assign to me',
         sortBy: 'Sort by',
         sort: {
+            due: 'SLA due soonest',
             updated: 'Recently updated',
             newest: 'Newest first',
             oldest: 'Oldest first',
@@ -1786,6 +1886,7 @@ export default {
     },
 
     portal: {
+        hasUpdate: 'New update',
         notConnected: 'Your workspace is not connected to a support provider yet. Your platform administrator sets this up.',
         goesToTeam: 'Your requests go to the {team} team.',
         providersSubtitle: 'You can open requests with {count} support providers.',
@@ -1897,6 +1998,7 @@ export default {
             answered: 'Answered',
         },
         queue: {
+            sla_breached: 'SLA breached',
             my_group_open: 'My group\'s open tickets',
             assigned_to_me: 'Assigned to me',
             unassigned: 'Unassigned',

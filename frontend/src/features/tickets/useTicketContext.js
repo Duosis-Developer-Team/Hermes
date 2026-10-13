@@ -17,11 +17,11 @@ import { useAuthStore } from '../../stores/authStore'
 /** Ayar katalogunun ihtiyac duydugu ticket yetenekleri. Ayar sayfalari
  *  react-query'ye bagimli olmasin diye baglam yuklenince buraya yazilir;
  *  `null` = henuz bilinmiyor (filtre uygulanmaz). */
-export const useTicketCaps = create(() => ({ integrations: null }))
+export const useTicketCaps = create(() => ({ integrations: null, hub: null }))
 
-export const ticketSettingsCaps = (integrations) =>
-    (integrations === null || integrations === undefined
-        ? null : { ticketIntegrations: Boolean(integrations) })
+export const ticketSettingsCaps = (caps) =>
+    (!caps || caps.integrations === null || caps.integrations === undefined
+        ? null : { ticketIntegrations: Boolean(caps.integrations), ticketHub: Boolean(caps.hub) })
 
 /** Saglayici listesi. Eski sunucu (`providers` yok) icin tek saglayici
  *  `route`tan turetilir — frontend ile core ayri anda yayina cikmayabilir. */
@@ -51,7 +51,12 @@ export function useTicketContext() {
         ? data.surfaces
         : (data?.surface && data.surface !== 'unavailable' ? [data.surface] : [])
     useEffect(() => {
-        if (data) useTicketCaps.setState({ integrations: Boolean(data.integrations) })
+        if (data) {
+            useTicketCaps.setState({
+                integrations: Boolean(data.integrations),
+                hub: (data.surfaces || [data.surface]).includes('hub'),
+            })
+        }
     }, [data])
     const isHub = surfaces.includes('hub')
     const isPortal = surfaces.includes('portal')

@@ -257,6 +257,9 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
         with engine.begin() as conn:
             # 0009 + 0010'un getirdikleri gider; alembic isareti 0008'e.
             for table in (
+                "ticket_notifications", "ticket_reads", "ticket_watchers",
+                "ticket_views", "ticket_macros", "ticket_tag_links", "ticket_tags",
+                "ticket_sla_clocks", "ticket_sla_policies",
                 "ticket_network_links",
                 "project_types",
                 "project_logos",
@@ -360,6 +363,13 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             network_table = conn.execute(text(
                 "SELECT to_regclass('public.ticket_network_links') IS NOT NULL"
             )).scalar()
+            helpdesk_forced = conn.execute(text(
+                "SELECT count(*) FROM pg_class WHERE relname IN "
+                "('ticket_sla_policies','ticket_sla_clocks','ticket_tags',"
+                "'ticket_tag_links','ticket_macros','ticket_views',"
+                "'ticket_watchers','ticket_reads','ticket_notifications') "
+                "AND relforcerowsecurity"
+            )).scalar()
             kept_project = conn.execute(text(
                 "SELECT name FROM projects WHERE id = :id"
             ), {"id": project_id}).scalar()
@@ -374,9 +384,11 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             )).scalar()
     finally:
         engine.dispose()
-    assert head == "0018_ticket_network"
+    assert head == "0019_ticket_helpdesk"
     # 0018: talep agi indeksi gelir (global, RLS'siz).
     assert network_table is True
+    # 0019: helpdesk tablolari tenant-owned, RLS + FORCE.
+    assert helpdesk_forced == 9
     # 0017: geride kalmis tenant TUM modullerle doner (davranis degismez).
     from shared.modules import ALL_MODULES
     assert set(registry_modules) == set(ALL_MODULES)

@@ -10,8 +10,8 @@
  * geri alinamaz bir islemdir (mesaj duzenleme/silme v1'de YOK).
  */
 import { useState } from 'react'
-import { LockOutlined, SendOutlined } from '@ant-design/icons'
-import { Input, Segmented, Typography } from 'antd'
+import { LockOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { Input, Segmented, Select, Typography } from 'antd'
 
 import { ticketHubService } from '../../api/ticketsApi'
 import { Button, Inline, Stack } from '../../components/ui'
@@ -19,19 +19,26 @@ import AttachmentDropzone from './AttachmentDropzone'
 import { readyAttachmentIds } from './attachmentState'
 import './tickets.css'
 import { useT } from '../../i18n'
+import { useTicketLabel } from './useTicketLabel'
 
 const { Text } = Typography
 
 export function AgentComposer({
     onSubmit, pending = false, canRespond = true, value, onChange,
     attachmentsEnabled = false,
+    // Dalga B: hazir yanitlar. Eylemli makro (durum/oncelik/etiket) sunucuda
+    // TEK transaction'da uygulanir (`onApplyMacro(macro, body)`).
+    macros = [], onApplyMacro,
 }) {
     const t = useT()
+    const tl = useTicketLabel()
     const [visibility, setVisibility] = useState('public')
     const [internalDraft, setInternalDraft] = useState('')
     const [attachments, setAttachments] = useState([])
+    const [macro, setMacro] = useState(null)
     const draft = value ?? internalDraft
     const setDraft = onChange ?? setInternalDraft
+    const hasActions = Boolean(macro && (macro.set_status || macro.set_priority || (macro.add_tag_ids || []).length))
 
     const internal = visibility === 'internal'
     if (!canRespond) {
@@ -40,7 +47,24 @@ export function AgentComposer({
         )
     }
 
+    const pickMacro = (id) => {
+        const next = macros.find((m) => m.id === id) || null
+        setMacro(next)
+        if (next) {
+            setVisibility(next.visibility || 'public')
+            if (next.body) setDraft(next.body)
+        }
+    }
+
+    const applyMacro = () => {
+        if (!macro || pending) return
+        onApplyMacro?.(macro, draft.trim())
+        setDraft('')
+        setMacro(null)
+    }
+
     const submit = () => {
+        if (hasActions) { applyMacro(); return }
         const body = draft.trim()
         if (!body || pending) return
         // Ek gorunurlugu composer MODUNDAN turetilir: ic nota eklenen
@@ -52,6 +76,7 @@ export function AgentComposer({
         })
         setDraft('')
         setAttachments([])
+        setMacro(null)
     }
 
     return (
@@ -82,7 +107,32 @@ export function AgentComposer({
                         ? t('hub.composerInternalHint')
                         : t('hub.composerPublicHint')}
                 </Text>
+                {macros.length > 0 && (
+                    <Select
+                        className="ticket-macro-pick"
+                        size="small"
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        suffixIcon={<ThunderboltOutlined />}
+                        placeholder={t('hub.macros')}
+                        aria-label={t('hub.macros')}
+                        value={macro?.id ?? null}
+                        onChange={(id) => pickMacro(id)}
+                        options={macros.map((m) => ({ value: m.id, label: m.name }))}
+                    />
+                )}
             </Inline>
+            {hasActions && (
+                <p className="ticket-macro-actions">
+                    <ThunderboltOutlined aria-hidden="true" /> {t('hub.macroWill')}{' '}
+                    {[
+                        macro.set_status && t('hub.macroStatus', { status: tl('agentStatus', macro.set_status) }),
+                        macro.set_priority && t('hub.macroPriority', { priority: tl('priority', macro.set_priority) }),
+                        (macro.add_tag_ids || []).length && t('hub.macroTags', { count: macro.add_tag_ids.length }),
+                    ].filter(Boolean).join(' · ')}
+                </p>
+            )}
             <Input.TextArea
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
@@ -106,12 +156,14 @@ export function AgentComposer({
             <Inline gap={2}>
                 <Button
                     variant="primary"
-                    icon={<SendOutlined />}
+                    icon={hasActions ? <ThunderboltOutlined /> : <SendOutlined />}
                     loading={pending}
-                    disabled={!draft.trim()}
+                    disabled={!hasActions && !draft.trim()}
                     onClick={submit}
                 >
-                    {internal ? t('hub.saveInternalNote') : t('hub.sendReply')}
+                    {hasActions
+                        ? t('hub.applyAndSend')
+                        : internal ? t('hub.saveInternalNote') : t('hub.sendReply')}
                 </Button>
             </Inline>
         </Stack>

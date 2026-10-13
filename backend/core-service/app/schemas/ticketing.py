@@ -149,6 +149,27 @@ class ResolutionAgentOut(ResolutionPublicOut):
 # Musteri yuzeyi
 # =============================================================================
 
+class TagRef(BaseModel):
+    id: UUID
+    name: str
+    color: str = "blue"
+
+
+class SlaLegOut(BaseModel):
+    due_at: datetime
+    met_at: Optional[datetime] = None
+    target_minutes: Optional[int] = None
+    status: Literal["ok", "at_risk", "breached", "met", "paused"]
+
+
+class SlaStateOut(BaseModel):
+    """Talebin SLA durumu (Dalga B) — okumada hesaplanir."""
+
+    status: Literal["ok", "at_risk", "breached", "met", "paused"]
+    first_response: Optional[SlaLegOut] = None
+    resolution: Optional[SlaLegOut] = None
+
+
 class ProviderRef(BaseModel):
     """Talebin canonical kaydinin yasadigi saglayici (talep agi)."""
 
@@ -173,6 +194,8 @@ class TicketCustomerListItem(BaseModel):
     # Talep agi: portal istemcisi detay/komut cagrilarinda bunu `provider`
     # olarak geri gonderir (birden fazla saglayicisi olan tenant'lar icin).
     provider: Optional[ProviderRef] = None
+    # Son bakistan sonra public hareket (destek yaniti vb.) var mi?
+    has_update: bool = False
 
 
 class TicketCustomerOut(TicketCustomerListItem):
@@ -216,6 +239,10 @@ class TicketAgentListItem(BaseModel):
     resolved_at: Optional[datetime] = None
     last_public_activity_at: Optional[datetime] = None
     version: int
+    # Dalga B: SLA durumu, etiketler, "okunmamis" isareti (ajan bazinda).
+    sla: Optional[SlaStateOut] = None
+    tags: List[TagRef] = Field(default_factory=list)
+    unread: bool = False
 
 
 class TicketEventOut(BaseModel):
@@ -260,6 +287,8 @@ class TicketAgentOut(TicketAgentListItem):
     allowed_transitions: List[str] = Field(default_factory=list)
     # PM rework A6: bu ticket'tan dogan is kalemleri (origin_type='ticket').
     work_items: List[TicketWorkItemRef] = Field(default_factory=list)
+    watching: bool = False
+    watcher_count: int = 0
 
 
 class TicketWorkItemCreateRequest(_Strict):

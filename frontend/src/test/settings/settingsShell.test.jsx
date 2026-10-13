@@ -44,7 +44,10 @@ describe('katalog', () => {
     })
 
     it('dizi izin: herhangi biri yeter (ticket entegrasyonu)', () => {
-        expect(firstSettingsPath(canWith(['tickets.admin']))).toBe('/settings/integrations/tickets')
+        // Talep yonetimi (Dalga B) ve ticket entegrasyonu ikisi de dizi izin.
+        expect(firstSettingsPath(canWith(['tickets.admin']))).toBe('/settings/tickets/helpdesk')
+        const paths = visibleSections(canWith(['tickets.admin'])).flatMap((s) => s.items.map((i) => i.path))
+        expect(paths).toContain('/settings/integrations/tickets')
     })
 
     it('her eski adres katalogdaki GERCEK bir yola gider', () => {

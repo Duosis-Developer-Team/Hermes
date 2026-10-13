@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, Drawer, Skeleton, Typography } from 'antd'
 
-import { ticketErrorCode, ticketHubService } from '../../api/ticketsApi'
+import { ticketErrorCode, ticketHelpdeskService, ticketHubService } from '../../api/ticketsApi'
 import {
     Button, EmptyState, Inline, Stack, StatusBadge,
 } from '../../components/ui'
@@ -23,13 +23,14 @@ import ResolveModal from './ResolveModal'
 import ConvertToWorkItemModal from './ConvertToWorkItemModal'
 import TicketTimeline from './TicketTimeline'
 import TicketStatusModal from './TicketStatusModal'
+import SlaBadge, { TagChips } from './SlaBadge'
 
 import { TicketPriorityBadge, TicketStatusBadge } from './TicketStatusBadge'
 import './tickets.css'
 import { useTicketLabel } from './useTicketLabel'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
-import { CustomerServiceOutlined, DownOutlined } from '@ant-design/icons'
+import { CustomerServiceOutlined, DownOutlined, EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 
@@ -38,6 +39,7 @@ export const LIVE_REFRESH_MS = 30_000
 
 export default function AgentWorkbench({
     ticketId, open, onClose, context, onChanged, onError, inline = false,
+    onOpenTicket,
 }) {
     const t = useT()
     const tl = useTicketLabel()
@@ -70,6 +72,19 @@ export default function AgentWorkbench({
     })
 
     const ticket = detail.data
+
+    const macros = useQuery({
+        queryKey: queryKeys.tickets.macros,
+        queryFn: ticketHelpdeskService.macros,
+        enabled: open,
+        staleTime: 300_000,
+    })
+    const tagCatalog = useQuery({
+        queryKey: queryKeys.tickets.tags,
+        queryFn: () => ticketHelpdeskService.tags(),
+        enabled: open,
+        staleTime: 300_000,
+    })
 
     const refresh = () => {
         queryClient.invalidateQueries({
@@ -114,6 +129,20 @@ export default function AgentWorkbench({
     })
     const priority = useMutation({
         mutationFn: (payload) => ticketHubService.setPriority(ticketId, payload),
+        ...handlers,
+    })
+    const applyMacro = useMutation({
+        mutationFn: ({ macro, body }) => ticketHelpdeskService.applyMacro(ticketId, macro.id, {
+            body: body || undefined, expected_version: ticket.version,
+        }),
+        ...handlers,
+    })
+    const setTags = useMutation({
+        mutationFn: (tagIds) => ticketHelpdeskService.setTicketTags(ticketId, tagIds),
+        ...handlers,
+    })
+    const watch = useMutation({
+        mutationFn: (watching) => ticketHelpdeskService.watch(ticketId, watching),
         ...handlers,
     })
 
@@ -168,6 +197,12 @@ export default function AgentWorkbench({
                         disabled={!canRespond}
                         onClick={() => setConvertOpen(true)}
                     >{t('hub.createWorkItem')}</Button>
+                    <Button
+                        icon={ticket.watching ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                        aria-pressed={Boolean(ticket.watching)}
+                        loading={watch.isPending}
+                        onClick={() => watch.mutate(!ticket.watching)}
+                    >{ticket.watching ? t('hub.unwatch') : t('hub.watch')}</Button>
                 </Inline>
             ) : null
 
@@ -224,10 +259,19 @@ export default function AgentWorkbench({
                                     ticketHubService.downloadUrl(ticket.id, fileId)}
                             />
 
+                            {(ticket.sla || (ticket.tags ?? []).length > 0) && (
+                                <div className="ticket-meta-strip">
+                                    <SlaBadge sla={ticket.sla} showMet />
+                                    <TagChips tags={ticket.tags} />
+                                </div>
+                            )}
+
                             <AgentComposer
                                 canRespond={canRespond}
                                 attachmentsEnabled={context?.attachmentsEnabled}
-                                pending={reply.isPending}
+                                macros={macros.data ?? []}
+                                onApplyMacro={(macro, body) => applyMacro.mutate({ macro, body })}
+                                pending={reply.isPending || applyMacro.isPending}
                                 value={draft}
                                 onChange={setDraft}
                                 onSubmit={(payload) => reply.mutate({
@@ -262,8 +306,11 @@ export default function AgentWorkbench({
                 canRespond={canRespond}
                 canResolve={canResolve}
                 pending={assignGroup.isPending || transition.isPending
-                    || assignUser.isPending || priority.isPending}
+                    || assignUser.isPending || priority.isPending || setTags.isPending}
                 draft={draft}
+                tagCatalog={tagCatalog.data ?? []}
+                onTags={(tagIds) => setTags.mutate(tagIds)}
+                onOpenTicket={onOpenTicket ? (id) => { setStatusOpen(false); onOpenTicket(id) } : undefined}
                 onAssignGroup={(groupId) => assignGroup.mutate({
                     group_id: groupId,
                     expected_version: ticket.version,

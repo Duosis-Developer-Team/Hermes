@@ -50,6 +50,7 @@ from app.routers import (
     tickets_router,
     support_portal_router,
     ticket_admin_router,
+    ticket_helpdesk_router,
 )
 from shared.exceptions import HermesException
 from shared.metrics import setup_metrics, start_metrics_server
@@ -229,6 +230,8 @@ app.include_router(meetings_router, prefix=API_PREFIX, dependencies=_module(MEET
 app.include_router(tickets_router, prefix=API_PREFIX, dependencies=_module(TICKETS))
 app.include_router(support_portal_router, prefix=API_PREFIX, dependencies=_module(TICKETS))
 app.include_router(ticket_admin_router, prefix=API_PREFIX, dependencies=_module(TICKETS))
+# Dalga B (helpdesk): SLA, etiket, makro, gorunum, takip, toplu islem, zil.
+app.include_router(ticket_helpdesk_router, prefix=API_PREFIX, dependencies=_module(TICKETS))
 
 # =============================================================================
 # Public API (dis entegrasyonlar) — /api/public altina mount edilen IZOLE

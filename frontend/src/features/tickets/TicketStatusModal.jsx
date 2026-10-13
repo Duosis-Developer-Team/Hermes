@@ -18,12 +18,13 @@ import { CustomerServiceOutlined, HistoryOutlined, UserAddOutlined } from '@ant-
 import dayjs from 'dayjs'
 
 import { authService } from '../../api/authApi'
-import { ticketHubService } from '../../api/ticketsApi'
+import { ticketHelpdeskService, ticketHubService } from '../../api/ticketsApi'
 import { Button, StatusBadge } from '../../components/ui'
 import { LiquidSegmented, ModalHead } from '../../components/liquid'
 import { queryKeys } from '../../query/queryKeys'
 import { useAuthStore } from '../../stores/authStore'
 import { useT } from '../../i18n'
+import SlaBadge from './SlaBadge'
 import { TicketPriorityBadge, TicketStatusBadge } from './TicketStatusBadge'
 import { useTicketLabel } from './useTicketLabel'
 
@@ -101,9 +102,59 @@ function ActivityLog({ ticketId }) {
     )
 }
 
+function RequesterHistory({ ticket, onOpen }) {
+    const t = useT()
+    const history = useQuery({
+        queryKey: queryKeys.tickets.requesterHistory(ticket.id),
+        queryFn: () => ticketHelpdeskService.requesterHistory(ticket.id),
+        staleTime: 60_000,
+    })
+    const rows = history.data ?? []
+    return (
+        <>
+            <h3 className="lq-grp">{t('hub.requesterHistory', { name: ticket.requester_display_name || '—' })}</h3>
+            {rows.length === 0 ? <p className="lq-note">{t('hub.noOtherTickets')}</p> : (
+                <ul className="ticket-history">
+                    {rows.map((row) => (
+                        <li key={row.id}>
+                            <button type="button" onClick={() => onOpen?.(row.id)}>
+                                <span className="tickets-row__code">{row.ticket_number}</span>
+                                <span className="ticket-history__title">{row.title}</span>
+                                <TicketStatusBadge status={row.status} surface="hub" />
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </>
+    )
+}
+
+function SlaDetail({ sla }) {
+    const t = useT()
+    if (!sla) return null
+    return (
+        <>
+            <h3 className="lq-grp">{t('sla.title')}</h3>
+            <dl className="lq-kv">
+                {['first_response', 'resolution'].filter((k) => sla[k]).map((k) => (
+                    <Fragment key={k}>
+                        <dt>{t(`sla.leg.${k}`)}</dt>
+                        <dd className="ticket-sla-leg">
+                            <SlaBadge sla={{ [k]: sla[k] }} showMet />
+                            <span className="lq-note">{t('sla.due', { at: dayjs(sla[k].due_at).format('D MMM HH:mm') })}</span>
+                        </dd>
+                    </Fragment>
+                ))}
+            </dl>
+        </>
+    )
+}
+
 export default function TicketStatusModal({
     open, onClose, ticket, groups, canAssign, canRespond, canResolve, pending,
     draft = '', onAssignGroup, onAssignUser, onPriority, onTransition, onResolve,
+    tagCatalog = [], onTags, onOpenTicket,
 }) {
     const t = useT()
     const tl = useTicketLabel()
@@ -236,6 +287,24 @@ export default function TicketStatusModal({
                 )}
             </div>
 
+            {(tagCatalog.length > 0 || (ticket.tags ?? []).length > 0) && (
+                <>
+                    <h3 className="lq-grp">{t('hub.tags')}</h3>
+                    <Select
+                        mode="multiple"
+                        aria-label={t('hub.tags')}
+                        value={(ticket.tags ?? []).map((tag) => tag.id)}
+                        disabled={!canRespond || pending}
+                        onChange={(ids) => onTags?.(ids)}
+                        options={tagCatalog.map((tag) => ({ value: tag.id, label: tag.name }))}
+                        style={{ width: '100%' }}
+                        placeholder={t('hub.addTag')}
+                    />
+                </>
+            )}
+
+            <SlaDetail sla={ticket.sla} />
+
             <h3 className="lq-grp">{t('hub.targetTeam')}</h3>
             <Select
                 aria-label={t('hub.targetTeam')}
@@ -313,6 +382,8 @@ export default function TicketStatusModal({
                     </dl>
                 </details>
             )}
+
+            <RequesterHistory ticket={ticket} onOpen={onOpenTicket} />
 
             <ActivityLog ticketId={ticket.id} />
 

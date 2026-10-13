@@ -114,7 +114,8 @@ provası + satır sayımı).
 | 1 — Tenant modülleri | `610314c` | canlı (14.10) | auth 0006 / core 0017 head; acme + duosis 6 modülle (davranış değişmedi); auth 256, core 837, MCP 104, frontend 1156 test |
 | 2 — Süper-admin konsolu | `591095c` | canlı (14.10) | auth 260, frontend 1163 test; görsel kontrol açık/koyu + 500 px |
 | 3.0 — Talep ağı | `8a3883a` | canlı (14.10; acme → duosis geri dolduruldu) | core 854 (RLS kanıtı dahil), auth 262, frontend 1166 |
-| 3.1 — Dalga A | (bu commit) | CD sonrası | core 861, frontend 1171 |
+| 3.1 — Dalga A | `331810a` | canlı (14.10) | core 861, frontend 1171 |
+| 3.2 — Dalga B | (bu commit) | CD sonrası | core 877, frontend 1178 |
 
 Faz 2 notları:
 - Konsol adresli: `/platform-admin` (genel bakış), `/tenants`, `/tenants/:id`
@@ -147,3 +148,22 @@ Dalga A notları:
   eski/öncelik), sayfalama (50; portal 24), 30 sn canlı yenileme (liste+detay).
 - Portal: müşteri iptali yalnız sunucu izin verince (`can_cancel`), yanıta ek.
 - CD dumanı: global tablo listesi `mixins.GLOBAL_TABLES` ile parite testine bağlandı.
+
+Dalga B notları (helpdesk çekirdeği, 0019 — 9 yeni tenant-owned tablo, RLS+FORCE):
+- SLA: sağlayıcı başına tek politika (öncelik → ilk yanıt/çözüm, mesai dakikası) +
+  takvim (saat dilimi, haftalık pencere, tatiller; boş = 7/24). Saat açılışta
+  hedefleri kopyalar; "müşteride bekliyor"da durur (kalan süre yukarı yuvarlanır),
+  müşteri yanıtıyla devam eder; çözüm/kapanış/iptal karşılar; yeniden açılış tam
+  süreyle yeniden başlar; öncelik değişince karşılanmamış hedefler güncellenir.
+  İhlal OKUMADA hesaplanır; "SLA ihlali" kuyruğu + "SLA vadesi en yakın" sıralaması.
+- Etiket (yapılandırma yetkisi), hazır yanıt (paylaşılan = yapılandırma; kişisel =
+  yanıt yetkisi; eylem: durum yalnız işleme al/müşteride bekliyor, öncelik, etiket —
+  tek transaction, mevcut servis kurallarıyla), kayıtlı görünüm (kişisel/paylaşılan,
+  erişim vermez), takip, talep eden geçmişi, toplu işlem (talep başına sonuç;
+  çözme/kapatma toplu yok).
+- Okundu bilgisi sağlayıcıda (`ticket_reads`): ajan için "okunmamış", müşteri için
+  "yeni güncelleme" — tenant'lar arası yazma yok.
+- Zil: talep bildirimleri (yeni talep → ekip; müşteri yanıtı/yeniden açılış →
+  atanan+takipçi, yoksa ekip; atama → atanan; eylemi yapan hariç) iş kalemi
+  bildirimleriyle birleşik; okunmuşlar 90 günde mevcut cleanup işiyle temizlenir.
+- Sözleşme değişmedi: yeni `ticket_events` türü yok, outbox alanı yok.

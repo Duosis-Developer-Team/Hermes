@@ -127,7 +127,9 @@ function MainLayout() {
     // menu ogesi gosterilmez; yukleniyorsa gosterilir (titreme olmasin).
     const ticketsVisible = ticketContext.isLoading || ticketContext.surfaces.length > 0
     // Dis entegrasyon ayarlari yalniz ana destek tenant'inda.
-    const settingsCaps = ticketContext.context ? { ticketIntegrations: ticketContext.integrations } : null
+    const settingsCaps = ticketContext.context
+        ? { ticketIntegrations: ticketContext.integrations, ticketHub: ticketContext.isHub }
+        : null
 
     // Dashboard, Billable Hours, Raporlar ve Sozlesmeler AYAR DEGILDIR;
     // "Yonetim" grubunda kalirlar (03-yetenekler §6).
@@ -394,7 +396,8 @@ function MainLayout() {
             islandLive={mod.meetings ? islandLive : null}
             dockActions={dockActions}
             /* Bildirimler bugun yalniz is kalemi olaylaridir. */
-            showNotifications={mod.work}
+            showNotifications={mod.work || (mod.tickets && ticketContext.isHub)}
+            notificationSources={{ work: mod.work, tickets: Boolean(mod.tickets && ticketContext.isHub) }}
         >
             <Outlet />
         </AppShell>

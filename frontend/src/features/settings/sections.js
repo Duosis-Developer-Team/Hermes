@@ -57,6 +57,14 @@ export const SETTINGS_SECTIONS = [
         ],
     },
     {
+        key: 'support',
+        labelKey: 'settings.support',
+        items: [
+            // Dalga B: SLA, etiket, hazir yanit — yalniz saglayici (hub) tenant'ta.
+            { key: 'helpdesk', path: '/settings/tickets/helpdesk', labelKey: 'nav.ticketHelpdesk', perm: ['tickets.config.manage', 'tickets.admin'], module: 'tickets', requires: 'ticketHub' },
+        ],
+    },
+    {
         key: 'integrations',
         labelKey: 'settings.integrations',
         items: [
