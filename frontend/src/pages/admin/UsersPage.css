@@ -37,3 +37,12 @@
 .ma-chip__remove { display: inline-flex; align-items: center; padding: 0; margin-left: 2px; border: 0; background: none; color: inherit; opacity: 0.6; font-size: 10px; cursor: pointer; }
 .ma-chip__remove:hover, .ma-chip__remove:focus-visible { opacity: 1; }
 .ma-add { min-width: 150px; }
+/* Modul erisimi: modul basina cam kart, iki sutun (alti modul = 2x3). */
+.ma-tab { display: flex; flex-direction: column; gap: var(--h-space-3, 12px); }
+.ma-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--h-space-4, 16px); }
+@media (max-width: 900px) { .ma-grid { grid-template-columns: minmax(0, 1fr); } }
+.ma-card.lq-card { display: flex; flex-direction: column; gap: var(--h-space-4, 16px); padding: 20px; }
+.ma-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.ma-card__head .lq-mh { min-width: 0; }
+.ma-everyone { display: inline-flex; align-items: center; gap: 8px; flex: none; font-size: 13px; color: var(--h-text-secondary); }
+.ma-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
