@@ -401,3 +401,26 @@
 .merge-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: var(--h-bg-hover); }
 .ticket-merged-from { margin: 0; color: var(--h-text-secondary); font-size: 13px; }
 .ticket-link { padding: 0; border: 0; background: none; color: var(--h-brand); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+/* --- Dalga D2: otomasyonlar ------------------------------------------------------ */
+.rule-age { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rule-rows { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.rule-row { display: grid; grid-template-columns: 190px minmax(0, 1fr) auto; align-items: start; gap: 10px; }
+.rule-row__label { padding-top: 6px; font-size: 13px; font-weight: 600; color: var(--h-text-secondary); }
+.rule-row__control .ant-select { width: 100%; }
+.rule-row__stack { display: flex; flex-direction: column; gap: 6px; }
+.rule-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.rule-list > li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto auto; align-items: center; gap: 8px; padding: 8px 6px; border-bottom: 1px solid var(--h-border-subtle); }
+.rule-list > li.is-off .rule-list__main { opacity: 0.55; }
+.rule-list__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rule-list__stats { font-size: 12px; color: var(--h-text-muted); }
+.rule-list__errors { color: var(--h-danger); }
+.rule-list__runs { grid-column: 1 / -1; }
+.rule-runs { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.rule-runs li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.rule-runs li.is-error { color: var(--h-danger); }
+.rule-runs__detail { flex-basis: 100%; font-size: 12px; color: var(--h-text-muted); }
+@media (max-width: 640px) {
+    .rule-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .rule-row__label { grid-column: 1 / -1; padding-top: 0; }
+}

@@ -255,6 +255,12 @@ export const ticketHelpdeskService = {
     reports: async (params = {}) => (await coreClient.get(`${HD}/reports`, { params })).data,
     merge: async (ticketId, payload) =>
         (await coreClient.post(`${CORE}/tickets/${ticketId}/merge`, payload)).data,
+    customers: async () => (await coreClient.get(`${HD}/customers`)).data,
+    automations: async () => (await coreClient.get(`${HD}/automations`)).data,
+    createAutomation: async (payload) => (await coreClient.post(`${HD}/automations`, payload)).data,
+    updateAutomation: async (id, payload) => (await coreClient.put(`${HD}/automations/${id}`, payload)).data,
+    deleteAutomation: async (id) => { await coreClient.delete(`${HD}/automations/${id}`) },
+    automationRuns: async (id) => (await coreClient.get(`${HD}/automations/${id}/runs`)).data,
 }
 
 export const ticketAdminService = {

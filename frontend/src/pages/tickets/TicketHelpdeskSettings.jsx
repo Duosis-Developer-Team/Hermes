@@ -17,7 +17,7 @@ import {
     Alert, Checkbox, DatePicker, Input, InputNumber, Modal, Select, Switch, TimePicker, message,
 } from 'antd'
 import {
-    ClockCircleOutlined, PlusOutlined, TagsOutlined, ThunderboltOutlined,
+    ClockCircleOutlined, PlusOutlined, RobotOutlined, TagsOutlined, ThunderboltOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 
@@ -29,6 +29,7 @@ import { SettingsEmpty, SettingsSection, SettingsTabs } from '../admin/settingsK
 import { TagChips } from '../../features/tickets/SlaBadge'
 import { useTicketLabel } from '../../features/tickets/useTicketLabel'
 import useTicketContext from '../../features/tickets/useTicketContext'
+import AutomationsTab from './AutomationsTab'
 import '../../features/tickets/tickets.css'
 
 const PRIORITIES = ['urgent', 'high', 'normal', 'low']
@@ -382,11 +383,13 @@ export default function TicketHelpdeskSettings() {
                     { value: 'sla', label: t('sla.title'), icon: <ClockCircleOutlined /> },
                     { value: 'tags', label: t('hub.tags'), icon: <TagsOutlined /> },
                     { value: 'macros', label: t('hub.macros'), icon: <ThunderboltOutlined /> },
+                    { value: 'automations', label: t('automation.title'), icon: <RobotOutlined /> },
                 ]}
             />
             {tab === 'sla' && <SlaTab />}
             {tab === 'tags' && <TagsTab />}
             {tab === 'macros' && <MacrosTab />}
+            {tab === 'automations' && <AutomationsTab />}
         </div>
     )
 }

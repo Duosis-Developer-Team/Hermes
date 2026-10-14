@@ -394,6 +394,10 @@ def create_ticket(
     # Uygulama ici bildirim (Dalga B): ekibe "yeni talep" — ayni transaction.
     from . import ticket_helpdesk
     ticket_helpdesk.on_created(db, ticket)
+    # Otomasyon (Dalga D2): "talep acildiginda" kurallari — her biri kendi
+    # savepoint'inde; hata talep acilisini bozmaz.
+    from . import ticket_automation
+    ticket_automation.run_event(db, ticket, "created", run_key="created")
 
     ticket_metrics.ticket_created(application.code, ticket.category)
     ticket_metrics.observe_create_duration(time.perf_counter() - started)
@@ -640,6 +644,10 @@ def add_message(
             db, ticket, actor=actor,
             application=application, source_tenant=source_tenant,
         )
+        # Otomasyon (Dalga D2): "musteri yanitladiginda" — durum otomatik
+        # gecisinden SONRA (kosullar guncel durumu gorsun).
+        from . import ticket_automation
+        ticket_automation.run_event(db, ticket, "customer_replied", run_key=str(message.id))
     return message
 
 

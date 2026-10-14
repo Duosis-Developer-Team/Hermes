@@ -37,6 +37,7 @@ from ..models.ticket_helpdesk import (
 from ..models.ticketing import SupportApplication, SupportSourceTenant, Ticket
 from ..schemas.ticketing import TagRef, TicketAgentListItem, TicketAgentOut
 from ..services import (
+    ticket_automation as automation,
     ticket_helpdesk as helpdesk,
     ticket_reports,
     ticket_sla,
@@ -508,6 +509,179 @@ def bulk(
         )
     except Exception as exc:  # noqa: BLE001
         raise _validation(exc)
+
+
+# =============================================================================
+# Otomasyon kurallari (Dalga D2)
+# =============================================================================
+
+class AutomationIn(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    trigger: Literal["created", "customer_replied", "schedule"]
+    is_active: bool = True
+    conditions: Dict[str, Any] = Field(default_factory=dict)
+    actions: List[Dict[str, Any]] = Field(default_factory=list)
+    position: int = 0
+
+
+class AutomationOut(BaseModel):
+    id: UUID
+    name: str
+    trigger: str
+    is_active: bool
+    conditions: Dict[str, Any]
+    actions: List[Dict[str, Any]]
+    position: int
+    runs_7d: int = 0
+    errors_7d: int = 0
+    updated_at: Optional[datetime] = None
+
+
+class AutomationRunOut(BaseModel):
+    id: UUID
+    ticket_id: UUID
+    ticket_number: Optional[str] = None
+    outcome: str
+    detail: Optional[str] = None
+    ran_at: datetime
+
+
+def _automation_out(db, rule) -> AutomationOut:
+    from datetime import timedelta
+
+    from sqlalchemy import func
+
+    from ..models.ticket_helpdesk import TicketAutomationRun
+
+    since = _now() - timedelta(days=7)
+    counts = dict(
+        db.query(TicketAutomationRun.outcome, func.count(TicketAutomationRun.id))
+        .filter(TicketAutomationRun.automation_id == rule.id, TicketAutomationRun.ran_at >= since)
+        .group_by(TicketAutomationRun.outcome).all()
+    )
+    return AutomationOut(
+        id=rule.id, name=rule.name, trigger=rule.trigger, is_active=rule.is_active,
+        conditions=rule.conditions_json or {}, actions=rule.actions_json or [],
+        position=rule.position, runs_7d=int(counts.get("applied", 0)),
+        errors_7d=int(counts.get("error", 0)), updated_at=rule.updated_at,
+    )
+
+
+@router.get("/helpdesk/automations", response_model=List[AutomationOut])
+def list_automations(
+    scope: visibility.HubScope = Depends(hub_scope),
+    db: Session = Depends(get_support_db),
+):
+    from ..models.ticket_helpdesk import TicketAutomation
+
+    rules = db.query(TicketAutomation).order_by(TicketAutomation.position, TicketAutomation.created_at).all()
+    return [_automation_out(db, r) for r in rules]
+
+
+def _save_automation(db, scope, payload: AutomationIn, rule=None):
+    from ..models.ticket_helpdesk import TicketAutomation
+
+    _require_config(scope)
+    try:
+        conditions, actions = automation.validate_rule(payload.trigger, payload.conditions, payload.actions)
+    except Exception as exc:  # noqa: BLE001
+        raise _validation(exc)
+    if rule is None:
+        rule = TicketAutomation()
+        db.add(rule)
+    rule.name = " ".join(payload.name.split())
+    rule.trigger = payload.trigger
+    rule.is_active = payload.is_active
+    rule.conditions_json = conditions
+    rule.actions_json = actions
+    rule.position = payload.position
+    rule.updated_by_user_id = UUID(str(scope.user_id))
+    rule.updated_at = _now()
+    db.flush()
+    return _automation_out(db, rule)
+
+
+@router.post("/helpdesk/automations", response_model=AutomationOut, status_code=201)
+def create_automation(
+    payload: AutomationIn,
+    scope: visibility.HubScope = Depends(hub_scope),
+    db: Session = Depends(get_support_db),
+):
+    return _save_automation(db, scope, payload)
+
+
+@router.put("/helpdesk/automations/{rule_id}", response_model=AutomationOut)
+def update_automation(
+    rule_id: UUID,
+    payload: AutomationIn,
+    scope: visibility.HubScope = Depends(hub_scope),
+    db: Session = Depends(get_support_db),
+):
+    from ..models.ticket_helpdesk import TicketAutomation
+
+    rule = db.get(TicketAutomation, rule_id)
+    if rule is None:
+        raise http_error("not_found", "Rule not found.")
+    return _save_automation(db, scope, payload, rule)
+
+
+@router.delete("/helpdesk/automations/{rule_id}", status_code=204)
+def delete_automation(
+    rule_id: UUID,
+    scope: visibility.HubScope = Depends(hub_scope),
+    db: Session = Depends(get_support_db),
+):
+    """Kural yapilandirmadir; silinince calisma gecmisi de gider (talep
+    verisi degil — eylemlerin kendisi talebin olay gecmisinde kalir)."""
+    from ..models.ticket_helpdesk import TicketAutomation
+
+    _require_config(scope)
+    rule = db.get(TicketAutomation, rule_id)
+    if rule is None:
+        raise http_error("not_found", "Rule not found.")
+    db.delete(rule)
+    db.flush()
+
+
+@router.get("/helpdesk/automations/{rule_id}/runs", response_model=List[AutomationRunOut])
+def automation_runs(
+    rule_id: UUID,
+    scope: visibility.HubScope = Depends(hub_scope),
+    db: Session = Depends(get_support_db),
+):
+    from ..ticket_contract import format_ticket_number
+
+    _require_config(scope)
+    runs = automation.recent_runs(db, rule_id)
+    numbers = {
+        t.id: format_ticket_number(t.number)
+        for t in db.query(Ticket).filter(Ticket.id.in_([r.ticket_id for r in runs])).all()
+    } if runs else {}
+    return [AutomationRunOut(id=r.id, ticket_id=r.ticket_id, ticket_number=numbers.get(r.ticket_id),
+                             outcome=r.outcome, detail=r.detail, ran_at=r.ran_at) for r in runs]
+
+
+class CustomerOut(BaseModel):
+    id: UUID
+    display_name: str
+    application: Optional[str] = None
+
+
+@router.get("/helpdesk/customers", response_model=List[CustomerOut])
+def list_customers(
+    scope: visibility.HubScope = Depends(hub_scope),
+    db: Session = Depends(get_support_db),
+):
+    """Saglayicinin musterileri (kaynak tenant eslemeleri) — kural kosulu
+    ve filtre secicileri icin. Yalniz ad; uye/kimlik verisi yok."""
+    rows = (
+        db.query(SupportSourceTenant, SupportApplication.display_name)
+        .join(SupportApplication, SupportApplication.id == SupportSourceTenant.application_id)
+        .order_by(SupportSourceTenant.display_name)
+        .all()
+    )
+    return [CustomerOut(id=src.id, display_name=src.display_name, application=app_name)
+            for src, app_name in rows]
 
 
 # =============================================================================

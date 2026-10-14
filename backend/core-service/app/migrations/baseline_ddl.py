@@ -552,6 +552,31 @@ def apply_ticket_network(conn) -> None:
     )
 
 
+TICKET_NOTIFICATION_KINDS = ("new_ticket", "assigned", "customer_replied", "reopened", "automation")
+
+
+def apply_ticket_notification_kinds(conn) -> None:
+    """`ticket_notifications.kind` kisitini GENISLETIR (0022; 'automation').
+
+    Idempotent ve veri degistirmez: yeni kisit eklenir, eskisi kaldirilir,
+    yenisi eski adla yeniden adlandirilir. Tablo yoksa (0019 oncesi) atlanir.
+    """
+    exists = conn.execute(text("SELECT to_regclass('public.ticket_notifications')")).scalar()
+    if not exists:
+        return
+    kinds = ",".join(f"'{k}'" for k in TICKET_NOTIFICATION_KINDS)
+    conn.execute(text("ALTER TABLE ticket_notifications DROP CONSTRAINT IF EXISTS chk_ticket_notifications_kind_v2"))
+    conn.execute(text(
+        "ALTER TABLE ticket_notifications ADD CONSTRAINT chk_ticket_notifications_kind_v2 "
+        f"CHECK (kind IN ({kinds}))"
+    ))
+    conn.execute(text("ALTER TABLE ticket_notifications DROP CONSTRAINT IF EXISTS chk_ticket_notifications_kind"))
+    conn.execute(text(
+        "ALTER TABLE ticket_notifications RENAME CONSTRAINT chk_ticket_notifications_kind_v2 "
+        "TO chk_ticket_notifications_kind"
+    ))
+
+
 def apply_all(conn) -> None:
     """Testler icin: bugunku head semasinin tamami.
 
@@ -567,3 +592,4 @@ def apply_all(conn) -> None:
     apply_project_types_expand(conn)
     apply_tenant_modules(conn)
     apply_ticket_network(conn)
+    apply_ticket_notification_kinds(conn)

@@ -2,6 +2,7 @@
  * HERMES - Dalga D (00-plan §4.4) — istemci.
  *   D1 Birlestirme: yalniz ayni musterinin acik talepleri aday; hedef secilince
  *      musteri mesaji dolar; onay birlestirme ucunu cagirir.
+ *   D2 Otomasyon: editor zamanli kurali (yas + kosul + eylem) dogru govdeyle kaydeder.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
@@ -14,13 +15,22 @@ vi.mock('../../api/ticketsApi', async () => {
     const actual = await vi.importActual('../../api/ticketsApi')
     return {
         ...actual,
-        ticketHubService: { list: vi.fn(async () => ({ items: [] })) },
-        ticketHelpdeskService: { requesterHistory: vi.fn(), merge: vi.fn() },
+        ticketHubService: {
+            list: vi.fn(async () => ({ items: [] })),
+            listApplications: vi.fn(async () => []),
+            routingGroups: vi.fn(async () => []),
+        },
+        ticketHelpdeskService: {
+            requesterHistory: vi.fn(), merge: vi.fn(),
+            tags: vi.fn(async () => []), customers: vi.fn(async () => []),
+            automations: vi.fn(async () => []), createAutomation: vi.fn(async () => ({})),
+        },
     }
 })
 
 const { ticketHelpdeskService } = await import('../../api/ticketsApi')
 const { default: MergeModal } = await import('../../features/tickets/MergeModal')
+const { default: AutomationsTab } = await import('../../pages/tickets/AutomationsTab')
 
 const setup = () => userEvent.setup({ delay: null, pointerEventsCheck: 0 })
 const CUSTOMER = { id: 'src1' }
@@ -64,5 +74,33 @@ describe('birlestirme', () => {
             expected_version: 5,
         }))
         expect(onMerged).toHaveBeenCalledWith({ id: 't2' })
+    })
+})
+
+
+describe('otomasyon editoru', () => {
+    it('zamanli kurali yas + kosul + eylemle kaydeder', async () => {
+        const user = setup()
+        renderWithProviders(<AutomationsTab />)
+        await user.click(await screen.findByRole('button', { name: /New rule/ }))
+        const dialog = await screen.findByRole('dialog')
+        await user.type(within(dialog).getByLabelText('Rule name'), 'Hatirlatma')
+        await user.click(within(dialog).getByRole('button', { name: 'On a schedule (hourly)' }))
+        const hours = within(dialog).getByLabelText('Hours')
+        await user.clear(hours)
+        await user.type(hours, '72')
+        await user.click(within(dialog).getByRole('combobox', { name: 'Add condition' }))
+        await user.click(await screen.findByTitle('Status is'))
+        await user.click(within(dialog).getByRole('combobox', { name: 'Status is' }))
+        await user.click(await screen.findByTitle('Waiting on customer'))
+        await user.click(within(dialog).getByRole('combobox', { name: 'Add action' }))
+        await user.click(await screen.findByTitle('Reply to customer'))
+        await user.type(within(dialog).getByLabelText('Reply to customer'), 'Yanitinizi bekliyoruz.')
+        await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+        await waitFor(() => expect(ticketHelpdeskService.createAutomation).toHaveBeenCalledWith({
+            name: 'Hatirlatma', trigger: 'schedule', is_active: true, position: 0,
+            conditions: { age: { basis: 'updated', hours: 72 }, status: ['waiting_customer'] },
+            actions: [{ type: 'public_reply', body: 'Yanitinizi bekliyoruz.' }],
+        }))
     })
 })

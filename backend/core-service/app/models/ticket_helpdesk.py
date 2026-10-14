@@ -256,6 +256,7 @@ NOTIFICATION_KINDS = (
     "assigned",          # sana atandi
     "customer_replied",  # takip ettigin/atandigin talebe musteri yaniti
     "reopened",          # takip ettigin/atandigin talep yeniden acildi
+    "automation",        # otomasyon kuralinin bildir eylemi (Dalga D2, 0022)
 )
 
 
@@ -281,7 +282,7 @@ class TicketNotification(TenantOwnedMixin, Base):
     __table_args__ = (
         Index("idx_ticket_notifications_user_unread", "user_id", "read_at"),
         CheckConstraint(
-            "kind IN ('new_ticket','assigned','customer_replied','reopened')",
+            "kind IN ('new_ticket','assigned','customer_replied','reopened','automation')",
             name="chk_ticket_notifications_kind",
         ),
     )
@@ -350,4 +351,67 @@ class TicketMerge(TenantOwnedMixin, Base):
     __table_args__ = (
         UniqueConstraint("tenant_id", "source_ticket_id", name="uq_ticket_merges_source"),
         CheckConstraint("source_ticket_id <> target_ticket_id", name="chk_ticket_merges_not_self"),
+    )
+
+
+# =============================================================================
+# Otomasyon kurallari (Dalga D2, 0022)
+# =============================================================================
+
+TICKET_AUTOMATION_TABLES = ("ticket_automations", "ticket_automation_runs")
+AUTOMATION_TRIGGERS = ("created", "customer_replied", "schedule")
+
+
+class TicketAutomation(TenantOwnedMixin, Base):
+    """"Eger ... ise ... yap" kurali. Olay kurallari (talep acildi / musteri
+    yanitladi) ayni transaction'da, zamanli kurallar saatlik bakimda calisir.
+    Eylemler MEVCUT servis kurallarindan gecer (durum makinesi, uyelik)."""
+
+    __tablename__ = "ticket_automations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(120), nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    trigger = Column(String(20), nullable=False)
+    conditions_json = Column(JSONB, nullable=False, default=dict,
+                             server_default=text("'{}'::jsonb"))
+    actions_json = Column(JSONB, nullable=False, default=list,
+                          server_default=text("'[]'::jsonb"))
+    position = Column(Integer, nullable=False, default=0)
+    updated_by_user_id = Column(UUID(as_uuid=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_now, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=_now, onupdate=_now,
+                        nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("trigger IN ('created','customer_replied','schedule')",
+                        name="chk_ticket_automations_trigger"),
+    )
+
+
+class TicketAutomationRun(TenantOwnedMixin, Base):
+    """Kuralin bir talepte calismasi. `run_key`: olay icin olay kimligi,
+    zamanli kural icin "schedule" — boylece zamanli kural bir talepte BIR
+    kez calisir."""
+
+    __tablename__ = "ticket_automation_runs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    automation_id = Column(
+        UUID(as_uuid=True), ForeignKey("ticket_automations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    ticket_id = Column(
+        UUID(as_uuid=True), ForeignKey("tickets.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    run_key = Column(String(80), nullable=False)
+    outcome = Column(String(20), nullable=False, default="applied")
+    detail = Column(Text, nullable=True)
+    ran_at = Column(DateTime(timezone=True), default=_now, nullable=False, index=True)
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "automation_id", "ticket_id", "run_key",
+                         name="uq_ticket_automation_runs"),
+        CheckConstraint("outcome IN ('applied','error')", name="chk_ticket_automation_runs_outcome"),
     )
