@@ -137,6 +137,30 @@ def apply_tenant_modules(conn) -> None:
         conn.execute(text(stmt))
 
 
+MODULE_ACCESS_TABLES = ("tenant_module_policies", "tenant_module_grants")
+
+
+def module_access_statements() -> List[str]:
+    """0007: hesap turu kolonu. ADD COLUMN ... DEFAULT mevcut uyelikleri
+    `person` yapar — davranis degismez. Kisit idempotent yeniden kurulur."""
+    return [
+        "ALTER TABLE tenant_memberships ADD COLUMN IF NOT EXISTS account_kind "
+        "VARCHAR(20) NOT NULL DEFAULT 'person'",
+        "ALTER TABLE tenant_memberships DROP CONSTRAINT IF EXISTS "
+        "chk_tenant_memberships_account_kind",
+        "ALTER TABLE tenant_memberships ADD CONSTRAINT "
+        "chk_tenant_memberships_account_kind "
+        "CHECK (account_kind IN ('person','company'))",
+    ]
+
+
+def apply_module_access(conn) -> None:
+    """Sirket hesaplari + modul erisimi (0007). Yalnizca EKLER; idempotent."""
+    for stmt in module_access_statements():
+        conn.execute(text(stmt))
+    _create(conn, MODULE_ACCESS_TABLES)
+
+
 def apply_all(conn) -> None:
     """Testler icin: bugunku head semasinin tamami."""
     apply_baseline(conn)
@@ -144,3 +168,4 @@ def apply_all(conn) -> None:
     apply_tenant_constraints(conn)
     apply_user_photos(conn)
     apply_tenant_modules(conn)
+    apply_module_access(conn)

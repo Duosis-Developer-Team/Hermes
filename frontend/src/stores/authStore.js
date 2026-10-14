@@ -22,7 +22,7 @@ import { create } from 'zustand'
 
 import { queryClient } from '../query/queryClient'
 import { setTenantScope } from '../query/queryKeys'
-import { tenantHasModule } from '../features/modules/catalog'
+import { userHasModule } from '../features/modules/catalog'
 
 export const useAuthStore = create((set, get) => ({
     // =========================================================================
@@ -53,6 +53,13 @@ export const useAuthStore = create((set, get) => ({
      */
     permissions: null,
 
+    /**
+     * Modul erisimi (auth 0007): { account_kind: 'person'|'company',
+     * modules: [...] } — tenant modullerinin ALTINDA kullaniciya acik olanlar.
+     * null = henuz yuklenmedi (tenant modullerine duser).
+     */
+    access: null,
+
     // =========================================================================
     // Actions
     // =========================================================================
@@ -63,7 +70,7 @@ export const useAuthStore = create((set, get) => ({
      *
      * @param {object} user - Backend'den dönen kullanıcı nesnesi
      */
-    login: (user, tenant = null) => {
+    login: (user, tenant = null, access = undefined) => {
         // Query anahtar uzayini bu tenant'a sabitle — bundan sonraki
         // TUM cache girisleri bu kapsamda yasar.
         setTenantScope(tenant?.id)
@@ -71,6 +78,8 @@ export const useAuthStore = create((set, get) => ({
             user,
             tenant,
             isAuthenticated: true,
+            // /users/me ve giris yanitlari erisim profilini tasir.
+            access: access ?? user?.access ?? null,
         })
     },
 
@@ -92,6 +101,7 @@ export const useAuthStore = create((set, get) => ({
             memberships: [],
             isAuthenticated: false,
             permissions: null,
+            access: null,
         })
     },
 
@@ -122,12 +132,13 @@ export const useAuthStore = create((set, get) => ({
             tenant,
             // Izinler tenant'a ozguydu; yeniden cozulene kadar YOK.
             permissions: null,
+            access: tenant?.access ?? null,
         })
     },
 
     /** RBAC izinlerini yükler (boot'ta /rbac/me yanıtından). */
-    setPermissions: (permissions) => {
-        set({ permissions: permissions || [] })
+    setPermissions: (permissions, access) => {
+        set(access ? { permissions: permissions || [], access } : { permissions: permissions || [] })
     },
 
     /**
@@ -157,8 +168,13 @@ export const useAuthStore = create((set, get) => ({
     /** Birden fazla aktif uyelik var mi? (organizasyon secici kosulu) */
     hasMultipleTenants: () => (get().memberships || []).length > 1,
 
-    /** Tenant bu modulu kullaniyor mu? (features/modules/catalog.js) */
-    hasModule: (code) => tenantHasModule(get().tenant, code),
+    /** Bu modul KULLANICIYA acik mi? Tenant modulleri tavan, modul erisimi
+     *  (auth 0007) altinda (features/modules/catalog.js). */
+    hasModule: (code) => userHasModule(get().tenant, get().access, code),
+
+    /** Sirket hesabi mi? (dis musteriye verilen tek hesap — yalniz izinli
+     *  moduller, cekirdek yuzeyler yok) */
+    isCompanyAccount: () => get().access?.account_kind === 'company',
 
     /** Verilen izinlerin TÜMÜ var mı? (fail-closed: yüklenmediyse false) */
     can: (...codes) => {

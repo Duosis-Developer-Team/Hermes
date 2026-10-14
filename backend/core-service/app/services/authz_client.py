@@ -7,6 +7,9 @@
 #     ASLA loglanmaz.
 #   - Adres turetimi auth_upstream.auth_service_base_url() — TEK kaynak
 #     (2026-07-17 canli URL bug'inin dersi; kopya normalizasyon YASAK).
+#   - Yanit (auth 0007) izinle birlikte ETKIN modulleri ve hesap turunu
+#     tasir; kullanici bazli modul kapisi (module_gate) bunlari okur.
+#     Kullanicinin aktif grup kimlikleri istekle gider (grup kurallari).
 #   - Cache: pozitif 60 sn. Bayat izin UYDURULMAZ; TTL dolunca yeniden
 #     sorulur. Basarisizlik → AuthzUnavailable (fail-closed; cagiran
 #     karar noktasi guard ise 503, gorunurluk filtresi ise izinsiz-gibi
@@ -16,7 +19,8 @@
 
 import logging
 import time
-from typing import Callable, Dict, Optional, Tuple
+from dataclasses import dataclass
+from typing import Callable, Dict, FrozenSet, List, Optional, Tuple
 
 import httpx
 
@@ -36,13 +40,60 @@ _client_factory: Callable[[], httpx.Client] = lambda: httpx.Client(
 # WS3 — cache anahtari (tenant_id, user_id). Yalnizca user_id ile
 # anahtarlamak, ayni kimligin A'daki izinlerinin B'de servis edilmesi
 # demekti (bir kullanici A'da admin, B'de member olabilir).
-# (tenant_id, user_id) -> (expires_monotonic, frozenset(permissions))
-_cache: Dict[Tuple[str, str], Tuple[float, frozenset]] = {}
+# (tenant_id, user_id) -> (expires_monotonic, Profile)
+_cache: Dict[Tuple[str, str], Tuple[float, "Profile"]] = {}
 _CACHE_MAX = 5000
+
+
+@dataclass(frozen=True)
+class Profile:
+    """auth'un cozdugu erisim profili (auth 0007).
+
+    `modules` None ise auth henuz modul dondurmuyordur (eski image) —
+    kullanici bazli modul kapisi tenant duzeyine duser."""
+    permissions: frozenset
+    modules: Optional[FrozenSet[str]] = None
+    account_kind: str = "person"
 
 
 class AuthzUnavailable(Exception):
     """auth-service izin cozumune ulasilamiyor / yapilandirilmamis."""
+
+
+# Modul erisimi grup kurallari icin kullanicinin AKTIF grup kimlikleri
+# auth'a ISTEKLE iletilir (auth geri cagri yapmaz → ic ice S2S yok).
+# Testler cozucuyu degistirir.
+_group_resolver: Optional[Callable[[str, List[str]], Dict[str, List[str]]]] = None
+
+
+def set_group_resolver(fn) -> None:
+    """YALNIZCA testler icin (None = veritabanindan oku)."""
+    global _group_resolver
+    _group_resolver = fn
+
+
+def _group_ids(tenant_id: str, user_ids: List[str]) -> Optional[Dict[str, List[str]]]:
+    if _group_resolver is not None:
+        return _group_resolver(tenant_id, user_ids)
+    try:
+        from ..tenant_db import TenantSession
+        from .access_groups import active_group_ids
+
+        with TenantSession(tenant_id) as db:
+            return active_group_ids(db, user_ids)
+    except Exception as exc:  # noqa: BLE001 — grup yoksa auth kendisi sorar
+        logger.warning("authz group lookup failed class=%s", type(exc).__name__)
+        return None
+
+
+def _profile_of(entry: dict) -> Profile:
+    modules = entry.get("modules")
+    kind = entry.get("account_kind") or "person"
+    return Profile(
+        permissions=frozenset(entry.get("permissions") or []),
+        modules=frozenset(modules) if isinstance(modules, list) else None,
+        account_kind=kind if kind in ("person", "company") else "company",
+    )
 
 
 def set_client_factory(factory: Callable[[], httpx.Client]) -> None:
@@ -63,12 +114,9 @@ def _get_client() -> httpx.Client:
     return _client
 
 
-def effective_permissions(user_id: str, *, tenant_id: str) -> frozenset:
-    """Kullanicinin BIR TENANT ICINDEKI efektif RBAC izinleri.
-
-    S2S, 60 sn cache. `tenant_id` zorunludur ve cache anahtarinin
-    parcasidir.
-    """
+def access_profile(user_id: str, *, tenant_id: str) -> Profile:
+    """Kullanicinin BIR TENANT ICINDEKI erisim profili (izin + modul +
+    hesap turu). S2S, 60 sn cache; `tenant_id` cache anahtarinin parcasi."""
     uid = str(user_id)
     tid = str(tenant_id)
     key = (tid, uid)
@@ -82,10 +130,14 @@ def effective_permissions(user_id: str, *, tenant_id: str) -> frozenset:
     if not token:
         raise AuthzUnavailable("S2S credential not configured")
 
+    request = {"tenant_id": tid, "user_ids": [uid]}
+    groups = _group_ids(tid, [uid])
+    if groups is not None:
+        request["group_ids"] = {uid: list(groups.get(uid, []))}
     try:
         resp = _get_client().post(
             f"{auth_service_base_url()}/internal/authz/resolve",
-            json={"tenant_id": tid, "user_ids": [uid]},
+            json=request,
             headers={"Authorization": f"Bearer {token}"},
         )
     except Exception as exc:  # noqa: BLE001 — fail closed
@@ -104,15 +156,21 @@ def effective_permissions(user_id: str, *, tenant_id: str) -> frozenset:
         logger.warning("authz resolve tenant mismatch")
         raise AuthzUnavailable("tenant mismatch")
 
-    perms: frozenset = frozenset()
+    profile = Profile(permissions=frozenset())
     for u in body.get("users") or []:
         if str(u.get("id")) == uid:
-            perms = frozenset(u.get("permissions") or [])
+            profile = _profile_of(u)
 
     if len(_cache) >= _CACHE_MAX:
         _cache.clear()  # basit sinir — dogruluk auth'ta
-    _cache[key] = (now + POSITIVE_TTL_SECONDS, perms)
-    return perms
+    _cache[key] = (now + POSITIVE_TTL_SECONDS, profile)
+    return profile
+
+
+def effective_permissions(user_id: str, *, tenant_id: str) -> frozenset:
+    """Kullanicinin BIR TENANT ICINDEKI efektif RBAC izinleri (etkin
+    modullerle kesismis — auth hesaplar)."""
+    return access_profile(user_id, tenant_id=tenant_id).permissions
 
 
 def effective_permissions_many(
@@ -131,7 +189,7 @@ def effective_permissions_many(
     for uid in dict.fromkeys(str(u) for u in user_ids):
         hit = _cache.get((tid, uid))
         if hit and hit[0] > now:
-            out[uid] = hit[1]
+            out[uid] = hit[1].permissions
         else:
             missing.append(uid)
     if not missing:
@@ -145,10 +203,14 @@ def effective_permissions_many(
     CHUNK = 500  # auth tarafindaki MAX_RESOLVE_IDS siniri
     for i in range(0, len(missing), CHUNK):
         chunk = missing[i : i + CHUNK]
+        request = {"tenant_id": tid, "user_ids": chunk}
+        groups = _group_ids(tid, chunk)
+        if groups is not None:
+            request["group_ids"] = {u: list(groups.get(u, [])) for u in chunk}
         try:
             resp = _get_client().post(
                 f"{auth_service_base_url()}/internal/authz/resolve",
-                json={"tenant_id": tid, "user_ids": chunk},
+                json=request,
                 headers={"Authorization": f"Bearer {token}"},
             )
         except Exception as exc:  # noqa: BLE001 — fail closed
@@ -164,13 +226,13 @@ def effective_permissions_many(
             logger.warning("authz batch resolve tenant mismatch")
             raise AuthzUnavailable("tenant mismatch")
         got = {
-            str(u.get("id")): frozenset(u.get("permissions") or [])
+            str(u.get("id")): _profile_of(u)
             for u in body.get("users") or []
         }
         for uid in chunk:
-            perms = got.get(uid, frozenset())
+            profile = got.get(uid, Profile(permissions=frozenset()))
             if len(_cache) >= _CACHE_MAX:
                 _cache.clear()
-            _cache[(tid, uid)] = (now + POSITIVE_TTL_SECONDS, perms)
-            out[uid] = perms
+            _cache[(tid, uid)] = (now + POSITIVE_TTL_SECONDS, profile)
+            out[uid] = profile.permissions
     return out

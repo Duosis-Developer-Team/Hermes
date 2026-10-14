@@ -59,6 +59,7 @@ from ..schemas.ticketing import (
 )
 from ..services import support_tenant as support
 from ..services import ticket_network as network
+from ..services import company_accounts
 from ..services import (
     ticket_attachment_service,
     ticket_helpdesk as helpdesk,
@@ -271,7 +272,7 @@ def ticket_context(
         if link.available:
             try:
                 with support.provider_session(link.provider_tenant_id) as pdb:
-                    route = _route_status(pdb, current_user.tenant_id)
+                    route = _route_status(pdb, company_accounts.source_key(current_user))
             except support.SupportNotConfigured:
                 pass
         providers.append(PortalProviderOut(

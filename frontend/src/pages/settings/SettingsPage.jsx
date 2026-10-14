@@ -85,13 +85,14 @@ export function SettingsIndex() {
     const canAny = useAuthStore((s) => s.canAny)
     const hasModule = useAuthStore((s) => s.hasModule)
     const tenant = useAuthStore((s) => s.tenant)
+    const access = useAuthStore((s) => s.access)
     const caps = ticketSettingsCaps(useTicketCaps())
     const [query, setQuery] = useState('')
     // Izinler henuz yuklenmediyse karar verilmez (fail-closed bekleme).
     if (permissions === null) {
         return <div className="settings-loading"><Spin /></div>
     }
-    if (!hasAnySettings(canAny, hasModule, caps)) return <Navigate to={landingPath(tenant)} replace />
+    if (!hasAnySettings(canAny, hasModule, caps)) return <Navigate to={landingPath(tenant, access)} replace />
     const q = query.trim()
     const sections = visibleSections(canAny, hasModule, caps)
         .map((section) => ({

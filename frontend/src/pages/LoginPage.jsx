@@ -158,11 +158,11 @@ function LoginPage() {
             // yalnızca user + organizasyon özeti kaydedilir.
             // WS8: tenant, imzalı oturum çerezinin içindedir; UI onu
             // seçmez, yalnızca backend'in bildirdiğini gösterir.
-            login(response.user, response.tenant || null)
+            login(response.user, response.tenant || null, response.access || null)
 
             message.success(t('login.loginSuccess'))
             // Tenant'in ACIK ilk modulu (eskiden sabit /time-entry).
-            navigate(landingPath(response.tenant))
+            navigate(landingPath(response.tenant, response.access || null))
         } catch (error) {
             /*
              * TEK GIRIS NOKTASI — iki AYRI guvenlik duzlemi.

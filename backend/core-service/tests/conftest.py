@@ -177,6 +177,10 @@ def tenant_modules(monkeypatch):
     _gate.set_resolver(None)
 
 
+AUTHZ_PROFILES: dict = {}
+AUTHZ_REQUESTS: list = []
+
+
 @pytest.fixture()
 def authz_grants(monkeypatch):
     import httpx as _httpx
@@ -184,19 +188,29 @@ def authz_grants(monkeypatch):
     from app.services import authz_client as _authz
 
     grants: dict = {}
+    # Modul erisimi (auth 0007): AUTHZ_PROFILES[user_id] = {"modules": [...],
+    # "account_kind": "company"} — verilmezse eski yanit sekli (modulsuz).
+    AUTHZ_PROFILES.clear()
+    AUTHZ_REQUESTS.clear()
 
     def handler(request: _httpx.Request) -> _httpx.Response:
         import json as _json
 
         if request.url.path == "/internal/authz/resolve":
-            ids = _json.loads(request.content)["user_ids"]
+            body = _json.loads(request.content)
+            AUTHZ_REQUESTS.append(body)
+            ids = body["user_ids"]
             return _httpx.Response(200, json={
                 "users": [
-                    {"id": str(i), "permissions": grants.get(str(i), [])}
+                    {"id": str(i), "permissions": grants.get(str(i), []),
+                     **AUTHZ_PROFILES.get(str(i), {})}
                     for i in ids
                 ]
             })
         return _httpx.Response(404, json={"detail": "Not Found"})
+
+    # Grup kimlikleri testte DB'ye ikinci baglantiyla sorulmaz.
+    _authz.set_group_resolver(lambda tenant_id, user_ids: {u: [] for u in user_ids})
 
     _authz.set_client_factory(
         lambda: _httpx.Client(transport=_httpx.MockTransport(handler))
@@ -212,4 +226,5 @@ def authz_grants(monkeypatch):
     )
     yield grants
     _authz.set_client_factory(lambda: _httpx.Client(timeout=5))
+    _authz.set_group_resolver(None)
     _authz.clear_cache()

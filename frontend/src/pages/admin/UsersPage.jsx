@@ -34,6 +34,9 @@ import { pickFields, resetAndFill } from '../../features/admin/shared/formLifecy
 
 import UserGroupsTab from './UserGroupsTab'
 import RolesTab from './RolesTab'
+import CompaniesTab from './CompaniesTab'
+import ModuleAccessTab from './ModuleAccessTab'
+import { useAuthStore } from '../../stores/authStore'
 import './UsersPage.css'
 import { useT } from '../../i18n'
 import { Avatar } from '../../components/liquid'
@@ -368,6 +371,8 @@ export function UsersTab() {
 
 function UsersPage() {
     const t = useT()
+    const can = useAuthStore((s) => s.can)
+    useAuthStore((s) => s.permissions) // izinler gelince yeniden ciz
     return (
         <div className="users-page fade-in">
             <div className="page-header">
@@ -380,6 +385,9 @@ function UsersPage() {
                     { key: 'users', label: t('entity.users'), children: <UsersTab /> },
                     { key: 'roles', label: t('users.roles'), children: <RolesTab /> },
                     { key: 'groups', label: t('users.groups'), children: <UserGroupsTab /> },
+                    // docs/tenant-platform/01: dis musteri hesaplari + modul erisimi.
+                    ...(can('users.manage') ? [{ key: 'companies', label: t('companies.title'), children: <CompaniesTab /> }] : []),
+                    ...(can('roles.manage') ? [{ key: 'module-access', label: t('moduleAccess.title'), children: <ModuleAccessTab /> }] : []),
                 ]}
             />
         </div>

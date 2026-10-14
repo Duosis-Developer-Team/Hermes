@@ -62,12 +62,25 @@ export function tenantHasModule(tenant, code) {
 }
 
 /**
+ * Kullaniciya acik mi? Tenant modulleri TAVAN; erisim profili (auth 0007)
+ * yuklendiyse onun etkin modulleriyle kesisir. Sirket hesabinda profil
+ * yoksa hicbir modul acik sayilmaz (fail-closed).
+ */
+export function userHasModule(tenant, access, code) {
+    if (!tenantHasModule(tenant, code)) return false
+    if (Array.isArray(access?.modules)) return access.modules.includes(code)
+    return access?.account_kind !== 'company'
+}
+
+/**
  * Oturum acilinca / izinsiz bir rotadan donuste nereye gidilir?
  * Eskiden sabit `/time-entry` idi; artik tenant'in ACIK ilk modulu.
  * Hic modul yoksa ana sayfa (cekirdek).
  */
-export function landingPath(tenant) {
-    const first = MODULE_CODES.find((c) => tenantHasModule(tenant, c))
+export function landingPath(tenant, access = null) {
+    // Sirket hesabi yalniz talep portalini kullanir.
+    if (access?.account_kind === 'company') return '/support'
+    const first = MODULE_CODES.find((c) => userHasModule(tenant, access, c))
     if (first === 'tickets') return '/tickets'
     return first ? MODULES[first].path : '/'
 }

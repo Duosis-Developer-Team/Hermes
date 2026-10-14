@@ -136,9 +136,16 @@ const PlatformSessionGate = ({ fallback }) => {
 // Musteri/proje ayarlari: is ya da zaman girisi acik olmali.
 const WORK_OR_TIME = ['work', 'time_entry']
 
-const fallbackFor = (tenant, pathname) => {
-    const target = landingPath(tenant)
+const fallbackFor = (tenant, pathname, access = null) => {
+    const target = landingPath(tenant, access)
     return target === pathname ? '/' : target
+}
+
+/** Ana sayfa: sirket hesabinin cekirdek yuzeyi yoktur → talep portali. */
+const HomeIndex = () => {
+    const isCompany = useAuthStore((s) => s.access?.account_kind === 'company')
+    if (isCompany) return <Navigate to="/support" replace />
+    return <HomePage />
 }
 
 export const ProtectedRoute = ({ children, permission = null, module = null }) => {
@@ -151,6 +158,7 @@ export const ProtectedRoute = ({ children, permission = null, module = null }) =
     const canAny = useAuthStore((s) => s.canAny)
     const hasModule = useAuthStore((s) => s.hasModule)
     const tenant = useAuthStore((s) => s.tenant)
+    const access = useAuthStore((s) => s.access)
     const location = useLocation()
 
     if (!isAuthenticated) {
@@ -163,7 +171,7 @@ export const ProtectedRoute = ({ children, permission = null, module = null }) =
     if (module) {
         const mods = Array.isArray(module) ? module : [module]
         if (!mods.some((m) => hasModule(m))) {
-            return <Navigate to={fallbackFor(tenant, location.pathname)} replace />
+            return <Navigate to={fallbackFor(tenant, location.pathname, access)} replace />
         }
     }
 
@@ -171,7 +179,7 @@ export const ProtectedRoute = ({ children, permission = null, module = null }) =
         if (permissions === null) return <CenteredLoader />
         const wanted = Array.isArray(permission) ? permission : [permission]
         if (!canAny(...wanted)) {
-            return <Navigate to={fallbackFor(tenant, location.pathname)} replace />
+            return <Navigate to={fallbackFor(tenant, location.pathname, access)} replace />
         }
     }
 
@@ -187,6 +195,7 @@ export const TaskProtectedRoute = ({ children }) => {
     const { isLoading, canAccessAny, isTaskAdmin } = useTaskPermissions()
     const hasModule = useAuthStore((s) => s.hasModule)
     const tenant = useAuthStore((s) => s.tenant)
+    const access = useAuthStore((s) => s.access)
     const location = useLocation()
 
     if (!isAuthenticated) {
@@ -194,7 +203,7 @@ export const TaskProtectedRoute = ({ children }) => {
     }
     // Is yonetimi modulu kapaliysa yonetici dahil kimse giremez.
     if (!hasModule('work')) {
-        return <Navigate to={fallbackFor(tenant, location.pathname)} replace />
+        return <Navigate to={fallbackFor(tenant, location.pathname, access)} replace />
     }
     if (user?.is_admin) {
         return children
@@ -205,7 +214,7 @@ export const TaskProtectedRoute = ({ children }) => {
         return <CenteredLoader />
     }
     if (!canAccessAny && !isTaskAdmin) {
-        return <Navigate to={fallbackFor(tenant, location.pathname)} replace />
+        return <Navigate to={fallbackFor(tenant, location.pathname, access)} replace />
     }
     return children
 }
@@ -272,7 +281,11 @@ function App() {
     useEffect(() => {
         if (isAuthenticated && permissions === null) {
             rbacService.getMyPermissions()
-                .then(r => setPermissions(r.permissions))
+                // auth 0007: izinlerle birlikte etkin moduller + hesap turu.
+                .then(r => setPermissions(
+                    r.permissions,
+                    Array.isArray(r.modules) ? { account_kind: r.account_kind || 'person', modules: r.modules } : undefined,
+                ))
                 .catch(() => setPermissions([]))
         }
         // `setPermissions` de ayni sekilde stabil bir store aksiyonu.
@@ -369,7 +382,7 @@ function App() {
             >
                 {/* PM rework P3: ana sayfa — izin basina blok kompozisyonu
                     (04-roller §3). Dashboard detay olarak kalir. */}
-                <Route index element={<HomePage />} />
+                <Route index element={<HomeIndex />} />
 
                 {/* E6: bir ise link verilebilir — /work/TASK-56 kodu cozer
                     ve is yuzeyini ?item= ile acar. */}

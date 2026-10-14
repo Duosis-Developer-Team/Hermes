@@ -5,6 +5,7 @@
 # Tüm modeller tek bir yerden import edilebilir.
 # =============================================================================
 
+from .access import TenantModuleGrant, TenantModulePolicy
 from .rbac import RbacRole, RbacUserRole
 from .tenancy import (
     Plan,
@@ -27,6 +28,8 @@ __all__ = [
     "User",
     "UserPhoto",
     "RbacRole",
+    "TenantModuleGrant",
+    "TenantModulePolicy",
     "RbacUserRole",
     # Tenant control-plane (WS2)
     "Tenant",

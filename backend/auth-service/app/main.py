@@ -198,6 +198,12 @@ from .routers.rbac_admin import router as rbac_admin_router  # noqa: E402
 
 app.include_router(rbac_admin_router, prefix=f"{API_PREFIX}/auth")
 
+# Sirket hesaplari + modul erisimi (auth 0007) → /api/v1/auth/companies,
+# /api/v1/auth/module-access
+from .routers.company_access import router as company_access_router  # noqa: E402
+
+app.include_router(company_access_router, prefix=f"{API_PREFIX}/auth")
+
 # Internal S2S authz resolve (RBAC R1) — directory ile ayni guard ve
 # ayni "/api disinda" kurali.
 from .routers.internal_authz import router as internal_authz_router  # noqa: E402

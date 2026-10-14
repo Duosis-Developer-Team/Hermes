@@ -29,3 +29,21 @@
 .users-person__text b { font-weight: 600; }
 .users-person__text small { color: var(--h-text-muted); font-size: 12px; }
 .users-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* Sirket hesaplari + modul erisimi (docs/tenant-platform/01) */
+.companies-tab { display: flex; flex-direction: column; gap: 12px; }
+.companies-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.companies-head p { margin: 0; max-width: 68ch; color: var(--h-text-muted); font-size: 13px; }
+.companies-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.companies-name small { color: var(--h-text-muted); font-size: 12px; overflow-wrap: anywhere; }
+.companies-actions { display: inline-flex; gap: 6px; }
+.companies-active { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.ma-tab { display: flex; flex-direction: column; gap: 14px; }
+.ma-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 12px; }
+.ma-card { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid var(--h-border-subtle); border-radius: 14px; background: var(--h-surface, transparent); }
+.ma-card header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ma-everyone { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.ma-summary { margin: 0; font-size: 12px; color: var(--h-text-muted); }
+.ma-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ma-chips .ant-tag { margin: 0; }
+.ma-add { min-width: 140px; }

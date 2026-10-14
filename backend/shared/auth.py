@@ -167,6 +167,12 @@ class TokenData(BaseModel):
     # Bos ise normal kullanici oturumudur.
     support_grant_id: Optional[str] = None
     support_mode: Optional[str] = None
+    # Hesap turu (auth 0007): person | company. Claim'i olmayan (eski)
+    # token `person`dir; sirket hesaplari yalniz yeni token'la vardir.
+    account_kind: str = "person"
+
+
+ACCOUNT_KINDS = ("person", "company")
 
 
 class CurrentUser(BaseModel):
@@ -194,6 +200,13 @@ class CurrentUser(BaseModel):
     # Destek oturumu baglami — salt-okunur destek yazma yapamaz.
     support_grant_id: Optional[str] = None
     support_mode: Optional[str] = None
+    # Sirket hesabi (dis musteriye verilen TEK hesap): core'un ic kullanici
+    # kapisi bunu auth'a sormadan da bilir (fail-closed). Kaynak: token.
+    account_kind: str = "person"
+
+    @property
+    def is_company_account(self) -> bool:
+        return self.account_kind == "company"
 
     @property
     def is_support_session(self) -> bool:
@@ -365,6 +378,12 @@ def verify_token(token: str, *, expected_audience: str) -> TokenData:
             jti=payload.get("jti"),
             support_grant_id=payload.get("support_grant_id"),
             support_mode=payload.get("support_mode"),
+            # Taninmayan deger daha KISITLI ture duser (fail-closed).
+            account_kind=(
+                payload.get("account_kind", "person")
+                if payload.get("account_kind", "person") in ACCOUNT_KINDS
+                else "company"
+            ),
         )
 
     except JWTError as e:
@@ -491,6 +510,7 @@ def _current_user_from_token_data(token_data: TokenData) -> CurrentUser:
         auth_method=token_data.auth_method,
         support_grant_id=token_data.support_grant_id,
         support_mode=token_data.support_mode,
+        account_kind=token_data.account_kind,
     )
 
 

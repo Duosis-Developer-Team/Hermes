@@ -109,6 +109,11 @@ def caller_is_provider(
     icin global indeks kisa omurlu bir oturumla okunur ve oturum HEMEN
     kapanir (istek boyunca bosta baglanti tutulmaz).
     """
+    # Sirket hesabi (auth 0007) saglayicinin ICINDE ama MUSTERIDIR: hub yok.
+    from ..services import company_accounts
+
+    if company_accounts.is_company_account(current_user):
+        return False
     if support.is_support_tenant(current_user.tenant_id):
         return True
     with support.global_session() as gdb:
@@ -118,7 +123,12 @@ def caller_is_provider(
 def caller_links(
     current_user: CurrentUser = Depends(get_current_user),
 ) -> Tuple[network.ProviderLink, ...]:
-    """Cagiranin talep agi baglantilari (portal). Istek basina BIR kez."""
+    """Cagiranin talep agi baglantilari (portal). Istek basina BIR kez.
+    Sirket hesabinin tek saglayicisi kendi tenant'idir (sentez)."""
+    from ..services import company_accounts
+
+    if company_accounts.is_company_account(current_user):
+        return (company_accounts.self_link(current_user),)
     with support.global_session() as gdb:
         return tuple(network.requester_links(gdb, current_user.tenant_id))
 

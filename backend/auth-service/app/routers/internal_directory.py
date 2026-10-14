@@ -178,6 +178,8 @@ def list_users_global(
             User.is_active.is_(True),
             TenantMembership.tenant_id == tenant_id,
             TenantMembership.status == "active",
+            # Sirket hesaplari (auth 0007) kisi dizininde yer almaz.
+            TenantMembership.account_kind == "person",
         )
     )
     if q:

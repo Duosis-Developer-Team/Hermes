@@ -72,6 +72,12 @@ class Token(BaseModel):
         default=None,
         description="Kullanicinin bu tenant'taki uyeligi (id, status)"
     )
+    # Modul erisimi (auth 0007): hesap turu + ETKIN moduller — arayuz ilk
+    # yonlendirmeyi bundan yapar (sirket hesabi dogrudan talep portalina).
+    access: Optional[Any] = Field(
+        default=None,
+        description="Hesap turu ve etkin moduller (account_kind, modules)"
+    )
     # Kayan oturum: yenileme token'i YALNIZCA HttpOnly cerez olarak
     # yazilir; router bu alani yanit govdesine KOYMAZ.
     refresh_token: Optional[str] = Field(

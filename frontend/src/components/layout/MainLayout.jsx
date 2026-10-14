@@ -62,6 +62,9 @@ function MainLayout() {
      * sorguyla okunur ve depoya yazilir; Avatar yalniz depoyu okur. Ayni
      * sorgu anahtari ana sayfa bloklari ile paylasilir (tek istek).
      */
+    // Sirket hesabi (auth 0007): yalniz izinli moduller; cekirdek yuzeyler
+    // (ana sayfa, musteri/proje dizini) yok — sunucu zaten 404 doner.
+    const isCompany = useAuthStore((s) => s.access?.account_kind === 'company')
     const setPhotoIndex = useUserPhotoStore((s) => s.setFromUsers)
     const directory = useQuery({
         queryKey: queryKeys.users.lookup,
@@ -80,7 +83,7 @@ function MainLayout() {
     const customerDir = useQuery({
         queryKey: queryKeys.customers.all,
         queryFn: () => customerService.getAll(),
-        enabled: !!user?.id,
+        enabled: !!user?.id && !isCompany,
         staleTime: 10 * 60 * 1000,
     })
     useEffect(() => {
@@ -91,7 +94,7 @@ function MainLayout() {
     const projectDir = useQuery({
         queryKey: queryKeys.projects.all,
         queryFn: () => projectService.getAll(),
-        enabled: !!user?.id,
+        enabled: !!user?.id && !isCompany,
         staleTime: 10 * 60 * 1000,
     })
     useEffect(() => {
@@ -212,11 +215,12 @@ function MainLayout() {
     // Menu items
     const menuItems = [
         // PM rework P3: ana sayfa — herkese acik, bloklar kendi iznini ister.
-        {
+        // Sirket hesabinda yok (cekirdek yuzey).
+        ...(isCompany ? [] : [{
             key: '/',
             icon: <HomeOutlined />,
             label: t('nav.home'),
-        },
+        }]),
 
         // Standart Kullanıcı Menüsü
         ...(mod.time ? [{
@@ -382,7 +386,7 @@ function MainLayout() {
             selectedKey={selectedKey}
             onMenuClick={handleMenuClick}
             onPrepareNav={(key) => loaderByPath[key]?.()}
-            onLogoClick={() => navigate('/')}
+            onLogoClick={() => navigate(isCompany ? '/support' : '/')}
             accountName={user?.full_name || user?.email}
             accountEmail={user?.email}
             accountId={user?.id}

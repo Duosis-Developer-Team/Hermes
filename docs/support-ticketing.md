@@ -64,6 +64,15 @@ bildirimleri saglayicinin verisinde YENI tablolardir (`app/models/ticket_helpdes
 - Bakim: okunmus talep bildirimleri mevcut `notification_cleanup` isiyle 90 gunde
   silinir (yeni CronJob gerekmez).
 
+## 1c-2. Sirket hesaplari (2026-10-14, docs/tenant-platform/01)
+
+Ayri tenant acmaya degmeyen musteriye (ornegin Defacto) saglayici tenant'in
+ICINDE tek bir **sirket hesabi** verilir (auth `tenant_memberships.account_kind
+= company`). Bu hesap hub'i gormez; portalda saglayicisi kendi tenant'idir
+(baglanti sentezlenir), talepleri `company:<hesap>` musterisi olarak yonetici-
+nin sectigi ekibe duser. Musteri kaydi + ekip olusmadan talep acamaz
+(`route_missing`). Kurulum: Ayarlar → Kullanicilar → Sirketler.
+
 ## 1d. E-posta kanali (2026-10-14, Dalga D4, 0024)
 
 Talep e-postalari saglayicinin verisinde uc YENI tablodur

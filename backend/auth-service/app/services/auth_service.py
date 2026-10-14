@@ -138,6 +138,7 @@ class AuthService:
                 "id": str(membership.id),
                 "status": membership.status,
             },
+            access=self._access_for(user, tenant.id),
         )
     
     # =========================================================================
@@ -196,6 +197,8 @@ class AuthService:
             "tenant_id": str(tenant.id),
             "membership_id": str(membership.id),
             "auth_method": auth_method,
+            # Sirket hesabi (auth 0007): core bunu S2S'siz bilir.
+            "account_kind": getattr(membership, "account_kind", None) or "person",
         }
 
         # Tek kaynak: erisim cerezinin max_age'i de ayni sabitten gelir.
@@ -218,6 +221,13 @@ class AuthService:
             else self.settings.REFRESH_TOKEN_DAYS
         )
         return timedelta(days=days)
+
+    def _access_for(self, user, tenant_id) -> dict:
+        """Oturum yanitinin erisim profili (hesap turu + etkin moduller)."""
+        from .module_access import access_profile
+
+        profile = access_profile(self.db, user.id, tenant_id=tenant_id)
+        return {"account_kind": profile.kind, "modules": profile.modules_list()}
 
     def _create_refresh_token_for_user(
         self, user: User, *, tenant_id, membership_id, auth_method: str,
@@ -326,6 +336,7 @@ class AuthService:
                 "id": str(membership.id),
                 "status": membership.status,
             },
+            access=self._access_for(user, tenant.id),
         )
     
     # =========================================================================
@@ -487,6 +498,7 @@ class AuthService:
                 "id": str(membership.id),
                 "status": membership.status,
             },
+            access=self._access_for(user, tenant.id),
         )
     
     # =========================================================================

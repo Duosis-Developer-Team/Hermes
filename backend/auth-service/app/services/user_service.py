@@ -179,7 +179,11 @@ class UserService:
     def tenant_members_query(self, tenant_id, *, include_inactive: bool):
         """Bu tenant'in uyeleri. include_inactive=False: kullanici aktif
         VE uyelik aktif; True: bu tenant'ta HERHANGI durumda uyeligi olan
-        her kullanici. Bozuk tenant -> bos sonuc (fail-closed)."""
+        her kullanici. Bozuk tenant -> bos sonuc (fail-closed).
+
+        Sirket hesaplari (auth 0007) KISI DEGILDIR: kullanici listesi,
+        secenekler ve kullanici yonetimi uclari onlari gormez; kendi
+        uclari vardir (/auth/companies)."""
         from ..models.tenancy import TenantMembership
         from .membership_service import ACTIVE_MEMBERSHIP_STATUS
 
@@ -187,7 +191,8 @@ class UserService:
         query = self.db.query(User).join(
             TenantMembership,
             (TenantMembership.user_id == User.id)
-            & (TenantMembership.tenant_id == tid),
+            & (TenantMembership.tenant_id == tid)
+            & (TenantMembership.account_kind == "person"),
         )
         if tid is None:
             return query.filter(false())

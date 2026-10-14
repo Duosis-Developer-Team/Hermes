@@ -62,10 +62,10 @@ function AuthCallbackPage() {
 
                 // Store'a yalnızca kullanıcı + organizasyon özeti
                 // kaydedilir — token değil.
-                login(user, user?.tenant || null)
+                login(user, user?.tenant || null, data?.access || null)
 
                 message.success(t('misc.signedInSuccessfully'))
-                navigate('/')
+                navigate(data?.access?.account_kind === 'company' ? '/support' : '/')
             } catch (error) {
                 const detail = error?.response?.data?.detail || error?.message || 'Bilinmeyen hata'
                 message.error(`Microsoft sign-in failed: ${detail}`, 8)

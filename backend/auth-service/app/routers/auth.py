@@ -601,6 +601,17 @@ async def get_current_user_info(
         else None
     )
     payload["membership_id"] = current_user.membership_id
+    # Modul erisimi (auth 0007): tenant.modules TAVANDIR; arayuzun
+    # kullandigi kullanici bazli etkin moduller + hesap turu burada.
+    from ..services.module_access import access_profile
+
+    profile = access_profile(
+        db, current_user.id, tenant_id=current_user.tenant_id
+    )
+    payload["access"] = {
+        "account_kind": profile.kind,
+        "modules": profile.modules_list(),
+    }
 
     # Profil fotografi (ADDITIVE): kendi fotografi her zaman gorunur.
     from ..services.user_photo_service import photo_meta_for

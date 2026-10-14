@@ -49,6 +49,7 @@ from ..schemas.ticketing import (
     TicketCustomerOut,
 )
 from ..services import (
+    company_accounts,
     support_tenant as support,
     ticket_attachment_service,
     ticket_helpdesk as helpdesk,
@@ -110,7 +111,8 @@ def _scope_in(
     if app is not None:
         src = ticket_routing.get_source_tenant(
             db, application_id=app.id,
-            source_tenant_id=str(current_user.tenant_id),
+            # Sirket hesabinda musteri = hesabin kendisi (company:<id>).
+            source_tenant_id=company_accounts.source_key(current_user),
         )
     return visibility.PortalScope(
         # Uygulama henuz yoksa (saglayicida hic talep acilmamis) sifir
@@ -119,6 +121,33 @@ def _scope_in(
         source_tenant_row_id=src.id if src else None,
         requester_source_user_id=str(current_user.id),
         permissions=permissions,
+    )
+
+
+def _write_source_tenant(db: Session, app, current_user: CurrentUser,
+                         link: Optional[network.ProviderLink] = None):
+    """Yazma yolunun musteri kaydi. Kisi: tenant'i (talep agi; yoksa
+    olusturulur). Sirket hesabi: yonetici destek ekibini secince olusan
+    `company:<id>` kaydi — yoksa talep ACILAMAZ (ekip/ad yonetici karari)."""
+    if company_accounts.is_company_account(current_user):
+        src = ticket_routing.get_source_tenant(
+            db, application_id=app.id,
+            source_tenant_id=company_accounts.source_key(current_user),
+        )
+        if src is None or src.status != "active":
+            raise http_error(
+                "route_missing",
+                "Your account is not set up for support requests yet.",
+            )
+        return src
+    slug = _tenant_display_name(db, current_user.tenant_id)
+    return ticket_routing.ensure_source_tenant(
+        db, application=app,
+        source_tenant_id=str(current_user.tenant_id),
+        # Konsolun yazdigi gorunen ad (baglanti snapshot'i) slug'dan
+        # ONCELIKLIDIR: hub "Acme Holding" gormeli, "acme" degil.
+        display_name=(link.requester_display_name if link else None) or slug,
+        slug=slug,
     )
 
 
@@ -325,15 +354,7 @@ def create_ticket(
     )
     # Mapping YALNIZCA yazma yolunda olusturulur: okuma uclarinin
     # yan etkisi olmaz.
-    slug = _tenant_display_name(db, current_user.tenant_id)
-    source_tenant = ticket_routing.ensure_source_tenant(
-        db, application=app,
-        source_tenant_id=str(current_user.tenant_id),
-        # Konsolun yazdigi gorunen ad (baglanti snapshot'i) slug'dan
-        # ONCELIKLIDIR: hub "Acme Holding" gormeli, "acme" degil.
-        display_name=link.requester_display_name or slug,
-        slug=slug,
-    )
+    source_tenant = _write_source_tenant(db, app, current_user, link)
 
     body = payload.model_dump(mode="json")
     try:
@@ -573,11 +594,7 @@ def open_attachment_session(
         app = ticket_routing.require_application(
             db, settings.SUPPORT_HERMES_APPLICATION_CODE
         )
-        source_tenant = ticket_routing.ensure_source_tenant(
-            db, application=app,
-            source_tenant_id=str(current_user.tenant_id),
-            display_name=_tenant_display_name(db, current_user.tenant_id),
-        )
+        source_tenant = _write_source_tenant(db, app, current_user)
         row = ticket_attachment_service.open_upload_session(
             db, application=app, source_tenant=source_tenant,
             uploader_type="tenant_user", uploader_id=str(current_user.id),

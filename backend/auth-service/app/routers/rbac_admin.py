@@ -123,18 +123,24 @@ def my_permissions(
 ):
     """Cagiran kullanicinin efektif izinleri + rolleri. Frontend boot'ta
     ve reporting-service yetki cozumunde kullanilir. JWT yeterli."""
-    perms = svc.effective_permissions(
+    from ..services.module_access import access_profile
+
+    profile = access_profile(
         db, current_user.id, tenant_id=current_user.tenant_id
     )
     roles = svc.user_role_rows(
         db, UUID(current_user.id), tenant_id=current_user.tenant_id
     )
     return {
-        "permissions": sorted(perms),
+        "permissions": sorted(profile.permissions),
         "roles": [
             {"code": r.code, "name": r.name, "is_active": r.is_active}
             for r in roles
         ],
+        # Modul erisimi (auth 0007): arayuz yalniz ETKIN modulleri gosterir;
+        # sirket hesabinin kabugu ayridir.
+        "modules": profile.modules_list(),
+        "account_kind": profile.kind,
     }
 
 

@@ -241,6 +241,13 @@ class TenantMembership(Base):
     # global users.full_name kullanilir.
     display_name_override = Column(String(255), nullable=True)
 
+    # Hesap turu (auth 0007): `person` (calisan) | `company` (dis musteri
+    # sirketine verilen TEK hesap — ornegin Defacto). Sirket hesabi yalniz
+    # kendisine acilan modulleri gorur; cekirdek izinler ona VERILMEZ
+    # (services/module_access.py). Varsayilan `person`: mevcut herkes aynen.
+    account_kind = Column(String(20), nullable=False, default="person",
+                          server_default="person")
+
     joined_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=_now,
                         nullable=False)
@@ -253,6 +260,10 @@ class TenantMembership(Base):
         CheckConstraint(
             "status IN ('invited','active','suspended','removed')",
             name="chk_tenant_memberships_status",
+        ),
+        CheckConstraint(
+            "account_kind IN ('person','company')",
+            name="chk_tenant_memberships_account_kind",
         ),
         # Tenant switcher: "bu kimligin aktif uyelikleri" sorgusu.
         Index("idx_tenant_memberships_user_status", "user_id", "status"),

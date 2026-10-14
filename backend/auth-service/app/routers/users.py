@@ -274,6 +274,15 @@ async def lookup_users(
         (TenantMembership.user_id == User.id)
         & (TenantMembership.tenant_id == tenant_uuid),
     )
+    # Sirket hesaplari (auth 0007): sirket hesabi tenant'in kisilerini
+    # GOREMEZ (yalniz kendini); kisiler icin genel liste sirket hesaplarini
+    # icermez, ama kimlikle istenen ad cozumu (gecmis kayitlar) calisir.
+    from ..services.module_access import COMPANY, membership_kind
+
+    if membership_kind(db, tenant_id=tenant_uuid, user_id=current_user.id) == COMPANY:
+        query = query.filter(User.id == UUID(str(current_user.id)))
+    elif not ids:
+        query = query.filter(TenantMembership.account_kind == "person")
 
     # RBAC R1: pasifleri gorme ayricaligi artik is_admin claim'ine degil
     # users.manage iznine bakar (DB'den cozulur — bayat claim yetmez).

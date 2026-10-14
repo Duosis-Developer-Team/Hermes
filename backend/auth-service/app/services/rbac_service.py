@@ -28,7 +28,6 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from shared.auth import CurrentUser, get_current_user
-from shared.modules import filter_permissions
 from shared.permissions import ALL_PERMISSIONS, PERMISSION_REQUIRES, Perm
 
 from ..database import get_db
@@ -66,56 +65,22 @@ _CODE_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$")
 # ── Efektif izin cozumu ────────────────────────────────────────────────
 
 
-def effective_permissions(db: Session, user_id, *, tenant_id) -> frozenset:
+def effective_permissions(db: Session, user_id, *, tenant_id, group_ids=None) -> frozenset:
     """Kullanicinin BIR TENANT ICINDEKI efektif izinleri.
 
     Izin = AKTIF kullanicinin, o tenant'ta AKTIF UYELIGININ, o tenant'a
-    ait AKTIF rollerindeki izinlerin birlesimi ∩ katalog.
+    ait AKTIF rollerindeki izinlerin birlesimi ∩ katalog ∩ kullanicinin
+    ETKIN modulleri (tenant modulleri + modul erisimi; sirket hesabinda
+    cekirdek izin yok, Talepler izni ortuk). Hesap: services/module_access.
 
     `tenant_id` ZORUNLUDUR ve varsayilani YOKTUR: opsiyonel olsaydi
     cagiranin unuttugu her yerde izinler tenant'lar arasi birlesirdi.
     Ayni kimlik A'da admin, B'de member olabilir — bu fonksiyon o ayrimi
     koruyan tek noktadir.
     """
-    try:
-        uid = UUID(str(user_id))
-        tid = UUID(str(tenant_id))
-    except (ValueError, TypeError):
-        return frozenset()
+    from .module_access import access_profile
 
-    active = (
-        db.query(User.is_active).filter(User.id == uid).scalar()
-    )
-    if not active:
-        return frozenset()  # bilinmeyen veya pasif kullanici → bos
-
-    # Uyelik aktif degilse rol atamasi olsa BILE izin yok: tenant'tan
-    # cikarilmis bir kullanicinin rolleri temizlenmemis olabilir.
-    from .membership_service import get_active_membership
-
-    if get_active_membership(db, tenant_id=tid, user_id=uid) is None:
-        return frozenset()
-
-    rows = (
-        db.query(RbacRole.permissions)
-        .join(RbacUserRole, RbacUserRole.role_id == RbacRole.id)
-        .filter(
-            RbacUserRole.user_id == uid,
-            RbacUserRole.tenant_id == tid,
-            RbacRole.tenant_id == tid,
-            RbacRole.is_active.is_(True),
-        )
-        .all()
-    )
-    perms: set = set()
-    for (plist,) in rows:
-        perms.update(plist or [])
-    # Tenant modulleri (shared/modules.py): KAPALI modulun izni rolde kayitli
-    # olsa bile verilmez — core/reporting izni buradan cozdugu icin modul
-    # kapisi oralarda da kendiliginden uygulanir.
-    from .tenant_modules import enabled_modules
-
-    return filter_permissions(perms & set(ALL_PERMISSIONS), enabled_modules(db, tid))
+    return access_profile(db, user_id, tenant_id=tenant_id, group_ids=group_ids).permissions
 
 
 def user_role_rows(db: Session, user_id: UUID, *, tenant_id):
@@ -352,10 +317,17 @@ def set_user_roles(
     # organizasyonun kullanicisina rol atanamaz.
     from .membership_service import get_active_membership
 
-    if get_active_membership(
+    membership = get_active_membership(
         db, tenant_id=tenant_id, user_id=target_user_id
-    ) is None:
+    )
+    if membership is None:
         raise HTTPException(status_code=404, detail="User not found.")
+    # Sirket hesabi (auth 0007) rol ALMAZ: izni yalniz kendisine acilan
+    # modullerden gelir; system-admin gibi bir rol ona asla atanamaz.
+    if (membership.account_kind or "person") == "company":
+        raise HTTPException(
+            status_code=409, detail="Company accounts cannot hold roles."
+        )
 
     unique_ids = list(dict.fromkeys(role_ids or []))
     roles = (

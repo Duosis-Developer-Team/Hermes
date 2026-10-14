@@ -5,8 +5,8 @@
 # internal_directory ile ayni guard (require_s2s: dual-key, constant-time,
 # bos konfig=kapali, IP fail limiti) ve ayni sinirlar:
 #   - /api prefix'inin DISINDA kayitlidir (ingress /internal'i yonlendirmez).
-#   - Yanit MINIMAL: id + permissions listesi. Rol adlari/aciklama/kullanici
-#     profili YOK (o is directory'nin; bu uc yalnizca yetki cozer).
+#   - Yanit MINIMAL: id + permissions + modules + account_kind. Rol
+#     adlari/aciklama/kullanici profili YOK (o is directory'nin).
 #   - Bilinmeyen VEYA PASIF kullanici → permissions: [] (fail-closed;
 #     cagiranin negatif cache'i icin id her kosulda yanitta bulunur).
 #   - JWT'ye izin gomulmedigi icin rol degisikligi core tarafinda en gec
@@ -14,7 +14,7 @@
 #     bos liste doner.
 # =============================================================================
 
-from typing import List
+from typing import Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..services.rbac_service import effective_permissions
+from ..services.module_access import access_profile
 from .internal_directory import require_s2s
 
 router = APIRouter(prefix="/internal/authz", tags=["Internal"])
@@ -35,6 +35,10 @@ class ResolvePermissionsRequest(BaseModel):
     # izinleri tenant'lar arasi birlestirirdi.
     tenant_id: UUID
     user_ids: List[UUID] = Field(..., max_length=MAX_RESOLVE_IDS)
+    # Modul erisimi (auth 0007): gruplar core_db'dedir; core, kullanicinin
+    # AKTIF grup kimliklerini burada iletir (auth geri cagri yapmaz).
+    # Verilmezse auth gerekirse core'dan kendisi okur.
+    group_ids: Optional[Dict[str, List[UUID]]] = None
 
 
 @router.post("/resolve")
@@ -58,14 +62,20 @@ def resolve_permissions(
         if uid in seen:
             continue
         seen.add(uid)
+        groups = None
+        if payload.group_ids is not None:
+            groups = payload.group_ids.get(str(uid), [])
+        profile = access_profile(
+            db, uid, tenant_id=payload.tenant_id, group_ids=groups
+        )
         users.append(
             {
                 "id": str(uid),
-                "permissions": sorted(
-                    effective_permissions(
-                        db, uid, tenant_id=payload.tenant_id
-                    )
-                ),
+                "permissions": sorted(profile.permissions),
+                # Kullanici bazli modul kapisi (core module_gate) ve sirket
+                # hesabi kapisi bu iki alani kullanir.
+                "modules": profile.modules_list(),
+                "account_kind": profile.kind,
             }
         )
     return {"tenant_id": str(payload.tenant_id), "users": users}
