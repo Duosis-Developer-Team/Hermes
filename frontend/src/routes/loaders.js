@@ -48,6 +48,7 @@ export const routeLoaders = {
     ticketHub: () => import('../pages/tickets/TicketHubPage'),
     ticketReports: () => import('../pages/tickets/TicketReportsPage'),
     knowledgeBase: () => import('../pages/tickets/KnowledgeBasePage'),
+    ticketCustomers: () => import('../pages/tickets/CustomersPage'),
     helpCenter: () => import('../pages/tickets/HelpCenterPage'),
     supportPortal: () => import('../pages/tickets/SupportPortalPage'),
     ticketIntegrations: () =>

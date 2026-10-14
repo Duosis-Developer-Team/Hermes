@@ -99,3 +99,25 @@ def test_support_setup_is_for_company_accounts_and_admins_only(api, ticket_world
     assert [(i["display_name"], i["configured"]) for i in listing["items"]] == [("Defacto", True)]
     # Sirket hesabi bu yonetim ucuna giremez.
     assert _company_client(defacto, ticket_world["session"]).get(f"{COMPANIES}/support").status_code == 404
+
+
+def test_assigned_customers_are_listed_even_without_requests(api, ticket_world, defacto):
+    _setup_support(api, ticket_world, defacto)
+    url = "/api/v1/core/tickets/helpdesk/my-customers"
+    mine = {c["display_name"]: c for c in api(ticket_world["agent_a"]).get(url).json()}
+    assert mine["Defacto"]["kind"] == "company" and mine["Defacto"]["open_count"] == 0
+    assert mine["Defacto"]["team"]["name"] == "DevOps Team"
+    assert mine["Acme"]["kind"] == "workspace" and mine["BTA"]["kind"] == "integration"
+
+    # Baska ekibin ajani bu musterileri GORMEZ (route onun ekibine degil).
+    other = [c["display_name"] for c in api(ticket_world["agent_b"]).get(url).json()]
+    assert "Defacto" not in other
+
+    company = _company_client(defacto, ticket_world["session"])
+    assert company.post(PORTAL, json=NEW).status_code == 201
+    mine = {c["display_name"]: c for c in api(ticket_world["agent_a"]).get(url).json()}
+    assert (mine["Defacto"]["open_count"], mine["Defacto"]["total_count"]) == (1, 1)
+    # Listede musteriye gore suzme (ayni kapsam kurali).
+    rows = api(ticket_world["agent_a"]).get(
+        HUB, params={"queue": "all", "source_tenant_row_id": mine["Defacto"]["id"]}).json()["items"]
+    assert [r["source_tenant"]["display_name"] for r in rows] == ["Defacto"]

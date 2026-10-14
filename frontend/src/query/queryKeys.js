@@ -185,6 +185,7 @@ export const queryKeys = {
         get macros() { return k('tickets', 'helpdesk', 'macros') },
         // Dalga D4: e-posta kanali ayari
         get mail() { return k('tickets', 'helpdesk', 'mail') },
+        get myCustomers() { return k('tickets', 'helpdesk', 'my-customers') },
         get views() { return k('tickets', 'helpdesk', 'views') },
         get notifications() { return k('tickets', 'helpdesk', 'notifications') },
         requesterHistory: (id) => k('tickets', 'requester-history', id),

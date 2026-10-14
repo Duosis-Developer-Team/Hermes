@@ -15,7 +15,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { BarChartOutlined, ReadOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
+import { BarChartOutlined, ReadOutlined, ReloadOutlined, SearchOutlined, ShopOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Checkbox, Input, message, Pagination, Select, Skeleton } from 'antd'
 import dayjs from 'dayjs'
@@ -97,6 +97,8 @@ export default function TicketHubPage() {
     const priorities = params.getAll('priority')
     const categories = params.getAll('category')
     const groupId = params.get('group') || undefined
+    // Musteri (kaynak tenant kaydi) — Musteriler sayfasindan gelinir.
+    const customerId = params.get('customer') || undefined
     const tagIds = params.getAll('tag')
     const viewId = params.get('view') || null
     const sort = SORTS.includes(params.get('sort')) ? params.get('sort') : 'updated'
@@ -105,7 +107,7 @@ export default function TicketHubPage() {
     // filtre cubugunda olu buton durmaz.
     const hasFilters = Boolean(
         search || statuses.length || priorities.length || categories.length
-        || tagIds.length || applicationId || groupId || sort !== 'updated' || viewId
+        || tagIds.length || applicationId || groupId || customerId || sort !== 'updated' || viewId
         || (queue && queue !== DEFAULT_QUEUE),
     )
 
@@ -138,10 +140,11 @@ export default function TicketHubPage() {
         priority: priorityKey ? priorityKey.split(',') : [],
         category: categoryKey ? categoryKey.split(',') : [],
         group_id: groupId,
+        source_tenant_row_id: customerId,
         tag: tagKey ? tagKey.split(',') : [],
         sort,
         page,
-    }), [queue, applicationId, search, statusKey, priorityKey, categoryKey, tagKey, groupId, sort, page])
+    }), [queue, applicationId, search, statusKey, priorityKey, categoryKey, tagKey, groupId, customerId, sort, page])
 
     const applications = useQuery({
         queryKey: queryKeys.tickets.applications,
@@ -177,6 +180,7 @@ export default function TicketHubPage() {
             priority: priorities,
             category: categories,
             group_id: groupId,
+            source_tenant_row_id: customerId,
             tag: tagIds,
             sort,
             limit: PAGE_SIZE,
@@ -185,6 +189,13 @@ export default function TicketHubPage() {
         enabled: context.isHub,
         keepPreviousData: true,
         refetchInterval: LIVE_REFRESH_MS,
+    })
+
+    const customers = useQuery({
+        queryKey: queryKeys.tickets.myCustomers,
+        queryFn: ticketHelpdeskService.myCustomers,
+        enabled: context.isHub,
+        staleTime: 60_000,
     })
 
     const tags = useQuery({
@@ -353,6 +364,9 @@ export default function TicketHubPage() {
                         <Button icon={<BarChartOutlined />} onClick={() => navigate('/tickets/reports')}>
                             {t('ticketReports.title')}
                         </Button>
+                        <Button icon={<ShopOutlined />} onClick={() => navigate('/tickets/customers')}>
+                            {t('customersHub.title')}
+                        </Button>
                         <Button icon={<ReadOutlined />} onClick={() => navigate('/tickets/kb')}>
                             {t('kb.title_page')}
                         </Button>
@@ -441,6 +455,19 @@ export default function TicketHubPage() {
                             value={tagIds}
                             onChange={(value) => patchParams({ tag: value })}
                             options={(tags.data ?? []).map((tag) => ({ value: tag.id, label: tag.name }))}
+                        />
+                    )}
+                    {((customers.data ?? []).length > 0 || customerId) && (
+                        <Select
+                            allowClear
+                            showSearch
+                            optionFilterProp="label"
+                            className="tickets-status-filter"
+                            placeholder={t('hub.customer')}
+                            aria-label={t('hub.customer')}
+                            value={customerId}
+                            onChange={(value) => patchParams({ customer: value || null })}
+                            options={(customers.data ?? []).map((c) => ({ value: c.id, label: c.display_name }))}
                         />
                     )}
                     <Select

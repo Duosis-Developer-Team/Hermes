@@ -83,6 +83,7 @@ const TicketIntegrationsPage = lazy(routeLoaders.ticketIntegrations)
 const TicketHelpdeskSettings = lazy(routeLoaders.ticketHelpdesk)
 const TicketReportsPage = lazy(routeLoaders.ticketReports)
 const KnowledgeBasePage = lazy(routeLoaders.knowledgeBase)
+const TicketCustomersPage = lazy(routeLoaders.ticketCustomers)
 const HelpCenterPage = lazy(routeLoaders.helpCenter)
 import { useTaskPermissions } from './hooks/useTaskPermissions'
 import { landingPath } from './features/modules/catalog'
@@ -429,6 +430,14 @@ function App() {
                     element={
                         <ProtectedRoute module="tickets" permission={'tickets.access'}>
                             <TicketReportsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="tickets/customers"
+                    element={
+                        <ProtectedRoute module="tickets" permission={'tickets.access'}>
+                            <TicketCustomersPage />
                         </ProtectedRoute>
                     }
                 />

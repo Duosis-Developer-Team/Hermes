@@ -7,6 +7,7 @@
 #   /tickets/helpdesk/views             kayitli gorunumler
 #   /tickets/helpdesk/notifications     talep bildirimleri (zil)
 #   /tickets/helpdesk/mail              e-posta kanali ayari + son gonderimler (D4)
+#   /tickets/helpdesk/my-customers      ekiplerime yonlenen musteriler (talepsiz de)
 #   /tickets/{id}/tags | /watch | /macros/{mid}/apply | /requester-history
 #   /tickets/bulk                       toplu islem
 #
@@ -930,3 +931,87 @@ def update_mail_settings(
         actor_user_id=UUID(str(scope.user_id)),
     )
     return _mail_out(db, str(current_user.tenant_id))
+
+
+# =============================================================================
+# Musterilerim (hub) — talep acmamis musteri de gorunur
+# =============================================================================
+# Ekiplerime YONLENEN her musteri (aktif route grubu benim ekiplerimden biri)
+# ve kapsamimdaki talepleri olan her musteri — hic talep acmamis olsa bile.
+# Yonetici (tickets.admin) tumunu gorur. Sayimlar hub kapsamindan (liste ile
+# ayni kural). Tur: sirket hesabi / calisma alani (talep agi) / entegrasyon.
+
+class TeamRef(BaseModel):
+    id: UUID
+    name: str
+
+
+class MyCustomerOut(BaseModel):
+    id: UUID
+    display_name: str
+    application: Optional[str] = None
+    kind: Literal["company", "workspace", "integration"]
+    team: Optional[TeamRef] = None
+    open_count: int = 0
+    total_count: int = 0
+    last_activity_at: Optional[datetime] = None
+
+
+OPEN_STATUSES = ("open", "in_progress", "waiting_customer", "reopened")
+
+
+@router.get("/helpdesk/my-customers", response_model=List[MyCustomerOut])
+def my_customers(
+    scope: visibility.HubScope = Depends(hub_scope),
+    db: Session = Depends(get_support_db),
+):
+    from sqlalchemy import case, func
+
+    from ..config import get_settings
+    from ..models.ticketing import SupportTicketRoute
+    from ..models.user_group import UserGroup
+    from ..services import company_accounts
+
+    stats = {
+        row[0]: row[1:]
+        for row in visibility.apply_hub_filter(db.query(Ticket), scope)
+        .with_entities(
+            Ticket.source_tenant_row_id,
+            func.count(Ticket.id),
+            func.sum(case((Ticket.status.in_(OPEN_STATUSES), 1), else_=0)),
+            func.max(Ticket.updated_at),
+        )
+        .group_by(Ticket.source_tenant_row_id).all()
+    }
+    routes = {
+        r.source_tenant_row_id: r for r in db.query(SupportTicketRoute)
+        .filter(SupportTicketRoute.is_active.is_(True)).all()
+    }
+    groups = {g.id: g for g in db.query(UserGroup).all()}
+    hermes_code = get_settings().SUPPORT_HERMES_APPLICATION_CODE
+    out = []
+    rows = (
+        db.query(SupportSourceTenant, SupportApplication)
+        .join(SupportApplication, SupportApplication.id == SupportSourceTenant.application_id)
+        .filter(SupportSourceTenant.status == "active")
+        .order_by(SupportSourceTenant.display_name).all()
+    )
+    for src, app in rows:
+        route = routes.get(src.id)
+        mine = route is not None and route.group_id in scope.group_ids
+        if not (scope.is_admin or mine or src.id in stats):
+            continue
+        total, open_count, last = stats.get(src.id, (0, 0, None))
+        if src.source_tenant_id.startswith(company_accounts.SOURCE_PREFIX):
+            kind = "company"
+        elif app.code == hermes_code:
+            kind = "workspace"
+        else:
+            kind = "integration"
+        group = groups.get(route.group_id) if route is not None else None
+        out.append(MyCustomerOut(
+            id=src.id, display_name=src.display_name, application=app.display_name, kind=kind,
+            team=TeamRef(id=group.id, name=group.name) if group else None,
+            open_count=int(open_count or 0), total_count=int(total or 0), last_activity_at=last,
+        ))
+    return out

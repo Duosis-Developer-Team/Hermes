@@ -442,3 +442,14 @@
 .mail-log__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .mail-log__main small { font-size: 12px; color: var(--h-text-muted); overflow-wrap: anywhere; }
 .mail-log__error { color: var(--h-danger) !important; }
+
+/* Musterilerim (hub) */
+.customers-hub__search { max-width: 420px; }
+.customers-hub__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.customers-hub__card { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; text-align: left; border: 1px solid var(--h-border-subtle); border-radius: 14px; background: var(--h-surface, transparent); color: inherit; cursor: pointer; font: inherit; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+.customers-hub__card:hover, .customers-hub__card:focus-visible { border-color: var(--h-accent, #388bff); box-shadow: 0 2px 10px rgba(56, 139, 255, 0.12); outline: none; }
+.customers-hub__head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.customers-hub__head b { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.customers-hub__meta { font-size: 12px; color: var(--h-text-muted); }
+.customers-hub__stats { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--h-text-secondary); }
+.customers-hub__stats b { font-variant-numeric: tabular-nums; color: var(--h-text-primary, inherit); }
