@@ -11,8 +11,12 @@
  * Tarama bitene kadar dosya "Taranıyor" görünür ve ticket'a BAĞLANAMAZ.
  * Reddedilen dosya listede REDDEDİLDİ olarak kalır — sessizce kaybolmaz,
  * kullanıcı neden eklenmediğini görür.
+ *
+ * Yükleme asenkron: her güncelleme EN SON listeye uygulanır (`latest`).
+ * Bırakma anındaki `value` kapanışına yazmak yeni dosyayı listeden
+ * siliyordu (dosya sunucuda temiz, ama ekranda ve gönderimde yok).
  */
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { DeleteOutlined, InboxOutlined, ReloadOutlined } from '@ant-design/icons'
 import { Progress, Typography } from 'antd'
 
@@ -47,11 +51,20 @@ export default function AttachmentDropzone({
     const inputRef = useRef(null)
     const [dragging, setDragging] = useState(false)
     const [error, setError] = useState(null)
+    // Ebeveyn listeyi her render'da geri verir; araya giren yazmalarimiz da
+    // ayni ref'e islenir, boylece iki hizli guncelleme birbirini ezmez.
+    const latest = useRef(value)
+    useLayoutEffect(() => { latest.current = value }, [value])
 
     if (!enabled) return null
 
+    const commit = (next) => {
+        latest.current = next
+        onChange(next)
+    }
+
     const patch = (localId, changes) => {
-        onChange(value.map((item) => (
+        commit(latest.current.map((item) => (
             item.localId === localId ? { ...item, ...changes } : item
         )))
     }
@@ -85,11 +98,12 @@ export default function AttachmentDropzone({
         setError(null)
         const incoming = Array.from(files || [])
         if (!incoming.length) return
-        if (value.length + incoming.length > MAX_FILES) {
+        const current = latest.current
+        if (current.length + incoming.length > MAX_FILES) {
             setError(t('ticket.attachTooMany', { max: MAX_FILES }))
             return
         }
-        const totalBytes = value.reduce((sum, i) => sum + (i.size || 0), 0)
+        const totalBytes = current.reduce((sum, i) => sum + (i.size || 0), 0)
             + incoming.reduce((sum, f) => sum + f.size, 0)
         if (totalBytes > TOTAL_MAX_BYTES) {
             setError(t('ticket.attachTotalTooLarge'))
@@ -108,7 +122,7 @@ export default function AttachmentDropzone({
             progress: 0,
             file,
         }))
-        onChange([...value, ...entries])
+        commit([...current, ...entries])
         entries.forEach((entry) => upload(entry, entry.file))
     }
 
@@ -131,14 +145,8 @@ export default function AttachmentDropzone({
                 aria-label={t('ticket.addFiles')}
             >
                 <InboxOutlined aria-hidden="true" />
-                <span>
-                    Drag and drop a file, paste a screenshot, or click to
-                    browse
-                </span>
-                <Text type="secondary">
-                    PNG, JPEG, WEBP, PDF, TXT, LOG · 15 MB per file ·
-                    up to {MAX_FILES} files
-                </Text>
+                <span>{t('ticket.dropTitle')}</span>
+                <Text type="secondary">{t('ticket.dropLimits', { max: MAX_FILES })}</Text>
             </button>
             <input
                 ref={inputRef}
@@ -154,10 +162,7 @@ export default function AttachmentDropzone({
 
             {error && <Text type="danger">{error}</Text>}
 
-            <Text type="secondary">
-                Please make sure screenshots and logs contain no
-                confidential information.
-            </Text>
+            <Text type="secondary">{t('ticket.dropPrivacy')}</Text>
 
             {value.map((item) => {
                 const view = STATUS_VIEW[item.status] ?? STATUS_VIEW.uploading
@@ -191,9 +196,9 @@ export default function AttachmentDropzone({
                         <Button
                             size="small"
                             icon={<DeleteOutlined />}
-                            aria-label={`Remove ${item.name}`}
-                            onClick={() => onChange(
-                                value.filter((i) => i.localId !== item.localId),
+                            aria-label={t('ticket.removeFile', { name: item.name })}
+                            onClick={() => commit(
+                                latest.current.filter((i) => i.localId !== item.localId),
                             )}
                         />
                     </Inline>

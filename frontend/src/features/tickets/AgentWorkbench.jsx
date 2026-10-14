@@ -11,7 +11,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Drawer, Skeleton, Typography } from 'antd'
+import { Alert, Drawer, Skeleton, Tooltip, Typography } from 'antd'
 
 import { ticketErrorCode, ticketHelpdeskService, ticketHubService } from '../../api/ticketsApi'
 import {
@@ -213,12 +213,14 @@ export default function AgentWorkbench({
                             onClick={() => setMergeOpen(true)}
                         >{t('merge.action')}</Button>
                     )}
-                    <Button
-                        icon={ticket.watching ? <EyeInvisibleOutlined /> : <EyeOutlined />}
-                        aria-pressed={Boolean(ticket.watching)}
-                        loading={watch.isPending}
-                        onClick={() => watch.mutate(!ticket.watching)}
-                    >{ticket.watching ? t('hub.unwatch') : t('hub.watch')}</Button>
+                    <Tooltip title={t('hub.watchHint')}>
+                        <Button
+                            icon={ticket.watching ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                            aria-pressed={Boolean(ticket.watching)}
+                            loading={watch.isPending}
+                            onClick={() => watch.mutate(!ticket.watching)}
+                        >{ticket.watching ? t('hub.unwatch') : t('hub.watch')}</Button>
+                    </Tooltip>
                     {/* Cozulmus/kapanmis talebe efor (gorevdeki "Log time" gibi). */}
                     {onLogTime && ['resolved', 'closed'].includes(ticket.status) && (
                         <Button icon={<ClockCircleOutlined />} onClick={() => onLogTime(ticket)}>

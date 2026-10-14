@@ -293,11 +293,7 @@ export default function CreateTicketModal({
 
                 <Stack gap={1}>
                     <Text strong>{t('ticket.autoDiagnostics')}</Text>
-                    <Text type="secondary">
-                        Only the values below are sent. Cookies, session
-                        data, form contents and URL parameters are never
-                        collected.
-                    </Text>
+                    <Text type="secondary">{t('ticket.diagnosticsOnly')}</Text>
                     <div>
                         {Object.entries(diagnostics).map(([key, value]) => (
                             <StatusBadge key={key} tone="neutral">
