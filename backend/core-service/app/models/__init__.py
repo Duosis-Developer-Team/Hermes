@@ -47,7 +47,7 @@ from .task_comment import TaskComment
 from .tenancy import TenantCounter, TenantRegistry
 from .ticket_network import TICKET_NETWORK_TABLES, TicketNetworkLink
 from .ticket_helpdesk import (
-    TICKET_HELPDESK_TABLES, TicketMacro, TicketNotification, TicketRead,
+    TICKET_CSAT_TABLES, TICKET_HELPDESK_TABLES, TicketCsat, TicketMacro, TicketNotification, TicketRead,
     TicketSlaClock, TicketSlaPolicy, TicketTag, TicketTagLink, TicketView,
     TicketWatcher,
 )
@@ -126,6 +126,8 @@ __all__ = [
     "TenantRegistry",
     "TicketNetworkLink",
     "TICKET_HELPDESK_TABLES",
+    "TICKET_CSAT_TABLES",
+    "TicketCsat",
     "TicketMacro",
     "TicketNotification",
     "TicketRead",

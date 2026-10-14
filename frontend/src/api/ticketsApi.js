@@ -196,6 +196,14 @@ export const supportPortalService = {
         )
         return data
     },
+    /** Dalga C: memnuniyet puani (1–5 + yorum) — yalniz talep eden. */
+    rate: async (id, payload, provider) => {
+        const { data } = await coreClient.post(
+            `${CORE}/support/tickets/${id}/csat`, payload,
+            { params: withProvider(provider) },
+        )
+        return data
+    },
     downloadUrl: (ticketId, attachmentId, provider) =>
         `${CORE}/support/tickets/${ticketId}/attachments/${attachmentId}/download`
         + (provider ? `?provider=${encodeURIComponent(provider)}` : ''),
@@ -244,6 +252,7 @@ export const ticketHelpdeskService = {
     notifications: async (params = {}) => (await coreClient.get(`${HD}/notifications`, { params })).data,
     readNotification: async (id) => { await coreClient.post(`${HD}/notifications/${id}/read`) },
     readAllNotifications: async () => { await coreClient.post(`${HD}/notifications/read-all`) },
+    reports: async (params = {}) => (await coreClient.get(`${HD}/reports`, { params })).data,
 }
 
 export const ticketAdminService = {

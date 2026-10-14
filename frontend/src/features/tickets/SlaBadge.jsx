@@ -21,8 +21,8 @@ export function formatSpan(t, ms) {
     const d = Math.floor(minutes / 1440)
     const h = Math.floor((minutes % 1440) / 60)
     const m = minutes % 60
-    if (d) return t('sla.spanDH', { d, h })
-    if (h) return t('sla.spanHM', { h, m })
+    if (d) return h ? t('sla.spanDH', { d, h }) : t('sla.spanD', { d })
+    if (h) return m ? t('sla.spanHM', { h, m }) : t('sla.spanH', { h })
     return t('sla.spanM', { m })
 }
 

@@ -24,6 +24,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import text
@@ -37,6 +38,7 @@ from ..models.ticketing import Ticket, TicketAttachment
 from ..public_api.rate_limit import get_limiter
 from ..schemas.ticketing import (
     AttachmentOut,
+    CsatOut,
     ProviderRef,
     ConfirmCloseRequest,
     CustomerMessageCreateRequest,
@@ -50,6 +52,7 @@ from ..services import (
     support_tenant as support,
     ticket_attachment_service,
     ticket_helpdesk as helpdesk,
+    ticket_reports,
     ticket_network as network,
     ticket_idempotency as idem,
     ticket_queries,
@@ -133,6 +136,18 @@ def portal_scope(
     db: Session = Depends(get_portal_db),
 ) -> visibility.PortalScope:
     return _scope_in(db, current_user, _require_access(current_user))
+
+
+def _customer_out(db: Session, ticket: Ticket, link: network.ProviderLink,
+                  requester: str) -> TicketCustomerOut:
+    """Musteri detayi + saglayici + memnuniyet (Dalga C)."""
+    csat = ticket_reports.csat_of(db, ticket.id)
+    return ser.customer_detail(db, ticket).model_copy(update={
+        "provider": _provider_ref(link),
+        "csat": CsatOut(rating=csat.rating, comment=csat.comment, updated_at=csat.updated_at) if csat else None,
+        "can_rate": ticket.status in ticket_reports.CSAT_STATUSES
+        and str(ticket.requester_source_user_id) == str(requester),
+    })
 
 
 def _provider_ref(link: network.ProviderLink) -> ProviderRef:
@@ -260,9 +275,7 @@ def get_my_ticket(
 ):
     ticket = _load_ticket(db, ticket_id, scope)
     helpdesk.mark_read(db, ticket.id, scope.requester_source_user_id)
-    return ser.customer_detail(db, ticket).model_copy(
-        update={"provider": _provider_ref(link)}
-    )
+    return _customer_out(db, ticket, link, scope.requester_source_user_id)
 
 
 # =============================================================================
@@ -453,9 +466,7 @@ def reopen(
         )
     except Exception as exc:  # noqa: BLE001
         raise translate(exc)
-    return ser.customer_detail(db, ticket).model_copy(
-        update={"provider": _provider_ref(link)}
-    )
+    return _customer_out(db, ticket, link, scope.requester_source_user_id)
 
 
 @router.post("/tickets/{ticket_id}/confirm-close",
@@ -482,9 +493,7 @@ def confirm_close(
         )
     except Exception as exc:  # noqa: BLE001
         raise translate(exc)
-    return ser.customer_detail(db, ticket).model_copy(
-        update={"provider": _provider_ref(link)}
-    )
+    return _customer_out(db, ticket, link, scope.requester_source_user_id)
 
 
 @router.post("/tickets/{ticket_id}/cancel",
@@ -512,14 +521,37 @@ def cancel(
         )
     except Exception as exc:  # noqa: BLE001
         raise translate(exc)
-    return ser.customer_detail(db, ticket).model_copy(
-        update={"provider": _provider_ref(link)}
-    )
+    return _customer_out(db, ticket, link, scope.requester_source_user_id)
 
 
 # =============================================================================
 # Ekler
 # =============================================================================
+
+class CsatIn(BaseModel):
+    rating: int = Field(..., ge=1, le=5)
+    comment: Optional[str] = Field(None, max_length=1000)
+
+
+@router.post("/tickets/{ticket_id}/csat", response_model=TicketCustomerOut)
+def rate_ticket(
+    ticket_id: UUID,
+    payload: CsatIn,
+    scope: visibility.PortalScope = Depends(portal_scope),
+    link: network.ProviderLink = Depends(portal_provider),
+    db: Session = Depends(get_portal_db),
+):
+    """Memnuniyet (Dalga C): cozulmus/kapanmis talebi talep eden puanlar."""
+    ticket = _load_ticket(db, ticket_id, scope)
+    try:
+        ticket_reports.submit_csat(
+            db, ticket, requester=scope.requester_source_user_id,
+            rating=payload.rating, comment=payload.comment,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise translate(exc)
+    return _customer_out(db, ticket, link, scope.requester_source_user_id)
+
 
 @router.post("/attachments", response_model=AttachmentOut, status_code=201)
 def open_attachment_session(

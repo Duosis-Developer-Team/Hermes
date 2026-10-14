@@ -46,6 +46,7 @@ from ..schemas.ticketing import (
     QueueCountOut,
     ReasonRequest,
     ResolveRequest,
+    CsatOut,
     RoutingGroupOut,
     SlaStateOut,
     TagRef,
@@ -61,6 +62,7 @@ from ..services import (
     ticket_attachment_service,
     ticket_helpdesk as helpdesk,
     ticket_queries,
+    ticket_reports,
     ticket_sla,
     ticket_routing,
     ticket_serializers as ser,
@@ -160,7 +162,9 @@ def _detail(
         is_admin=scope.is_admin,
     )
     watchers = helpdesk.watchers_of(db, ticket.id)
+    csat = ticket_reports.csat_of(db, ticket.id)
     return out.model_copy(update={
+        "csat": CsatOut(rating=csat.rating, comment=csat.comment, updated_at=csat.updated_at) if csat else None,
         "sla": _sla_out(ticket_sla.clocks_for(db, [ticket.id]).get(ticket.id)),
         "tags": _tag_refs(helpdesk.tags_for(db, [ticket.id]).get(ticket.id, [])),
         "watching": any(str(w) == str(scope.user_id) for w in watchers),

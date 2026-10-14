@@ -38,6 +38,7 @@ from ..models.ticketing import SupportApplication, SupportSourceTenant, Ticket
 from ..schemas.ticketing import TagRef, TicketAgentListItem, TicketAgentOut
 from ..services import (
     ticket_helpdesk as helpdesk,
+    ticket_reports,
     ticket_sla,
     ticket_serializers as ser,
     ticket_visibility as visibility,
@@ -505,6 +506,36 @@ def bulk(
             actor=_actor(current_user, scope, request),
             actor_user_id=UUID(str(current_user.id)),
         )
+    except Exception as exc:  # noqa: BLE001
+        raise _validation(exc)
+
+
+# =============================================================================
+# Raporlar (Dalga C)
+# =============================================================================
+
+@router.get("/helpdesk/reports")
+def reports(
+    days: int = Query(30, ge=1, le=ticket_reports.MAX_DAYS),
+    start: Optional[datetime] = Query(None, alias="from"),
+    end: Optional[datetime] = Query(None, alias="to"),
+    group_id: Optional[UUID] = Query(None),
+    tz: str = Query("Europe/Istanbul", max_length=64),
+    scope: visibility.HubScope = Depends(hub_scope),
+    db: Session = Depends(get_support_db),
+):
+    """Hacim, birikim, medyan sureler, SLA uyumu, CSAT, ekip/ajan kirilimi.
+    Kapsam = hub gorunurlugu (yonetici tumu, ajan kendi ekipleri)."""
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    try:
+        ZoneInfo(tz)
+    except (ZoneInfoNotFoundError, ValueError):
+        raise http_error("validation_error", "Unknown time zone.")
+    try:
+        window = ticket_reports.period(days=days, start=start, end=end)
+        return ticket_reports.build(db, scope, start=window[0], end=window[1],
+                                    group_id=group_id, tz=tz)
     except Exception as exc:  # noqa: BLE001
         raise _validation(exc)
 

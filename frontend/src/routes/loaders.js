@@ -46,6 +46,7 @@ export const routeLoaders = {
     // Ticket Hub: iki AYRI chunk. Musteri portali kullanicisi
     // agent hub kodunu HIC indirmez (ve tersi).
     ticketHub: () => import('../pages/tickets/TicketHubPage'),
+    ticketReports: () => import('../pages/tickets/TicketReportsPage'),
     supportPortal: () => import('../pages/tickets/SupportPortalPage'),
     ticketIntegrations: () =>
         import('../pages/tickets/TicketIntegrationsPage'),

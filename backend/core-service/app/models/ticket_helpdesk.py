@@ -285,3 +285,37 @@ class TicketNotification(TenantOwnedMixin, Base):
             name="chk_ticket_notifications_kind",
         ),
     )
+
+
+# =============================================================================
+# Musteri memnuniyeti (Dalga C, 0020)
+# =============================================================================
+
+TICKET_CSAT_TABLES = ("ticket_csat",)
+
+
+class TicketCsat(TenantOwnedMixin, Base):
+    """Cozulen/kapanan talep icin talep edenin puani (1–5) + yorum.
+
+    Talep basina TEK kayit (talep eden degistirebilir). Ajanlar gorur;
+    rapor ortalama + memnun orani (4–5) uretir. Sozlesme olayi URETMEZ.
+    """
+
+    __tablename__ = "ticket_csat"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ticket_id = Column(
+        UUID(as_uuid=True), ForeignKey("tickets.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    rating = Column(Integer, nullable=False)
+    comment = Column(Text, nullable=True)
+    requester_source_user_id = Column(String(128), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_now, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=_now, onupdate=_now,
+                        nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "ticket_id", name="uq_ticket_csat_ticket"),
+        CheckConstraint("rating BETWEEN 1 AND 5", name="chk_ticket_csat_rating"),
+    )

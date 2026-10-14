@@ -8,7 +8,7 @@
  */
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Drawer, Input, message, Typography } from 'antd'
+import { Alert, Drawer, Input, Rate, message, Typography } from 'antd'
 
 import { supportPortalService, ticketErrorCode } from '../../api/ticketsApi'
 import {
@@ -45,6 +45,9 @@ export default function CustomerTicketDetail({
     const [attachments, setAttachments] = useState([])
     const [cancelling, setCancelling] = useState(false)
     const [cancelReason, setCancelReason] = useState('')
+    const [rating, setRating] = useState(0)
+    const [ratingComment, setRatingComment] = useState('')
+    const [editingRating, setEditingRating] = useState(false)
 
     const detail = useQuery({
         queryKey: queryKeys.supportTickets.detail(ticketId),
@@ -91,6 +94,11 @@ export default function CustomerTicketDetail({
     const cancel = useMutation({
         mutationFn: (payload) => supportPortalService.cancel(ticketId, payload, provider),
         ...handlers,
+    })
+    const rate = useMutation({
+        mutationFn: (payload) => supportPortalService.rate(ticketId, payload, provider),
+        ...handlers,
+        onSuccess: () => { setEditingRating(false); handlers.onSuccess() },
     })
 
     return (
@@ -229,6 +237,41 @@ export default function CustomerTicketDetail({
                                 </Text>
                             )}
                         </Stack>
+                    )}
+
+                    {ticket.can_rate && (
+                        <div className="customer-csat" role="group" aria-label={t('customerTicket.rateTitle')}>
+                            {ticket.csat && !editingRating ? (
+                                <p>
+                                    <Rate disabled value={ticket.csat.rating} />{' '}
+                                    <span className="lq-note">{t('customerTicket.thanksForRating')}</span>{' '}
+                                    <Button size="small" variant="ghost" onClick={() => {
+                                        setRating(ticket.csat.rating); setRatingComment(ticket.csat.comment || ''); setEditingRating(true)
+                                    }}>{t('customerTicket.changeRating')}</Button>
+                                </p>
+                            ) : (
+                                <>
+                                    <b>{t('customerTicket.rateTitle')}</b>
+                                    <Rate value={rating} onChange={setRating} aria-label={t('customerTicket.rateTitle')} />
+                                    {rating > 0 && (
+                                        <>
+                                            <Input.TextArea
+                                                rows={2} maxLength={1000} value={ratingComment}
+                                                placeholder={t('customerTicket.rateComment')}
+                                                aria-label={t('customerTicket.rateComment')}
+                                                onChange={(e) => setRatingComment(e.target.value)}
+                                            />
+                                            <Inline gap={2}>
+                                                <Button
+                                                    variant="primary" loading={rate.isPending}
+                                                    onClick={() => rate.mutate({ rating, comment: ratingComment.trim() || undefined })}
+                                                >{t('customerTicket.sendRating')}</Button>
+                                            </Inline>
+                                        </>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     )}
 
                     <Surface>

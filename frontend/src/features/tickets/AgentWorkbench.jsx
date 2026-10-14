@@ -259,10 +259,16 @@ export default function AgentWorkbench({
                                     ticketHubService.downloadUrl(ticket.id, fileId)}
                             />
 
-                            {(ticket.sla || (ticket.tags ?? []).length > 0) && (
+                            {(ticket.sla || (ticket.tags ?? []).length > 0 || ticket.csat) && (
                                 <div className="ticket-meta-strip">
                                     <SlaBadge sla={ticket.sla} showMet />
                                     <TagChips tags={ticket.tags} />
+                                    {ticket.csat && (
+                                        <span className="h-badge h-badge--brand" title={ticket.csat.comment || undefined}>
+                                            {t('hub.csatChip', { rating: ticket.csat.rating })}
+                                            {ticket.csat.comment ? ` · “${ticket.csat.comment}”` : ''}
+                                        </span>
+                                    )}
                                 </div>
                             )}
 

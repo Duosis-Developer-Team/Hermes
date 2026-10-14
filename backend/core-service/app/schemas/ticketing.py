@@ -170,6 +170,12 @@ class SlaStateOut(BaseModel):
     resolution: Optional[SlaLegOut] = None
 
 
+class CsatOut(BaseModel):
+    rating: int
+    comment: Optional[str] = None
+    updated_at: Optional[datetime] = None
+
+
 class ProviderRef(BaseModel):
     """Talebin canonical kaydinin yasadigi saglayici (talep agi)."""
 
@@ -208,6 +214,9 @@ class TicketCustomerOut(TicketCustomerListItem):
     closed_at: Optional[datetime] = None
     reopen_window_open: bool = False
     can_cancel: bool = False
+    # Dalga C: memnuniyet — cozuldu/kapandi'da talep eden puanlar.
+    can_rate: bool = False
+    csat: Optional[CsatOut] = None
     messages: List[MessagePublicOut] = Field(default_factory=list)
     resolution: Optional[ResolutionPublicOut] = None
     resolution_history: List[ResolutionPublicOut] = Field(
@@ -289,6 +298,7 @@ class TicketAgentOut(TicketAgentListItem):
     work_items: List[TicketWorkItemRef] = Field(default_factory=list)
     watching: bool = False
     watcher_count: int = 0
+    csat: Optional[CsatOut] = None
 
 
 class TicketWorkItemCreateRequest(_Strict):

@@ -381,3 +381,18 @@
     .macro-grid { grid-template-columns: 1fr; }
     .sla-targets th, .sla-targets td { padding: 6px 4px; }
 }
+
+/* --- Dalga C: raporlar + memnuniyet ------------------------------------------- */
+.ticket-reports__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 12px; margin: 14px 0; }
+.ticket-fact { display: flex; flex-direction: column; gap: 4px; }
+.ticket-fact__label { color: var(--h-text-secondary); font-size: 12.5px; font-weight: 600; }
+.ticket-fact b { font-size: 22px; font-weight: 720; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.ticket-fact small { color: var(--h-text-muted); font-size: 12px; }
+.ticket-report-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.ticket-report-table th, .ticket-report-table td { padding: 7px 8px; text-align: right; border-bottom: 1px solid var(--h-border-subtle); font-size: 13px; }
+.ticket-report-table th:first-child, .ticket-report-table td:first-child { text-align: left; }
+.ticket-report-table thead th { color: var(--h-text-muted); font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; }
+.ticket-report-table tbody th { font-weight: 600; }
+.ticket-reports .pc-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; padding: 0; border: 0; background: none; color: var(--h-text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
+.customer-csat { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--h-bg-hover); }
+.customer-csat p { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

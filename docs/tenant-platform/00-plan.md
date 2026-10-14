@@ -115,7 +115,8 @@ provası + satır sayımı).
 | 2 — Süper-admin konsolu | `591095c` | canlı (14.10) | auth 260, frontend 1163 test; görsel kontrol açık/koyu + 500 px |
 | 3.0 — Talep ağı | `8a3883a` | canlı (14.10; acme → duosis geri dolduruldu) | core 854 (RLS kanıtı dahil), auth 262, frontend 1166 |
 | 3.1 — Dalga A | `331810a` | canlı (14.10) | core 861, frontend 1171 |
-| 3.2 — Dalga B | (bu commit) | CD sonrası | core 877, frontend 1178 |
+| 3.2 — Dalga B | `df48a54` | dev | core 877, frontend 1178 |
+| 3.3 — Dalga C | (bu commit) | CD sonrası | core 880, frontend 1181 |
 
 Faz 2 notları:
 - Konsol adresli: `/platform-admin` (genel bakış), `/tenants`, `/tenants/:id`
@@ -167,3 +168,11 @@ Dalga B notları (helpdesk çekirdeği, 0019 — 9 yeni tenant-owned tablo, RLS+
   atanan+takipçi, yoksa ekip; atama → atanan; eylemi yapan hariç) iş kalemi
   bildirimleriyle birleşik; okunmuşlar 90 günde mevcut cleanup işiyle temizlenir.
 - Sözleşme değişmedi: yeni `ticket_events` türü yok, outbox alanı yok.
+
+Dalga C notları (içgörü, 0020 — `ticket_csat`, RLS+FORCE):
+- Raporlar (`/tickets/reports`): açılan/çözülen/birikim/yeniden açılan, medyan ilk
+  yanıt ve çözüm (duvar saati), SLA uyumu (takvimli vadeye göre), CSAT ortalaması +
+  memnun oranı (4–5), günlük seri (yerel gün), ekip/ajan/kategori/öncelik kırılımı.
+  Kapsam = hub görünürlüğü (yönetici tümü, ajan kendi ekipleri) — liste ile aynı kural.
+- CSAT: çözüldü/kapandı'da yalnız talebin sahibi 1–5 + yorum verir (talep başına tek
+  kayıt, değiştirilebilir); ajan detayda görür. Sözleşme olayı üretmez.
