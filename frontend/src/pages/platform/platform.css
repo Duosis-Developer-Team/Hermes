@@ -174,21 +174,6 @@
 .pc-row { cursor: pointer; }
 
 /* --- Detay ---------------------------------------------------------------------- */
-.pc-back {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 10px;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--h-text-secondary);
-    font: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-}
-.pc-back:hover { color: var(--h-text-primary); }
 .pc-dhero { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 18px; }
 .pc-dhero .pc-tenant__mark { width: 56px; height: 56px; border-radius: 17px; font-size: 24px; }
 .pc-dhero__text { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 240px; }

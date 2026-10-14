@@ -13,13 +13,13 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Drawer, Input, Select, Skeleton, message } from 'antd'
 import {
-    ArrowLeftOutlined, EditOutlined, PlusOutlined, ReadOutlined, SearchOutlined,
+    EditOutlined, PlusOutlined, ReadOutlined, SearchOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 
 import { kbService } from '../../api/ticketsApi'
 import { Button, EmptyState, Page, StatusBadge } from '../../components/ui'
-import { GlassCard, LiquidSegmented, ModalHead, PageHero } from '../../components/liquid'
+import { BackLink, GlassCard, LiquidSegmented, ModalHead, PageHero } from '../../components/liquid'
 import ArticleDrawer from '../../features/kb/ArticleDrawer'
 import MiniMarkdown from '../../features/kb/MiniMarkdown'
 import '../../features/kb/kb.css'
@@ -153,9 +153,7 @@ export default function KnowledgeBasePage() {
 
     return (
         <Page className="tickets-page knowledge-base">
-            <button type="button" className="pc-back kb-back" onClick={() => navigate('/tickets')}>
-                <ArrowLeftOutlined aria-hidden="true" /> {t('hub.tickets')}
-            </button>
+            <BackLink onClick={() => navigate('/tickets')}>{t('hub.tickets')}</BackLink>
             <PageHero
                 title={t('kb.title_page')}
                 subtitle={t('kb.agentHint')}

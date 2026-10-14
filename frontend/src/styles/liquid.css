@@ -511,6 +511,10 @@
   cursor: pointer;
 }
 .lq-back:hover { background: var(--h-ghost-bg-hover); }
+.lq-back:focus-visible { outline: 2px solid var(--h-accent, #388bff); outline-offset: 2px; }
+.lq-back__icon { transition: transform 200ms var(--h-ease-spring); }
+.lq-back:hover .lq-back__icon { transform: translateX(-2px); }
+@media (prefers-reduced-motion: reduce) { .lq-back__icon { transition: none; } }
 @media (max-width: 640px) {
   .lq-frm { grid-template-columns: 1fr; }
   .lq-opt { grid-template-columns: 1fr; }

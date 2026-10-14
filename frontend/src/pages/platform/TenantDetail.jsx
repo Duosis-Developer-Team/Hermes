@@ -15,14 +15,14 @@ import {
     Button, Empty, Form, Input, InputNumber, Modal, Select, Spin, Table, Typography, message,
 } from 'antd'
 import {
-    ArrowLeftOutlined, CopyOutlined, PauseCircleOutlined, PlayCircleOutlined,
+    CopyOutlined, PauseCircleOutlined, PlayCircleOutlined,
     RightOutlined, SafetyCertificateOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
 
 import { platformService } from '../../api/platformApi'
-import { GlassCard, LiquidSegmented, ModalHead } from '../../components/liquid'
+import { BackLink, GlassCard, LiquidSegmented, ModalHead } from '../../components/liquid'
 import { usePlatformAuthStore } from '../../stores/platformAuthStore'
 import { useT } from '../../i18n'
 import ModulePicker from './ModulePicker'
@@ -479,9 +479,7 @@ function TenantDetail({ tenantId, onBack, onSupportStarted }) {
 
     return (
         <div className="lq-enter">
-            <button type="button" className="pc-back" onClick={onBack}>
-                <ArrowLeftOutlined aria-hidden="true" />{t('platform.backToTenants')}
-            </button>
+            <BackLink onClick={onBack}>{t('platform.backToTenants')}</BackLink>
             {!tenant ? (
                 <GlassCard><div style={{ display: 'grid', placeItems: 'center', padding: 40 }}><Spin /></div></GlassCard>
             ) : (

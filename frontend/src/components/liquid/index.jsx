@@ -8,6 +8,7 @@
  * =============================================================================
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { ArrowLeftOutlined } from '@ant-design/icons'
 
 import { userPhotoUrl, useUserPhotoStore } from '../../stores/userPhotoStore'
 import { customerLogoUrl, projectLogoUrl, useCustomerLogoStore } from '../../stores/customerLogoStore'
@@ -27,6 +28,19 @@ export function PageHero({ title, subtitle, actions, className = '', ...rest }) 
             </div>
             {actions && <div className="lq-hero__actions">{actions}</div>}
         </header>
+    )
+}
+
+/**
+ * Ust sayfaya donus: cam hap dugme (`lq-back`, global liquid.css — hangi
+ * sayfada kullanilirsa kullanilsin ayni gorunur). Ok ikonu hover'da kayar.
+ */
+export function BackLink({ onClick, children, className = '' }) {
+    return (
+        <button type="button" className={`lq-back ${className}`} onClick={onClick}>
+            <ArrowLeftOutlined aria-hidden="true" className="lq-back__icon" />
+            <span>{children}</span>
+        </button>
     )
 }
 

@@ -14,7 +14,6 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Select, Skeleton } from 'antd'
-import { ArrowLeftOutlined } from '@ant-design/icons'
 import {
     Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
@@ -22,8 +21,8 @@ import dayjs from 'dayjs'
 
 import { authService } from '../../api/authApi'
 import { ticketHelpdeskService, ticketHubService } from '../../api/ticketsApi'
-import { Button, EmptyState, Page } from '../../components/ui'
-import { BarList, CountUp, GlassCard, LiquidSegmented, PageHero } from '../../components/liquid'
+import { EmptyState, Page } from '../../components/ui'
+import { BackLink, BarList, CountUp, GlassCard, LiquidSegmented, PageHero } from '../../components/liquid'
 import { formatSpan } from '../../features/tickets/SlaBadge'
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { useTicketLabel } from '../../features/tickets/useTicketLabel'
@@ -84,9 +83,7 @@ export default function TicketReportsPage() {
 
     return (
         <Page className="tickets-page ticket-reports">
-            <button type="button" className="pc-back" onClick={() => navigate('/tickets')}>
-                <ArrowLeftOutlined aria-hidden="true" /> {t('hub.tickets')}
-            </button>
+            <BackLink onClick={() => navigate('/tickets')}>{t('hub.tickets')}</BackLink>
             <PageHero
                 title={t('ticketReports.title')}
                 subtitle={t('ticketReports.subtitle', { days })}

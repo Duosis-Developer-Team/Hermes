@@ -13,13 +13,13 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Input, Skeleton } from 'antd'
-import { ArrowLeftOutlined, SearchOutlined, ShopOutlined } from '@ant-design/icons'
+import { SearchOutlined, ShopOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
 import { ticketHelpdeskService } from '../../api/ticketsApi'
 import { EmptyState, Page, StatusBadge } from '../../components/ui'
-import { PageHero } from '../../components/liquid'
+import { BackLink, PageHero } from '../../components/liquid'
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { queryKeys } from '../../query/queryKeys'
 import { useT } from '../../i18n'
@@ -51,9 +51,7 @@ export default function CustomersPage() {
     }
     return (
         <Page className="tickets-page customers-hub">
-            <button type="button" className="pc-back kb-back" onClick={() => navigate('/tickets')}>
-                <ArrowLeftOutlined aria-hidden="true" /> {t('hub.tickets')}
-            </button>
+            <BackLink onClick={() => navigate('/tickets')}>{t('hub.tickets')}</BackLink>
             <PageHero title={t('customersHub.title')} subtitle={t('customersHub.subtitle')} />
             <Input
                 allowClear className="customers-hub__search" prefix={<SearchOutlined aria-hidden="true" />}

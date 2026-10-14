@@ -12,11 +12,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Input, Skeleton } from 'antd'
-import { ArrowLeftOutlined, PlusOutlined, ReadOutlined, SearchOutlined } from '@ant-design/icons'
+import { PlusOutlined, ReadOutlined, SearchOutlined } from '@ant-design/icons'
 
 import { helpCenterService } from '../../api/ticketsApi'
 import { Button, EmptyState, Page } from '../../components/ui'
-import { GlassCard, LiquidSegmented, PageHero } from '../../components/liquid'
+import { BackLink, GlassCard, LiquidSegmented, PageHero } from '../../components/liquid'
 import ArticleDrawer from '../../features/kb/ArticleDrawer'
 import '../../features/kb/kb.css'
 import useTicketContext from '../../features/tickets/useTicketContext'
@@ -62,9 +62,7 @@ export default function HelpCenterPage() {
 
     return (
         <Page className="tickets-page help-center">
-            <button type="button" className="pc-back kb-back" onClick={() => navigate('/support')}>
-                <ArrowLeftOutlined aria-hidden="true" /> {t('tickets.outgoing')}
-            </button>
+            <BackLink onClick={() => navigate('/support')}>{t('tickets.outgoing')}</BackLink>
             <PageHero
                 title={t('kb.helpCenter')}
                 subtitle={t('kb.helpCenterHint')}

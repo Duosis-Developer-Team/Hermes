@@ -1,5 +1,4 @@
 /* HERMES - Bilgi bankasi / yardim merkezi (Dalga D3) */
-.kb-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; padding: 0; border: 0; background: none; color: var(--h-text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
 .kb-search { margin: 4px 0 16px; max-width: 720px; }
 .kb-providers { margin-bottom: 12px; }
 .kb-categories { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 10px; margin-bottom: 16px; }
