@@ -2070,6 +2070,8 @@ export default {
         csatChip: 'CSAT {rating}/5',
         views: 'Saved views',
         queuesTitle: 'Queues',
+        hideRail: 'Hide the queue panel',
+        showRail: 'Show the queue panel',
         applicationsTitle: 'Applications',
         toolsTitle: 'Tools',
         sortCap: 'Sort',

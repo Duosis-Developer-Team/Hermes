@@ -8,15 +8,15 @@
  * olarak kaydet". Kuyruk / gorunum / uygulama BURADA YOK — sol kolondadir.
  * =============================================================================
  */
-import { Badge, Button, Select } from 'antd'
-import { FilterOutlined, SaveOutlined } from '@ant-design/icons'
+import { Badge, Button, Select, Tooltip } from 'antd'
+import { FilterOutlined, MenuFoldOutlined, MenuUnfoldOutlined, SaveOutlined } from '@ant-design/icons'
 
 import { useT } from '../../i18n'
 import { TICKET_SORTS } from './constants'
 import '../tasks/components/tasksViews.css'
 
 export default function TicketAxisBar({
-    layout, onSelectLayout, sort, onSelectSort,
+    layout, onSelectLayout, sort, onSelectSort, railCollapsed = false, onToggleRail,
     activeFilterCount = 0, onOpenFilters, onClear, canClear, onSaveAs,
 }) {
     const t = useT()
@@ -26,6 +26,17 @@ export default function TicketAxisBar({
     ]
     return (
         <div className="tv-axis" role="toolbar" aria-label={t('views.layout')}>
+            {onToggleRail && (
+                <Tooltip title={railCollapsed ? t('hub.showRail') : t('hub.hideRail')}>
+                    <Button
+                        type="text"
+                        icon={railCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                        aria-label={railCollapsed ? t('hub.showRail') : t('hub.hideRail')}
+                        aria-pressed={!railCollapsed}
+                        onClick={onToggleRail}
+                    />
+                </Tooltip>
+            )}
             <div className="tv-axis__segment">
                 <span className="tv-axis__cap">{t('views.layout')}</span>
                 <div className="tasks-views" role="group" aria-label={t('views.layout')}>

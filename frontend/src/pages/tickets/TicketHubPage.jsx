@@ -40,6 +40,7 @@ import TicketFiltersDrawer from '../../features/tickets/TicketFiltersDrawer'
 import TicketViewsSidebar from '../../features/tickets/TicketViewsSidebar'
 import SlaBadge, { TagChips } from '../../features/tickets/SlaBadge'
 import SurfaceSwitch from '../../features/tickets/SurfaceSwitch'
+import TicketCustomerLogo from '../../features/tickets/TicketCustomerLogo'
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { queryKeys } from '../../query/queryKeys'
 import '../../features/tickets/tickets.css'
@@ -53,9 +54,14 @@ const PAGE_SIZE = 50
 // Kayitli gorunume yazilan filtre anahtarlari (URL parametreleriyle ayni).
 const VIEW_KEYS = ['queue', 'status', 'priority', 'category', 'group', 'tag', 'sort', 'application', 'q']
 // Bu genislikten itibaren liste + satir ici calisma bolmesi yan yana
-// (sol kolonla birlikte sigacak kadar genis ekran); daha darda liste tek
-// basina, detay cekmecede acilir.
-const SPLIT_QUERY = '(min-width: 1600px)'
+// (soldaki talepler, sagdaki sohbet); daha darda liste tek basina, detay
+// cekmecede acilir.
+const SPLIT_QUERY = '(min-width: 1100px)'
+// Sol kolon (kuyruklar) gizlenebilir — liste + sohbet tum genisligi alir.
+// Kisisel kolaylik: tarayicida hatirlanir (okunamazsa acik baslar).
+const RAIL_KEY = 'hermes.tickets.railCollapsed'
+const readRail = () => { try { return window.localStorage.getItem(RAIL_KEY) === '1' } catch { return false } }
+const writeRail = (on) => { try { window.localStorage.setItem(RAIL_KEY, on ? '1' : '0') } catch { /* yok say */ } }
 
 export default function TicketHubPage() {
     const t = useT()
@@ -69,6 +75,8 @@ export default function TicketHubPage() {
     const [selectedId, setSelectedId] = useState(null)
     const [filtersOpen, setFiltersOpen] = useState(false)
     const [saveOpen, setSaveOpen] = useState(false)
+    const [railCollapsed, setRailCollapsed] = useState(readRail)
+    const toggleRail = () => setRailCollapsed((on) => { writeRail(!on); return !on })
     const [split, setSplit] = useState(
         () => typeof window !== 'undefined' && window.matchMedia(SPLIT_QUERY).matches,
     )
@@ -387,7 +395,7 @@ export default function TicketHubPage() {
                 )}
             />
 
-            <div className="tv-workspace tk-workspace">
+            <div className={`tv-workspace tk-workspace${railCollapsed ? ' is-rail-collapsed' : ''}`}>
                 <TicketViewsSidebar
                     layout={layout}
                     queues={queues.data ?? []}
@@ -405,6 +413,8 @@ export default function TicketHubPage() {
 
                 <div className="tv-main">
                     <TicketAxisBar
+                        railCollapsed={railCollapsed}
+                        onToggleRail={toggleRail}
                         layout={layout}
                         onSelectLayout={(next) => patchParams({ layout: next === 'board' ? 'board' : null, view: viewId })}
                         sort={sort}
@@ -490,6 +500,7 @@ export default function TicketHubPage() {
                                                 aria-current={row.id === activeId ? 'true' : undefined}
                                                 onClick={() => setSelectedId(row.id)}
                                             >
+                                                <TicketCustomerLogo source={row.source_tenant} size={36} className="tickets-row__logo" />
                                                 <span className="tickets-row__main">
                                                     <span className="tickets-row__title">
                                                         {row.unread && <span className="tickets-row__dot" aria-label={t('hub.unread')} />}

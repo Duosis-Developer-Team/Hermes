@@ -486,3 +486,14 @@
 .tk-filter { display: flex; flex-direction: column; gap: 6px; }
 .tk-filter__label { font-size: var(--h-font-meta); font-weight: 600; color: var(--h-text-secondary); }
 .tk-filter .ant-select { width: 100%; }
+
+/* Talepler: liste satirinda musteri logosu; sol kolon gizlenebilir. */
+.tickets-row__logo { flex: none; align-self: center; }
+.ticket-pane__lead { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.tk-workspace { grid-template-columns: 216px minmax(0, 1fr); }
+.tk-workspace.is-rail-collapsed { grid-template-columns: 0 minmax(0, 1fr); gap: 0; }
+.tk-workspace.is-rail-collapsed .tv-sidebar { opacity: 0; transform: translateX(-24px); pointer-events: none; visibility: hidden; }
+@media (max-width: 900px) {
+    .tk-workspace, .tk-workspace.is-rail-collapsed { grid-template-columns: minmax(0, 1fr); }
+    .tk-workspace.is-rail-collapsed .tv-sidebar { display: none; }
+}

@@ -31,6 +31,7 @@ import './tickets.css'
 import { useTicketLabel } from './useTicketLabel'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
+import TicketCustomerLogo from './TicketCustomerLogo'
 import {
     ClockCircleOutlined, CustomerServiceOutlined, DownOutlined, EyeInvisibleOutlined, EyeOutlined,
     MergeCellsOutlined,
@@ -428,9 +429,12 @@ export default function AgentWorkbench({
                     <>
                         {ticket && (
                             <header className="ticket-pane__head">
-                                <div className="ticket-pane__titles">
-                                    <span className="ticket-pane__code">{ticketRef(ticket)}</span>
-                                    <h2 className="ticket-pane__title">{ticket.title}</h2>
+                                <div className="ticket-pane__lead">
+                                    <TicketCustomerLogo source={ticket.source_tenant} size={44} />
+                                    <div className="ticket-pane__titles">
+                                        <span className="ticket-pane__code">{ticketRef(ticket)}</span>
+                                        <h2 className="ticket-pane__title">{ticket.title}</h2>
+                                    </div>
                                 </div>
                                 {actions}
                             </header>
@@ -453,6 +457,8 @@ export default function AgentWorkbench({
                 <ModalHead
                     icon={<CustomerServiceOutlined />}
                     tone="red"
+                    /* Musterinin logosu (yoksa bas harf karosu) — is kalemi paneli gibi. */
+                    media={ticket ? <TicketCustomerLogo source={ticket.source_tenant} size={44} /> : undefined}
                     title={ticket ? ticket.title : 'Ticket'}
                     subtitle={ticketRef(ticket)}
                 />

@@ -33,10 +33,11 @@ import { useAuthStore } from '../../stores/authStore'
 import { useT } from '../../i18n'
 import { matchesAny } from '../../utils/searchText'
 import CustomerLogoField, { EMPTY_LOGO_DRAFT } from './CustomerLogoField'
+import { COMPANY_LOGOS_KEY } from '../../features/tickets/TicketCustomerLogo'
 
 const KEY = ['admin-companies']
 const SUPPORT_KEY = ['admin-company-support']
-const LOGOS_KEY = ['admin-company-logos']
+const LOGOS_KEY = COMPANY_LOGOS_KEY
 
 function CompanyModal({ company, support, logoEtag, groups, provider, tenantModules, onClose, onSaved }) {
     const t = useT()

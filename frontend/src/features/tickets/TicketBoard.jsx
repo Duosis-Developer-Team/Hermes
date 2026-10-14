@@ -33,6 +33,7 @@ import { ModalHead } from '../../components/liquid'
 import { useT } from '../../i18n'
 import ResolveModal from './ResolveModal'
 import SlaBadge, { TagChips } from './SlaBadge'
+import TicketCustomerLogo from './TicketCustomerLogo'
 import { TicketPriorityBadge } from './TicketStatusBadge'
 import '../../components/tasks/TasksBoardView.css'
 import '../../components/tasks/TaskCard.css'
@@ -96,14 +97,18 @@ export function TicketCard({ ticket, assignee, onOpen, onLogTime }) {
                 <TicketPriorityBadge priority={ticket.priority} />
             </div>
             <div className="task-card-body">
-                <button
-                    type="button"
-                    className="task-card-title task-card-open"
-                    onClick={(e) => { e.stopPropagation(); onOpen?.(ticket.id) }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation() }}
-                >
-                    <span className="task-card-title-text">{ticket.title}</span>
-                </button>
+                {/* Is panosundaki gibi: solda musteri logosu, sagda baslik. */}
+                <div className="task-card-head">
+                    <TicketCustomerLogo source={ticket.source_tenant} size={44} className="task-card-logo" />
+                    <button
+                        type="button"
+                        className="task-card-title task-card-open"
+                        onClick={(e) => { e.stopPropagation(); onOpen?.(ticket.id) }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation() }}
+                    >
+                        <span className="task-card-title-text">{ticket.title}</span>
+                    </button>
+                </div>
                 <div className="ticket-card__badges">
                     <SlaBadge sla={ticket.sla} />
                     <TagChips tags={ticket.tags} />

@@ -2064,6 +2064,8 @@ export default {
         csatChip: 'Memnuniyet {rating}/5',
         views: 'Kayıtlı görünümler',
         queuesTitle: 'Kuyruklar',
+        hideRail: 'Kuyruk panelini gizle',
+        showRail: 'Kuyruk panelini göster',
         applicationsTitle: 'Uygulamalar',
         toolsTitle: 'Araçlar',
         sortCap: 'Sırala',
