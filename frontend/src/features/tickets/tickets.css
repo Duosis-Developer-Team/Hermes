@@ -191,8 +191,6 @@
 .tickets-search.ant-input-affix-wrapper { width: 280px; height: 40px; border-radius: var(--h-radius-pill); }
 .tickets-search .ant-input-prefix { color: var(--h-text-muted); }
 
-.tickets-filters { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom: var(--h-space-4); }
-.tickets-queues { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .tickets-status-filter { min-width: 200px; }
 
 .tickets-split { display: grid; gap: var(--h-space-4); align-items: start; }
@@ -285,8 +283,6 @@
 .ticket-status-tech summary { cursor: pointer; color: var(--h-text-secondary); font-size: 13px; }
 
 /* --- Dalga A: filtreler, sayfalama, talep paneli ------------------------------ */
-.tickets-filters__more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
-.tickets-filters__more .tickets-status-filter { min-width: 150px; max-width: 240px; }
 .tickets-sort { min-width: 160px; }
 .tickets-list__pager, .support-pager { display: flex; justify-content: center; padding: 12px 0 4px; }
 .support-tabs { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
@@ -328,11 +324,6 @@
 .ticket-tag--cyan { --tag: #0891b2; }
 .ticket-tag--gold { --tag: #b7791f; }
 .ticket-tag--gray { --tag: var(--h-text-secondary, #64748b); }
-.ticket-views { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
-.ticket-view { display: inline-flex; align-items: center; gap: 2px; padding: 0; }
-.ticket-view > button { border: 0; background: none; color: inherit; font: inherit; cursor: pointer; padding: 4px 10px; }
-.ticket-view .ticket-view__remove { padding: 4px 8px 4px 0; opacity: 0.6; font-size: 11px; }
-.ticket-view .ticket-view__remove:hover { opacity: 1; }
 .ticket-view-form { display: flex; flex-direction: column; gap: 8px; }
 .ticket-view-form label { font-size: 13px; font-weight: 600; color: var(--h-text-secondary); }
 .ticket-view-form__shared { display: inline-flex; align-items: center; gap: 8px; font-weight: 500 !important; }
@@ -469,4 +460,29 @@
 .ticket-card__badges:empty { display: none; }
 .ticket-card__meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; }
 .ticket-card__log { flex: none; }
-.tickets-layout-switch { flex: none; }
+
+/* --- Talepler: sol kolon + kontrol cubugu (is yonetimiyle ayni iskelet) --- */
+.tk-view__btn { display: flex; align-items: center; gap: var(--h-space-2); }
+.tk-view__text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tk-view__icon { color: var(--h-text-muted); flex: none; }
+.tv-view.is-active .tk-view__icon { color: var(--h-brand); }
+.tk-view__count {
+    flex: none;
+    min-width: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    font-size: var(--h-font-label);
+    font-weight: 600;
+    line-height: 18px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    color: var(--h-text-secondary);
+    background: color-mix(in srgb, var(--h-text-primary) 7%, transparent);
+}
+.tv-view.is-active .tk-view__count { color: var(--h-brand); background: color-mix(in srgb, var(--h-brand) 14%, transparent); }
+.tk-axis__sort { min-width: 150px; }
+.tk-filters { display: flex; flex-direction: column; gap: var(--h-space-4); }
+.tk-filters > .ant-btn { align-self: flex-start; }
+.tk-filter { display: flex; flex-direction: column; gap: 6px; }
+.tk-filter__label { font-size: var(--h-font-meta); font-weight: 600; color: var(--h-text-secondary); }
+.tk-filter .ant-select { width: 100%; }

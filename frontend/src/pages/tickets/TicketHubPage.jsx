@@ -15,23 +15,18 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import {
-    AppstoreOutlined, BarChartOutlined, ReadOutlined, ReloadOutlined, SearchOutlined, ShopOutlined,
-    UnorderedListOutlined,
-} from '@ant-design/icons'
+import { ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Checkbox, Input, message, Pagination, Select, Skeleton } from 'antd'
+import { Checkbox, Input, message, Pagination, Skeleton } from 'antd'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
 import { authService } from '../../api/authApi'
 import { ticketErrorCode, ticketHelpdeskService, ticketHubService } from '../../api/ticketsApi'
 import { Button, EmptyState, Page } from '../../components/ui'
-import { GlassCard, LiquidSegmented, PageHero } from '../../components/liquid'
+import { GlassCard, PageHero } from '../../components/liquid'
 import AgentWorkbench, { LIVE_REFRESH_MS } from '../../features/tickets/AgentWorkbench'
-import {
-    AGENT_STATUS_LABELS, CATEGORY_LABELS, PRIORITY_LABELS, ticketRef,
-} from '../../features/tickets/constants'
+import { BOARD_QUEUES, TICKET_SORTS, ticketRef } from '../../features/tickets/constants'
 import {
     TicketPriorityBadge, TicketStatusBadge,
 } from '../../features/tickets/TicketStatusBadge'
@@ -39,7 +34,10 @@ import BulkBar from '../../features/tickets/BulkBar'
 import TicketBoard from '../../features/tickets/TicketBoard'
 import useTicketWorkLog from '../../features/tickets/useTicketWorkLog'
 import LogTimeModal from '../../components/modals/LogTimeModal'
-import SavedViews from '../../features/tickets/SavedViews'
+import SaveViewModal from '../../features/tickets/SaveViewModal'
+import TicketAxisBar from '../../features/tickets/TicketAxisBar'
+import TicketFiltersDrawer from '../../features/tickets/TicketFiltersDrawer'
+import TicketViewsSidebar from '../../features/tickets/TicketViewsSidebar'
 import SlaBadge, { TagChips } from '../../features/tickets/SlaBadge'
 import SurfaceSwitch from '../../features/tickets/SurfaceSwitch'
 import useTicketContext from '../../features/tickets/useTicketContext'
@@ -52,12 +50,12 @@ dayjs.extend(relativeTime)
 
 const DEFAULT_QUEUE = 'my_group_open'
 const PAGE_SIZE = 50
-const SORTS = ['updated', 'due', 'newest', 'oldest', 'priority']
 // Kayitli gorunume yazilan filtre anahtarlari (URL parametreleriyle ayni).
 const VIEW_KEYS = ['queue', 'status', 'priority', 'category', 'group', 'tag', 'sort', 'application', 'q']
 // Bu genislikten itibaren liste + satir ici calisma bolmesi yan yana
-// (prototip); daha darda liste tek basina, detay cekmecede acilir.
-const SPLIT_QUERY = '(min-width: 1100px)'
+// (sol kolonla birlikte sigacak kadar genis ekran); daha darda liste tek
+// basina, detay cekmecede acilir.
+const SPLIT_QUERY = '(min-width: 1600px)'
 
 export default function TicketHubPage() {
     const t = useT()
@@ -69,6 +67,8 @@ export default function TicketHubPage() {
     const context = useTicketContext()
 
     const [selectedId, setSelectedId] = useState(null)
+    const [filtersOpen, setFiltersOpen] = useState(false)
+    const [saveOpen, setSaveOpen] = useState(false)
     const [split, setSplit] = useState(
         () => typeof window !== 'undefined' && window.matchMedia(SPLIT_QUERY).matches,
     )
@@ -110,7 +110,7 @@ export default function TicketHubPage() {
     const customerId = params.get('customer') || undefined
     const tagIds = params.getAll('tag')
     const viewId = params.get('view') || null
-    const sort = SORTS.includes(params.get('sort')) ? params.get('sort') : 'updated'
+    const sort = TICKET_SORTS.includes(params.get('sort')) ? params.get('sort') : 'updated'
     const page = Math.max(1, Number(params.get('page')) || 1)
     // "Clear" ancak temizlenecek bir sey varken gorunur — bos bir
     // filtre cubugunda olu buton durmaz.
@@ -200,12 +200,14 @@ export default function TicketHubPage() {
         refetchInterval: LIVE_REFRESH_MS,
     })
 
-    // Kanban: kuyruk yerine tum kapsam (iptal yok, tamamlanan son 14 gun);
-    // diger suzgecler (arama, musteri, ekip, oncelik, etiket) gecerli.
+    // Kanban: tum akis (iptal yok, tamamlanan son 14 gun); kapsam yalniz
+    // "tum" ya da "bana atanan" — acik-yalniz kuyruklar Tamamlandi'yi
+    // bosaltirdi. Diger suzgecler (arama, musteri, ekip...) gecerli.
+    const boardQueue = BOARD_QUEUES.includes(queue) ? queue : 'all'
     const board = useQuery({
-        queryKey: queryKeys.tickets.list({ ...filters, queue: 'all', page: 1, layout: 'board' }),
+        queryKey: queryKeys.tickets.list({ ...filters, queue: boardQueue, page: 1, layout: 'board' }),
         queryFn: () => ticketHubService.list({
-            queue: 'all', board: true, application_id: applicationId, search: search || undefined,
+            queue: boardQueue, board: true, application_id: applicationId, search: search || undefined,
             status: statuses, priority: priorities, category: categories, group_id: groupId,
             source_tenant_row_id: customerId, tag: tagIds, sort: 'updated', limit: 200,
         }),
@@ -347,35 +349,23 @@ export default function TicketHubPage() {
     const firstId = rows[0]?.id
     const activeId = selectedId || (split ? firstId : null)
 
-    const appOptions = [
-        { value: 'all', label: t('common.all') },
-        ...(applications.data ?? []).map((app) => ({
-            value: app.id,
-            label: `${app.display_name} ${app.open_ticket_count ?? ''}`.trim(),
-        })),
-    ]
+    const activeFilterCount = statuses.length + priorities.length + categories.length
+        + tagIds.length + (customerId ? 1 : 0) + (groupId ? 1 : 0)
+    const activeView = (views.data ?? []).find((v) => v.id === viewId)
+    const shownCount = layout === 'board' ? (board.data?.items ?? []).length : total
+    const scopeLabel = activeView?.name
+        ?? tl('queue', layout === 'board' ? boardQueue : queue)
 
     return (
         <Page className="tickets-page">
             <SurfaceSwitch />
             <PageHero
                 title={t('hub.tickets')}
-                subtitle={`${t('hub.countLabel', { count: total })} \u00b7 ${tl('queue', queue)}`}
+                subtitle={`${scopeLabel} \u00b7 ${t('hub.countLabel', { count: shownCount })}`}
                 actions={(
                     <>
-                        {/* Diger sayfalardaki arama alaniyla ayni: onekli tek hap
-                            (ayri buyuk arama dugmesi yok). Enter arar,
-                            temizlemek filtreyi kaldirir. */}
-                        <LiquidSegmented
-                            className="tickets-layout-switch"
-                            ariaLabel={t('ticketBoard.layout')}
-                            value={layout}
-                            onChange={(next) => patchParams({ layout: next === 'board' ? 'board' : null })}
-                            options={[
-                                { value: 'list', label: <span><UnorderedListOutlined aria-hidden="true" /> {t('ticketBoard.list')}</span> },
-                                { value: 'board', label: <span><AppstoreOutlined aria-hidden="true" /> {t('ticketBoard.board')}</span> },
-                            ]}
-                        />
+                        {/* Diger sayfalardaki arama alaniyla ayni: onekli tek hap.
+                            Enter arar, temizlemek filtreyi kaldirir. */}
                         <Input
                             allowClear
                             className="tickets-search"
@@ -388,251 +378,173 @@ export default function TicketHubPage() {
                         />
                         <Button
                             icon={<ReloadOutlined />}
+                            aria-label={t('common.refresh')}
+                            title={t('common.refresh')}
                             onClick={() => (layout === 'board' ? board.refetch() : list.refetch())}
                             loading={layout === 'board' ? board.isFetching : list.isFetching}
-                        >{t('common.refresh')}</Button>
-                        <Button icon={<BarChartOutlined />} onClick={() => navigate('/tickets/reports')}>
-                            {t('ticketReports.title')}
-                        </Button>
-                        <Button icon={<ShopOutlined />} onClick={() => navigate('/tickets/customers')}>
-                            {t('customersHub.title')}
-                        </Button>
-                        <Button icon={<ReadOutlined />} onClick={() => navigate('/tickets/kb')}>
-                            {t('kb.title_page')}
-                        </Button>
+                        />
                     </>
                 )}
             />
 
-            <SavedViews
-                views={views.data ?? []}
-                activeId={viewId}
-                onApply={applyView}
-                onSave={(payload) => saveView.mutate(payload)}
-                onDelete={(view) => deleteView.mutate(view)}
-                canSave
-                canShare={context.can('tickets.config.manage') || context.can('tickets.admin')}
-            />
-
-            <div className="tickets-filters">
-                <LiquidSegmented
-                    ariaLabel={t('integrations.application')}
-                    value={applicationId ?? 'all'}
-                    onChange={(key) => patchParams({ application: key === 'all' ? null : key })}
-                    options={appOptions}
+            <div className="tv-workspace tk-workspace">
+                <TicketViewsSidebar
+                    layout={layout}
+                    queues={queues.data ?? []}
+                    activeQueue={queue}
+                    onSelectQueue={(key) => patchParams({ queue: key === DEFAULT_QUEUE ? null : key })}
+                    views={views.data ?? []}
+                    activeViewId={viewId}
+                    onApplyView={applyView}
+                    onDeleteView={(view) => deleteView.mutate(view)}
+                    applications={applications.data ?? []}
+                    activeApplication={applicationId ?? 'all'}
+                    onSelectApplication={(key) => patchParams({ application: key === 'all' ? null : key })}
+                    onNavigate={navigate}
                 />
-                {layout === 'list' && <div className="tickets-queues">
-                    {(queues.data ?? []).map((item) => (
-                        <button
-                            key={item.key}
-                            type="button"
-                            className={`lq-chip${item.key === queue ? ' is-on' : ''}`}
-                            aria-pressed={item.key === queue}
-                            onClick={() => patchParams({ queue: item.key })}
-                        >
-                            {tl('queue', item.key)} <b>{item.count}</b>
-                        </button>
-                    ))}
-                </div>}
-                <div className="tickets-filters__more">
-                    <Select
-                        mode="multiple"
-                        allowClear
-                        maxTagCount="responsive"
-                        className="tickets-status-filter"
-                        placeholder={t('common.status')}
-                        aria-label={t('common.status')}
-                        value={statuses}
-                        onChange={(value) => patchParams({ status: value })}
-                        options={Object.keys(AGENT_STATUS_LABELS).map(
-                            (value) => ({ value, label: tl('agentStatus', value) }),
-                        )}
+
+                <div className="tv-main">
+                    <TicketAxisBar
+                        layout={layout}
+                        onSelectLayout={(next) => patchParams({ layout: next === 'board' ? 'board' : null, view: viewId })}
+                        sort={sort}
+                        onSelectSort={(value) => patchParams({ sort: value === 'updated' ? null : value })}
+                        activeFilterCount={activeFilterCount}
+                        onOpenFilters={() => setFiltersOpen(true)}
+                        canClear={hasFilters}
+                        onClear={() => setParams(layout === 'board' ? new URLSearchParams({ layout: 'board' }) : new URLSearchParams())}
+                        onSaveAs={() => setSaveOpen(true)}
                     />
-                    <Select
-                        mode="multiple"
-                        allowClear
-                        maxTagCount="responsive"
-                        className="tickets-status-filter"
-                        placeholder={t('hub.priority')}
-                        aria-label={t('hub.priority')}
-                        value={priorities}
-                        onChange={(value) => patchParams({ priority: value })}
-                        options={Object.keys(PRIORITY_LABELS).map(
-                            (value) => ({ value, label: tl('priority', value) }),
-                        )}
+                    <TicketFiltersDrawer
+                        open={filtersOpen}
+                        onClose={() => setFiltersOpen(false)}
+                        value={{ status: statuses, priority: priorities, category: categories, tag: tagIds, customer: customerId, group: groupId }}
+                        onChange={patchParams}
+                        onClear={() => patchParams({ status: [], priority: [], category: [], tag: [], customer: null, group: null })}
+                        tags={tags.data ?? []}
+                        customers={customers.data ?? []}
+                        groups={groups.data ?? []}
                     />
-                    <Select
-                        mode="multiple"
-                        allowClear
-                        maxTagCount="responsive"
-                        className="tickets-status-filter"
-                        placeholder={t('hub.category')}
-                        aria-label={t('hub.category')}
-                        value={categories}
-                        onChange={(value) => patchParams({ category: value })}
-                        options={Object.keys(CATEGORY_LABELS).map(
-                            (value) => ({ value, label: tl('category', value) }),
-                        )}
+                    <SaveViewModal
+                        open={saveOpen}
+                        onCancel={() => setSaveOpen(false)}
+                        onSave={(payload) => { saveView.mutate(payload); setSaveOpen(false) }}
+                        canShare={context.can('tickets.config.manage') || context.can('tickets.admin')}
                     />
-                    {(tags.data ?? []).length > 0 && (
-                        <Select
-                            mode="multiple"
-                            allowClear
-                            maxTagCount="responsive"
-                            className="tickets-status-filter"
-                            placeholder={t('hub.tags')}
-                            aria-label={t('hub.tags')}
-                            value={tagIds}
-                            onChange={(value) => patchParams({ tag: value })}
-                            options={(tags.data ?? []).map((tag) => ({ value: tag.id, label: tag.name }))}
+
+                    {!context.hasScope ? (
+                        <EmptyState
+                            title={t('hub.noQueueVisible')}
+                            description={t('hub.noScopeHint')}
                         />
-                    )}
-                    {((customers.data ?? []).length > 0 || customerId) && (
-                        <Select
-                            allowClear
-                            showSearch
-                            optionFilterProp="label"
-                            className="tickets-status-filter"
-                            placeholder={t('hub.customer')}
-                            aria-label={t('hub.customer')}
-                            value={customerId}
-                            onChange={(value) => patchParams({ customer: value || null })}
-                            options={(customers.data ?? []).map((c) => ({ value: c.id, label: c.display_name }))}
+                    ) : layout === 'board' ? (
+                        <TicketBoard
+                            rows={board.data?.items ?? []}
+                            assigneeName={assigneeName}
+                            canRespond={context.can('tickets.respond') || context.can('tickets.admin')}
+                            canResolve={context.can('tickets.resolve') || context.can('tickets.admin')}
+                            onOpen={setSelectedId}
+                            onChanged={invalidate}
+                            onError={onCommandError}
+                            onLogTime={workLog.canLogTime ? workLog.openLogTime : undefined}
                         />
-                    )}
-                    <Select
-                        allowClear
-                        className="tickets-status-filter"
-                        placeholder={t('hub.targetTeam')}
-                        aria-label={t('hub.targetTeam')}
-                        value={groupId}
-                        onChange={(value) => patchParams({ group: value || null })}
-                        options={(groups.data ?? []).map((g) => ({ value: g.id, label: g.name }))}
-                    />
-                    <Select
-                        className="tickets-sort"
-                        aria-label={t('hub.sortBy')}
-                        value={sort}
-                        onChange={(value) => patchParams({ sort: value === 'updated' ? null : value })}
-                        options={SORTS.map((value) => ({ value, label: t(`hub.sort.${value}`) }))}
-                    />
-                    {hasFilters && (
-                        <Button onClick={() => setParams(new URLSearchParams())}>{t('common.clear')}</Button>
+                    ) : (
+                        <div className={`tickets-split${split ? ' is-split' : ''}`}>
+                            <GlassCard className="tickets-list" aria-busy={list.isLoading}>
+                                {rows.length > 0 && (
+                                    <div className="tickets-list__head">
+                                        <Checkbox
+                                            checked={rows.every((r) => selected.has(r.id))}
+                                            indeterminate={selected.size > 0 && !rows.every((r) => selected.has(r.id))}
+                                            onChange={(e) => setSelected(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())}
+                                            aria-label={t('hub.selectPage')}
+                                        >{t('hub.selectPage')}</Checkbox>
+                                    </div>
+                                )}
+                                <BulkBar
+                                    count={selected.size}
+                                    groups={groups.data ?? []}
+                                    tags={tags.data ?? []}
+                                    canAssign={context.can('tickets.assign') || context.can('tickets.admin')}
+                                    canRespond={context.can('tickets.respond') || context.can('tickets.admin')}
+                                    pending={bulk.isPending}
+                                    onAction={(action, value) => bulk.mutate({ action, value })}
+                                    onClear={() => setSelected(new Set())}
+                                />
+                                {list.isLoading && <Skeleton active paragraph={{ rows: 6 }} />}
+                                {!list.isLoading && rows.length === 0 && (
+                                    <EmptyState title={t('hub.noTickets')} description={t('hub.tryAnotherQueue')} />
+                                )}
+                                <ul className="tickets-list__rows">
+                                    {rows.map((row, i) => (
+                                        <li key={row.id} className="tickets-list__item" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
+                                            <Checkbox
+                                                className="tickets-row__check"
+                                                checked={selected.has(row.id)}
+                                                onChange={() => toggleSelected(row.id)}
+                                                aria-label={t('hub.selectTicket', { number: ticketRef(row) })}
+                                            />
+                                            <button
+                                                type="button"
+                                                className={`tickets-row${row.id === activeId ? ' is-active' : ''}${row.unread ? ' is-unread' : ''}`}
+                                                aria-current={row.id === activeId ? 'true' : undefined}
+                                                onClick={() => setSelectedId(row.id)}
+                                            >
+                                                <span className="tickets-row__main">
+                                                    <span className="tickets-row__title">
+                                                        {row.unread && <span className="tickets-row__dot" aria-label={t('hub.unread')} />}
+                                                        <span className="tickets-row__code">{ticketRef(row)}</span>
+                                                        {row.title}
+                                                    </span>
+                                                    <span className="tickets-row__meta">
+                                                        <TicketPriorityBadge priority={row.priority} />
+                                                        {[row.application?.display_name, row.source_tenant?.display_name,
+                                                            row.assigned_user_id
+                                                                ? `${row.assigned_group?.name ?? ''} → ${assigneeName[row.assigned_user_id] ?? '…'}`
+                                                                : row.assigned_group?.name,
+                                                            row.updated_at ? dayjs(row.updated_at).fromNow() : null]
+                                                            .filter(Boolean).join(' \u00b7 ')}
+                                                    </span>
+                                                </span>
+                                                <span className="tickets-row__badges">
+                                                    <TicketStatusBadge status={row.status} surface="hub" />
+                                                    <SlaBadge sla={row.sla} />
+                                                    <TagChips tags={row.tags} />
+                                                </span>
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                                {total > PAGE_SIZE && (
+                                    <Pagination
+                                        className="tickets-list__pager"
+                                        simple
+                                        size="small"
+                                        current={page}
+                                        pageSize={PAGE_SIZE}
+                                        total={total}
+                                        onChange={(next) => patchParams({ page: next > 1 ? String(next) : null })}
+                                    />
+                                )}
+                            </GlassCard>
+
+                            {split && (
+                                <AgentWorkbench
+                                    inline
+                                    ticketId={activeId}
+                                    open={Boolean(activeId)}
+                                    onClose={() => setSelectedId(null)}
+                                    context={context}
+                                    onChanged={invalidate}
+                                    onError={onCommandError}
+                                    onOpenTicket={setSelectedId}
+                                    onLogTime={workLog.canLogTime ? workLog.openLogTime : undefined}
+                                />
+                            )}
+                        </div>
                     )}
                 </div>
             </div>
-
-            {!context.hasScope ? (
-                <EmptyState
-                    title={t('hub.noQueueVisible')}
-                    description={t('hub.noScopeHint')}
-                />
-            ) : layout === 'board' ? (
-                <TicketBoard
-                    rows={board.data?.items ?? []}
-                    assigneeName={assigneeName}
-                    canRespond={context.can('tickets.respond') || context.can('tickets.admin')}
-                    canResolve={context.can('tickets.resolve') || context.can('tickets.admin')}
-                    onOpen={setSelectedId}
-                    onChanged={invalidate}
-                    onError={onCommandError}
-                    onLogTime={workLog.canLogTime ? workLog.openLogTime : undefined}
-                />
-            ) : (
-                <div className={`tickets-split${split ? ' is-split' : ''}`}>
-                    <GlassCard className="tickets-list" aria-busy={list.isLoading}>
-                        {rows.length > 0 && (
-                            <div className="tickets-list__head">
-                                <Checkbox
-                                    checked={rows.every((r) => selected.has(r.id))}
-                                    indeterminate={selected.size > 0 && !rows.every((r) => selected.has(r.id))}
-                                    onChange={(e) => setSelected(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())}
-                                    aria-label={t('hub.selectPage')}
-                                >{t('hub.selectPage')}</Checkbox>
-                            </div>
-                        )}
-                        <BulkBar
-                            count={selected.size}
-                            groups={groups.data ?? []}
-                            tags={tags.data ?? []}
-                            canAssign={context.can('tickets.assign') || context.can('tickets.admin')}
-                            canRespond={context.can('tickets.respond') || context.can('tickets.admin')}
-                            pending={bulk.isPending}
-                            onAction={(action, value) => bulk.mutate({ action, value })}
-                            onClear={() => setSelected(new Set())}
-                        />
-                        {list.isLoading && <Skeleton active paragraph={{ rows: 6 }} />}
-                        {!list.isLoading && rows.length === 0 && (
-                            <EmptyState title={t('hub.noTickets')} description={t('hub.tryAnotherQueue')} />
-                        )}
-                        <ul className="tickets-list__rows">
-                            {rows.map((row, i) => (
-                                <li key={row.id} className="tickets-list__item" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
-                                    <Checkbox
-                                        className="tickets-row__check"
-                                        checked={selected.has(row.id)}
-                                        onChange={() => toggleSelected(row.id)}
-                                        aria-label={t('hub.selectTicket', { number: ticketRef(row) })}
-                                    />
-                                    <button
-                                        type="button"
-                                        className={`tickets-row${row.id === activeId ? ' is-active' : ''}${row.unread ? ' is-unread' : ''}`}
-                                        aria-current={row.id === activeId ? 'true' : undefined}
-                                        onClick={() => setSelectedId(row.id)}
-                                    >
-                                        <span className="tickets-row__main">
-                                            <span className="tickets-row__title">
-                                                {row.unread && <span className="tickets-row__dot" aria-label={t('hub.unread')} />}
-                                                <span className="tickets-row__code">{ticketRef(row)}</span>
-                                                {row.title}
-                                            </span>
-                                            <span className="tickets-row__meta">
-                                                <TicketPriorityBadge priority={row.priority} />
-                                                {[row.application?.display_name, row.source_tenant?.display_name,
-                                                    row.assigned_user_id
-                                                        ? `${row.assigned_group?.name ?? ''} → ${assigneeName[row.assigned_user_id] ?? '…'}`
-                                                        : row.assigned_group?.name,
-                                                    row.updated_at ? dayjs(row.updated_at).fromNow() : null]
-                                                    .filter(Boolean).join(' \u00b7 ')}
-                                            </span>
-                                        </span>
-                                        <span className="tickets-row__badges">
-                                            <TicketStatusBadge status={row.status} surface="hub" />
-                                            <SlaBadge sla={row.sla} />
-                                            <TagChips tags={row.tags} />
-                                        </span>
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                        {total > PAGE_SIZE && (
-                            <Pagination
-                                className="tickets-list__pager"
-                                simple
-                                size="small"
-                                current={page}
-                                pageSize={PAGE_SIZE}
-                                total={total}
-                                onChange={(next) => patchParams({ page: next > 1 ? String(next) : null })}
-                            />
-                        )}
-                    </GlassCard>
-
-                    {split && (
-                        <AgentWorkbench
-                            inline
-                            ticketId={activeId}
-                            open={Boolean(activeId)}
-                            onClose={() => setSelectedId(null)}
-                            context={context}
-                            onChanged={invalidate}
-                            onError={onCommandError}
-                            onOpenTicket={setSelectedId}
-                            onLogTime={workLog.canLogTime ? workLog.openLogTime : undefined}
-                        />
-                    )}
-                </div>
-            )}
 
             {(!split || layout === 'board') && (
             <AgentWorkbench

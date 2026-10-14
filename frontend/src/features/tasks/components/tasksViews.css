@@ -166,6 +166,54 @@
     font-style: italic;
 }
 
+/* --- Hap segmentleri (yerlesim/grupla) — is yonetimi + talepler ORTAK ---- */
+:is(.tasks-page, .tv-axis) .tasks-views {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 2px;
+    padding: 3px;
+    background: var(--h-bg-hover);
+    border: 0;
+    border-radius: var(--h-radius-pill);
+}
+
+:is(.tasks-page, .tv-axis) .tasks-views-pill {
+    cursor: pointer;
+    appearance: none;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-weight: 500;
+    line-height: 1;
+    padding: 6px 12px;
+    border-radius: var(--h-radius-pill);
+    white-space: nowrap;
+    transition: background 140ms ease, color 140ms ease,
+        border-color 140ms ease, box-shadow 140ms ease;
+}
+
+:is(.tasks-page, .tv-axis) .tasks-views-pill:hover {
+    color: var(--text-primary);
+    background: rgba(var(--overlay-rgb), 0.04);
+}
+
+:is(.tasks-page, .tv-axis) .tasks-views-pill:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--h-focus);
+}
+
+/* Hermes Liquid: secili = yukseltilmis cam hap (renk degil derinlik). */
+:is(.tasks-page, .tv-axis) .tasks-views-pill-active {
+    color: var(--h-text-primary);
+    background: var(--h-bg-elevated);
+    border-color: transparent;
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--h-liquid-base) 40%, transparent);
+}
+:is(.tasks-page, .tv-axis) .tasks-views-pill-active:hover {
+    background: var(--h-bg-elevated);
+}
+
 /* --- Liste gruplari ------------------------------------------------------ */
 .tv-group { margin-bottom: var(--h-space-5); }
 .tv-group__head {

@@ -40,7 +40,8 @@ vi.mock('../../services/api', async () => {
 const { ticketContextService, ticketHelpdeskService } = await import('../../api/ticketsApi')
 const { notificationService } = await import('../../services/api')
 const { default: SlaBadge } = await import('../../features/tickets/SlaBadge')
-const { default: SavedViews } = await import('../../features/tickets/SavedViews')
+const { default: TicketViewsSidebar } = await import('../../features/tickets/TicketViewsSidebar')
+const { default: SaveViewModal } = await import('../../features/tickets/SaveViewModal')
 const { default: BulkBar } = await import('../../features/tickets/BulkBar')
 const { AgentComposer } = await import('../../features/tickets/AgentComposer')
 const { default: NotificationBell } = await import('../../components/layout/NotificationBell')
@@ -81,15 +82,41 @@ describe('SLA rozeti', () => {
 })
 
 describe('kayitli gorunum + toplu islem', () => {
-    it('gorunum kaydeder (paylasim yalniz yetkiliye) ve uygular', async () => {
+    it('sol kolon: kuyruk, kayitli gorunum ve araclar; panoda iki kapsam', async () => {
+        const user = setup()
+        const onSelectQueue = vi.fn()
+        const onApply = vi.fn()
+        const onDelete = vi.fn()
+        const onNavigate = vi.fn()
+        const view = { id: 'v1', name: 'Acillerim', is_mine: true, filters: { priority: ['urgent'] } }
+        const queues = [{ key: 'my_group_open', count: 6 }, { key: 'unassigned', count: 2 }, { key: 'all', count: 18 }]
+        const props = {
+            queues, activeQueue: 'my_group_open', onSelectQueue, views: [view], onApplyView: onApply,
+            onDeleteView: onDelete, onNavigate, applications: [], onSelectApplication: vi.fn(),
+        }
+        const { rerender } = renderWithProviders(<TicketViewsSidebar {...props} />)
+        const queueTabs = screen.getByRole('tablist', { name: 'Queues' })
+        expect(within(queueTabs).getByRole('tab', { name: /My group's open tickets\s*6/ })).toHaveAttribute('aria-selected', 'true')
+        await user.click(within(queueTabs).getByRole('tab', { name: /Unassigned/ }))
+        expect(onSelectQueue).toHaveBeenCalledWith('unassigned')
+        await user.click(screen.getByRole('tab', { name: 'Acillerim' }))
+        expect(onApply).toHaveBeenCalledWith(view)
+        await user.click(screen.getByRole('button', { name: /Delete view|"Acillerim"/ }))
+        expect(onDelete).toHaveBeenCalledWith(view)
+        await user.click(screen.getByRole('link', { name: /Reports/ }))
+        expect(onNavigate).toHaveBeenCalledWith('/tickets/reports')
+
+        // Pano: yalniz "tum" + "bana atanan" (acik-yalniz kuyruklar Tamamlandi'yi bosaltir).
+        rerender(<TicketViewsSidebar {...props} layout="board" />)
+        const boardTabs = within(screen.getByRole('tablist', { name: 'Queues' })).getAllByRole('tab')
+        expect(boardTabs.map((tab) => tab.textContent)).toEqual(['All tickets', 'Assigned to me'])
+        expect(boardTabs[0]).toHaveAttribute('aria-selected', 'true')
+    })
+
+    it('gorunum kaydeder (paylasim yalniz yetkiliye)', async () => {
         const user = setup()
         const onSave = vi.fn()
-        const onApply = vi.fn()
-        const view = { id: 'v1', name: 'Acillerim', is_mine: true, filters: { priority: ['urgent'] } }
-        renderWithProviders(<SavedViews views={[view]} canSave canShare onSave={onSave} onApply={onApply} onDelete={vi.fn()} />)
-        await user.click(screen.getByRole('button', { name: /^\s*Acillerim$/ }))
-        expect(onApply).toHaveBeenCalledWith(view)
-        await user.click(screen.getByRole('button', { name: /Save view/ }))
+        renderWithProviders(<SaveViewModal open canShare onSave={onSave} onCancel={vi.fn()} />)
         const dialog = await screen.findByRole('dialog')
         await user.type(within(dialog).getByLabelText('View name'), 'Ekip kuyrugu')
         await user.click(within(dialog).getByRole('switch', { name: 'Share with the team' }))

@@ -148,3 +148,8 @@ export const isResolvedLike = (status) =>
 /** Arayuzde talebin numarasi: musteriye gore ("Defacto Ticket-001"), yoksa
  *  kanonik numara (TKT-000123 — entegrasyon ve e-posta eslesmesi icin kalir). */
 export const ticketRef = (ticket) => ticket?.customer_ref || ticket?.ticket_number || ''
+
+// Talepler sayfasi: listede siralamalar; panoda yalniz bu iki kapsam (acik-
+// yalniz kuyruklar Tamamlandi sutununu bosaltirdi).
+export const TICKET_SORTS = ['updated', 'due', 'newest', 'oldest', 'priority']
+export const BOARD_QUEUES = ['all', 'assigned_to_me']
