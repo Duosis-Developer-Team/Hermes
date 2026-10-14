@@ -50,6 +50,7 @@ from ..schemas.ticketing import (
     RoutingGroupOut,
     SlaStateOut,
     TagRef,
+    TicketRefOut,
     TicketAgentOut,
     TicketContextOut,
     TicketEventOut,
@@ -154,6 +155,13 @@ def _enrich_rows(db: Session, rows, items, scope: visibility.HubScope):
     ]
 
 
+def _ticket_ref(ticket: Ticket) -> TicketRefOut:
+    from ..ticket_contract import format_ticket_number
+
+    return TicketRefOut(id=ticket.id, ticket_number=format_ticket_number(ticket.number),
+                        title=ticket.title, status=ticket.status)
+
+
 def _detail(
     db: Session, ticket: Ticket, scope: visibility.HubScope
 ) -> TicketAgentOut:
@@ -164,7 +172,10 @@ def _detail(
     )
     watchers = helpdesk.watchers_of(db, ticket.id)
     csat = ticket_reports.csat_of(db, ticket.id)
+    into = helpdesk.merged_into(db, ticket.id)
     return out.model_copy(update={
+        "merged_into": _ticket_ref(into) if into else None,
+        "merged_from": [_ticket_ref(t) for t in helpdesk.merged_from(db, ticket.id)],
         "csat": CsatOut(rating=csat.rating, comment=csat.comment, updated_at=csat.updated_at) if csat else None,
         "sla": _sla_out(ticket_sla.clocks_for(db, [ticket.id]).get(ticket.id)),
         "tags": _tag_refs(helpdesk.tags_for(db, [ticket.id]).get(ticket.id, [])),

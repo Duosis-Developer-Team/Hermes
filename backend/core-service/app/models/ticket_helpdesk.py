@@ -319,3 +319,35 @@ class TicketCsat(TenantOwnedMixin, Base):
         UniqueConstraint("tenant_id", "ticket_id", name="uq_ticket_csat_ticket"),
         CheckConstraint("rating BETWEEN 1 AND 5", name="chk_ticket_csat_rating"),
     )
+
+
+# =============================================================================
+# Talep birlestirme (Dalga D1, 0021)
+# =============================================================================
+
+TICKET_MERGE_TABLES = ("ticket_merges",)
+
+
+class TicketMerge(TenantOwnedMixin, Base):
+    """Kaynak talep hedefe birlestirildi. Kaynak `duplicate` koduyla cozulur
+    (`tickets.duplicate_of_ticket_id` — sozlesmede mevcut); bu kayit kim/ne
+    zaman bilgisini ve "birlestirilenler" listesini tasir. Kaynak basina tek."""
+
+    __tablename__ = "ticket_merges"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    source_ticket_id = Column(
+        UUID(as_uuid=True), ForeignKey("tickets.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    target_ticket_id = Column(
+        UUID(as_uuid=True), ForeignKey("tickets.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    merged_by_user_id = Column(UUID(as_uuid=True), nullable=True)
+    merged_at = Column(DateTime(timezone=True), default=_now, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "source_ticket_id", name="uq_ticket_merges_source"),
+        CheckConstraint("source_ticket_id <> target_ticket_id", name="chk_ticket_merges_not_self"),
+    )

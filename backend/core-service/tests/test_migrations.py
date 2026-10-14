@@ -257,7 +257,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
         with engine.begin() as conn:
             # 0009 + 0010'un getirdikleri gider; alembic isareti 0008'e.
             for table in (
-                "ticket_csat",
+                "ticket_merges", "ticket_csat",
                 "ticket_notifications", "ticket_reads", "ticket_watchers",
                 "ticket_views", "ticket_macros", "ticket_tag_links", "ticket_tags",
                 "ticket_sla_clocks", "ticket_sla_policies",
@@ -385,7 +385,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             )).scalar()
     finally:
         engine.dispose()
-    assert head == "0020_ticket_csat"
+    assert head == "0021_ticket_merges"
     # 0018: talep agi indeksi gelir (global, RLS'siz).
     assert network_table is True
     # 0019: helpdesk tablolari tenant-owned, RLS + FORCE.

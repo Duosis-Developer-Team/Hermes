@@ -511,6 +511,50 @@ def bulk(
 
 
 # =============================================================================
+# Birlestirme (Dalga D1)
+# =============================================================================
+
+class MergeIn(BaseModel):
+    target_ticket_id: UUID
+    public_summary: str = Field(..., min_length=1, max_length=2000)
+    note_header: str = Field("", max_length=200)
+    expected_version: int = Field(..., ge=1)
+
+
+@router.post("/{ticket_id}/merge", response_model=TicketAgentOut)
+def merge_ticket(
+    ticket_id: UUID,
+    payload: MergeIn,
+    request: Request,
+    current_user: CurrentUser = Depends(require_support_surface),
+    scope: visibility.HubScope = Depends(hub_scope),
+    db: Session = Depends(get_support_db),
+):
+    """Kaynak talebi hedefe birlestirir; hedefin guncel detayini doner.
+    Kaynak cozuldugu icin `tickets.resolve` gerekir; iki talep de kapsamda
+    olmali (kapsam disi = 404)."""
+    from ..services import ticket_service
+
+    _require(scope, Perm.TICKETS_RESOLVE)
+    # Kilit sirasi sabit (id'ye gore): iki ters birlestirme kilitlenmez.
+    first, second = sorted([ticket_id, payload.target_ticket_id], key=str)
+    a = _load_ticket(db, first, scope, for_update=True)
+    b = _load_ticket(db, second, scope, for_update=True) if second != first else a
+    source, target = (a, b) if a.id == ticket_id else (b, a)
+    try:
+        ticket_service.check_version(source, payload.expected_version)
+        app, src = _refs(db, source)
+        helpdesk.merge_tickets(
+            db, source, target, actor=_actor(current_user, scope, request),
+            actor_user_id=UUID(str(current_user.id)), public_summary=payload.public_summary,
+            note_header=payload.note_header, application=app, source_tenant=src,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise _validation(exc)
+    return _detail(db, target, scope)
+
+
+# =============================================================================
 # Raporlar (Dalga C)
 # =============================================================================
 

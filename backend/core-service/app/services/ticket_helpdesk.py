@@ -444,3 +444,97 @@ def _bulk_one(db, ticket, action, value, *, actor, actor_user_id):
         set_ticket_tags(db, ticket, current, actor_user_id=actor_user_id)
     elif action == "watch":
         set_watching(db, ticket, actor_user_id, bool(value))
+
+
+# =============================================================================
+# Birlestirme (Dalga D1)
+# =============================================================================
+
+MERGE_NOTE_LIMIT = 8000
+MERGEABLE_SOURCE = ("open", "in_progress", "waiting_customer", "reopened")
+
+
+def merged_into(db: Session, ticket_id):
+    from ..models.ticket_helpdesk import TicketMerge
+
+    row = db.query(TicketMerge).filter(TicketMerge.source_ticket_id == ticket_id).first()
+    return db.get(Ticket, row.target_ticket_id) if row else None
+
+
+def merged_from(db: Session, ticket_id) -> List[Ticket]:
+    from ..models.ticket_helpdesk import TicketMerge
+
+    ids = [r[0] for r in db.query(TicketMerge.source_ticket_id)
+           .filter(TicketMerge.target_ticket_id == ticket_id).all()]
+    if not ids:
+        return []
+    return db.query(Ticket).filter(Ticket.id.in_(ids)).order_by(Ticket.number).all()
+
+
+def _merge_note(db: Session, source: Ticket, header: str) -> str:
+    """Kaynagin PUBLIC yazismasini hedefe ic not olarak tasir (sinirli)."""
+    from ..models.ticketing import TicketMessage
+    from ..ticket_contract import format_ticket_number
+
+    lines = [header.strip() or f"{format_ticket_number(source.number)}", "",
+             f"{format_ticket_number(source.number)} · {source.title}"]
+    messages = (
+        db.query(TicketMessage)
+        .filter(TicketMessage.ticket_id == source.id, TicketMessage.visibility == "public")
+        .order_by(TicketMessage.sequence)
+        .all()
+    )
+    for m in messages:
+        who = m.author_display_name or m.author_type
+        when = m.created_at.strftime("%Y-%m-%d %H:%M") if m.created_at else ""
+        lines += ["", f"— {who} · {when}", (m.body or "").strip()]
+    text = "\n".join(lines)
+    if len(text) > MERGE_NOTE_LIMIT:
+        text = text[:MERGE_NOTE_LIMIT - 1].rstrip() + "…"
+    return text
+
+
+def merge_tickets(db: Session, source: Ticket, target: Ticket, *, actor, actor_user_id,
+                  public_summary: str, note_header: str = "",
+                  application=None, source_tenant=None) -> Ticket:
+    """Kaynagi hedefe birlestirir — TEK transaction:
+       1) kaynagin public yazismasi hedefe ic not;
+       2) kaynak `duplicate` koduyla cozulur (duplicate_of = hedef; sozlesme
+          olayi `ticket.resolved` — LogiSlot dahil tuketiciler anlar);
+       3) takipciler ve etiketler hedefe tasinir; 4) birlestirme kaydi.
+    Yalniz ayni uygulama + ayni musteri (kaynak tenant) birlestirilir."""
+    from ..models.ticket_helpdesk import TicketMerge
+
+    if source.id == target.id:
+        raise TicketValidationError("A ticket cannot be merged into itself.", code="validation_error")
+    if (source.application_id != target.application_id
+            or source.source_tenant_row_id != target.source_tenant_row_id):
+        raise TicketValidationError("Only tickets of the same customer can be merged.",
+                                    code="validation_error")
+    if source.status not in MERGEABLE_SOURCE:
+        raise TicketValidationError("Resolved, closed or cancelled tickets cannot be merged.",
+                                    code="validation_error")
+    if target.status in ("closed", "cancelled"):
+        raise TicketValidationError("Cannot merge into a closed or cancelled ticket.",
+                                    code="validation_error")
+    if merged_into(db, source.id) is not None or merged_into(db, target.id) is not None:
+        raise TicketValidationError("One of these tickets was already merged.", code="validation_error")
+
+    ticket_service.add_message(
+        db, target, body=_merge_note(db, source, note_header), visibility="internal",
+        actor=actor, author_type="agent",
+    )
+    ticket_service.resolve(
+        db, source, resolution_code="duplicate", public_summary=public_summary,
+        actor=actor, expected_version=None, duplicate_of_ticket_id=target.id,
+        application=application, source_tenant=source_tenant,
+    )
+    for user_id in watchers_of(db, source.id):
+        set_watching(db, target, user_id, True)
+    source_tags = [t.id for t in tags_for(db, [source.id]).get(source.id, [])]
+    if source_tags:
+        add_tags(db, target, source_tags, actor_user_id=actor_user_id)
+    db.add(TicketMerge(source_ticket_id=source.id, target_ticket_id=target.id,
+                       merged_by_user_id=actor_user_id))
+    db.flush()
+    return target

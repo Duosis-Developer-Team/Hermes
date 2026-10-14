@@ -23,6 +23,7 @@ import ResolveModal from './ResolveModal'
 import ConvertToWorkItemModal from './ConvertToWorkItemModal'
 import TicketTimeline from './TicketTimeline'
 import TicketStatusModal from './TicketStatusModal'
+import MergeModal from './MergeModal'
 import SlaBadge, { TagChips } from './SlaBadge'
 
 import { TicketPriorityBadge, TicketStatusBadge } from './TicketStatusBadge'
@@ -30,9 +31,14 @@ import './tickets.css'
 import { useTicketLabel } from './useTicketLabel'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
-import { CustomerServiceOutlined, DownOutlined, EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons'
+import {
+    CustomerServiceOutlined, DownOutlined, EyeInvisibleOutlined, EyeOutlined, MergeCellsOutlined,
+} from '@ant-design/icons'
 
 const { Text } = Typography
+
+/** Birlestirilebilir (kaynak) durumlar — sunucu da dogrular. */
+const MERGEABLE = ['open', 'in_progress', 'waiting_customer', 'reopened']
 
 /** Acik talebin ve listenin canli yenileme araligi. */
 export const LIVE_REFRESH_MS = 30_000
@@ -48,6 +54,7 @@ export default function AgentWorkbench({
     const [resolveOpen, setResolveOpen] = useState(false)
     const [convertOpen, setConvertOpen] = useState(false)
     const [statusOpen, setStatusOpen] = useState(false)
+    const [mergeOpen, setMergeOpen] = useState(false)
     const [conflict, setConflict] = useState(false)
 
     useEffect(() => {
@@ -197,6 +204,13 @@ export default function AgentWorkbench({
                         disabled={!canRespond}
                         onClick={() => setConvertOpen(true)}
                     >{t('hub.createWorkItem')}</Button>
+                    {MERGEABLE.includes(ticket.status) && !ticket.merged_into && (
+                        <Button
+                            icon={<MergeCellsOutlined />}
+                            disabled={!canResolve}
+                            onClick={() => setMergeOpen(true)}
+                        >{t('merge.action')}</Button>
+                    )}
                     <Button
                         icon={ticket.watching ? <EyeInvisibleOutlined /> : <EyeOutlined />}
                         aria-pressed={Boolean(ticket.watching)}
@@ -219,6 +233,31 @@ export default function AgentWorkbench({
             )}
             {ticket && (
                 <Stack gap={3}>
+                    {ticket.merged_into && (
+                        <Alert
+                            type="info"
+                            showIcon
+                            message={t('merge.mergedInto', { number: ticket.merged_into.ticket_number })}
+                            action={onOpenTicket && (
+                                <Button size="small" onClick={() => onOpenTicket(ticket.merged_into.id)}>
+                                    {t('merge.open')}
+                                </Button>
+                            )}
+                        />
+                    )}
+                    {(ticket.merged_from ?? []).length > 0 && (
+                        <p className="ticket-merged-from">
+                            <MergeCellsOutlined aria-hidden="true" /> {t('merge.mergedFrom')}{' '}
+                            {ticket.merged_from.map((ref, i) => (
+                                <span key={ref.id}>
+                                    {i > 0 && ', '}
+                                    {onOpenTicket
+                                        ? <button type="button" className="ticket-link" onClick={() => onOpenTicket(ref.id)}>{ref.ticket_number}</button>
+                                        : ref.ticket_number}
+                                </span>
+                            ))}
+                        </p>
+                    )}
                     {conflict && (
                         <Alert
                             type="warning"
@@ -331,6 +370,18 @@ export default function AgentWorkbench({
                 })}
                 onTransition={doTransition}
                 onResolve={() => { setStatusOpen(false); setResolveOpen(true) }}
+            />
+
+            <MergeModal
+                open={mergeOpen}
+                ticket={ticket}
+                onClose={() => setMergeOpen(false)}
+                onMerged={(merged) => {
+                    setMergeOpen(false)
+                    refresh()
+                    queryClient.invalidateQueries({ queryKey: queryKeys.tickets.detail(merged.id) })
+                    onOpenTicket?.(merged.id)
+                }}
             />
 
             <ResolveModal

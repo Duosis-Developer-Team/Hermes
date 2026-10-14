@@ -396,3 +396,8 @@
 .ticket-reports .pc-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; padding: 0; border: 0; background: none; color: var(--h-text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
 .customer-csat { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--h-bg-hover); }
 .customer-csat p { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+/* --- Dalga D1: birlestirme ------------------------------------------------------ */
+.merge-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: var(--h-bg-hover); }
+.ticket-merged-from { margin: 0; color: var(--h-text-secondary); font-size: 13px; }
+.ticket-link { padding: 0; border: 0; background: none; color: var(--h-brand); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }

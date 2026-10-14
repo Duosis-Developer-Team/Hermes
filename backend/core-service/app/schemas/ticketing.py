@@ -170,6 +170,13 @@ class SlaStateOut(BaseModel):
     resolution: Optional[SlaLegOut] = None
 
 
+class TicketRefOut(BaseModel):
+    id: UUID
+    ticket_number: str
+    title: str
+    status: str
+
+
 class CsatOut(BaseModel):
     rating: int
     comment: Optional[str] = None
@@ -299,6 +306,9 @@ class TicketAgentOut(TicketAgentListItem):
     watching: bool = False
     watcher_count: int = 0
     csat: Optional[CsatOut] = None
+    # Dalga D1: birlestirme
+    merged_into: Optional[TicketRefOut] = None
+    merged_from: List[TicketRefOut] = Field(default_factory=list)
 
 
 class TicketWorkItemCreateRequest(_Strict):

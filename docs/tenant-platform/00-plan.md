@@ -93,9 +93,27 @@ takipçiler · uygulama içi bildirimler (ajan: yeni/atanan/yanıt; müşteri: y
 Rapor paneli (hacim, birikim, ilk yanıt/çözüm medyanı, SLA %, ekip/ajan) ·
 CSAT (çözüm sonrası 1–5 + yorum).
 
-### 4.4 Sonra (ayrı karar)
-E-posta kanalı (giden bildirim + gelen e-postadan talep), bilgi bankası,
-birleştirme, otomasyon kuralları.
+### 4.4 Dalga D — Kanal ve verim (CTO kararı K5, 14.10)
+K5: e-posta bildirimleri evet; e-postadan talep önerilen şekilde (tek Hermes posta
+kutusu + sağlayıcı başına artı-adres `talep+<slug>@…`, yalnız tanınan alan adları),
+posta kutusu ve Graph Mail.ReadWrite izni verilene kadar KAPALI; yardım merkezi
+denenecek; birleştirme ve otomasyon evet.
+- **D1 Birleştirme:** fazla talep `duplicate` koduyla çözülür (`duplicate_of_ticket_id`,
+  sözleşmede mevcut), içeriği hedefe iç not olarak taşınır, takipçi/etiket birleşir;
+  yalnız aynı uygulama + aynı müşteri; `ticket_merges` kaydı.
+- **D2 Otomasyon:** olay kuralları (talep açıldı / müşteri yanıtladı) aynı
+  transaction'da; zamanlı kurallar saatlik bakım işinde (yaş: açılış / son
+  güncelleme / son public hareket). Koşullar AND, eylemler mevcut servis
+  kurallarıyla; her zamanlı kural bir talepte bir kez (`ticket_automation_runs`);
+  aktör "Otomasyon: <ad>".
+- **D3 Bilgi bankası:** kategori + makale (taslak/yayında, ekip içi/müşteriye açık),
+  ajan yanıtına ekleme, portalda yardım merkezi + yeni talepte makale önerisi,
+  "yardımcı oldu mu" oyu.
+- **D4 E-posta:** giden — talep edene (yalnız Hermes/e-posta kanalı talepleri;
+  LogiSlot müşterisine YOK, kendi webhook'u var) ve ajana (atama, müşteri yanıtı);
+  aynı transaction'da posta outbox'ı, dakikalık dispatcher gönderir (Graph).
+  Gelen — kapalı başlar; yanıt yalnız talep sahibinin adresinden gelirse talebe
+  eklenir; otomatik yanıtlar/döngüler yok sayılır.
 
 ### Sözleşme notu
 Yeni yetenekler **yeni tablolarla** gelir; LogiSlot'a giden olay/alan seti ve

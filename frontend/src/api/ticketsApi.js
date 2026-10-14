@@ -253,6 +253,8 @@ export const ticketHelpdeskService = {
     readNotification: async (id) => { await coreClient.post(`${HD}/notifications/${id}/read`) },
     readAllNotifications: async () => { await coreClient.post(`${HD}/notifications/read-all`) },
     reports: async (params = {}) => (await coreClient.get(`${HD}/reports`, { params })).data,
+    merge: async (ticketId, payload) =>
+        (await coreClient.post(`${CORE}/tickets/${ticketId}/merge`, payload)).data,
 }
 
 export const ticketAdminService = {
