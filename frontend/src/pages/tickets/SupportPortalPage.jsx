@@ -28,15 +28,13 @@ import { LiquidSegmented, PageHero } from '../../components/liquid'
 import CreateTicketModal from '../../features/tickets/CreateTicketModal'
 import CustomerTicketDetail from '../../features/tickets/CustomerTicketDetail'
 import { LIVE_REFRESH_MS } from '../../features/tickets/AgentWorkbench'
-import {
-    ERROR_MESSAGES, isResolvedLike,
-} from '../../features/tickets/constants'
+import { isResolvedLike } from '../../features/tickets/constants'
 import { TicketStatusBadge } from '../../features/tickets/TicketStatusBadge'
 import SurfaceSwitch from '../../features/tickets/SurfaceSwitch'
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { queryKeys } from '../../query/queryKeys'
 import '../../features/tickets/tickets.css'
-import { useTicketLabel } from '../../features/tickets/useTicketLabel'
+import { useTicketErrorText, useTicketLabel } from '../../features/tickets/useTicketLabel'
 import { useT } from '../../i18n'
 
 dayjs.extend(relativeTime)
@@ -62,6 +60,7 @@ const SORTS = ['updated', 'newest', 'oldest']
 export default function SupportPortalPage() {
     const t = useT()
     const tl = useTicketLabel()
+    const errorText = useTicketErrorText()
     const navigate = useNavigate()
     const queryClient = useQueryClient()
     const context = useTicketContext()
@@ -135,17 +134,11 @@ export default function SupportPortalPage() {
             invalidate()
             setCreateOpen(false)
             setSelected({ id: created.id, provider: created.provider?.tenant_id })
-            message.success(
-                `Your request was received: ${created.ticket_number}`,
-            )
+            message.success(t('portal.received', { number: created.ticket_number }))
         },
         onError: (error) => {
             const code = ticketErrorCode(error)
-            message.error(
-                ERROR_MESSAGES[code]
-                || error?.normalized?.message
-                || 'The request could not be sent. Your input was kept.',
-            )
+            message.error(errorText(code, t('portal.sendFailed')))
         },
     })
 
@@ -164,9 +157,9 @@ export default function SupportPortalPage() {
                     title={t('portal.unavailable')}
                     description={(() => {
                         const reason = context.context?.reason
-                        if (reason === 'missing_permission') return 'You do not have access to the support module.'
+                        if (reason === 'missing_permission') return t('portal.noAccess')
                         if (reason === 'not_connected') return t('portal.notConnected')
-                        return 'The support module is not configured on this environment.'
+                        return t('portal.moduleNotConfigured')
                     })()}
                 />
             </Page>
@@ -228,9 +221,7 @@ export default function SupportPortalPage() {
                     type="warning"
                     showIcon
                     message={t('portal.routingNotConfigured')}
-                    description={'New requests cannot be created. Please '
-                        + 'contact your administrator; this screen enables '
-                        + 'itself once a target support team is set.'}
+                    description={t('portal.routingHint')}
                     style={{ marginBottom: 16 }}
                 />
             )}
@@ -304,9 +295,7 @@ export default function SupportPortalPage() {
             {!rows.length && !list.isLoading && (
                 <EmptyState
                     title={t('portal.noRequests')}
-                    description={context.canCreate
-                        ? 'You can open a new support request.'
-                        : 'You do not have permission to open requests.'}
+                    description={context.canCreate ? t('portal.canOpen') : t('portal.cannotOpen')}
                 />
             )}
 

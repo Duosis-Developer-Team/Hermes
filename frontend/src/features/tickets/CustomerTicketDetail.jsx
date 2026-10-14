@@ -19,12 +19,9 @@ import AttachmentDropzone from './AttachmentDropzone'
 import { readyAttachmentIds } from './attachmentState'
 import TicketTimeline from './TicketTimeline'
 import { LIVE_REFRESH_MS } from './AgentWorkbench'
-import {
-    ERROR_MESSAGES,
-} from './constants'
 import { TicketStatusBadge } from './TicketStatusBadge'
 import './tickets.css'
-import { useTicketLabel } from './useTicketLabel'
+import { useTicketErrorText, useTicketLabel } from './useTicketLabel'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
 import { CustomerServiceOutlined } from '@ant-design/icons'
@@ -39,6 +36,7 @@ export default function CustomerTicketDetail({
 }) {
     const t = useT()
     const tl = useTicketLabel()
+    const errorText = useTicketErrorText()
     const queryClient = useQueryClient()
     const [draft, setDraft] = useState('')
     const [reason, setReason] = useState('')
@@ -69,11 +67,7 @@ export default function CustomerTicketDetail({
         onSuccess: refresh,
         onError: (error) => {
             const code = ticketErrorCode(error)
-            message.error(
-                ERROR_MESSAGES[code]
-                || error?.normalized?.message
-                || 'The action could not be completed.',
-            )
+            message.error(errorText(code, t('portal.actionFailed')))
             if (code === 'ticket_version_conflict') refresh()
         },
     }
@@ -117,7 +111,7 @@ export default function CustomerTicketDetail({
             )}
             destroyOnHidden
         >
-            {detail.isLoading && <Text type="secondary">Loading…</Text>}
+            {detail.isLoading && <Text type="secondary">{t('common.loading')}</Text>}
             {detail.isError && (
                 <EmptyState
                     title={t('customerTicket.cannotOpen')}

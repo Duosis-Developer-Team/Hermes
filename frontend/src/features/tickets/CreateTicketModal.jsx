@@ -18,7 +18,8 @@ import { supportPortalService } from '../../api/ticketsApi'
 import { AppModal, Stack, StatusBadge } from '../../components/ui'
 import AttachmentDropzone from './AttachmentDropzone'
 import { readyAttachmentIds } from './attachmentState'
-import { CATEGORY_LABELS, IMPACT_HINTS, IMPACT_LABELS } from './constants'
+import { CATEGORY_LABELS, IMPACT_LABELS } from './constants'
+import { useTicketLabel } from './useTicketLabel'
 import './tickets.css'
 import { useT } from '../../i18n'
 
@@ -52,6 +53,7 @@ export default function CreateTicketModal({
     suggest, onOpenArticle,
 }) {
     const t = useT()
+    const tl = useTicketLabel()
     const [form] = Form.useForm()
     const [attachments, setAttachments] = useState([])
     const providerId = provider?.tenant_id
@@ -163,8 +165,8 @@ export default function CreateTicketModal({
                     >
                         <Select
                             placeholder={t('ticket.select')}
-                            options={Object.entries(CATEGORY_LABELS).map(
-                                ([value, label]) => ({ value, label }),
+                            options={Object.keys(CATEGORY_LABELS).map(
+                                (value) => ({ value, label: tl('category', value) }),
                             )}
                         />
                     </Form.Item>
@@ -176,15 +178,15 @@ export default function CreateTicketModal({
                     >
                         <Select
                             placeholder={t('ticket.select')}
-                            options={Object.entries(IMPACT_LABELS).map(
-                                ([value, label]) => ({
+                            options={Object.keys(IMPACT_LABELS).map(
+                                (value) => ({
                                     value,
                                     label: (
                                         <span>
-                                            {label}
+                                            {tl('impact', value)}
                                             {' — '}
                                             <Text type="secondary">
-                                                {IMPACT_HINTS[value]}
+                                                {t(`ticketLabels.impactHint.${value}`)}
                                             </Text>
                                         </span>
                                     ),

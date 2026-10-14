@@ -27,7 +27,7 @@ import { Button, EmptyState, Page } from '../../components/ui'
 import { GlassCard, LiquidSegmented, PageHero } from '../../components/liquid'
 import AgentWorkbench, { LIVE_REFRESH_MS } from '../../features/tickets/AgentWorkbench'
 import {
-    AGENT_STATUS_LABELS, CATEGORY_LABELS, ERROR_MESSAGES, PRIORITY_LABELS,
+    AGENT_STATUS_LABELS, CATEGORY_LABELS, PRIORITY_LABELS,
 } from '../../features/tickets/constants'
 import {
     TicketPriorityBadge, TicketStatusBadge,
@@ -39,7 +39,7 @@ import SurfaceSwitch from '../../features/tickets/SurfaceSwitch'
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { queryKeys } from '../../query/queryKeys'
 import '../../features/tickets/tickets.css'
-import { useTicketLabel } from '../../features/tickets/useTicketLabel'
+import { useTicketErrorText, useTicketLabel } from '../../features/tickets/useTicketLabel'
 import { useT } from '../../i18n'
 
 dayjs.extend(relativeTime)
@@ -56,6 +56,7 @@ const SPLIT_QUERY = '(min-width: 1100px)'
 export default function TicketHubPage() {
     const t = useT()
     const tl = useTicketLabel()
+    const errorText = useTicketErrorText()
     const navigate = useNavigate()
     const queryClient = useQueryClient()
     const [params, setParams] = useSearchParams()
@@ -287,11 +288,7 @@ export default function TicketHubPage() {
 
     const onCommandError = (error) => {
         const code = ticketErrorCode(error)
-        message.error(
-            ERROR_MESSAGES[code]
-            || error?.normalized?.message
-            || 'The action could not be completed.',
-        )
+        message.error(errorText(code, t('portal.actionFailed')))
         // Surum catismasinda son hali yukle; composer taslagi
         // AgentWorkbench icinde KORUNUR.
         if (code === 'ticket_version_conflict') invalidate()

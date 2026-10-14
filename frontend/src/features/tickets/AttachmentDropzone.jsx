@@ -38,17 +38,7 @@ const STATUS_VIEW = {
     failed: { tone: 'danger', key: 'ticket.uploadFailed' },
 }
 
-const REJECT_REASONS = {
-    mime_not_allowed: 'This file type is not allowed.',
-    mime_mismatch: 'File content does not match its extension.',
-    extension_mismatch: 'File content does not match its extension.',
-    forbidden_executable: 'Executable files are not allowed.',
-    forbidden_archive: 'Archive files are not allowed.',
-    forbidden_markup: 'HTML and SVG files are not allowed.',
-    malware_detected: 'Malicious content was detected in this file.',
-    scanner_unavailable: 'The scanning service is unavailable right now.',
-    empty_file: 'The file is empty.',
-}
+// Red gerekceleri cevrilir: `ticket.attachReject.<kod>` (bilinmeyen kod ham gosterilir).
 
 export default function AttachmentDropzone({
     enabled, onOpenSession, onUploadContent, value = [], onChange,
@@ -96,18 +86,18 @@ export default function AttachmentDropzone({
         const incoming = Array.from(files || [])
         if (!incoming.length) return
         if (value.length + incoming.length > MAX_FILES) {
-            setError(`You can attach at most ${MAX_FILES} files.`)
+            setError(t('ticket.attachTooMany', { max: MAX_FILES }))
             return
         }
         const totalBytes = value.reduce((sum, i) => sum + (i.size || 0), 0)
             + incoming.reduce((sum, f) => sum + f.size, 0)
         if (totalBytes > TOTAL_MAX_BYTES) {
-            setError('Total attachment size exceeds the 50 MB limit.')
+            setError(t('ticket.attachTotalTooLarge'))
             return
         }
         const oversized = incoming.find((file) => file.size > MAX_BYTES)
         if (oversized) {
-            setError(`"${oversized.name}" exceeds the 15 MB limit.`)
+            setError(t('ticket.attachFileTooLarge', { name: oversized.name }))
             return
         }
         const entries = incoming.map((file) => ({
@@ -187,7 +177,7 @@ export default function AttachmentDropzone({
                         )}
                         {item.reason && (
                             <Text type="secondary">
-                                {REJECT_REASONS[item.reason] ?? item.reason}
+                                {t(`ticket.attachReject.${item.reason}`) !== `ticket.attachReject.${item.reason}` ? t(`ticket.attachReject.${item.reason}`) : item.reason}
                             </Text>
                         )}
                         {(item.status === 'failed'

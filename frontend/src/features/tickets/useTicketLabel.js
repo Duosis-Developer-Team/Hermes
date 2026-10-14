@@ -11,7 +11,7 @@ import { useCallback } from 'react'
 import { useT } from '../../i18n'
 import {
     AGENT_STATUS_LABELS, CATEGORY_LABELS, IMPACT_LABELS, PRIORITY_LABELS,
-    QUEUE_LABELS, RESOLUTION_LABELS, STATUS_LABELS, labelOf,
+    ERROR_MESSAGES, QUEUE_LABELS, RESOLUTION_LABELS, STATUS_LABELS, labelOf,
 } from './constants'
 
 const FALLBACK = {
@@ -34,3 +34,20 @@ export function useTicketLabel() {
 }
 
 export default useTicketLabel
+
+/**
+ * Sozlesme hata kodu → kullanicinin dilinde aciklama (`ticketErrors.<kod>`).
+ * Ceviri yoksa constants.js metni, o da yoksa verilen yedek metin.
+ */
+export function useTicketErrorText() {
+    const t = useT()
+    return useCallback((code, fallback) => {
+        if (code) {
+            const key = `ticketErrors.${code}`
+            const text = t(key)
+            if (text !== key) return text
+            if (ERROR_MESSAGES[code]) return ERROR_MESSAGES[code]
+        }
+        return fallback
+    }, [t])
+}
