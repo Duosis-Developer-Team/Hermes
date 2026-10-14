@@ -263,6 +263,32 @@ export const ticketHelpdeskService = {
     automationRuns: async (id) => (await coreClient.get(`${HD}/automations/${id}/runs`)).data,
 }
 
+/** Dalga D3 — bilgi bankasi. Ajan: saglayicinin tum makaleleri. */
+export const kbService = {
+    categories: async () => (await coreClient.get(`${CORE}/tickets/kb/categories`)).data,
+    createCategory: async (payload) => (await coreClient.post(`${CORE}/tickets/kb/categories`, payload)).data,
+    updateCategory: async (id, payload) => (await coreClient.patch(`${CORE}/tickets/kb/categories/${id}`, payload)).data,
+    articles: async (params = {}) => (await coreClient.get(`${CORE}/tickets/kb/articles`, { params })).data,
+    article: async (id) => (await coreClient.get(`${CORE}/tickets/kb/articles/${id}`)).data,
+    createArticle: async (payload) => (await coreClient.post(`${CORE}/tickets/kb/articles`, payload)).data,
+    updateArticle: async (id, payload) => (await coreClient.put(`${CORE}/tickets/kb/articles/${id}`, payload)).data,
+}
+
+/** Dalga D3 — yardim merkezi (talep eden). Birden fazla saglayicida
+ *  `provider` zorunlu (sunucu baglanti kumesine karsi dogrular). */
+export const helpCenterService = {
+    categories: async (provider) => (await coreClient.get(`${CORE}/support/kb/categories`,
+        { params: withProvider(provider) })).data,
+    articles: async (params = {}, provider) => (await coreClient.get(`${CORE}/support/kb/articles`,
+        { params: withProvider(provider, params) })).data,
+    article: async (id, provider) => (await coreClient.get(`${CORE}/support/kb/articles/${id}`,
+        { params: withProvider(provider) })).data,
+    vote: async (id, helpful, provider) => (await coreClient.post(`${CORE}/support/kb/articles/${id}/vote`,
+        { helpful }, { params: withProvider(provider) })).data,
+    suggest: async (q, provider) => (await coreClient.get(`${CORE}/support/kb/suggest`,
+        { params: withProvider(provider, { q }) })).data,
+}
+
 export const ticketAdminService = {
     listApplications: async () => {
         const { data } = await coreClient.get(

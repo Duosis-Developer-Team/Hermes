@@ -51,6 +51,8 @@ from app.routers import (
     support_portal_router,
     ticket_admin_router,
     ticket_helpdesk_router,
+    ticket_kb_router,
+    help_center_router,
 )
 from shared.exceptions import HermesException
 from shared.metrics import setup_metrics, start_metrics_server
@@ -227,6 +229,10 @@ app.include_router(meetings_router, prefix=API_PREFIX, dependencies=_module(MEET
 # Ortak urun ticket platformu — Duosis hub, musteri portali ve
 # entegrasyon yonetimi. Uc router da AYNI izin katalogunu kullanir;
 # hangi yuzeyin acilacagini istegin TENANT'i belirler.
+# Bilgi bankasi (Dalga D3): /tickets/kb ve /support/kb, ONCE kaydedilir ki
+# `/tickets/{ticket_id}` gibi genel desenler "kb" yolunu yutmasin.
+app.include_router(ticket_kb_router, prefix=API_PREFIX, dependencies=_module(TICKETS))
+app.include_router(help_center_router, prefix=API_PREFIX, dependencies=_module(TICKETS))
 app.include_router(tickets_router, prefix=API_PREFIX, dependencies=_module(TICKETS))
 app.include_router(support_portal_router, prefix=API_PREFIX, dependencies=_module(TICKETS))
 app.include_router(ticket_admin_router, prefix=API_PREFIX, dependencies=_module(TICKETS))

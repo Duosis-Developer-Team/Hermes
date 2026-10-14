@@ -47,6 +47,8 @@ export const routeLoaders = {
     // agent hub kodunu HIC indirmez (ve tersi).
     ticketHub: () => import('../pages/tickets/TicketHubPage'),
     ticketReports: () => import('../pages/tickets/TicketReportsPage'),
+    knowledgeBase: () => import('../pages/tickets/KnowledgeBasePage'),
+    helpCenter: () => import('../pages/tickets/HelpCenterPage'),
     supportPortal: () => import('../pages/tickets/SupportPortalPage'),
     ticketIntegrations: () =>
         import('../pages/tickets/TicketIntegrationsPage'),

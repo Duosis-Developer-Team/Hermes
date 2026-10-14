@@ -3,6 +3,7 @@
  *   D1 Birlestirme: yalniz ayni musterinin acik talepleri aday; hedef secilince
  *      musteri mesaji dolar; onay birlestirme ucunu cagirir.
  *   D2 Otomasyon: editor zamanli kurali (yas + kosul + eylem) dogru govdeyle kaydeder.
+ *   D3 Yardim merkezi: arama + makale + oy; yeni talep yazilirken oneriler.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
@@ -25,12 +26,23 @@ vi.mock('../../api/ticketsApi', async () => {
             tags: vi.fn(async () => []), customers: vi.fn(async () => []),
             automations: vi.fn(async () => []), createAutomation: vi.fn(async () => ({})),
         },
+        ticketContextService: { get: vi.fn() },
+        helpCenterService: {
+            categories: vi.fn(async () => [{ id: 'c1', name: 'Hesap', article_count: 1 }]),
+            articles: vi.fn(async () => [{ id: 'a1', title: 'Şifre sıfırlama', summary: 'Unuttuysanız' }]),
+            article: vi.fn(async () => ({ id: 'a1', title: 'Şifre sıfırlama', body: '**Adım 1**', my_vote: null })),
+            vote: vi.fn(async () => ({ id: 'a1', title: 'Şifre sıfırlama', body: '**Adım 1**', my_vote: true })),
+            suggest: vi.fn(async () => [{ id: 'a1', title: 'Şifre sıfırlama' }]),
+        },
     }
 })
 
-const { ticketHelpdeskService } = await import('../../api/ticketsApi')
+const { ticketHelpdeskService, ticketContextService, helpCenterService } = await import('../../api/ticketsApi')
 const { default: MergeModal } = await import('../../features/tickets/MergeModal')
 const { default: AutomationsTab } = await import('../../pages/tickets/AutomationsTab')
+const { default: HelpCenterPage } = await import('../../pages/tickets/HelpCenterPage')
+const { default: CreateTicketModal } = await import('../../features/tickets/CreateTicketModal')
+const { Route, Routes } = await import('react-router-dom')
 
 const setup = () => userEvent.setup({ delay: null, pointerEventsCheck: 0 })
 const CUSTOMER = { id: 'src1' }
@@ -102,5 +114,41 @@ describe('otomasyon editoru', () => {
             conditions: { age: { basis: 'updated', hours: 72 }, status: ['waiting_customer'] },
             actions: [{ type: 'public_reply', body: 'Yanitinizi bekliyoruz.' }],
         }))
+    })
+})
+
+
+describe('yardim merkezi', () => {
+    it('makaleyi acar ve oy verdirir', async () => {
+        const user = setup()
+        ticketContextService.get.mockResolvedValue({ module_enabled: true, surface: 'portal', surfaces: ['portal'],
+            permissions: ['tickets.access'], providers: [{ tenant_id: 'p1', display_name: 'Duosis', can_create: true, is_active: true }] })
+        renderWithProviders(
+            <Routes>
+                <Route path="/support/help" element={<HelpCenterPage />} />
+                <Route path="/support/help/:articleId" element={<HelpCenterPage />} />
+            </Routes>,
+            { route: '/support/help' },
+        )
+        expect(await screen.findByRole('button', { name: /Hesap/ })).toBeInTheDocument()
+        await user.click(await screen.findByRole('button', { name: /Şifre sıfırlama/ }))
+        const drawer = await screen.findByRole('dialog')
+        expect(await within(drawer).findByText('Adım 1')).toBeInTheDocument()
+        await user.click(within(drawer).getByRole('button', { name: /Yes/ }))
+        await waitFor(() => expect(helpCenterService.vote).toHaveBeenCalledWith('a1', true, 'p1'))
+    })
+
+    it('yeni talep basligi yazilinca makale onerir', async () => {
+        const user = setup()
+        const onOpenArticle = vi.fn()
+        renderWithProviders(
+            <CreateTicketModal open onCancel={vi.fn()} onSubmit={vi.fn()} routeReady groupName="Destek"
+                               suggest={helpCenterService.suggest} onOpenArticle={onOpenArticle} />,
+        )
+        await user.type(screen.getByLabelText('Title'), 'Şifremi unuttum')
+        const region = await screen.findByRole('region', { name: 'These articles might help' }, { timeout: 2000 })
+        await user.click(within(region).getByRole('button', { name: 'Şifre sıfırlama' }))
+        expect(onOpenArticle).toHaveBeenCalledWith('a1')
+        expect(helpCenterService.suggest).toHaveBeenCalledWith('Şifremi unuttum')
     })
 })

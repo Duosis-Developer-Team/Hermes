@@ -10,10 +10,13 @@
  * geri alinamaz bir islemdir (mesaj duzenleme/silme v1'de YOK).
  */
 import { useState } from 'react'
-import { LockOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { LockOutlined, ReadOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import { Input, Segmented, Select, Typography } from 'antd'
 
-import { ticketHubService } from '../../api/ticketsApi'
+import { useQuery } from '@tanstack/react-query'
+
+import { kbService, ticketHubService } from '../../api/ticketsApi'
+import { markdownToText } from '../kb/MiniMarkdown'
 import { Button, Inline, Stack } from '../../components/ui'
 import AttachmentDropzone from './AttachmentDropzone'
 import { readyAttachmentIds } from './attachmentState'
@@ -29,6 +32,8 @@ export function AgentComposer({
     // Dalga B: hazir yanitlar. Eylemli makro (durum/oncelik/etiket) sunucuda
     // TEK transaction'da uygulanir (`onApplyMacro(macro, body)`).
     macros = [], onApplyMacro,
+    // Dalga D3: bilgi bankasindan makale ekleme (metin taslaga eklenir).
+    kbEnabled = false,
 }) {
     const t = useT()
     const tl = useTicketLabel()
@@ -36,6 +41,13 @@ export function AgentComposer({
     const [internalDraft, setInternalDraft] = useState('')
     const [attachments, setAttachments] = useState([])
     const [macro, setMacro] = useState(null)
+    const [kbQuery, setKbQuery] = useState('')
+    const kbResults = useQuery({
+        queryKey: ['kb', 'agent', 'composer', kbQuery],
+        queryFn: () => kbService.articles({ q: kbQuery || undefined, status: 'published' }),
+        enabled: kbEnabled,
+        staleTime: 60_000,
+    })
     const draft = value ?? internalDraft
     const setDraft = onChange ?? setInternalDraft
     const hasActions = Boolean(macro && (macro.set_status || macro.set_priority || (macro.add_tag_ids || []).length))
@@ -53,6 +65,17 @@ export function AgentComposer({
         if (next) {
             setVisibility(next.visibility || 'public')
             if (next.body) setDraft(next.body)
+        }
+    }
+
+    const insertArticle = async (id) => {
+        if (!id) return
+        try {
+            const article = await kbService.article(id)
+            const text = `${article.title}\n\n${markdownToText(article.body)}`
+            setDraft(draft.trim() ? `${draft.trimEnd()}\n\n${text}` : text)
+        } catch {
+            // Makale getirilemezse taslak degismez.
         }
     }
 
@@ -107,6 +130,21 @@ export function AgentComposer({
                         ? t('hub.composerInternalHint')
                         : t('hub.composerPublicHint')}
                 </Text>
+                {kbEnabled && (
+                    <Select
+                        className="ticket-macro-pick"
+                        size="small"
+                        showSearch
+                        filterOption={false}
+                        value={null}
+                        suffixIcon={<ReadOutlined />}
+                        placeholder={t('kb.insertArticle')}
+                        aria-label={t('kb.insertArticle')}
+                        onSearch={setKbQuery}
+                        onChange={insertArticle}
+                        options={(kbResults.data ?? []).map((a) => ({ value: a.id, label: a.title }))}
+                    />
+                )}
                 {macros.length > 0 && (
                     <Select
                         className="ticket-macro-pick"

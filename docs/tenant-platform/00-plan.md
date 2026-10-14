@@ -133,8 +133,11 @@ provası + satır sayımı).
 | 2 — Süper-admin konsolu | `591095c` | canlı (14.10) | auth 260, frontend 1163 test; görsel kontrol açık/koyu + 500 px |
 | 3.0 — Talep ağı | `8a3883a` | canlı (14.10; acme → duosis geri dolduruldu) | core 854 (RLS kanıtı dahil), auth 262, frontend 1166 |
 | 3.1 — Dalga A | `331810a` | canlı (14.10) | core 861, frontend 1171 |
-| 3.2 — Dalga B | `df48a54` | dev | core 877, frontend 1178 |
-| 3.3 — Dalga C | (bu commit) | CD sonrası | core 880, frontend 1181 |
+| 3.2 — Dalga B | `df48a54` | canlı (14.10) | core 877, frontend 1178 |
+| 3.3 — Dalga C | `c71bcbc` (+ perf `8513886`) | canlı (14.10) | core 881, frontend 1181 |
+| 3.4 — Dalga D1 birleştirme | `27739e5` | canlı (14.10) | core 884, frontend 1182 |
+| 3.5 — Dalga D2 otomasyon | `81506be` | canlı (14.10) | core 889, frontend 1183 |
+| 3.6 — Dalga D3 bilgi bankası | (bu commit) | CD sonrası | core 893, frontend 1187 |
 
 Faz 2 notları:
 - Konsol adresli: `/platform-admin` (genel bakış), `/tenants`, `/tenants/:id`
@@ -194,3 +197,21 @@ Dalga C notları (içgörü, 0020 — `ticket_csat`, RLS+FORCE):
   Kapsam = hub görünürlüğü (yönetici tümü, ajan kendi ekipleri) — liste ile aynı kural.
 - CSAT: çözüldü/kapandı'da yalnız talebin sahibi 1–5 + yorum verir (talep başına tek
   kayıt, değiştirilebilir); ajan detayda görür. Sözleşme olayı üretmez.
+
+Dalga D notları:
+- D1 birleştirme (0021 `ticket_merges`): kaynak `duplicate` koduyla çözülür
+  (`duplicate_of_ticket_id`), public yazışması hedefe iç not olarak taşınır,
+  takipçi/etiket geçer; yalnız aynı uygulama + aynı müşteri, `tickets.resolve`.
+- D2 otomasyon (0022 `ticket_automations` + `ticket_automation_runs`;
+  `ticket_notifications.kind` kısıtı `automation` ile genişledi —
+  `baseline_ddl.apply_ticket_notification_kinds` tek tanım). Kural başına
+  savepoint; hata talep akışını bozmaz, çalışma geçmişine yazılır. Zamanlı
+  kurallar mevcut `ticket-maintenance` CronJob'unda — yeni manifest YOK.
+- D3 bilgi bankası (0023 `kb_categories`, `kb_articles`, `kb_votes`):
+  ajan `/tickets/kb` (okuma: hub erişimi; yazma: `tickets.config.manage` ∨
+  `tickets.admin`), müşteri `/support/help` (yalnız yayında + müşteriye açık;
+  diğerleri 404). Arama TR karakter duyarsız + 5 harf kök eşleşmesi (başlık 3,
+  anahtar kelime 2, özet 1,5, gövde 1). Yeni talep penceresinde başlığa göre
+  öneri; ajan yanıtına "Makale ekle" (düz metin). Gövde güvenli Markdown alt
+  kümesi — HTML üretilmez, bağlantılar yalnız http/https/mailto. Oy okuyucu
+  başına tek (değiştirilebilir); görüntülenme müşteri okumasında sayılır.

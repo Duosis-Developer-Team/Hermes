@@ -315,6 +315,7 @@ export default function AgentWorkbench({
                                 canRespond={canRespond}
                                 attachmentsEnabled={context?.attachmentsEnabled}
                                 macros={macros.data ?? []}
+                                kbEnabled
                                 onApplyMacro={(macro, body) => applyMacro.mutate({ macro, body })}
                                 pending={reply.isPending || applyMacro.isPending}
                                 value={draft}

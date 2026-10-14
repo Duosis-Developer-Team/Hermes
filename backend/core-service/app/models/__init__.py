@@ -46,6 +46,7 @@ from .task_activity import TaskActivityEvent
 from .task_comment import TaskComment
 from .tenancy import TenantCounter, TenantRegistry
 from .ticket_network import TICKET_NETWORK_TABLES, TicketNetworkLink
+from .ticket_kb import KB_TABLES, KbArticle, KbCategory, KbVote
 from .ticket_helpdesk import (
     TICKET_CSAT_TABLES, TICKET_HELPDESK_TABLES, TICKET_MERGE_TABLES, TicketCsat, TicketMacro,
     TicketMerge, TICKET_AUTOMATION_TABLES, TicketAutomation, TicketAutomationRun, TicketNotification, TicketRead,
@@ -126,6 +127,10 @@ __all__ = [
     # Tenant projeksiyonu + sayaclar (WS2) — tenant OTORITESI auth_db'dir.
     "TenantRegistry",
     "TicketNetworkLink",
+    "KB_TABLES",
+    "KbArticle",
+    "KbCategory",
+    "KbVote",
     "TICKET_HELPDESK_TABLES",
     "TICKET_CSAT_TABLES",
     "TicketCsat",

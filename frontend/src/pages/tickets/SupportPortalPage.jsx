@@ -12,14 +12,15 @@
  * gruba düşmez.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { PlusOutlined, ReloadOutlined } from '@ant-design/icons'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { PlusOutlined, ReadOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, Input, message, Pagination, Select, Skeleton } from 'antd'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
-import { supportPortalService, ticketErrorCode } from '../../api/ticketsApi'
+import { helpCenterService, supportPortalService, ticketErrorCode } from '../../api/ticketsApi'
+import ArticleDrawer from '../../features/kb/ArticleDrawer'
 import {
     Button, Card, EmptyState, Page, StatusBadge,
 } from '../../components/ui'
@@ -70,10 +71,20 @@ export default function SupportPortalPage() {
     const [page, setPage] = useState(1)
     const [sort, setSort] = useState('updated')
     const [createOpen, setCreateOpen] = useState(false)
+    // Yardim merkezinden "talep olustur" → /support?new=1 (tek seferlik).
+    const [searchParams, setSearchParams] = useSearchParams()
+    useEffect(() => {
+        if (searchParams.get('new') !== '1') return
+        setCreateOpen(true)
+        const next = new URLSearchParams(searchParams)
+        next.delete('new')
+        setSearchParams(next, { replace: true })
+    }, [searchParams, setSearchParams])
     // Secili talep + saglayicisi (birden fazla saglayicida detay/komut
     // cagrilari saglayiciyi tasir).
     const [selected, setSelected] = useState(null)
     const [providerId, setProviderId] = useState(null)
+    const [articleId, setArticleId] = useState(null)
 
     // Yalniz saglayici (talep acmayan) tenant buraya gelirse hub'a gider.
     useEffect(() => {
@@ -188,6 +199,9 @@ export default function SupportPortalPage() {
                             onClick={() => list.refetch()}
                             loading={list.isFetching}
                         >{t('common.refresh')}</Button>
+                        <Button icon={<ReadOutlined />} onClick={() => navigate('/support/help')}>
+                            {t('kb.helpCenter')}
+                        </Button>
                         <Button
                             variant="primary"
                             icon={<PlusOutlined />}
@@ -297,6 +311,14 @@ export default function SupportPortalPage() {
                 providers={creatable}
                 provider={activeProvider}
                 onProviderChange={setProviderId}
+                suggest={(q) => helpCenterService.suggest(q, activeProvider?.tenant_id || undefined)}
+                onOpenArticle={setArticleId}
+            />
+
+            <ArticleDrawer
+                articleId={articleId}
+                provider={activeProvider?.tenant_id || undefined}
+                onClose={() => setArticleId(null)}
             />
 
             <CustomerTicketDetail

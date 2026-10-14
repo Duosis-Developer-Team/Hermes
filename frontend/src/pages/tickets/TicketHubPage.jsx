@@ -15,7 +15,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { BarChartOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
+import { BarChartOutlined, ReadOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Checkbox, Input, message, Pagination, Select, Skeleton } from 'antd'
 import dayjs from 'dayjs'
@@ -352,6 +352,9 @@ export default function TicketHubPage() {
                         >{t('common.refresh')}</Button>
                         <Button icon={<BarChartOutlined />} onClick={() => navigate('/tickets/reports')}>
                             {t('ticketReports.title')}
+                        </Button>
+                        <Button icon={<ReadOutlined />} onClick={() => navigate('/tickets/kb')}>
+                            {t('kb.title_page')}
                         </Button>
                     </>
                 )}

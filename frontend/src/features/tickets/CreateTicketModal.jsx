@@ -10,8 +10,9 @@
  * Toplanan alanlar allowlist'tir — cookie, token, form değeri, query
  * string ASLA toplanmaz (bu bileşen onları OKUMAZ bile).
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Alert, Collapse, Form, Input, Select, Typography } from 'antd'
+import { useQuery } from '@tanstack/react-query'
 
 import { supportPortalService } from '../../api/ticketsApi'
 import { AppModal, Stack, StatusBadge } from '../../components/ui'
@@ -46,11 +47,26 @@ export default function CreateTicketModal({
     // Talep agi: talep acilabilecek saglayicilar (birden fazlaysa kullanici
     // KIME actigini secer). Ekler secili saglayicinin deposuna yuklenir.
     providers = [], provider = null, onProviderChange,
+    // Dalga D3: baslik yazilirken yardim merkezi onerileri (talep acilmadan
+    // cozum). `suggest(q)` → makale listesi; `onOpenArticle(id)` acar.
+    suggest, onOpenArticle,
 }) {
     const t = useT()
     const [form] = Form.useForm()
     const [attachments, setAttachments] = useState([])
     const providerId = provider?.tenant_id
+    const title = Form.useWatch('title', form) || ''
+    const [debounced, setDebounced] = useState('')
+    useEffect(() => {
+        const id = setTimeout(() => setDebounced(title.trim()), 400)
+        return () => clearTimeout(id)
+    }, [title])
+    const suggestions = useQuery({
+        queryKey: ['kb', 'suggest', providerId ?? 'single', debounced],
+        queryFn: () => suggest(debounced),
+        enabled: Boolean(suggest) && open && debounced.length >= 3,
+        staleTime: 60_000,
+    })
     const pickProvider = (next) => {
         // Yuklenmis ekler onceki saglayicidadir; secim degisince birakilir.
         setAttachments([])
@@ -190,6 +206,18 @@ export default function CreateTicketModal({
                     >
                         <Input maxLength={160} showCount />
                     </Form.Item>
+                    {(suggestions.data ?? []).length > 0 && (
+                        <div className="kb-suggest" role="region" aria-label={t('kb.mightHelp')}>
+                            <b>{t('kb.mightHelp')}</b>
+                            <ul>
+                                {suggestions.data.map((a) => (
+                                    <li key={a.id}>
+                                        <button type="button" onClick={() => onOpenArticle?.(a.id)}>{a.title}</button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
 
                     <Form.Item
                         name="description"
