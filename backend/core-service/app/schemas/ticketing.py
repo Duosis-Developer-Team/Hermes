@@ -91,6 +91,8 @@ class SourceTenantRef(BaseModel):
     id: Optional[UUID] = None
     source_tenant_id: Optional[str] = None
     display_name: Optional[str] = None
+    # Bagli musteri kaydi (0027): logo + is kalemi/efor varsayilan musterisi.
+    customer_id: Optional[UUID] = None
 
 
 class ApplicationRef(BaseModel):

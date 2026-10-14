@@ -13,13 +13,14 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Input, Skeleton } from 'antd'
-import { SearchOutlined, ShopOutlined } from '@ant-design/icons'
+import { SearchOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
 import { ticketHelpdeskService } from '../../api/ticketsApi'
 import { EmptyState, Page, StatusBadge } from '../../components/ui'
 import { BackLink, PageHero } from '../../components/liquid'
+import TicketCustomerLogo from '../../features/tickets/TicketCustomerLogo'
 import useTicketContext from '../../features/tickets/useTicketContext'
 import { queryKeys } from '../../query/queryKeys'
 import { useT } from '../../i18n'
@@ -70,7 +71,7 @@ export default function CustomersPage() {
                         aria-label={t('customersHub.open', { name: c.display_name })}
                     >
                         <span className="customers-hub__head">
-                            <ShopOutlined aria-hidden="true" />
+                            <TicketCustomerLogo source={c} size={32} />
                             <b>{c.display_name}</b>
                             <StatusBadge tone={KIND_TONE[c.kind]}>{t(`customersHub.kind.${c.kind}`)}</StatusBadge>
                         </span>

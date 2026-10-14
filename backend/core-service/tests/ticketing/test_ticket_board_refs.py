@@ -7,21 +7,16 @@
 #     (durum da otomatik "Islemde"); musteri yaniti → yine pending;
 #     cozum → completed. Pano iptali gostermez.
 #   - Talep cozulunce girilen efor talebe baglanir; detay toplam saati verir.
-#   - Sirket hesabi logosu musteri logosuyla ayni kurallarla.
 # =============================================================================
 
 import uuid
 from datetime import date
 from decimal import Decimal
 
-import pytest
-from sqlalchemy import text as sa_text
 
-from ..conftest import AUTHZ_PROFILES
 from .conftest import OTHER_TENANT_ID
 from .test_wave_b import HUB, NEW, PORTAL
 
-PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
 
 
 def _open(api, world, **extra):
@@ -122,40 +117,3 @@ def test_work_logged_on_a_ticket_is_linked_and_summed(api, ticket_world):
     assert stray.ticket_id is None                                    # var olmayan talep → bag duser
     detail = _hub(api, ticket_world, ticket["id"])
     assert (detail["logged_hours"], detail["log_count"]) == (2.0, 2)
-
-
-@pytest.fixture()
-def company(ticket_world):
-    account = uuid.uuid4()
-    AUTHZ_PROFILES[str(account)] = {"account_kind": "company", "modules": ["tickets"]}
-    ticket_world["grants"][str(ticket_world["admin"])] += ["users.manage"]
-    return account
-
-
-def test_company_logo_follows_logo_rules(api, ticket_world, company):
-    from app.main import app
-    from app.tenant_db import get_tenant_db
-
-    s = ticket_world["session"]
-    s.execute(sa_text("DELETE FROM company_logos"))
-    admin = api(ticket_world["admin"])
-    app.dependency_overrides[get_tenant_db] = lambda: s
-    url = f"/api/v1/core/companies/{company}/logo"
-    put = admin.put(url, files={"file": ("defacto.png", PNG, "image/png")})
-    assert put.status_code == 200 and put.json()["has_logo"] is True
-    etag = put.json()["logo_etag"]
-    assert admin.get("/api/v1/core/companies/logos").json()["logos"] == {str(company): etag}
-    got = admin.get(url)
-    assert got.status_code == 200 and got.content == PNG
-    assert admin.get(url, headers={"If-None-Match": f'"{etag}"'}).status_code == 304
-
-    svg = admin.put(url, files={"file": ("x.svg", b"<svg/>", "image/svg+xml")})
-    assert svg.status_code == 415
-    person = uuid.uuid4()
-    assert admin.put(f"/api/v1/core/companies/{person}/logo",
-                     files={"file": ("a.png", PNG, "image/png")}).status_code == 404
-    assert api(ticket_world["agent_a"]).put(url, files={"file": ("a.png", PNG, "image/png")}).status_code == 403
-    admin = api(ticket_world["admin"])
-    assert admin.delete(url).status_code == 204
-    assert admin.get(url).status_code == 404
-    app.dependency_overrides.pop(get_tenant_db, None)

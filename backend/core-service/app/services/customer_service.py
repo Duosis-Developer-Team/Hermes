@@ -68,4 +68,14 @@ class CustomerService(BaseCRUDService[Customer, CustomerCreate, CustomerUpdate])
                 },
             )
 
-        return super().update(id, data)
+        customer = super().update(id, data)
+        # Sirket hesabina bagli talep musterisinin adi musteriden gelir (0027):
+        # "Defacto Ticket-001", e-posta ve listeler yeni adi gorsun.
+        if getattr(data, "name", None):
+            from ..models.ticketing import SupportSourceTenant
+
+            (self.db.query(SupportSourceTenant)
+             .filter(SupportSourceTenant.customer_id == customer.id,
+                     SupportSourceTenant.display_name != customer.name)
+             .update({SupportSourceTenant.display_name: customer.name}, synchronize_session=False))
+        return customer

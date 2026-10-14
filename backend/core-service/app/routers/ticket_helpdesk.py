@@ -949,8 +949,10 @@ class TeamRef(BaseModel):
 class MyCustomerOut(BaseModel):
     id: UUID
     display_name: str
-    # Sirket hesabi musterisinde hesabin kimligi (logo: /companies/{id}/logo).
+    # Sirket hesabi musterisinde hesabin kimligi.
     account_id: Optional[UUID] = None
+    # Bagli musteri kaydi (0027): logo musteriden.
+    customer_id: Optional[UUID] = None
     application: Optional[str] = None
     kind: Literal["company", "workspace", "integration"]
     team: Optional[TeamRef] = None
@@ -1015,7 +1017,7 @@ def my_customers(
                       if kind == "company" else None)
         out.append(MyCustomerOut(
             id=src.id, display_name=src.display_name, application=app.display_name, kind=kind,
-            account_id=account_id,
+            account_id=account_id, customer_id=getattr(src, "customer_id", None),
             team=TeamRef(id=group.id, name=group.name) if group else None,
             open_count=int(open_count or 0), total_count=int(total or 0), last_activity_at=last,
         ))

@@ -104,9 +104,11 @@ function LogTimeModal({
      */
     prefillMeeting = null,
     /**
-     * Talep → efor: musteri/proje talepte yok, kullanici secer (adim 0).
-     * Aciklamanin ILK satiri musteriye gore numara ("Defacto Ticket-001"),
-     * altinda baslik. Shape: { ref, title }
+     * Talep → efor: talebin musterisi bir musteri kaydina bagliysa
+     * (`customerId`) o secili gelir ve proje adimindan baslanir; degilse
+     * kullanici musteriyi secer (adim 0). Aciklamanin ILK satiri musteriye
+     * gore numara ("Defacto Ticket-001"), altinda baslik.
+     * Shape: { ref, title, customerId? }
      */
     prefillTicket = null,
 }) {
@@ -288,10 +290,12 @@ function LogTimeModal({
                 description,
             })
         } else if (prefillTicket && open) {
-            // Talep: musteri/proje kullanicidan (adim 0); aciklama hazir.
-            setSelectedCustomerId(null)
+            // Talep: musterisi bir musteri kaydina bagliysa (sirket hesabi)
+            // o secili gelir ve proje adimindan baslanir (yalniz onun
+            // projeleri); bagli degilse musteri adimindan. Aciklama hazir.
+            setSelectedCustomerId(prefillTicket.customerId || null)
             setSelectedProjectId(null)
-            setStep(0)
+            setStep(prefillTicket.customerId ? 1 : 0)
             const description = [prefillTicket.ref, prefillTicket.title].filter(Boolean).join('\n')
             form.setFieldsValue({
                 date_worked: initialDate ? dayjs(initialDate) : dayjs(),

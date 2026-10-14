@@ -337,6 +337,7 @@ def agent_list_item(
             display_name=(
                 source_tenant.display_name if source_tenant else None
             ),
+            customer_id=getattr(source_tenant, "customer_id", None) if source_tenant else None,
         ),
         assigned_group=GroupRef(
             id=ticket.assigned_group_id,

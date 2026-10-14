@@ -5,13 +5,17 @@
  * docs/tenant-platform/01. Sirket hesabi, dis musteriye (ornegin Defacto)
  * verilen TEK giris hesabidir: kullanici listesinde degil burada durur,
  * rol almaz ve yalniz secilen modulleri gorur. Talep acabilmesi icin destek
- * ekibi secilmelidir (musteri kaydi core'da, adiyla birlikte yazilir).
+ * ekibi secilmelidir.
+ *
+ * Hesap bir MUSTERI KAYDINA baglanir (CTO 14.10, core 0027): ad yazilip logo
+ * yuklenmez, musteri secilir — ad ve logo musteriden gelir, is kalemi/efor
+ * varsayilan musterisi o olur. Musteri basina tek sirket hesabi.
  *
  * Tasarim Kullanicilar sekmesiyle BIREBIR ayni: kart basligi + sayi, arama
  * ve "Yeni" dugmesi; tabloda logo + ad + e-posta hucresi, `lq-tag` rozetleri,
  * yalniz ikonlu islem dugmeleri; ayni modal (ModalHead + dikey form +
- * `lq-mf` alt satiri). Logo alani musteri formundakinin aynisidir.
- * Hesap auth'ta (users.manage); destek ekibi ve logo core'da.
+ * `lq-mf` alt satiri). Hesap auth'ta (users.manage); musteri bagi + destek
+ * ekibi core'da.
  * =============================================================================
  */
 import { useMemo, useState } from 'react'
@@ -22,8 +26,9 @@ import {
 import { BankOutlined, EditOutlined, KeyOutlined, LockOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 
 import { companyService } from '../../api/companyApi'
-import { userGroupService } from '../../services/api'
-import { CompanyLogo, ModalHead } from '../../components/liquid'
+import { customerService, userGroupService } from '../../services/api'
+import { CustomerLogo, ModalHead } from '../../components/liquid'
+import { customerSelectRender } from '../../components/common/customerSelect'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
 import {
     AdminEmptyState, AdminErrorAlert, AdminRefreshHint,
@@ -32,39 +37,36 @@ import { MODULE_CODES, MODULES } from '../../features/modules/catalog'
 import { useAuthStore } from '../../stores/authStore'
 import { useT } from '../../i18n'
 import { matchesAny } from '../../utils/searchText'
-import CustomerLogoField, { EMPTY_LOGO_DRAFT } from './CustomerLogoField'
-import { COMPANY_LOGOS_KEY } from '../../features/tickets/TicketCustomerLogo'
 
 const KEY = ['admin-companies']
 const SUPPORT_KEY = ['admin-company-support']
-const LOGOS_KEY = COMPANY_LOGOS_KEY
 
-function CompanyModal({ company, support, logoEtag, groups, provider, tenantModules, onClose, onSaved }) {
+function CompanyModal({ company, support, customers, linkedElsewhere, groups, provider, tenantModules, onClose, onSaved }) {
     const t = useT()
     const [form] = Form.useForm()
     const isNew = !company.id
-    const [logoDraft, setLogoDraft] = useState(EMPTY_LOGO_DRAFT)
     const [error, setError] = useState(null)
     const initial = isNew
-        ? { name: '', email: '', password: '', modules: ['tickets'], group_id: undefined, is_active: true }
-        : { name: company.name, email: company.email, modules: company.modules,
+        ? { customer_id: undefined, email: '', password: '', modules: ['tickets'], group_id: undefined, is_active: true }
+        : { customer_id: support?.customer_id ?? undefined, email: company.email, modules: company.modules,
             group_id: support?.group_id ?? undefined, is_active: company.is_active }
+    const customerOptions = customers
+        .filter((c) => c.is_active !== false || c.id === initial.customer_id)
+        .map((c) => ({ value: c.id, label: c.name, disabled: linkedElsewhere.has(c.id) }))
     const save = useMutation({
         mutationFn: async (values) => {
-            const name = values.name.trim()
+            // Ad musteriden (auth'taki hesap adi da ayni kalsin diye yazilir).
+            const name = customers.find((c) => c.id === values.customer_id)?.name ?? company.name
             const saved = isNew
                 ? await companyService.create({ name, email: values.email.trim(), password: values.password, modules: values.modules })
                 : await companyService.update(company.id, { name, modules: values.modules, is_active: values.is_active })
-            const wantsSupport = provider && values.modules.includes('tickets') && values.group_id
-            if (wantsSupport && (values.group_id !== support?.group_id || name !== support?.display_name)) {
-                await companyService.setSupport(saved.id, { display_name: name, group_id: values.group_id })
-            }
-            // Logo hesap kaydindan SONRA; basarisizsa hesap kalir, uyari verilir.
-            try {
-                if (logoDraft.file) await companyService.uploadLogo(saved.id, logoDraft.file)
-                else if (logoDraft.remove) await companyService.deleteLogo(saved.id)
-            } catch (err) {
-                message.warning(normalizeApiError(err).message)
+            const changed = values.customer_id !== support?.customer_id
+                || (values.modules.includes('tickets') && values.group_id && values.group_id !== support?.group_id)
+            if (provider && changed) {
+                await companyService.setSupport(saved.id, {
+                    customer_id: values.customer_id,
+                    group_id: values.modules.includes('tickets') ? (values.group_id ?? null) : null,
+                })
             }
             return saved
         },
@@ -79,19 +81,13 @@ function CompanyModal({ company, support, logoEtag, groups, provider, tenantModu
         >
             <Form form={form} layout="vertical" initialValues={initial}
                   onFinish={(values) => { setError(null); save.mutate(values) }}>
-                <Form.Item noStyle shouldUpdate={(a, b) => a.name !== b.name}>
-                    {({ getFieldValue }) => (
-                        <CustomerLogoField
-                            Logo={CompanyLogo}
-                            record={isNew ? null : { id: company.id, name: company.name, has_logo: Boolean(logoEtag), logo_etag: logoEtag }}
-                            name={getFieldValue('name')}
-                            draft={logoDraft}
-                            onChange={setLogoDraft}
-                        />
-                    )}
-                </Form.Item>
-                <Form.Item name="name" label={t('companies.name')} rules={[{ required: true, min: 2, message: t('companies.nameRequired') }]}>
-                    <Input placeholder="Defacto" maxLength={120} />
+                <Form.Item name="customer_id" label={t('companies.customer')} extra={t('companies.customerHint')}
+                           rules={[{ required: true, message: t('companies.customerRequired') }]}>
+                    <Select
+                        showSearch optionFilterProp="label" placeholder={t('companies.pickCustomer')}
+                        options={customerOptions} {...customerSelectRender}
+                        notFoundContent={t('companies.noCustomers')}
+                    />
                 </Form.Item>
                 <Form.Item name="email" label={t('companies.loginEmail')} rules={[{ required: true, type: 'email', message: t('users.emailInvalid') }]}>
                     <Input placeholder="destek@sirket.com" disabled={!isNew} />
@@ -168,7 +164,7 @@ export default function CompaniesTab() {
     const ticketsOn = tenantModules.includes('tickets')
     const companies = useQuery({ queryKey: KEY, queryFn: companyService.list })
     const support = useQuery({ queryKey: SUPPORT_KEY, queryFn: companyService.supportList, enabled: ticketsOn, retry: false })
-    const logos = useQuery({ queryKey: LOGOS_KEY, queryFn: companyService.logos, retry: false })
+    const customers = useQuery({ queryKey: ['customers'], queryFn: () => customerService.getAll(), retry: false })
     const groups = useQuery({ queryKey: ['admin-user-groups'], queryFn: () => userGroupService.list(), enabled: ticketsOn, retry: false })
     const [search, setSearch] = useState('')
     const [editing, setEditing] = useState(null)
@@ -178,16 +174,17 @@ export default function CompaniesTab() {
         () => Object.fromEntries((support.data?.items ?? []).map((s) => [s.account_id, s])),
         [support.data],
     )
-    const logoBy = logos.data?.logos ?? {}
+    // Gorunen ad bagli musteriden; bagsiz (eski) hesapta auth'taki ad.
+    const nameOf = (c) => supportBy[c.id]?.customer_name || c.name
     const rows = useMemo(
-        () => (companies.data ?? []).filter((c) => matchesAny([c.name, c.email], search)),
-        [companies.data, search],
+        () => (companies.data ?? []).filter((c) => matchesAny([supportBy[c.id]?.customer_name || c.name, c.email], search)),
+        [companies.data, supportBy, search],
     )
     const refresh = () => {
         queryClient.invalidateQueries({ queryKey: KEY })
         queryClient.invalidateQueries({ queryKey: SUPPORT_KEY })
-        queryClient.invalidateQueries({ queryKey: LOGOS_KEY })
     }
+    const customerRows = Array.isArray(customers.data) ? customers.data : []
     const provider = Boolean(support.data?.provider)
     const groupRows = (Array.isArray(groups.data) ? groups.data : []).filter((g) => g.is_active !== false)
 
@@ -196,16 +193,24 @@ export default function CompaniesTab() {
             title: t('companies.company'),
             dataIndex: 'name',
             key: 'name',
-            sorter: (a, b) => a.name.localeCompare(b.name),
-            render: (name, record) => (
-                <span className="users-person">
-                    <CompanyLogo id={record.id} name={name} size={32} etag={logoBy[record.id] ?? null} />
-                    <span className="users-person__text">
-                        <b>{name}</b>
-                        <small>{record.email}</small>
+            sorter: (a, b) => nameOf(a).localeCompare(nameOf(b)),
+            render: (_, record) => {
+                const link = supportBy[record.id]
+                return (
+                    <span className="users-person">
+                        {/* Logo musteriden (is yonetimindeki musteri logosu). */}
+                        <CustomerLogo id={link?.customer_id || record.id} name={nameOf(record)} size={32}
+                                      etag={link?.customer_id ? undefined : null} />
+                        <span className="users-person__text">
+                            <b>{nameOf(record)}</b>
+                            <small>{record.email}</small>
+                        </span>
+                        {provider && !link?.customer_id && (
+                            <span className="lq-tag lq-tag--warn">{t('companies.customerMissing')}</span>
+                        )}
                     </span>
-                </span>
-            ),
+                )
+            },
         },
         {
             title: t('companies.modules'),
@@ -289,7 +294,9 @@ export default function CompaniesTab() {
             </Card>
             {editing && (
                 <CompanyModal
-                    company={editing} support={supportBy[editing.id]} logoEtag={logoBy[editing.id] ?? null}
+                    company={editing} support={supportBy[editing.id]} customers={customerRows}
+                    linkedElsewhere={new Set((support.data?.items ?? [])
+                        .filter((i) => i.customer_id && i.account_id !== editing.id).map((i) => i.customer_id))}
                     groups={groupRows} provider={provider} tenantModules={tenantModules}
                     onClose={() => setEditing(null)} onSaved={refresh}
                 />

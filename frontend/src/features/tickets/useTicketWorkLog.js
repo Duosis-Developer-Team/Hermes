@@ -41,7 +41,11 @@ export function useTicketWorkLog() {
     return {
         canLogTime,
         logTicket,
-        prefill: logTicket ? { ref: logTicket.customer_ref || logTicket.ticket_number, title: logTicket.title } : null,
+        prefill: logTicket ? {
+            ref: logTicket.customer_ref || logTicket.ticket_number,
+            title: logTicket.title,
+            customerId: logTicket.source_tenant?.customer_id || null,
+        } : null,
         openLogTime: (ticket) => { if (canLogTime && ticket) setLogTicket(ticket) },
         closeLogTime: () => setLogTicket(null),
         submitWorkLog: async (data) => {

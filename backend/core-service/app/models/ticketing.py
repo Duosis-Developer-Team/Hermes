@@ -172,6 +172,10 @@ class SupportSourceTenant(TenantOwnedMixin, Base):
     # Musteri basina talep sirasi (0025): "Defacto Ticket-001". Kilitli tek
     # UPDATE ... RETURNING ile ayrilir (ticket_service.create_ticket).
     next_ticket_seq = Column(Integer, nullable=False, default=1, server_default="1")
+    # Musteri kaydina mantiksal bag (0027): sirket hesabinin adi ve logosu
+    # `customers`tan gelir; is kalemi/efor varsayilan musterisi buradan.
+    # FK yok (tenant icinde API dogrular); musteri basina tek kayit.
+    customer_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     status = Column(String(20), nullable=False, default="active", index=True)
     metadata_json = Column(
         JSONB, nullable=False, default=dict,

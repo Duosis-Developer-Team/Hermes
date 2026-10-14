@@ -5,6 +5,8 @@
 #   hub GORMEZ, portalda saglayicisi kendi tenant'idir; talepleri hub'a
 #   "Defacto" musterisi olarak, yoneticinin sectigi ekibe duser. Ekip
 #   secilmeden talep acilamaz. Baska musterinin talebini goremez.
+#   Hesap bir MUSTERI KAYDINA baglanir (0027): ad/logo musteriden, musteri
+#   basina tek sirket hesabi, musteri yeniden adlandirilinca ad izler.
 # =============================================================================
 
 import uuid
@@ -22,6 +24,12 @@ CONTEXT = "/api/v1/core/tickets/context"
 
 @pytest.fixture()
 def defacto(ticket_world):
+    from app.models.customer import Customer
+
+    customer = Customer(id=uuid.uuid4(), name="Defacto", is_active=True)
+    ticket_world["session"].add(customer)
+    ticket_world["session"].flush()
+    ticket_world["defacto_customer"] = customer
     account = uuid.uuid4()
     ticket_world["grants"][str(account)] = ["tickets.access", "tickets.create"]
     AUTHZ_PROFILES[str(account)] = {"account_kind": "company", "modules": ["tickets"]}
@@ -43,7 +51,7 @@ def _company_client(account, pg_session):
 
 def _setup_support(api, world, account, **extra):
     r = api(world["admin"]).put(f"{COMPANIES}/{account}/support", json={
-        "display_name": "Defacto", "group_id": str(world["devops"].id), **extra})
+        "customer_id": str(world["defacto_customer"].id), "group_id": str(world["devops"].id), **extra})
     assert r.status_code == 200, r.text
     return r.json()
 
@@ -60,6 +68,7 @@ def test_company_needs_a_support_team_before_opening_requests(api, ticket_world,
 
     out = _setup_support(api, ticket_world, defacto)
     assert out == {"account_id": str(defacto), "display_name": "Defacto",
+                   "customer_id": str(ticket_world["defacto_customer"].id), "customer_name": "Defacto",
                    "group_id": str(ticket_world["devops"].id), "group_name": "DevOps Team", "configured": True}
     company = _company_client(defacto, s)
     assert company.get(CONTEXT).json()["can_create"] is True
@@ -89,10 +98,10 @@ def test_support_setup_is_for_company_accounts_and_admins_only(api, ticket_world
     person = uuid.uuid4()
     ticket_world["grants"][str(person)] = ["tickets.access"]
     r = api(ticket_world["admin"]).put(f"{COMPANIES}/{person}/support", json={
-        "display_name": "Kisi", "group_id": str(ticket_world["devops"].id)})
+        "customer_id": str(ticket_world["defacto_customer"].id), "group_id": str(ticket_world["devops"].id)})
     assert r.status_code == 404                                  # kisi hesabi musteri yapilamaz
     assert api(ticket_world["agent_a"]).put(f"{COMPANIES}/{defacto}/support", json={
-        "display_name": "Defacto", "group_id": str(ticket_world["devops"].id)}).status_code == 403
+        "customer_id": str(ticket_world["defacto_customer"].id), "group_id": str(ticket_world["devops"].id)}).status_code == 403
     _setup_support(api, ticket_world, defacto)
     listing = api(ticket_world["admin"]).get(f"{COMPANIES}/support").json()
     assert listing["provider"] is True
@@ -121,3 +130,38 @@ def test_assigned_customers_are_listed_even_without_requests(api, ticket_world, 
     rows = api(ticket_world["agent_a"]).get(
         HUB, params={"queue": "all", "source_tenant_row_id": mine["Defacto"]["id"]}).json()["items"]
     assert [r["source_tenant"]["display_name"] for r in rows] == ["Defacto"]
+
+
+def test_company_is_linked_to_one_customer_and_follows_its_name(api, ticket_world, defacto):
+    from app.models.customer import Customer
+    from app.schemas.customer import CustomerUpdate
+    from app.services.customer_service import CustomerService
+
+    s = ticket_world["session"]
+    customer = ticket_world["defacto_customer"]
+    _setup_support(api, ticket_world, defacto)
+    ticket = _company_client(defacto, s).post(PORTAL, json=NEW).json()
+    assert ticket["customer_ref"] == "Defacto Ticket-001"
+    hub = api(ticket_world["agent_a"]).get(f"{HUB}/{ticket['id']}").json()
+    assert hub["source_tenant"]["customer_id"] == str(customer.id)        # logo + is kalemi varsayilani
+
+    # Musteri basina tek sirket hesabi; pasif ya da olmayan musteri secilemez.
+    other = uuid.uuid4()
+    AUTHZ_PROFILES[str(other)] = {"account_kind": "company", "modules": ["tickets"]}
+    taken = api(ticket_world["admin"]).put(f"{COMPANIES}/{other}/support", json={"customer_id": str(customer.id)})
+    assert taken.status_code == 409
+    gone = api(ticket_world["admin"]).put(f"{COMPANIES}/{other}/support", json={"customer_id": str(uuid.uuid4())})
+    assert gone.status_code == 422
+    # Ekip secmeden de baglanir (talep acamaz ama ad/logo musteriden gelir).
+    acme = Customer(id=uuid.uuid4(), name="Acme Lojistik", is_active=True)
+    s.add(acme)
+    s.flush()
+    linked = api(ticket_world["admin"]).put(f"{COMPANIES}/{other}/support", json={"customer_id": str(acme.id)})
+    assert linked.status_code == 200 and linked.json()["configured"] is False
+    assert linked.json()["display_name"] == "Acme Lojistik"
+
+    CustomerService(s).update(customer.id, CustomerUpdate(name="DeFacto Retail"))
+    s.flush()
+    renamed = api(ticket_world["agent_a"]).get(f"{HUB}/{ticket['id']}").json()
+    assert renamed["customer_ref"] == "DeFacto Retail Ticket-001"
+    assert renamed["source_tenant"]["display_name"] == "DeFacto Retail"

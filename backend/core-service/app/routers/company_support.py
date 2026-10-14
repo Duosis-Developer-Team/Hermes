@@ -1,13 +1,15 @@
 # =============================================================================
 # HERMES core — Sirket hesaplarinin destek ekibi (docs/tenant-platform/01, M2)
 # =============================================================================
-#   GET /api/v1/core/companies/support               sirket → destek ekibi
-#   PUT /api/v1/core/companies/{account_id}/support  {display_name, group_id}
+#   GET /api/v1/core/companies/support               sirket → musteri + destek ekibi
+#   PUT /api/v1/core/companies/{account_id}/support  {customer_id, group_id?}
 #
 # Sirket hesabi auth'ta yasar (Ayarlar → Kullanicilar → Sirketler); talepleri
 # saglayicinin (bu tenant'in) verisinde `company:<hesap>` musterisi olarak
-# durur. Burada yonetici o musteriyi adlandirir ve varsayilan ekibini secer —
-# kayit olusmadan sirket hesabi talep ACAMAZ. Yalniz saglayici tenant'larda.
+# durur. Hesap bir MUSTERI KAYDINA baglanir (0027, CTO 14.10): ad ve logo
+# `customers`tan gelir, is kalemi/efor varsayilan musterisi odur; musteri
+# basina tek sirket hesabi. Ekip secilmeden (rota yoksa) sirket hesabi talep
+# ACAMAZ. Yalniz saglayici tenant'larda.
 # `users.manage` ister (sirket yonetimiyle ayni yetki); sirket hesabi bu
 # uclara giremez (INTERNAL).
 # =============================================================================
@@ -16,7 +18,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from shared.auth import CurrentUser
@@ -24,6 +26,7 @@ from shared.permissions import Perm
 
 from ..authz import require_permissions
 from ..config import get_settings
+from ..models.customer import Customer
 from ..models.ticketing import SupportSourceTenant
 from ..models.user_group import UserGroup
 from ..services import authz_client, company_accounts, ticket_routing
@@ -36,14 +39,16 @@ router = APIRouter(prefix="/companies", tags=["Company accounts"])
 class CompanySupportOut(BaseModel):
     account_id: UUID
     display_name: str
+    customer_id: Optional[UUID] = None
+    customer_name: Optional[str] = None
     group_id: Optional[UUID] = None
     group_name: Optional[str] = None
     configured: bool
 
 
 class CompanySupportIn(BaseModel):
-    display_name: str = Field(..., min_length=2, max_length=120)
-    group_id: UUID
+    customer_id: UUID
+    group_id: Optional[UUID] = None
 
 
 class CompanySupportList(BaseModel):
@@ -64,9 +69,13 @@ def _application(db: Session):
 def _out(db: Session, src: SupportSourceTenant) -> CompanySupportOut:
     route = ticket_routing.active_route(db, source_tenant_row_id=src.id)
     group = db.get(UserGroup, route.group_id) if route is not None else None
+    customer = db.get(Customer, src.customer_id) if src.customer_id else None
     return CompanySupportOut(
         account_id=UUID(src.source_tenant_id[len(company_accounts.SOURCE_PREFIX):]),
-        display_name=src.display_name, group_id=group.id if group else None,
+        display_name=src.display_name,
+        customer_id=customer.id if customer else None,
+        customer_name=customer.name if customer else None,
+        group_id=group.id if group else None,
         group_name=group.name if group else None,
         configured=bool(group and group.is_active and src.status == "active"),
     )
@@ -110,19 +119,33 @@ def set_company_support(
         raise http_error("support_not_configured", "Authorization service is unavailable.")
     if profile.account_kind != "company":
         raise http_error("not_found", "Company account not found.")
-    group = db.get(UserGroup, payload.group_id)
-    if group is None or not group.is_active:
-        raise http_error("validation_error", "The selected team is not active.")
+    customer = db.get(Customer, payload.customer_id)
+    if customer is None or not customer.is_active:
+        raise http_error("validation_error", "Seçilen müşteri bulunamadı ya da pasif.")
+    group = None
+    if payload.group_id is not None:
+        group = db.get(UserGroup, payload.group_id)
+        if group is None or not group.is_active:
+            raise http_error("validation_error", "Seçilen ekip aktif değil.")
+    application = _application(db)
+    key = company_accounts.account_source_key(account_id)
+    taken = (db.query(SupportSourceTenant.id)
+             .filter(SupportSourceTenant.application_id == application.id,
+                     SupportSourceTenant.customer_id == customer.id,
+                     SupportSourceTenant.source_tenant_id != key).first())
+    if taken is not None:
+        raise http_error("conflict", "Bu müşteri başka bir şirket hesabına bağlı.")
     try:
+        # Ad musteriden (SNAPSHOT; musteri yeniden adlandirilinca senkronlanir).
         src = ticket_routing.ensure_source_tenant(
-            db, application=_application(db),
-            source_tenant_id=company_accounts.account_source_key(account_id),
-            display_name=payload.display_name,
+            db, application=application, source_tenant_id=key, display_name=customer.name,
         )
-        ticket_routing.set_route(
-            db, source_tenant=src, group=group,
-            actor_type="tenant_user", actor_id=str(current_user.id),
-        )
+        src.customer_id = customer.id
+        if group is not None:
+            ticket_routing.set_route(
+                db, source_tenant=src, group=group,
+                actor_type="tenant_user", actor_id=str(current_user.id),
+            )
     except TicketValidationError as exc:
         raise http_error(exc.code if exc.code else "validation_error", str(exc))
     db.flush()

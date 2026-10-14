@@ -254,9 +254,7 @@ from .routers.company_support import router as company_support_router  # noqa: E
 
 app.include_router(company_support_router, prefix=API_PREFIX, dependencies=_module(TICKETS) + INTERNAL)
 # Sirket hesabi logosu — modulden bagimsiz (Ayarlar → Kullanicilar → Sirketler).
-from .routers.company_logos import router as company_logos_router  # noqa: E402
 
-app.include_router(company_logos_router, prefix=API_PREFIX, dependencies=INTERNAL)
 
 # =============================================================================
 # Public API (dis entegrasyonlar) — /api/public altina mount edilen IZOLE

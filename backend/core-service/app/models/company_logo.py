@@ -1,6 +1,10 @@
 # =============================================================================
-# HERMES - Sirket hesabi logosu (docs/tenant-platform/01)
+# HERMES - Sirket hesabi logosu (docs/tenant-platform/01) — KULLANILMIYOR
 # =============================================================================
+# 0027'den beri sirket hesabi bir MUSTERI KAYDINA baglanir; ad ve logo
+# `customers`/`customer_logos`tan gelir. Yukleme uclari kaldirildi. Tablo
+# yalniz additive kurali geregi durur (0025 olusturdu; dusurmek veri
+# silmektir) — yeni kod bu modeli KULLANMAZ.
 # Musteri logosuyla AYNI kurallar (services/logo_image): PNG/JPEG/WEBP,
 # 256 KB, sihirli bayt eslesmesi, SVG yok. Sirket hesabi auth'ta yasar;
 # burada hesabin kimligine MANTIKSAL referans tutulur (fiziksel FK yok —

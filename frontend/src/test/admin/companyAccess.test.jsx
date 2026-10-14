@@ -2,8 +2,9 @@
  * HERMES - Sirket hesaplari + modul erisimi (docs/tenant-platform/01) — istemci.
  *   - Modul karari: tenant tavani ∩ erisim profili; sirket hesabinda profil
  *     yoksa hicbir modul (fail-closed); sirket hesabi taleplere iner.
- *   - Sirketler: yeni sirket hesabi + destek ekibi iki adimda kaydedilir;
- *     ekibi olmayan sirket uyarilir.
+ *   - Sirketler: hesap musteriden secilir (ad musteriden), musteri bagi +
+ *     destek ekibi kaydedilir; ekibi/musterisi olmayan sirket uyarilir;
+ *     baska hesaba bagli musteri secilemez.
  *   - Modul erisimi: "Herkes" anahtari ve sirket ekleme tam govdeyle kaydeder.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -18,7 +19,6 @@ vi.mock('../../api/companyApi', () => ({
     companyService: {
         list: vi.fn(), create: vi.fn(), update: vi.fn(), resetPassword: vi.fn(),
         supportList: vi.fn(), setSupport: vi.fn(),
-        logos: vi.fn(async () => ({ logos: {} })), uploadLogo: vi.fn(), deleteLogo: vi.fn(),
     },
     moduleAccessService: { list: vi.fn(), set: vi.fn() },
 }))
@@ -27,6 +27,13 @@ vi.mock('../../services/api', async () => {
     return {
         ...actual,
         userGroupService: { ...actual.userGroupService, list: vi.fn(async () => [{ id: 'g1', name: 'Destek', is_active: true }]) },
+        customerService: {
+            ...actual.customerService,
+            getAll: vi.fn(async () => [
+                { id: 'cu1', name: 'Defacto', is_active: true },
+                { id: 'cu2', name: 'Koton', is_active: true },
+            ]),
+        },
         authService: { ...actual.authService, lookupUsers: vi.fn(async () => [{ id: 'u1', full_name: 'Ali Veli' }]) },
     }
 })
@@ -59,21 +66,29 @@ describe('modul karari', () => {
 })
 
 describe('sirketler', () => {
-    it('yeni sirket hesabi + destek ekibi kaydedilir; ekipsiz sirket uyarilir', async () => {
+    it('hesap musteriden secilir; musteri bagi + ekip kaydedilir', async () => {
         const user = setup()
         companyService.list.mockResolvedValue([
-            { id: 'c0', name: 'Eski Musteri', email: 'x@eski.com', is_active: true, modules: ['tickets'] },
+            { id: 'c0', name: 'Koton', email: 'x@koton.com', is_active: true, modules: ['tickets'] },
+            { id: 'c9', name: 'Eski Musteri', email: 'x@eski.com', is_active: true, modules: ['tickets'] },
         ])
-        companyService.supportList.mockResolvedValue({ provider: true, items: [] })
+        companyService.supportList.mockResolvedValue({ provider: true, items: [
+            { account_id: 'c0', display_name: 'Koton', customer_id: 'cu2', customer_name: 'Koton', group_id: null, configured: false },
+        ] })
         companyService.create.mockResolvedValue({ id: 'c1', name: 'Defacto', email: 'destek@defacto.com.tr', is_active: true, modules: ['tickets'] })
         companyService.setSupport.mockResolvedValue({ configured: true })
         renderWithProviders(<CompaniesTab />)
         expect(await screen.findByText('Eski Musteri')).toBeInTheDocument()
-        expect(screen.getByText('No team')).toBeInTheDocument()
+        expect(screen.getAllByText('No team')).toHaveLength(2)
+        expect(screen.getByText('No customer linked')).toBeInTheDocument()          // bagsiz eski hesap
 
         await user.click(screen.getByRole('button', { name: /New company/ }))
         const dialog = await screen.findByRole('dialog')
-        await user.type(within(dialog).getByLabelText('Company name'), 'Defacto')
+        expect(within(dialog).queryByLabelText('Company name')).toBeNull()          // ad yazilmaz
+        await user.click(within(dialog).getByRole('combobox', { name: 'Customer' }))
+        const koton = (await screen.findAllByTitle('Koton')).find((el) => el.closest('.ant-select-item'))
+        expect(koton.closest('.ant-select-item')).toHaveClass('ant-select-item-option-disabled')   // baska hesapta
+        await user.click((await screen.findAllByTitle('Defacto')).find((el) => el.closest('.ant-select-item')))
         await user.type(within(dialog).getByLabelText('Sign-in e-mail'), 'destek@defacto.com.tr')
         await user.type(within(dialog).getByLabelText('Password'), 'Guclu-Parola-1')
         await user.click(within(dialog).getByRole('combobox', { name: 'Support team' }))
@@ -82,7 +97,7 @@ describe('sirketler', () => {
         await waitFor(() => expect(companyService.create).toHaveBeenCalledWith({
             name: 'Defacto', email: 'destek@defacto.com.tr', password: 'Guclu-Parola-1', modules: ['tickets'],
         }))
-        await waitFor(() => expect(companyService.setSupport).toHaveBeenCalledWith('c1', { display_name: 'Defacto', group_id: 'g1' }))
+        await waitFor(() => expect(companyService.setSupport).toHaveBeenCalledWith('c1', { customer_id: 'cu1', group_id: 'g1' }))
     })
 })
 

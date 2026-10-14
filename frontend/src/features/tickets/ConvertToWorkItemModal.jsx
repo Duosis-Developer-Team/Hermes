@@ -41,12 +41,21 @@ function ConvertToWorkItemModal({ open, ticket, onClose, onCreated }) {
         enabled: open,
     })
 
+    // Talebin musterisi bir musteri kaydina bagliysa (sirket hesabi, 0027)
+    // varsayilan odur; projeler o musteriye suzulur, tek proje varsa secilir.
+    const linkedCustomer = ticket?.source_tenant?.customer_id || null
+    const defaultCustomer = linkedCustomer && customers.some((c) => c.id === linkedCustomer) ? linkedCustomer : null
+    const onlyProject = defaultCustomer
+        ? projects.filter((p) => p.customer_id === defaultCustomer && p.is_active !== false)
+        : []
+    const defaultProject = onlyProject.length === 1 ? onlyProject[0].id : undefined
+
     useEffect(() => {
         if (!open || !ticket) return
-        setCustomerId(null)
+        setCustomerId(defaultCustomer)
         form.setFieldsValue({
-            customer_id: undefined,
-            project_id: undefined,
+            customer_id: defaultCustomer ?? undefined,
+            project_id: defaultProject,
             title: ticket.title || '',
             description: '',
             due_date: null,
@@ -55,7 +64,7 @@ function ConvertToWorkItemModal({ open, ticket, onClose, onCreated }) {
                 : 'medium',
             task_type: 'task',
         })
-    }, [open, ticket, form])
+    }, [open, ticket, form, defaultCustomer, defaultProject])
 
     const create = useMutation({
         mutationFn: (payload) => ticketHubService.createWorkItem(ticket.id, payload),

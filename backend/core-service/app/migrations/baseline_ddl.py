@@ -591,6 +591,24 @@ def widen_check(conn, *, table: str, constraint: str, column: str, values) -> No
     conn.execute(text(f"ALTER TABLE {table} RENAME CONSTRAINT {constraint}_v2 TO {constraint}"))
 
 
+def source_customer_link_statements() -> List[str]:
+    """0027: talep musterisi → musteri kaydi (sirket hesabi musteriden
+    secilir). Kolon + indeks EKLENIR; mevcut satirlar bos kalir (bag
+    yonetici secimiyle kurulur)."""
+    return [
+        "ALTER TABLE support_source_tenants ADD COLUMN IF NOT EXISTS customer_id UUID",
+        "CREATE INDEX IF NOT EXISTS ix_support_source_tenants_customer_id "
+        "ON support_source_tenants (customer_id)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_support_source_tenants_customer ON support_source_tenants "
+        "(tenant_id, application_id, customer_id) WHERE customer_id IS NOT NULL",
+    ]
+
+
+def apply_source_customer_link(conn) -> None:
+    for stmt in source_customer_link_statements():
+        conn.execute(text(stmt))
+
+
 def apply_ticket_mail_kinds(conn) -> None:
     """0026: talep e-postasi turleri (alindi/atama/kopya/cozum ekibe)."""
     from ..models.ticket_mail import MAIL_KINDS
@@ -645,3 +663,4 @@ def apply_all(conn) -> None:
     apply_ticket_notification_kinds(conn)
     apply_ticket_customer_refs(conn)
     apply_ticket_mail_kinds(conn)
+    apply_source_customer_link(conn)

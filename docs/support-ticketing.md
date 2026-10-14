@@ -70,10 +70,17 @@ Ayri tenant acmaya degmeyen musteriye (ornegin Defacto) saglayici tenant'in
 ICINDE tek bir **sirket hesabi** verilir (auth `tenant_memberships.account_kind
 = company`). Bu hesap hub'i gormez; portalda saglayicisi kendi tenant'idir
 (baglanti sentezlenir), talepleri `company:<hesap>` musterisi olarak yonetici-
-nin sectigi ekibe duser. Musteri kaydi + ekip olusmadan talep acamaz
-(`route_missing`). Kurulum: Ayarlar → Kullanicilar → Sirketler.
-Sirket logosu musteri logosuyla ayni kurallarla core'da (`company_logos`, 0025;
-`/companies/{hesap}/logo`, yazma `users.manage`, yalniz `account_kind=company`).
+nin sectigi ekibe duser. Ekip secilmeden talep acamaz (`route_missing`).
+Kurulum: Ayarlar → Kullanicilar → Sirketler.
+
+**Musteri bagi (0027, CTO karari):** hesap ad yazilarak degil bir MUSTERI
+KAYDI secilerek acilir (`support_source_tenants.customer_id`; uygulama basina
+musteri tekligi, 409). Ad ve logo musteriden gelir; musteri yeniden
+adlandirilinca talep musterisinin adi da izler ("Defacto Ticket-001").
+Talepten acilan is kalemi ve cozum sonrasi efor penceresi bu musteriyi
+varsayilan alir (projeler ona suzulur). `PUT /companies/{hesap}/support`
+`{customer_id, group_id?}`. Eski `company_logos` tablosu (0025) KULLANILMAZ;
+yalniz additive kurali geregi durur, yukleme uclari kaldirildi.
 
 ## 1c-3. Musteri numarasi, pano, talep eforu (2026-10-14, 0025)
 
