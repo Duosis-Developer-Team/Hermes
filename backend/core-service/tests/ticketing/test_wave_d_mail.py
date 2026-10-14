@@ -1,9 +1,10 @@
 # =============================================================================
 # HERMES — Dalga D4: talep e-posta kanali
 # =============================================================================
-#   Giden: kuyruk kanonik mutasyonla ayni transaction'da; yalniz Hermes
-#   uygulamasinin talep edenine (LogiSlot'a YOK), ekibe atama/musteri
-#   yaniti; gonderici yeniden dener, kalici hatada birakir, bayatlari atlar.
+#   Giden: kuyruk kanonik mutasyonla ayni transaction'da; HER OLAYDA iki
+#   taraf — talebi acan kisi (yalniz Hermes uygulamasi, LogiSlot'a YOK) ve
+#   ekibin tamami + atanan + takipciler (eylemi yapan haric); gonderici
+#   yeniden dener, kalici hatada birakir, bayatlari atlar.
 #   Gelen (varsayilan kapali): kimligi dogrulanmis, bagli tenant'in yetkili
 #   uyesinden yeni talep; konudaki numara + talep sahibi = yanit; geri
 #   kalan sessizce ya da kisa aciklamayla reddedilir.
@@ -73,16 +74,41 @@ def test_requester_gets_reply_question_and_resolution_mails(api, ticket_world, m
     assert requester == [("reply", CUSTOMER_EMAIL), ("waiting", CUSTOMER_EMAIL), ("resolved", CUSTOMER_EMAIL)]
 
 
-def test_team_gets_assignment_and_customer_reply_mails(api, ticket_world, mail_on):
+def test_every_event_mails_both_sides_and_the_whole_team(api, ticket_world, mail_on):
+    from app.models.user_group import UserGroupMember
+    from app.services import ticket_helpdesk
+
+    s = ticket_world["session"]
+    a, admin_id = ticket_world["agent_a"], ticket_world["admin"]
+    c = uuid.uuid4()                                          # ekibin ikinci uyesi
+    s.add(UserGroupMember(group_id=ticket_world["devops"].id, user_id=c, is_active=True))
+    s.flush()
     ticket = _open(api, ticket_world)
-    admin = api(ticket_world["admin"])
-    admin.post(f"{HUB}/{ticket['id']}/assign-user", json={
-        "user_id": str(ticket_world["agent_a"]), "expected_version": _version(admin, ticket)})
-    api(ticket_world["customer"], OTHER_TENANT_ID).post(
-        f"{PORTAL}/{ticket['id']}/messages", json={"body": "Hala oluyor."})
-    agent_rows = [(r.kind, r.recipient_user_id) for r in _rows(ticket_world, ticket["id"]) if r.audience == "agent"]
-    assert agent_rows == [("agent_assigned", ticket_world["agent_a"]),
-                          ("agent_customer_replied", ticket_world["agent_a"])]
+    row = s.get(Ticket, uuid.UUID(ticket["id"]))
+    ticket_helpdesk.set_watching(s, row, admin_id, True)      # ekip disindan takipci
+    s.flush()
+
+    def kinds(kind):
+        return sorted(str(r.recipient_user_id or r.recipient_email) for r in _rows(ticket_world, ticket["id"])
+                      if r.kind == kind)
+
+    admin = api(admin_id)
+    admin.post(f"{HUB}/{ticket['id']}/assign-user", json={"user_id": str(c), "expected_version": _version(admin, ticket)})
+    ticket_world["grants"][str(c)] = list(ticket_world["grants"][str(a)])
+    api(c).post(f"{HUB}/{ticket['id']}/messages", json={"body": "Inceliyorum.", "visibility": "public"})
+    api(ticket_world["customer"], OTHER_TENANT_ID).post(f"{PORTAL}/{ticket['id']}/messages", json={"body": "Hala oluyor."})
+    api(c).post(f"{HUB}/{ticket['id']}/resolve", json={
+        "resolution_code": "fixed", "public_summary": "Duzeldi", "expected_version": _version(api(c), ticket)})
+
+    team = sorted(map(str, (a, c)))
+    assert kinds("agent_new_ticket") == team                                  # yeni talep: ekip
+    assert kinds("agent_assigned") == team                                    # atayan (admin) haric
+    assert kinds("agent_replied") == sorted(map(str, (a, admin_id)))          # yazan (c) haric
+    assert kinds("agent_customer_replied") == sorted(map(str, (a, c, admin_id)))
+    assert kinds("agent_resolved") == sorted(map(str, (a, admin_id)))         # cozen (c) haric
+    for kind in ("assigned", "reply", "own_reply", "resolved"):
+        assert kinds(kind) == [CUSTOMER_EMAIL], kind                          # talebi acan kisi
+    assert not [r for r in _rows(ticket_world, ticket["id"]) if r.kind == "received"]   # adres sonradan
 
 
 def test_nothing_is_queued_for_logislot_reserved_or_disabled(api, ticket_world, mail_on, monkeypatch):
@@ -92,26 +118,30 @@ def test_nothing_is_queued_for_logislot_reserved_or_disabled(api, ticket_world, 
     s.get(Ticket, uuid.UUID(logislot["id"])).application_id = ticket_world["logislot_app"].id
     s.flush()
     agent.post(f"{HUB}/{logislot['id']}/messages", json={"body": "Merhaba", "visibility": "public"})
-    assert _rows(ticket_world, logislot["id"]) == []          # LogiSlot'un kendi webhook'u var
+
+    def requester(ticket_id):
+        return [r for r in _rows(ticket_world, ticket_id) if r.audience == "requester"]
+    assert requester(logislot["id"]) == []                    # LogiSlot'un kendi webhook'u var
+    assert [r.kind for r in _rows(ticket_world, logislot["id"])] == ["agent_new_ticket"]   # ekip yine alir
 
     seeded = _open(api, ticket_world)
     s.get(Ticket, uuid.UUID(seeded["id"])).requester_email = "ali@acme.hermes-demo.example.com"
     s.flush()
     agent.post(f"{HUB}/{seeded['id']}/messages", json={"body": "Merhaba", "visibility": "public"})
-    assert _rows(ticket_world, seeded["id"]) == []            # dev tohum adresi
+    assert requester(seeded["id"]) == []                      # dev tohum adresi
 
     api(ticket_world["admin"]).put(MAIL, json={"requester_enabled": False, "agent_enabled": True,
                                                "language": "tr", "inbound_enabled": False})
     off = _open(api, ticket_world)
     agent.post(f"{HUB}/{off['id']}/messages", json={"body": "Merhaba", "visibility": "public"})
-    assert _rows(ticket_world, off["id"]) == []
+    assert requester(off["id"]) == []
 
     # Kuyruk her surecte yazilir; gonderim yalniz bayrak + Graph olan surecte.
     monkeypatch.setattr(mail_on, "NOTIFICATIONS_ENABLED", False)
     api(ticket_world["admin"]).put(MAIL, json={"requester_enabled": True, "agent_enabled": True,
                                                "language": "tr", "inbound_enabled": False})
     agent.post(f"{HUB}/{off['id']}/messages", json={"body": "Tekrar", "visibility": "public"})
-    assert [r.status for r in _rows(ticket_world, off["id"])] == ["pending"]
+    assert [r.status for r in requester(off["id"])] == ["pending"]
     summary = ticket_mail.dispatch_pending(s, tenant_id="x")
     assert summary["status"] == "graph_not_configured" and summary["sent"] == 0
 
@@ -139,12 +169,17 @@ def test_dispatch_sends_retries_and_gives_up(api, ticket_world, mail_on):
     def send(**mail):
         sent.append(mail)
 
-    directory = {str(ticket_world["agent_a"]): {"email": "ajan@duosis.com"}}
+    directory = {str(ticket_world["agent_a"]): {"email": "ajan@duosis.com", "full_name": "Gencay Coskun"}}
     summary = ticket_mail.dispatch_pending(s, tenant_id=str(s.get(Ticket, uuid.UUID(ticket["id"])).tenant_id),
                                            send=send, resolve_users=lambda t, ids: directory)
-    assert summary["sent"] == 2
+    # musteri: yanit + isleme alindi; ekip: yeni talep + atama (atayan admin haric)
+    assert summary["sent"] == 4
+    by = {(m["to_email"], m["subject"].split("] ", 1)[1].split(":", 1)[0]): m for m in sent}
+    reply = by[(CUSTOMER_EMAIL, "Talebinize yanıt var")]
+    accepted = by[(CUSTOMER_EMAIL, "Talebiniz işleme alındı")]
+    assert "Gencay Coskun talebinizle ilgileniyor" in accepted["html_body"]    # sorumlu adiyla
+    assert "Talep size atandı" in by[("ajan@duosis.com", "Talep size atandı")]["html_body"]
     to = {m["to_email"]: m for m in sent}
-    reply = to[CUSTOMER_EMAIL]
     assert reply["subject"].startswith(f"[{ticket['ticket_number']}] ")
     assert "Satir 1<br>Satir 2 &amp; &quot;x&quot;" in reply["html_body"]
     assert "R&amp;D &quot;Fatura&quot; hatasi" in reply["html_body"]
@@ -187,6 +222,32 @@ def test_templates_follow_the_provider_language():
     raw = templates.render("reply", lang="tr", ticket=ticket,
                            message=TicketMessage(body="<script>alert(1)</script>"))
     assert "<script>" not in raw.html and "&lt;script&gt;alert(1)&lt;/script&gt;" in raw.html
+
+
+def test_templates_speak_for_each_event():
+    ticket = Ticket(number=7, title="Kasa ekrani", status="in_progress", priority="normal",
+                    assigned_group_name_snapshot="Defacto Destek Ekibi", id=uuid.uuid4())
+    common = dict(lang="tr", ticket=ticket, ref="Defacto Ticket-001", customer_name="Defacto")
+    accepted = templates.render("assigned", assignee_name="Gencay Coşkun", **common)
+    assert accepted.subject == "[TKT-000007] Talebiniz işleme alındı: Kasa ekrani"   # kanonik no konuda
+    assert "Defacto Destek Ekibi tarafından kabul edildi" in accepted.html
+    assert "Gencay Coşkun talebinizle ilgileniyor" in accepted.html
+    assert "Defacto Ticket-001 · Kasa ekrani" in accepted.html and "TKT-000007" in accepted.html
+
+    mine = templates.render("agent_assigned", personal=True, actor_display_name="Ayşe", assignee_name="Gencay Coşkun", **common)
+    assert mine.subject.startswith("[TKT-000007] Talep size atandı") and "Ayşe bu talebi size atadı." in mine.html
+    other = templates.render("agent_assigned", actor_display_name="Otomasyon: 15 dk", assignee_name="Gencay Coşkun", **common)
+    assert "Talebin sorumlusu Gencay Coşkun olarak belirlendi." in other.html and "Otomasyon: 15 dk" in other.html
+
+    opened = templates.render("agent_new_ticket", actor_display_name="Defacto",
+                              message=TicketMessage(body="Kasa acilmiyor"), **common)
+    assert "Defacto yeni bir talep açtı." in opened.html                      # sirket hesabi: tek ad
+    assert "Kasa acilmiyor" in opened.html and "Gencay" not in opened.html
+    copy = templates.render("own_reply", message=TicketMessage(body="Hala oluyor"), **common)
+    assert copy.subject.startswith("[TKT-000007] Yanıtınız alındı") and "Hala oluyor" in copy.html
+    answered = templates.render("agent_replied", actor_display_name="Gencay Coşkun",
+                                message=TicketMessage(body="Inceliyoruz"), **common)
+    assert "Gencay Coşkun müşteriye yanıt verdi." in answered.html
 
 
 # -----------------------------------------------------------------------------

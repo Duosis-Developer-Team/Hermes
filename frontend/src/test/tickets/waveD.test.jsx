@@ -39,7 +39,7 @@ vi.mock('../../api/ticketsApi', async () => {
 
 const { ticketHelpdeskService, ticketContextService, helpCenterService } = await import('../../api/ticketsApi')
 const { default: MergeModal } = await import('../../features/tickets/MergeModal')
-const { default: AutomationsTab } = await import('../../pages/tickets/AutomationsTab')
+const { default: AutomationsTab, ageMinutes, splitAge } = await import('../../pages/tickets/AutomationsTab')
 const { default: HelpCenterPage } = await import('../../pages/tickets/HelpCenterPage')
 const { default: CreateTicketModal } = await import('../../features/tickets/CreateTicketModal')
 const { Route, Routes } = await import('react-router-dom')
@@ -97,10 +97,12 @@ describe('otomasyon editoru', () => {
         await user.click(await screen.findByRole('button', { name: /New rule/ }))
         const dialog = await screen.findByRole('dialog')
         await user.type(within(dialog).getByLabelText('Rule name'), 'Hatirlatma')
-        await user.click(within(dialog).getByRole('button', { name: 'On a schedule (hourly)' }))
-        const hours = within(dialog).getByLabelText('Hours')
-        await user.clear(hours)
-        await user.type(hours, '72')
+        await user.click(within(dialog).getByRole('button', { name: 'On a schedule' }))
+        const value = within(dialog).getByLabelText('Duration')
+        await user.clear(value)
+        await user.type(value, '72')
+        await user.click(within(dialog).getByRole('combobox', { name: 'Unit' }))
+        await user.click(await screen.findByTitle('hours'))
         await user.click(within(dialog).getByRole('combobox', { name: 'Add condition' }))
         await user.click(await screen.findByTitle('Status is'))
         await user.click(within(dialog).getByRole('combobox', { name: 'Status is' }))
@@ -111,9 +113,41 @@ describe('otomasyon editoru', () => {
         await user.click(within(dialog).getByRole('button', { name: 'Save' }))
         await waitFor(() => expect(ticketHelpdeskService.createAutomation).toHaveBeenCalledWith({
             name: 'Hatirlatma', trigger: 'schedule', is_active: true, position: 0,
-            conditions: { age: { basis: 'updated', hours: 72 }, status: ['waiting_customer'] },
+            conditions: { age: { basis: 'updated', minutes: 72 * 60 }, status: ['waiting_customer'] },
             actions: [{ type: 'public_reply', body: 'Yanitinizi bekliyoruz.' }],
         }))
+    })
+
+    it('acildiktan 15 dk sonra ekipten birine atar', async () => {
+        const user = setup()
+        renderWithProviders(<AutomationsTab />)
+        await user.click(await screen.findByRole('button', { name: /New rule/ }))
+        const dialog = await screen.findByRole('dialog')
+        await user.type(within(dialog).getByLabelText('Rule name'), '15 dk atama')
+        await user.click(within(dialog).getByRole('button', { name: 'On a schedule' }))
+        await user.click(within(dialog).getByRole('combobox', { name: 'Measured from' }))
+        await user.click(await screen.findByTitle('opened'))
+        const value = within(dialog).getByLabelText('Duration')
+        await user.clear(value)
+        await user.type(value, '15')
+        await user.click(within(dialog).getByRole('combobox', { name: 'Unit' }))
+        await user.click(await screen.findByTitle('minutes'))
+        await user.click(within(dialog).getByRole('combobox', { name: 'Add action' }))
+        await user.click(await screen.findByTitle('Assign to someone on the team'))
+        expect(within(dialog).getByText(/fewest open tickets/)).toBeInTheDocument()
+        await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+        await waitFor(() => expect(ticketHelpdeskService.createAutomation).toHaveBeenLastCalledWith(expect.objectContaining({
+            name: '15 dk atama', trigger: 'schedule',
+            conditions: { age: { basis: 'created', minutes: 15 } },
+            actions: [{ type: 'assign_from_team' }],
+        })))
+    })
+
+    it('ozet dakikayi en buyuk tam birimle yazar (eski saatli kural dahil)', () => {
+        expect(splitAge(15)).toEqual({ value: 15, unit: 'minutes' })
+        expect(splitAge(120)).toEqual({ value: 2, unit: 'hours' })
+        expect(splitAge(4320)).toEqual({ value: 3, unit: 'days' })
+        expect(ageMinutes({ basis: 'updated', hours: 72 })).toBe(4320)
     })
 })
 

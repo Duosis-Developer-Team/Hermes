@@ -126,3 +126,79 @@ def test_schedule_reminds_once_then_resolves_quiet_tickets(api, ticket_world):
     assert ticket_automation.run_schedules(s)["applied"] == 1
     assert row.status == "resolved"
     assert s.query(TicketAutomationRun).filter(TicketAutomationRun.ticket_id == row.id).count() == 2
+
+
+# -----------------------------------------------------------------------------
+# Dakikalik zamanli kural + "ekipten birine ata" (CTO, 2026-10-14)
+# -----------------------------------------------------------------------------
+
+def _team(world, *extra):
+    from app.models.user_group import UserGroupMember
+
+    s = world["session"]
+    for user_id in extra:
+        s.add(UserGroupMember(group_id=world["devops"].id, user_id=user_id, is_active=True))
+    s.flush()
+
+
+def test_schedule_age_is_in_minutes_with_legacy_hours(api, ticket_world):
+    admin = api(ticket_world["admin"])
+    base = {"name": "x", "trigger": "schedule", "actions": [{"type": "assign_from_team"}]}
+    too_soon = admin.post(RULES, json={**base, "conditions": {"age": {"basis": "created", "minutes": 4}}})
+    assert too_soon.status_code == 422
+    quarter = _rule(api, ticket_world, **{**base, "conditions": {"age": {"basis": "created", "minutes": 15}}})
+    assert quarter["conditions"]["age"] == {"basis": "created", "minutes": 15}
+    assert quarter["actions"] == [{"type": "assign_from_team", "user_ids": []}]
+    legacy = _rule(api, ticket_world, **{**base, "conditions": {"age": {"basis": "updated", "hours": 2}}})
+    assert legacy["conditions"]["age"] == {"basis": "updated", "minutes": 120}
+    assert ticket_automation.age_minutes({"basis": "created", "hours": 3}) == 180   # eski kayit
+
+
+def test_least_loaded_member_breaks_ties_by_longest_wait(api, ticket_world):
+    s = ticket_world["session"]
+    a, c, d = ticket_world["agent_a"], uuid.uuid4(), uuid.uuid4()
+    _team(ticket_world, c, d)
+    group = ticket_world["devops"].id
+    for _ in range(2):                                         # a: iki acik talep
+        row = s.get(Ticket, uuid.UUID(_open(api, ticket_world)["id"]))
+        row.assigned_user_id = a
+    s.flush()
+    from app.services import ticket_service
+    from app.services.ticket_service import Actor
+
+    # c bir kez atama aldi (sonra birakildi) — esitlikte hic almamis d once.
+    row = s.get(Ticket, uuid.UUID(_open(api, ticket_world)["id"]))
+    ticket_service.assign_user(s, row, user_id=c, actor=Actor(type="system_job", role="agent", id="t"), expected_version=None)
+    row.assigned_user_id = None
+    s.flush()
+    assert ticket_automation.least_loaded_member(s, group) == d
+    assert ticket_automation.least_loaded_member(s, group, pool=[str(a), str(c)]) == c
+    assert ticket_automation.least_loaded_member(s, group, pool=[str(uuid.uuid4())]) is None
+    assert ticket_automation.least_loaded_member(s, None) is None
+
+
+def test_fifteen_minutes_after_opening_the_team_gets_an_owner(api, ticket_world):
+    from app.models.ticket_mail import TicketMailOutbox
+
+    s = ticket_world["session"]
+    c = uuid.uuid4()
+    _team(ticket_world, c)
+    _rule(api, ticket_world, name="15 dk atama", trigger="schedule",
+          conditions={"assignee": "unassigned", "age": {"basis": "created", "minutes": 15}},
+          actions=[{"type": "assign_from_team"}])
+    fresh = s.get(Ticket, uuid.UUID(_open(api, ticket_world)["id"]))
+    taken = s.get(Ticket, uuid.UUID(_open(api, ticket_world)["id"]))
+    taken.assigned_user_id = ticket_world["agent_a"]           # biri elle aldi
+    fresh.requester_email = "musteri@acme-holding.com.tr"
+    s.flush()
+
+    now = datetime.now(timezone.utc)
+    assert ticket_automation.run_schedules(s, now=now + timedelta(minutes=10))["applied"] == 0
+    assert fresh.assigned_user_id is None                       # henuz 15 dk olmadi
+    assert ticket_automation.run_schedules(s, now=now + timedelta(minutes=16))["applied"] == 1
+    assert fresh.assigned_user_id in (ticket_world["agent_a"], c)
+    assert fresh.assigned_user_id == c                          # a'nin uzerinde acik talep var
+    assert taken.assigned_user_id == ticket_world["agent_a"]    # elle alinana dokunulmaz
+    mails = {r.kind for r in s.query(TicketMailOutbox).filter(TicketMailOutbox.ticket_id == fresh.id)}
+    assert {"assigned", "agent_assigned"} <= mails              # musteriye + ekibe atama e-postasi
+    assert ticket_automation.run_schedules(s, now=now + timedelta(minutes=30))["applied"] == 0   # bir kez

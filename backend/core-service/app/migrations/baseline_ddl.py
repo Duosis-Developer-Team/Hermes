@@ -577,6 +577,28 @@ def apply_ticket_notification_kinds(conn) -> None:
     ))
 
 
+def widen_check(conn, *, table: str, constraint: str, column: str, values) -> None:
+    """Bir IN (...) kisitini yeni deger kumesiyle degistirir — idempotent,
+    veri degistirmez (yeni kisit `_v2` adiyla eklenir, eskisi kaldirilir,
+    yenisi eski adla yeniden adlandirilir). Tablo yoksa atlanir."""
+    exists = conn.execute(text(f"SELECT to_regclass('public.{table}')")).scalar()
+    if not exists:
+        return
+    allowed = ",".join(f"'{v}'" for v in values)
+    conn.execute(text(f"ALTER TABLE {table} DROP CONSTRAINT IF EXISTS {constraint}_v2"))
+    conn.execute(text(f"ALTER TABLE {table} ADD CONSTRAINT {constraint}_v2 CHECK ({column} IN ({allowed}))"))
+    conn.execute(text(f"ALTER TABLE {table} DROP CONSTRAINT IF EXISTS {constraint}"))
+    conn.execute(text(f"ALTER TABLE {table} RENAME CONSTRAINT {constraint}_v2 TO {constraint}"))
+
+
+def apply_ticket_mail_kinds(conn) -> None:
+    """0026: talep e-postasi turleri (alindi/atama/kopya/cozum ekibe)."""
+    from ..models.ticket_mail import MAIL_KINDS
+
+    widen_check(conn, table="ticket_mail_outbox", constraint="chk_ticket_mail_outbox_kind",
+                column="kind", values=MAIL_KINDS)
+
+
 def ticket_customer_ref_statements() -> List[str]:
     """0025: musteri basina talep sirasi. Kolonlar EKLENIR; mevcut talepler
     musteri basina numara sirasiyla 1..n doldurulur, sayac n+1'e kurulur.
@@ -622,3 +644,4 @@ def apply_all(conn) -> None:
     apply_ticket_network(conn)
     apply_ticket_notification_kinds(conn)
     apply_ticket_customer_refs(conn)
+    apply_ticket_mail_kinds(conn)

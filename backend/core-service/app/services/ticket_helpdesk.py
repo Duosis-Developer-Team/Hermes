@@ -240,9 +240,9 @@ def _group_members(db: Session, group_id) -> List[UUID]:
 
 def notify(db: Session, ticket: Ticket, kind: str, *, recipients: Iterable,
            actor_user_id=None, actor_display_name: Optional[str] = None) -> int:
-    """Alicilara (eylemi yapan HARIC, tekil) bildirim yazar — ayni
-    transaction. (Is kalemi bildirim ayarlari tur-bazlidir; talep zili
-    her zaman acik, e-postasi saglayici ayarina bagli.)"""
+    """Alicilara (eylemi yapan HARIC, tekil) ZIL bildirimi yazar — ayni
+    transaction. Talep e-postalari bundan bagimsizdir (ticket_mail: ekibin
+    tamami + atanan + takipciler, her olayda iki taraf)."""
     sent, seen = 0, []
     for user_id in recipients:
         if not user_id or user_id in seen or (actor_user_id and str(user_id) == str(actor_user_id)):
@@ -254,10 +254,6 @@ def notify(db: Session, ticket: Ticket, kind: str, *, recipients: Iterable,
         ))
         sent += 1
     db.flush()
-    # E-posta (Dalga D4): atama / musteri yaniti / yeniden acilis ayni
-    # alicilara e-postayla da gider (saglayici ayari kapatabilir).
-    from . import ticket_mail
-    ticket_mail.enqueue_agents(db, ticket, kind, seen, actor_display_name=actor_display_name)
     return sent
 
 

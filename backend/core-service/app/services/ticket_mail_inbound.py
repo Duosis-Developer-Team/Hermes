@@ -484,7 +484,7 @@ def _create(db: Session, message: dict, *, member: Member, subject: str, body: s
         actor=_requester_actor(member.user_id, member.email),
     )
     ticket_helpdesk.mark_read(db, ticket.id, member.user_id)
-    ticket_mail.on_received(db, ticket)
+    # "Alindi" e-postasi create_ticket icinde (her kanal ayni) kuyruga girer.
     _record(db, internet_id=internet_id, sender=member.email, outcome="created", ticket_id=ticket.id,
             received_at=received_at)
     return Outcome("created", ticket_id=str(ticket.id))

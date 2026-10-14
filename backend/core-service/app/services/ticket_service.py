@@ -403,8 +403,10 @@ def create_ticket(
     # transaction; politika yoksa hicbir sey yazilmaz.
     ticket_sla.start(db, ticket)
     # Uygulama ici bildirim (Dalga B): ekibe "yeni talep" — ayni transaction.
-    from . import ticket_helpdesk
+    from . import ticket_helpdesk, ticket_mail
     ticket_helpdesk.on_created(db, ticket)
+    # E-posta: talep edene "alindi", ekibe "yeni talep" — ayni transaction.
+    ticket_mail.on_created(db, ticket)
     # Otomasyon (Dalga D2): "talep acildiginda" kurallari — her biri kendi
     # savepoint'inde; hata talep acilisini bozmaz.
     from . import ticket_automation
@@ -613,9 +615,12 @@ def add_message(
     if visibility == "public":
         ticket.last_public_activity_at = _now()
         if author_type == "requester":
-            from . import ticket_helpdesk
+            from . import ticket_helpdesk, ticket_mail
             ticket_helpdesk.on_customer_reply(
                 db, ticket, actor_display_name=actor.display_name,
+            )
+            ticket_mail.on_customer_reply(
+                db, ticket, message, actor_display_name=actor.display_name,
             )
         if author_type == "agent" and ticket.first_response_at is None:
             ticket.first_response_at = _now()
@@ -638,9 +643,9 @@ def add_message(
             source_tenant=source_tenant,
         )
         if author_type in ("agent", "system"):
-            # E-posta (Dalga D4): talep edene, ayni transaction'da kuyruk.
+            # E-posta: talep edene yanit; ajan yanitinin kopyasi ekibe.
             from . import ticket_mail
-            ticket_mail.on_public_reply(db, ticket, message)
+            ticket_mail.on_public_reply(db, ticket, message, actor_user_id=actor.user_id)
         # Ajan musteriye yazdiysa yeni/yeniden acilmis talep "Islemde"ye
         # gecer (kanban: biz yanitladik) — mesaj olayindan SONRA. Otomasyon
         # yaniti durumu degistirmez.
@@ -734,8 +739,12 @@ def _apply_transition(
     ticket.status = to_status
     ticket_sla.on_status(db, ticket, from_status=from_status, to_status=to_status)
     if to_status == "reopened":
-        from . import ticket_helpdesk
+        from . import ticket_helpdesk, ticket_mail
         ticket_helpdesk.on_reopened(
+            db, ticket, actor_user_id=actor.user_id,
+            actor_display_name=actor.display_name,
+        )
+        ticket_mail.on_reopened(
             db, ticket, actor_user_id=actor.user_id,
             actor_display_name=actor.display_name,
         )
@@ -911,7 +920,9 @@ def assign_user(
     gorunurluk uretmedigi kuralinin ikiz garantisidir: gorunurlugu
     olmayan birine atanamaz.
 
-    Musteriye giden olay YOKTUR: kisi atamasi ic organizasyon bilgisidir.
+    Kaynak uygulamaya (sozlesme outbox'i) giden olay YOKTUR: kisi atamasi
+    ic organizasyon bilgisidir. Hermes'in kendi talep edenine ise "isleme
+    alindi" e-postasi sorumlu adiyla gider (CTO karari, ticket_mail).
     """
     check_version(ticket, expected_version)
     if user_id is not None and not is_active_group_member(
@@ -926,8 +937,13 @@ def assign_user(
     ticket.assigned_user_id = user_id
     _bump(ticket)
     if user_id is not None and user_id != previous:
-        from . import ticket_helpdesk
+        from . import ticket_helpdesk, ticket_mail
         ticket_helpdesk.on_assigned(
+            db, ticket, actor_user_id=actor.user_id,
+            actor_display_name=actor.display_name,
+        )
+        # E-posta: talep edene "isleme alindi" (sorumlu adiyla), ekibe atama.
+        ticket_mail.on_assigned(
             db, ticket, actor_user_id=actor.user_id,
             actor_display_name=actor.display_name,
         )
@@ -1065,7 +1081,8 @@ def resolve(
         outbound_data=events.build_resolved(ticket, resolution),
     )
     from . import ticket_mail
-    ticket_mail.on_resolved(db, ticket, resolution)
+    ticket_mail.on_resolved(db, ticket, resolution, actor_user_id=actor.user_id,
+                            actor_display_name=actor.display_name)
 
     if internal_note:
         add_message(

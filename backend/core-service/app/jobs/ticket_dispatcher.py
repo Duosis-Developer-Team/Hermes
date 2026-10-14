@@ -16,6 +16,9 @@
 #
 # Ayni tur talep e-postalarini da isler (Dalga D4): gelen kutu (yalniz
 # TICKET_MAIL_INBOUND_MAILBOX doluysa) + saglayicilarin e-posta kuyrugu.
+# Zamanli otomasyon kurallari da BURADA, dakikada bir ve e-postadan ONCE
+# kosar ("acildiktan 15 dk sonra ekipten birine ata" → atama e-postasi ayni
+# turda gider). Yeni CronJob/manifest yok: ayni is, ayni imaj.
 # =============================================================================
 
 from __future__ import annotations
@@ -33,6 +36,29 @@ logger = logging.getLogger("hermes.ticket.dispatcher")
 
 # Bu ise ozgu sabit advisory lock anahtari.
 LOCK_KEY = 8_140_2251
+
+
+def automation_round() -> dict:
+    """Zamanli otomasyonlar, saglayici basina kendi oturumunda. Kural
+    hatasi kendi savepoint'inde kalir; bir saglayici digerlerini durdurmaz."""
+    from ..services import ticket_automation
+    from .ticket_maintenance import provider_ids
+
+    out = {"providers": 0, "applied": 0, "errors": 0}
+    for tenant_id in provider_ids():
+        try:
+            with support.provider_session(tenant_id) as pdb:
+                part = ticket_automation.run_schedules(pdb)
+        except support.SupportNotConfigured:
+            continue
+        except Exception as exc:  # noqa: BLE001
+            logger.error("automation round failed class=%s", type(exc).__name__)
+            out["errors"] += 1
+            continue
+        out["providers"] += 1
+        out["applied"] += int(part.get("applied") or 0)
+        out["errors"] += int(part.get("errors") or 0)
+    return out
 
 
 def mail_round() -> dict:
@@ -89,6 +115,7 @@ def run_once() -> dict:
             reclaimed = delivery.reclaim_stuck(db)
             summary = delivery.dispatch_pending(db)
             summary["reclaimed"] = reclaimed
+            summary["automations"] = automation_round()
             summary["mail"] = mail_round()
             summary["status"] = "completed"
             return summary

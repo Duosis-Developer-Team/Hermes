@@ -20,27 +20,48 @@ _esc = brand._esc
 
 TEXT = {
     "tr": {
+        # --- talep eden ---------------------------------------------------
+        "subject.received": "Talebiniz alındı",
+        "subject.assigned": "Talebiniz işleme alındı",
         "subject.reply": "Talebinize yanıt var",
         "subject.waiting": "Sizden bilgi bekliyoruz",
+        "subject.own_reply": "Yanıtınız alındı",
         "subject.resolved": "Talebiniz çözüldü",
-        "subject.received": "Talebiniz alındı",
         "subject.inbound_rejected": "E-postanız talebe dönüştürülemedi",
-        "subject.agent_assigned": "Size atandı",
-        "subject.agent_customer_replied": "Müşteri yanıtladı",
-        "subject.agent_reopened": "Talep yeniden açıldı",
-        "intro.reply": "{team} talebinize yanıt verdi.",
+        "intro.received": "Talebiniz bize ulaştı ve {team} ile paylaşıldı. Ekibimiz talebinizi inceleyip en kısa sürede size dönüş yapacak.",
+        "intro.assigned": "Talebiniz {team} tarafından kabul edildi ve işleme alındı. {assignee} talebinizle ilgileniyor; gelişmeleri bu adrese bildireceğiz.",
+        "intro.assigned_anon": "Talebiniz {team} tarafından kabul edildi ve işleme alındı. Gelişmeleri bu adrese bildireceğiz.",
+        "intro.reply": "{actor} talebinize yanıt verdi.",
         "intro.waiting": "{team} talebinizle ilgili sizden bilgi bekliyor. Yanıtınız gelene kadar talep beklemede kalır.",
-        "intro.resolved": "{team} talebinizi çözüldü olarak işaretledi.",
-        "intro.received": "Talebiniz alındı ve {team} ekibine iletildi.",
-        "intro.agent_assigned": "{actor} bu talebi size atadı.",
-        "intro.agent_assigned_anon": "Bu talep size atandı.",
+        "intro.own_reply": "Yanıtınız talebinize eklendi ve {team} ile paylaşıldı. Yazdığınız mesajın bir kopyası aşağıdadır.",
+        "intro.resolved": "{team} talebinizi çözdü. Çözüm özeti aşağıda yer alıyor.",
+        # --- ekip ---------------------------------------------------------
+        "subject.agent_new_ticket": "Yeni talep",
+        "subject.agent_assigned": "Talep atandı",
+        "subject.agent_assigned_me": "Talep size atandı",
+        "subject.agent_replied": "Müşteriye yanıt verildi",
+        "subject.agent_customer_replied": "Müşteri yanıtladı",
+        "subject.agent_resolved": "Talep çözüldü",
+        "subject.agent_reopened": "Talep yeniden açıldı",
+        "intro.agent_new_ticket": "{actor} ({customer}) yeni bir talep açtı. Talep {team} kuyruğunda.",
+        "intro.agent_new_ticket_same": "{customer} yeni bir talep açtı. Talep {team} kuyruğunda.",
+        "intro.agent_assigned": "Talebin sorumlusu {assignee} olarak belirlendi.",
+        "intro.agent_assigned_me": "{actor} bu talebi size atadı.",
+        "intro.agent_assigned_me_anon": "Bu talep size atandı.",
+        "intro.agent_replied": "{actor} müşteriye yanıt verdi.",
         "intro.agent_customer_replied": "{actor} talebe yanıt yazdı.",
+        "intro.agent_resolved": "{actor} talebi çözdü.",
         "intro.agent_reopened": "{actor} talebi yeniden açtı.",
+        # --- ortak --------------------------------------------------------
         "label.summary": "Çözüm",
         "label.workaround": "Geçici çözüm",
         "label.ticket": "Talep",
+        "label.reference": "Referans",
         "label.status": "Durum",
+        "label.assignee": "Sorumlu",
+        "label.assigned_by": "Atayan",
         "label.priority": "Öncelik",
+        "label.customer": "Müşteri",
         "resolved.next": "Sorun devam ediyorsa talebi portaldan yeniden açabilirsiniz. Deneyiminizi puanlamanız bize yardımcı olur.",
         "cta.customer": "Talebi görüntüle",
         "cta.resolved": "Talebi görüntüle ve puanla",
@@ -55,29 +76,48 @@ TEXT = {
                    "resolved": "Çözüldü", "closed": "Kapandı", "reopened": "Yeniden açıldı", "cancelled": "İptal"},
         "priority": {"low": "Düşük", "normal": "Normal", "high": "Yüksek", "urgent": "Acil"},
         "team_fallback": "Destek ekibi",
+        "customer_fallback": "Müşteri",
     },
     "en": {
+        "subject.received": "We received your request",
+        "subject.assigned": "Your request is being handled",
         "subject.reply": "New reply on your request",
         "subject.waiting": "We need more information",
+        "subject.own_reply": "We received your reply",
         "subject.resolved": "Your request was resolved",
-        "subject.received": "We received your request",
         "subject.inbound_rejected": "Your e-mail could not become a request",
-        "subject.agent_assigned": "Assigned to you",
-        "subject.agent_customer_replied": "Customer replied",
-        "subject.agent_reopened": "Request reopened",
-        "intro.reply": "{team} replied to your request.",
+        "intro.received": "Your request has reached us and was routed to {team}. Our team will review it and get back to you as soon as possible.",
+        "intro.assigned": "Your request was accepted by {team} and is now being handled. {assignee} is working on it; we will keep you posted at this address.",
+        "intro.assigned_anon": "Your request was accepted by {team} and is now being handled. We will keep you posted at this address.",
+        "intro.reply": "{actor} replied to your request.",
         "intro.waiting": "{team} needs more information from you. The request stays on hold until you reply.",
-        "intro.resolved": "{team} marked your request as resolved.",
-        "intro.received": "Your request was received and routed to {team}.",
-        "intro.agent_assigned": "{actor} assigned this request to you.",
-        "intro.agent_assigned_anon": "This request was assigned to you.",
+        "intro.own_reply": "Your reply was added to the request and forwarded to {team}. A copy of your message is below.",
+        "intro.resolved": "{team} resolved your request. The resolution summary is below.",
+        "subject.agent_new_ticket": "New request",
+        "subject.agent_assigned": "Request assigned",
+        "subject.agent_assigned_me": "Request assigned to you",
+        "subject.agent_replied": "Customer was answered",
+        "subject.agent_customer_replied": "Customer replied",
+        "subject.agent_resolved": "Request resolved",
+        "subject.agent_reopened": "Request reopened",
+        "intro.agent_new_ticket": "{actor} ({customer}) opened a new request. It is in the {team} queue.",
+        "intro.agent_new_ticket_same": "{customer} opened a new request. It is in the {team} queue.",
+        "intro.agent_assigned": "{assignee} is now responsible for this request.",
+        "intro.agent_assigned_me": "{actor} assigned this request to you.",
+        "intro.agent_assigned_me_anon": "This request was assigned to you.",
+        "intro.agent_replied": "{actor} replied to the customer.",
         "intro.agent_customer_replied": "{actor} replied to the request.",
+        "intro.agent_resolved": "{actor} resolved the request.",
         "intro.agent_reopened": "{actor} reopened the request.",
         "label.summary": "Resolution",
         "label.workaround": "Workaround",
         "label.ticket": "Request",
+        "label.reference": "Reference",
         "label.status": "Status",
+        "label.assignee": "Assignee",
+        "label.assigned_by": "Assigned by",
         "label.priority": "Priority",
+        "label.customer": "Customer",
         "resolved.next": "If the problem persists you can reopen the request from the portal. Rating your experience helps us improve.",
         "cta.customer": "View request",
         "cta.resolved": "View and rate",
@@ -92,6 +132,7 @@ TEXT = {
                    "resolved": "Resolved", "closed": "Closed", "reopened": "Reopened", "cancelled": "Cancelled"},
         "priority": {"low": "Low", "normal": "Normal", "high": "High", "urgent": "Urgent"},
         "team_fallback": "Support team",
+        "customer_fallback": "Customer",
     },
 }
 
@@ -146,13 +187,24 @@ def _quote_block(text: Optional[str], label: Optional[str] = None) -> str:
     )
 
 
-def _facts(ticket, t: dict, *, agent: bool) -> str:
+def _facts(ticket, t: dict, *, agent: bool, ref: Optional[str] = None,
+           assignee_name: Optional[str] = None, assigned_by: Optional[str] = None,
+           customer_name: Optional[str] = None) -> str:
     if ticket is None:
         return ""
-    rows = [
-        brand._detail_row(t["label.ticket"], f"{format_ticket_number(ticket.number)} · {ticket.title}"),
-        brand._detail_row(t["label.status"], t["status"].get(ticket.status, ticket.status)),
-    ]
+    number = format_ticket_number(ticket.number)
+    rows = [brand._detail_row(t["label.ticket"], f"{ref or number} · {ticket.title}")]
+    if ref:
+        # Kanonik numara konu satirinda ve burada kalir: gelen yanit ve
+        # entegrasyonlar onunla eslesir.
+        rows.append(brand._detail_row(t["label.reference"], number))
+    if agent and customer_name:
+        rows.append(brand._detail_row(t["label.customer"], customer_name))
+    rows.append(brand._detail_row(t["label.status"], t["status"].get(ticket.status, ticket.status)))
+    if assignee_name:
+        rows.append(brand._detail_row(t["label.assignee"], assignee_name))
+    if assigned_by:
+        rows.append(brand._detail_row(t["label.assigned_by"], assigned_by))
     if agent:
         # Oncelik ic triyaj kararidir; musteri yuzeyinde gosterilmez.
         rows.append(brand._detail_row(t["label.priority"], t["priority"].get(ticket.priority, ticket.priority)))
@@ -194,12 +246,32 @@ def _shell(title_line: str, body_html: str, footer: str) -> str:
     )
 
 
-def subject_for(kind: str, *, lang: str, ticket=None, subject_hint: Optional[str] = None) -> str:
+def subject_for(kind: str, *, lang: str, ticket=None, subject_hint: Optional[str] = None,
+                personal: bool = False) -> str:
     t = TEXT.get(lang, TEXT["tr"])
-    base = t[f"subject.{kind}"]
+    key = "subject.agent_assigned_me" if (kind == "agent_assigned" and personal) else f"subject.{kind}"
+    base = t[key]
     if ticket is None:
         return f"{base}: {subject_hint}" if subject_hint else base
     return f"[{format_ticket_number(ticket.number)}] {base}: {ticket.title}"
+
+
+def _intro_for(kind: str, t: dict, *, team: str, actor: str, actor_given: bool, assignee: Optional[str],
+               customer: str, personal: bool) -> str:
+    if kind == "assigned":
+        return (t["intro.assigned"] if assignee else t["intro.assigned_anon"]).format(team=team, assignee=assignee)
+    if kind == "agent_assigned":
+        if personal:
+            return t["intro.agent_assigned_me"].format(actor=actor) if actor_given else t["intro.agent_assigned_me_anon"]
+        return t["intro.agent_assigned"].format(assignee=assignee or t["team_fallback"])
+    if kind == "agent_new_ticket" and actor.strip().casefold() == customer.strip().casefold():
+        # Sirket hesabinda talep eden adi = musteri adi ("Defacto").
+        return t["intro.agent_new_ticket_same"].format(team=team, customer=customer)
+    return t[f"intro.{kind}"].format(team=team, actor=actor, customer=customer)
+
+
+# Mesaj alintisi tasiyan turler (ic not ASLA: satirlar yalniz genel mesajla yazilir).
+_QUOTES = ("reply", "waiting", "own_reply", "agent_replied", "agent_customer_replied", "agent_new_ticket")
 
 
 def render(
@@ -215,12 +287,18 @@ def render(
     app_base_url: str = "",
     provider_tenant_id: str = "",
     replies_by_email: bool = False,
+    ref: Optional[str] = None,
+    customer_name: Optional[str] = None,
+    assignee_name: Optional[str] = None,
+    personal: bool = False,
 ) -> RenderedMail:
     t = TEXT.get(lang, TEXT["tr"])
     agent = kind.startswith("agent_")
     team = (getattr(ticket, "assigned_group_name_snapshot", None) or t["team_fallback"])
-    actor = actor_display_name or (getattr(ticket, "requester_display_name", None) if ticket else None) or t["team_fallback"]
-    subject = subject_for(kind, lang=lang, ticket=ticket, subject_hint=subject_hint)
+    actor = (actor_display_name or (getattr(message, "author_display_name", None) if message else None)
+             or (getattr(ticket, "requester_display_name", None) if ticket else None) or t["team_fallback"])
+    subject = subject_for(kind, lang=lang, ticket=ticket, subject_hint=subject_hint, personal=personal)
+    title = subject_for(kind, lang=lang, personal=personal)
     link = ticket_link(ticket, audience="agent" if agent else "requester",
                        app_base_url=app_base_url, provider_tenant_id=provider_tenant_id)
 
@@ -233,24 +311,27 @@ def render(
         return RenderedMail(subject=subject, html=_shell(t[f"subject.{kind}"], "".join(parts), footer),
                             inline_images=brand._logo_inline_images())
 
-    if kind == "agent_assigned" and not actor_display_name:
-        intro = t["intro.agent_assigned_anon"]
-    else:
-        intro = t[f"intro.{kind}"].format(team=team, actor=actor)
+    intro = _intro_for(kind, t, team=team, actor=actor, actor_given=bool(actor_display_name),
+                       assignee=assignee_name, customer=customer_name or t["customer_fallback"],
+                       personal=personal)
     parts.append(brand._intro(_esc(intro)))
-    if kind in ("reply", "waiting", "agent_customer_replied") and message is not None:
+    if kind in _QUOTES and message is not None:
         parts.append(_quote_block(message.body))
-    if kind == "resolved" and resolution is not None:
+    if kind in ("resolved", "agent_resolved") and resolution is not None:
         parts.append(_quote_block(resolution.public_summary, t["label.summary"]))
         if resolution.public_workaround:
             parts.append(_quote_block(resolution.public_workaround, t["label.workaround"]))
-        parts.append(brand._intro(_esc(t["resolved.next"])))
-    parts.append(_facts(ticket, t, agent=agent))
+        if kind == "resolved":
+            parts.append(brand._intro(_esc(t["resolved.next"])))
+    show_assignee = assignee_name if kind not in ("received", "agent_new_ticket") else None
+    parts.append(_facts(ticket, t, agent=agent, ref=ref, assignee_name=show_assignee,
+                        assigned_by=actor_display_name if kind == "agent_assigned" and not personal else None,
+                        customer_name=customer_name))
     cta = t["cta.agent"] if agent else (t["cta.resolved"] if kind == "resolved" else t["cta.customer"])
     parts.append(_button(link, cta))
     if agent:
         footer = t["foot.agent"]
     else:
         footer = t["foot.reply_email"] if replies_by_email else t["foot.reply_portal"]
-    return RenderedMail(subject=subject, html=_shell(t[f"subject.{kind}"], "".join(parts), footer),
+    return RenderedMail(subject=subject, html=_shell(title, "".join(parts), footer),
                         inline_images=brand._logo_inline_images())

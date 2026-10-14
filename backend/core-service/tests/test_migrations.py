@@ -389,7 +389,7 @@ def test_upgrade_from_older_snapshot_when_models_are_ahead(disposable_db):
             )).scalar()
     finally:
         engine.dispose()
-    assert head == "0025_ticket_refs_logos"
+    assert head == "0026_ticket_mail_kinds"
     # 0018: talep agi indeksi gelir (global, RLS'siz).
     assert network_table is True
     # 0019: helpdesk tablolari tenant-owned, RLS + FORCE.

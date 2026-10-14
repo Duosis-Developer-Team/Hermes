@@ -32,7 +32,6 @@ from sqlalchemy import text as sa_text
 from ..services import support_tenant as support
 from ..services import ticket_attachment_service
 from ..services import ticket_idempotency as idem
-from ..services import ticket_automation
 from ..services import ticket_mail
 from ..services import ticket_service
 
@@ -58,9 +57,8 @@ def provider_ids() -> list:
 
 
 def _maintain(db) -> dict:
-    # Zamanli otomasyonlar (Dalga D2) otomatik kapatmadan ONCE: "7 gun yanit
-    # yoksa coz" gibi kurallar ayni turda sonuc versin.
-    automations = ticket_automation.run_schedules(db)
+    # Zamanli otomasyonlar dakikalik dispatcher'da kosar (ticket_dispatcher.
+    # automation_round); burada YOK — ayni kural iki surecte calismasin.
     closed = ticket_service.auto_close_due_tickets(db)
     expired = ticket_attachment_service.expire_orphaned_uploads(db)
     purged = idem.purge_expired(db)
@@ -73,8 +71,6 @@ def _maintain(db) -> dict:
         "auto_close_window_days": closed.get("window_days"),
         "expired_uploads": expired.get("expired", 0),
         "purged_idempotency_keys": purged,
-        "automations_applied": automations["applied"],
-        "automation_errors": automations["errors"],
         "purged_mail": mail_purged + inbound_purged,
     }
 
@@ -100,8 +96,7 @@ def run_once() -> dict:
                 "ok": True, "status": "completed", "providers": 0,
                 "providers_skipped": 0, "auto_closed": 0,
                 "auto_close_window_days": None, "expired_uploads": 0,
-                "purged_idempotency_keys": 0, "automations_applied": 0,
-                "automation_errors": 0, "purged_mail": 0,
+                "purged_idempotency_keys": 0, "purged_mail": 0,
             }
             for tenant_id in provider_ids():
                 try:
@@ -112,8 +107,7 @@ def run_once() -> dict:
                     continue
                 summary["providers"] += 1
                 for key in ("auto_closed", "expired_uploads",
-                            "purged_idempotency_keys", "automations_applied",
-                            "automation_errors", "purged_mail"):
+                            "purged_idempotency_keys", "purged_mail"):
                     summary[key] += int(part[key] or 0)
                 summary["auto_close_window_days"] = part["auto_close_window_days"]
             return summary

@@ -4,11 +4,20 @@
 # Kuyruk (outbox) + gonderici. Kurallar:
 #   - Satir kanonik mutasyonla AYNI transaction'da yazilir: talep geri
 #     alinirsa e-posta da yoktur; e-posta hatasi talebi ASLA bozmaz.
-#   - Talep edene yalniz Hermes uygulamasinin talepleri (portal + e-postayla
-#     acilanlar) icin gider. LogiSlot gibi kaynak uygulamalarin kendi
-#     webhook'u var; onlarin musterisine Hermes e-posta ATMAZ.
-#   - Ekibe: atama, musteri yaniti, yeniden acilis (uygulama ici zil ile
-#     ayni alicilar; eylemi yapan haric).
+#   - HER OLAYDA IKI TARAF (CTO, 2026-10-14):
+#       olay            talep eden              ekip
+#       acildi          received                agent_new_ticket
+#       atandi          assigned                agent_assigned
+#       ekip yaniti     reply / waiting         agent_replied
+#       musteri yaniti  own_reply (kopya)       agent_customer_replied
+#       cozuldu         resolved                agent_resolved
+#       yeniden acildi  —                       agent_reopened
+#   - Talep eden = talebi ACAN kisi (sirket hesabinda hesabin adresi).
+#     Yalniz Hermes uygulamasinin talepleri (portal + e-postayla acilanlar);
+#     LogiSlot gibi kaynak uygulamalarin kendi webhook'u var, onlarin
+#     musterisine Hermes e-posta ATMAZ.
+#   - Ekip = talebin ekibinin TUM aktif uyeleri + atanan + takipciler,
+#     eylemi yapan HARIC (zil alicilarindan bagimsiz).
 #   - Adres ayrilmis/deneme alan adindaysa (example.com, .test, ...)
 #     satir yazilmaz — dev tohum verisi gercek posta kutusuna gitmesin.
 #   - Kuyruk her surecte yazilir (API, bakim isi); NOTIFICATIONS_ENABLED +
@@ -38,13 +47,9 @@ from . import ticket_mail_templates as templates
 
 logger = logging.getLogger("hermes.ticket.mail")
 
-# helpdesk bildirim turu → ekip e-postasi turu
-AGENT_KINDS = {
-    "assigned": "agent_assigned",
-    "customer_replied": "agent_customer_replied",
-    "reopened": "agent_reopened",
-}
-REQUESTER_KINDS = ("reply", "waiting", "resolved", "received", "inbound_rejected")
+REQUESTER_KINDS = ("reply", "waiting", "resolved", "received", "inbound_rejected", "assigned", "own_reply")
+TEAM_KINDS = ("agent_new_ticket", "agent_assigned", "agent_replied", "agent_customer_replied",
+              "agent_resolved", "agent_reopened")
 RETRY_MINUTES = (1, 5, 15, 60)
 MAX_ATTEMPTS = len(RETRY_MINUTES) + 1
 STALE_AFTER = timedelta(hours=24)
@@ -165,10 +170,76 @@ def enqueue_requester(db: Session, ticket: Ticket, kind: str, *, message_id=None
     return row
 
 
-def on_public_reply(db: Session, ticket: Ticket, message: TicketMessage) -> None:
-    """Ajan ya da otomasyon musteriye yazdi."""
-    if message.visibility == "public" and message.author_type in ("agent", "system"):
+def team_audience(db: Session, ticket: Ticket, *, exclude=None) -> List:
+    """Ekip e-postasinin alicilari: talebin ekibinin aktif uyeleri + atanan
+    + takipciler (ekip disindan takip eden yonetici de alir), tekil; eylemi
+    yapan haric."""
+    from . import ticket_helpdesk
+
+    people = list(ticket_helpdesk._group_members(db, ticket.assigned_group_id))
+    if ticket.assigned_user_id:
+        people.append(ticket.assigned_user_id)
+    people.extend(ticket_helpdesk.watchers_of(db, ticket.id))
+    out, seen = [], set()
+    for user_id in people:
+        key = str(user_id) if user_id else None
+        if not key or key in seen or (exclude and key == str(exclude)):
+            continue
+        seen.add(key)
+        out.append(user_id)
+    return out
+
+
+def enqueue_team(db: Session, ticket: Ticket, kind: str, *, actor_user_id=None,
+                 actor_display_name: Optional[str] = None, message_id=None, resolution_id=None) -> int:
+    if kind not in TEAM_KINDS or not config(db).agent_enabled:
+        return 0
+    count = 0
+    for user_id in team_audience(db, ticket, exclude=actor_user_id):
+        db.add(TicketMailOutbox(
+            ticket_id=ticket.id, kind=kind, audience="agent", recipient_user_id=user_id,
+            actor_display_name=actor_display_name[:200] if actor_display_name else None,
+            message_id=message_id, resolution_id=resolution_id,
+        ))
+        count += 1
+    if count:
+        db.flush()
+    return count
+
+
+# --- Olaylar (ticket_service cagirir; hepsi kanonik transaction icinde) -----
+
+def on_created(db: Session, ticket: Ticket) -> None:
+    """Portal, e-posta ya da entegrasyonla acilan talep."""
+    enqueue_requester(db, ticket, "received")
+    enqueue_team(db, ticket, "agent_new_ticket", actor_display_name=ticket.requester_display_name)
+
+
+def on_assigned(db: Session, ticket: Ticket, *, actor_user_id=None,
+                actor_display_name: Optional[str] = None) -> None:
+    """Kisiye atama (elle ya da otomasyonla). Talep edene "isleme alindi"."""
+    enqueue_requester(db, ticket, "assigned")
+    enqueue_team(db, ticket, "agent_assigned", actor_user_id=actor_user_id,
+                 actor_display_name=actor_display_name)
+
+
+def on_public_reply(db: Session, ticket: Ticket, message: TicketMessage, *, actor_user_id=None) -> None:
+    """Ajan ya da otomasyon musteriye yazdi; ajan yanitinin kopyasi ekibe."""
+    if message.visibility != "public":
+        return
+    if message.author_type in ("agent", "system"):
         enqueue_requester(db, ticket, "reply", message_id=message.id)
+    if message.author_type == "agent":
+        enqueue_team(db, ticket, "agent_replied", actor_user_id=actor_user_id,
+                     actor_display_name=message.author_display_name, message_id=message.id)
+
+
+def on_customer_reply(db: Session, ticket: Ticket, message: TicketMessage, *,
+                      actor_display_name: Optional[str] = None) -> None:
+    """Talep eden yazdi: kendisine kopya, ekibe yanit."""
+    enqueue_requester(db, ticket, "own_reply", message_id=message.id)
+    enqueue_team(db, ticket, "agent_customer_replied", actor_display_name=actor_display_name,
+                 message_id=message.id)
 
 
 def mark_waiting(db: Session, message_id) -> None:
@@ -182,14 +253,17 @@ def mark_waiting(db: Session, message_id) -> None:
      .update({TicketMailOutbox.kind: "waiting"}, synchronize_session=False))
 
 
-def on_resolved(db: Session, ticket: Ticket, resolution: TicketResolution) -> None:
+def on_resolved(db: Session, ticket: Ticket, resolution: TicketResolution, *, actor_user_id=None,
+                actor_display_name: Optional[str] = None) -> None:
     enqueue_requester(db, ticket, "resolved", resolution_id=resolution.id)
+    enqueue_team(db, ticket, "agent_resolved", actor_user_id=actor_user_id,
+                 actor_display_name=actor_display_name, resolution_id=resolution.id)
 
 
-def on_received(db: Session, ticket: Ticket) -> None:
-    """E-postayla acilan talep: numarasiyla alindi bildirimi (yanitlar bu
-    numarayla talebe baglanir)."""
-    enqueue_requester(db, ticket, "received")
+def on_reopened(db: Session, ticket: Ticket, *, actor_user_id=None,
+                actor_display_name: Optional[str] = None) -> None:
+    enqueue_team(db, ticket, "agent_reopened", actor_user_id=actor_user_id,
+                 actor_display_name=actor_display_name)
 
 
 def enqueue_inbound_rejection(db: Session, *, address: str, reason: str, subject: Optional[str]) -> None:
@@ -201,23 +275,6 @@ def enqueue_inbound_rejection(db: Session, *, address: str, reason: str, subject
         subject_hint=(subject or "")[:200] or None,
     ))
     db.flush()
-
-
-def enqueue_agents(db: Session, ticket: Ticket, notification_kind: str, user_ids: Iterable,
-                   *, actor_display_name: Optional[str] = None) -> int:
-    kind = AGENT_KINDS.get(notification_kind)
-    if kind is None or not config(db).agent_enabled:
-        return 0
-    count = 0
-    for user_id in dict.fromkeys(u for u in user_ids if u):
-        db.add(TicketMailOutbox(
-            ticket_id=ticket.id, kind=kind, audience="agent", recipient_user_id=user_id,
-            actor_display_name=(actor_display_name or None),
-        ))
-        count += 1
-    if count:
-        db.flush()
-    return count
 
 
 # =============================================================================
@@ -303,8 +360,13 @@ def dispatch_pending(
     if not rows:
         return summary
 
-    agent_ids = sorted({str(r.recipient_user_id) for r in rows if r.recipient_user_id})
-    directory = resolve_users(tenant_id, agent_ids) if agent_ids else {}
+    # Tek dizin cagrisi: ekip alicilarinin adresleri + taleplerin sorumlu
+    # adlari ("Gencay Coskun ilgileniyor").
+    ticket_ids = {r.ticket_id for r in rows if r.ticket_id}
+    assignees = {str(a) for (a,) in db.query(Ticket.assigned_user_id)
+                 .filter(Ticket.id.in_(ticket_ids), Ticket.assigned_user_id.isnot(None)).all()} if ticket_ids else set()
+    lookup_ids = sorted({str(r.recipient_user_id) for r in rows if r.recipient_user_id} | assignees)
+    directory = resolve_users(tenant_id, lookup_ids) if lookup_ids else {}
     cfg = config(db)
     reply_to = _reply_to(db, tenant_id, cfg)
 
@@ -315,7 +377,7 @@ def dispatch_pending(
             summary["skipped"] += 1
             continue
         try:
-            mail = _render(db, row, cfg, reply_to=reply_to)
+            mail = _render(db, row, cfg, reply_to=reply_to, directory=directory)
         except _Gone as gone:
             row.status, row.last_error = "skipped", str(gone)
             summary["skipped"] += 1
@@ -359,7 +421,10 @@ class _Gone(Exception):
     """Bildirimin konusu artik yok (talep/mesaj bulunamadi)."""
 
 
-def _render(db: Session, row: TicketMailOutbox, cfg: MailConfig, *, reply_to: Optional[str]):
+def _render(db: Session, row: TicketMailOutbox, cfg: MailConfig, *, reply_to: Optional[str],
+            directory: Optional[Dict[str, dict]] = None):
+    from . import ticket_serializers as ser
+
     ticket = db.get(Ticket, row.ticket_id) if row.ticket_id else None
     if row.ticket_id and ticket is None:
         raise _Gone("ticket_missing")
@@ -367,17 +432,26 @@ def _render(db: Session, row: TicketMailOutbox, cfg: MailConfig, *, reply_to: Op
     if row.message_id and message is None:
         raise _Gone("message_missing")
     resolution = db.get(TicketResolution, row.resolution_id) if row.resolution_id else None
-    if row.kind == "agent_customer_replied" and ticket is not None:
-        message = (db.query(TicketMessage)
-                   .filter(TicketMessage.ticket_id == ticket.id, TicketMessage.visibility == "public",
-                           TicketMessage.author_type == "requester")
-                   .order_by(TicketMessage.sequence.desc()).first())
+    public = None
+    if ticket is not None and message is None and row.kind in ("agent_customer_replied", "agent_new_ticket"):
+        # Eski satirlar mesaj kimligi tasimaz: musterinin son (yeni talepte
+        # ilk = aciklama) genel mesaji gosterilir.
+        public = (db.query(TicketMessage)
+                  .filter(TicketMessage.ticket_id == ticket.id, TicketMessage.visibility == "public",
+                          TicketMessage.author_type == "requester"))
+        order = TicketMessage.sequence.asc() if row.kind == "agent_new_ticket" else TicketMessage.sequence.desc()
+        message = public.order_by(order).first()
+    directory = directory or {}
+    assignee = (directory.get(str(ticket.assigned_user_id)) or {}) if ticket and ticket.assigned_user_id else {}
+    ref = ser.customer_ref(ser.source_name(db, ticket), getattr(ticket, "customer_seq", None)) if ticket else None
     settings = get_settings()
     return templates.render(
         row.kind, lang=cfg.language, ticket=ticket, message=message, resolution=resolution,
         actor_display_name=row.actor_display_name, reason=row.reason, subject_hint=row.subject_hint,
         app_base_url=settings.APP_BASE_URL, provider_tenant_id=str(row.tenant_id),
-        replies_by_email=bool(reply_to),
+        replies_by_email=bool(reply_to), ref=ref, customer_name=ser.source_name(db, ticket) if ticket else None,
+        assignee_name=assignee.get("full_name") or None,
+        personal=bool(ticket and row.recipient_user_id and str(row.recipient_user_id) == str(ticket.assigned_user_id)),
     )
 
 

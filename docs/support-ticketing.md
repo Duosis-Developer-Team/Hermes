@@ -96,6 +96,17 @@ Sirket logosu musteri logosuyla ayni kurallarla core'da (`company_logos`, 0025;
   mantiksal bagdir (FK yok, talep tenant'ta yoksa bag duser); detay toplam
   saati ve kayit sayisini gosterir.
 
+## 1c-4. Zamanli otomasyon dakikalik + "Ekipten birine ata" (2026-10-14)
+
+- Zamanli kurallar `ticket_dispatcher` isinde DAKIKADA BIR kosar (bakim isinden
+  tasindi; yeni CronJob/manifest yok). Yas kosulu dakika (`age.minutes`, en az 5);
+  eski `age.hours` kayitlari okumada cevrilir, veri yeniden yazilmaz.
+- Eylem `assign_from_team` (istege bagli `user_ids` havuzu): talep ATANMAMISSA
+  ekibin aktif uyelerinden ACIK talebi en az olana, esitlikte en uzun suredir
+  atama almamisa atar (`ticket_automation.least_loaded_member`); atama mevcut
+  `assign_user` ile (grup uyeligi kontrolu dahil). Ornek: Zamanli · acilistan 15 dk ·
+  atanmamis · ekipten birine ata → musteriye "isleme alindi", ekibe atama e-postasi.
+
 ## 1d. E-posta kanali (2026-10-14, Dalga D4, 0024)
 
 Talep e-postalari saglayicinin verisinde uc YENI tablodur
@@ -104,12 +115,26 @@ Talep e-postalari saglayicinin verisinde uc YENI tablodur
 kaydi). Kod: `services/ticket_mail.py` (kuyruk + gonderici),
 `ticket_mail_templates.py` (TR/EN sablon), `ticket_mail_inbound.py` (gelen kutu).
 
-**Kime ne gider**
-- Talep edene: ekip/otomasyon yaniti, bilgi istegi (yanit + "musteride
-  bekliyor" TEK e-posta), cozum (ozet + gecici cozum + puanlama baglantisi),
-  e-postayla acilan talebe "alindi". YALNIZ Hermes uygulamasinin talepleri
-  (portal + e-posta); LogiSlot musterisine Hermes e-posta ATMAZ (kendi webhook'u).
-- Ekibe: atama, musteri yaniti, yeniden acilis — zildeki alicilarla ayni.
+**Kime ne gider** (her olayda iki taraf — CTO, 2026-10-14; 0026 tur kisitini genisletti)
+
+| Olay | Talebi acan kisi | Ekip (ekibin tum aktif uyeleri + atanan + takipciler, eylemi yapan haric) |
+|---|---|---|
+| Acildi | `received` "Talebiniz alindi" (her kanal) | `agent_new_ticket` (aciklama alintisiyla) |
+| Kisiye atandi (elle/otomasyon) | `assigned` "Isleme alindi — {sorumlu} ilgileniyor" | `agent_assigned` (sorumluya "size atandi") |
+| Ekip yaniti | `reply` / `waiting` (yanit + bilgi istegi TEK e-posta) | `agent_replied` (yanitin kopyasi) |
+| Musteri yaniti | `own_reply` (kendi mesajinin kopyasi) | `agent_customer_replied` |
+| Cozuldu | `resolved` (ozet + gecici cozum + puanlama) | `agent_resolved` |
+| Yeniden acildi | — | `agent_reopened` |
+
+- Talep eden = talebi ACAN kisi (sirket hesabinda hesabin adresi). YALNIZ Hermes
+  uygulamasinin talepleri (portal + e-posta); LogiSlot musterisine Hermes e-posta
+  ATMAZ (kendi webhook'u). Ekip e-postasi her uygulamada gider.
+- Ekip alicilari zil alicilarindan BAGIMSIZ: zil eski kuralda (takipci/atanan
+  varsa onlar, yoksa ekip), e-posta her zaman ekibin tamamina. "Takip et" ekip
+  disindan birinin (ornegin yonetici) akisa girmesini saglar.
+- Govdede musteri numarasi ("Defacto Ticket-001"), kanonik `TKT-…` (Referans),
+  durum ve sorumlu; konu satirinda `[TKT-…]` KALIR (gelen yanit eslesmesi).
+  Sorumlu adi gonderimde S2S dizinden cozulur. Ic not/kok sebep e-postaya GIRMEZ.
 - Ayrilmis alan adlari (example.com, .test, .local …) kuyruga yazilmaz: dev
   tohum adresleri gercek kutuya gitmez. Oncelik musteri e-postasinda YOK.
 - Ayar: Ayarlar → Talep yonetimi → E-posta (talep edene / ekibe ac-kapa, dil,

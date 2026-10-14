@@ -32,8 +32,18 @@ import { SettingsEmpty, SettingsSection } from '../admin/settingsKit'
 
 const TRIGGERS = ['created', 'customer_replied', 'schedule']
 const CONDITION_FIELDS = ['category', 'impact', 'priority', 'status', 'application', 'customer', 'group', 'assignee', 'tags_any', 'text_any']
-const ACTION_TYPES = ['set_priority', 'assign_group', 'assign_user', 'add_tags', 'internal_note', 'public_reply', 'set_status', 'resolve', 'notify']
+const ACTION_TYPES = ['set_priority', 'assign_group', 'assign_user', 'assign_from_team', 'add_tags', 'internal_note', 'public_reply', 'set_status', 'resolve', 'notify']
 const AGE_BASES = ['created', 'updated', 'public_activity']
+// Yas dakika olarak saklanir; ekranda en buyuk tam birimle gosterilir.
+const UNIT_MINUTES = { days: 1440, hours: 60, minutes: 1 }
+const DEFAULT_AGE = { basis: 'updated', minutes: 1440 }
+
+/** Sunucudaki yas → dakika (eski kurallar `hours` tasir). */
+export const ageMinutes = (age) => (age?.minutes != null ? Number(age.minutes) : Number(age?.hours || 0) * 60)
+export const splitAge = (minutes) => {
+    const unit = ['days', 'hours'].find((u) => minutes > 0 && minutes % UNIT_MINUTES[u] === 0) || 'minutes'
+    return { value: minutes / UNIT_MINUTES[unit], unit }
+}
 const EMPTY_RULE = { name: '', trigger: 'created', is_active: true, conditions: {}, actions: [], position: 0 }
 
 const errText = (error, fallback) => {
@@ -113,6 +123,16 @@ function ActionRow({ action, options, onChange, onRemove }) {
     case 'assign_user':
         control = <Select showSearch optionFilterProp="label" value={action.user_id} onChange={(v) => set({ user_id: v })} options={options.users} aria-label={label} />
         break
+    case 'assign_from_team':
+        control = (
+            <div className="rule-row__stack">
+                <Select mode="multiple" showSearch optionFilterProp="label" value={action.user_ids || []}
+                        onChange={(v) => set({ user_ids: v })} options={options.users} aria-label={label}
+                        placeholder={t('automation.poolHint')} />
+                <span className="lq-note">{t('automation.poolExplain')}</span>
+            </div>
+        )
+        break
     case 'add_tags':
         control = <Select mode="multiple" value={action.tag_ids || []} onChange={(v) => set({ tag_ids: v })} options={options.tags_any} aria-label={label} />
         break
@@ -158,6 +178,28 @@ function ActionRow({ action, options, onChange, onRemove }) {
     )
 }
 
+function AgeEditor({ age, onChange }) {
+    const t = useT()
+    const basis = age?.basis || DEFAULT_AGE.basis
+    const minutes = ageMinutes(age) || DEFAULT_AGE.minutes
+    const [unit, setUnit] = useState(() => splitAge(minutes).unit)
+    const value = Math.max(1, Math.round(minutes / UNIT_MINUTES[unit]))
+    const emit = (nextValue, nextUnit = unit) => onChange({ basis, minutes: Math.max(1, nextValue || 1) * UNIT_MINUTES[nextUnit] })
+    return (
+        <div className="rule-age">
+            <Select value={basis} aria-label={t('automation.ageBasis')}
+                    onChange={(b) => onChange({ basis: b, minutes })}
+                    options={AGE_BASES.map((v) => ({ value: v, label: t(`automation.age.${v}`) }))} style={{ minWidth: 220 }} />
+            <InputNumber min={1} max={unit === 'minutes' ? 525600 : unit === 'hours' ? 8760 : 365} value={value}
+                         aria-label={t('automation.ageValue')} onChange={(v) => emit(v)} />
+            <Select value={unit} aria-label={t('automation.ageUnit')} style={{ width: 110 }}
+                    onChange={(u) => { setUnit(u); emit(value, u) }}
+                    options={Object.keys(UNIT_MINUTES).reverse().map((u) => ({ value: u, label: t(`automation.unit.${u}`) }))} />
+            <span>{t('automation.ageSuffix')}</span>
+        </div>
+    )
+}
+
 function RuleModal({ rule, options, onClose, onSaved }) {
     const t = useT()
     const [draft, setDraft] = useState(() => ({
@@ -194,21 +236,14 @@ function RuleModal({ rule, options, onClose, onSaved }) {
                                          // Zamanli kural yas kosulu ister: varsayilan eklenir;
                                          // olay kuralina donunce kaldirilir.
                                          const next = { ...conds }
-                                         if (v === 'schedule' && !next.age) next.age = { basis: 'updated', hours: 24 }
+                                         if (v === 'schedule' && !next.age) next.age = { ...DEFAULT_AGE }
                                          if (v !== 'schedule') delete next.age
                                          patch({ trigger: v, conditions: next })
                                      }}
                                      options={TRIGGERS.map((v) => ({ value: v, label: t(`automation.trigger.${v}`) }))} />
                 </div>
                 {draft.trigger === 'schedule' && (
-                    <div className="rule-age">
-                        <Select value={conds.age?.basis || 'updated'} aria-label={t('automation.ageBasis')}
-                                onChange={(basis) => patch({ conditions: { ...conds, age: { hours: conds.age?.hours || 24, basis } } })}
-                                options={AGE_BASES.map((v) => ({ value: v, label: t(`automation.age.${v}`) }))} style={{ minWidth: 220 }} />
-                        <InputNumber min={1} max={8760} value={conds.age?.hours || 24} aria-label={t('automation.hours')}
-                                     onChange={(hours) => patch({ conditions: { ...conds, age: { basis: conds.age?.basis || 'updated', hours } } })} />
-                        <span>{t('automation.hoursSuffix')}</span>
-                    </div>
+                    <AgeEditor age={conds.age} onChange={(age) => patch({ conditions: { ...conds, age } })} />
                 )}
 
                 <h3 className="lq-grp">{t('automation.if')}</h3>
@@ -270,7 +305,10 @@ export function ruleSummary(t, rule) {
     const c = Object.keys(rule.conditions || {}).filter((k) => k !== 'age').length
     const age = rule.conditions?.age
     const parts = [t(`automation.trigger.${rule.trigger}`)]
-    if (age) parts.push(t('automation.ageSummary', { hours: age.hours, basis: t(`automation.age.${age.basis}`) }))
+    if (age) {
+        const { value, unit } = splitAge(ageMinutes(age))
+        parts.push(t('automation.ageSummary', { age: `${value} ${t(`automation.unitShort.${unit}`)}`, basis: t(`automation.age.${age.basis}`) }))
+    }
     parts.push(t('automation.counts', { conditions: c, actions: (rule.actions || []).length }))
     return parts.join(' · ')
 }

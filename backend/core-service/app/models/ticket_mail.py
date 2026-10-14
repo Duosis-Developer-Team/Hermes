@@ -40,12 +40,14 @@ def _now():
 TICKET_MAIL_TABLES = ("ticket_mail_settings", "ticket_mail_outbox", "ticket_mail_inbound")
 
 MAIL_LANGUAGES = ("tr", "en")
-# Talep edene: ajan/otomasyon yaniti, bilgi istegi, cozum, e-postayla acilan
-# talebin alindi bildirimi, reddedilen gelen e-postaya kisa yanit.
-# Ekibe: atama, musteri yaniti, yeniden acilis.
+# Talep edene: alindi, isleme alindi (atama), ekip yaniti, bilgi istegi,
+# kendi yanitinin kopyasi, cozum; reddedilen gelen e-postaya kisa yanit.
+# Ekibe (ekibin tum uyeleri + atanan + takipciler): yeni talep, atama, ekip
+# yaniti, musteri yaniti, cozum, yeniden acilis. (0026 kisiti genisletti.)
 MAIL_KINDS = (
-    "reply", "waiting", "resolved", "received", "inbound_rejected",
+    "reply", "waiting", "resolved", "received", "inbound_rejected", "assigned", "own_reply",
     "agent_assigned", "agent_customer_replied", "agent_reopened",
+    "agent_new_ticket", "agent_replied", "agent_resolved",
 )
 MAIL_AUDIENCES = ("requester", "agent")
 MAIL_STATES = ("pending", "sent", "failed", "skipped")

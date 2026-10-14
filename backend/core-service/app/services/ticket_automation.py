@@ -4,7 +4,8 @@
 # "Eger <kosullar> ise <eylemler>". Uc tetik:
 #   created           talep acildiginda (ayni transaction)
 #   customer_replied  musteri public yanit yazdiginda (ayni transaction)
-#   schedule          saatlik bakim isi; yas kosulu ZORUNLU; talep basina 1 kez
+#   schedule          dakikalik dispatcher isi; yas kosulu (dakika) ZORUNLU;
+#                     talep basina 1 kez
 #
 # GUVENLIK / DAYANIKLILIK:
 #   - Her kural kendi SAVEPOINT'inde: bir kuralin hatasi talebi acmayi ya da
@@ -39,11 +40,15 @@ logger = logging.getLogger("hermes.ticket.automation")
 TRIGGERS = ("created", "customer_replied", "schedule")
 AGE_BASES = ("created", "updated", "public_activity")
 ASSIGNEE_STATES = ("assigned", "unassigned")
-ACTION_TYPES = ("set_priority", "assign_group", "assign_user", "add_tags", "internal_note",
-                "public_reply", "set_status", "resolve", "notify")
+ACTION_TYPES = ("set_priority", "assign_group", "assign_user", "assign_from_team", "add_tags",
+                "internal_note", "public_reply", "set_status", "resolve", "notify")
 STATUS_ACTIONS = ("in_progress", "waiting_customer")
 NOTIFY_TARGETS = ("group", "assignee", "watchers")
 MAX_ACTIONS = 10
+# Zamanli kural yasi dakika cinsinden: en az 5 dk (dakikalik is), en cok 1 yil.
+MIN_AGE_MINUTES = 5
+MAX_AGE_MINUTES = 365 * 24 * 60
+MAX_POOL = 50
 MAX_TEXT = 5000
 SCHEDULE_BATCH = 200
 
@@ -92,6 +97,16 @@ def _text(value, label) -> str:
     return text
 
 
+def age_minutes(age: Optional[dict]) -> int:
+    """Yas kosulu dakika cinsinden. Eski kurallar `hours` tasir (0025 oncesi
+    kayit) — okumada cevrilir, veri yeniden yazilmaz."""
+    if not age:
+        return 0
+    if age.get("minutes") is not None:
+        return int(age.get("minutes") or 0)
+    return int(age.get("hours") or 0) * 60
+
+
 def validate_rule(trigger: str, conditions: dict, actions: list) -> tuple:
     """Kurali normalize eder; gecersizse TicketValidationError (422)."""
     if trigger not in TRIGGERS:
@@ -118,10 +133,10 @@ def validate_rule(trigger: str, conditions: dict, actions: list) -> tuple:
     if trigger == "schedule":
         if not age or age.get("basis") not in AGE_BASES:
             raise TicketValidationError("Scheduled rules need an age condition.", code="validation_error")
-        hours = int(age.get("hours") or 0)
-        if not 1 <= hours <= 24 * 365:
-            raise TicketValidationError("Age must be between 1 hour and a year.", code="validation_error")
-        clean["age"] = {"basis": age["basis"], "hours": hours}
+        minutes = age_minutes(age)
+        if not MIN_AGE_MINUTES <= minutes <= MAX_AGE_MINUTES:
+            raise TicketValidationError("Age must be between 5 minutes and a year.", code="validation_error")
+        clean["age"] = {"basis": age["basis"], "minutes": minutes}
 
     if not actions:
         raise TicketValidationError("Add at least one action.", code="validation_error")
@@ -138,6 +153,9 @@ def validate_rule(trigger: str, conditions: dict, actions: list) -> tuple:
             out.append({"type": kind, "group_id": _ids([a.get("group_id")])[0]})
         elif kind == "assign_user":
             out.append({"type": kind, "user_id": _ids([a.get("user_id")])[0]})
+        elif kind == "assign_from_team":
+            # Bos havuz = ekibin tum aktif uyeleri; dolu havuz = yalniz secilenler.
+            out.append({"type": kind, "user_ids": _ids(a.get("user_ids") or [])[:MAX_POOL]})
         elif kind == "add_tags":
             ids = _ids(a.get("tag_ids"))
             if not ids:
@@ -234,6 +252,12 @@ def _apply(db: Session, rule: TicketAutomation, ticket: Ticket) -> None:
         elif kind == "assign_user" and str(ticket.assigned_user_id) != a["user_id"]:
             ticket_service.assign_user(db, ticket, user_id=uuid.UUID(a["user_id"]), actor=actor,
                                        expected_version=None)
+        elif kind == "assign_from_team" and ticket.assigned_user_id is None:
+            # Biri elle almissa dokunulmaz; sorumlu ekipteki en az yuklu kisi.
+            pick = least_loaded_member(db, ticket.assigned_group_id, pool=a.get("user_ids") or [])
+            if pick is None:
+                raise TicketValidationError("No active team member to assign.", code="validation_error")
+            ticket_service.assign_user(db, ticket, user_id=pick, actor=actor, expected_version=None)
         elif kind == "add_tags":
             ticket_helpdesk.add_tags(db, ticket, a["tag_ids"], actor_user_id=None)
         elif kind == "internal_note":
@@ -258,6 +282,43 @@ def _apply(db: Session, rule: TicketAutomation, ticket: Ticket) -> None:
                 recipients = ticket_helpdesk.watchers_of(db, ticket.id)
             ticket_helpdesk.notify(db, ticket, "automation", recipients=recipients,
                                    actor_display_name=rule.name)
+
+
+def least_loaded_member(db: Session, group_id, *, pool: Iterable = ()) -> Optional[uuid.UUID]:
+    """Ekibin aktif uyelerinden (havuz verildiyse yalniz onlardan) ACIK
+    talebi en az olan; esitlikte en uzun suredir atama almamis olan (hic
+    almamis once), o da esitse kimlik sirasi — boylece yuk kendiliginden
+    dagilir. Durum makinesi/atama kurallari degismez: secilen kisi yine
+    `assign_user` ile (grup uyeligi kontrolu dahil) atanir."""
+    from sqlalchemy import func
+
+    from ..models.ticketing import TicketEvent
+    from ..models.user_group import UserGroupMember
+    from ..ticket_contract import EVENT_TICKET_ASSIGNMENT_CHANGED, OPEN_STATUSES
+
+    if group_id is None:
+        return None
+    members = [r[0] for r in db.query(UserGroupMember.user_id).filter(
+        UserGroupMember.group_id == group_id, UserGroupMember.is_active.is_(True)).all()]
+    wanted = {str(u) for u in pool or []}
+    if wanted:
+        members = [m for m in members if str(m) in wanted]
+    if not members:
+        return None
+    load = dict(db.query(Ticket.assigned_user_id, func.count(Ticket.id))
+                .filter(Ticket.assigned_user_id.in_(members), Ticket.status.in_(OPEN_STATUSES))
+                .group_by(Ticket.assigned_user_id).all())
+    to_user = TicketEvent.metadata_json["to_user"].astext
+    last = dict(db.query(to_user, func.max(TicketEvent.occurred_at))
+                .filter(TicketEvent.event_type == EVENT_TICKET_ASSIGNMENT_CHANGED,
+                        to_user.in_([str(m) for m in members]))
+                .group_by(to_user).all())
+    floor = datetime.min.replace(tzinfo=timezone.utc)
+
+    def key(member):
+        return (int(load.get(member, 0)), last.get(str(member)) or floor, str(member))
+
+    return min(members, key=key)
 
 
 def _run(db: Session, rule: TicketAutomation, ticket: Ticket, run_key: str) -> str:
@@ -322,7 +383,7 @@ def run_schedules(db: Session, *, now: Optional[datetime] = None) -> dict:
         column = _AGE_COLUMN.get(age.get("basis"))
         if column is None:
             continue
-        cutoff = now - timedelta(hours=int(age.get("hours") or 0))
+        cutoff = now - timedelta(minutes=age_minutes(age))
         done = select(TicketAutomationRun.ticket_id).where(
             TicketAutomationRun.automation_id == rule.id, TicketAutomationRun.run_key == "schedule")
         candidates = (
