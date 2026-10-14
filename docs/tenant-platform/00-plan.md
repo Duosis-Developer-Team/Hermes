@@ -110,7 +110,8 @@ denenecek; birleştirme ve otomasyon evet.
   ajan yanıtına ekleme, portalda yardım merkezi + yeni talepte makale önerisi,
   "yardımcı oldu mu" oyu.
 - **D4 E-posta:** giden — talep edene (yalnız Hermes/e-posta kanalı talepleri;
-  LogiSlot müşterisine YOK, kendi webhook'u var) ve ajana (atama, müşteri yanıtı);
+  LogiSlot müşterisine YOK, kendi webhook'u var) ve ajana (atama, müşteri yanıtı,
+  yeniden açılış);
   aynı transaction'da posta outbox'ı, dakikalık dispatcher gönderir (Graph).
   Gelen — kapalı başlar; yanıt yalnız talep sahibinin adresinden gelirse talebe
   eklenir; otomatik yanıtlar/döngüler yok sayılır.
@@ -137,7 +138,8 @@ provası + satır sayımı).
 | 3.3 — Dalga C | `c71bcbc` (+ perf `8513886`) | canlı (14.10) | core 881, frontend 1181 |
 | 3.4 — Dalga D1 birleştirme | `27739e5` | canlı (14.10) | core 884, frontend 1182 |
 | 3.5 — Dalga D2 otomasyon | `81506be` | canlı (14.10) | core 889, frontend 1183 |
-| 3.6 — Dalga D3 bilgi bankası | (bu commit) | CD sonrası | core 893, frontend 1187 |
+| 3.6 — Dalga D3 bilgi bankası | `18f3ee3` | canlı (14.10) | core 893, frontend 1187 |
+| 3.7 — Dalga D4 e-posta | (bu commit) | CD sonrası; giden için dispatcher CronJob'u MANUEL apply | core 908, frontend 1190 |
 
 Faz 2 notları:
 - Konsol adresli: `/platform-admin` (genel bakış), `/tenants`, `/tenants/:id`
@@ -215,3 +217,17 @@ Dalga D notları:
   öneri; ajan yanıtına "Makale ekle" (düz metin). Gövde güvenli Markdown alt
   kümesi — HTML üretilmez, bağlantılar yalnız http/https/mailto. Oy okuyucu
   başına tek (değiştirilebilir); görüntülenme müşteri okumasında sayılır.
+- D4 e-posta (0024 `ticket_mail_settings`, `ticket_mail_outbox`,
+  `ticket_mail_inbound`): kuyruk kanonik transaction'da her süreçte yazılır,
+  dakikalık dispatcher Graph ile gönderir (yeniden deneme 1/5/15/60 dk, kalıcı
+  hata, 24 saatte bayatlama). Talep edene yalnız Hermes uygulamasının talepleri
+  (LogiSlot'a yok), ekibe atama/müşteri yanıtı/yeniden açılış; öncelik müşteri
+  e-postasında yok. Gelen kutu `TICKET_MAIL_INBOUND_MAILBOX` boşken hiç
+  çalışmaz; açılınca: artı-adres yönlendirme, DMARC/compauth doğrulaması (en
+  üstteki başlık + `header.from` eşleşmesi), bağlı tenant'ın `tickets.create`
+  izinli aktif üyesi şartı, numara + talep sahibi = yanıt, ekler tarama hattından.
+  **Manuel adım:** dispatcher CronJob'una Graph/S2S/depolama env'i eklendi —
+  `kubectl diff` + `apply` (ayrıntı: `docs/support-ticketing.md` §1d). Gelen
+  kutu için posta kutusu + Mail.ReadWrite (kutuya kapsamlı) + ConfigMap anahtarı
+  CTO kararını bekliyor.
+

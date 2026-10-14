@@ -10,6 +10,8 @@
 #                    staging nesnelerini bosaltir. Ticket EKI ASLA
 #                    SILINMEZ.
 #   3) idempotency — suresi dolmus anahtarlari budar (operasyonel tablo).
+#   4) e-posta     — sonuclanmis e-posta kuyrugu (30 gun) ve gelen ileti
+#                    kaydi (90 gun) budanir (operasyonel tablolar).
 #
 # Ticket, mesaj, cozum ve audit kayitlari HICBIR kosulda silinmez
 # (02 §10: v1 otomatik silme yapmaz).
@@ -31,6 +33,7 @@ from ..services import support_tenant as support
 from ..services import ticket_attachment_service
 from ..services import ticket_idempotency as idem
 from ..services import ticket_automation
+from ..services import ticket_mail
 from ..services import ticket_service
 
 logger = logging.getLogger("hermes.ticket.maintenance")
@@ -61,6 +64,10 @@ def _maintain(db) -> dict:
     closed = ticket_service.auto_close_due_tickets(db)
     expired = ticket_attachment_service.expire_orphaned_uploads(db)
     purged = idem.purge_expired(db)
+    # E-posta kuyrugu operasyoneldir (talep kaydi degil): sonuclanmis
+    # satirlar 30 gun, gelen ileti kaydi 90 gun tutulur.
+    mail_purged = ticket_mail.purge_finished(db)
+    inbound_purged = ticket_mail.purge_inbound_log(db)
     return {
         "auto_closed": closed.get("closed", 0),
         "auto_close_window_days": closed.get("window_days"),
@@ -68,6 +75,7 @@ def _maintain(db) -> dict:
         "purged_idempotency_keys": purged,
         "automations_applied": automations["applied"],
         "automation_errors": automations["errors"],
+        "purged_mail": mail_purged + inbound_purged,
     }
 
 
@@ -93,7 +101,7 @@ def run_once() -> dict:
                 "providers_skipped": 0, "auto_closed": 0,
                 "auto_close_window_days": None, "expired_uploads": 0,
                 "purged_idempotency_keys": 0, "automations_applied": 0,
-                "automation_errors": 0,
+                "automation_errors": 0, "purged_mail": 0,
             }
             for tenant_id in provider_ids():
                 try:
@@ -105,7 +113,7 @@ def run_once() -> dict:
                 summary["providers"] += 1
                 for key in ("auto_closed", "expired_uploads",
                             "purged_idempotency_keys", "automations_applied",
-                            "automation_errors"):
+                            "automation_errors", "purged_mail"):
                     summary[key] += int(part[key] or 0)
                 summary["auto_close_window_days"] = part["auto_close_window_days"]
             return summary

@@ -220,6 +220,18 @@ class Settings(BaseSettings):
     # (rotasyon slotu: ..._NEXT). Bkz. services/ticket_delivery_service.
     TICKET_WEBHOOK_SECRET_ENV_PREFIX: str = "HERMES_TICKET_WEBHOOK_SECRET__"
 
+    # --- E-posta kanali (Dalga D4) ----------------------------------------
+    # Giden: NOTIFICATIONS_ENABLED + Graph (Mail.Send) + saglayici ayari.
+    # Gelen: BOS = KAPALI. Doluysa (ornegin "talep@duosis.com") dakikalik
+    # dispatcher bu kutuyu Graph ile okur (Mail.ReadWrite gerekir).
+    # Saglayici adresi arti-adrestir: talep+<tenant-slug>@duosis.com;
+    # arti eki olmayan adres destek tenant'ina gider.
+    TICKET_MAIL_INBOUND_MAILBOX: str = ""
+    TICKET_MAIL_INBOUND_BATCH: int = 25
+    TICKET_MAIL_DISPATCH_BATCH: int = 50
+    # Gonderen basina saatte en fazla bu kadar gelen e-posta islenir.
+    TICKET_MAIL_INBOUND_PER_SENDER_HOUR: int = 20
+
     # ==========================================================================
     # CORS Configuration
     # ==========================================================================

@@ -2,7 +2,8 @@
  * =============================================================================
  * HERMES - Talep yonetimi ayarlari (Dalga B, saglayici)
  * =============================================================================
- * Uc sekme: SLA ve mesai saatleri · Etiketler · Hazir yanitlar.
+ * Sekmeler: SLA ve mesai saatleri · Etiketler · Hazir yanitlar ·
+ * Otomasyonlar (D2) · E-posta (D4).
  * Yalniz SAGLAYICI tenant'ta (gelen talepleri olan) ve yapilandirma
  * yetkisiyle (`tickets.config.manage` / `tickets.admin`) gorunur.
  *
@@ -17,7 +18,7 @@ import {
     Alert, Checkbox, DatePicker, Input, InputNumber, Modal, Select, Switch, TimePicker, message,
 } from 'antd'
 import {
-    ClockCircleOutlined, PlusOutlined, RobotOutlined, TagsOutlined, ThunderboltOutlined,
+    ClockCircleOutlined, MailOutlined, PlusOutlined, RobotOutlined, TagsOutlined, ThunderboltOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 
@@ -30,6 +31,7 @@ import { TagChips } from '../../features/tickets/SlaBadge'
 import { useTicketLabel } from '../../features/tickets/useTicketLabel'
 import useTicketContext from '../../features/tickets/useTicketContext'
 import AutomationsTab from './AutomationsTab'
+import MailTab from './MailTab'
 import '../../features/tickets/tickets.css'
 
 const PRIORITIES = ['urgent', 'high', 'normal', 'low']
@@ -384,12 +386,14 @@ export default function TicketHelpdeskSettings() {
                     { value: 'tags', label: t('hub.tags'), icon: <TagsOutlined /> },
                     { value: 'macros', label: t('hub.macros'), icon: <ThunderboltOutlined /> },
                     { value: 'automations', label: t('automation.title'), icon: <RobotOutlined /> },
+                    { value: 'mail', label: t('mail.title'), icon: <MailOutlined /> },
                 ]}
             />
             {tab === 'sla' && <SlaTab />}
             {tab === 'tags' && <TagsTab />}
             {tab === 'macros' && <MacrosTab />}
             {tab === 'automations' && <AutomationsTab />}
+            {tab === 'mail' && <MailTab />}
         </div>
     )
 }

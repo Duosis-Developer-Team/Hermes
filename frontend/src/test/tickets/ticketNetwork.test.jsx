@@ -111,6 +111,17 @@ describe('iki saglayici', () => {
     })
 })
 
+describe('e-posta baglantisi (Dalga D4)', () => {
+    it('/support?ticket=..&provider=.. talebi o saglayicidan acar', async () => {
+        ticketContextService.get.mockResolvedValue(context({
+            surface: 'portal', surfaces: ['portal'], can_create: true,
+            providers: [provider('p1', 'Duosis', 'Destek'), provider('p2', 'Intertech', 'IT Servis')],
+        }))
+        renderWithProviders(<SupportPortalPage />, { route: '/support?ticket=t9&provider=p2' })
+        await waitFor(() => expect(supportPortalService.get).toHaveBeenCalledWith('t9', 'p2'))
+    })
+})
+
 describe('ayar katalogu', () => {
     const canAny = () => true
     const keys = (caps) => visibleSections(canAny, () => true, caps)

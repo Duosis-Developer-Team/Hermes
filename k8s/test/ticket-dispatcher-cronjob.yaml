@@ -6,6 +6,9 @@
 # Ayni core-service image'i, ayni DB env'leri. Ana API surecinden
 # bagimsizdir; buradaki bir hata API pod'unu etkilemez.
 #
+# Dalga D4: ayni tur talep e-postalarini da gonderir (ve yapilandirilmissa
+# gelen kutuyu okur) — bu yuzden Graph/S2S/depolama env'leri de burada.
+#
 # NOT (deploy mekanigi): CD yalnizca set-image/restart yapar — bu
 # manifest sunucuda MANUEL
 #   kubectl apply -f k8s/test/ticket-dispatcher-cronjob.yaml
@@ -109,4 +112,115 @@ spec:
                     secretKeyRef:
                       name: hermes-ticket-webhooks
                       key: HERMES_TICKET_WEBHOOK_SECRET__LOGISLOT_NEXT
+                      optional: true
+                # --- Talep e-postalari (Dalga D4) ----------------------------
+                # Gonderim: bayrak + Graph (Mail.Send, gelen kutu icin
+                # Mail.ReadWrite) + gonderen. Ajan adresleri ve gelen
+                # e-postanin gondereni S2S dizinden cozulur; yetki (talep
+                # acma izni) auth'tan. Eksik anahtar isi BOZMAZ: e-posta
+                # gitmez, satir 24 saatte bayatlar.
+                # hermes-test core-service'te bu uc deger literal; ayni tutulur.
+                - name: NOTIFICATIONS_ENABLED
+                  value: "true"
+                - name: NOTIF_MAIL_SENDER
+                  value: "hermes@duosis.com"
+                - name: APP_BASE_URL
+                  value: "https://hermes.duosis.com"
+                - name: AZURE_TENANT_ID
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: AZURE_TENANT_ID
+                      optional: true
+                - name: AZURE_CLIENT_ID
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: AZURE_CLIENT_ID
+                      optional: true
+                - name: AZURE_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-secrets
+                      key: AZURE_CLIENT_SECRET
+                      optional: true
+                - name: AUTH_SERVICE_URL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: AUTH_SERVICE_URL
+                      optional: true
+                - name: HERMES_S2S_TOKEN_CURRENT
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-s2s
+                      key: HERMES_S2S_TOKEN_CURRENT
+                      optional: true
+                - name: HERMES_S2S_TOKEN_NEXT
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-s2s
+                      key: HERMES_S2S_TOKEN_NEXT
+                      optional: true
+                # Gelen kutu: anahtar yoksa KAPALI (bos = calismaz).
+                - name: TICKET_MAIL_INBOUND_MAILBOX
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: TICKET_MAIL_INBOUND_MAILBOX
+                      optional: true
+                # Gelen e-posta ekleri ayni tarama hattindan gecer.
+                - name: TICKET_ATTACHMENTS_ENABLED
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: TICKET_ATTACHMENTS_ENABLED
+                      optional: true
+                - name: TICKET_STORAGE_BACKEND
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: TICKET_STORAGE_BACKEND
+                      optional: true
+                - name: TICKET_S3_BUCKET
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: TICKET_S3_BUCKET
+                      optional: true
+                - name: TICKET_S3_REGION
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: TICKET_S3_REGION
+                      optional: true
+                - name: TICKET_S3_ENDPOINT_URL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: TICKET_S3_ENDPOINT_URL
+                      optional: true
+                - name: TICKET_SCANNER_MODE
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: TICKET_SCANNER_MODE
+                      optional: true
+                - name: TICKET_SCANNER_HOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: hermes-config
+                      key: TICKET_SCANNER_HOST
+                      optional: true
+                - name: TICKET_S3_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-ticket-storage
+                      key: TICKET_S3_ACCESS_KEY_ID
+                      optional: true
+                - name: TICKET_S3_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: hermes-ticket-storage
+                      key: TICKET_S3_SECRET_ACCESS_KEY
                       optional: true

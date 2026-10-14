@@ -424,3 +424,21 @@
     .rule-row { grid-template-columns: minmax(0, 1fr) auto; }
     .rule-row__label { grid-column: 1 / -1; padding-top: 0; }
 }
+
+/* Dalga D4 — e-posta kanali ayari */
+.mail-tab { display: flex; flex-direction: column; gap: 16px; }
+.mail-options { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.mail-options > li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 2px; border-bottom: 1px solid var(--h-border-subtle); }
+.mail-options > li:last-child { border-bottom: 0; }
+.mail-options > li > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mail-options > li > div > span { font-size: 13px; color: var(--h-text-muted); }
+.mail-address { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 4px; font-size: 13px; color: var(--h-text-secondary); }
+.mail-address .ant-typography { margin: 0; overflow-wrap: anywhere; }
+.mail-rules { margin: 12px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--h-text-muted); }
+.mail-log { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.mail-log > li { display: flex; align-items: flex-start; gap: 10px; padding: 8px 2px; border-bottom: 1px solid var(--h-border-subtle); }
+.mail-log > li:last-child { border-bottom: 0; }
+.mail-log__status { flex: 0 0 96px; display: flex; }
+.mail-log__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mail-log__main small { font-size: 12px; color: var(--h-text-muted); overflow-wrap: anywhere; }
+.mail-log__error { color: var(--h-danger) !important; }

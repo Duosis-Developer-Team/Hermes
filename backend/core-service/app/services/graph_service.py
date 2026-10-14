@@ -20,7 +20,8 @@
 import asyncio
 import logging
 import time
-from typing import AsyncIterator, List, Optional
+from typing import AsyncIterator, Dict, List, Optional
+from urllib.parse import quote
 
 import httpx
 
@@ -243,6 +244,8 @@ class MicrosoftGraphClient:
         subject: str,
         html_body: str,
         inline_images: Optional[List[dict]] = None,
+        reply_to: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
     ) -> None:
         """Send an HTML e-mail *as* `sender` to a single recipient via
         Graph `POST /users/{sender}/sendMail`.
@@ -253,6 +256,10 @@ class MicrosoftGraphClient:
              "name": str (optional)}
         They are attached as inline fileAttachments so they render inside
         the message body rather than as download attachments.
+
+        `reply_to` sets the Reply-To address (ticket e-mails point it at the
+        inbound mailbox). `headers` adds custom internet headers; Graph only
+        accepts names starting with `X-`.
 
         Requires the Mail.Send application permission (admin-consented)
         on the Azure app. Raises GraphConfigError when Graph isn't
@@ -270,6 +277,14 @@ class MicrosoftGraphClient:
                 {"emailAddress": {"address": to_email}}
             ],
         }
+        if reply_to:
+            message["replyTo"] = [{"emailAddress": {"address": reply_to}}]
+        if headers:
+            message["internetMessageHeaders"] = [
+                {"name": name, "value": value}
+                for name, value in headers.items()
+                if name.lower().startswith("x-")
+            ]
         if inline_images:
             message["attachments"] = [
                 {
@@ -287,21 +302,21 @@ class MicrosoftGraphClient:
             "message": message,
             "saveToSentItems": True,
         }
-        headers = {
+        http_headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
         timeout = httpx.Timeout(30.0, connect=15.0)
 
         async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(url, json=payload, headers=headers)
+            resp = await client.post(url, json=payload, headers=http_headers)
             if resp.status_code == 401:
                 # Token expired between acquisition and use — refresh once.
                 self._token = None
                 self._token_expires_at = 0.0
                 token = await self._get_token()
-                headers["Authorization"] = f"Bearer {token}"
-                resp = await client.post(url, json=payload, headers=headers)
+                http_headers["Authorization"] = f"Bearer {token}"
+                resp = await client.post(url, json=payload, headers=http_headers)
 
         # sendMail returns 202 Accepted with an empty body on success.
         if resp.status_code not in (200, 202):
@@ -319,6 +334,75 @@ class MicrosoftGraphClient:
             "Graph sendMail ok sender=%s to=%s",
             _mask_email(sender),
             _mask_email(to_email),
+        )
+
+
+    # --------------------------------------------------------------
+    # Mailbox — inbound ticket e-mail (Mail.ReadWrite, Dalga D4)
+    # --------------------------------------------------------------
+
+    async def _call(self, method: str, path: str, *, params=None, json=None,
+                    prefer: Optional[str] = None) -> dict:
+        """One Graph call with a single token refresh on 401. Returns the
+        JSON body ({} for 204). Never logs bodies or tokens."""
+        self._ensure_configured()
+        token = await self._get_token()
+        url = path if path.startswith("http") else f"{self._base_url}{path}"
+        headers = {"Authorization": f"Bearer {token}"}
+        if prefer:
+            headers["Prefer"] = prefer
+        timeout = httpx.Timeout(60.0, connect=15.0)
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            resp = await client.request(method, url, params=params, json=json, headers=headers)
+            if resp.status_code == 401:
+                self._token = None
+                self._token_expires_at = 0.0
+                headers["Authorization"] = f"Bearer {await self._get_token()}"
+                resp = await client.request(method, url, params=params, json=json, headers=headers)
+        if resp.status_code >= 300:
+            detail = _short_text(resp.text)
+            logger.warning("Graph %s %s failed status=%s", method, path.split("?")[0][:80], resp.status_code)
+            raise GraphRequestError(resp.status_code, detail)
+        return resp.json() if resp.content else {}
+
+    async def list_inbox(self, *, mailbox: str, top: int = 25) -> List[dict]:
+        """Oldest-first page of the inbox, bodies as plain text.
+
+        `uniqueBody` is the part of a reply that is new in this message
+        (quoted history excluded) — what a ticket reply should carry."""
+        select = ",".join([
+            "id", "internetMessageId", "subject", "from", "sender",
+            "toRecipients", "ccRecipients", "receivedDateTime",
+            "hasAttachments", "body", "uniqueBody", "internetMessageHeaders",
+        ])
+        data = await self._call(
+            "GET", f"/users/{quote(mailbox, safe='@')}/mailFolders/inbox/messages",
+            params={"$top": str(top), "$orderby": "receivedDateTime asc", "$select": select},
+            prefer='outlook.body-content-type="text"',
+        )
+        return list(data.get("value") or [])
+
+    async def list_attachments(self, *, mailbox: str, message_id: str) -> List[dict]:
+        data = await self._call(
+            "GET", f"/users/{quote(mailbox, safe='@')}/messages/{quote(message_id, safe='')}/attachments",
+        )
+        return list(data.get("value") or [])
+
+    async def ensure_folder(self, *, mailbox: str, name: str) -> str:
+        """Id of an inbox child folder, created on first use."""
+        base = f"/users/{quote(mailbox, safe='@')}/mailFolders/inbox/childFolders"
+        safe_name = name.replace("'", "''")
+        data = await self._call("GET", base, params={"$filter": f"displayName eq '{safe_name}'", "$select": "id"})
+        found = data.get("value") or []
+        if found:
+            return found[0]["id"]
+        created = await self._call("POST", base, json={"displayName": name})
+        return created["id"]
+
+    async def move_message(self, *, mailbox: str, message_id: str, folder_id: str) -> None:
+        await self._call(
+            "POST", f"/users/{quote(mailbox, safe='@')}/messages/{quote(message_id, safe='')}/move",
+            json={"destinationId": folder_id},
         )
 
 

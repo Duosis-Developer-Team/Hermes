@@ -13,6 +13,9 @@
 #
 # Ana API surecinden BAGIMSIZ: burada olusan bir hata API pod'unu
 # etkilemez (Blueprint §5).
+#
+# Ayni tur talep e-postalarini da isler (Dalga D4): gelen kutu (yalniz
+# TICKET_MAIL_INBOUND_MAILBOX doluysa) + saglayicilarin e-posta kuyrugu.
 # =============================================================================
 
 from __future__ import annotations
@@ -30,6 +33,37 @@ logger = logging.getLogger("hermes.ticket.dispatcher")
 
 # Bu ise ozgu sabit advisory lock anahtari.
 LOCK_KEY = 8_140_2251
+
+
+def mail_round() -> dict:
+    """Talep e-postalari (Dalga D4): once gelen kutu (alindi bildirimleri
+    ayni turda gitsin), sonra her saglayicinin kuyrugu. Buradaki hicbir
+    hata webhook teslimatini etkilemez; ozet sanitize edilmistir."""
+    from ..services import ticket_mail, ticket_mail_inbound
+    from .ticket_maintenance import provider_ids
+
+    out = {"providers": 0, "sent": 0, "failed": 0, "retried": 0, "skipped": 0, "errors": 0}
+    try:
+        out["inbound"] = ticket_mail_inbound.poll_mailbox()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("mail inbound failed class=%s", type(exc).__name__)
+        out["inbound"] = {"status": "failed", "failure_class": type(exc).__name__}
+    for tenant_id in provider_ids():
+        try:
+            with support.provider_session(tenant_id) as pdb:
+                part = ticket_mail.dispatch_pending(pdb, tenant_id=tenant_id)
+        except support.SupportNotConfigured:
+            continue
+        except Exception as exc:  # noqa: BLE001 — bir saglayici digerlerini durdurmaz
+            logger.error("mail dispatch failed class=%s", type(exc).__name__)
+            out["errors"] += 1
+            continue
+        out["providers"] += 1
+        for key in ("sent", "failed", "retried", "skipped"):
+            out[key] += int(part.get(key) or 0)
+        if part.get("status"):
+            out["status"] = part["status"]
+    return out
 
 
 def run_once() -> dict:
@@ -55,6 +89,7 @@ def run_once() -> dict:
             reclaimed = delivery.reclaim_stuck(db)
             summary = delivery.dispatch_pending(db)
             summary["reclaimed"] = reclaimed
+            summary["mail"] = mail_round()
             summary["status"] = "completed"
             return summary
         finally:

@@ -83,6 +83,17 @@ export default function SupportPortalPage() {
     // Secili talep + saglayicisi (birden fazla saglayicida detay/komut
     // cagrilari saglayiciyi tasir).
     const [selected, setSelected] = useState(null)
+    // E-posta bildirimindeki baglanti: /support?ticket=<id>&provider=<id>
+    // (tek seferlik; adres cubugundan temizlenir).
+    useEffect(() => {
+        const wanted = searchParams.get('ticket')
+        if (!wanted) return
+        setSelected({ id: wanted, provider: searchParams.get('provider') || undefined })
+        const next = new URLSearchParams(searchParams)
+        next.delete('ticket')
+        next.delete('provider')
+        setSearchParams(next, { replace: true })
+    }, [searchParams, setSearchParams])
     const [providerId, setProviderId] = useState(null)
     const [articleId, setArticleId] = useState(null)
 

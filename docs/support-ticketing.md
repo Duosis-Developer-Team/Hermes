@@ -64,6 +64,92 @@ bildirimleri saglayicinin verisinde YENI tablolardir (`app/models/ticket_helpdes
 - Bakim: okunmus talep bildirimleri mevcut `notification_cleanup` isiyle 90 gunde
   silinir (yeni CronJob gerekmez).
 
+## 1d. E-posta kanali (2026-10-14, Dalga D4, 0024)
+
+Talep e-postalari saglayicinin verisinde uc YENI tablodur
+(`app/models/ticket_mail.py`): `ticket_mail_settings` (saglayici basina ayar),
+`ticket_mail_outbox` (giden kuyruk), `ticket_mail_inbound` (islenen gelen ileti
+kaydi). Kod: `services/ticket_mail.py` (kuyruk + gonderici),
+`ticket_mail_templates.py` (TR/EN sablon), `ticket_mail_inbound.py` (gelen kutu).
+
+**Kime ne gider**
+- Talep edene: ekip/otomasyon yaniti, bilgi istegi (yanit + "musteride
+  bekliyor" TEK e-posta), cozum (ozet + gecici cozum + puanlama baglantisi),
+  e-postayla acilan talebe "alindi". YALNIZ Hermes uygulamasinin talepleri
+  (portal + e-posta); LogiSlot musterisine Hermes e-posta ATMAZ (kendi webhook'u).
+- Ekibe: atama, musteri yaniti, yeniden acilis — zildeki alicilarla ayni.
+- Ayrilmis alan adlari (example.com, .test, .local …) kuyruga yazilmaz: dev
+  tohum adresleri gercek kutuya gitmez. Oncelik musteri e-postasinda YOK.
+- Ayar: Ayarlar → Talep yonetimi → E-posta (talep edene / ekibe ac-kapa, dil,
+  gelen e-posta, son 20 gonderim + 7 gun sayilari).
+
+**Surecler**
+- Kuyruk kanonik mutasyonla AYNI transaction'da, HER surecte yazilir (API,
+  bakim isindeki zamanli otomasyon).
+- Gonderim dakikalik `hermes-ticket-dispatcher` CronJob'unda, saglayici basina:
+  `NOTIFICATIONS_ENABLED` + Graph (Mail.Send) yoksa satira dokunmaz. Gecici hata
+  1/5/15/60 dk arayla yeniden denenir (en fazla 5), 400/403/404 kalici hatadir,
+  24 saatte gidemeyen `skipped/expired` olur. Sonuclanmis satirlar 30, gelen
+  ileti kaydi 90 gunde bakim isiyle budanir (operasyonel tablolar).
+- Gonderilen her e-posta `X-Hermes-Mail: ticket` ve `X-Auto-Response-Suppress: All`
+  tasir; konu `[TKT-000123] …` (gelen yanit bu numarayla eslesir).
+
+**Devreye alma — giden (MANUEL, bir kez)**
+Dispatcher CronJob'u eskiden yalniz DB/webhook env'i tasiyordu; Graph/S2S/
+depolama env'leri manifeste eklendi. CD manifest uygulamaz:
+
+```bash
+kubectl -n hermes-dev diff -f k8s/ticket-dispatcher-cronjob.yaml    # ONCE DIFF
+kubectl -n hermes-dev apply -f k8s/ticket-dispatcher-cronjob.yaml
+# dogrulama: bir sonraki kosunun ozetinde "mail": {"providers": N, ...}
+kubectl -n hermes-dev logs job/$(kubectl -n hermes-dev get jobs --sort-by=.metadata.creationTimestamp \
+  -o name | grep ticket-dispatcher | tail -1 | cut -d/ -f2)
+```
+hermes-test: ayni adim `k8s/test/ticket-dispatcher-cronjob.yaml` ile, YALNIZ
+test'e terfi karariyla (once `kubectl diff`; canli CronJob'da Datadog etiketi ve
+nodeSelector var — dosyada da var).
+
+**Devreye alma — gelen (VARSAYILAN KAPALI; CTO karari bekliyor)**
+1. M365'te paylasilan posta kutusu ac (ornegin `talep@duosis.com`). Arti-adres
+   (`talep+acme@duosis.com`) Exchange Online'da varsayilan aciktir
+   (`Get-OrganizationConfig | fl DisablePlusAddressInRecipients` → False).
+2. Azure uygulamasina (`AZURE_CLIENT_ID`, Mail.Send zaten var) okuma/tasima izni:
+   ONERILEN — Exchange "RBAC for Applications" ile `Application Mail.ReadWrite`
+   rolunu YALNIZ bu kutuya kapsamla (management scope). Entra'da tenant genelinde
+   Mail.ReadWrite + admin consent de calisir ama TUM kutulari kapsar.
+   ApplicationAccessPolicy KULLANMAYIN: ayni uygulama Toplantilar modulunde tum
+   kullanicilarin takvimini okuyor, kisitlama onu da keser.
+3. ConfigMap + env (manuel; `01-configmap.yaml` APPLY EDILMEZ):
+   ```bash
+   kubectl -n hermes-dev patch configmap hermes-config --type merge \
+     -p '{"data":{"TICKET_MAIL_INBOUND_MAILBOX":"talep@duosis.com"}}'
+   kubectl -n hermes-dev set env deployment/core-service \
+     --from=configmap/hermes-config --keys=TICKET_MAIL_INBOUND_MAILBOX
+   ```
+   (dispatcher manifesti anahtari zaten `optional` okur.)
+4. Uygulamada saglayici yoneticisi: Ayarlar → Talep yonetimi → E-posta →
+   "E-postayla talep al". Adres ekranda gorunur; giden e-postalarin Reply-To'su
+   o adres olur.
+
+**Gelen kutu kurallari** (her ileti; karar DB'ye once yazilir, ileti sonra
+"Hermes - Islendi" / "Hermes - Reddedildi" klasorune tasinir)
+- Yonlendirme: `talep+<tenant-slug>@…` → o saglayici; arti eki yoksa destek tenant'i.
+- Sessizce elenir: otomatik/toplu/liste iletileri, kendi e-postalarimiz,
+  kimligi dogrulanmamis gonderen (EN USTTEKI `Authentication-Results`'ta
+  dmarc/compauth=pass ve `header.from` = gonderen alan adi; ya da Exchange
+  `AuthAs: Internal`), gonderen basina saatte 20'yi asan, ayni
+  `internetMessageId`.
+- Konuda `[TKT-…]` + gonderen = talep sahibi → musteri yaniti (portaldaki
+  kurallar: bekleyen talep isleme doner, cozulmus talep pencere icinde yeniden
+  acilir). Kapali/iptal talebe gelen yanit yeni talep olur. Baskasi yazarsa
+  kisa aciklama doner.
+- Yeni talep: gonderen, saglayiciya ACIK baglantisi olan bir talep eden
+  tenant'in AKTIF uyesi ve `tickets.create` izinli olmali (S2S dizin + authz).
+  Talep onun portalinda gorunur. Tanimayan dogrulanmis gonderene saatte bir
+  kisa aciklama.
+- Ekler: dosya ekleri karantina → tarama → temiz (satir ici imza gorselleri yok
+  sayilir); ozellik kapali/dosya reddedilirse talebe "N ek eklenemedi" notu.
+
 ## 2. Zorunlu konfigurasyon
 
 Modul **fail-closed**'dur: `HERMES_SUPPORT_TENANT_ID` bos veya
@@ -101,6 +187,9 @@ Startup logu dogrulamayi yazar:
 kubectl -n hermes-dev apply -f k8s/ticket-dispatcher-cronjob.yaml
 kubectl -n hermes-dev apply -f k8s/ticket-maintenance-cronjob.yaml
 ```
+
+Dispatcher ayni turda talep e-postalarini da isler (§1d); bakim isi zamanli
+otomasyonlari kosar ve e-posta tablolarini budar.
 
 ## 3b. Ingress (integration API disari acilir)
 

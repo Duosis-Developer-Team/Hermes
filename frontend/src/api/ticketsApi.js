@@ -261,6 +261,9 @@ export const ticketHelpdeskService = {
     updateAutomation: async (id, payload) => (await coreClient.put(`${HD}/automations/${id}`, payload)).data,
     deleteAutomation: async (id) => { await coreClient.delete(`${HD}/automations/${id}`) },
     automationRuns: async (id) => (await coreClient.get(`${HD}/automations/${id}/runs`)).data,
+    // Dalga D4: e-posta kanali
+    mail: async () => (await coreClient.get(`${HD}/mail`)).data,
+    updateMail: async (payload) => (await coreClient.put(`${HD}/mail`, payload)).data,
 }
 
 /** Dalga D3 — bilgi bankasi. Ajan: saglayicinin tum makaleleri. */

@@ -47,6 +47,7 @@ from .task_comment import TaskComment
 from .tenancy import TenantCounter, TenantRegistry
 from .ticket_network import TICKET_NETWORK_TABLES, TicketNetworkLink
 from .ticket_kb import KB_TABLES, KbArticle, KbCategory, KbVote
+from .ticket_mail import TICKET_MAIL_TABLES, TicketMailInbound, TicketMailOutbox, TicketMailSettings
 from .ticket_helpdesk import (
     TICKET_CSAT_TABLES, TICKET_HELPDESK_TABLES, TICKET_MERGE_TABLES, TicketCsat, TicketMacro,
     TicketMerge, TICKET_AUTOMATION_TABLES, TicketAutomation, TicketAutomationRun, TicketNotification, TicketRead,
@@ -131,6 +132,10 @@ __all__ = [
     "KbArticle",
     "KbCategory",
     "KbVote",
+    "TICKET_MAIL_TABLES",
+    "TicketMailInbound",
+    "TicketMailOutbox",
+    "TicketMailSettings",
     "TICKET_HELPDESK_TABLES",
     "TICKET_CSAT_TABLES",
     "TicketCsat",

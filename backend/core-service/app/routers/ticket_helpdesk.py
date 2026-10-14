@@ -6,6 +6,7 @@
 #   /tickets/helpdesk/macros            hazir yanitlar
 #   /tickets/helpdesk/views             kayitli gorunumler
 #   /tickets/helpdesk/notifications     talep bildirimleri (zil)
+#   /tickets/helpdesk/mail              e-posta kanali ayari + son gonderimler (D4)
 #   /tickets/{id}/tags | /watch | /macros/{mid}/apply | /requester-history
 #   /tickets/bulk                       toplu islem
 #
@@ -828,3 +829,104 @@ def read_notification(
         raise http_error("not_found", "Notification not found.")
     if row.read_at is None:
         row.read_at = _now()
+
+
+# =============================================================================
+# E-posta kanali (Dalga D4)
+# =============================================================================
+
+class MailSettingsIn(BaseModel):
+    requester_enabled: bool = True
+    agent_enabled: bool = True
+    language: Literal["tr", "en"] = "tr"
+    inbound_enabled: bool = False
+
+
+class MailDeliveryOut(BaseModel):
+    id: UUID
+    kind: str
+    audience: str
+    status: str
+    recipient: str
+    ticket_number: Optional[str] = None
+    attempts: int
+    last_error: Optional[str] = None
+    created_at: datetime
+    sent_at: Optional[datetime] = None
+
+
+class MailSettingsOut(MailSettingsIn):
+    # Sunucu durumu (salt okunur): gonderim ve gelen kutu dagitim
+    # seviyesinde acik mi, saglayicinin gelen adresi ne?
+    outbound_ready: bool
+    sender: Optional[str] = None
+    inbound_configured: bool
+    inbound_address: Optional[str] = None
+    counts_7d: Dict[str, int]
+    recent: List[MailDeliveryOut]
+
+
+def _mail_out(db: Session, tenant_id: str) -> MailSettingsOut:
+    from sqlalchemy import text as sa_text
+
+    from ..config import get_settings
+    from ..services import support_tenant as support
+    from ..services import ticket_mail
+    from ..ticket_contract import format_ticket_number
+
+    cfg = ticket_mail.config(db)
+    overview = ticket_mail.delivery_overview(db)
+    numbers = dict(
+        db.query(Ticket.id, Ticket.number)
+        .filter(Ticket.id.in_([r.ticket_id for r in overview["recent"] if r.ticket_id])).all()
+    ) if overview["recent"] else {}
+    slug = db.execute(sa_text("SELECT slug FROM tenant_registry WHERE tenant_id = CAST(:t AS uuid)"),
+                      {"t": tenant_id}).scalar()
+    ready = ticket_mail.graph_ready()
+    return MailSettingsOut(
+        requester_enabled=cfg.requester_enabled, agent_enabled=cfg.agent_enabled,
+        language=cfg.language, inbound_enabled=cfg.inbound_enabled,
+        outbound_ready=ready, sender=(get_settings().NOTIF_MAIL_SENDER if ready else None),
+        inbound_configured=bool(ticket_mail.inbound_mailbox()),
+        inbound_address=ticket_mail.inbound_address(slug, is_support_tenant=support.is_support_tenant(tenant_id)),
+        counts_7d=overview["counts"],
+        recent=[
+            MailDeliveryOut(
+                id=r.id, kind=r.kind, audience=r.audience, status=r.status,
+                # Ajan alicisi kimlikle tutulur; adres gonderimde cozulur.
+                recipient=ticket_mail.mask(r.recipient_email) if r.recipient_email else "team",
+                ticket_number=format_ticket_number(numbers[r.ticket_id]) if r.ticket_id in numbers else None,
+                attempts=int(r.attempts or 0), last_error=r.last_error,
+                created_at=r.created_at, sent_at=r.sent_at,
+            )
+            for r in overview["recent"]
+        ],
+    )
+
+
+@router.get("/helpdesk/mail", response_model=MailSettingsOut)
+def get_mail_settings(
+    current_user: CurrentUser = Depends(require_support_surface),
+    scope: visibility.HubScope = Depends(hub_scope),
+    db: Session = Depends(get_support_db),
+):
+    _require_config(scope)
+    return _mail_out(db, str(current_user.tenant_id))
+
+
+@router.put("/helpdesk/mail", response_model=MailSettingsOut)
+def update_mail_settings(
+    payload: MailSettingsIn,
+    current_user: CurrentUser = Depends(require_support_surface),
+    scope: visibility.HubScope = Depends(hub_scope),
+    db: Session = Depends(get_support_db),
+):
+    from ..services import ticket_mail
+
+    _require_config(scope)
+    ticket_mail.save_config(
+        db, requester_enabled=payload.requester_enabled, agent_enabled=payload.agent_enabled,
+        language=payload.language, inbound_enabled=payload.inbound_enabled,
+        actor_user_id=UUID(str(scope.user_id)),
+    )
+    return _mail_out(db, str(current_user.tenant_id))

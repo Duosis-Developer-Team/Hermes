@@ -626,6 +626,10 @@ def add_message(
             application=application,
             source_tenant=source_tenant,
         )
+        if author_type in ("agent", "system"):
+            # E-posta (Dalga D4): talep edene, ayni transaction'da kuyruk.
+            from . import ticket_mail
+            ticket_mail.on_public_reply(db, ticket, message)
     else:
         # Internal not: IC olay akisina girer, outbox'a GIRMEZ.
         events.record_event(
@@ -805,6 +809,9 @@ def transition(
         )
         # add_message zaten surumu artirdi; gecis kontrolu tekrar
         # yapilmasin diye expected_version tuketildi.
+        if to_status == "waiting_customer":
+            from . import ticket_mail
+            ticket_mail.mark_waiting(db, message.id)
 
     return _apply_transition(
         db, ticket, to_status=to_status, actor=actor, reason=reason,
@@ -1035,6 +1042,8 @@ def resolve(
                         "resolution_code": resolution_code},
         outbound_data=events.build_resolved(ticket, resolution),
     )
+    from . import ticket_mail
+    ticket_mail.on_resolved(db, ticket, resolution)
 
     if internal_note:
         add_message(
