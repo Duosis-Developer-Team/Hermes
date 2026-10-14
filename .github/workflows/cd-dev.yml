@@ -27,14 +27,46 @@ permissions:
 #     yarim rollout birakilmaz; es zamanli deploy'lar SERIALIZE olur.
 #   - Ek stale-guard: deploy baslarken origin/dev bu SHA'nin otesine
 #     gectiyse rollout ATLANIR (eski kosunun yeni surumu ezmesi imkansiz).
+#
+# Hizli hat (2026-10-14, CTO istegi — basit arayuz duzeltmeleri icin):
+#   `changes` canli backend SHA'sindan bu commit'e kadar YALNIZ `frontend/`
+#   degistiyse frontend_only=true verir (scripts/k8s/dev-change-scope.sh;
+#   her belirsizlikte tam hat). O zaman core/auth/mcp testleri, backend
+#   image'lari ve migration ATLANIR; frontend testleri + build + secret
+#   guard + rollout + tenant dumani AYNEN kosar, yalniz frontend Deployment'i
+#   guncellenir (backend'ler kendi immutable SHA'larinda kalir). Hicbir
+#   backend testi frontend dosyasi okumaz. cd-test.yml'de hizli hat YOK.
 # =============================================================================
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: cd-dev-changes-${{ github.ref }}
+      cancel-in-progress: true
+    outputs:
+      frontend_only: ${{ steps.scope.outputs.frontend_only }}
+    steps:
+      - name: Checkout (tam gecmis — canli SHA ile fark icin)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG_B64 }}" | base64 -d > ~/.kube/config
+      - name: Decide scope (salt-okur)
+        id: scope
+        run: ./scripts/k8s/dev-change-scope.sh hermes-dev
+
   # Core Public API guvenlik/regresyon testleri — basarisiz olursa
   # build/deploy ASLA calismaz (amendment #1).
   core_tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.frontend_only != 'true' }}
     concurrency:
       group: cd-dev-core-${{ github.ref }}
       cancel-in-progress: true
@@ -80,6 +112,8 @@ jobs:
   auth_tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.frontend_only != 'true' }}
     concurrency:
       group: cd-dev-auth-${{ github.ref }}
       cancel-in-progress: true
@@ -124,6 +158,8 @@ jobs:
   mcp_tests:
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.frontend_only != 'true' }}
     concurrency:
       group: cd-dev-mcp-${{ github.ref }}
       cancel-in-progress: true
@@ -259,7 +295,9 @@ jobs:
   build_images:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [core_tests, auth_tests, mcp_tests, frontend_tests, frontend_build]
+    needs: [changes, core_tests, auth_tests, mcp_tests, frontend_tests, frontend_build]
+    # Atlanan backend testleri `needs`i "skipped" yapar; kapi acikca yazilir.
+    if: ${{ !cancelled() && needs.frontend_tests.result == 'success' && needs.frontend_build.result == 'success' && (needs.changes.outputs.frontend_only == 'true' || (needs.core_tests.result == 'success' && needs.auth_tests.result == 'success' && needs.mcp_tests.result == 'success')) }}
     concurrency:
       group: cd-dev-build-${{ matrix.name }}-${{ github.ref }}
       cancel-in-progress: true
@@ -325,7 +363,8 @@ jobs:
           cache-to: type=gha,mode=max,scope=hermes-dev-${{ matrix.name }}
 
       - name: Build & push
-        if: matrix.name != 'frontend'
+        # Hizli hatta backend image'i URETILMEZ (canlidaki SHA kalir).
+        if: matrix.name != 'frontend' && needs.changes.outputs.frontend_only != 'true'
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: ${{ matrix.context }}
@@ -345,7 +384,9 @@ jobs:
   migrate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [core_tests, auth_tests, mcp_tests, frontend_tests, frontend_build, build_images]
+    needs: [changes, core_tests, auth_tests, mcp_tests, frontend_tests, frontend_build, build_images]
+    # Hizli hatta sema degismez (backend dosyasi yok) → migration atlanir.
+    if: ${{ !cancelled() && needs.frontend_tests.result == 'success' && needs.frontend_build.result == 'success' && (needs.changes.outputs.frontend_only == 'true' || (needs.core_tests.result == 'success' && needs.auth_tests.result == 'success' && needs.mcp_tests.result == 'success')) && needs.build_images.result == 'success' && needs.changes.outputs.frontend_only != 'true' }}
     # Migration yarim kesilmez; es zamanli kosular siraya girer.
     concurrency:
       group: cd-dev-migrate
@@ -382,7 +423,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [core_tests, auth_tests, mcp_tests, frontend_tests, frontend_build, build_images, migrate]
+    needs: [changes, core_tests, auth_tests, mcp_tests, frontend_tests, frontend_build, build_images, migrate]
+    if: ${{ !cancelled() && needs.frontend_tests.result == 'success' && needs.frontend_build.result == 'success' && (needs.changes.outputs.frontend_only == 'true' || (needs.core_tests.result == 'success' && needs.auth_tests.result == 'success' && needs.mcp_tests.result == 'success')) && needs.build_images.result == 'success' && (needs.migrate.result == 'success' || (needs.changes.outputs.frontend_only == 'true' && needs.migrate.result == 'skipped')) }}
     # Deploy ASLA yarim kesilmez; es zamanli deploy'lar siraya girer.
     concurrency:
       group: cd-dev-deploy
@@ -392,6 +434,7 @@ jobs:
       NAMESPACE: hermes-dev
       REGISTRY: ghcr.io
       OWNER: duosis-developer-team
+      FRONTEND_ONLY: ${{ needs.changes.outputs.frontend_only }}
 
     steps:
       - name: Checkout
@@ -428,6 +471,12 @@ jobs:
           # IMMUTABLE SHA pinleme: calisan Deployment asla mutable tag
           # tasimaz; :dev tag'i yalnizca insan/ilk-kurulum kolayligidir.
           TAG="${GITHUB_SHA}"
+          if [ "${FRONTEND_ONLY}" = "true" ]; then
+            # Hizli hat: yalniz frontend; backend'ler canli SHA'larinda kalir.
+            kubectl -n "${NAMESPACE}" set image deployment/frontend frontend="${REGISTRY}/${OWNER}/hermes-frontend:${TAG}"
+            kubectl -n "${NAMESPACE}" rollout status deployment/frontend --timeout=600s
+            exit 0
+          fi
           kubectl -n "${NAMESPACE}" set image deployment/auth-service auth-service="${REGISTRY}/${OWNER}/hermes-auth-service:${TAG}"
           kubectl -n "${NAMESPACE}" set image deployment/core-service core-service="${REGISTRY}/${OWNER}/hermes-core-service:${TAG}"
           kubectl -n "${NAMESPACE}" set image deployment/reporting-service reporting-service="${REGISTRY}/${OWNER}/hermes-reporting-service:${TAG}"

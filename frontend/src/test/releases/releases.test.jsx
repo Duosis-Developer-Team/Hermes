@@ -108,4 +108,13 @@ describe('masaustu uygulamasi', () => {
         const shell = readFileSync(join('..', 'desktop/src/windowChrome.js'), 'utf8')
         expect(shell).toMatch(/\.main-header \{ -webkit-app-region: drag; \}/)
     })
+
+    it('acik cekmece/modal surukleme alanindan oyulur (✕ tiklanir)', () => {
+        const css = readFileSync(join('src', 'components/layout/MainLayout.css'), 'utf8')
+        const rule = css.match(/((?:\.ant-[a-z-]+,\s*)+\.ant-[a-z-]+)\s*\{\s*-webkit-app-region:\s*no-drag;/)
+        expect(rule).not.toBeNull()
+        for (const layer of ['.ant-drawer', '.ant-modal-wrap', '.ant-popover', '.ant-dropdown', '.ant-select-dropdown']) {
+            expect(rule[1]).toContain(layer)
+        }
+    })
 })

@@ -8,20 +8,27 @@
  * Onizleme, musterinin GORECEGI karti gosterir; boylece ic bilginin
  * yanlis alana yazildigi gonderim oncesi fark edilir.
  */
-import { useState } from 'react'
 import { Alert, Form, Input, Select, Typography } from 'antd'
 
 import { AppModal, Stack } from '../../components/ui'
 import { RESOLUTION_LABELS } from './constants'
+import ResolutionSummary from './ResolutionSummary'
 import './tickets.css'
 import { useT } from '../../i18n'
+import { useTicketLabel } from './useTicketLabel'
 
 const { Text } = Typography
 
 export function ResolveModal({ open, onCancel, onSubmit, pending, ticket }) {
     const t = useT()
+    const tl = useTicketLabel()
     const [form] = Form.useForm()
-    const [preview, setPreview] = useState('')
+    // Onizleme formun CANLI degerlerinden (ayri state yok): tur, ozet,
+    // gecici cozum ve surum musteri kartinda nasil gorunecekse oyle.
+    const code = Form.useWatch('resolution_code', form)
+    const summary = Form.useWatch('public_summary', form)
+    const workaround = Form.useWatch('public_workaround', form)
+    const fixVersion = Form.useWatch('fix_version', form)
 
     const handleOk = async () => {
         let values
@@ -64,8 +71,8 @@ export function ResolveModal({ open, onCancel, onSubmit, pending, ticket }) {
                     rules={[{ required: true, message: t('ticket.selectResolutionType') }]}
                 >
                     <Select
-                        options={Object.entries(RESOLUTION_LABELS).map(
-                            ([value, label]) => ({ value, label }),
+                        options={Object.keys(RESOLUTION_LABELS).map(
+                            (value) => ({ value, label: tl('resolution', value) }),
                         )}
                         placeholder={t('ticket.select')}
                     />
@@ -79,11 +86,7 @@ export function ResolveModal({ open, onCancel, onSubmit, pending, ticket }) {
                         { required: true, message: t('ticket.summaryRequired') },
                     ]}
                 >
-                    <Input.TextArea
-                        rows={4}
-                        maxLength={10000}
-                        onChange={(event) => setPreview(event.target.value)}
-                    />
+                    <Input.TextArea rows={4} maxLength={10000} />
                 </Form.Item>
 
                 <Form.Item name="public_workaround" label={t('ticket.workaround')}>
@@ -110,9 +113,18 @@ export function ResolveModal({ open, onCancel, onSubmit, pending, ticket }) {
                     <Input.TextArea rows={2} maxLength={10000} />
                 </Form.Item>
 
-                <Stack gap={1} className="h-ticket-resolution">
+                <Stack gap={1} className="h-ticket-resolve-preview">
                     <Text strong>{t('ticket.customerWillSee')}</Text>
-                    <Text>{preview || 'The resolution summary will appear here.'}</Text>
+                    {summary?.trim() ? (
+                        <ResolutionSummary resolution={{
+                            resolution_code: code,
+                            summary,
+                            workaround: workaround?.trim() || null,
+                            fix_version: fixVersion?.trim() || null,
+                        }} />
+                    ) : (
+                        <Text type="secondary">{t('ticket.previewEmpty')}</Text>
+                    )}
                 </Stack>
             </Form>
         </AppModal>

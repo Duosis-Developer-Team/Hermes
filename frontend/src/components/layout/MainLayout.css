@@ -777,6 +777,18 @@
    calismaz. Web'den gelir — kabuk yeniden kurulmadan duzelir. */
 .main-header__corner,
 .main-header__corner * { -webkit-app-region: no-drag; }
+/* Ayni sebep, katmanlar: cekmece/modal/acilir menu basligin USTUNE biner
+   ama Electron surukleme alanini z-sirasindan BAGIMSIZ hesaplar — ustteki
+   tiklama pencere suruklemesine gider (talep cekmecesinin ✕'i kapanmiyordu).
+   Acik katman alani surukleme bolgesinden oyulur; tarayicida etkisiz. */
+.ant-drawer,
+.ant-modal-wrap,
+.ant-popover,
+.ant-dropdown,
+.ant-select-dropdown,
+.ant-picker-dropdown,
+.ant-message,
+.ant-notification { -webkit-app-region: no-drag; }
 .version-badge {
     position: relative;
     display: inline-flex;

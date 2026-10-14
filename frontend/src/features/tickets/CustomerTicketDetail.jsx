@@ -17,6 +17,7 @@ import {
 import { queryKeys } from '../../query/queryKeys'
 import AttachmentDropzone from './AttachmentDropzone'
 import { readyAttachmentIds } from './attachmentState'
+import ResolutionSummary from './ResolutionSummary'
 import TicketTimeline from './TicketTimeline'
 import { LIVE_REFRESH_MS } from './AgentWorkbench'
 import { TicketStatusBadge } from './TicketStatusBadge'
@@ -27,7 +28,7 @@ import { ModalHead } from '../../components/liquid'
 import { CustomerServiceOutlined } from '@ant-design/icons'
 import { ticketRef } from './constants'
 
-const { Text, Paragraph } = Typography
+const { Text } = Typography
 
 export default function CustomerTicketDetail({
     ticketId, open, onClose, onChanged,
@@ -176,29 +177,7 @@ export default function CustomerTicketDetail({
                     )}
 
                     {ticket.resolution && (
-                        <Stack gap={2} className="h-ticket-resolution">
-                            <Inline gap={2}>
-                                <StatusBadge tone="success">✓ Resolved</StatusBadge>
-                                <Text strong>
-                                    {tl('resolution', ticket.resolution.resolution_code,
-                                    )}
-                                </Text>
-                                <Text type="secondary">
-                                    {new Date(
-                                        ticket.resolution.resolved_at,
-                                    ).toLocaleString()}
-                                    {ticket.resolution.resolved_by_team
-                                        && ` · ${ticket.resolution.resolved_by_team}`}
-                                </Text>
-                            </Inline>
-                            <Paragraph style={{ whiteSpace: 'pre-wrap' }}>
-                                {ticket.resolution.summary}
-                            </Paragraph>
-                            {ticket.resolution.workaround && (
-                                <Paragraph type="secondary">
-                                    Workaround: {ticket.resolution.workaround}
-                                </Paragraph>
-                            )}
+                        <ResolutionSummary resolution={ticket.resolution}>
                             {ticket.status === 'resolved' && (
                                 <Inline gap={2}>
                                     <Button
@@ -226,12 +205,9 @@ export default function CustomerTicketDetail({
                             )}
                             {ticket.status === 'resolved'
                                 && !ticket.reopen_window_open && (
-                                <Text type="secondary">
-                                    The verification window has closed. Reply
-                                    to the support team if you still need help.
-                                </Text>
+                                <Text type="secondary">{t('customerTicket.windowClosed')}</Text>
                             )}
-                        </Stack>
+                        </ResolutionSummary>
                     )}
 
                     {ticket.can_rate && (

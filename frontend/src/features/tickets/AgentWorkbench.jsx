@@ -291,7 +291,7 @@ export default function AgentWorkbench({
                                 <Stack gap={1} className="h-ticket-resolution">
                                     <Inline gap={2}>
                                         <StatusBadge tone="success">
-                                            ✓ Resolution #{ticket.resolution.revision}
+                                            ✓ {t('ticket.resolutionRevision', { n: ticket.resolution.revision })}
                                         </StatusBadge>
                                         <Text strong>
                                             {tl('resolution', ticket.resolution.resolution_code,
@@ -301,7 +301,7 @@ export default function AgentWorkbench({
                                     <Text>{ticket.resolution.summary}</Text>
                                     {ticket.resolution.internal_root_cause && (
                                         <Text type="warning">
-                                            Root cause (team only):{' '}
+                                            {t('ticket.rootCauseTeam')}:{' '}
                                             {ticket.resolution.internal_root_cause}
                                         </Text>
                                     )}

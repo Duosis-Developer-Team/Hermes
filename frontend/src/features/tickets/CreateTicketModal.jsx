@@ -301,10 +301,7 @@ export default function CreateTicketModal({
                             </StatusBadge>
                         ))}
                     </div>
-                    <Text type="secondary">
-                        If you attach a screenshot or a log, please make
-                        sure it contains no confidential information.
-                    </Text>
+                    <Text type="secondary">{t('ticket.dropPrivacy')}</Text>
                 </Stack>
             </Stack>
         </AppModal>
