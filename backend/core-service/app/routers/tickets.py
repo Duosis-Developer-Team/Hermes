@@ -72,11 +72,12 @@ from ..services import (
 from ..services.ticket_service import Actor
 from .ticket_deps import (
     correlation_id,
-    get_global_db,
     get_support_db,
     hub_scope,
     http_error,
     require_support_surface,
+    caller_is_provider,
+    caller_links,
     translate,
 )
 
@@ -214,7 +215,8 @@ def _route_status(db: Session, tenant_id: str):
 def ticket_context(
     current_user: CurrentUser = Depends(get_current_user),
     db: Optional[Session] = Depends(get_support_db),
-    gdb: Session = Depends(get_global_db),
+    is_provider: bool = Depends(caller_is_provider),
+    caller: tuple = Depends(caller_links),
 ):
     """Frontend'in hangi yuzey(ler)i acacagini SUNUCU soyler.
 
@@ -248,8 +250,8 @@ def ticket_context(
             permissions=ticket_permissions,
         )
 
-    is_hub = db is not None and network.is_provider(gdb, current_user.tenant_id)
-    links = network.requester_links(gdb, current_user.tenant_id)
+    is_hub = db is not None and is_provider
+    links = list(caller)
     can_create_perm = Perm.TICKETS_CREATE in permissions
 
     providers = []

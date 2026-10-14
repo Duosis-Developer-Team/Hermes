@@ -66,13 +66,13 @@ from ..ticket_contract import HEADER_IDEMPOTENCY_KEY
 from .ticket_deps import (
     client_ip,
     correlation_id,
-    get_global_db,
     get_portal_db,
     http_error,
     network_http_error,
     portal_provider,
     require_customer_surface,
     requested_provider,
+    caller_links,
     translate,
 )
 
@@ -209,7 +209,7 @@ def list_my_tickets(
     offset: int = Query(0, ge=0),
     sort: Optional[str] = Query(None, pattern="^(updated|newest|oldest)$"),
     current_user: CurrentUser = Depends(require_customer_surface),
-    gdb: Session = Depends(get_global_db),
+    caller: tuple = Depends(caller_links),
 ):
     """Tum saglayicilardaki taleplerim — `provider` verilirse yalniz o.
 
@@ -218,7 +218,7 @@ def list_my_tickets(
     saglayici sayisi kucuktur).
     """
     permissions = _require_access(current_user)
-    links = network.requester_links(gdb, current_user.tenant_id)
+    links = list(caller)
     requested = requested_provider(request)
     if requested:
         try:

@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Generator, Optional
+from typing import Generator, Optional, Tuple
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -100,15 +100,32 @@ PROVIDER_PARAM = "provider"
 PROVIDER_HEADER = "x-ticket-provider"
 
 
-def get_global_db() -> Generator[Session, None, None]:
-    """Talep agi kararlari icin GLOBAL okuma oturumu (tenant'siz)."""
-    with support.global_session() as db:
-        yield db
+def caller_is_provider(
+    current_user: CurrentUser = Depends(get_current_user),
+) -> bool:
+    """Cagiranin tenant'i saglayici mi (hub var mi)? Istek basina BIR kez.
+
+    Yapilandirilmis destek tenant'i DB'ye sorulmadan saglayicidir; digerleri
+    icin global indeks kisa omurlu bir oturumla okunur ve oturum HEMEN
+    kapanir (istek boyunca bosta baglanti tutulmaz).
+    """
+    if support.is_support_tenant(current_user.tenant_id):
+        return True
+    with support.global_session() as gdb:
+        return network.is_provider(gdb, current_user.tenant_id)
+
+
+def caller_links(
+    current_user: CurrentUser = Depends(get_current_user),
+) -> Tuple[network.ProviderLink, ...]:
+    """Cagiranin talep agi baglantilari (portal). Istek basina BIR kez."""
+    with support.global_session() as gdb:
+        return tuple(network.requester_links(gdb, current_user.tenant_id))
 
 
 def get_support_db(
     current_user: CurrentUser = Depends(get_current_user),
-    gdb: Session = Depends(get_global_db),
+    is_provider: bool = Depends(caller_is_provider),
 ) -> Generator[Optional[Session], None, None]:
     """HUB oturumu: cagiranin kendi tenant'i — yalnizca SAGLAYICIYSA.
 
@@ -118,9 +135,7 @@ def get_support_db(
     kapaliyken de cevap vermek zorundadir. db None iken hicbir sorgu
     calismaz (sessiz bos liste yok).
     """
-    if not support.is_available() or not network.is_provider(
-        gdb, current_user.tenant_id
-    ):
+    if not support.is_available() or not is_provider:
         yield None
         return
     try:
@@ -146,7 +161,7 @@ def require_module_enabled() -> None:
 
 def require_support_surface(
     current_user: CurrentUser = Depends(get_current_user),
-    gdb: Session = Depends(get_global_db),
+    is_provider: bool = Depends(caller_is_provider),
 ) -> CurrentUser:
     """Cagiranin tenant'i bir SAGLAYICI mi?
 
@@ -155,7 +170,7 @@ def require_support_surface(
     bilgisini sizdirirdi.
     """
     require_module_enabled()
-    if not network.is_provider(gdb, current_user.tenant_id):
+    if not is_provider:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Not found",
@@ -179,7 +194,7 @@ def hub_scope(
 
 def require_customer_surface(
     current_user: CurrentUser = Depends(get_current_user),
-    gdb: Session = Depends(get_global_db),
+    links: Tuple[network.ProviderLink, ...] = Depends(caller_links),
 ) -> CurrentUser:
     """Musteri portali: talep agi baglantisi OLAN her tenant.
 
@@ -188,7 +203,7 @@ def require_customer_surface(
     KENDINE baglantisi ise semada yasaktir.
     """
     require_module_enabled()
-    if not network.requester_links(gdb, current_user.tenant_id):
+    if not links:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Not found",
@@ -216,12 +231,11 @@ def network_http_error(exc: network.NetworkError) -> HTTPException:
 def portal_provider(
     request: Request,
     current_user: CurrentUser = Depends(require_customer_surface),
-    gdb: Session = Depends(get_global_db),
+    links: Tuple[network.ProviderLink, ...] = Depends(caller_links),
 ) -> network.ProviderLink:
     """Bu portal isteginin saglayicisi (baglanti kumesinden)."""
-    links = network.requester_links(gdb, current_user.tenant_id)
     try:
-        return network.resolve_provider(links, requested_provider(request))
+        return network.resolve_provider(list(links), requested_provider(request))
     except network.NetworkError as exc:
         raise network_http_error(exc)
 

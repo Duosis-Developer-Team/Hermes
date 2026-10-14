@@ -267,3 +267,25 @@ def test_maintenance_visits_every_provider_and_skips_closed_ones(
     assert summary["status"] == "completed"
     assert summary["providers"] == 2 and summary["providers_skipped"] == 1
     assert TEST_TENANT_ID in network_sessions and OTHER_TENANT_ID in network_sessions
+
+
+def test_a_request_reads_the_network_registry_once(api, ticket_world, monkeypatch):
+    """Talep agi bilgisi istek basina BIR kez, kisa omurlu oturumla okunur
+    (bosta bekleyen ikinci baglanti yok)."""
+    from contextlib import contextmanager
+
+    from app.services import support_tenant
+
+    inner = support_tenant.global_session
+    opened = []
+
+    @contextmanager
+    def counting():
+        opened.append(1)
+        with inner() as db:
+            yield db
+
+    monkeypatch.setattr(support_tenant, "global_session", counting)
+    response = api(ticket_world["customer"], OTHER_TENANT_ID).post(PORTAL, json=NEW)
+    assert response.status_code == 201, response.text
+    assert len(opened) == 1
