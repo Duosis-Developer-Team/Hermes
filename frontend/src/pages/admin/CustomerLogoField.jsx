@@ -7,6 +7,9 @@
  * Istemci on kontrolu sunucuyla ayni: PNG/JPEG/WEBP, en fazla 256 KB
  * (sunucu yine de icerigi kokler ve 413/415 doner).
  *
+ * `Logo` (varsayilan CustomerLogo) degistirilebilir: sirket hesabi formu
+ * ayni alani CompanyLogo ile kullanir.
+ *
  * Duzen (05.10): solda buyuk onizleme, sagda baslik + ipucu + dugmeler;
  * gorsel alanin ustune SURUKLE-BIRAK ile de birakilabilir. Dosya secici
  * `display: none` ile gizli (yalniz `hidden` niteligi genel input
@@ -26,7 +29,7 @@ export const EMPTY_LOGO_DRAFT = { file: null, previewUrl: null, remove: false }
 
 /** draft: { file, previewUrl, remove }; record: duzenlenen musteri (ya da null).
  *  Proje formu kendi alanini kullanir (ProjectLogoField: ozel ya da jenerik). */
-function CustomerLogoField({ record, name, draft, onChange }) {
+function CustomerLogoField({ record, name, draft, onChange, Logo = CustomerLogo }) {
     const t = useT()
     const inputRef = useRef(null)
 
@@ -77,7 +80,7 @@ function CustomerLogoField({ record, name, draft, onChange }) {
                     // Ad yokken "?" yerine yukleme simgesi.
                     <span className="customer-logo-field__empty" aria-hidden="true"><UploadOutlined /></span>
                 ) : (
-                    <CustomerLogo
+                    <Logo
                         id={record?.id}
                         name={name || record?.name}
                         size={72}

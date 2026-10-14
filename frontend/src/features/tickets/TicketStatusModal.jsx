@@ -27,6 +27,7 @@ import { useT } from '../../i18n'
 import SlaBadge from './SlaBadge'
 import { TicketPriorityBadge, TicketStatusBadge } from './TicketStatusBadge'
 import { useTicketLabel } from './useTicketLabel'
+import { ticketRef } from './constants'
 
 const PRIORITIES = ['low', 'normal', 'high', 'urgent']
 /** Hedef → istenen girdi. Kural sunucuda; burada yalniz soru sorulur. */
@@ -118,7 +119,7 @@ function RequesterHistory({ ticket, onOpen }) {
                     {rows.map((row) => (
                         <li key={row.id}>
                             <button type="button" onClick={() => onOpen?.(row.id)}>
-                                <span className="tickets-row__code">{row.ticket_number}</span>
+                                <span className="tickets-row__code">{ticketRef(row)}</span>
                                 <span className="ticket-history__title">{row.title}</span>
                                 <TicketStatusBadge status={row.status} surface="hub" />
                             </button>
@@ -196,7 +197,7 @@ export default function TicketStatusModal({
                     icon={<CustomerServiceOutlined />}
                     tone="red"
                     title={t('hub.statusTitle')}
-                    subtitle={`${ticket.ticket_number} · ${ticket.title}`}
+                    subtitle={`${ticketRef(ticket)} · ${ticket.title}`}
                 />
             )}
         >

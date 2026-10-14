@@ -103,6 +103,12 @@ function LogTimeModal({
      *          end_datetime, duration_minutes }
      */
     prefillMeeting = null,
+    /**
+     * Talep → efor: musteri/proje talepte yok, kullanici secer (adim 0).
+     * Aciklamanin ILK satiri musteriye gore numara ("Defacto Ticket-001"),
+     * altinda baslik. Shape: { ref, title }
+     */
+    prefillTicket = null,
 }) {
     const t = useT()
     const [form] = Form.useForm()
@@ -281,13 +287,24 @@ function LogTimeModal({
                 duration_hours: quartersHours,
                 description,
             })
+        } else if (prefillTicket && open) {
+            // Talep: musteri/proje kullanicidan (adim 0); aciklama hazir.
+            setSelectedCustomerId(null)
+            setSelectedProjectId(null)
+            setStep(0)
+            const description = [prefillTicket.ref, prefillTicket.title].filter(Boolean).join('\n')
+            form.setFieldsValue({
+                date_worked: initialDate ? dayjs(initialDate) : dayjs(),
+                duration_hours: null,
+                description,
+            })
         } else if (open) {
             form.setFieldsValue({
                 date_worked: initialDate ? dayjs(initialDate) : dayjs(),
                 duration_hours: null,
             })
         }
-    }, [editingLog, prefillTask, prefillMeeting, open, initialDate, form])
+    }, [editingLog, prefillTask, prefillMeeting, prefillTicket, open, initialDate, form])
 
     // Modal kapandığında reset
     const handleClose = () => {

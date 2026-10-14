@@ -144,3 +144,7 @@ export const labelOf = (dictionary, value) =>
  *  erisilebilirlik karari (07_RESEARCH: bilincli tercih). */
 export const isResolvedLike = (status) =>
     status === 'resolved' || status === 'closed'
+
+/** Arayuzde talebin numarasi: musteriye gore ("Defacto Ticket-001"), yoksa
+ *  kanonik numara (TKT-000123 — entegrasyon ve e-posta eslesmesi icin kalir). */
+export const ticketRef = (ticket) => ticket?.customer_ref || ticket?.ticket_number || ''

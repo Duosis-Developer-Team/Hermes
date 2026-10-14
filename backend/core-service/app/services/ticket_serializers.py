@@ -275,15 +275,48 @@ def customer_detail(db: Session, ticket: Ticket) -> TicketCustomerOut:
 # Agent yuzeyi
 # =============================================================================
 
+def customer_ref(name: Optional[str], seq: Optional[int]) -> Optional[str]:
+    """Musteriye gore numara: "Defacto Ticket-001" (0025). Sira yoksa None."""
+    if not seq:
+        return None
+    label = (name or "").strip()
+    number = f"Ticket-{int(seq):03d}"
+    return f"{label} {number}" if label else number
+
+
+def board_column(status: str, last_public_author: Optional[str]) -> str:
+    """Kanban sutunu — "top kimde?":
+      pending     → yeni / yeniden acildi / son public mesaj MUSTERIDEN
+      in_progress → son public mesaj bizden (ajan/otomasyon)
+      completed   → cozuldu / kapandi;  cancelled → iptal (panoda yok)."""
+    if status in ("resolved", "closed"):
+        return "completed"
+    if status == "cancelled":
+        return "cancelled"
+    if status in ("open", "reopened"):
+        return "pending"
+    return "pending" if last_public_author == "requester" else "in_progress"
+
+
+def source_name(db: Session, ticket: Ticket) -> Optional[str]:
+    src_id = getattr(ticket, "source_tenant_row_id", None)
+    src = db.get(SupportSourceTenant, src_id) if src_id is not None else None
+    return src.display_name if src is not None else None
+
+
 def agent_list_item(
     ticket: Ticket,
     *,
     application: Optional[SupportApplication] = None,
     source_tenant: Optional[SupportSourceTenant] = None,
+    last_public_author: Optional[str] = None,
 ) -> TicketAgentListItem:
     return TicketAgentListItem(
         id=ticket.id,
         ticket_number=format_ticket_number(ticket.number),
+        customer_ref=customer_ref(source_tenant.display_name if source_tenant else None,
+                                  getattr(ticket, "customer_seq", None)),
+        board_column=board_column(ticket.status, last_public_author),
         title=ticket.title,
         status=ticket.status,
         category=ticket.category,
@@ -333,9 +366,12 @@ def agent_detail(
     grouped = _group_attachments(attachments)
     resolutions = load_resolutions(db, ticket.id)
 
+    public = [m for m in messages if m.visibility == "public"]
     base = agent_list_item(
-        ticket, application=application, source_tenant=source_tenant
+        ticket, application=application, source_tenant=source_tenant,
+        last_public_author=public[-1].author_type if public else None,
     ).model_dump()
+    hours, count = logged_time(db, ticket.id)
     return TicketAgentOut(
         **base,
         requester_source_user_id=ticket.requester_source_user_id,
@@ -370,7 +406,21 @@ def agent_detail(
             ticket_state.agent_targets(ticket.status, is_admin=is_admin)
         ),
         work_items=work_item_refs(db, ticket.id),
+        logged_hours=hours,
+        log_count=count,
     )
+
+
+def logged_time(db: Session, ticket_id) -> tuple:
+    """Talebe bagli efor: (toplam saat, kayit sayisi) — bu tenant'ta."""
+    from sqlalchemy import func
+
+    from ..models.work_log import WorkLog
+
+    total, count = db.query(
+        func.coalesce(func.sum(WorkLog.duration_hours), 0), func.count(WorkLog.id),
+    ).filter(WorkLog.ticket_id == ticket_id).one()
+    return float(total or 0), int(count or 0)
 
 
 def work_item_refs(db: Session, ticket_id) -> list:

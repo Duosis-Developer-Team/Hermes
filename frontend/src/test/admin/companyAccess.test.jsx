@@ -18,6 +18,7 @@ vi.mock('../../api/companyApi', () => ({
     companyService: {
         list: vi.fn(), create: vi.fn(), update: vi.fn(), resetPassword: vi.fn(),
         supportList: vi.fn(), setSupport: vi.fn(),
+        logos: vi.fn(async () => ({ logos: {} })), uploadLogo: vi.fn(), deleteLogo: vi.fn(),
     },
     moduleAccessService: { list: vi.fn(), set: vi.fn() },
 }))
@@ -77,7 +78,7 @@ describe('sirketler', () => {
         await user.type(within(dialog).getByLabelText('Password'), 'Guclu-Parola-1')
         await user.click(within(dialog).getByRole('combobox', { name: 'Support team' }))
         await user.click(await screen.findByTitle('Destek'))
-        await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+        await user.click(within(dialog).getByRole('button', { name: 'Create' }))
         await waitFor(() => expect(companyService.create).toHaveBeenCalledWith({
             name: 'Defacto', email: 'destek@defacto.com.tr', password: 'Guclu-Parola-1', modules: ['tickets'],
         }))

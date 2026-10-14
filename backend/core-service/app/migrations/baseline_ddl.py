@@ -577,6 +577,34 @@ def apply_ticket_notification_kinds(conn) -> None:
     ))
 
 
+def ticket_customer_ref_statements() -> List[str]:
+    """0025: musteri basina talep sirasi. Kolonlar EKLENIR; mevcut talepler
+    musteri basina numara sirasiyla 1..n doldurulur, sayac n+1'e kurulur.
+    Idempotent (yalniz bos olanlar doldurulur)."""
+    return [
+        "ALTER TABLE support_source_tenants ADD COLUMN IF NOT EXISTS "
+        "next_ticket_seq INTEGER NOT NULL DEFAULT 1",
+        "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS customer_seq INTEGER",
+        "ALTER TABLE work_logs ADD COLUMN IF NOT EXISTS ticket_id UUID",
+        "CREATE INDEX IF NOT EXISTS ix_work_logs_ticket_id ON work_logs (ticket_id)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_tickets_customer_seq ON tickets "
+        "(tenant_id, source_tenant_row_id, customer_seq) WHERE customer_seq IS NOT NULL",
+        "UPDATE tickets t SET customer_seq = x.rn FROM ("
+        "  SELECT id, row_number() OVER (PARTITION BY tenant_id, source_tenant_row_id ORDER BY number) AS rn"
+        "    FROM tickets) x "
+        " WHERE t.id = x.id AND t.customer_seq IS NULL",
+        "UPDATE support_source_tenants s SET next_ticket_seq = COALESCE(("
+        "  SELECT max(t.customer_seq) FROM tickets t WHERE t.source_tenant_row_id = s.id), 0) + 1 "
+        " WHERE s.next_ticket_seq <= COALESCE(("
+        "  SELECT max(t.customer_seq) FROM tickets t WHERE t.source_tenant_row_id = s.id), 0)",
+    ]
+
+
+def apply_ticket_customer_refs(conn) -> None:
+    for stmt in ticket_customer_ref_statements():
+        conn.execute(text(stmt))
+
+
 def apply_all(conn) -> None:
     """Testler icin: bugunku head semasinin tamami.
 
@@ -593,3 +621,4 @@ def apply_all(conn) -> None:
     apply_tenant_modules(conn)
     apply_ticket_network(conn)
     apply_ticket_notification_kinds(conn)
+    apply_ticket_customer_refs(conn)

@@ -452,3 +452,21 @@
 .customers-hub__meta { font-size: 12px; color: var(--h-text-muted); }
 .customers-hub__stats { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--h-text-secondary); }
 .customers-hub__stats b { font-variant-numeric: tabular-nums; color: var(--h-text-primary, inherit); }
+
+/* Talep kanbani — is panosuyla ayni siniflar; renk "top kimde"yi anlatir:
+   Pending kirmizi, In progress sari, Completed yesil (--col-accent). */
+.ticket-board .ticket-board-column {
+    background: color-mix(in srgb, var(--col-accent) 7%, var(--h-surface-subtle));
+    border-color: color-mix(in srgb, var(--col-accent) 28%, var(--h-glass-edge));
+}
+.ticket-board .tasks-board-column-count {
+    background: color-mix(in srgb, var(--col-accent) 18%, transparent);
+    color: color-mix(in srgb, var(--col-accent) 70%, var(--h-text-primary));
+}
+.ticket-card .task-card-top { align-items: center; }
+.ticket-card__spacer { flex: 1; }
+.ticket-card__badges { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; }
+.ticket-card__badges:empty { display: none; }
+.ticket-card__meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; }
+.ticket-card__log { flex: none; }
+.tickets-layout-switch { flex: none; }

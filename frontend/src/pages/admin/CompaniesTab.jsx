@@ -6,131 +6,155 @@
  * verilen TEK giris hesabidir: kullanici listesinde degil burada durur,
  * rol almaz ve yalniz secilen modulleri gorur. Talep acabilmesi icin destek
  * ekibi secilmelidir (musteri kaydi core'da, adiyla birlikte yazilir).
- * Hesap auth'ta (users.manage), destek ekibi core'da — kayit iki adimdir.
+ *
+ * Tasarim Kullanicilar sekmesiyle BIREBIR ayni: kart basligi + sayi, arama
+ * ve "Yeni" dugmesi; tabloda logo + ad + e-posta hucresi, `lq-tag` rozetleri,
+ * yalniz ikonlu islem dugmeleri; ayni modal (ModalHead + dikey form +
+ * `lq-mf` alt satiri). Logo alani musteri formundakinin aynisidir.
+ * Hesap auth'ta (users.manage); destek ekibi ve logo core'da.
  * =============================================================================
  */
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Checkbox, Input, Modal, Select, Switch, Table, Tag, Typography, message } from 'antd'
-import { BankOutlined, KeyOutlined, PlusOutlined } from '@ant-design/icons'
+import {
+    Alert, Button, Card, Checkbox, Form, Input, Modal, Select, Space, Switch, Table, message,
+} from 'antd'
+import { BankOutlined, EditOutlined, KeyOutlined, LockOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 
 import { companyService } from '../../api/companyApi'
 import { userGroupService } from '../../services/api'
-import { Button, StatusBadge } from '../../components/ui'
-import { ModalHead } from '../../components/liquid'
+import { CompanyLogo, ModalHead } from '../../components/liquid'
 import { normalizeApiError } from '../../features/admin/shared/normalizeApiError'
+import {
+    AdminEmptyState, AdminErrorAlert, AdminRefreshHint,
+} from '../../features/admin/shared/AdminListStates'
 import { MODULE_CODES, MODULES } from '../../features/modules/catalog'
 import { useAuthStore } from '../../stores/authStore'
 import { useT } from '../../i18n'
+import { matchesAny } from '../../utils/searchText'
+import CustomerLogoField, { EMPTY_LOGO_DRAFT } from './CustomerLogoField'
 
 const KEY = ['admin-companies']
 const SUPPORT_KEY = ['admin-company-support']
-const EMPTY = { name: '', email: '', password: '', modules: ['tickets'], group_id: null, is_active: true }
+const LOGOS_KEY = ['admin-company-logos']
 
-function CompanyModal({ company, support, groups, provider, tenantModules, onClose, onSaved }) {
+function CompanyModal({ company, support, logoEtag, groups, provider, tenantModules, onClose, onSaved }) {
     const t = useT()
+    const [form] = Form.useForm()
     const isNew = !company.id
-    const [draft, setDraft] = useState(() => (isNew ? EMPTY : {
-        name: company.name, email: company.email, password: '', modules: company.modules,
-        group_id: support?.group_id ?? null, is_active: company.is_active,
-    }))
+    const [logoDraft, setLogoDraft] = useState(EMPTY_LOGO_DRAFT)
     const [error, setError] = useState(null)
-    const patch = (p) => setDraft((d) => ({ ...d, ...p }))
+    const initial = isNew
+        ? { name: '', email: '', password: '', modules: ['tickets'], group_id: undefined, is_active: true }
+        : { name: company.name, email: company.email, modules: company.modules,
+            group_id: support?.group_id ?? undefined, is_active: company.is_active }
     const save = useMutation({
-        mutationFn: async () => {
+        mutationFn: async (values) => {
+            const name = values.name.trim()
             const saved = isNew
-                ? await companyService.create({
-                    name: draft.name.trim(), email: draft.email.trim(), password: draft.password, modules: draft.modules,
-                })
-                : await companyService.update(company.id, {
-                    name: draft.name.trim(), modules: draft.modules, is_active: draft.is_active,
-                })
-            const wantsSupport = provider && draft.modules.includes('tickets') && draft.group_id
-            if (wantsSupport && (draft.group_id !== support?.group_id || draft.name.trim() !== support?.display_name)) {
-                await companyService.setSupport(saved.id, { display_name: draft.name.trim(), group_id: draft.group_id })
+                ? await companyService.create({ name, email: values.email.trim(), password: values.password, modules: values.modules })
+                : await companyService.update(company.id, { name, modules: values.modules, is_active: values.is_active })
+            const wantsSupport = provider && values.modules.includes('tickets') && values.group_id
+            if (wantsSupport && (values.group_id !== support?.group_id || name !== support?.display_name)) {
+                await companyService.setSupport(saved.id, { display_name: name, group_id: values.group_id })
+            }
+            // Logo hesap kaydindan SONRA; basarisizsa hesap kalir, uyari verilir.
+            try {
+                if (logoDraft.file) await companyService.uploadLogo(saved.id, logoDraft.file)
+                else if (logoDraft.remove) await companyService.deleteLogo(saved.id)
+            } catch (err) {
+                message.warning(normalizeApiError(err).message)
             }
             return saved
         },
         onSuccess: () => { message.success(t('companies.saved')); onSaved(); onClose() },
         onError: (err) => setError(normalizeApiError(err).message),
     })
-    const valid = draft.name.trim().length >= 2 && (!isNew || (draft.email.includes('@') && draft.password.length >= 8))
+    const modules = Form.useWatch('modules', form) ?? initial.modules
     return (
         <Modal
-            open
-            onCancel={onClose}
-            onOk={() => { setError(null); save.mutate() }}
-            okText={t('common.save')}
-            okButtonProps={{ loading: save.isPending, disabled: !valid }}
             title={<ModalHead icon={<BankOutlined />} tone="blue" title={isNew ? t('companies.new') : t('companies.edit')} />}
-            width={600}
-            destroyOnHidden
+            open onCancel={onClose} footer={null} destroyOnHidden
         >
-            <div className="pc-form">
-                <label className="sla-field"><span>{t('companies.name')}</span>
-                    <Input value={draft.name} maxLength={120} placeholder="Defacto" aria-label={t('companies.name')}
-                           onChange={(e) => patch({ name: e.target.value })} />
-                </label>
-                <label className="sla-field"><span>{t('companies.loginEmail')}</span>
-                    <Input value={draft.email} disabled={!isNew} placeholder="destek@sirket.com" aria-label={t('companies.loginEmail')}
-                           onChange={(e) => patch({ email: e.target.value })} />
-                </label>
+            <Form form={form} layout="vertical" initialValues={initial}
+                  onFinish={(values) => { setError(null); save.mutate(values) }}>
+                <Form.Item noStyle shouldUpdate={(a, b) => a.name !== b.name}>
+                    {({ getFieldValue }) => (
+                        <CustomerLogoField
+                            Logo={CompanyLogo}
+                            record={isNew ? null : { id: company.id, name: company.name, has_logo: Boolean(logoEtag), logo_etag: logoEtag }}
+                            name={getFieldValue('name')}
+                            draft={logoDraft}
+                            onChange={setLogoDraft}
+                        />
+                    )}
+                </Form.Item>
+                <Form.Item name="name" label={t('companies.name')} rules={[{ required: true, min: 2, message: t('companies.nameRequired') }]}>
+                    <Input placeholder="Defacto" maxLength={120} />
+                </Form.Item>
+                <Form.Item name="email" label={t('companies.loginEmail')} rules={[{ required: true, type: 'email', message: t('users.emailInvalid') }]}>
+                    <Input placeholder="destek@sirket.com" disabled={!isNew} />
+                </Form.Item>
                 {isNew && (
-                    <label className="sla-field"><span>{t('companies.password')}</span>
-                        <Input.Password value={draft.password} aria-label={t('companies.password')}
-                                        onChange={(e) => patch({ password: e.target.value })} />
-                        <small className="lq-note">{t('companies.passwordHint')}</small>
-                    </label>
+                    <Form.Item name="password" label={t('companies.password')} extra={t('companies.passwordHint')}
+                               rules={[{ required: true, min: 8, message: t('companies.passwordHint') }]}>
+                        <Input.Password />
+                    </Form.Item>
                 )}
-                <div className="sla-field"><span>{t('companies.modules')}</span>
+                {!isNew && (
+                    <Form.Item name="is_active" label={t('common.status')} valuePropName="checked">
+                        <Switch checkedChildren={t('common.active')} unCheckedChildren={t('common.inactive')} />
+                    </Form.Item>
+                )}
+                <Form.Item name="modules" label={t('companies.modules')}>
                     <Checkbox.Group
-                        value={draft.modules}
-                        onChange={(v) => patch({ modules: v })}
                         options={MODULE_CODES.filter((m) => tenantModules.includes(m))
                             .map((m) => ({ value: m, label: t(MODULES[m].labelKey) }))}
                     />
-                </div>
-                {draft.modules.includes('tickets') && (
-                    <label className="sla-field"><span>{t('companies.supportTeam')}</span>
+                </Form.Item>
+                {modules.includes('tickets') && (
+                    <Form.Item name="group_id" label={t('companies.supportTeam')} extra={t('companies.supportHint')}>
                         {provider ? (
-                            <Select allowClear value={draft.group_id} onChange={(v) => patch({ group_id: v || null })}
-                                    aria-label={t('companies.supportTeam')} placeholder={t('companies.pickTeam')}
+                            <Select allowClear placeholder={t('companies.pickTeam')}
                                     options={groups.map((g) => ({ value: g.id, label: g.name }))} />
                         ) : <Alert type="info" showIcon message={t('companies.notProvider')} />}
-                        <small className="lq-note">{t('companies.supportHint')}</small>
-                    </label>
+                    </Form.Item>
                 )}
-                {!isNew && (
-                    <label className="companies-active">
-                        <Switch checked={draft.is_active} onChange={(v) => patch({ is_active: v })}
-                                aria-label={t('companies.active')} />
-                        <span>{t('companies.active')}</span>
-                    </label>
-                )}
-                {error && <Alert type="error" showIcon message={error} />}
-            </div>
+                {error && <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} />}
+                <div className="lq-mf">
+                    <Button onClick={onClose}>{t('common.cancel')}</Button>
+                    <Button type="primary" htmlType="submit" loading={save.isPending}>
+                        {isNew ? t('common.create') : t('admin.update')}
+                    </Button>
+                </div>
+            </Form>
         </Modal>
     )
 }
 
 function PasswordModal({ company, onClose }) {
     const t = useT()
-    const [password, setPassword] = useState('')
+    const [form] = Form.useForm()
     const reset = useMutation({
-        mutationFn: () => companyService.resetPassword(company.id, password),
+        mutationFn: ({ password }) => companyService.resetPassword(company.id, password),
         onSuccess: () => { message.success(t('companies.passwordReset')); onClose() },
         onError: (err) => message.error(normalizeApiError(err).message),
     })
     return (
-        <Modal open onCancel={onClose} onOk={() => reset.mutate()} okText={t('common.save')}
-               okButtonProps={{ loading: reset.isPending, disabled: password.length < 8 }}
-               title={<ModalHead icon={<KeyOutlined />} tone="amber" title={t('companies.resetPasswordFor', { name: company.name })} />}
-               destroyOnHidden>
-            <label className="sla-field"><span>{t('companies.newPassword')}</span>
-                <Input.Password value={password} onChange={(e) => setPassword(e.target.value)}
-                                aria-label={t('companies.newPassword')} />
-                <small className="lq-note">{t('companies.passwordResetHint')}</small>
-            </label>
+        <Modal
+            title={<ModalHead icon={<KeyOutlined />} tone="amber" title={t('companies.resetPasswordFor', { name: company.name })} />}
+            open onCancel={onClose} footer={null} destroyOnHidden
+        >
+            <Form form={form} layout="vertical" onFinish={(values) => reset.mutate(values)}>
+                <Form.Item name="password" label={t('companies.newPassword')} extra={t('companies.passwordResetHint')}
+                           rules={[{ required: true, min: 8, message: t('companies.passwordHint') }]}>
+                    <Input.Password />
+                </Form.Item>
+                <div className="lq-mf">
+                    <Button onClick={onClose}>{t('common.cancel')}</Button>
+                    <Button type="primary" htmlType="submit" loading={reset.isPending}>{t('common.save')}</Button>
+                </div>
+            </Form>
         </Modal>
     )
 }
@@ -140,84 +164,136 @@ export default function CompaniesTab() {
     const queryClient = useQueryClient()
     const tenant = useAuthStore((s) => s.tenant)
     const tenantModules = Array.isArray(tenant?.modules) ? tenant.modules : MODULE_CODES
-    const companies = useQuery({ queryKey: KEY, queryFn: companyService.list })
     const ticketsOn = tenantModules.includes('tickets')
+    const companies = useQuery({ queryKey: KEY, queryFn: companyService.list })
     const support = useQuery({ queryKey: SUPPORT_KEY, queryFn: companyService.supportList, enabled: ticketsOn, retry: false })
-    const groups = useQuery({ queryKey: ['admin-user-groups', 'company-picker'], queryFn: () => userGroupService.list(), enabled: ticketsOn, retry: false })
+    const logos = useQuery({ queryKey: LOGOS_KEY, queryFn: companyService.logos, retry: false })
+    const groups = useQuery({ queryKey: ['admin-user-groups'], queryFn: () => userGroupService.list(), enabled: ticketsOn, retry: false })
+    const [search, setSearch] = useState('')
     const [editing, setEditing] = useState(null)
     const [resetting, setResetting] = useState(null)
+
     const supportBy = useMemo(
         () => Object.fromEntries((support.data?.items ?? []).map((s) => [s.account_id, s])),
         [support.data],
     )
+    const logoBy = logos.data?.logos ?? {}
+    const rows = useMemo(
+        () => (companies.data ?? []).filter((c) => matchesAny([c.name, c.email], search)),
+        [companies.data, search],
+    )
     const refresh = () => {
         queryClient.invalidateQueries({ queryKey: KEY })
         queryClient.invalidateQueries({ queryKey: SUPPORT_KEY })
+        queryClient.invalidateQueries({ queryKey: LOGOS_KEY })
     }
     const provider = Boolean(support.data?.provider)
-    const groupRows = (Array.isArray(groups.data) ? groups.data : groups.data?.items ?? []).filter((g) => g.is_active !== false)
+    const groupRows = (Array.isArray(groups.data) ? groups.data : []).filter((g) => g.is_active !== false)
 
     const columns = [
         {
-            title: t('companies.name'), dataIndex: 'name',
-            render: (name, row) => (
-                <span className="companies-name"><b>{name}</b><small>{row.email}</small></span>
+            title: t('companies.company'),
+            dataIndex: 'name',
+            key: 'name',
+            sorter: (a, b) => a.name.localeCompare(b.name),
+            render: (name, record) => (
+                <span className="users-person">
+                    <CompanyLogo id={record.id} name={name} size={32} etag={logoBy[record.id] ?? null} />
+                    <span className="users-person__text">
+                        <b>{name}</b>
+                        <small>{record.email}</small>
+                    </span>
+                </span>
             ),
         },
         {
-            title: t('companies.modules'), dataIndex: 'modules',
+            title: t('companies.modules'),
+            dataIndex: 'modules',
+            key: 'modules',
             render: (mods) => (mods.length
-                ? mods.map((m) => <Tag key={m}>{t(MODULES[m]?.labelKey ?? m)}</Tag>)
-                : <Typography.Text type="secondary">{t('companies.noModules')}</Typography.Text>),
+                ? <Space size={4} wrap>{mods.map((m) => <span key={m} className="lq-tag lq-tag--info">{t(MODULES[m]?.labelKey ?? m)}</span>)}</Space>
+                : <span className="lq-tag">{t('companies.noModules')}</span>),
         },
         {
-            title: t('companies.supportTeam'), key: 'support',
-            render: (_, row) => {
-                if (!row.modules.includes('tickets')) return '—'
-                const s = supportBy[row.id]
+            title: t('companies.supportTeam'),
+            key: 'support',
+            render: (_, record) => {
+                if (!record.modules.includes('tickets')) return '—'
+                const s = supportBy[record.id]
                 return s?.configured
                     ? s.group_name
-                    : <StatusBadge tone="warning">{t('companies.teamMissing')}</StatusBadge>
+                    : <span className="lq-tag lq-tag--warn">{t('companies.teamMissing')}</span>
             },
         },
         {
-            title: t('companies.status'), dataIndex: 'is_active',
-            render: (on) => <StatusBadge tone={on ? 'success' : 'neutral'}>{on ? t('companies.activeShort') : t('companies.inactive')}</StatusBadge>,
+            title: t('common.status'), dataIndex: 'is_active', key: 'is_active', width: 100, render: (active) => (
+                <span className={`lq-tag${active ? ' lq-tag--ok' : ''}`}>
+                    <span className="users-dot" aria-hidden="true" />{active ? t('users.statusActive') : t('users.statusInactive')}
+                </span>
+            ),
         },
         {
-            title: '', key: 'actions', align: 'right',
-            render: (_, row) => (
-                <span className="companies-actions">
-                    <Button size="small" onClick={() => setEditing(row)}>{t('common.edit')}</Button>
-                    <Button size="small" icon={<KeyOutlined />} onClick={() => setResetting(row)}
-                            aria-label={t('companies.resetPasswordFor', { name: row.name })} />
-                </span>
+            title: t('common.actions'), key: 'actions', width: 120, render: (_, record) => (
+                <Space>
+                    <Button type="text" icon={<EditOutlined />} aria-label={t('companies.editFor', { name: record.name })}
+                            onClick={() => setEditing(record)} />
+                    <Button type="text" icon={<LockOutlined />} aria-label={t('companies.resetPasswordFor', { name: record.name })}
+                            onClick={() => setResetting(record)} />
+                </Space>
             ),
         },
     ]
 
     return (
-        <div className="companies-tab">
-            <div className="companies-head">
-                <p>{t('companies.hint')}</p>
-                <Button variant="primary" icon={<PlusOutlined />} onClick={() => setEditing({})}>{t('companies.new')}</Button>
-            </div>
-            <Table
-                rowKey="id"
-                loading={companies.isLoading}
-                dataSource={companies.data ?? []}
-                columns={columns}
-                pagination={false}
-                locale={{ emptyText: t('companies.empty') }}
-                scroll={{ x: 640 }}
-            />
+        <>
+            <AdminErrorAlert error={companies.isError ? companies.error : null} onRetry={companies.refetch} />
+            <Card variant="borderless"
+                title={t('admin.entityCount', { entity: t('companies.title'), n: rows.length })}
+                extra={
+                    <Space wrap>
+                        <Input
+                            allowClear
+                            prefix={<SearchOutlined aria-hidden="true" />}
+                            placeholder={t('admin.searchEntity', { entity: t('companies.title') })}
+                            aria-label={t('admin.searchEntity', { entity: t('companies.title') })}
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            style={{ width: 220 }}
+                        />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing({})}>{t('companies.new')}</Button>
+                    </Space>
+                }
+            >
+                <p className="companies-hint">{t('companies.hint')}</p>
+                <Table
+                    dataSource={rows}
+                    columns={columns}
+                    rowKey="id"
+                    loading={companies.isLoading && !companies.data}
+                    pagination={{ pageSize: 10 }}
+                    scroll={{ x: 'max-content' }}
+                    locale={{
+                        emptyText: (
+                            <AdminEmptyState
+                                filtered={!!search.trim()}
+                                term={search.trim()}
+                                entityLabel={t('companies.company')}
+                                createLabel={t('companies.new')}
+                                onCreate={() => setEditing({})}
+                            />
+                        ),
+                    }}
+                />
+                <AdminRefreshHint isFetching={companies.isFetching} hasData={(companies.data ?? []).length > 0} />
+            </Card>
             {editing && (
                 <CompanyModal
-                    company={editing} support={supportBy[editing.id]} groups={groupRows} provider={provider}
-                    tenantModules={tenantModules} onClose={() => setEditing(null)} onSaved={refresh}
+                    company={editing} support={supportBy[editing.id]} logoEtag={logoBy[editing.id] ?? null}
+                    groups={groupRows} provider={provider} tenantModules={tenantModules}
+                    onClose={() => setEditing(null)} onSaved={refresh}
                 />
             )}
             {resetting && <PasswordModal company={resetting} onClose={() => setResetting(null)} />}
-        </div>
+        </>
     )
 }

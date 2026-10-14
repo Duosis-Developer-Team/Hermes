@@ -6,6 +6,7 @@
 
 from .customer import Customer
 from .customer_logo import CUSTOMER_LOGO_TABLES, CustomerLogo
+from .company_logo import COMPANY_LOGO_TABLES, CompanyLogo
 from .work_type import WorkType
 from .project_type import PROJECT_TYPE_TABLES, ProjectType
 from .project import Project
@@ -186,6 +187,8 @@ __all__ = [
     "NOTIFICATION_TABLES",
     # Musteri logosu (0014)
     "CustomerLogo",
+    "CompanyLogo",
+    "COMPANY_LOGO_TABLES",
     "CUSTOMER_LOGO_TABLES",
     # Proje logosu (0015)
     "ProjectLogo",

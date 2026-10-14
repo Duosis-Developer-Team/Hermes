@@ -21,7 +21,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Iterable, List, Optional, Sequence
 from uuid import UUID
 
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
@@ -296,9 +296,20 @@ def create_ticket(
         ticket_state.default_priority(data.impact), data.impact
     )
 
+    # Musteriye gore sira (0025): "Defacto Ticket-001". Musteri satiri
+    # kilitlenerek tek ifadede ayrilir; talep yazimi geri alinirsa sira da.
+    customer_seq = db.execute(
+        text(
+            "UPDATE support_source_tenants SET next_ticket_seq = next_ticket_seq + 1 "
+            " WHERE id = :id RETURNING next_ticket_seq - 1"
+        ),
+        {"id": str(source_tenant.id)},
+    ).scalar()
+
     ticket = Ticket(
         id=uuid.uuid4(),
         number=number,
+        customer_seq=customer_seq,
         application_id=application.id,
         source_tenant_row_id=source_tenant.id,
         source_ticket_id=data.source_ticket_id,
@@ -630,6 +641,14 @@ def add_message(
             # E-posta (Dalga D4): talep edene, ayni transaction'da kuyruk.
             from . import ticket_mail
             ticket_mail.on_public_reply(db, ticket, message)
+        # Ajan musteriye yazdiysa yeni/yeniden acilmis talep "Islemde"ye
+        # gecer (kanban: biz yanitladik) — mesaj olayindan SONRA. Otomasyon
+        # yaniti durumu degistirmez.
+        if author_type == "agent" and ticket.status in ("open", "reopened"):
+            _apply_transition(
+                db, ticket, to_status="in_progress", actor=actor,
+                application=application, source_tenant=source_tenant,
+            )
     else:
         # Internal not: IC olay akisina girer, outbox'a GIRMEZ.
         events.record_event(
@@ -812,6 +831,9 @@ def transition(
         if to_status == "waiting_customer":
             from . import ticket_mail
             ticket_mail.mark_waiting(db, message.id)
+        # Yanit talebi zaten "Islemde"ye gecirdiyse ayni gecis tekrarlanmaz.
+        if ticket.status == to_status:
+            return ticket
 
     return _apply_transition(
         db, ticket, to_status=to_status, actor=actor, reason=reason,

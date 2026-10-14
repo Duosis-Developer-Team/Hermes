@@ -27,6 +27,10 @@ export const customerLogoUrl = (id, etag) =>
 export const projectLogoUrl = (id, etag) =>
     `/api/v1/core/projects/${encodeURIComponent(id)}/logo?v=${encodeURIComponent(etag)}`
 
+/** Sirket hesabi logosu (docs/tenant-platform/01) — etag cagirandan gelir. */
+export const companyLogoUrl = (id, etag) =>
+    `/api/v1/core/companies/${encodeURIComponent(id)}/logo?v=${encodeURIComponent(etag)}`
+
 const indexOf = (rows) => {
     const out = {}
     for (const r of rows || []) {

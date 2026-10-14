@@ -25,6 +25,7 @@ import { useTicketErrorText, useTicketLabel } from './useTicketLabel'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
 import { CustomerServiceOutlined } from '@ant-design/icons'
+import { ticketRef } from './constants'
 
 const { Text, Paragraph } = Typography
 
@@ -106,7 +107,7 @@ export default function CustomerTicketDetail({
                     icon={<CustomerServiceOutlined />}
                     tone="red"
                     title={ticket ? ticket.title : 'Request'}
-                    subtitle={ticket?.ticket_number}
+                    subtitle={ticketRef(ticket)}
                 />
             )}
             destroyOnHidden

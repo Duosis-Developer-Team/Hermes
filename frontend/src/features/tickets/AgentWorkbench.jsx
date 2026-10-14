@@ -32,8 +32,10 @@ import { useTicketLabel } from './useTicketLabel'
 import { useT } from '../../i18n'
 import { ModalHead } from '../../components/liquid'
 import {
-    CustomerServiceOutlined, DownOutlined, EyeInvisibleOutlined, EyeOutlined, MergeCellsOutlined,
+    ClockCircleOutlined, CustomerServiceOutlined, DownOutlined, EyeInvisibleOutlined, EyeOutlined,
+    MergeCellsOutlined,
 } from '@ant-design/icons'
+import { ticketRef } from './constants'
 
 const { Text } = Typography
 
@@ -45,7 +47,7 @@ export const LIVE_REFRESH_MS = 30_000
 
 export default function AgentWorkbench({
     ticketId, open, onClose, context, onChanged, onError, inline = false,
-    onOpenTicket,
+    onOpenTicket, onLogTime,
 }) {
     const t = useT()
     const tl = useTicketLabel()
@@ -217,6 +219,18 @@ export default function AgentWorkbench({
                         loading={watch.isPending}
                         onClick={() => watch.mutate(!ticket.watching)}
                     >{ticket.watching ? t('hub.unwatch') : t('hub.watch')}</Button>
+                    {/* Cozulmus/kapanmis talebe efor (gorevdeki "Log time" gibi). */}
+                    {onLogTime && ['resolved', 'closed'].includes(ticket.status) && (
+                        <Button icon={<ClockCircleOutlined />} onClick={() => onLogTime(ticket)}>
+                            {t('ticketLog.action')}
+                        </Button>
+                    )}
+                    {ticket.log_count > 0 && (
+                        <span className="lq-tag lq-tag--info ticket-logged">
+                            <ClockCircleOutlined aria-hidden="true" />
+                            {t('ticketLog.logged', { hours: String(ticket.logged_hours).replace('.', ','), count: ticket.log_count })}
+                        </span>
+                    )}
                 </Inline>
             ) : null
 
@@ -237,7 +251,7 @@ export default function AgentWorkbench({
                         <Alert
                             type="info"
                             showIcon
-                            message={t('merge.mergedInto', { number: ticket.merged_into.ticket_number })}
+                            message={t('merge.mergedInto', { number: ticketRef(ticket.merged_into) })}
                             action={onOpenTicket && (
                                 <Button size="small" onClick={() => onOpenTicket(ticket.merged_into.id)}>
                                     {t('merge.open')}
@@ -252,8 +266,8 @@ export default function AgentWorkbench({
                                 <span key={ref.id}>
                                     {i > 0 && ', '}
                                     {onOpenTicket
-                                        ? <button type="button" className="ticket-link" onClick={() => onOpenTicket(ref.id)}>{ref.ticket_number}</button>
-                                        : ref.ticket_number}
+                                        ? <button type="button" className="ticket-link" onClick={() => onOpenTicket(ref.id)}>{ticketRef(ref)}</button>
+                                        : ticketRef(ref)}
                                 </span>
                             ))}
                         </p>
@@ -392,7 +406,11 @@ export default function AgentWorkbench({
                 onCancel={() => setResolveOpen(false)}
                 onSubmit={(payload) => {
                     resolve.mutate(payload, {
-                        onSuccess: () => setResolveOpen(false),
+                        onSuccess: () => {
+                            setResolveOpen(false)
+                            // Gorevdeki gibi: cozulunce efor penceresi acilir.
+                            onLogTime?.(ticket)
+                        },
                     })
                 }}
             />
@@ -409,7 +427,7 @@ export default function AgentWorkbench({
                         {ticket && (
                             <header className="ticket-pane__head">
                                 <div className="ticket-pane__titles">
-                                    <span className="ticket-pane__code">{ticket.ticket_number}</span>
+                                    <span className="ticket-pane__code">{ticketRef(ticket)}</span>
                                     <h2 className="ticket-pane__title">{ticket.title}</h2>
                                 </div>
                                 {actions}
@@ -434,7 +452,7 @@ export default function AgentWorkbench({
                     icon={<CustomerServiceOutlined />}
                     tone="red"
                     title={ticket ? ticket.title : 'Ticket'}
-                    subtitle={ticket?.ticket_number}
+                    subtitle={ticketRef(ticket)}
                 />
             )}
             destroyOnHidden

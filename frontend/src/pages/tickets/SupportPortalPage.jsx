@@ -28,7 +28,7 @@ import { LiquidSegmented, PageHero } from '../../components/liquid'
 import CreateTicketModal from '../../features/tickets/CreateTicketModal'
 import CustomerTicketDetail from '../../features/tickets/CustomerTicketDetail'
 import { LIVE_REFRESH_MS } from '../../features/tickets/AgentWorkbench'
-import { isResolvedLike } from '../../features/tickets/constants'
+import { isResolvedLike, ticketRef } from '../../features/tickets/constants'
 import { TicketStatusBadge } from '../../features/tickets/TicketStatusBadge'
 import SurfaceSwitch from '../../features/tickets/SurfaceSwitch'
 import useTicketContext from '../../features/tickets/useTicketContext'
@@ -134,7 +134,7 @@ export default function SupportPortalPage() {
             invalidate()
             setCreateOpen(false)
             setSelected({ id: created.id, provider: created.provider?.tenant_id })
-            message.success(t('portal.received', { number: created.ticket_number }))
+            message.success(t('portal.received', { number: ticketRef(created) }))
         },
         onError: (error) => {
             const code = ticketErrorCode(error)
@@ -255,11 +255,11 @@ export default function SupportPortalPage() {
                                 openTicket(ticket)
                             }
                         }}
-                        aria-label={`${ticket.ticket_number} ${ticket.title}`}
+                        aria-label={`${ticketRef(ticket)} ${ticket.title}`}
                     >
                         <span className="support-card__code">
                             {ticket.has_update && <span className="tickets-row__dot" aria-label={t('portal.hasUpdate')} />}
-                            {ticket.ticket_number}
+                            {ticketRef(ticket)}
                         </span>
                         {/* Baslik STRIKETHROUGH YAPILMAZ: cozulmus bir
                             talebin basligi da okunabilir kalmali. */}

@@ -192,6 +192,11 @@ class WorkLog(TenantOwnedMixin, Base):
         index=True,
     )
 
+    # Talep → efor (0025): talep cozulunce ya da kapandiktan sonra girilen
+    # efor talebe MANTIKSAL olarak baglanir (fiziksel FK yok; servis ayni
+    # tenant'taki talebi dogrular, yoksa bag sessizce dusurulur).
+    ticket_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+
     # ==========================================================================
     # Work Log Details
     # ==========================================================================

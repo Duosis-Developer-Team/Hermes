@@ -173,6 +173,7 @@ def _customer_out(db: Session, ticket: Ticket, link: network.ProviderLink,
     csat = ticket_reports.csat_of(db, ticket.id)
     return ser.customer_detail(db, ticket).model_copy(update={
         "provider": _provider_ref(link),
+        "customer_ref": ser.customer_ref(ser.source_name(db, ticket), ticket.customer_seq),
         "csat": CsatOut(rating=csat.rating, comment=csat.comment, updated_at=csat.updated_at) if csat else None,
         "can_rate": ticket.status in ticket_reports.CSAT_STATUSES
         and str(ticket.requester_source_user_id) == str(requester),
@@ -278,6 +279,7 @@ def list_my_tickets(
                     ser.customer_list_item(t).model_copy(update={
                         "provider": ref,
                         "has_update": helpdesk.customer_has_update(t, reads.get(t.id)),
+                        "customer_ref": ser.customer_ref(ser.source_name(db, t), getattr(t, "customer_seq", None)),
                     })
                     for t in rows
                 )
@@ -404,9 +406,10 @@ def create_ticket(
             actor=_actor(current_user, request),
         )
         helpdesk.mark_read(db, ticket.id, str(current_user.id))
-        response = ser.customer_detail(db, ticket).model_copy(
-            update={"provider": _provider_ref(link)}
-        )
+        response = ser.customer_detail(db, ticket).model_copy(update={
+            "provider": _provider_ref(link),
+            "customer_ref": ser.customer_ref(ser.source_name(db, ticket), ticket.customer_seq),
+        })
     except Exception as exc:  # noqa: BLE001
         guard.release()
         raise translate(exc)

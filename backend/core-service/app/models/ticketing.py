@@ -169,6 +169,9 @@ class SupportSourceTenant(TenantOwnedMixin, Base):
     source_tenant_id = Column(String(128), nullable=False)
     source_tenant_slug = Column(String(128), nullable=True)
     display_name = Column(String(200), nullable=False)
+    # Musteri basina talep sirasi (0025): "Defacto Ticket-001". Kilitli tek
+    # UPDATE ... RETURNING ile ayrilir (ticket_service.create_ticket).
+    next_ticket_seq = Column(Integer, nullable=False, default=1, server_default="1")
     status = Column(String(20), nullable=False, default="active", index=True)
     metadata_json = Column(
         JSONB, nullable=False, default=dict,
@@ -427,6 +430,10 @@ class Ticket(TenantOwnedMixin, Base):
         ForeignKey("tickets.id", ondelete="RESTRICT"),
         nullable=True,
     )
+
+    # Musteriye gore numara (0025): arayuzde "<musteri> Ticket-001". Kanonik
+    # `number` (TKT-000123) sozlesmede ve e-posta eslesmesinde AYNEN kalir.
+    customer_seq = Column(Integer, nullable=True)
 
     version = Column(Integer, nullable=False, default=1)
     event_sequence = Column(Integer, nullable=False, default=0)

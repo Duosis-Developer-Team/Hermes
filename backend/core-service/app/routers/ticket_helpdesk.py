@@ -949,6 +949,8 @@ class TeamRef(BaseModel):
 class MyCustomerOut(BaseModel):
     id: UUID
     display_name: str
+    # Sirket hesabi musterisinde hesabin kimligi (logo: /companies/{id}/logo).
+    account_id: Optional[UUID] = None
     application: Optional[str] = None
     kind: Literal["company", "workspace", "integration"]
     team: Optional[TeamRef] = None
@@ -1009,8 +1011,11 @@ def my_customers(
         else:
             kind = "integration"
         group = groups.get(route.group_id) if route is not None else None
+        account_id = (UUID(src.source_tenant_id[len(company_accounts.SOURCE_PREFIX):])
+                      if kind == "company" else None)
         out.append(MyCustomerOut(
             id=src.id, display_name=src.display_name, application=app.display_name, kind=kind,
+            account_id=account_id,
             team=TeamRef(id=group.id, name=group.name) if group else None,
             open_count=int(open_count or 0), total_count=int(total or 0), last_activity_at=last,
         ))

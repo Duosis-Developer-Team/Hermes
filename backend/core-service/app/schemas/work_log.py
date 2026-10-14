@@ -66,6 +66,9 @@ class WorkLogBase(BaseModel):
     meeting_id: Optional[UUID] = Field(
         None, description="Bağlı meeting ID'si"
     )
+
+    # Ticket integration — Talep → Efor akisi (0025).
+    ticket_id: Optional[UUID] = Field(None, description="Bağlı talep ID'si")
     
     @field_validator('duration_hours', 'billable_duration_hours', mode='before')
     @classmethod
@@ -138,6 +141,7 @@ class WorkLogResponse(WorkLogBase):
     # PM rework P1.2: bagli is kalemi (Log Time akisi). `task_id` yalnizca
     # eski tasks satirina bagli tarihsel kayitlarda doludur.
     work_item_id: Optional[UUID] = None
+    ticket_id: Optional[UUID] = None
     
     model_config = ConfigDict(from_attributes=True)
 

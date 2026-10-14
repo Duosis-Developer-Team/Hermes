@@ -175,6 +175,8 @@ class TicketRefOut(BaseModel):
     ticket_number: str
     title: str
     status: str
+    # Musteriye gore numara (0025): "Defacto Ticket-001".
+    customer_ref: Optional[str] = None
 
 
 class CsatOut(BaseModel):
@@ -193,6 +195,9 @@ class ProviderRef(BaseModel):
 class TicketCustomerListItem(BaseModel):
     id: UUID
     ticket_number: str
+    # Musteriye gore numara (0025) — yalniz portal doldurur; entegrasyon
+    # yanitinda `provider`/`csat` gibi bos kalir (kanonik numara degismez).
+    customer_ref: Optional[str] = None
     title: str
     status: StatusLiteral
     category: CategoryLiteral
@@ -239,6 +244,11 @@ class TicketCustomerOut(TicketCustomerListItem):
 class TicketAgentListItem(BaseModel):
     id: UUID
     ticket_number: str
+    # Musteriye gore numara (0025): "Defacto Ticket-001".
+    customer_ref: Optional[str] = None
+    # Kanban sutunu: pending (sira bizde) / in_progress (biz yanitladik) /
+    # completed / cancelled — durum + son public mesajin yazarindan.
+    board_column: Optional[str] = None
     title: str
     status: StatusLiteral
     category: CategoryLiteral
@@ -309,6 +319,9 @@ class TicketAgentOut(TicketAgentListItem):
     # Dalga D1: birlestirme
     merged_into: Optional[TicketRefOut] = None
     merged_from: List[TicketRefOut] = Field(default_factory=list)
+    # Talebe bagli girilmis efor (0025): toplam saat + kayit sayisi.
+    logged_hours: float = 0
+    log_count: int = 0
 
 
 class TicketWorkItemCreateRequest(_Strict):

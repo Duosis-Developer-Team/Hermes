@@ -15,6 +15,7 @@ import { ticketHelpdeskService, ticketHubService } from '../../api/ticketsApi'
 import { ModalHead } from '../../components/liquid'
 import { useT } from '../../i18n'
 import { TicketStatusBadge } from './TicketStatusBadge'
+import { ticketRef } from './constants'
 
 const OPEN_TARGET = (row) => !['closed', 'cancelled'].includes(row.status)
 
@@ -54,7 +55,7 @@ export default function MergeModal({ open, ticket, onClose, onMerged }) {
     const target = candidates.find((r) => r.id === targetId)
 
     useEffect(() => {
-        if (target && !edited) setMessage(t('merge.customerMessage', { number: target.ticket_number }))
+        if (target && !edited) setMessage(t('merge.customerMessage', { number: ticketRef(target) }))
     }, [target, edited, t])
 
     if (!ticket) return null
@@ -64,7 +65,7 @@ export default function MergeModal({ open, ticket, onClose, onMerged }) {
             const merged = await ticketHelpdeskService.merge(ticket.id, {
                 target_ticket_id: targetId,
                 public_summary: message.trim(),
-                note_header: t('merge.noteHeader', { number: ticket.ticket_number }),
+                note_header: t('merge.noteHeader', { number: ticketRef(ticket) }),
                 expected_version: ticket.version,
             })
             onMerged?.(merged)
@@ -80,7 +81,7 @@ export default function MergeModal({ open, ticket, onClose, onMerged }) {
         <Modal
             open={open}
             title={<ModalHead icon={<MergeCellsOutlined />} tone="violet" title={t('merge.title')}
-                              subtitle={`${ticket.ticket_number} · ${ticket.title}`} />}
+                              subtitle={`${ticketRef(ticket)} · ${ticket.title}`} />}
             onCancel={onClose}
             onOk={submit}
             okText={t('merge.confirm')}
@@ -103,13 +104,13 @@ export default function MergeModal({ open, ticket, onClose, onMerged }) {
                         notFoundContent={t('merge.noCandidates')}
                         options={candidates.map((row) => ({
                             value: row.id,
-                            label: `${row.ticket_number} · ${row.title}`,
+                            label: `${ticketRef(row)} · ${row.title}`,
                         }))}
                     />
                 </label>
                 {target && (
                     <div className="merge-preview">
-                        <span className="tickets-row__code">{target.ticket_number}</span>
+                        <span className="tickets-row__code">{ticketRef(target)}</span>
                         <b>{target.title}</b>
                         <TicketStatusBadge status={target.status} surface="hub" />
                     </div>

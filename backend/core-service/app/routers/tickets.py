@@ -159,8 +159,13 @@ def _enrich_rows(db: Session, rows, items, scope: visibility.HubScope):
 def _ticket_ref(ticket: Ticket) -> TicketRefOut:
     from ..ticket_contract import format_ticket_number
 
+    from sqlalchemy.orm import object_session
+
+    db = object_session(ticket)
+    name = ser.source_name(db, ticket) if db is not None else None
     return TicketRefOut(id=ticket.id, ticket_number=format_ticket_number(ticket.number),
-                        title=ticket.title, status=ticket.status)
+                        title=ticket.title, status=ticket.status,
+                        customer_ref=ser.customer_ref(name, ticket.customer_seq))
 
 
 def _detail(
@@ -395,6 +400,7 @@ def list_tickets(
     offset: int = Query(0, ge=0),
     sort: Optional[str] = Query(None, pattern="^(updated|newest|oldest|priority|due)$"),
     tag: List[UUID] = Query(default_factory=list),
+    board: bool = Query(False),
     scope: visibility.HubScope = Depends(hub_scope),
     db: Session = Depends(get_support_db),
 ):
@@ -411,16 +417,20 @@ def list_tickets(
         created_from=created_from,
         created_to=created_to,
         tag_ids=tuple(tag),
+        # Kanban (board=true): iptaller yok, tamamlananlar son 14 gun.
+        board_window_days=14 if board else None,
     )
     rows, total = ticket_queries.list_hub_tickets(
         db, scope, filters, limit=limit, offset=offset, sort=sort,
     )
     apps, sources = ticket_queries.load_refs(db, rows)
+    authors = ticket_queries.last_public_authors(db, [t.id for t in rows])
     items = [
         ser.agent_list_item(
             t,
             application=apps.get(t.application_id),
             source_tenant=sources.get(t.source_tenant_row_id),
+            last_public_author=authors.get(t.id),
         )
         for t in rows
     ]

@@ -11,7 +11,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowLeftOutlined } from '@ant-design/icons'
 
 import { userPhotoUrl, useUserPhotoStore } from '../../stores/userPhotoStore'
-import { customerLogoUrl, projectLogoUrl, useCustomerLogoStore } from '../../stores/customerLogoStore'
+import { companyLogoUrl, customerLogoUrl, projectLogoUrl, useCustomerLogoStore } from '../../stores/customerLogoStore'
 import { genericLogoUrl } from '../../features/projectTypes/genericLogo'
 
 const reducedMotion = () =>
@@ -196,14 +196,14 @@ export function Avatar({ id, name, size = 28, title, className = '' }) {
  * bas harf karosu — yonetim tablosundaki rozetle ayni dil. `etag` verilirse
  * depo yerine o kullanilir (ornegin pasif musteriler, depoda olmayanlar).
  */
-export function CustomerLogo({ id, name, size = 28, etag: etagProp, className = '', title }) {
+export function CustomerLogo({ id, name, size = 28, etag: etagProp, className = '', title, srcFor = customerLogoUrl }) {
     const stored = useCustomerLogoStore((s) => (id ? s.etags[id] : undefined))
     const etag = etagProp === undefined ? stored : etagProp
     const [failed, setFailed] = useState(null)
     if (id && etag && failed !== etag) {
         return (
             <span className={`lq-brand ${className}`} title={title}>
-                <LogoTile src={customerLogoUrl(id, etag)} size={size} onFail={() => setFailed(etag)} />
+                <LogoTile src={srcFor(id, etag)} size={size} onFail={() => setFailed(etag)} />
             </span>
         )
     }
@@ -223,6 +223,11 @@ export function CustomerLogo({ id, name, size = 28, etag: etagProp, className = 
             {(name || '?').trim().charAt(0).toLocaleUpperCase()}
         </span>
     )
+}
+
+/** Sirket hesabi logosu: musteri logosuyla AYNI karo (etag cagirandan). */
+export function CompanyLogo({ etag = null, ...props }) {
+    return <CustomerLogo {...props} etag={etag} srcFor={companyLogoUrl} />
 }
 
 // Yatay (yazi) logolar kare karoda okunmaz: karo gorselin oranina gore

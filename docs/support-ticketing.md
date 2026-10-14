@@ -72,6 +72,29 @@ ICINDE tek bir **sirket hesabi** verilir (auth `tenant_memberships.account_kind
 (baglanti sentezlenir), talepleri `company:<hesap>` musterisi olarak yonetici-
 nin sectigi ekibe duser. Musteri kaydi + ekip olusmadan talep acamaz
 (`route_missing`). Kurulum: Ayarlar → Kullanicilar → Sirketler.
+Sirket logosu musteri logosuyla ayni kurallarla core'da (`company_logos`, 0025;
+`/companies/{hesap}/logo`, yazma `users.manage`, yalniz `account_kind=company`).
+
+## 1c-3. Musteri numarasi, pano, talep eforu (2026-10-14, 0025)
+
+- **Musteri numarasi**: her kaynak musterinin kendi sirasi
+  (`support_source_tenants.next_ticket_seq` → `tickets.customer_seq`), ekranda
+  `customer_ref` = "Defacto Ticket-001". Kanonik `TKT-000123` AYNEN kalir
+  (sozlesme, e-posta konusu, webhook); `customer_ref` yalniz hub/portal
+  semalarinda, integration yuzeyinde `null`. Eski talepler 0025'te
+  `number` sirasiyla geriye doldurulur. Arama "Ticket-002" gibi musteri
+  numarasini da bulur.
+- **Pano** (Talepler → Pano, `?board=true`): sutun "top kimde"den sunucuda
+  hesaplanir (`ticket_serializers.board_column`). Bekleyen = acik/yeniden
+  acilmis ya da son genel mesaj MUSTERIDEN; Islemde = son genel mesaj bizden;
+  Tamamlandi = cozuldu/kapandi (son 14 gun). Iptal panoda yok. Ajanin acik
+  talebe ilk genel yaniti durumu otomatik `in_progress` yapar (otomasyon
+  yaniti yapmaz). Surukle-birak mevcut komutlari acar: → Tamamlandi = cozum,
+  → Islemde = yanit, Tamamlandi → Bekleyen = gerekceli yeniden acma.
+- **Talep eforu**: cozumden sonra efor penceresi acilir (aciklama ilk satiri
+  `customer_ref`); atlanirsa kapali talepten girilir. `work_logs.ticket_id`
+  mantiksal bagdir (FK yok, talep tenant'ta yoksa bag duser); detay toplam
+  saati ve kayit sayisini gosterir.
 
 ## 1d. E-posta kanali (2026-10-14, Dalga D4, 0024)
 

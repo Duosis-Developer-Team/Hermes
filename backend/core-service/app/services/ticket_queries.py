@@ -171,6 +171,8 @@ class TicketFilters:
     updated_from: Optional[datetime] = None
     updated_to: Optional[datetime] = None
     tag_ids: Tuple = ()
+    # Kanban: iptaller yok, cozulen/kapanan yalniz son N gun.
+    board_window_days: Optional[int] = None
 
 
 def _apply_filters(query, filters: TicketFilters):
@@ -221,9 +223,17 @@ def _apply_filters(query, filters: TicketFilters):
             if digits:
                 try:
                     conditions.append(Ticket.number == int(digits))
+                    # "Ticket-001" / "Defacto Ticket-001": musteri sirasi.
+                    conditions.append(Ticket.customer_seq == int(digits))
                 except ValueError:  # pragma: no cover
                     pass
             query = query.filter(or_(*conditions))
+    if filters.board_window_days:
+        since = datetime.now(timezone.utc) - timedelta(days=filters.board_window_days)
+        query = query.filter(
+            Ticket.status != "cancelled",
+            or_(Ticket.status.notin_(("resolved", "closed")), Ticket.updated_at >= since),
+        )
     return query
 
 
@@ -369,3 +379,13 @@ __all__ = [
     "queue_counts",
     "queue_predicate",
 ]
+
+
+def last_public_authors(db: Session, ticket_ids) -> dict:
+    """{ticket_id: son public mesajin yazar tipi} — tek sorgu (kanban)."""
+    ids = list(ticket_ids)
+    if not ids:
+        return {}
+    sub = _last_public_author_subquery()
+    rows = db.execute(select(sub.c.ticket_id, sub.c.author_type).where(sub.c.ticket_id.in_(ids))).all()
+    return {r[0]: r[1] for r in rows}

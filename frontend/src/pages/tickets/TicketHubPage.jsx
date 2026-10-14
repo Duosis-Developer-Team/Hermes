@@ -15,7 +15,10 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { BarChartOutlined, ReadOutlined, ReloadOutlined, SearchOutlined, ShopOutlined } from '@ant-design/icons'
+import {
+    AppstoreOutlined, BarChartOutlined, ReadOutlined, ReloadOutlined, SearchOutlined, ShopOutlined,
+    UnorderedListOutlined,
+} from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Checkbox, Input, message, Pagination, Select, Skeleton } from 'antd'
 import dayjs from 'dayjs'
@@ -27,12 +30,15 @@ import { Button, EmptyState, Page } from '../../components/ui'
 import { GlassCard, LiquidSegmented, PageHero } from '../../components/liquid'
 import AgentWorkbench, { LIVE_REFRESH_MS } from '../../features/tickets/AgentWorkbench'
 import {
-    AGENT_STATUS_LABELS, CATEGORY_LABELS, PRIORITY_LABELS,
+    AGENT_STATUS_LABELS, CATEGORY_LABELS, PRIORITY_LABELS, ticketRef,
 } from '../../features/tickets/constants'
 import {
     TicketPriorityBadge, TicketStatusBadge,
 } from '../../features/tickets/TicketStatusBadge'
 import BulkBar from '../../features/tickets/BulkBar'
+import TicketBoard from '../../features/tickets/TicketBoard'
+import useTicketWorkLog from '../../features/tickets/useTicketWorkLog'
+import LogTimeModal from '../../components/modals/LogTimeModal'
 import SavedViews from '../../features/tickets/SavedViews'
 import SlaBadge, { TagChips } from '../../features/tickets/SlaBadge'
 import SurfaceSwitch from '../../features/tickets/SurfaceSwitch'
@@ -98,6 +104,8 @@ export default function TicketHubPage() {
     const priorities = params.getAll('priority')
     const categories = params.getAll('category')
     const groupId = params.get('group') || undefined
+    // Gorunum: liste (varsayilan) ya da kanban — is yonetimindeki gibi URL'de.
+    const layout = params.get('layout') === 'board' ? 'board' : 'list'
     // Musteri (kaynak tenant kaydi) — Musteriler sayfasindan gelinir.
     const customerId = params.get('customer') || undefined
     const tagIds = params.getAll('tag')
@@ -191,6 +199,21 @@ export default function TicketHubPage() {
         keepPreviousData: true,
         refetchInterval: LIVE_REFRESH_MS,
     })
+
+    // Kanban: kuyruk yerine tum kapsam (iptal yok, tamamlanan son 14 gun);
+    // diger suzgecler (arama, musteri, ekip, oncelik, etiket) gecerli.
+    const board = useQuery({
+        queryKey: queryKeys.tickets.list({ ...filters, queue: 'all', page: 1, layout: 'board' }),
+        queryFn: () => ticketHubService.list({
+            queue: 'all', board: true, application_id: applicationId, search: search || undefined,
+            status: statuses, priority: priorities, category: categories, group_id: groupId,
+            source_tenant_row_id: customerId, tag: tagIds, sort: 'updated', limit: 200,
+        }),
+        enabled: context.isHub && layout === 'board',
+        keepPreviousData: true,
+        refetchInterval: LIVE_REFRESH_MS,
+    })
+    const workLog = useTicketWorkLog()
 
     const customers = useQuery({
         queryKey: queryKeys.tickets.myCustomers,
@@ -309,8 +332,8 @@ export default function TicketHubPage() {
                     title={t('hub.unavailable')}
                     description={
                         context.context?.reason === 'missing_permission'
-                            ? 'You do not have access to the support module.'
-                            : 'The support module is not configured on this environment.'
+                            ? t('portal.noAccess')
+                            : t('portal.moduleNotConfigured')
                     }
                 />
             </Page>
@@ -343,6 +366,16 @@ export default function TicketHubPage() {
                         {/* Diger sayfalardaki arama alaniyla ayni: onekli tek hap
                             (ayri buyuk arama dugmesi yok). Enter arar,
                             temizlemek filtreyi kaldirir. */}
+                        <LiquidSegmented
+                            className="tickets-layout-switch"
+                            ariaLabel={t('ticketBoard.layout')}
+                            value={layout}
+                            onChange={(next) => patchParams({ layout: next === 'board' ? 'board' : null })}
+                            options={[
+                                { value: 'list', label: <span><UnorderedListOutlined aria-hidden="true" /> {t('ticketBoard.list')}</span> },
+                                { value: 'board', label: <span><AppstoreOutlined aria-hidden="true" /> {t('ticketBoard.board')}</span> },
+                            ]}
+                        />
                         <Input
                             allowClear
                             className="tickets-search"
@@ -355,8 +388,8 @@ export default function TicketHubPage() {
                         />
                         <Button
                             icon={<ReloadOutlined />}
-                            onClick={() => list.refetch()}
-                            loading={list.isFetching}
+                            onClick={() => (layout === 'board' ? board.refetch() : list.refetch())}
+                            loading={layout === 'board' ? board.isFetching : list.isFetching}
                         >{t('common.refresh')}</Button>
                         <Button icon={<BarChartOutlined />} onClick={() => navigate('/tickets/reports')}>
                             {t('ticketReports.title')}
@@ -388,7 +421,7 @@ export default function TicketHubPage() {
                     onChange={(key) => patchParams({ application: key === 'all' ? null : key })}
                     options={appOptions}
                 />
-                <div className="tickets-queues">
+                {layout === 'list' && <div className="tickets-queues">
                     {(queues.data ?? []).map((item) => (
                         <button
                             key={item.key}
@@ -400,7 +433,7 @@ export default function TicketHubPage() {
                             {tl('queue', item.key)} <b>{item.count}</b>
                         </button>
                     ))}
-                </div>
+                </div>}
                 <div className="tickets-filters__more">
                     <Select
                         mode="multiple"
@@ -492,9 +525,18 @@ export default function TicketHubPage() {
             {!context.hasScope ? (
                 <EmptyState
                     title={t('hub.noQueueVisible')}
-                    description={'You are not an active member of any '
-                        + 'support group yet. Ask an administrator to add '
-                        + 'you to the relevant group.'}
+                    description={t('hub.noScopeHint')}
+                />
+            ) : layout === 'board' ? (
+                <TicketBoard
+                    rows={board.data?.items ?? []}
+                    assigneeName={assigneeName}
+                    canRespond={context.can('tickets.respond') || context.can('tickets.admin')}
+                    canResolve={context.can('tickets.resolve') || context.can('tickets.admin')}
+                    onOpen={setSelectedId}
+                    onChanged={invalidate}
+                    onError={onCommandError}
+                    onLogTime={workLog.canLogTime ? workLog.openLogTime : undefined}
                 />
             ) : (
                 <div className={`tickets-split${split ? ' is-split' : ''}`}>
@@ -530,7 +572,7 @@ export default function TicketHubPage() {
                                         className="tickets-row__check"
                                         checked={selected.has(row.id)}
                                         onChange={() => toggleSelected(row.id)}
-                                        aria-label={t('hub.selectTicket', { number: row.ticket_number })}
+                                        aria-label={t('hub.selectTicket', { number: ticketRef(row) })}
                                     />
                                     <button
                                         type="button"
@@ -541,7 +583,7 @@ export default function TicketHubPage() {
                                         <span className="tickets-row__main">
                                             <span className="tickets-row__title">
                                                 {row.unread && <span className="tickets-row__dot" aria-label={t('hub.unread')} />}
-                                                <span className="tickets-row__code">{row.ticket_number}</span>
+                                                <span className="tickets-row__code">{ticketRef(row)}</span>
                                                 {row.title}
                                             </span>
                                             <span className="tickets-row__meta">
@@ -586,12 +628,13 @@ export default function TicketHubPage() {
                             onChanged={invalidate}
                             onError={onCommandError}
                             onOpenTicket={setSelectedId}
+                            onLogTime={workLog.canLogTime ? workLog.openLogTime : undefined}
                         />
                     )}
                 </div>
             )}
 
-            {!split && (
+            {(!split || layout === 'board') && (
             <AgentWorkbench
                 ticketId={selectedId}
                 open={Boolean(selectedId)}
@@ -600,8 +643,18 @@ export default function TicketHubPage() {
                 onChanged={invalidate}
                 onError={onCommandError}
                 onOpenTicket={setSelectedId}
+                onLogTime={workLog.canLogTime ? workLog.openLogTime : undefined}
             />
             )}
+
+            {/* Talep cozulunce / "Efor gir" → gorevdeki Log Time penceresi. */}
+            <LogTimeModal
+                open={Boolean(workLog.logTicket)}
+                onClose={workLog.closeLogTime}
+                onSubmit={workLog.submitWorkLog}
+                prefillTicket={workLog.prefill}
+                loading={workLog.isLoggingTime}
+            />
         </Page>
     )
 }

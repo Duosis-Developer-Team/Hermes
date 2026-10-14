@@ -94,6 +94,14 @@ class WorkLogService:
             if not exists:
                 linked_meeting_id = None
 
+        # Talep baglantisi (0025): yalniz bu tenant'ta VAR olan talep.
+        linked_ticket_id = getattr(data, "ticket_id", None)
+        if linked_ticket_id is not None:
+            from ..models.ticketing import Ticket
+
+            if self.db.query(Ticket.id).filter(Ticket.id == linked_ticket_id).first() is None:
+                linked_ticket_id = None
+
         # WorkLog oluştur
         db_obj = WorkLog(
             user_id=user_id,
@@ -122,6 +130,7 @@ class WorkLogService:
             task_id=linked_task_id,
             work_item_id=linked_item.id if linked_item is not None else None,
             meeting_id=linked_meeting_id,
+            ticket_id=linked_ticket_id,
         )
 
         self.db.add(db_obj)
