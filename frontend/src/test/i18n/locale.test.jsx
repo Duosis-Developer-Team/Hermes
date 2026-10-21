@@ -56,6 +56,8 @@ describe('i18n sozlukleri', () => {
             'patchNotes.badge',
             // Teknik terim (DevOps), Turkcede de aynen kullanilir.
             'projectTypes.glyph.devops',
+            // Marka adlari (jenerik logo kisayollari), cevrilmez.
+            'projectTypes.glyph.datadog', 'projectTypes.glyph.zabbix',
         ])
         const untranslated = flatten(en).filter((key) => {
             if (SAME_BY_DESIGN.has(key)) return false
