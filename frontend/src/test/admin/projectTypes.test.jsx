@@ -33,7 +33,7 @@ vi.mock('../../services/api', () => ({
 
 const { genericLogoSvg, genericLogoUrl } = await import('../../features/projectTypes/genericLogo')
 const { PROJECT_TYPE_PALETTE, NEUTRAL_TONE } = await import('../../features/projectTypes/palette')
-const { LOGO_GLYPH_KEYS } = await import('../../features/projectTypes/glyphs')
+const { BRAND_TONES, LOGO_GLYPH_KEYS } = await import('../../features/projectTypes/glyphs')
 const { groupProjectsByType, UNTYPED } = await import('../../features/projectTypes/grouping')
 const { ProjectLogo } = await import('../../components/liquid')
 const { useCustomerLogoStore } = await import('../../stores/customerLogoStore')
@@ -77,7 +77,17 @@ describe('jenerik logo modeli', () => {
         expect(genericLogoSvg('general', null)).toContain(NEUTRAL_TONE.from)
         expect(genericLogoSvg('nope', 'red')).toBeNull()
         expect(genericLogoUrl('nope', 'red')).toBeNull()
-        expect(LOGO_GLYPH_KEYS).toHaveLength(23)
+        expect(LOGO_GLYPH_KEYS).toHaveLength(25)
+    })
+
+    it('marka kisayollari (Datadog, Zabbix) listenin basinda ve kendi renginde', () => {
+        expect(LOGO_GLYPH_KEYS.slice(0, 2)).toEqual(['datadog', 'zabbix'])
+        // Tur rengi ne olursa olsun karo markanin rengini tasir.
+        for (const color of ['blue', 'red', null]) {
+            expect(genericLogoSvg('datadog', color)).toContain(BRAND_TONES.datadog.from)
+            expect(genericLogoSvg('zabbix', color)).toContain(BRAND_TONES.zabbix.from)
+        }
+        expect(genericLogoSvg('datadog', 'blue')).not.toContain(PROJECT_TYPE_PALETTE.blue.from)
     })
 
     it('ProjectLogo: ozel logo > jenerik; jenerik tur rengini izler', () => {

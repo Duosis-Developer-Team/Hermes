@@ -8,7 +8,7 @@
  * karosu bileseniyle gosterilir). Ayni girdi icin sonuc onbellektedir.
  * =============================================================================
  */
-import { LOGO_GLYPHS } from './glyphs'
+import { BRAND_TONES, LOGO_GLYPHS } from './glyphs'
 import { toneOf } from './palette'
 
 const cache = new Map()
@@ -16,7 +16,8 @@ const cache = new Map()
 export function genericLogoSvg(glyph, color) {
     const body = LOGO_GLYPHS[glyph]
     if (!body) return null
-    const { from, to } = toneOf(color)
+    // Marka glifi (Datadog, Zabbix) kendi rengini tasir; digerleri turun rengini.
+    const { from, to } = BRAND_TONES[glyph] || toneOf(color)
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">'
         + '<defs>'
         + `<linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient>`

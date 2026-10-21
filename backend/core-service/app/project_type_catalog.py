@@ -20,6 +20,8 @@ PROJECT_TYPE_COLORS = (
 )
 
 LOGO_GLYPHS = (
+    # Marka kisayollari (CTO 21.10): kendi renkleriyle cizilir (istemci).
+    "datadog", "zabbix",
     "general", "monitoring", "devops", "automation", "performance", "device",
     "content", "service", "data", "analytics", "product", "product-new",
     "product-existing", "code", "meeting", "partner", "training", "hiring",

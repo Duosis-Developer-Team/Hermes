@@ -317,6 +317,8 @@ export default {
             slate: 'Slate',
         },
         glyph: {
+            datadog: 'Datadog',
+            zabbix: 'Zabbix',
             general: 'General',
             monitoring: 'Monitoring',
             devops: 'DevOps',

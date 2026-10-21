@@ -322,6 +322,8 @@ export default {
             slate: 'Grafit',
         },
         glyph: {
+            datadog: 'Datadog',
+            zabbix: 'Zabbix',
             general: 'Genel',
             monitoring: 'İzleme',
             devops: 'DevOps',
