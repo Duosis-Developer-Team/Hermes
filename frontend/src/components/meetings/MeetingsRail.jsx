@@ -16,6 +16,9 @@ import { LeftOutlined, RightOutlined } from '@ant-design/icons'
 import { GlassCard } from '../liquid'
 import { useT } from '../../i18n'
 import { MEETING_FILTERS } from './meetingsModel'
+// "Siradaki" karti ana sayfanin home-next stillerini paylasir; /meetings
+// dogrudan acilinca HomePage parcasi yuklenmedigi icin stil burada da alinir.
+import '../../pages/HomePage.css'
 
 function NextMeeting({ meetings }) {
     const t = useT()

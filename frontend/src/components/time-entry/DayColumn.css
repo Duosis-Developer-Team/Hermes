@@ -68,6 +68,14 @@
 .day-column .h-today-flag::before,
 .day-column .h-today-flag::after { display: none; }
 
+/* Dar sutunda (1600px ve alti ekranlar) "Bugun" hapi saat metninin
+   ustune biniyordu: sigmayinca hap gizlenir — bugunu kart halkasi ve
+   aria-current zaten isaretler. */
+.day-column { container-type: inline-size; }
+@container (max-width: 240px) {
+    .day-column .h-today-label { display: none; }
+}
+
 .day-column-name {
     display: flex;
     align-items: center;
