@@ -43,7 +43,7 @@ describe('E4 — kart', () => {
         expect(container.querySelector('.task-card-status').textContent).toBe('in progress')
         expect(container.querySelector('.task-due-badge-overdue')).toBeTruthy()
         // Erisilebilir ad onceligi tasir (renkle degil, metinle).
-        expect(container.querySelector('.task-card-open').getAttribute('aria-label')).toContain('priority urgent')
+        expect(container.querySelector('.task-card-open').getAttribute('aria-label')).toContain(', Urgent')
     })
 
     it('terminsiz kartta hicbir renkli sinyal yok', () => {

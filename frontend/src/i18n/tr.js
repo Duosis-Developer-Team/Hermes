@@ -2404,6 +2404,10 @@ export default {
         filtersHint: 'Seçili görünümün üstüne uygulanır',
         any: 'Tümü',
         filterStatus: { pending: 'Bekliyor', in_progress: 'Devam ediyor', completed: 'Tamamlandı', cancelled: 'İptal' },
+        reopenItem: 'Yeniden aç',
+        acceptItem: 'Kabul et (Devam ediyor durumuna taşır)',
+        markDone: 'Tamamlandı olarak işaretle',
+        onlyAssignee: 'Durumu yalnızca atanan kişi kendi listesinden değiştirebilir',
     },
 
 

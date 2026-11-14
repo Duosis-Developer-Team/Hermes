@@ -28,21 +28,21 @@ const FIVE = [
 describe('badge sozlesmesi', () => {
     it('ad ve status METIN olarak bulunur (yalniz renk degil)', () => {
         render(<AssigneeStatusBadge assignment={a('1', 'Ahmet', 'completed')} />)
-        const el = screen.getByRole('img', { name: 'Ahmet — Completed' })
+        const el = screen.getByRole('img', { name: 'Ahmet — completed' })
         expect(el).toBeInTheDocument()
         expect(el.textContent).toContain('Ahmet')
-        expect(el.textContent).toContain('Completed')
+        expect(el.textContent).toContain('completed')
     })
 
     it('erisilebilir label tam isim + status tasir', () => {
         render(<AssigneeStatusBadge assignment={a('4', 'Elif', 'in_progress')} />)
-        expect(screen.getByRole('img', { name: 'Elif — In Progress' })).toBeInTheDocument()
+        expect(screen.getByRole('img', { name: 'Elif — in progress' })).toBeInTheDocument()
     })
 
     it('klavye ile odaklanabilir (tooltip klavyeyle acilabilsin)', async () => {
         render(<AssigneeStatusBadge assignment={a('1', 'Ahmet', 'pending')} />)
         await userEvent.tab()
-        expect(screen.getByRole('img', { name: 'Ahmet — Pending' })).toHaveFocus()
+        expect(screen.getByRole('img', { name: 'Ahmet — pending' })).toHaveFocus()
     })
 
     it('cozulemeyen isim yerine notr yer tutucu — UUID BASILMAZ', () => {

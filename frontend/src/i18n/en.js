@@ -2410,6 +2410,10 @@ export default {
         filtersHint: 'Applied on top of the selected view',
         any: 'Any',
         filterStatus: { pending: 'Pending', in_progress: 'In Progress', completed: 'Completed', cancelled: 'Cancelled' },
+        reopenItem: 'Reopen',
+        acceptItem: 'Accept (moves to In Progress)',
+        markDone: 'Mark as completed',
+        onlyAssignee: 'Only the assignee can change the status, from their own list',
     },
 
 

@@ -167,7 +167,7 @@ describe('ayni gorev — iki gorunumde AYNI anlam', () => {
         expect(card.getByText('in progress')).toBeInTheDocument()
         // E4 (P3.4): kartta oncelik METIN degil notr cubuk; deger erisilebilir
         // adda tasinir. Listede metin olarak durur — anlam ayni.
-        expect(card.getByRole('button', { name: /priority low/ })).toBeInTheDocument()
+        expect(card.getByRole('button', { name: /, Low$/ })).toBeInTheDocument()
 
         await toList(user)
         await waitFor(() => expect(listCodes()).toHaveLength(3))
@@ -175,7 +175,7 @@ describe('ayni gorev — iki gorunumde AYNI anlam', () => {
             document.querySelectorAll('.ant-table-tbody tr[data-row-key]')
         ).find((tr) => tr.textContent.includes('TASK-2'))
         expect(within(row).getByText('in progress')).toBeInTheDocument()
-        expect(within(row).getByText('low')).toBeInTheDocument()
+        expect(within(row).getByText('Low')).toBeInTheDocument()
     })
 
     it('RBAC iki gorunumde de AYNI kurala dayanir (atayan → Edit/Delete)', async () => {

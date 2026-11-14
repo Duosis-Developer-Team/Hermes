@@ -16,15 +16,8 @@
  */
 import { Tooltip } from 'antd'
 import { assigneeLabelOf } from '../model/grouping'
+import { useT } from '../../../i18n'
 import './assigneeStatus.css'
-
-const STATUS_LABEL = {
-    pending: 'Pending',
-    in_progress: 'In Progress',
-    completed: 'Completed',
-    cancelled: 'Cancelled',
-    rejected: 'Rejected',
-}
 
 /* Status YALNIZ renkle degil, ayirt edilebilir bir isaretle de anlatilir. */
 const STATUS_MARK = {
@@ -36,9 +29,10 @@ const STATUS_MARK = {
 }
 
 export function AssigneeStatusBadge({ assignment, compact = false }) {
+    const t = useT()
     const label = assigneeLabelOf(assignment)
     const status = assignment?.status || 'pending'
-    const statusLabel = STATUS_LABEL[status] || status
+    const statusLabel = t(`taskCard.status.${status}`)
     const full = `${label} — ${statusLabel}`
 
     return (

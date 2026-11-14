@@ -70,13 +70,6 @@ export function TaskDueBadge({ task, compact = false }) {
     )
 }
 
-const STATUS_LABELS = {
-    pending: 'Pending',
-    in_progress: 'In Progress',
-    completed: 'Completed',
-    rejected: 'Rejected',
-}
-
 function TaskCard({
     task,
     userMap = {},
@@ -200,11 +193,11 @@ function TaskCard({
                     title={
                         canToggleCompletion
                             ? isCompleted
-                                ? `Reopen ${typeMeta(task.task_type).lower}`
+                                ? t('taskUi.reopenItem')
                                 : task.status === 'pending'
-                                    ? `Accept ${typeMeta(task.task_type).lower} (move to In Progress)`
-                                    : 'Mark as completed'
-                            : `Only the assignee can change ${typeMeta(task.task_type).lower} status — from their My ${typeMeta(task.task_type).plural} view`
+                                    ? t('taskUi.acceptItem')
+                                    : t('taskUi.markDone')
+                            : t('taskUi.onlyAssignee')
                     }
                 >
                     <Checkbox
@@ -237,8 +230,8 @@ function TaskCard({
                            basligi, durumu ve onceligi tasir. */
                         aria-label={
                             `${task.task_code ? task.task_code + ' ' : ''}${task.title}`
-                            + ` — ${STATUS_LABELS[task.status] || task.status || 'unknown'}`
-                            + (task.priority ? `, priority ${task.priority}` : '')
+                            + ` — ${task.status ? t(`taskCard.status.${task.status}`) : ''}`
+                            + (task.priority ? `, ${t(`taskCard.priority.${task.priority}`)}` : '')
                         }
                         onClick={(e) => {
                             // Kok da ayni islemi tetikler; tekrari onle.
@@ -336,18 +329,18 @@ function TaskCard({
                         <button
                             type="button"
                             className="task-card-action-btn"
-                            aria-label={`Log time — ${task.title}`}
+                            aria-label={`${t('logTime.logTime')} — ${task.title}`}
                             onClick={handleLogTimeClick}
                         >
                             <FieldTimeOutlined />
                         </button>
                     </Tooltip>
                 )}
-                <Tooltip title={`Review ${typeMeta(task.task_type).singular}`}>
+                <Tooltip title={t('taskUi.openFullReview')}>
                     <button
                         type="button"
                         className="task-card-action-btn"
-                        aria-label={`Review ${typeMeta(task.task_type).singular} — ${task.title}`}
+                        aria-label={`${t('taskUi.openFullReview')} — ${task.title}`}
                         onClick={handleReviewClick}
                     >
                         <EyeOutlined />

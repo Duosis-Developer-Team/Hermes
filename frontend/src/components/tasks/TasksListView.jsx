@@ -81,12 +81,8 @@ function TasksListView({
         return out.sort((a, b) => a.text.localeCompare(b.text))
     }, [tasks, userMap])
 
-    const statusFilters = [
-        { text: 'Pending', value: 'pending' },
-        { text: 'In Progress', value: 'in_progress' },
-        { text: 'Completed', value: 'completed' },
-        { text: 'Cancelled', value: 'cancelled' },
-    ]
+    const statusFilters = ['pending', 'in_progress', 'completed', 'cancelled']
+        .map((value) => ({ text: t(`taskUi.filterStatus.${value}`), value }))
 
     /*
      * LISTE ARTIK LOGICAL WORK ITEM SATIRI CIZER (§10): ayni is bes
@@ -123,11 +119,11 @@ function TasksListView({
                         title={
                             canToggle
                                 ? isCompleted
-                                    ? `Reopen ${typeMeta(record.task_type).lower}`
+                                    ? t('taskUi.reopenItem')
                                     : record.status === 'pending'
-                                        ? `Accept ${typeMeta(record.task_type).lower} (move to In Progress)`
-                                        : 'Mark as completed'
-                                : `Only the assignee can change ${typeMeta(record.task_type).lower} status — from their My ${typeMeta(record.task_type).plural} view`
+                                        ? t('taskUi.acceptItem')
+                                        : t('taskUi.markDone')
+                                : t('taskUi.onlyAssignee')
                         }
                     >
                         <Checkbox
@@ -231,7 +227,7 @@ function TasksListView({
                 const val = record.__item?.aggregateStatus ?? record.status
                 return (
                     <Tag className="task-list-tag">
-                        {val === 'in_progress' ? 'in progress' : val}
+                        {t(`taskCard.status.${val}`)}
                     </Tag>
                 )
             },
@@ -249,7 +245,7 @@ function TasksListView({
                         className={`task-card-priority task-card-priority-${val}`}
                         aria-hidden="true"
                     />
-                    <Tag className="task-list-tag">{val}</Tag>
+                    <Tag className="task-list-tag">{t(`taskCard.priority.${val}`)}</Tag>
                 </span>
             ),
         },
@@ -299,16 +295,16 @@ function TasksListView({
                                 <Button
                                     size="small"
                                     icon={<FieldTimeOutlined />}
-                                    aria-label={`Log time — ${record.title}`}
+                                    aria-label={`${t('logTime.logTime')} — ${record.title}`}
                                     onClick={() => onOpenLogTime(record)}
                                 />
                             </Tooltip>
                         )}
-                        <Tooltip title={`Review ${typeMeta(record.task_type).singular}`}>
+                        <Tooltip title={t('taskUi.openFullReview')}>
                             <Button
                                 size="small"
                                 icon={<EyeOutlined />}
-                                aria-label={`Review ${typeMeta(record.task_type).singular} — ${record.title}`}
+                                aria-label={`${t('taskUi.openFullReview')} — ${record.title}`}
                                 onClick={() => onOpenReview?.(record)}
                             />
                         </Tooltip>
