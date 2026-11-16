@@ -56,6 +56,7 @@ from app.routers import (
 )
 from shared.exceptions import HermesException
 from shared.metrics import setup_metrics, start_metrics_server
+from shared.tracing import setup_tracing, shutdown_tracing
 
 
 @asynccontextmanager
@@ -106,6 +107,7 @@ async def lifespan(app: FastAPI):
         _tk_db.close()
     yield
     print(f"👋 {settings.SERVICE_NAME} kapatılıyor...")
+    shutdown_tracing()
 
 
 settings = get_settings()
@@ -148,6 +150,11 @@ app.add_middleware(
 # olcum tum zinciri (CORS dahil) kapsar. Mount edilmis /api/public
 # alt-uygulamasi da ayni ASGI agacindan gectigi icin sayilir.
 setup_metrics(app, service="core-service")
+
+# OpenTelemetry izleri (Drake, OTLP): env'de OTLP hedefi yoksa HICBIR sey
+# yapmaz. Datadog ddtrace ile yan yana calisir (bkz. shared/tracing.py).
+from app.database import engine as _db_engine
+setup_tracing(app, service="core-service", engine=_db_engine)
 
 
 @app.exception_handler(HermesException)

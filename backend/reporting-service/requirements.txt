@@ -13,3 +13,13 @@ pytest-asyncio==0.23.3
 python-dotenv==1.0.0
 # Prometheus metrikleri (Drake sozlesmesi — shared/metrics.py)
 prometheus-client==0.20.0
+
+# OpenTelemetry izleri (Drake, OTLP gRPC — shared/tracing.py). Env'de OTLP
+# hedefi yoksa hicbiri import edilmez. Surumler birlikte guncellenir:
+# SDK 1.x ile contrib 0.x eslesik yayinlanir.
+opentelemetry-api==1.45.2
+opentelemetry-sdk==1.45.2
+opentelemetry-exporter-otlp-proto-grpc==1.45.2
+opentelemetry-propagator-b3==1.45.2
+opentelemetry-instrumentation-asgi==0.66b2
+opentelemetry-instrumentation-httpx==0.66b2

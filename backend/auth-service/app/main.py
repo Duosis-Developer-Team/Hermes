@@ -27,6 +27,7 @@ from app.config import get_settings
 from app.routers import auth_router, users_router
 from shared.exceptions import HermesException
 from shared.metrics import setup_metrics, start_metrics_server
+from shared.tracing import setup_tracing, shutdown_tracing
 
 
 # =============================================================================
@@ -86,6 +87,7 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     print(f"👋 {settings.SERVICE_NAME} kapatılıyor...")
+    shutdown_tracing()
 
 
 # =============================================================================
@@ -131,6 +133,11 @@ app.add_middleware(
 # Prometheus (Drake sozlesmesi): service etiketi SABIT — dashboard'lar
 # bu degere bagli. CORS'tan SONRA eklenir ki olcum tum zinciri kapsasin.
 setup_metrics(app, service="auth-service")
+
+# OpenTelemetry izleri (Drake, OTLP): env'de OTLP hedefi yoksa HICBIR sey
+# yapmaz. Datadog ddtrace ile yan yana calisir (bkz. shared/tracing.py).
+from app.database import engine as _db_engine
+setup_tracing(app, service="auth-service", engine=_db_engine)
 
 
 # =============================================================================

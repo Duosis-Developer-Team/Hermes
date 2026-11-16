@@ -39,6 +39,26 @@ spec:
         # namespace ('hermes-test') DEGIL.
         - name: HERMES_ENVIRONMENT
           value: "test"
+        # OpenTelemetry izleri -> Drake (shared/tracing.py). Hedef bos/yoksa
+        # izler KAPALI. Yayilim B3 (kodda varsayilan; Datadog ddtrace'in W3C
+        # basligiyla cakismasin diye) — OTEL_PROPAGATORS burada VERILMEZ.
+        # k8s.* ozellikleri Downward API'den; Drake gateway'i izlere eklemez.
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://drake-otel-gateway.drake-otel.svc:4317"
+        - name: K8S_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: K8S_NAMESPACE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: K8S_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: "k8s.namespace.name=$(K8S_NAMESPACE_NAME),k8s.pod.name=$(K8S_POD_NAME),k8s.node.name=$(K8S_NODE_NAME),k8s.deployment.name=auth-service"
         # Stage 5 promotion: internal directory S2S (test'e OZEL secret).
         - name: HERMES_S2S_TOKEN_CURRENT
           valueFrom:
