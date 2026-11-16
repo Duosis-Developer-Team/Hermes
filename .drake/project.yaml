@@ -54,10 +54,10 @@ spec:
       namespace: hermes-test
       criticality: low
 
-  # Five services, in both environments: ten service→workload bindings.
+  # Seven services, in both environments: fourteen service→workload bindings.
   # The two databases are dataStores below rather than services — they are
   # state, they get no service binding, and counting them here would report
-  # fourteen bindings for a system that has ten.
+  # eighteen bindings for a system that has fourteen.
   #
   # Workload labels are plain `app: <name>` in both namespaces, verified.
   services:
@@ -107,6 +107,27 @@ spec:
       metricsProfile: kubernetes-service-v1
       workloadSelector: {app: hermes-mcp}
       health: {livePath: /health, readyPath: /health}
+
+    # Object storage for attachments and exports (MinIO, a Go server),
+    # deployed alongside the services in both namespaces. Its probes are
+    # MinIO's own health endpoints on port 9000, verified on 2026-11-16
+    # against the live Deployments. No application metrics are scraped
+    # from it, so it gets Kubernetes-level signals, like the frontend.
+    - name: minio
+      component: other
+      runtime: go
+      metricsProfile: kubernetes-service-v1
+      workloadSelector: {app: minio}
+      health: {livePath: /minio/health/live, readyPath: /minio/health/ready}
+
+    # The ClamAV daemon that scans uploads (port 3310). Its probes are exec
+    # commands, not HTTP, so no health paths are claimed here. Drake judges
+    # it by Kubernetes-level signals: replicas, restarts, resources.
+    - name: clamav
+      component: other
+      runtime: clamav
+      metricsProfile: kubernetes-service-v1
+      workloadSelector: {app: clamav}
 
   # `none`, from two independent sources: hermes_rbac_design.md ("Hermes has
   # no tenant/facility dimension — roles attach directly to users") and the
