@@ -52,6 +52,25 @@ spec:
             # namespace ('hermes-test') DEGIL.
             - name: HERMES_ENVIRONMENT
               value: "test"
+            # OpenTelemetry izleri -> Drake (hermes_mcp/tracing.py). Hedef
+            # yoksa izler KAPALI. Yayilim B3 (kod varsayilani; Datadog ile
+            # cakismasin) — OTEL_PROPAGATORS VERILMEZ.
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://drake-otel-gateway.drake-otel.svc:4317"
+            - name: K8S_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: K8S_NAMESPACE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "k8s.namespace.name=$(K8S_NAMESPACE_NAME),k8s.pod.name=$(K8S_POD_NAME),k8s.node.name=$(K8S_NODE_NAME),k8s.deployment.name=hermes-mcp"
             - name: HERMES_PUBLIC_API_BASE
               value: "http://core-service/api/public/v1"
             # KAYNAK KIMLIGI (RFC 9728) — PRM 'resource' alani birebir

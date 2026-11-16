@@ -24,6 +24,7 @@ from .auth import current_token, token_from_headers
 from .discovery import www_authenticate
 from .metrics import PrometheusMiddleware, preinit_series, start_metrics_server
 from .server import server
+from .tracing import TracingMiddleware, setup_tracing, shutdown_tracing
 from .upstream import close_client
 
 logging.basicConfig(
@@ -173,6 +174,7 @@ async def lifespan(app):
     async with session_manager.run():
         yield
     await close_client()
+    shutdown_tracing()
 
 
 app = Starlette(
@@ -200,9 +202,15 @@ app = Starlette(
     ],
     # Olcum katmani EN DISTA: /mcp'nin ham ASGI ucu dahil tum HTTP
     # trafigi sayilir, hicbir yanit degistirilmez.
-    middleware=[Middleware(PrometheusMiddleware)],
+    # Iz katmani olcumun ICINDE: izler kapaliyken dogrudan gecirir
+    # (bkz. tracing.TracingMiddleware).
+    middleware=[Middleware(PrometheusMiddleware), Middleware(TracingMiddleware)],
     lifespan=lifespan,
 )
 
 # Bos ortamda sorgular 'veri yok' yerine 0 dondursun diye sifir seriler.
 preinit_series()
+
+# OpenTelemetry izleri (Drake, OTLP): env'de OTLP hedefi yoksa HICBIR sey
+# yapmaz. Datadog ddtrace ile yan yana (bkz. tracing.py).
+setup_tracing(app)

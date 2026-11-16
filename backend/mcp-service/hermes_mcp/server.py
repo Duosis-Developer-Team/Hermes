@@ -23,6 +23,7 @@ from .auth import (
     resolve_visibility,
 )
 from .registry import REGISTRY, TOOLS_BY_NAME, ApiToolError
+from .tracing import mark_tool_error, tool_span
 
 logger = logging.getLogger("hermes_mcp.server")
 
@@ -90,18 +91,23 @@ async def call_tool(name: str, arguments: dict):
         rid = None
     reset = current_request_id.set(rid)
     try:
-        result = await spec.handler(arguments or {}, token)
-        return result  # dict → structuredContent + JSON text (SDK)
-    except ApiToolError as exc:
-        # Yapisal, sanitize hata — model rehberligi + request_id dahil.
-        return types.CallToolResult(
-            isError=True,
-            content=[
-                types.TextContent(
-                    type="text",
-                    text=json.dumps(exc.payload, ensure_ascii=False),
+        # Arac span'i (izler kapaliysa no-op): yalnizca kayitli arac ADI;
+        # argumanlar/sonuc span'a GIRMEZ.
+        with tool_span(spec.name, spec.write) as span:
+            try:
+                result = await spec.handler(arguments or {}, token)
+                return result  # dict → structuredContent + JSON text (SDK)
+            except ApiToolError as exc:
+                mark_tool_error(span, exc.payload)
+                # Yapisal, sanitize hata — model rehberligi + request_id dahil.
+                return types.CallToolResult(
+                    isError=True,
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text=json.dumps(exc.payload, ensure_ascii=False),
+                        )
+                    ],
                 )
-            ],
-        )
     finally:
         current_request_id.reset(reset)

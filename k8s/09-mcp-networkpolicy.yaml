@@ -4,8 +4,9 @@
 # UYGULAMADAN ONCE dogrulayin: cluster CNI'i NetworkPolicy enforce
 # etmiyorsa bu kaynak sessizce ETKISIZDIR (yanlis guven!). Dogrulama:
 #   kubectl get pods -n kube-system | grep -Ei 'calico|cilium|weave'
-# Egress: yalnizca core-service (Public API) + DNS. Ingress: yalnizca
-# ingress-nginx.
+# Egress: yalnizca core-service (Public API) + DNS + Drake OTLP toplayicisi
+# (izler; hedef env'den, arac girdisinden URL TURETILMEZ). Ingress:
+# yalnizca ingress-nginx.
 # =============================================================================
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -30,4 +31,16 @@ spec:
         - port: 53
           protocol: UDP
         - port: 53
+          protocol: TCP
+    # OpenTelemetry izleri -> drake-otel-gateway (OTLP gRPC). Yalnizca
+    # telemetri; kullanici verisi tasimaz (hermes_mcp/tracing.py).
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: drake-otel
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: drake-otel-gateway
+      ports:
+        - port: 4317
           protocol: TCP

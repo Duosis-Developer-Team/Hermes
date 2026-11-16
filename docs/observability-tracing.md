@@ -21,7 +21,7 @@ is scheduled, without another privileged agent on node1.
 | core-service | yes | HTTP server, SQLAlchemy, outgoing httpx |
 | auth-service | yes | HTTP server, SQLAlchemy, outgoing httpx |
 | reporting-service | yes | HTTP server, outgoing httpx (no DB) |
-| hermes-mcp | **not yet** | MCP has a test-locked "single upstream" guarantee; adding the telemetry endpoint needs that guarantee widened explicitly first |
+| hermes-mcp | yes | HTTP server (`POST /mcp`), one `mcp.tool <name>` span per tool call, outgoing Public API call (httpx) |
 | frontend, CronJobs, databases | no | static nginx, batch jobs, PostgreSQL |
 
 The resource identity matches the metrics contract:
@@ -37,6 +37,30 @@ The resource identity matches the metrics contract:
 
 Drake's gateway does **not** run `k8sattributes` on traces, so the pod sets
 its own `k8s.*` attributes.
+
+## hermes-mcp specifics
+
+`hermes_mcp` may not import `shared`, so `hermes_mcp/tracing.py` is an
+independent copy. `mcp-service/tests/test_tracing.py` locks parity with
+`shared/tracing.py`: constants, URL stripping and `opentelemetry-*` pins.
+
+- **One trace per tool call.** `POST /mcp` (server) → `mcp.tool
+  hermes_list_tasks` → `GET` to the Public API (client, `b3` header) →
+  core's server span. The tool span carries only `mcp.tool.name` (from the
+  registered tool set, so bounded) and `mcp.tool.write`.
+- **What never enters a span:** tool arguments, tool results and the bearer
+  token. On an upstream error the span is marked ERROR with `error.type` =
+  the error-catalog code; the message is never recorded.
+- **"Single upstream" rule, widened explicitly.** MCP egress is the Public
+  API plus the telemetry endpoint.
+  - The OTLP target comes only from the operator's env.
+  - `tracing.py` builds no URLs and holds no literal target (test-locked).
+  - `k8s/09-mcp-networkpolicy.yaml` allows exactly core:8001, DNS and
+    `drake-otel-gateway:4317`. Flannel does not enforce NetworkPolicy
+    today, so the file records intent.
+- **Installation.** `TracingMiddleware` always sits in the Starlette stack
+  and passes straight through while tracing is off. This lets the app be
+  built at import time; Starlette refuses `add_middleware` after start.
 
 ## Coexisting with Datadog (deliberate)
 
@@ -60,7 +84,8 @@ the conflict on its own side:
    If ddtrace's OTel bridge were ever switched on, our spans would still
    go to Drake.
 
-Verified locally with ddtrace 4.17 under `ddtrace-run`:
+Verified locally with ddtrace 4.17 under `ddtrace-run` (FastAPI services
+and the Starlette MCP app):
 - Two services form one connected OTel trace.
 - The downstream request carries `b3` (ours) next to untouched
   `x-datadog-*` and `traceparent` (Datadog's).
@@ -96,6 +121,7 @@ Verified locally with ddtrace 4.17 under `ddtrace-run`:
 | file | role |
 |---|---|
 | `backend/shared/tracing.py` | setup, sanitising, propagation, route naming, bounded shutdown |
+| `backend/mcp-service/hermes_mcp/tracing.py` | independent MCP copy + tool spans |
 | `backend/{core,auth,reporting}-service/app/main.py` | `setup_tracing(app, service=..., engine=...)` + `shutdown_tracing()` in lifespan |
 | `backend/{core,auth,reporting}-service/requirements.txt` | pinned `opentelemetry-*` 1.45.2 / 0.66b2 |
 | `k8s/03-backend-*.yaml`, `k8s/test/03-backend-*.yaml` | env wiring (record of intent; CD does not apply manifests) |
@@ -114,7 +140,7 @@ earlier.
 ```bash
 NS=hermes-dev   # hermes-test only after the CTO's go
 
-for D in auth-service core-service reporting-service; do
+for D in auth-service core-service reporting-service hermes-mcp; do
   kubectl -n "$NS" patch deployment "$D" -p '{
     "spec":{"template":{"spec":{"containers":[{
       "name":"'"$D"'",

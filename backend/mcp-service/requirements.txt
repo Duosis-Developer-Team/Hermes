@@ -5,3 +5,11 @@ uvicorn[standard]>=0.30
 # Prometheus metrikleri (Drake sozlesmesi). hermes_mcp shared/ import
 # EDEMEZ; sozlesme metrics.py'de bagimsiz uygulanir.
 prometheus-client>=0.20,<1
+# OpenTelemetry izleri (Drake, OTLP gRPC — hermes_mcp/tracing.py). Surumler
+# core/auth/reporting ile AYNI tutulur (parite).
+opentelemetry-api==1.45.2
+opentelemetry-sdk==1.45.2
+opentelemetry-exporter-otlp-proto-grpc==1.45.2
+opentelemetry-propagator-b3==1.45.2
+opentelemetry-instrumentation-asgi==0.66b2
+opentelemetry-instrumentation-httpx==0.66b2
