@@ -68,6 +68,17 @@ async def list_tools() -> list[types.Tool]:
     return tools
 
 
+def _header(name: str) -> str | None:
+    """Aktif HTTP isteginin bir basligi (yalnizca izlere etiket icin);
+    istek baglami yoksa None."""
+    try:
+        request = server.request_context.request
+    except LookupError:
+        return None
+    headers = getattr(request, "headers", None)
+    return headers.get(name) if headers is not None else None
+
+
 @server.call_tool()
 async def call_tool(name: str, arguments: dict):
     try:
@@ -93,7 +104,12 @@ async def call_tool(name: str, arguments: dict):
     try:
         # Arac span'i (izler kapaliysa no-op): yalnizca kayitli arac ADI;
         # argumanlar/sonuc span'a GIRMEZ.
-        with tool_span(spec.name, spec.write) as span:
+        with tool_span(
+            spec.name,
+            spec.write,
+            user_agent=_header("user-agent"),
+            protocol=_header("mcp-protocol-version"),
+        ) as span:
             try:
                 result = await spec.handler(arguments or {}, token)
                 return result  # dict → structuredContent + JSON text (SDK)
