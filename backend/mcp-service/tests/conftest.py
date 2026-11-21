@@ -276,10 +276,11 @@ def make_api_client(s, name, bindings, *, client_type="service",
 _RPC_ID = iter(range(1, 1_000_000))
 
 
-def rpc(client, method, params=None, *, token=None):
+def rpc(client, method, params=None, *, token=None, extra_headers=None):
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json, text/event-stream",
+        **(extra_headers or {}),
     }
     if token:
         headers["Authorization"] = f"Bearer {token}"

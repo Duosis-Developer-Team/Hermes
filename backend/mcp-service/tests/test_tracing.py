@@ -22,7 +22,7 @@ from opentelemetry.trace import SpanKind, StatusCode
 
 from hermes_mcp import tracing as mt
 
-from .conftest import call_tool
+from .conftest import call_tool, rpc
 from .test_stage5a_mcp import u1_token
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
@@ -115,6 +115,48 @@ def test_tool_arguments_and_errors_do_not_leak(traced, mcp_http, pg_session):
     values = _values(spans)
     assert secret_arg not in values
     assert token not in values
+
+
+# --- OpenTelemetry MCP anlamsal kurallari (Tracesis Agent Visibility) ---------
+
+def test_tool_span_carries_the_mcp_conventions(traced, mcp_http, pg_session):
+    token = u1_token(pg_session)
+    resp = rpc(
+        mcp_http,
+        "tools/call",
+        {"name": "hermes_whoami", "arguments": {}},
+        token=token,
+        extra_headers={
+            "User-Agent": "claude-ai/0.9.1 (darwin; arm64)",
+            "MCP-Protocol-Version": "2025-06-18",
+        },
+    )
+    assert resp.status_code == 200
+
+    tool = [s for s in traced.get_finished_spans() if s.name == "mcp.tool hermes_whoami"][0]
+    assert tool.attributes["mcp.method.name"] == "tools/call"
+    assert tool.attributes["gen_ai.tool.name"] == "hermes_whoami"
+    # Yalnizca urun adi: surum ve platform arac span'ina girmez.
+    assert tool.attributes["user_agent.name"] == "claude-ai"
+    assert "darwin" not in " ".join(str(v) for v in tool.attributes.values())
+    assert tool.attributes["mcp.protocol.version"] == "2025-06-18"
+    # Bu bir ajan span'i degil, ajanlarin cagirdigi sunucunun span'i.
+    assert "gen_ai.operation.name" not in tool.attributes
+    # Eski alanlar yerinde (geriye uyumluluk).
+    assert tool.attributes["mcp.tool.name"] == "hermes_whoami"
+
+
+def test_client_and_protocol_labels_are_bounded():
+    assert mt.client_name("Cursor/1.7.2 (vscode)") == "Cursor"
+    assert mt.client_name("python-httpx/0.28") == "python-httpx"
+    assert mt.client_name("") is None
+    assert mt.client_name(None) is None
+    assert mt.client_name("  (weird)") is None
+    assert mt.client_name("../../etc/passwd") is None
+    assert len(mt.client_name("a" * 500) or "") == 64
+    assert mt.protocol_version("2025-06-18") == "2025-06-18"
+    assert mt.protocol_version("2025-06-18; drop") is None
+    assert mt.protocol_version(None) is None
 
 
 # --- Parite (shared/tracing.py) -----------------------------------------------

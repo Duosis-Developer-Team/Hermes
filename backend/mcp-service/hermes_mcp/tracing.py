@@ -23,6 +23,7 @@
 
 import contextlib
 import os
+import re
 from typing import Optional
 from urllib.parse import urlsplit, urlunsplit
 
@@ -224,21 +225,63 @@ def setup_tracing(app, span_processor=None):
         return None
 
 
+# MCP istemcisinin adi: User-Agent'in yalnizca urun belirteci ("claude-ai/1.2
+# (...)" -> "claude-ai"). Kisa, sinirli bir kume; surum, platform ve
+# yorumlar span'a GIRMEZ. Kalibina uymayan deger hic yazilmaz.
+_UA_PRODUCT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
+# MCP-Protocol-Version basligi: tarih bicimli surum ("2025-06-18").
+_PROTOCOL = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def client_name(user_agent: str | None) -> str | None:
+    """User-Agent'tan urun adi; yoksa/uymazsa None."""
+    if not user_agent:
+        return None
+    match = _UA_PRODUCT.match(user_agent.strip())
+    return match.group(0) if match else None
+
+
+def protocol_version(header: str | None) -> str | None:
+    if header and _PROTOCOL.match(header.strip()):
+        return header.strip()
+    return None
+
+
 @contextlib.contextmanager
-def tool_span(name: str, write: bool):
+def tool_span(
+    name: str,
+    write: bool,
+    *,
+    user_agent: str | None = None,
+    protocol: str | None = None,
+):
     """Arac cagrisi span'i; izler kapaliysa hicbir sey yapmaz.
 
-    Yalnizca arac ADI (kayitli kume) ve yazma bayragi yazilir. Argumanlar
-    ve sonuc ASLA. Hata durumunu `mark_tool_error` isaretler.
+    Yalnizca arac ADI (kayitli kume), yazma bayragi ve OpenTelemetry MCP
+    anlamsal kurallarinin sunucu tarafi alanlari yazilir:
+    `mcp.method.name`, `gen_ai.tool.name`, `mcp.protocol.version` ve
+    istemcinin urun adi (`user_agent.name`). Argumanlar ve sonuc ASLA.
+    `gen_ai.operation.name` bilerek YAZILMAZ: bu span bir ajanin degil,
+    ajanlarin cagirdigi sunucunun span'idir. Hata durumunu
+    `mark_tool_error` isaretler.
     """
     tracer = _state["tracer"]
     if tracer is None:
         yield None
         return
-    with tracer.start_as_current_span(
-        f"mcp.tool {name}",
-        attributes={"mcp.tool.name": name, "mcp.tool.write": bool(write)},
-    ) as span:
+    attributes: dict[str, str | bool] = {
+        "mcp.tool.name": name,
+        "mcp.tool.write": bool(write),
+        "mcp.method.name": "tools/call",
+        "gen_ai.tool.name": name,
+    }
+    client = client_name(user_agent)
+    if client:
+        attributes["user_agent.name"] = client
+    version = protocol_version(protocol)
+    if version:
+        attributes["mcp.protocol.version"] = version
+    with tracer.start_as_current_span(f"mcp.tool {name}", attributes=attributes) as span:
         yield span
 
 
