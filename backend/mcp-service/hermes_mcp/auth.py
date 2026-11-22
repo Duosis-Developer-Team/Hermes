@@ -58,7 +58,10 @@ def require_token() -> str:
 
 
 # Gorunurluk cache'i:
-#   sha256(token) -> (expiry, scopes, client_type, workspace_id)
+#   sha256(token) -> (expiry, scopes, client_type, workspace_id, user)
+#
+# `user` kullaniciya bagli tokenin sahibidir ({"id", "name"} ya da None);
+# yalnizca arac izlerinde "kim kullandi" etiketi icin tutulur.
 #
 # Anahtar token hash'idir; token TEK bir tenant'a bagli oldugu icin bu
 # yeterlidir. Yine de cache'lenen deger tenant'i DA saklar ve her
@@ -89,6 +92,7 @@ async def resolve_visibility(token: str) -> dict:
             "scopes": hit[1],
             "client_type": hit[2],
             "workspace_id": hit[3],
+            "user": hit[4],
         }
 
     status, body = await upstream.api_request(
@@ -105,6 +109,7 @@ async def resolve_visibility(token: str) -> dict:
     scopes = frozenset(body.get("scopes") or [])
     client_type = (body.get("client") or {}).get("type", "service")
     workspace_id = (body.get("workspace") or {}).get("id")
+    user = _user_of(body)
 
     # Ayni token icin BASKA bir tenant bildirildiyse cache'i temizle ve
     # istegi reddet. Bu olmamasi gereken bir durumdur; sessizce devam
@@ -123,11 +128,28 @@ async def resolve_visibility(token: str) -> dict:
         scopes,
         client_type,
         workspace_id,
+        user,
     )
     return {
         "scopes": scopes,
         "client_type": client_type,
         "workspace_id": workspace_id,
+        "user": user,
+    }
+
+
+def _user_of(body: dict) -> Optional[dict]:
+    """/v1/me'den tokenin sahibi: {"id", "name"}; servis istemcisinde None.
+
+    Yalnizca id ve gorunen ad alinir; e-posta /v1/me'de zaten yoktur.
+    """
+    user = body.get("user")
+    if not isinstance(user, dict) or not user.get("id"):
+        return None
+    name = user.get("display_name")
+    return {
+        "id": str(user["id"]),
+        "name": name if isinstance(name, str) else None,
     }
 
 

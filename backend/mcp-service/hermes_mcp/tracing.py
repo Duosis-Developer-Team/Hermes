@@ -241,6 +241,30 @@ def client_name(user_agent: str | None) -> str | None:
     return match.group(0) if match else None
 
 
+# "Kim kullandi" (Tracesis Agent Visibility): kullaniciya bagli tokenin
+# sahibinin kimligi (UUID) ve gorunen adi. E-posta ASLA yazilmaz: ad bir
+# e-posta gibi gorunuyorsa (ya da kontrol karakteri tasiyorsa) dusurulur.
+_USER_ID = re.compile(r"^[0-9a-fA-F-]{8,64}$")
+_NAME_MAX = 120
+
+
+def user_id_label(value: str | None) -> str | None:
+    if isinstance(value, str) and _USER_ID.match(value.strip()):
+        return value.strip().lower()
+    return None
+
+
+def user_name_label(value: str | None) -> str | None:
+    if not isinstance(value, str):
+        return None
+    if any(ord(c) < 32 or ord(c) == 127 for c in value):
+        return None
+    name = " ".join(value.split())
+    if not name or "@" in name:
+        return None
+    return name[:_NAME_MAX]
+
+
 def protocol_version(header: str | None) -> str | None:
     if header and _PROTOCOL.match(header.strip()):
         return header.strip()
@@ -254,13 +278,16 @@ def tool_span(
     *,
     user_agent: str | None = None,
     protocol: str | None = None,
+    user: dict | None = None,
 ):
     """Arac cagrisi span'i; izler kapaliysa hicbir sey yapmaz.
 
     Yalnizca arac ADI (kayitli kume), yazma bayragi ve OpenTelemetry MCP
     anlamsal kurallarinin sunucu tarafi alanlari yazilir:
     `mcp.method.name`, `gen_ai.tool.name`, `mcp.protocol.version` ve
-    istemcinin urun adi (`user_agent.name`). Argumanlar ve sonuc ASLA.
+    istemcinin urun adi (`user_agent.name`). Kullaniciya bagli token'da
+    cagiranin kimligi ve adi (`user.id`, `user.name`); e-posta ASLA.
+    Argumanlar ve sonuc ASLA.
     `gen_ai.operation.name` bilerek YAZILMAZ: bu span bir ajanin degil,
     ajanlarin cagirdigi sunucunun span'idir. Hata durumunu
     `mark_tool_error` isaretler.
@@ -281,8 +308,18 @@ def tool_span(
     version = protocol_version(protocol)
     if version:
         attributes["mcp.protocol.version"] = version
+    caller_id = user_id_label((user or {}).get("id"))
+    if caller_id:
+        attributes["user.id"] = caller_id
+        caller_name = user_name_label((user or {}).get("name"))
+        if caller_name:
+            attributes["user.name"] = caller_name
     with tracer.start_as_current_span(f"mcp.tool {name}", attributes=attributes) as span:
         yield span
+
+
+def tracing_active() -> bool:
+    return _state["tracer"] is not None
 
 
 def mark_tool_error(span, payload) -> None:
