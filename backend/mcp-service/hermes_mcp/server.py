@@ -23,7 +23,7 @@ from .auth import (
     resolve_visibility,
 )
 from .registry import REGISTRY, TOOLS_BY_NAME, ApiToolError
-from .tracing import mark_tool_error, tool_span
+from .tracing import mark_tool_error, tool_span, tracing_active
 
 logger = logging.getLogger("hermes_mcp.server")
 
@@ -79,6 +79,20 @@ def _header(name: str) -> str | None:
     return headers.get(name) if headers is not None else None
 
 
+async def _caller(token: str) -> dict | None:
+    """Izler aciksa cagiranin kimligi (yalnizca izde etiket icin).
+
+    Gorunurluk cache'inden (TTL <= 15 sn) gelir; cozulemezse etiketsiz
+    devam edilir — bu bir yetki karari DEGILDIR, yetki API'dedir.
+    """
+    if not tracing_active():
+        return None
+    try:
+        return (await resolve_visibility(token)).get("user")
+    except Exception:  # noqa: BLE001 — etiket cagriyi bozamaz
+        return None
+
+
 @server.call_tool()
 async def call_tool(name: str, arguments: dict):
     try:
@@ -102,6 +116,7 @@ async def call_tool(name: str, arguments: dict):
         rid = None
     reset = current_request_id.set(rid)
     try:
+        caller = await _caller(token)
         # Arac span'i (izler kapaliysa no-op): yalnizca kayitli arac ADI;
         # argumanlar/sonuc span'a GIRMEZ.
         with tool_span(
@@ -109,6 +124,7 @@ async def call_tool(name: str, arguments: dict):
             spec.write,
             user_agent=_header("user-agent"),
             protocol=_header("mcp-protocol-version"),
+            user=caller,
         ) as span:
             try:
                 result = await spec.handler(arguments or {}, token)

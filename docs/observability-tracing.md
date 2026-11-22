@@ -46,8 +46,16 @@ independent copy. `mcp-service/tests/test_tracing.py` locks parity with
 
 - **One trace per tool call.** `POST /mcp` (server) → `mcp.tool
   hermes_list_tasks` → `GET` to the Public API (client, `b3` header) →
-  core's server span. The tool span carries only `mcp.tool.name` (from the
-  registered tool set, so bounded) and `mcp.tool.write`.
+  core's server span. The tool span carries `mcp.tool.name` (from the
+  registered tool set, so bounded), `mcp.tool.write`, the OpenTelemetry MCP
+  fields (`mcp.method.name`, `gen_ai.tool.name`, `mcp.protocol.version`)
+  and the client's product name (`user_agent.name`).
+- **Who called.** For a user-bound token the tool span also carries
+  `user.id` (the bound user's id) and `user.name` (their display name), so
+  Tracesis can show who used a tool. They come from `GET /v1/me`
+  (`user: {id, display_name}`), through the MCP's visibility cache
+  (TTL ≤ 15 s), and only while tracing is on. A service token gets neither.
+  No email, ever: a name containing `@` or control characters is dropped.
 - **What never enters a span:** tool arguments, tool results and the bearer
   token. On an upstream error the span is marked ERROR with `error.type` =
   the error-catalog code; the message is never recorded.

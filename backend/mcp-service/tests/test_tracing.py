@@ -12,6 +12,7 @@
 # =============================================================================
 
 import pathlib
+import uuid
 
 import pytest
 import yaml
@@ -22,7 +23,7 @@ from opentelemetry.trace import SpanKind, StatusCode
 
 from hermes_mcp import tracing as mt
 
-from .conftest import call_tool, rpc
+from .conftest import call_tool, make_api_client, rpc
 from .test_stage5a_mcp import u1_token
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
@@ -144,6 +145,53 @@ def test_tool_span_carries_the_mcp_conventions(traced, mcp_http, pg_session):
     assert "gen_ai.operation.name" not in tool.attributes
     # Eski alanlar yerinde (geriye uyumluluk).
     assert tool.attributes["mcp.tool.name"] == "hermes_whoami"
+
+
+# --- "Kim kullandi" (Tracesis Agent Visibility) ------------------------------
+
+def test_user_bound_tool_span_names_the_caller(traced, mcp_http, pg_session):
+    owner = uuid.uuid4()
+    token = make_api_client(
+        pg_session,
+        f"mcp-{uuid.uuid4().hex[:6]}",
+        [("user", owner)],
+        client_type="user",
+        bound_user_id=owner,
+    )
+    resp = call_tool(mcp_http, token, "hermes_whoami")
+    assert resp.status_code == 200
+
+    tool = [s for s in traced.get_finished_spans() if s.name == "mcp.tool hermes_whoami"][0]
+    assert tool.attributes["user.id"] == str(owner)
+    # conftest'in sahte dizini: "User <ilk4>" + bir is e-postasi.
+    assert tool.attributes["user.name"] == f"User {str(owner)[:4]}"
+    values = _values(traced.get_finished_spans())
+    assert "@example.com" not in values
+    assert token not in values
+
+
+def test_service_token_tool_span_has_no_caller(traced, mcp_http, pg_session):
+    token = u1_token(pg_session)  # servis istemcisi
+    assert call_tool(mcp_http, token, "hermes_whoami").status_code == 200
+    tool = [s for s in traced.get_finished_spans() if s.name == "mcp.tool hermes_whoami"][0]
+    assert "user.id" not in tool.attributes
+    assert "user.name" not in tool.attributes
+
+
+def test_caller_labels_never_carry_an_email_or_junk():
+    uid = "0b3f6a1e-8f6c-4f0e-9a51-2a4b8c9d0e1f"
+    assert mt.user_id_label(uid.upper()) == uid
+    assert mt.user_id_label("not a uuid; drop") is None
+    assert mt.user_id_label(None) is None
+    assert mt.user_name_label("  Gencay   Coskun ") == "Gencay Coskun"
+    assert mt.user_name_label("gencay@example.com") is None
+    assert mt.user_name_label("Gencay\nInjected") is None
+    assert mt.user_name_label("") is None
+    assert mt.user_name_label(None) is None
+    assert len(mt.user_name_label("a" * 500) or "") == 120
+    # Kimlik yoksa ad da yazilmaz (tek basina ad anlamsiz).
+    with mt.tool_span("hermes_whoami", False, user={"name": "X"}) as span:
+        assert span is None  # izler kapali: no-op
 
 
 def test_client_and_protocol_labels_are_bounded():

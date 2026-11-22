@@ -239,6 +239,56 @@ def test_valid_token_returns_me(harness):
     # Plaintext veya hash yanitin hicbir yerinde olmamali.
     assert plaintext not in r.text
     assert token.token_hash not in r.text
+    # Servis istemcisinin bagli kullanicisi yok.
+    assert body["user"] is None
+
+
+def test_user_bound_token_me_names_its_own_user(harness, monkeypatch):
+    """Kullaniciya bagli token: id + gorunen ad doner; e-posta DONMEZ
+    (MCP "kim kullandi" etiketi icin okur)."""
+    from app.services import directory_client
+
+    setter, http, _ = harness
+    owner = uuid.uuid4()
+    seen = {}
+
+    def fake_resolve(ids, *, tenant_id):
+        seen["ids"], seen["tenant"] = ids, str(tenant_id)
+        return {
+            str(owner): {
+                "id": str(owner),
+                "display_name": "Gencay Coskun",
+                "work_email": "gencay@example.com",
+            }
+        }
+
+    monkeypatch.setattr(directory_client, "resolve_users", fake_resolve)
+    client = make_client(client_type="user", bound_user_id=owner)
+    token, plaintext = make_token(client)
+    setter(token, client)
+    r = get_me(http, plaintext)
+    assert r.status_code == 200, r.text
+    assert r.json()["user"] == {"id": str(owner), "display_name": "Gencay Coskun"}
+    assert seen == {"ids": [str(owner)], "tenant": TEST_TENANT_ID}
+    assert "gencay@example.com" not in r.text
+
+
+def test_me_survives_an_unavailable_directory(harness, monkeypatch):
+    from app.services import directory_client
+
+    setter, http, _ = harness
+    owner = uuid.uuid4()
+
+    def down(ids, *, tenant_id):
+        raise directory_client.DirectoryUnavailable("down")
+
+    monkeypatch.setattr(directory_client, "resolve_users", down)
+    client = make_client(client_type="user", bound_user_id=owner)
+    token, plaintext = make_token(client)
+    setter(token, client)
+    r = get_me(http, plaintext)
+    assert r.status_code == 200, r.text
+    assert r.json()["user"] == {"id": str(owner), "display_name": None}
 
 
 def test_revoked_token_fails_immediately(harness):

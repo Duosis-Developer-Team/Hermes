@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from ...database import get_db
 from ...models.api_client import ApiClientAccess
+from ...services import directory_client
 from ..deps import ApiContext, get_api_context
 
 router = APIRouter(prefix="/v1")
@@ -36,6 +37,33 @@ def _workspace_slug(db: Session, tenant_id) -> str | None:
         return None
 
 
+def _bound_user(client) -> dict | None:
+    """Kullaniciya bagli token'in KENDI kullanicisi: kimlik + gorunen ad.
+
+    Yalnizca `user` tipi istemcide doner. Ad, tokenin sahibinin kendi
+    adidir (baska bir kullaniciyi ifsa etmez); e-posta ve diger profil
+    alanlari DONMEZ. MCP bu alani arac izlerinde "kim kullandi" etiketi
+    icin okur (Tracesis Agent Visibility).
+
+    Dizin (auth-service) yanit vermezse ad `None` olur; kimlik yaniti
+    BOZULMAZ — otoriter alan `id`dir ve token kaydindan gelir.
+    """
+    if client.client_type != "user" or not client.bound_user_id:
+        return None
+    user_id = str(client.bound_user_id)
+    try:
+        profile = directory_client.resolve_users(
+            [user_id], tenant_id=client.tenant_id
+        ).get(user_id)
+    except Exception:  # noqa: BLE001 — kolaylik alani istegi bozamaz
+        profile = None
+    name = (profile or {}).get("display_name")
+    return {
+        "id": user_id,
+        "display_name": name if isinstance(name, str) and name.strip() else None,
+    }
+
+
 @router.get(
     "/me",
     tags=["Meta"],
@@ -56,6 +84,7 @@ async def me(
         .filter(ApiClientAccess.client_id == ctx.client.id)
         .all
     )
+    user = await run_in_threadpool(_bound_user, ctx.client)
     return {
         # WS6: token'in BAGLI OLDUGU workspace. Entegrasyonlar (ve MCP)
         # hangi organizasyona baglandiklarini dogrulayabilsin diye
@@ -81,6 +110,9 @@ async def me(
                 else None
             ),
         },
+        # Kullaniciya bagli istemcide tokenin sahibi (id + gorunen ad);
+        # servis istemcisinde None.
+        "user": user,
         "token": {
             "prefix": ctx.token.token_prefix,
             "expires_at": ctx.token.expires_at,
